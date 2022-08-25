@@ -5,9 +5,12 @@ import sys
 from pathlib import Path
 
 import toml
-from pydantic import BaseSettings, ValidationError
+from pydantic import BaseSettings, ValidationError, validator, Field
+
 
 SETTINGS = None
+
+VALID_DATABASE_NAME_REGEX = "^[a-z][a-z0-9\.]+$"
 
 
 class MainSettings(BaseSettings):
@@ -35,7 +38,9 @@ class DatabaseSettings(BaseSettings):
     password: str = ""
     address: str = "localhost"
     port: int = 7687
-    database: str = "infrahub"
+    database: str = Field(
+        default="infrahub", regex=VALID_DATABASE_NAME_REGEX, description="Name of the database in Neo4j"
+    )
 
     class Config:
         """Additional parameters to automatically map environment variable to some settings."""
