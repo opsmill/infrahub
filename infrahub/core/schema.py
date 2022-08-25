@@ -619,6 +619,6 @@ core_models = {
             "relationships": [
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
             ],
-        }
+        },
     ]
 }

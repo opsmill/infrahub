@@ -13,7 +13,7 @@ TEST_DATABASE = "infrahub.testing"
 @app.command()
 def unit(
     path: Optional[str] = typer.Argument(None),
-    config_file: str = "infrahub.toml",
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
 
@@ -33,7 +33,7 @@ def unit(
 @app.command()
 def integration(
     path: Optional[str] = typer.Argument(None),
-    config_file: str = "infrahub.toml",
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
 
@@ -53,7 +53,7 @@ def integration(
 @app.command()
 def all(
     path: Optional[str] = typer.Argument(None),
-    config_file: str = "infrahub.toml",
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
 

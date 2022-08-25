@@ -14,7 +14,7 @@ PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 
 @app.command()
-def init(config_file: str = "infrahub.toml"):
+def init(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
 
     config.load_and_exit(config_file_name=config_file)
 
@@ -38,7 +38,9 @@ def init(config_file: str = "infrahub.toml"):
 
 
 @app.command()
-def load_test_data(config_file: str = "infrahub.toml", dataset: str = "dataset01"):
+def load_test_data(
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"), dataset: str = "dataset01"
+):
 
     config.load_and_exit(config_file_name=config_file)
     initialization()

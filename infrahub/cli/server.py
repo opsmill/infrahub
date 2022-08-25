@@ -5,15 +5,14 @@ import infrahub.config as config
 
 app = typer.Typer()
 
-TEST_DATABASE = "infrahub.testing2"
-
 
 @app.command()
-def start(config_file: str = "infrahub.toml", listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
+def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
 
-    config.load_and_exit(config_file_name=config_file)
+    # it's not possible to pass the location of the config file directly to uvicorn.run
+    # so we must rely on the environment variable
 
-    """Start infrahub in Debug Mode with reload enabled."""
+    """Start Infrahub in Debug Mode with reload enabled."""
 
     if debug:
         uvicorn.run("infrahub.main:app", host=listen, port=port, log_level="info", reload=True)

@@ -140,7 +140,11 @@ def import_all_yaml_files(log, repo, branch, search_directory):
 
 
 @app.command()
-def start(config_file: str = "infrahub.toml", interval: int = 10, debug: bool = False):
+def start(
+    interval: int = 10,
+    debug: bool = False,
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+):
 
     log_level = "DEBUG" if debug else "INFO"
 

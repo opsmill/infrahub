@@ -27,12 +27,10 @@ app.add_typer(db_app, name="db")
 app.add_typer(test_app, name="test")
 app.add_typer(check_app, name="check")
 
-# FIXME - indeed
-INFRAHUB_URL = "http://localhost:8000"
-
 
 def execute_query(
     query,
+    server: str = "http://localhost",
     variables: dict = None,
     branch: str = "main",
     rebase: bool = False,
@@ -49,7 +47,7 @@ def execute_query(
     if "rebase" not in params:
         params["rebase"] = str(rebase)
 
-    response = httpx.post(f"{INFRAHUB_URL}/graphql/{branch}", json=payload, timeout=timeout, params=params)
+    response = httpx.post(f"{server}/graphql/{branch}", json=payload, timeout=timeout, params=params)
     response.raise_for_status()
     return response.json()
 
@@ -69,14 +67,8 @@ def find_graphql_query(name, directory="."):
     return None
 
 
-# def find_template_file(filename, directory="."):
-
-#     with open(filename, "r") as file_data:
-#         templatf-ile = file_data.read()
-
-
 @app.command()
-def shell(config_file: str = "infrahub.toml"):
+def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
 
     config.load_and_exit(config_file_name=config_file)
     initialization()
@@ -97,7 +89,13 @@ def shell(config_file: str = "infrahub.toml"):
 
 
 @app.command()
-def render(rfile: str, params: Optional[List[str]] = typer.Argument(None), branch: str = "main", debug: bool = False):
+def render(
+    rfile: str,
+    params: Optional[List[str]] = typer.Argument(None),
+    server: str = "http://localhost:8000",
+    branch: str = "main",
+    debug: bool = False,
+):
 
     log_level = "DEBUG" if debug else "INFO"
 
@@ -133,7 +131,7 @@ def render(rfile: str, params: Optional[List[str]] = typer.Argument(None), branc
     query = find_graphql_query(rfile_data.get("query"))
 
     params = {item.split("=")[0]: item.split("=")[1] for item in params}
-    response = execute_query(query=query, variables=params, branch=branch)
+    response = execute_query(server=server, query=query, variables=params, branch=branch)
 
     template_path = rfile_data.get("template_path")
     if not os.path.isfile(rfile_data.get("template_path")):

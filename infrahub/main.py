@@ -1,8 +1,9 @@
+import os
 import time
+import logging
 from typing import Optional
 
 import graphene
-import pendulum
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from graphql import graphql
 from starlette.middleware.authentication import AuthenticationMiddleware
@@ -18,13 +19,17 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import get_gql_mutation, get_gql_query  # Query, Mutation
 from infrahub.graphql.app import InfrahubGraphQLApp
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
 
 @app.on_event("startup")
 def app_initialization():
-    # FIXME Hardcoding the location of the config file for now, need to fix
-    config.load_and_exit("/Users/damien/projects/infrahub/examples/example01/config.toml")
+    config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+    config_file_path = os.path.abspath(config_file_name)
+    logger.info(f"Loading the configuration from {config_file_path}")
+    config.load_and_exit(config_file_path)
     initialization()
 
 
