@@ -1,0 +1,41 @@
+---
+x-infrahub-build: &infrahub-build
+  build:
+    args:
+      PYTHON_VER: "${PYTHON_VER}"
+    context: "../"
+    dockerfile: "development/Dockerfile"
+x-nautobot-base: &infrahub-base
+  image: "infrahub/infrahub:py${PYTHON_VER}"
+  # env_file:
+  #   - "dev.env"
+  #   - "creds.env"
+  tty: true
+  <<: *infrahub-base
+
+version: "3.4"
+services:
+  infrahub:
+    depends_on:
+      - "neo4j"
+    <<: *infrahub-build
+
+  neo4j:
+    image: "neo4j:community"
+    ports:
+      - "8474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/admin
+
+volumes:
+  neo4j_data: {}
+
+# docker run --name neo4j-dev \
+#                 -p 7474:7474 -p 7687:7687 \
+#                 -e NEO4J_apoc_export_file_enabled=true \
+#                 -e NEO4J_apoc_import_file_enabled=true \
+#                 -e NEO4J_apoc_import_file_use__neo4j__config=true \
+#                 -e NEO4J_dbms_security_procedures_unrestricted=apoc.\\\* \
+#                 -e NEO4JLABS_PLUGINS=\[\"apoc\"\] \
+#                 -d --rm --env NEO4J_AUTH=neo4j/admin neo4j:community

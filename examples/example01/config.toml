@@ -1,0 +1,9 @@
+[main]
+repositories_directory = "/Users/damien/projects/infrahub/examples/example01/repositories"
+
+[database]
+username = "neo4j"
+password = "admin"
+address = "localhost"
+port = 7687
+protocol = "neo4j"

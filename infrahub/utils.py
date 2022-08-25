@@ -1,0 +1,28 @@
+import uuid
+from itertools import groupby
+
+
+def is_valid_uuid(val) -> bool:
+    """Check if the input is a valid UUID."""
+    try:
+        uuid.UUID(str(val))
+        return True
+    except ValueError:
+        return False
+
+
+def duplicates(input_list: list) -> list:
+    """Identify and return all the duplicates in a list."""
+
+    dups = []
+    for x, y in groupby(sorted(input_list)):
+        #  list(y) returns all the occurences of item x
+        if len(list(y)) > 1:
+            dups.append(x)
+
+    return dups
+
+
+def intersection(list1, list2) -> list:
+    """Calculate the intersection between 2 lists."""
+    return list(set(list1) & set(list2))

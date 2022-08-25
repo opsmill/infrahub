@@ -1,0 +1,103 @@
+[tool.poetry]
+name = "infrahub"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+fastapi = "^0.79.0"
+neo4j = "^4.4.1"
+pendulum = "^2.1.2"
+uvicorn = {version = "^0.17.6", extras = ["standard"]}
+graphql-core = "^3.1.7"
+graphql-relay = "^3.1.5"
+graphene = "~3.0"
+rich = "^12.0.0"
+click = "^8.0.4"
+starlette-exporter = "^0.12.0"
+typer = "^0.4.0"
+GitPython = "^3.1.27"
+Jinja2 = "^3.1.2"
+httpx = "^0.22.0"
+toml = "^0.10.2"
+jsonlines = "^3.0.0"
+gunicorn = "^20.1.0"
+deepdiff = "^5.8.1"
+
+[tool.poetry.dev-dependencies]
+black = "*"
+pytest = "*"
+yamllint = "*"
+pylint = "*"
+flake8 = "*"
+mypy = "*"
+ipython = "^8.1.1"
+pytest-asyncio = "^0.18.3"
+requests = "^2.27.1"
+pre-commit = "^2.19.0"
+isort = "^5.10.1"
+autoflake = "^1.4"
+
+[tool.poetry.scripts]
+infrahub = "infrahub.cli:app"
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+exclude = '''
+        /(
+          \.git
+        | \.tox
+        | \.venv
+        | env/
+        | _build
+        | build
+        | dist
+        | examples
+        )/
+    '''
+
+[tool.isort]
+profile = "black"
+
+[tool.coverage.run]
+branch = true
+
+[tool.pylint.general]
+extension-pkg-whitelist = [
+    "pydantic"
+]
+
+[tool.pylint.basic]
+# No docstrings required for private methods (Pylint default), or for test_ functions.
+no-docstring-rgx="^(_|test_)"
+
+[tool.pylint.messages_control]
+# Line length is enforced by Black, so pylint doesn't need to check it.
+# Pylint and Black disagree about how to format multi-line arrays; Black wins.
+disable = """,
+    line-too-long,
+    bad-continuation,
+    """
+
+[tool.pylint.miscellaneous]
+# Don't flag TODO as a failure, let us commit with things that still need to be done in the code
+notes = """,
+    FIXME,
+    XXX,
+    """
+
+[tool.pylint.similarities]
+# There's a lot of duplicate code in the examples/backend_*.py files - don't complain about it for now
+min-similarity-lines = 20
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+testpaths = [
+    "tests"
+]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

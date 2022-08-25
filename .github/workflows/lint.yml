@@ -1,0 +1,25 @@
+---
+# yamllint disable rule:truthy
+name: "Linting"
+on:
+  - "push"
+  - "pull_request"
+jobs:
+  yaml-lint:
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v2"
+      - name: "Setup environment"
+        run: "pip install yamllint==1.26.3"
+      - name: "Linting: yamllint"
+        run: "yamllint ."
+  python-lint:
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v2"
+      - name: "Setup environment"
+        run: "pip install black==22.3.0"
+      - name: "Linting: BLACK"
+        run: "black --check ."

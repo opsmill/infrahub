@@ -1,0 +1,4 @@
+*.pyc
+*.env
+script.py
+.vscode/settings.json

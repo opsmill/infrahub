@@ -1,0 +1,30 @@
+---
+# yamllint disable rule:truthy
+name: "Testing"
+on:
+  - "push"
+  - "pull_request"
+
+env:
+  NEO4J_USERNAME: neo4j
+  NEO4J_PASSWORD: admin
+  NEO4J_ADDRESS: localhost
+  NEO4J_PORT: 7687
+  NEO4J_PROTOCOL: neo4j
+
+jobs:
+  python-tests:
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v2"
+      - name: "Setup environment"
+        run: "pip install poetry toml invoke"
+      - name: "Start database"
+        run: "invoke neo4j-start"
+      - name: "Install project"
+        run: "poetry install"
+      - name: "Unit Tests"
+        run: "poetry run infrahub test unit"
+      - name: "Integration Tests"
+        run: "poetry run infrahub test integration"

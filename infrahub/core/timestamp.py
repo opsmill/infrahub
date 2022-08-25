@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+import re
+
+import pendulum
+from pendulum.datetime import DateTime
+
+REGEX_MAPPING = {
+    "seconds": r"(\d+)(s|sec|second|seconds)",
+    "minutes": r"(\d+)(m|min|minute|minutes)",
+    "hours": r"(\d+)(h|hour|hours)",
+}
+
+
+class Timestamp:
+    def __init__(self, value=None):
+
+        if value and isinstance(value, DateTime):
+            self.obj = value
+        elif value and isinstance(value, self.__class__):
+            self.obj = value.obj
+        elif isinstance(value, str):
+            self.obj = self._parse_string(value)
+        else:
+            self.obj = DateTime.now(tz="UTC")
+
+    @classmethod
+    def _parse_string(cls, value):
+
+        try:
+            return pendulum.parse(value)
+        except pendulum.parsing.exceptions.ParserError:
+            pass
+
+        params = {}
+        for key, regex in REGEX_MAPPING.items():
+            match = re.search(regex, value)
+            if match:
+                params[key] = int(match.group(1))
+
+        if not params:
+            raise ValueError(f"Invalid time format for {value}")
+
+        return DateTime.now(tz="UTC").subtract(**params)
+
+    def to_string(self):
+        return self.obj.to_iso8601_string()
