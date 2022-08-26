@@ -31,7 +31,7 @@ async def test_simple_query(default_branch, criticality_schema):
         variable_values={},
     )
 
-    assert result.errors == None
+    assert result.errors is None
     assert len(result.data["criticality"]) == 2
 
 
@@ -72,7 +72,7 @@ async def test_nested_query(default_branch, car_person_schema):
 
     valid_names = ["John", "Jane"]
 
-    assert result.errors == None
+    assert result.errors is None
     assert result.data["person"][0]["name"]["value"] in valid_names
     assert len(result.data["person"][0]["cars"]) == 2
 
@@ -105,7 +105,7 @@ async def test_query_filter_local_attrs(default_branch, criticality_schema):
         variable_values={},
     )
 
-    assert result.errors == None
+    assert result.errors is None
     assert len(result.data["criticality"]) == 1
 
 
@@ -144,7 +144,7 @@ async def test_query_filter_relationships(default_branch, car_person_schema):
         variable_values={},
     )
 
-    assert result.errors == None
+    assert result.errors is None
     assert len(result.data["person"]) == 1
     assert result.data["person"][0]["name"]["value"] == "John"
     assert len(result.data["person"][0]["cars"]) == 1
@@ -178,7 +178,7 @@ async def test_query_oneway_relationship(default_branch, person_tag_schema):
         variable_values={},
     )
 
-    assert result.errors == None
+    assert result.errors is None
     assert len(result.data["person"][0]["tags"]) == 2
 
 
@@ -210,7 +210,7 @@ async def test_query_at_specific_time(default_branch, person_tag_schema):
         variable_values={},
     )
 
-    assert result.errors == None
+    assert result.errors is None
     assert len(result.data["tag"]) == 2
     names = sorted([tag["name"]["value"] for tag in result.data["tag"]])
     assert names == ["Blue", "Green"]
@@ -234,7 +234,7 @@ async def test_query_at_specific_time(default_branch, person_tag_schema):
         variable_values={},
     )
 
-    assert result.errors == None
+    assert result.errors is None
     assert len(result.data["tag"]) == 2
     names = sorted([tag["name"]["value"] for tag in result.data["tag"]])
     assert names == ["Blue", "Red"]

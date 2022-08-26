@@ -13,7 +13,7 @@ class InfrahubCheckSpineNbrInterfaceDisabled(InfrahubCheck):
 
             nbr_intf_disabled = 0
             for intf in device["interfaces"]:
-                if intf["enabled"]["value"] == False:
+                if intf["enabled"]["value"] is False:
                     nbr_intf_disabled += 1
 
             if nbr_intf_disabled > 1:

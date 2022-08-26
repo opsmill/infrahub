@@ -32,7 +32,7 @@ def test_initialize_repositories_directory_missing(tmp_path):
 
     created = initialize_repositories_directory()
 
-    assert created == True
+    assert created is True
     assert len(list(tmp_path.iterdir())) == 1
 
 
@@ -45,7 +45,7 @@ def test_initialize_repositories_directory_present(tmp_path):
 
     created = initialize_repositories_directory()
 
-    assert created == False
+    assert created is False
     assert len(list(tmp_path.iterdir())) == 1
 
 
@@ -54,7 +54,7 @@ def test_ensure_exists_locally_when_present(register_core_models_schema, edge_re
     repo_schema = registry.get_schema("Repository")
     obj = Repository(repo_schema).new(name="infrahub-demo-edge", location="notvalid")
 
-    assert obj.ensure_exists_locally() == False
+    assert obj.ensure_exists_locally() is False
     assert obj.commit.value == "dd60ae4804c0d0e71c8de0640bb84b095fc3ee61"
 
 

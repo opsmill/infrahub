@@ -28,8 +28,8 @@ async def test_create_simple_object(default_branch, car_person_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["person_create"]["ok"] == True
+    assert result.errors is None
+    assert result.data["person_create"]["ok"] is True
     assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 
@@ -62,8 +62,8 @@ async def test_create_object_with_rels(default_branch, car_person_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["car_create"]["ok"] == True
+    assert result.errors is None
+    assert result.data["car_create"]["ok"] is True
     assert len(result.data["car_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 

@@ -31,10 +31,10 @@ def test_query_results(simple_dataset_01):
 
     query = Query01()
 
-    assert query.has_been_executed == False
+    assert query.has_been_executed is False
     query.execute()
 
-    assert query.has_been_executed == True
+    assert query.has_been_executed is True
 
     assert query.num_of_results == 3
     assert query.results[0].get("at") is not None

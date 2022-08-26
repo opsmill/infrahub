@@ -17,7 +17,7 @@ def test_node_init(default_branch, criticality_schema):
 
     assert obj.name.value == "low"
     assert obj.level.value == 4
-    assert obj.description.value == None
+    assert obj.description.value is None
     assert obj.color.value == "#444444"
 
     obj = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333")
@@ -35,7 +35,7 @@ def test_node_init_schema_name(default_branch, criticality_schema):
 
     assert obj.name.value == "low"
     assert obj.level.value == 4
-    assert obj.description.value == None
+    assert obj.description.value is None
     assert obj.color.value == "#444444"
 
 
@@ -96,8 +96,8 @@ def test_node_default_value(default_branch):
     assert obj.myint_default.value == 10
     assert obj.mystr.value == "test02"
     assert obj.mystr_default.value == "test"
-    assert obj.mybool.value == False
-    assert obj.mybool_default.value == True
+    assert obj.mybool.value is False
+    assert obj.mybool_default.value is True
 
 
 def test_node_init_with_single_relationship(default_branch, car_person_schema):
@@ -116,13 +116,13 @@ def test_node_init_with_single_relationship(default_branch, car_person_schema):
     c1 = Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1)
     assert c1.name.value == "volt"
     assert c1.nbr_seats.value == 4
-    assert c1.is_electric.value == True
+    assert c1.is_electric.value is True
     assert c1.owner.peer == p1
 
     c2 = Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1.id)
     assert c2.name.value == "volt"
     assert c2.nbr_seats.value == 4
-    assert c2.is_electric.value == True
+    assert c2.is_electric.value is True
     assert c2.owner.peer.id == p1.id
 
 
@@ -139,7 +139,7 @@ def test_node_create_local_attrs(default_branch, criticality_schema):
     assert obj.name.id
     assert obj.level.value == 4
     assert obj.level.id
-    assert obj.description.value == None
+    assert obj.description.value is None
     assert obj.description.id
     assert obj.color.value == "#444444"
     assert obj.color.id
@@ -176,7 +176,7 @@ def test_node_create_with_single_relationship(default_branch, car_person_schema)
     c1 = Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
     assert c1.name.value == "volt"
     assert c1.nbr_seats.value == 4
-    assert c1.is_electric.value == True
+    assert c1.is_electric.value is True
     assert c1.owner.peer == p1
 
     # We should have 2 paths between c1 and p1
@@ -188,7 +188,7 @@ def test_node_create_with_single_relationship(default_branch, car_person_schema)
     c2 = Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
     assert c2.name.value == "accord"
     assert c2.nbr_seats.value == 5
-    assert c2.is_electric.value == False
+    assert c2.is_electric.value is False
     assert c2.owner.peer.id == p1.id
 
     paths = get_paths_between_nodes(c2.db_id, p1.db_id, 2)

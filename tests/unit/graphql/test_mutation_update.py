@@ -37,8 +37,8 @@ async def test_update_simple_object(default_branch, car_person_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["person_update"]["ok"] == True
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
 
     obj1 = NodeManager.get_one(obj.id)
     assert obj1.name.value == "Jim"
@@ -140,6 +140,6 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["person_update"]["ok"] == True
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 1

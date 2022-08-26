@@ -21,4 +21,4 @@ def test_validate_token(default_branch, register_core_models_schema):
     token1 = Node(account_token_schema).new(token="123456789", account=user1).save()
 
     assert validate_token("123456789") == "user1"
-    assert validate_token("987654321") == False
+    assert validate_token("987654321") is False

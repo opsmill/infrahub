@@ -469,7 +469,7 @@ def test_merge_first_branch_into_main(client, dataset01):
     assert response.status_code == 200
     assert "errors" not in response.json()
     assert response.json()["data"] is not None
-    assert response.json()["data"]["branch_merge"]["ok"] == True
+    assert response.json()["data"]["branch_merge"]["ok"] is True
 
     # Query the new value in Main which should match the pervious version in branch1
     response = client.post(

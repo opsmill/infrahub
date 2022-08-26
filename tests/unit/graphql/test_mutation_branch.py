@@ -30,8 +30,8 @@ async def test_branch_create(default_branch, car_person_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["branch_create"]["ok"] == True
+    assert result.errors is None
+    assert result.data["branch_create"]["ok"] is True
     assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
 
     assert Branch.get_by_name("branch2")
@@ -71,8 +71,8 @@ async def test_branch_rebase(default_branch, car_person_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["branch_rebase"]["ok"] == True
+    assert result.errors is None
+    assert result.data["branch_rebase"]["ok"] is True
     assert result.data["branch_rebase"]["object"]["id"] == branch2.uuid
 
     new_branch2 = Branch.get_by_name("branch2")
@@ -103,8 +103,8 @@ async def test_branch_validate(default_branch, register_core_models_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["branch_validate"]["ok"] == True
+    assert result.errors is None
+    assert result.data["branch_validate"]["ok"] is True
     assert result.data["branch_validate"]["object"]["id"] == branch2.uuid
 
 
@@ -132,6 +132,6 @@ async def test_branch_merge(default_branch, register_core_models_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["branch_merge"]["ok"] == True
+    assert result.errors is None
+    assert result.data["branch_merge"]["ok"] is True
     assert result.data["branch_merge"]["object"]["id"] == branch2.uuid

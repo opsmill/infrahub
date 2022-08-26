@@ -38,7 +38,7 @@ def test_get_one_local_attribute(default_branch, criticality_schema):
     assert obj.name.id
     assert obj.level.value == 4
     assert obj.level.id
-    assert obj.description.value == None
+    assert obj.description.value is None
     assert obj.description.id
     assert obj.color.value == "#444444"
     assert obj.color.id
@@ -58,7 +58,7 @@ def test_get_one_relationship(default_branch, car_person_schema):
 
     assert c11.name.value == "volt"
     assert c11.nbr_seats.value == 4
-    assert c11.is_electric.value == True
+    assert c11.is_electric.value is True
     assert c11.owner.peer.id == p1.id
 
     p11 = NodeManager.get_one(p1.id)
@@ -187,7 +187,7 @@ def test_get_one_local_attribute_with_branch(default_branch, criticality_schema)
     assert obj.name.id
     assert obj.level.value == 4
     assert obj.level.id
-    assert obj.description.value == None
+    assert obj.description.value is None
     assert obj.description.id
     assert obj.color.value == "#444444"
     assert obj.color.id

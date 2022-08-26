@@ -33,7 +33,7 @@ async def test_delete_object(default_branch, car_person_schema):
         variable_values={},
     )
 
-    assert result.errors == None
-    assert result.data["person_delete"]["ok"] == True
+    assert result.errors is None
+    assert result.data["person_delete"]["ok"] is True
 
     assert not NodeManager.get_one(obj1.id)
