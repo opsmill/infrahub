@@ -4,6 +4,7 @@ from infrahub.core.query import Query, QueryType
 
 # flake8: noqa: F723
 
+
 class AttributeQuery(Query):
     def __init__(self, attr=None, attr_id=None, *args, **kwargs):
 

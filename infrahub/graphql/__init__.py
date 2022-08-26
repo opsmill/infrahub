@@ -1,4 +1,3 @@
-
 from .generator import generate_mutation_mixin, generate_query_mixin
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 

@@ -12,6 +12,7 @@ except ImportError:
 
 # flake8: noqa: W605
 
+
 def project_ver():
     """Find version from pyproject.toml to use for docker image tagging."""
     with open("pyproject.toml", encoding="UTF-8") as file:
