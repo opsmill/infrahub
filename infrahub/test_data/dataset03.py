@@ -4,7 +4,6 @@ import uuid
 from collections import defaultdict
 from ipaddress import IPv4Network
 
-import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

@@ -3,7 +3,6 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, List
 
-from infrahub.core import branch
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:

@@ -1,8 +1,6 @@
 from graphene import (
-    Argument,
     Boolean,
     Field,
-    InputField,
     InputObjectType,
     Int,
     List,
@@ -11,7 +9,6 @@ from graphene import (
 )
 from graphene.types.mutation import MutationOptions
 
-import infrahub.config as config
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

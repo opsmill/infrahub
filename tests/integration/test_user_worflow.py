@@ -1,11 +1,5 @@
-import graphene
 import pendulum
-import pytest
-from graphql import graphql
-from starlette.datastructures import Headers
-from starlette.requests import Request
 
-import infrahub.config as config
 
 headers = {"Authorization": "Token nelly"}
 

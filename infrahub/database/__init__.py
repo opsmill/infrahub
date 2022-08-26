@@ -7,7 +7,6 @@ from neo4j import GraphDatabase, basic_auth
 from neo4j.exceptions import ClientError
 
 import infrahub.config as config
-from infrahub.exceptions import QueryError
 
 from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
 

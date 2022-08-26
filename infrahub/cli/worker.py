@@ -10,7 +10,6 @@ import git
 import typer
 import yaml
 from git import Repo
-from git.exc import InvalidGitRepositoryError
 from rich.logging import RichHandler
 
 import infrahub.config as config

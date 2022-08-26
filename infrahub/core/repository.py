@@ -8,10 +8,8 @@ from typing import (
 )
 
 from git import Repo
-from git.exc import InvalidGitRepositoryError
 
 import infrahub.config as config
-from infrahub.checks import InfrahubCheck
 from infrahub.core.node import Node
 
 

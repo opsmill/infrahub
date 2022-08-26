@@ -8,7 +8,6 @@ from typing import Optional
 import typer
 from rich.logging import RichHandler
 
-import infrahub.config as config
 from infrahub.checks import VARIABLE_TO_IMPORT
 
 app = typer.Typer()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from infrahub.core import get_account, get_account_by_id, get_branch, registry
+from infrahub.core import get_branch, registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError

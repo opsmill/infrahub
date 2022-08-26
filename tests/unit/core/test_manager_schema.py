@@ -1,9 +1,7 @@
-import pytest
 from deepdiff import DeepDiff
 
 from infrahub.core import registry
-from infrahub.core.manager import NodeManager, SchemaManager
-from infrahub.core.node import Node
+from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import NodeSchema, SchemaRoot, internal_schema
 
 

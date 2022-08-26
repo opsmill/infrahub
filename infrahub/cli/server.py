@@ -1,7 +1,6 @@
 import typer
 import uvicorn
 
-import infrahub.config as config
 
 app = typer.Typer()
 

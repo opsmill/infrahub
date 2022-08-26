@@ -3,7 +3,6 @@ import graphene
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
-from infrahub.core.timestamp import Timestamp
 
 from .mutations import (
     AnyAttributeInput,

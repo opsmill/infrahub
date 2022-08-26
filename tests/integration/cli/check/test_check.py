@@ -1,7 +1,6 @@
 from typer.testing import CliRunner
 
 from infrahub.cli.check import app
-from infrahub.tests.utils import copy_project_to_tmp_dir
 
 runner = CliRunner()
 

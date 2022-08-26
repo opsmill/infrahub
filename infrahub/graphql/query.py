@@ -1,18 +1,14 @@
 import dataclasses
 
-from graphene import Boolean, DateTime, Field, Int, List, ObjectType, Schema, String
+from graphene import Boolean, Field, Int, List, ObjectType, String
 from graphene.types.objecttype import ObjectTypeOptions
 
-import infrahub.config as config
 from infrahub.core import get_branch
-from infrahub.core.branch import Branch, Diff
+from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.repository import Repository
-from infrahub.core.rfile import RFile
 from infrahub.core.schema import NodeSchema
 
 from .types import Any
-from .utils import extract_fields, extract_global_kwargs, selected_field_names_naive
 
 DEFAULT_BRANCH = "main"
 

@@ -1,11 +1,8 @@
-import pytest
 
-import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
 
 # ("low", 2),
 # ("medium", 3),

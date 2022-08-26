@@ -2,9 +2,8 @@ import logging
 import re
 from collections import defaultdict
 
-import infrahub.config as config
-from infrahub.core.account import Account, AccountToken, Group
-from infrahub.models import Device, Interface, IPAddress, Permission, Role, Status, Tag
+from infrahub.core.account import Account, Group
+from infrahub.models import Device, IPAddress, Interface, Role, Status, Tag
 
 ROLES = ["spine", "leaf", "firewall", "server", "uplink"]
 

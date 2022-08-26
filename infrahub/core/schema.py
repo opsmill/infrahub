@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, root_validator, validator
 
-from infrahub.core import get_branch, registry
+from infrahub.core import registry
 from infrahub.core.attribute import Any as AnyAttr
 from infrahub.core.attribute import Boolean, Integer, String
 from infrahub.core.relationship import Relationship

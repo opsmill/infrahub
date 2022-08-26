@@ -74,11 +74,10 @@ def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CO
     initialization()
 
     # TODO add check to properly exit of ipython is not installed
-    from IPython import embed, start_ipython
-    from rich import inspect, pretty, print
+    from IPython import embed
+    from rich import pretty
     from traitlets.config import get_config
 
-    from infrahub.core import registry
 
     pretty.install()
 

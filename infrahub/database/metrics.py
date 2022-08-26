@@ -1,4 +1,4 @@
-from prometheus_client import Counter, Histogram
+from prometheus_client import Histogram
 
 METRIC_PREFIX = "infrahub_db"
 

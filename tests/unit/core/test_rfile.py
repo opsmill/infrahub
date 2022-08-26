@@ -6,7 +6,7 @@ import pytest
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.node import Node
-from infrahub.core.repository import Repository, initialize_repositories_directory
+from infrahub.core.repository import Repository
 from infrahub.core.rfile import RFile
 
 

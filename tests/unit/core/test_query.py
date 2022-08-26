@@ -1,9 +1,5 @@
-import pendulum
-import pytest
 
 from infrahub.core.query import Query
-from infrahub.core.utils import delete_all_nodes
-from infrahub.database import execute_write_query
 
 
 class Query01(Query):

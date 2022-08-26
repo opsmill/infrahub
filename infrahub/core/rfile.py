@@ -4,7 +4,6 @@ import os
 
 import jinja2
 
-import infrahub.config as config
 from infrahub.core.node import Node
 
 

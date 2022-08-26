@@ -7,7 +7,7 @@ from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import ValidationError
-from infrahub.utils import intersection, is_valid_uuid
+from infrahub.utils import intersection
 
 from .query import (
     RelationshipCreateQuery,
@@ -19,7 +19,7 @@ from .query import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import NodeSchema, RelationshipSchema
+    from infrahub.core.schema import RelationshipSchema
 
 # RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 

@@ -1,4 +1,4 @@
-from graphene import Boolean, DateTime, Field, Int, List, ObjectType, Schema, String
+from graphene import Field, List, ObjectType, String
 
 from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate
 from .query import BranchDiffType, BranchType

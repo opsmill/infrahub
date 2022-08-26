@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 import toml
-from pydantic import BaseSettings, ValidationError, validator, Field
+from pydantic import BaseSettings, Field, ValidationError
 
 
 SETTINGS = None

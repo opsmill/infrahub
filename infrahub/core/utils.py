@@ -5,7 +5,6 @@ from typing import (
     List,
 )
 
-import pendulum
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus

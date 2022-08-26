@@ -2,7 +2,6 @@ import graphene
 import pytest
 from graphql import graphql
 
-from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql import get_gql_mutation, get_gql_query

@@ -15,10 +15,9 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
-    delete_all_relationships_for_branch,
     update_relationships_to,
 )
-from infrahub.database import execute_read_query, execute_write_query
+from infrahub.database import execute_read_query
 from infrahub.exceptions import BranchNotFound
 
 

@@ -1,7 +1,6 @@
 import pendulum
 import pytest
 
-from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 
 

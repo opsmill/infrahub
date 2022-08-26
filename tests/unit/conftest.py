@@ -4,7 +4,6 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
-    create_branch,
     create_default_branch,
     first_time_initialization,
     initialization,

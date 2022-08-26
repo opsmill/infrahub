@@ -4,10 +4,10 @@ import logging
 from typing import Optional
 
 import graphene
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response
 from graphql import graphql
 from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config

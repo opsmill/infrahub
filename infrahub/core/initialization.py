@@ -1,7 +1,7 @@
 import logging
 
 import infrahub.config as config
-from infrahub.core import get_branch, registry
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager, SchemaManager
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema

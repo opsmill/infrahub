@@ -1,7 +1,4 @@
-import pytest
 
-import infrahub.config as config
-from infrahub.core import registry
 from infrahub.core.branch import Branch, Diff
 from infrahub.core.manager import NodeManager
 

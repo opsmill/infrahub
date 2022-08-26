@@ -3,8 +3,6 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
-from infrahub.core.constants import RelationshipStatus
-from infrahub.core.relationship import Relationship
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import ValidationError
@@ -14,7 +12,6 @@ from .query import (
     AttributeGetQuery,
     AttributeGetValueQuery,
     LocalAttributeCreateNewValueQuery,
-    LocalAttributeCreateQuery,
 )
 
 

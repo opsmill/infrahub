@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from infrahub.core import get_branch, registry, relationship
+from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
 from infrahub.core.node.query import (
     NodeGetListQuery,

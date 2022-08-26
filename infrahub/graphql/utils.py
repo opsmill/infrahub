@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Tuple
 
 import graphql
 
-import infrahub.config as config
 from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
 

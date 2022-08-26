@@ -1,6 +1,5 @@
 import logging
 
-import infrahub.config as config
 from infrahub.core.node import Node
 
 # from infrahub.models import Device, Interface, Role, Status, Permission, Tag, IPAddress
