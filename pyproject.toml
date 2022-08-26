@@ -82,14 +82,12 @@ disable = """,
     """
 
 [tool.pylint.miscellaneous]
-# Don't flag TODO as a failure, let us commit with things that still need to be done in the code
 notes = """,
     FIXME,
     XXX,
     """
 
 [tool.pylint.similarities]
-# There's a lot of duplicate code in the examples/backend_*.py files - don't complain about it for now
 min-similarity-lines = 20
 
 [tool.pytest.ini_options]
@@ -97,6 +95,9 @@ asyncio_mode = "strict"
 testpaths = [
     "tests"
 ]
+
+[tool.mypy]
+pretty = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
