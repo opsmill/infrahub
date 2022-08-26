@@ -140,10 +140,10 @@ class Query(ABC):
         tmp_query_lines = self.query_lines.copy()
 
         if self.insert_return:
-            tmp_query_lines.append(f"RETURN " + ",".join(self.return_labels))
+            tmp_query_lines.append("RETURN " + ",".join(self.return_labels))
 
         if self.order_by:
-            tmp_query_lines.append(f"ORDER BY " + ",".join(self.order_by))
+            tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
         if self.limit:
             tmp_query_lines.append(f"LIMIT {self.limit}")

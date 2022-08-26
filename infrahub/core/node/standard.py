@@ -111,7 +111,7 @@ class StandardNode(BaseModel):
         if not results:
             raise Exception(f"Unexpected error, unable to update the node {self.id} / {self.uuid}.")
 
-        node = results[0].values()[0]
+        results[0].values()[0]
 
         return True
 

@@ -5,6 +5,8 @@ from collections import defaultdict
 from infrahub.core.account import Account, Group
 from infrahub.models import Device, IPAddress, Interface, Role, Status, Tag
 
+# flake8: noqa
+
 ROLES = ["spine", "leaf", "firewall", "server", "uplink"]
 
 DEVICES = (
@@ -128,7 +130,7 @@ def load_data():
     roles_dict = {}
     device_profiles_dict = {}
 
-    LOGGER.info(f"Creating Roles & Status")
+    LOGGER.info("Creating Roles & Status")
     for role in ROLES:
         obj = Role.init(label=role.title(), slug=role)
         obj.save()
@@ -152,7 +154,7 @@ def load_data():
     active_status = statuses_dict["active"]
     site_builder_account = accounts_dict["site-builder"]
 
-    LOGGER.info(f"Creating Device")
+    LOGGER.info("Creating Device")
     for idx, device in enumerate(DEVICES):
 
         status_id = statuses_dict[device[1]].id

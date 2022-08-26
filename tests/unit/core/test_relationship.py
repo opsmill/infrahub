@@ -17,7 +17,7 @@ def test_rel_manager_one_init_no_input_no_rel(default_branch, person_tag_schema)
     relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag")
 
     # shouldn't be able to iterate over it since it's a "one" relationship
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(TypeError):
         iter(relm)
 
     assert not relm.peer
@@ -46,7 +46,7 @@ def test_rel_manager_many_init_no_input_no_rel(default_branch, person_tag_schema
     relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags")
 
     # shouldn't be able to query the peer since it's many type relationship
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(TypeError):
         relm.peer
 
     assert not len(list(relm))

@@ -42,7 +42,7 @@ def test_node_init_schema_name(default_branch, criticality_schema):
 def test_node_init_mandatory_missing(default_branch, criticality_schema):
 
     with pytest.raises(ValidationError) as exc:
-        obj = Node(criticality_schema).new(level=4)
+        Node(criticality_schema).new(level=4)
 
     assert "mandatory" in str(exc.value)
 
@@ -50,7 +50,7 @@ def test_node_init_mandatory_missing(default_branch, criticality_schema):
 def test_node_init_invalid_attribute(default_branch, criticality_schema):
 
     with pytest.raises(ValidationError) as exc:
-        obj = Node(criticality_schema).new(name="low", level=4, notvalid=False)
+        Node(criticality_schema).new(name="low", level=4, notvalid=False)
 
     assert "not a valid input" in str(exc.value)
 
@@ -58,12 +58,12 @@ def test_node_init_invalid_attribute(default_branch, criticality_schema):
 def test_node_init_invalid_value(default_branch, criticality_schema):
 
     with pytest.raises(ValidationError) as exc:
-        obj = Node(criticality_schema).new(name="low", level="notanint")
+        Node(criticality_schema).new(name="low", level="notanint")
 
     assert "not of type Integer" in str(exc.value)
 
     with pytest.raises(ValidationError) as exc:
-        obj = Node(criticality_schema).new(name=False, level=3)
+        Node(criticality_schema).new(name=False, level=3)
 
     assert "not of type String" in str(exc.value)
 
@@ -278,7 +278,7 @@ def test_node_delete_local_attrs_in_branch(default_branch, criticality_schema):
     obj1 = Node(criticality_schema).new(name="low", level=4).save()
     obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
 
-    branch1 = Branch(name=f"branch1", status="OPEN")
+    branch1 = Branch(name="branch1", status="OPEN")
     branch1.save()
 
     obj21 = NodeManager.get_one(obj2.id, branch=branch1)
@@ -298,7 +298,7 @@ def test_node_delete_with_relationship_bidir(default_branch, car_person_schema):
 
     p1 = Node("Person").new(name="John", height=180).save()
     c1 = Node("Car").new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
-    c2 = Node("Car").new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+    Node("Car").new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
 
     time1 = Timestamp()
 
@@ -319,7 +319,7 @@ def test_node_delete_with_relationship_bidir(default_branch, car_person_schema):
 # --------------------------------------------------------------------------
 def test_node_create_in_branch(default_branch, criticality_schema):
 
-    branch1 = Branch(name=f"branch1", status="OPEN")
+    branch1 = Branch(name="branch1", status="OPEN")
     branch1.save()
 
     obj = Node(criticality_schema, branch=branch1).new(name="low", level=4).save()

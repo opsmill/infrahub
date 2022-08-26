@@ -10,7 +10,7 @@ from pydantic import BaseSettings, Field, ValidationError
 
 SETTINGS = None
 
-VALID_DATABASE_NAME_REGEX = "^[a-z][a-z0-9\.]+$"
+VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 
 
 class MainSettings(BaseSettings):

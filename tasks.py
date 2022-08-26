@@ -10,6 +10,7 @@ try:
 except ImportError:
     sys.exit("Please make sure to `pip install toml` or enable the Poetry shell and run `poetry install`.")
 
+# flake8: noqa: W605
 
 def project_ver():
     """Find version from pyproject.toml to use for docker image tagging."""
@@ -264,7 +265,7 @@ def neo4j_stop(context):
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
     exec_cmd = "docker stop neo4j-dev"
-    result = context.run(exec_cmd, pty=True)
+    _ = context.run(exec_cmd, pty=True)
 
 
 @task

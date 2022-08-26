@@ -8,6 +8,8 @@ from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 
+# flake8: noqa
+
 DEVICE_ROLES = ["edge"]
 INTF_ROLES = ["backbone", "transit", "peering", "peer", "loopback", "management", "spare"]
 SITES = ["atl1", "ord1", "jfk1"]
@@ -181,7 +183,7 @@ def load_data():
     roles_dict = {}
     device_profiles_dict = {}
 
-    LOGGER.info(f"Creating Roles, Status & Tag")
+    LOGGER.info("Creating Roles, Status & Tag")
     for role in DEVICE_ROLES + INTF_ROLES:
         obj = Node("Role").new(description=role.title(), name=role).save()
         roles_dict[role] = obj
@@ -201,7 +203,7 @@ def load_data():
     pop_builder_account = accounts_dict["pop-builder"]
     internal_as = asn_dict["Duff"]
 
-    LOGGER.info(f"Creating Site & Device")
+    LOGGER.info("Creating Site & Device")
 
     for site_idx, site_name in enumerate(SITES):
 

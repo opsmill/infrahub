@@ -33,5 +33,5 @@ def test_parse_string():
     assert Timestamp._parse_string("2h")
     assert Timestamp._parse_string("10s")
 
-    with pytest.raises(ValueError) as e_info:
+    with pytest.raises(ValueError):
         Timestamp._parse_string("notvalid")

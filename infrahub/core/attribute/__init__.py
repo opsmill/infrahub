@@ -88,7 +88,7 @@ class BaseAttribute:
         if rel_ids_to_update:
             update_relationships_to(rel_ids_to_update, to=delete_at)
 
-        delete_query = AttributeDeleteQuery(attr=self, at=delete_at).execute()
+        AttributeDeleteQuery(attr=self, at=delete_at).execute()
 
         return True
 

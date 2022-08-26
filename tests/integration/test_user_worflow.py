@@ -4,8 +4,8 @@ import pendulum
 headers = {"Authorization": "Token nelly"}
 
 main_branch = "main"
-branch1 = f"branch1"
-branch2 = f"branch2"
+branch1 = "branch1"
+branch2 = "branch2"
 
 state = {
     "spine1_lo0_id": None,

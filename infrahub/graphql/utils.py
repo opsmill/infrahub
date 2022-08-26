@@ -84,7 +84,7 @@ def print_query(info):
 
 
 def print_selection_set(selection_set, level: int = 1) -> int:
-    max_depth = level
+    # max_depth = level
     tab = "  "
     for field in getattr(selection_set, "selections", []):
         # print(f"in print_selection_set loop {field}")

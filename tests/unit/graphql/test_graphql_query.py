@@ -156,7 +156,7 @@ async def test_query_oneway_relationship(default_branch, person_tag_schema):
 
     t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
     t2 = Node("Tag").new(name="Red").save()
-    p1 = Node("Person").new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
+    Node("Person").new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
 
     query = """
     query {
@@ -185,7 +185,7 @@ async def test_query_oneway_relationship(default_branch, person_tag_schema):
 @pytest.mark.asyncio
 async def test_query_at_specific_time(default_branch, person_tag_schema):
 
-    t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
+    Node("Tag").new(name="Blue", description="The Blue tag").save()
     t2 = Node("Tag").new(name="Red").save()
 
     time1 = Timestamp()

@@ -1,4 +1,3 @@
-
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -49,7 +48,7 @@ def test_get_one_relationship(default_branch, car_person_schema):
     p1 = Node(person).new(name="John", height=180).save()
 
     c1 = Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
-    c2 = Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+    Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
 
     c11 = NodeManager.get_one(c1.id)
 
@@ -75,9 +74,9 @@ def test_get_many(default_branch, criticality_schema):
 
 def test_query_no_filter(default_branch, criticality_schema):
 
-    obj1 = Node(criticality_schema).new(name="low", level=4).save()
-    obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
-    obj3 = Node(criticality_schema).new(name="high", level=3, description="My desc", color="#333333").save()
+    Node(criticality_schema).new(name="low", level=4).save()
+    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    Node(criticality_schema).new(name="high", level=3, description="My desc", color="#333333").save()
 
     nodes = NodeManager.query(criticality_schema)
     assert len(nodes) == 3
@@ -85,11 +84,9 @@ def test_query_no_filter(default_branch, criticality_schema):
 
 def test_query_with_filter_string_int(default_branch, criticality_schema):
 
-    obj1 = Node(criticality_schema).new(name="low", level=3).save()
-
-    obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
-
-    obj3 = Node(criticality_schema).new(name="high", level=4, description="My other desc", color="#333333").save()
+    Node(criticality_schema).new(name="low", level=3).save()
+    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    Node(criticality_schema).new(name="high", level=4, description="My other desc", color="#333333").save()
 
     nodes = NodeManager.query(criticality_schema, filters={"color__value": "#333333"})
     assert len(nodes) == 2
@@ -109,10 +106,10 @@ def test_query_with_filter_bool_rel(default_branch, car_person_schema):
     p1 = Node(person).new(name="John", height=180).save()
     p2 = Node(person).new(name="Jane", height=160).save()
 
-    c1 = Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
-    c2 = Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
-    c3 = Node(car).new(name="camry", nbr_seats=5, is_electric=False, owner=p2).save()
-    c4 = Node(car).new(name="yaris", nbr_seats=4, is_electric=False, owner=p2).save()
+    Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
+    Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+    Node(car).new(name="camry", nbr_seats=5, is_electric=False, owner=p2).save()
+    Node(car).new(name="yaris", nbr_seats=4, is_electric=False, owner=p2).save()
 
     # Check filter with a boolean
     nodes = NodeManager.query(car, filters={"is_electric__value": False})
@@ -130,9 +127,8 @@ def test_query_non_default_class(default_branch, criticality_schema):
 
     registry.node["Criticality"] = Criticality
 
-    obj1 = Node(criticality_schema).new(name="low", level=4).save()
-
-    obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    Node(criticality_schema).new(name="low", level=4).save()
+    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
 
     nodes = NodeManager.query(criticality_schema)
     assert len(nodes) == 2
@@ -142,8 +138,8 @@ def test_query_non_default_class(default_branch, criticality_schema):
 
 def test_query_class_name(default_branch, criticality_schema):
 
-    obj1 = Node(criticality_schema).new(name="low", level=4).save()
-    obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    Node(criticality_schema).new(name="low", level=4).save()
+    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
 
     nodes = NodeManager.query("Criticality")
     assert len(nodes) == 2

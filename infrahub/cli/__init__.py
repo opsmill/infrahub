@@ -78,7 +78,6 @@ def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CO
     from rich import pretty
     from traitlets.config import get_config
 
-
     pretty.install()
 
     c = get_config()

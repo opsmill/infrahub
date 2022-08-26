@@ -1,4 +1,3 @@
-
 from infrahub.core.query import Query
 
 

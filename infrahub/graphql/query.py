@@ -12,6 +12,7 @@ from .types import Any
 
 DEFAULT_BRANCH = "main"
 
+
 # ------------------------------------------
 # Old Infrahub GraphQLType
 # ------------------------------------------

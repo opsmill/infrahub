@@ -49,10 +49,10 @@ def run(
 
         try:
             module = importlib.import_module(module_name)
-        except ModuleNotFoundError as exc:
+        except ModuleNotFoundError:
             continue
 
-        if not VARIABLE_TO_IMPORT in dir(module):
+        if VARIABLE_TO_IMPORT not in dir(module):
             continue
 
         for check_class in getattr(module, VARIABLE_TO_IMPORT):
@@ -79,7 +79,7 @@ def run(
 
     if nbr_checks_found == 0:
         if not format_json:
-            log.warning(f"No check found")
+            log.warning("No check found")
         else:
             print('{"level": "WARNING", "message": "message", ""No check found"}')
 

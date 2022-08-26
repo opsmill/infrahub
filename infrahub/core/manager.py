@@ -133,15 +133,16 @@ class NodeManager:
         # -----------------------------------------------
         # Pre-Query remote_node for all remote Attributes
         # -----------------------------------------------
-        remote_node_ids = []
-        remote_nodes = {}
-        for attrs in node_attributes.values():
-            for attr in attrs.get("attrs").values():
-                if "AttributeRemote" in attr.attr_labels:
-                    remote_node_ids.append(attr.attr_value_uuid)
+        # TODO need to re-enable
+        # remote_node_ids = []
+        # remote_nodes = {}
+        # for attrs in node_attributes.values():
+        #     for attr in attrs.get("attrs").values():
+        #         if "AttributeRemote" in attr.attr_labels:
+        #             remote_node_ids.append(attr.attr_value_uuid)
 
-        if remote_node_ids:
-            remote_nodes = cls.get_many(ids=list(set(remote_node_ids)), branch=branch, account=account, at=at)
+        # if remote_node_ids:
+        #     remote_nodes = cls.get_many(ids=list(set(remote_node_ids)), branch=branch, account=account, at=at)
 
         # -----------------------------------------------
         # Extract the ID from all LocalAttribute from all Nodes

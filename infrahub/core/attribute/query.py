@@ -1,10 +1,8 @@
 import uuid
 
-
-
-# from infrahub.core import registry
 from infrahub.core.query import Query, QueryType
 
+# flake8: noqa: F723
 
 class AttributeQuery(Query):
     def __init__(self, attr=None, attr_id=None, *args, **kwargs):
@@ -174,7 +172,7 @@ class AttributeGetValueQuery(AttributeQuery):
 # class RemoteAttributeCreateNewValueQuery(AttributeQuery):
 
 #     name = "remote_attribute_create_new_values"
-#     type: QueryType = QueryType.WRITE
+#     type: QueryType = QueryType.WRITE  noqa: F723
 
 #     raise_error_if_empty: bool = True
 

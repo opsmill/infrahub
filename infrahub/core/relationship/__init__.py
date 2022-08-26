@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from ctypes import Union
 from typing import TYPE_CHECKING, List, Tuple, Union
 
 from infrahub.core import registry
@@ -149,7 +148,7 @@ class Relationship:
         if rel_ids_to_update := [rel.id for rel in result.get_rels() if rel.get("branch") == self.branch.name]:
             update_relationships_to(rel_ids_to_update, to=delete_at)
 
-        delete_query = RelationshipDeleteQuery(
+        RelationshipDeleteQuery(
             rel=self, source=self.node, destination=self.peer, branch=self.branch, at=delete_at
         ).execute()
 

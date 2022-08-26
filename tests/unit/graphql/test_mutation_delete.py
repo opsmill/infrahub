@@ -11,8 +11,8 @@ from infrahub.graphql import get_gql_mutation, get_gql_query
 async def test_delete_object(default_branch, car_person_schema):
 
     obj1 = Node("Person").new(name="John", height=180).save()
-    obj2 = Node("Person").new(name="Jim", height=160).save()
-    obj3 = Node("Person").new(name="Joe", height=170).save()
+    Node("Person").new(name="Jim", height=160).save()
+    Node("Person").new(name="Joe", height=170).save()
 
     query = (
         """

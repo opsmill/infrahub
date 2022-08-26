@@ -110,7 +110,7 @@ async def test_update_invalid_input(default_branch, car_person_schema):
 async def test_update_relationship_many(default_branch, person_tag_schema):
 
     t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
-    t2 = Node("Tag").new(name="Red").save()
+    Node("Tag").new(name="Red").save()
     p1 = Node("Person").new(firstname="John", lastname="Doe").save()
 
     query = """

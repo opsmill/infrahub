@@ -487,9 +487,9 @@ class Diff:
 
             # Determine if we need to create a new node
             # Before creating a new one we need to save the previous one to the list of result
-            created_new_node = False
+            created_new_node = False # noqa
             if not node or node.node_uuid != result.get("n").get("uuid"):
-                created_new_node = True
+                created_new_node = True # noqa  
                 if node:
                     results.append(node)
 

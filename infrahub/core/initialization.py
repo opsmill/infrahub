@@ -91,7 +91,7 @@ def first_time_initialization():
     schema = SchemaRoot(**internal_schema)
     SchemaManager.register_schema_to_registry(schema)
     SchemaManager.load_schema_to_db(schema)
-    LOGGER.info(f"Created the internal Schema in the database")
+    LOGGER.info("Created the internal Schema in the database")
 
     # --------------------------------------------------
     # Load the schema for the common models in the database
@@ -99,12 +99,12 @@ def first_time_initialization():
     schema = SchemaRoot(**core_models)
     SchemaManager.register_schema_to_registry(schema)
     SchemaManager.load_schema_to_db(schema)
-    LOGGER.info(f"Created the core models in the database")
+    LOGGER.info("Created the core models in the database")
 
     schema = SchemaRoot(**infrastructure_models)
     SchemaManager.register_schema_to_registry(schema)
     SchemaManager.load_schema_to_db(schema)
-    LOGGER.info(f"Created the infrastructure models in the database")
+    LOGGER.info("Created the infrastructure models in the database")
 
     # --------------------------------------------------
     # Create Default Users and Groups
@@ -127,7 +127,7 @@ def first_time_initialization():
     group_schema = registry.get_schema("Group")
     account_schema = registry.get_schema("Account")
     admin_grp = obj = Node(group_schema).new(name="admin").save()
-    default_grp = obj = Node(group_schema).new(name="default").save()
+    # default_grp = obj = Node(group_schema).new(name="default").save()
 
     obj = Node(account_schema).new(name="admin", type="USER", groups=[admin_grp]).save()
     LOGGER.info(f"Created Account: {obj.name.value}")

@@ -2,8 +2,9 @@ import logging
 
 from infrahub.core.node import Node
 
-# from infrahub.models import Device, Interface, Role, Status, Permission, Tag, IPAddress
 # from infrahub.core.account import Account, AccountToken, Group
+
+# flake8: noqa
 
 ROLES = ["spine", "leaf", "firewall", "server", "loopback"]
 
@@ -125,7 +126,7 @@ def load_data():
     roles_dict = {}
     device_profiles_dict = {}
 
-    LOGGER.info(f"Creating Roles & Status")
+    LOGGER.info("Creating Roles & Status")
     for role in ROLES:
         obj = Node("Role").new(description=role.title(), name=role).save()
         roles_dict[role] = obj

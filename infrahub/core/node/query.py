@@ -73,7 +73,7 @@ class NodeCreateQuery(NodeQuery):
         self.add_to_query(query)
         self.return_labels = ["n"]
 
-    def get_new_ids(self):  #  -> set(str, int):
+    def get_new_ids(self):
 
         result = self.get_result()
         node = result.get("n")

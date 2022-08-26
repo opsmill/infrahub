@@ -123,7 +123,7 @@ class RelationshipSchema(BaseModel):
             )
 
             query_filters.append(query_filter)
-            query_params[f"peer_node_id"] = filters["id"]
+            query_params["peer_node_id"] = filters["id"]
 
         # -------------------------------------------------------------------
         # Check if any of the filters are matching an existing field

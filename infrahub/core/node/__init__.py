@@ -231,7 +231,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if result.get("br").get("name") == self._branch.name:
             update_relationships_to([result.get("rb").id], to=delete_at)
 
-        delete_query = NodeDeleteQuery(node=self, at=delete_at).execute()
+        NodeDeleteQuery(node=self, at=delete_at).execute()
 
     def to_graphql(self, fields: dict = None) -> dict:
         """Generate GraphQL Payload for all attributes

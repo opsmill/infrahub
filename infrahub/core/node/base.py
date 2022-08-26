@@ -10,7 +10,7 @@ class BaseOptions:
     _frozen: bool = False
 
     def __init__(self, class_type):
-        self.class_type = class_type  # type: Type
+        self.class_type = class_type
 
     def freeze(self):
         self._frozen = True

@@ -1,4 +1,3 @@
-
 from infrahub.core.branch import Branch, Diff
 from infrahub.core.manager import NodeManager
 
