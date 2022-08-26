@@ -28,7 +28,7 @@ app = FastAPI()
 def app_initialization():
     config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
     config_file_path = os.path.abspath(config_file_name)
-    logger.info(f"Loading the configuration from {config_file_path}")
+    logger.error(f"Loading the configuration from {config_file_path}")
     config.load_and_exit(config_file_path)
     initialization()
 
