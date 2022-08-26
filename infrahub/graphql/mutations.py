@@ -161,7 +161,7 @@ class BranchCreate(Mutation):
         try:
             Branch.get_by_name(data["name"])
             raise ValueError(f"The branch {data['name']}, already exist")
-        except BranchNotFound as exc:
+        except BranchNotFound:
             pass
 
         obj = Branch(**data)

@@ -49,7 +49,7 @@ def load_test_data(
 
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub")
+    logging.getLogger("infrahub")
 
     dataset_module = importlib.import_module(f"infrahub.test_data.{dataset}")
     dataset_module.load_data()

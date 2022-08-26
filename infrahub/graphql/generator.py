@@ -93,12 +93,6 @@ async def default_resolver(*args, **kwargs):
 
     # Extract the schema of the node on the other end of the relationship from
     # the GQL Schema
-    peer_schema = None
-    if hasattr(info.return_type, "of_type"):
-        peer_schema = info.return_type.of_type.graphene_type._meta.schema
-    else:
-        peer_schema = info.return_type.graphene_type._meta.schema
-
     node_rel = node_schema.get_relationship(info.field_name)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters

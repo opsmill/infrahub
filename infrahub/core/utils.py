@@ -55,7 +55,7 @@ def delete_all_relationships_for_branch(branch_name: str):
     """
     params = {"branch_name": branch_name}
 
-    results = execute_write_query(query, params)
+    execute_write_query(query, params)
 
 
 def update_relationships_to(

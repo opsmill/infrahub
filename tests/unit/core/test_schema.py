@@ -19,7 +19,7 @@ def test_node_schema_unique_names():
     }
 
     with pytest.raises(ValidationError) as exc:
-        schema = NodeSchema(**SCHEMA)
+        NodeSchema(**SCHEMA)
 
     assert "Names of attributes and relationships must be unique" in str(exc.value)
 
@@ -38,7 +38,7 @@ def test_node_schema_unique_names():
     }
 
     with pytest.raises(ValidationError) as exc:
-        schema = NodeSchema(**SCHEMA)
+        NodeSchema(**SCHEMA)
 
     assert "Names of attributes and relationships must be unique" in str(exc.value)
 
