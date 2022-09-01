@@ -47,9 +47,7 @@ async def execute_query(name, params=None, branch=None, at=None):
     graphql_query = items[0]
 
     result = await graphql(
-        graphene.Schema(
-            query=get_gql_query(branch=branch), mutation=get_gql_mutation(branch=branch), auto_camelcase=False
-        ).graphql_schema,
+        graphene.Schema(query=get_gql_query(branch=branch), auto_camelcase=False).graphql_schema,
         source=graphql_query.query.value,
         context_value={
             "infrahub_branch": branch,

@@ -115,7 +115,7 @@ class InfrahubGraphQLApp:
         self.execution_context_class = execution_context_class
         self.logger = logging.getLogger(logger_name or __name__)
 
-        self.exchange = get_graph_exchange()
+        # self.exchange = get_graph_exchange()
 
         if playground and self.on_get is None:
             self.on_get = make_playground_handler()
@@ -178,7 +178,7 @@ class InfrahubGraphQLApp:
             "infrahub_at": Timestamp(request.query_params.get("at", None)),
             "request": request,
             "background": BackgroundTasks(),
-            "exchange": self.exchange,
+            # "exchange": self.exchange,
         }
 
         return context_value

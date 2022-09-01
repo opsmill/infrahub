@@ -4,9 +4,12 @@ from datetime import datetime
 
 import aio_pika
 import aio_pika.abc
+from aio_pika import DeliveryMode, ExchangeType, Message, connect
 
 from graphene import Boolean, DateTime, Field, Int, List, ObjectType, Schema, String
 from graphene.types.generic import GenericScalar
+
+import infrahub.config as config
 
 from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate
 from .query import BranchDiffType, BranchType
@@ -55,24 +58,30 @@ class InfrahubBaseSubscription(ObjectType):
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
 
-        connection = await aio_pika.connect_robust(host="localhost", login="guest", password="guest")
+        connection = await aio_pika.connect_robust(
+            host=config.SETTINGS.broker.address,
+            login=config.SETTINGS.broker.username,
+            password=config.SETTINGS.broker.password,
+        )
+
+        # Return the result of the query the first time
+        result = await execute_query(name=name, branch=branch, at=at)
+        yield result.data
 
         async with connection:
-            queue_name = "infrahub"
 
-            # Creating channel
-            channel: aio_pika.abc.AbstractChannel = await connection.channel()
+            # Creating a channel
+            channel = await connection.channel()
+            exchange_name = f"{config.SETTINGS.broker.namespace}.graph"
+            exchange = await channel.declare_exchange(exchange_name, ExchangeType.FANOUT)
 
-            # Declaring queue
-            queue: aio_pika.abc.AbstractQueue = await channel.declare_queue(queue_name, auto_delete=True)
-
-            result = await execute_query(name=name, branch=branch, at=at)
-            yield result.data
+            # Declaring & Binding queue
+            queue = await channel.declare_queue(exclusive=True)
+            await queue.bind(exchange)
 
             async with queue.iterator() as queue_iter:
                 # Cancel consuming after __aexit__
                 async for message in queue_iter:
                     async with message.process():
-
                         result = await execute_query(name=name, branch=branch, at=at)
                         yield result.data
