@@ -41,6 +41,9 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
+from fastapi import Depends
+
+from aio_pika.abc import AbstractExchange
 
 try:
     # graphql-core==3.2.*
@@ -56,6 +59,7 @@ import infrahub.config as config
 from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
+from infrahub.broker import get_graph_exchange
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
 
@@ -110,6 +114,8 @@ class InfrahubGraphQLApp:
         self.middleware = middleware
         self.execution_context_class = execution_context_class
         self.logger = logging.getLogger(logger_name or __name__)
+
+        self.exchange = get_graph_exchange()
 
         if playground and self.on_get is None:
             self.on_get = make_playground_handler()
@@ -172,6 +178,7 @@ class InfrahubGraphQLApp:
             "infrahub_at": Timestamp(request.query_params.get("at", None)),
             "request": request,
             "background": BackgroundTasks(),
+            "exchange": self.exchange,
         }
 
         return context_value

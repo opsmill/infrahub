@@ -3,6 +3,11 @@ import logging
 import os
 import sys
 from typing import List, Optional
+from asyncio import run as aiorun
+
+import aio_pika
+from aio_pika import DeliveryMode, ExchangeType, Message, connect
+from aio_pika.abc import AbstractRobustConnection, AbstractChannel
 
 import httpx
 import jinja2
@@ -140,3 +145,39 @@ def render(
     template = templateEnv.get_template(template_path)
 
     print(template.render(**params, **response))
+
+
+async def _queue_test(config_file):
+
+    config.load_and_exit(config_file)
+
+    connection = await aio_pika.connect_robust(
+        host=config.SETTINGS.broker.address,
+        login=config.SETTINGS.broker.username,
+        password=config.SETTINGS.broker.password,
+    )
+
+    async with connection:
+
+        # Creating a channel
+        channel = await connection.channel()
+        # await channel.set_qos(prefetch_count=1)
+
+        exchange_name = f"{config.SETTINGS.broker.namespace}.graph"
+        exchange = await channel.declare_exchange(exchange_name, ExchangeType.FANOUT)
+
+        # Declaring & Binding queue
+        queue = await channel.declare_queue(exclusive=True)
+        await queue.bind(exchange)
+
+        async with queue.iterator() as queue_iter:
+            # Cancel consuming after __aexit__
+            async for message in queue_iter:
+                async with message.process():
+                    print(message.body)
+
+
+@app.command()
+def queue_test(debug: bool = False, config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+
+    aiorun(_queue_test(config_file=config_file))

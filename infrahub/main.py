@@ -3,6 +3,9 @@ import time
 import logging
 from typing import Optional
 
+from aio_pika import DeliveryMode, ExchangeType, Message, connect
+from aio_pika.abc import AbstractExchange
+
 import graphene
 from fastapi import FastAPI, HTTPException, Request, Response
 from graphql import graphql
@@ -18,6 +21,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import get_gql_mutation, get_gql_query  # Query, Mutation
 from infrahub.graphql.app import InfrahubGraphQLApp
+
+from . import broker
 
 logger = logging.getLogger(__name__)
 
@@ -366,6 +371,21 @@ async def openconfig_bgp(
         response_payload["openconfig-bgp:neighbors"]["neighbor"].append(session_data)
 
     return response_payload
+
+
+@app.get("/queue/ping")
+async def queue_ping(
+    request: Request, response: Response, exchange: AbstractExchange = Depends(broker.get_graph_exchange)
+):
+
+    exchange_name = f"{config.SETTINGS.broker.namespace}.graph"
+
+    message = Message(
+        body="Hello {}".format(exchange_name).encode(),
+        delivery_mode=DeliveryMode.PERSISTENT,
+    )
+
+    await exchange.publish(message, routing_key=config.SETTINGS.broker.namespace)
 
 
 app.add_middleware(
