@@ -46,27 +46,27 @@ class InfrahubMutation(Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
-    def mutate(cls, root, info, *args, **kwargs):
+    async def mutate(cls, root, info, *args, **kwargs):
 
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
         # account = info.context.get("infrahub_account", None)
 
         if "Create" in cls.__name__:
-            return cls.mutate_create(root, info, branch=branch, at=at, *args, **kwargs)
+            return await cls.mutate_create(root, info, branch=branch, at=at, *args, **kwargs)
         elif "Update" in cls.__name__:
-            return cls.mutate_update(root, info, branch=branch, at=at, *args, **kwargs)
+            return await cls.mutate_update(root, info, branch=branch, at=at, *args, **kwargs)
         elif "Delete" in cls.__name__:
-            return cls.mutate_delete(root, info, branch=branch, at=at, *args, **kwargs)
+            return await cls.mutate_delete(root, info, branch=branch, at=at, *args, **kwargs)
 
         raise NotImplementedError
 
     @classmethod
-    def mutate_create(cls, root, info, data, branch=None, at=None):
+    async def mutate_create(cls, root, info, data, branch=None, at=None):
 
         obj = Node(cls._meta.schema, branch=branch, at=at).new(**data).save()
 
-        fields = extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
         ok = True
 
         # message = Message(
@@ -80,7 +80,7 @@ class InfrahubMutation(Mutation):
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
     @classmethod
-    def mutate_update(cls, root, info, data, branch=None, at=None):
+    async def mutate_update(cls, root, info, data, branch=None, at=None):
 
         if not (obj := NodeManager.get_one(data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
@@ -90,12 +90,12 @@ class InfrahubMutation(Mutation):
 
         ok = True
 
-        fields = extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
 
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
     @classmethod
-    def mutate_delete(cls, root, info, data, branch=None, at=None):
+    async def mutate_delete(cls, root, info, data, branch=None, at=None):
 
         if not (obj := NodeManager.get_one(data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
@@ -166,7 +166,7 @@ class BranchCreate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    def mutate(cls, root, info, data):
+    async def mutate(cls, root, info, data):
 
         # Check if the branch already exist
         try:
@@ -186,7 +186,7 @@ class BranchCreate(Mutation):
 
         ok = True
 
-        fields = extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
 
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
@@ -203,11 +203,11 @@ class BranchRebase(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    def mutate(cls, root, info, data):
+    async def mutate(cls, root, info, data):
         obj = Branch.get_by_name(data["name"])
         obj.rebase()
 
-        fields = extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
 
         ok = True
 
@@ -223,11 +223,11 @@ class BranchValidate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    def mutate(cls, root, info, data):
+    async def mutate(cls, root, info, data):
         obj = Branch.get_by_name(data["name"])
         ok, messages = obj.validate()
 
-        fields = extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
 
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), messages=messages, ok=ok)
 
@@ -240,11 +240,11 @@ class BranchMerge(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    def mutate(cls, root, info, data):
+    async def mutate(cls, root, info, data):
         obj = Branch.get_by_name(data["name"])
         obj.merge()
 
-        fields = extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
 
         ok = True
 
