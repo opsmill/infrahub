@@ -57,7 +57,7 @@ from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 
-from . import get_gql_mutation, get_gql_query
+from . import get_gql_mutation, get_gql_query, get_gql_subscription
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"
@@ -118,7 +118,12 @@ class InfrahubGraphQLApp:
     def schema(self):
 
         if not self._schema:
-            self._schema = graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False)
+            self._schema = graphene.Schema(
+                query=get_gql_query(),
+                mutation=get_gql_mutation(),
+                subscription=get_gql_subscription(),
+                auto_camelcase=False,
+            )
 
         return self._schema
 
