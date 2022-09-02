@@ -14,7 +14,7 @@ from aio_pika.abc import AbstractRobustConnection, AbstractChannel, AbstractExch
 
 from graphene.types.mutation import MutationOptions
 
-from infrahub.broker import get_broker
+from infrahub.message_bus.events import get_broker
 
 import infrahub.config as config
 from infrahub.core.branch import Branch
@@ -22,7 +22,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import BranchNotFound, NodeNotFound
-from infrahub.broker import get_broker
+from infrahub.message_bus.events import send_event, EventType
 
 from .query import BranchType
 from .types import Any
@@ -75,24 +75,8 @@ class InfrahubMutation(Mutation):
         fields = await extract_fields(info.field_nodes[0].selection_set)
         ok = True
 
-        # broker = await get_broker().__anext__()
-
-        connection = await aio_pika.connect_robust(
-            host=config.SETTINGS.broker.address,
-            login=config.SETTINGS.broker.username,
-            password=config.SETTINGS.broker.password,
-        )
-
-        channel = await connection.channel()
-        exchange_name = f"{config.SETTINGS.broker.namespace}.graph"
-        exchange = await channel.declare_exchange(exchange_name, ExchangeType.FANOUT)
-
-        message = Message(
-            body="created/{}".format(obj.id).encode(),
-            delivery_mode=DeliveryMode.PERSISTENT,
-        )
-
-        await exchange.publish(message, routing_key=config.SETTINGS.broker.namespace)
+        background_tasks = info.context.get("background")
+        background_tasks.add_task(send_event, EventType.DATA, f"created/{obj.id}", f"node/{obj.get_kind()}", obj._branch.name)
 
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 

@@ -43,8 +43,6 @@ class InfrahubBaseMutation(ObjectType):
     branch_rebase = BranchRebase.Field()
     branch_merge = BranchMerge.Field()
     branch_validate = BranchValidate.Field()
-<<<<<<< HEAD
-=======
 
 
 class InfrahubBaseSubscription(ObjectType):

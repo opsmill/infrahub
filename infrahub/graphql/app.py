@@ -59,7 +59,6 @@ import infrahub.config as config
 from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
-from infrahub.broker import get_graph_exchange
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
 
@@ -176,7 +175,6 @@ class InfrahubGraphQLApp:
             "infrahub_at": Timestamp(request.query_params.get("at", None)),
             "request": request,
             "background": BackgroundTasks(),
-            # "exchange": self.exchange,
         }
 
         return context_value
