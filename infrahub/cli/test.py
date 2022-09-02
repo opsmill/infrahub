@@ -16,7 +16,7 @@ def unit(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
-
+    """Execute all unit tests."""
     if not path:
         path = "./tests/unit"
 
@@ -36,6 +36,7 @@ def integration(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
+    """Execute all integration tests."""
 
     if not path:
         path = "./tests/integration"
@@ -48,23 +49,3 @@ def integration(
     import pytest
 
     sys.exit(pytest.main(["-x", path, verbose_str]))
-
-
-@app.command()
-def all(
-    path: Optional[str] = typer.Argument(None),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-    verbose: int = typer.Option(0, "--verbose", "-v", count=True),
-):
-
-    if not path:
-        path = "."
-
-    config.load_and_exit(config_file_name=config_file)
-    config.SETTINGS.database.database = TEST_DATABASE
-
-    verbose_str = "-" + "v" * verbose if verbose else "-v"
-
-    import pytest
-
-    sys.exit(pytest.main([path, verbose_str]))

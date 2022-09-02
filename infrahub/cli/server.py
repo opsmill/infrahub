@@ -7,11 +7,10 @@ app = typer.Typer()
 
 @app.command()
 def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
+    """Start Infrahub in Debug Mode with reload enabled."""
 
     # it's not possible to pass the location of the config file directly to uvicorn.run
     # so we must rely on the environment variable
-
-    """Start Infrahub in Debug Mode with reload enabled."""
 
     if debug:
         uvicorn.run("infrahub.main:app", host=listen, port=port, log_level="info", reload=True)

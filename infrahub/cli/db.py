@@ -15,7 +15,7 @@ PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 @app.command()
 def init(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
-
+    """Erase the content of the database and initialize it with the core schema."""
     config.load_and_exit(config_file_name=config_file)
 
     # log_level = "DEBUG" if debug else "INFO"
@@ -41,6 +41,7 @@ def init(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CON
 def load_test_data(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"), dataset: str = "dataset01"
 ):
+    """Load test data into the database from the test_data directory."""
 
     config.load_and_exit(config_file_name=config_file)
     initialization()

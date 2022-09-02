@@ -3,11 +3,8 @@ import logging
 import os
 import sys
 from typing import List, Optional
-from asyncio import run as aiorun
 
-import aio_pika
-from aio_pika import DeliveryMode, ExchangeType, Message, connect
-from aio_pika.abc import AbstractRobustConnection, AbstractChannel
+
 
 import httpx
 import jinja2
@@ -22,15 +19,17 @@ from infrahub.cli.db import app as db_app
 from infrahub.cli.server import app as server_app
 from infrahub.cli.test import app as test_app
 from infrahub.cli.worker import app as worker_app
+from infrahub.cli.events import app as events_app
 from infrahub.core.initialization import initialization
 
 app = typer.Typer()
 
-app.add_typer(server_app, name="server")
-app.add_typer(worker_app, name="worker")
-app.add_typer(db_app, name="db")
-app.add_typer(test_app, name="test")
-app.add_typer(check_app, name="check")
+app.add_typer(server_app, name="server", help="Control the API Server.")
+app.add_typer(worker_app, name="worker", help="Control the GIT Agent/worker.")
+app.add_typer(db_app, name="db", help="Manage the database.")
+app.add_typer(test_app, name="test", help="Execute unit and integration tests.")
+app.add_typer(check_app, name="check", help="Execute Integration checks.")
+app.add_typer(events_app, name="events", help="Interact with the events system.")
 
 
 def execute_query(
@@ -74,7 +73,7 @@ def find_graphql_query(name, directory="."):
 
 @app.command()
 def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
-
+    """Launch a Python Interactive shell."""
     config.load_and_exit(config_file_name=config_file)
     initialization()
 
@@ -99,7 +98,7 @@ def render(
     branch: str = "main",
     debug: bool = False,
 ):
-
+    """Render a local Jinja Template (RFile) for debugging purpose."""
     log_level = "DEBUG" if debug else "INFO"
 
     FORMAT = "%(message)s"
@@ -146,38 +145,3 @@ def render(
 
     print(template.render(**params, **response))
 
-
-async def _queue_test(config_file):
-
-    config.load_and_exit(config_file)
-
-    connection = await aio_pika.connect_robust(
-        host=config.SETTINGS.broker.address,
-        login=config.SETTINGS.broker.username,
-        password=config.SETTINGS.broker.password,
-    )
-
-    async with connection:
-
-        # Creating a channel
-        channel = await connection.channel()
-        # await channel.set_qos(prefetch_count=1)
-
-        exchange_name = f"{config.SETTINGS.broker.namespace}.graph"
-        exchange = await channel.declare_exchange(exchange_name, ExchangeType.FANOUT)
-
-        # Declaring & Binding queue
-        queue = await channel.declare_queue(exclusive=True)
-        await queue.bind(exchange)
-
-        async with queue.iterator() as queue_iter:
-            # Cancel consuming after __aexit__
-            async for message in queue_iter:
-                async with message.process():
-                    print(message.body)
-
-
-@app.command()
-def queue_test(debug: bool = False, config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
-
-    aiorun(_queue_test(config_file=config_file))
