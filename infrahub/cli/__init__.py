@@ -5,7 +5,6 @@ import sys
 from typing import List, Optional
 
 
-
 import httpx
 import jinja2
 import typer
@@ -144,4 +143,3 @@ def render(
     template = templateEnv.get_template(template_path)
 
     print(template.render(**params, **response))
-
