@@ -148,35 +148,32 @@ class NodeListGetLocalAttributeValueQuery(Query):
 class NodeListGetAttributeQuery(Query):
 
     name: str = "node_list_get_attribute"
-    order_by: List[str] = ["a.name", "r1.branch", "r2.branch"]
+    order_by: List[str] = ["a.name"]
 
-    def __init__(self, ids, account=None, *args, **kwargs):
+    def __init__(self, ids, fields=None, account=None, *args, **kwargs):
         self.account = account
         self.ids = ids
+        self.fields = fields
         super().__init__(*args, **kwargs)
 
     def query_init(self):
 
-        rels_filter, rels_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
-        )
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(rels_params)
 
-        self.params["at"] = self.at.to_string()
-
-        query = """
+        query = (
+            """
         MATCH (n) WHERE ID(n) IN $ids OR n.uuid IN $ids
-        MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE]-(av)
-        WHERE %s
-        """ % "\n AND ".join(
-            rels_filter
+        MATCH p = ((n)-[:HAS_ATTRIBUTE]-(a:Attribute)-[:HAS_VALUE]-(av))
+        WHERE all(r IN relationships(p) WHERE (%s))"""
+            % rels_filter
         )
 
         self.add_to_query(query)
 
         self.params["ids"] = self.ids
 
-        self.return_labels = ["n", "a", "av", "r1", "r2"]
+        self.return_labels = ["n", "a", "av"]
 
         # self.query_add_source()
 
