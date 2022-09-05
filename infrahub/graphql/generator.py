@@ -1,4 +1,5 @@
 import graphene
+from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
@@ -19,7 +20,6 @@ from .query import (
     StrAttributeType,
 )
 from .schema import default_list_resolver
-from .types import Any
 from .utils import extract_fields
 
 TYPES_MAPPING_INFRAHUB_GRAPHQL = {
@@ -40,7 +40,7 @@ FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "String": graphene.String,
     "Integer": graphene.Int,
     "Boolean": graphene.Boolean,
-    "Any": Any,
+    "Any": GenericScalar,
 }
 
 
@@ -148,9 +148,6 @@ def generate_query_mixin(branch=None):
     generate_object_types()
 
     for node_name, node_schema in full_schema.items():
-
-        if "Schema" in node_name:
-            continue
 
         node_type = registry.get_graphql_type(name=node_name, branch=branch)
         node_filters = generate_filters(node_schema)
