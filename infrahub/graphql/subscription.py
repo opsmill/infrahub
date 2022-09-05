@@ -1,7 +1,3 @@
-from typing_extensions import Required
-import aio_pika
-import aio_pika.abc
-
 from graphene import Boolean, DateTime, Field, Int, List, ObjectType, Schema, String
 from graphene.types.generic import GenericScalar
 
