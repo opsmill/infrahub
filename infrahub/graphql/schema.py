@@ -1,4 +1,3 @@
-
 from graphene import Boolean, DateTime, Field, Int, List, ObjectType, Schema, String
 
 
