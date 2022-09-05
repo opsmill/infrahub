@@ -86,7 +86,7 @@ class InfrahubObject(ObjectType):
         super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
 
     @classmethod
-    async def get_list(cls, fields, context, *args, **kwargs):
+    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
 
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
@@ -96,10 +96,18 @@ class InfrahubObject(ObjectType):
 
         if filters:
             objs = NodeManager.query(
-                cls._meta.schema, filters=filters, at=at, branch=branch, account=account, include_source=True
+                cls._meta.schema,
+                filters=filters,
+                fields=fields,
+                at=at,
+                branch=branch,
+                account=account,
+                include_source=True,
             )
         else:
-            objs = NodeManager.query(cls._meta.schema, at=at, branch=branch, account=account, include_source=True)
+            objs = NodeManager.query(
+                cls._meta.schema, fields=fields, at=at, branch=branch, account=account, include_source=True
+            )
 
         if not objs:
             return []

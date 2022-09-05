@@ -3,12 +3,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from enum import Enum
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Union, TYPE_CHECKING
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
 from infrahub.database import execute_read_query, execute_write_query
 from infrahub.exceptions import QueryError
+from infrahub.core.timestamp import Timestamp
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
 
 class QueryType(Enum):
@@ -110,11 +114,11 @@ class Query(ABC):
 
     order_by: Optional[List[str]] = None
 
-    def __init__(self, branch=None, at=None, limit=None, *args, **kwargs):
+    def __init__(self, branch: Branch = None, at: Union[Timestamp, str] = None, limit: int = None, *args, **kwargs):
 
         self.branch = branch
-        self.at = at
-        self.limit: Optional[int] = limit
+        self.at = Timestamp(at)
+        self.limit = limit
 
         # Initialize internal variables
         self.params: dict = {}
@@ -134,7 +138,7 @@ class Query(ABC):
     def add_to_query(self, query: str):
         self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
-    def get_query(self, var: bool = False):
+    def get_query(self, var: bool = False) -> str:
         # Make a local copy of the _query_lines
 
         tmp_query_lines = self.query_lines.copy()
@@ -161,7 +165,7 @@ class Query(ABC):
 
         return query_str
 
-    def execute(self):
+    def execute(self) -> Query:
 
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
@@ -184,10 +188,10 @@ class Query(ABC):
 
         return self
 
-    def process_results(self, results):
+    def process_results(self, results) -> List[QueryResult]:
         return results
 
-    def get_raw_results(self):
+    def get_raw_results(self) -> List[QueryResult]:
         return self.results
 
     def get_result(self) -> QueryResult:
@@ -201,7 +205,7 @@ class Query(ABC):
 
         return next(self.get_results())
 
-    def get_results(self):  # -> Generator[QueryResult]:
+    def get_results(self) -> Generator[QueryResult, None, None]:
         """Get all the results sorted by score."""
 
         score_idx = {}
@@ -211,7 +215,7 @@ class Query(ABC):
         for idx, score in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
             yield self.results[idx]
 
-    def get_results_group_by(self, *args):
+    def get_results_group_by(self, *args) -> Generator[QueryResult, None, None]:
         """Return results group by the labels and attributes provided and filtered by scored.
 
         Examples:
@@ -244,7 +248,7 @@ class Query(ABC):
             yield self.results[attr_info["idx"]]
 
     @property
-    def num_of_results(self):
+    def num_of_results(self) -> int:
         if not self.has_been_executed:
             return None
 

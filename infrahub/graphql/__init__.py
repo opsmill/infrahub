@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
 from graphql import graphql
+from graphql.execution import ExecutionResult
 import graphene
 
 from infrahub.core import get_branch
@@ -8,8 +13,11 @@ from .generator import generate_mutation_mixin, generate_query_mixin
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
-def get_gql_query(branch=None):
+
+def get_gql_query(branch: Union[Branch, str] = None):
 
     QueryMixin = generate_query_mixin(branch=branch)
 
@@ -19,7 +27,7 @@ def get_gql_query(branch=None):
     return Query
 
 
-def get_gql_mutation(branch=None):
+def get_gql_mutation(branch: Union[Branch, str] = None):
 
     MutationMixin = generate_mutation_mixin(branch=branch)
 
@@ -29,14 +37,17 @@ def get_gql_mutation(branch=None):
     return Mutation
 
 
-def get_gql_subscription(branch=None):
+def get_gql_subscription(branch: Union[Branch, str] = None):
     class Subscription(InfrahubBaseSubscription):
         pass
 
     return Subscription
 
 
-async def execute_query(name, params=None, branch=None, at=None):
+async def execute_query(
+    name, params: dict = None, branch: Union[Branch, str] = None, at: Union[Timestamp, str] = None
+) -> ExecutionResult:
+    """Helper function to Execute a GraphQL Query."""
 
     branch = branch or get_branch(branch)
     at = Timestamp(at)

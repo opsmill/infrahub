@@ -97,8 +97,7 @@ async def default_resolver(*args, **kwargs):
     # Extract the name of the field in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
 
-    # Extract the schema of the node on the other end of the relationship from
-    # the GQL Schema
+    # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters

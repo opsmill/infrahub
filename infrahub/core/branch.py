@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Optional
+from re import A
+from typing import List, Dict, Set, Union, Optional
 
 import pendulum
 from pydantic import validator
@@ -76,7 +77,7 @@ class Branch(StandardNode):
         return value or pendulum.now(tz="UTC").to_iso8601_string()
 
     @classmethod
-    def get_by_name(cls, name):
+    def get_by_name(cls, name: str) -> Branch:
 
         query = """
         MATCH (n:Branch)
@@ -93,7 +94,8 @@ class Branch(StandardNode):
 
         return cls._convert_node_to_obj(results[0].values()[0])
 
-    def get_branches_and_times_to_query(self, at=None):
+    def get_branches_and_times_to_query(self, at: str = None) -> Dict[str, str]:
+        """Get all the branches that are constituing this branch with the assiociated times."""
 
         default_branch = config.SETTINGS.main.default_branch
 
@@ -136,7 +138,9 @@ class Branch(StandardNode):
 
         return "(" + "\n OR ".join(filters) + ")", params
 
-    def get_query_filter_relationships(self, rel_labels: list, at=None, include_outside_parentheses=False):
+    def get_query_filter_relationships(
+        self, rel_labels: list, at: str = None, include_outside_parentheses: bool = False
+    ) -> Set[List, Dict]:
 
         filters = []
         params = {}
@@ -168,6 +172,26 @@ class Branch(StandardNode):
             filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
 
         return filters, params
+
+    def get_query_filter_path(self, at: Union[Timestamp, str] = None) -> Set[str, Dict]:
+
+        at = Timestamp(at)
+        branches_times = self.get_branches_and_times_to_query(at=at.to_string())
+
+        params = {}
+        for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
+            params[f"branch{idx}"] = branch_name
+            params[f"time{idx}"] = time_to_query
+
+        filters = []
+        for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
+
+            filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to IS NULL)")
+            filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to >= $time{idx})")
+
+        filter = "(" + "\n OR ".join(filters) + ")"
+
+        return filter, params
 
     def rebase(self):
         """Rebase the current Branch with its origin branch"""
