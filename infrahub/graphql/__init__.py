@@ -5,7 +5,8 @@ from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.manager import NodeManager
 from .generator import generate_mutation_mixin, generate_query_mixin
-from .schema import InfrahubBaseMutation, InfrahubBaseQuery, InfrahubBaseSubscription
+from .schema import InfrahubBaseMutation, InfrahubBaseQuery
+from .subscription import InfrahubBaseSubscription
 
 
 def get_gql_query(branch=None):

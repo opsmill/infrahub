@@ -69,8 +69,8 @@ class InfrahubMutation(Mutation):
             obj, mutation = await cls.mutate_delete(root, info, branch=branch, at=at, *args, **kwargs)
             action = DataEventAction.DELETE
 
-        if background_tasks := info.context.get("background") and config.SETTINGS.broker.enable:
-            background_tasks.add_task(send_event, DataEvent(action=action, node=obj))
+        if config.SETTINGS.broker.enable and info.context.get("background"):
+            info.context.get("background").add_task(send_event, DataEvent(action=action, node=obj))
 
         return mutation
 
@@ -193,8 +193,10 @@ class BranchCreate(Mutation):
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        if background_tasks := info.context.get("background") and config.SETTINGS.broker.enable:
-            background_tasks.add_task(send_event, BranchEvent(action=BranchEventAction.CREATE, branch=obj.name))
+        if config.SETTINGS.broker.enable and info.context.get("background"):
+            info.context.get("background").add_task(
+                send_event, BranchEvent(action=BranchEventAction.CREATE, branch=obj.name)
+            )
 
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
@@ -219,8 +221,10 @@ class BranchRebase(Mutation):
 
         ok = True
 
-        if background_tasks := info.context.get("background") and config.SETTINGS.broker.enable:
-            background_tasks.add_task(send_event, BranchEvent(action=BranchEventAction.REBASE, branch=obj.name))
+        if config.SETTINGS.broker.enable and info.context.get("background"):
+            info.context.get("background").add_task(
+                send_event, BranchEvent(action=BranchEventAction.REBASE, branch=obj.name)
+            )
 
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
@@ -259,7 +263,9 @@ class BranchMerge(Mutation):
 
         ok = True
 
-        if background_tasks := info.context.get("background") and config.SETTINGS.broker.enable:
-            background_tasks.add_task(send_event, BranchEvent(action=BranchEventAction.MERGE, branch=obj.name))
+        if config.SETTINGS.broker.enable and info.context.get("background"):
+            info.context.get("background").add_task(
+                send_event, BranchEvent(action=BranchEventAction.MERGE, branch=obj.name)
+            )
 
         return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)

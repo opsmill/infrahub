@@ -13,7 +13,9 @@ def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
     # so we must rely on the environment variable
 
     if debug:
-        uvicorn.run("infrahub.main:app", host=listen, port=port, log_level="info", reload=True)
+        uvicorn.run(
+            "infrahub.main:app", host=listen, port=port, log_level="info", reload=True, reload_excludes="examples"
+        )
     else:
         uvicorn.run("infrahub.main:app", host=listen, port=port, log_level="info")
 

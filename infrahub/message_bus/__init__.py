@@ -13,6 +13,7 @@ broker = Broker()
 
 
 async def connect_to_broker():
+    # print("In get_broker()")
     broker.client = await aio_pika.connect_robust(
         host=config.SETTINGS.broker.address,
         login=config.SETTINGS.broker.username,
@@ -21,7 +22,7 @@ async def connect_to_broker():
 
 
 async def close_broker_connection():
-    broker.client.close()
+    await broker.client.close()
 
 
 async def get_broker() -> aio_pika.abc.AbstractRobustConnection:
