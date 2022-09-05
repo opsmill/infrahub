@@ -4,6 +4,7 @@ import os
 import sys
 from typing import List, Optional
 
+
 import httpx
 import jinja2
 import typer
@@ -17,15 +18,17 @@ from infrahub.cli.db import app as db_app
 from infrahub.cli.server import app as server_app
 from infrahub.cli.test import app as test_app
 from infrahub.cli.worker import app as worker_app
+from infrahub.cli.events import app as events_app
 from infrahub.core.initialization import initialization
 
 app = typer.Typer()
 
-app.add_typer(server_app, name="server")
-app.add_typer(worker_app, name="worker")
-app.add_typer(db_app, name="db")
-app.add_typer(test_app, name="test")
-app.add_typer(check_app, name="check")
+app.add_typer(server_app, name="server", help="Control the API Server.")
+app.add_typer(worker_app, name="worker", help="Control the GIT Agent/worker.")
+app.add_typer(db_app, name="db", help="Manage the database.")
+app.add_typer(test_app, name="test", help="Execute unit and integration tests.")
+app.add_typer(check_app, name="check", help="Execute Integration checks.")
+app.add_typer(events_app, name="events", help="Interact with the events system.")
 
 
 def execute_query(
@@ -69,7 +72,7 @@ def find_graphql_query(name, directory="."):
 
 @app.command()
 def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
-
+    """Launch a Python Interactive shell."""
     config.load_and_exit(config_file_name=config_file)
     initialization()
 
@@ -94,7 +97,7 @@ def render(
     branch: str = "main",
     debug: bool = False,
 ):
-
+    """Render a local Jinja Template (RFile) for debugging purpose."""
     log_level = "DEBUG" if debug else "INFO"
 
     FORMAT = "%(message)s"

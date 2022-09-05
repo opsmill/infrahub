@@ -144,7 +144,7 @@ def start(
     debug: bool = False,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-
+    """Start the Git worker to keep the local Git repositories in sync with a remote server."""
     log_level = "DEBUG" if debug else "INFO"
 
     FORMAT = "%(message)s"

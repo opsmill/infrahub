@@ -270,6 +270,37 @@ def neo4j_stop(context):
 
 
 @task
+def rabbitmq_start(context):
+    """Start a local instance of RabbitMQ.
+
+    Args:
+        context (obj): Used to run specific commands
+    """
+    # pty is set to true to properly run the docker commands due to the invocation process of docker
+    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
+    exec_cmd = """docker run --name rabbitmq-dev \
+                -d -p 5672:5672 \
+                -p 15672:15672 \
+                rabbitmq:3-management
+                """
+    context.run("docker rm rabbitmq-dev", pty=False, warn=True)
+    return context.run(exec_cmd, pty=True)
+
+
+@task
+def rabbitmq_stop(context):
+    """Stop the local instance of RabbitMQ.
+
+    Args:
+        context (obj): Used to run specific commands
+    """
+    # pty is set to true to properly run the docker commands due to the invocation process of docker
+    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
+    exec_cmd = "docker stop rabbitmq-dev"
+    result = context.run(exec_cmd, pty=True)
+
+
+@task
 def tests(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """This will run all tests for the specified name and Python version.
 

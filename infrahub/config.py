@@ -55,11 +55,30 @@ class DatabaseSettings(BaseSettings):
         }
 
 
+class BrokerSettings(BaseSettings):
+    enable: bool = False
+    username: str = "guest"
+    password: str = "guest"
+    address: str = "localhost"
+    namespace: str = "infrahub"
+
+    class Config:
+        """Additional parameters to automatically map environment variable to some settings."""
+
+        fields = {
+            "username": {"env": "INFRAHUB_BROKER_USERNAME"},
+            "password": {"env": "INFRAHUB_BROKER_PASSWORD"},
+            "address": {"env": "INFRAHUB_BROKER_ADDRESS"},
+            "namespace": {"env": "INFRAHUB_BROKER_NAMESPACE"},
+        }
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     main: MainSettings = MainSettings()
     database: DatabaseSettings = DatabaseSettings()
+    broker: BrokerSettings = BrokerSettings()
 
 
 def load(config_file_name="infrahub.toml", config_data=None):

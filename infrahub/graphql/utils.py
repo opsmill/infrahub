@@ -64,7 +64,7 @@ def selected_field_names_naive(selection_set: graphql.SelectionSetNode):
     return field_names
 
 
-def extract_fields(selection_set):  # -> dict[str, Selection_Set]
+async def extract_fields(selection_set):  # -> dict[str, Selection_Set]
 
     if not selection_set:
         return None
@@ -72,7 +72,7 @@ def extract_fields(selection_set):  # -> dict[str, Selection_Set]
     fields = {}
     for field in getattr(selection_set, "selections", []):
         sub_selection_set = getattr(field, "selection_set", None)
-        fields[field.name.value] = extract_fields(sub_selection_set)
+        fields[field.name.value] = await extract_fields(sub_selection_set)
 
     return fields
 

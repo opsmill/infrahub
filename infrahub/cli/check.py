@@ -21,7 +21,7 @@ def run(
     debug: bool = False,
     format_json: bool = False,
 ):
-
+    """Locate and execute all checks under the defined path."""
     path = path or "."
 
     log_level = "DEBUG" if debug else "INFO"

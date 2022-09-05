@@ -1,6 +1,8 @@
 import uuid
 from itertools import groupby
 
+from enum import Enum, EnumMeta
+
 
 def is_valid_uuid(val) -> bool:
     """Check if the input is a valid UUID."""
@@ -26,3 +28,16 @@ def duplicates(input_list: list) -> list:
 def intersection(list1, list2) -> list:
     """Calculate the intersection between 2 lists."""
     return list(set(list1) & set(list2))
+
+
+class MetaEnum(EnumMeta):
+    def __contains__(cls, item):
+        try:
+            cls(item)
+        except ValueError:
+            return False
+        return True
+
+
+class BaseEnum(Enum, metaclass=MetaEnum):
+    pass

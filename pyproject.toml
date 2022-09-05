@@ -21,6 +21,7 @@ toml = "^0.10.2"
 jsonlines = "^3.0.0"
 gunicorn = "^20.1.0"
 deepdiff = "^5.8.1"
+aio-pika = "^8.2.0"
 
 [tool.poetry.dev-dependencies]
 black = "*"

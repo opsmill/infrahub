@@ -12,6 +12,7 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub.auth import BaseTokenAuth
+from infrahub.message_bus import connect_to_broker, close_broker_connection
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
@@ -23,14 +24,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+app.add_event_handler("shutdown", close_broker_connection)
+
 
 @app.on_event("startup")
-def app_initialization():
+async def app_initialization():
     config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
     config_file_path = os.path.abspath(config_file_name)
     logger.info(f"Loading the configuration from {config_file_path}")
     config.load_and_exit(config_file_path)
     initialization()
+    await connect_to_broker()
 
 
 @app.middleware("http")
@@ -386,3 +390,5 @@ app.add_route("/metrics", handle_metrics)
 
 app.add_route("/graphql", InfrahubGraphQLApp())
 app.add_route("/graphql/{branch_name:str}", InfrahubGraphQLApp())
+app.add_websocket_route("/graphql", InfrahubGraphQLApp())
+app.add_websocket_route("/graphql/{branch_name:str}", InfrahubGraphQLApp())
