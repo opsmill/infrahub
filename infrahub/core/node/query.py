@@ -161,19 +161,22 @@ class NodeListGetAttributeQuery(Query):
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(rels_params)
 
-        query = (
-            """
+        query = """
         MATCH (n) WHERE ID(n) IN $ids OR n.uuid IN $ids
-        MATCH p = ((n)-[:HAS_ATTRIBUTE]-(a:Attribute)-[:HAS_VALUE]-(av))
-        WHERE all(r IN relationships(p) WHERE (%s))"""
-            % rels_filter
-        )
+        MATCH p = ((n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE]-(av))
+        """
+
+        if self.fields:
+            query += "\n WHERE all(r IN relationships(p) WHERE ((a.name IN $field_names) AND %s))" % rels_filter
+            self.params["field_names"] = list(self.fields.keys())
+        else:
+            query += "\n WHERE all(r IN relationships(p) WHERE ( %s))" % rels_filter
 
         self.add_to_query(query)
 
         self.params["ids"] = self.ids
 
-        self.return_labels = ["n", "a", "av"]
+        self.return_labels = ["n", "a", "av", "r1", "r2"]
 
         # self.query_add_source()
 
