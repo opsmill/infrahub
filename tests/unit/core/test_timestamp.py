@@ -35,3 +35,20 @@ def test_parse_string():
 
     with pytest.raises(ValueError):
         Timestamp._parse_string("notvalid")
+
+
+def test_compare():
+
+    time1 = "2022-01-01T11:00:00.000000Z"
+    time2 = "2022-02-01T11:00:00.000000Z"
+
+    t11 = Timestamp(time1)
+    t12 = Timestamp(time1)
+
+    t21 = Timestamp(time2)
+
+    assert t11 < t21
+    assert t21 > t12
+    assert t11 <= t12
+    assert t11 >= t12
+    assert t11 == t12

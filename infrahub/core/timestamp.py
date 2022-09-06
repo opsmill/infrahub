@@ -45,3 +45,18 @@ class Timestamp:
 
     def to_string(self):
         return self.obj.to_iso8601_string()
+
+    def __eq__(self, other):
+        return self.obj == other.obj
+
+    def __lt__(self, other):
+        return self.obj < other.obj
+
+    def __gt__(self, other):
+        return self.obj > other.obj
+
+    def __le__(self, other):
+        return self.obj <= other.obj
+
+    def __ge__(self, other):
+        return self.obj >= other.obj
