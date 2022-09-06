@@ -38,6 +38,41 @@ def test_get_query_filter_relationships_branch1(base_dataset_02, car_person_sche
     assert sorted(params.keys()) == ["branch0", "branch1", "time0", "time1"]
 
 
+def test_get_branches_and_times_to_query_main(base_dataset_02, car_person_schema):
+
+    now = Timestamp("1s")
+
+    main_branch = get_branch("main")
+
+    results = main_branch.get_branches_and_times_to_query()
+    assert Timestamp(results["main"]) > now
+
+    t1 = Timestamp("2s")
+    results = main_branch.get_branches_and_times_to_query(t1.to_string())
+    assert results["main"] == t1.to_string()
+
+
+def test_get_branches_and_times_to_query_branch1(base_dataset_02, car_person_schema):
+
+    now = Timestamp("1s")
+
+    branch1 = get_branch("branch1")
+
+    results = branch1.get_branches_and_times_to_query()
+    assert Timestamp(results["branch1"]) > now
+    assert results["main"] == base_dataset_02["time_m40"]
+
+    t1 = Timestamp("2s")
+    results = branch1.get_branches_and_times_to_query(t1.to_string())
+    assert results["branch1"] == t1.to_string()
+    assert results["main"] == base_dataset_02["time_m40"]
+
+    branch1.ephemeral_rebase = True
+    results = branch1.get_branches_and_times_to_query()
+    assert Timestamp(results["branch1"]) > now
+    assert results["main"] == results["branch1"]
+
+
 def test_diff_attribute(base_dataset_02, car_person_schema):
 
     branch1 = Branch.get_by_name("branch1")

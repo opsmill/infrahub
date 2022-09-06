@@ -32,7 +32,7 @@ class AddNodeToBranch(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, node_id, *args, **kwargs):
+    def __init__(self, node_id: int, *args, **kwargs):
 
         self.node_id = node_id
         super().__init__(*args, **kwargs)
@@ -47,7 +47,7 @@ class AddNodeToBranch(Query):
         """
 
         self.params["node_id"] = self.node_id
-        self.params["now"] = self.at or pendulum.now(tz="UTC").to_iso8601_string()
+        self.params["now"] = self.at.to_string()
         self.params["branch"] = self.branch.name
         self.params["status"] = RelationshipStatus.ACTIVE.value
 
@@ -74,7 +74,7 @@ class Branch(StandardNode):
 
     @validator("branched_from", pre=True, always=True)
     def set_branched_from(cls, value):
-        return value or pendulum.now(tz="UTC").to_iso8601_string()
+        return value or Timestamp().to_string()
 
     @classmethod
     def get_by_name(cls, name: str) -> Branch:
@@ -94,29 +94,33 @@ class Branch(StandardNode):
 
         return cls._convert_node_to_obj(results[0].values()[0])
 
-    def get_branches_and_times_to_query(self, at: str = None) -> Dict[str, str]:
-        """Get all the branches that are constituing this branch with the assiociated times."""
+    def get_branches_and_times_to_query(self, at: Union[Timestamp, str] = None) -> Dict[str, str]:
+        """Get all the branches that are constituing this branch with the associated times."""
 
+        at = Timestamp(at)
         default_branch = config.SETTINGS.main.default_branch
 
         if self.name == default_branch:
-            return {default_branch: at or "current()"}
+            return {default_branch: at.to_string()}
 
-        time_default_branch = self.branched_from
+        time_default_branch = Timestamp(self.branched_from)
+
         # If we are querying before the beginning of the branch
-        # the time for the main branhc must be the time of the query
-        if at and (self.ephemeral_rebase or pendulum.parse(at) < pendulum.parse(time_default_branch)):
+        # the time for the main branch must be the time of the query
+        if self.ephemeral_rebase or at < time_default_branch:
             time_default_branch = at
-        elif self.ephemeral_rebase and not at:
-            time_default_branch = "current()"
 
         return {
-            default_branch: time_default_branch,
-            self.name: at or "current()",
+            default_branch: time_default_branch.to_string(),
+            self.name: at.to_string(),
         }
 
     def get_query_filter_branch_to_node(
-        self, rel_label="r", branch_label="b", at=None, include_outside_parentheses=False
+        self,
+        rel_label: str = "r",
+        branch_label: str = "b",
+        at: Union[Timestamp, str] = None,
+        include_outside_parentheses: bool = False,
     ):
 
         filters = []
@@ -139,7 +143,7 @@ class Branch(StandardNode):
         return "(" + "\n OR ".join(filters) + ")", params
 
     def get_query_filter_relationships(
-        self, rel_labels: list, at: str = None, include_outside_parentheses: bool = False
+        self, rel_labels: list, at: Union[Timestamp, str] = None, include_outside_parentheses: bool = False
     ) -> Set[List, Dict]:
 
         filters = []
@@ -148,6 +152,7 @@ class Branch(StandardNode):
         # TODO add a check to ensure rel_labels is a list
         #   automatically convert to a list of one if needed
 
+        at = Timestamp(at)
         branches_times = self.get_branches_and_times_to_query(at=at)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
