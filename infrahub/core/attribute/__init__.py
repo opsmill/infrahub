@@ -28,11 +28,14 @@ class BaseAttribute:
     def get_kind(self):
         return self.schema.kind
 
-    def __init__(self, name, schema, branch, at, node, id=None, db_id=None, data=None, *args, **kwargs):
+    def __init__(
+        self, name, schema, branch, at, node, id=None, db_id=None, data=None, changed_at=None, *args, **kwargs
+    ):
 
         self.id = id
         self.db_id = db_id
 
+        self.changed_at = changed_at
         self.name = name
         self.node = node
         self.schema = schema
@@ -44,10 +47,10 @@ class BaseAttribute:
         if data is not None and isinstance(data, dict):
             self.value = data.get("value", None)
 
-            if not self.id:
-                self.id = data.get("id", None)
-            if not self.db_id:
-                self.db_id = data.get("db_id", None)
+            fields_to_extract_from_data = ["id", "db_id", "changed_at"]
+            for field_name in fields_to_extract_from_data:
+                if not getattr(self, field_name):
+                    setattr(self, field_name, data.get(field_name, None))
 
         elif data is not None:
             self.value = data

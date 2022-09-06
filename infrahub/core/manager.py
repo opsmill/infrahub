@@ -163,31 +163,16 @@ class NodeManager:
         #     source_accounts = {id: get_account_by_id(id=id) for id in source_uuids}
 
         # -----------------------------------------------
-        # Pre-Query remote_node for all remote Attributes
-        # -----------------------------------------------
-        # TODO need to re-enable
-        # remote_node_ids = []
-        # remote_nodes = {}
-        # for attrs in node_attributes.values():
-        #     for attr in attrs.get("attrs").values():
-        #         if "AttributeRemote" in attr.attr_labels:
-        #             remote_node_ids.append(attr.attr_value_uuid)
-
-        # if remote_node_ids:
-        #     remote_nodes = cls.get_many(ids=list(set(remote_node_ids)), branch=branch, account=account, at=at)
-
-        # -----------------------------------------------
         # Extract the ID from all LocalAttribute from all Nodes
         # -----------------------------------------------
-        local_attrs_ids = []
-        for attrs in node_attributes.values():
-            for attr in attrs.get("attrs").values():
-                if "AttributeLocal" in attr.attr_labels:
-                    local_attrs_ids.append(attr.attr_id)
+        # local_attrs_ids = []
+        # for attrs in node_attributes.values():
+        #     for attr in attrs.get("attrs").values():
+        #         if "AttributeLocal" in attr.attr_labels:
+        #             local_attrs_ids.append(attr.attr_id)
 
-        query = NodeListGetLocalAttributeValueQuery(ids=local_attrs_ids, branch=branch, at=at).execute()
-
-        local_attributes = query.get_results_by_id()
+        # query = NodeListGetLocalAttributeValueQuery(ids=local_attrs_ids, branch=branch, at=at).execute()
+        # local_attributes = query.get_results_by_id()
 
         nodes = {}
         for node_id, node in node_attributes.items():
@@ -211,19 +196,20 @@ class NodeManager:
 
                 # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
-                    item = local_attributes[attr.attr_uuid]
+                    # item = local_attributes[attr.attr_uuid]
 
                     # replace NULL with None
-                    value = item.get("av").get("value")
+                    value = attr.value
                     value = None if value == "NULL" else value
 
                     attrs[attr_name] = dict(
-                        db_id=item.get("a").id,
-                        id=item.get("a").get("uuid"),
+                        db_id=attr.attr_id,  # .get("a").id,
+                        id=attr.attr_uuid,  # .get("a").get("uuid"),
                         # is_inherited=attr.is_inherited,
                         name=attr_name,
                         # permission=attr.permission,
                         value=value,
+                        changed_at=attr.changed_at,
                         # source=source_accounts.get(attr.source_uuid, None),
                     )
 
