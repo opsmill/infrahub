@@ -76,13 +76,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if field_name not in self._schema.valid_input_names:
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
 
-        # Check if all mandatory attributes have been provided
-        for mandatory_attr in self._schema.mandatory_attribute_names:
-            if mandatory_attr not in fields.keys():
-                errors.append(ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"}))
-
-        # If the object is new, we need to ensure that all mandatory relationships have been provided too
+        # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self.id:
+            for mandatory_attr in self._schema.mandatory_attribute_names:
+                if mandatory_attr not in fields.keys():
+                    errors.append(
+                        ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"})
+                    )
+
             for mandatory_rel in self._schema.mandatory_relationship_names:
                 if mandatory_rel not in fields.keys():
                     errors.append(
