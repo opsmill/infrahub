@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
 import graphene
+from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
@@ -19,8 +23,10 @@ from .query import (
     StrAttributeType,
 )
 from .schema import default_list_resolver
-from .types import Any
 from .utils import extract_fields
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
 TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "String": StrAttributeType,
@@ -40,7 +46,7 @@ FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "String": graphene.String,
     "Integer": graphene.Int,
     "Boolean": graphene.Boolean,
-    "Any": Any,
+    "Any": GenericScalar,
 }
 
 
@@ -91,8 +97,7 @@ async def default_resolver(*args, **kwargs):
     # Extract the name of the field in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
 
-    # Extract the schema of the node on the other end of the relationship from
-    # the GQL Schema
+    # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
@@ -112,7 +117,8 @@ async def default_resolver(*args, **kwargs):
     return objs[0].to_graphql(fields=fields)
 
 
-def generate_object_types(branch=None):
+def generate_object_types(branch: Union[Branch, str] = None):
+    """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
     full_schema = registry.get_full_schema(branch=branch)
 
@@ -138,7 +144,7 @@ def generate_object_types(branch=None):
                 node_type._meta.fields[rel.name] = graphene.Field.mounted(graphene.List(peer_type, **peer_filters))
 
 
-def generate_query_mixin(branch=None):
+def generate_query_mixin(branch: Union[Branch, str] = None) -> object:
 
     class_attrs = {}
 
@@ -148,9 +154,6 @@ def generate_query_mixin(branch=None):
     generate_object_types()
 
     for node_name, node_schema in full_schema.items():
-
-        if "Schema" in node_name:
-            continue
 
         node_type = registry.get_graphql_type(name=node_name, branch=branch)
         node_filters = generate_filters(node_schema)
@@ -164,16 +167,13 @@ def generate_query_mixin(branch=None):
     return type("QueryMixin", (object,), class_attrs)
 
 
-def generate_mutation_mixin(branch=None):
+def generate_mutation_mixin(branch: Union[Branch, str] = None) -> object:
 
     class_attrs = {}
 
     full_schema = registry.get_full_schema(branch=branch)
 
-    for node_name, node_schema in full_schema.items():
-
-        if "Schema" in node_name:
-            continue
+    for node_schema in full_schema.values():
 
         create, update, delete = generate_graphql_mutations(node_schema)
         class_attrs[f"{node_schema.name}_create"] = create.Field()
@@ -183,9 +183,9 @@ def generate_mutation_mixin(branch=None):
     return type("MutationMixin", (object,), class_attrs)
 
 
-def generate_graphql_object(schema: NodeSchema, include_rel=False) -> InfrahubObject:
+def generate_graphql_object(schema: NodeSchema, include_rel: bool = False) -> InfrahubObject:
+    """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
-    main_attrs = {}
     meta_attrs = {
         "schema": schema,
         "name": schema.kind,
@@ -193,17 +193,16 @@ def generate_graphql_object(schema: NodeSchema, include_rel=False) -> InfrahubOb
         "default_resolver": default_resolver,
     }
 
-    main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
-
-    main_attrs["id"] = graphene.String(required=True)
+    main_attrs = {
+        "id": graphene.String(required=True),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
 
     for attr in schema.attributes:
         attr_type = TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
-    schema_type = type(schema.kind, (InfrahubObject,), main_attrs)
-
-    return schema_type
+    return type(schema.kind, (InfrahubObject,), main_attrs)
 
 
 def generate_graphql_mutations(schema: NodeSchema):
@@ -275,8 +274,8 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.Input
     return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)
 
 
-def generate_graphql_mutation_create(schema: NodeSchema):
-
+def generate_graphql_mutation_create(schema: NodeSchema) -> InfrahubMutation:
+    """Generate a GraphQL Mutation to CREATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Create"
 
     object_type = generate_graphql_object(schema)
@@ -295,8 +294,8 @@ def generate_graphql_mutation_create(schema: NodeSchema):
     return type(name, (InfrahubMutation,), main_attrs)
 
 
-def generate_graphql_mutation_update(schema: NodeSchema):
-
+def generate_graphql_mutation_update(schema: NodeSchema) -> InfrahubMutation:
+    """Generate a GraphQL Mutation to UPDATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Update"
 
     object_type = generate_graphql_object(schema)
@@ -315,8 +314,8 @@ def generate_graphql_mutation_update(schema: NodeSchema):
     return type(name, (InfrahubMutation,), main_attrs)
 
 
-def generate_graphql_mutation_delete(schema: NodeSchema):
-
+def generate_graphql_mutation_delete(schema: NodeSchema) -> InfrahubMutation:
+    """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Delete"
 
     main_attrs = {"ok": graphene.Boolean()}
@@ -332,8 +331,8 @@ def generate_graphql_mutation_delete(schema: NodeSchema):
     return type(name, (InfrahubMutation,), main_attrs)
 
 
-def generate_filters(schema: NodeSchema, attribute_only=False) -> dict:
-
+def generate_filters(schema: NodeSchema, attribute_only: bool = False) -> dict:
+    """Generate the GraphQL filters for a given NodeSchema object."""
     filters = {"id": graphene.UUID()}
     for attr in schema.attributes:
         attr_type = FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]

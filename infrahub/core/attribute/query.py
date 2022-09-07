@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 from infrahub.core.query import Query, QueryType
+
+if TYPE_CHECKING:
+    from . import BaseAttribute
 
 # flake8: noqa: F723
 
 
 class AttributeQuery(Query):
-    def __init__(self, attr=None, attr_id=None, *args, **kwargs):
-
+    def __init__(self, attr: BaseAttribute = None, attr_id: int = None, *args, **kwargs):
         if not attr and not attr_id:
             raise ValueError("Either attr or attr_id must be defined, none provided")
 

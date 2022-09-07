@@ -2,13 +2,12 @@ import dataclasses
 
 from graphene import Boolean, Field, Int, List, ObjectType, String
 from graphene.types.objecttype import ObjectTypeOptions
+from graphene.types.generic import GenericScalar
 
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
-
-from .types import Any
 
 DEFAULT_BRANCH = "main"
 
@@ -87,7 +86,7 @@ class InfrahubObject(ObjectType):
         super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
 
     @classmethod
-    async def get_list(cls, fields, context, *args, **kwargs):
+    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
 
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
@@ -97,10 +96,18 @@ class InfrahubObject(ObjectType):
 
         if filters:
             objs = NodeManager.query(
-                cls._meta.schema, filters=filters, at=at, branch=branch, account=account, include_source=True
+                cls._meta.schema,
+                filters=filters,
+                fields=fields,
+                at=at,
+                branch=branch,
+                account=account,
+                include_source=True,
             )
         else:
-            objs = NodeManager.query(cls._meta.schema, at=at, branch=branch, account=account, include_source=True)
+            objs = NodeManager.query(
+                cls._meta.schema, fields=fields, at=at, branch=branch, account=account, include_source=True
+            )
 
         if not objs:
             return []
@@ -111,9 +118,7 @@ class InfrahubObject(ObjectType):
 # ------------------------------------------
 #
 # ------------------------------------------
-
-
-class BaseAttribute:
+class BaseAttribute(ObjectType):
     _is_inherited = Field(Boolean)
     _is_visible = Field(Boolean)
     _created_at = Field(String)
@@ -122,44 +127,40 @@ class BaseAttribute:
     # _source = Field("infrahub.graphql.schema.AccountType")
 
 
-class StrAttributeType(InfrahubObjectType, BaseAttribute):
+class StrAttributeType(BaseAttribute):
     id = Field(String)
     value = Field(String)
 
     class Meta:
         description = "Local Attribute of type String"
         name = "StrAttribute"
-        # model = StrAttribute
 
 
-class IntAttributeType(InfrahubObjectType, BaseAttribute):
+class IntAttributeType(BaseAttribute):
     id = Field(String)
     value = Field(Int)
 
     class Meta:
         description = "Local Attribute of type Integer"
         name = "IntAttribute"
-        # model = IntAttribute
 
 
-class BoolAttributeType(InfrahubObjectType, BaseAttribute):
+class BoolAttributeType(BaseAttribute):
     id = Field(String)
     value = Field(Boolean)
 
     class Meta:
         description = "Local Attribute of type Boolean"
         name = "BoolAttribute"
-        # model = BoolAttribute
 
 
-class AnyAttributeType(InfrahubObjectType, BaseAttribute):
+class AnyAttributeType(BaseAttribute):
     id = Field(String)
-    value = Field(Any)
+    value = Field(GenericScalar)
 
     class Meta:
-        description = "Local Attribute of type Any"
+        description = "Local Attribute of type GenericScalar"
         name = "AnyAttribute"
-        # model = Attribute
 
 
 # ------------------------------------------

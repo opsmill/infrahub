@@ -1,29 +1,34 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Union, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
 from infrahub.core.node.query import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
+    NodeListGetInfoQuery,
     NodeListGetLocalAttributeValueQuery,
 )
 from infrahub.core.relationship.query import RelationshipGetPeerQuery
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+
 
 class NodeManager:
     @classmethod
     def query(
         cls,
-        schema,
+        schema: Union[NodeSchema, str],
         filters: dict = None,
-        limit=100,
-        at=None,
-        branch=None,
-        include_source=False,
+        fields: dict = None,
+        limit: int = 100,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
         account=None,
         *args,
         **kwargs,
@@ -33,6 +38,7 @@ class NodeManager:
         Args:
             schema (NodeSchema or Str): Infrahub Schema or Name of a schema present in the registry.
             filters (dict, optional): filters provided in a dictionary
+            fields (dict, optional): List of fields to include in the response.
             limit (int, optional): Maximum numbers of nodes to return. Defaults to 100.
             at (Timestamp or Str, optional): Timestamp for the query. Defaults to None.
             branch (Branch or Str, optional): Branch to query. Defaults to None.
@@ -49,14 +55,14 @@ class NodeManager:
         elif not isinstance(schema, NodeSchema):
             raise ValueError(f"Invalid schema provided {schema}")
 
+        # Query the list of nodes matching this Query
         query = NodeGetListQuery(schema=schema, branch=branch, limit=limit, filters=filters, at=at).execute()
-
         node_ids = query.get_node_ids()
 
         return (
             list(
                 cls.get_many(
-                    ids=node_ids, branch=branch, account=account, at=at, include_source=include_source
+                    ids=node_ids, fields=fields, branch=branch, account=account, at=at, include_source=include_source
                 ).values()
             )
             if node_ids
@@ -67,16 +73,17 @@ class NodeManager:
     def query_peers(
         cls,
         id,
-        schema,
-        filters,
-        limit=100,
-        at=None,
-        branch=None,
-        include_source=False,
+        schema: Union[NodeSchema, str],
+        filters: dict,
+        fields: dict = None,
+        limit: int = 100,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
         account=None,
         *args,
         **kwargs,
-    ):
+    ) -> List[Node]:
         branch = get_branch(branch)
         at = Timestamp(at)
 
@@ -96,10 +103,27 @@ class NodeManager:
         )
 
     @classmethod
-    def get_one(cls, id: str, at=None, branch=None, include_source=False, account=None, *args, **kwargs) -> Node:
-
+    def get_one(
+        cls,
+        id: str,
+        fields: dict = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        account=None,
+        *args,
+        **kwargs,
+    ) -> Node:
+        """Return one node based on its ID."""
         result = cls.get_many(
-            ids=[id], at=at, branch=branch, include_source=include_source, account=account, *args, **kwargs
+            ids=[id],
+            fields=fields,
+            at=at,
+            branch=branch,
+            include_source=include_source,
+            account=account,
+            *args,
+            **kwargs,
         )
 
         if not result:
@@ -109,14 +133,27 @@ class NodeManager:
 
     @classmethod
     def get_many(
-        cls, ids: List[str], at=None, branch=None, include_source=False, account=None, *args, **kwargs
+        cls,
+        ids: List[str],
+        fields: dict = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        account=None,
+        *args,
+        **kwargs,
     ) -> List[Node]:
+        """Return a list of nodes based on their IDs."""
 
         branch = get_branch(branch)
         at = Timestamp(at)
 
+        # Query all nodes
+        query = NodeListGetInfoQuery(ids=ids, branch=branch, account=account, at=at).execute()
+        nodes_info = query.get_nodes()
+
         # Query list of all Attributes
-        query = NodeListGetAttributeQuery(ids=ids, branch=branch, account=account, at=at).execute()
+        query = NodeListGetAttributeQuery(ids=ids, fields=fields, branch=branch, account=account, at=at).execute()
         node_attributes = query.get_attributes_group_by_node()
 
         # -----------------------------------------------
@@ -131,73 +168,52 @@ class NodeManager:
         #     source_accounts = {id: get_account_by_id(id=id) for id in source_uuids}
 
         # -----------------------------------------------
-        # Pre-Query remote_node for all remote Attributes
-        # -----------------------------------------------
-        # TODO need to re-enable
-        # remote_node_ids = []
-        # remote_nodes = {}
-        # for attrs in node_attributes.values():
-        #     for attr in attrs.get("attrs").values():
-        #         if "AttributeRemote" in attr.attr_labels:
-        #             remote_node_ids.append(attr.attr_value_uuid)
-
-        # if remote_node_ids:
-        #     remote_nodes = cls.get_many(ids=list(set(remote_node_ids)), branch=branch, account=account, at=at)
-
-        # -----------------------------------------------
         # Extract the ID from all LocalAttribute from all Nodes
         # -----------------------------------------------
-        local_attrs_ids = []
-        for attrs in node_attributes.values():
-            for attr in attrs.get("attrs").values():
-                if "AttributeLocal" in attr.attr_labels:
-                    local_attrs_ids.append(attr.attr_id)
+        # local_attrs_ids = []
+        # for attrs in node_attributes.values():
+        #     for attr in attrs.get("attrs").values():
+        #         if "AttributeLocal" in attr.attr_labels:
+        #             local_attrs_ids.append(attr.attr_id)
 
-        query = NodeListGetLocalAttributeValueQuery(ids=local_attrs_ids, branch=branch, at=at).execute()
-
-        local_attributes = query.get_results_by_id()
+        # query = NodeListGetLocalAttributeValueQuery(ids=local_attrs_ids, branch=branch, at=at).execute()
+        # local_attributes = query.get_results_by_id()
 
         nodes = {}
-        for node_id, node in node_attributes.items():
 
-            attrs = {"db_id": node["node"].id, "id": node_id}
+        for node, node_schema in nodes_info:
 
-            # Identify the type of the node and find its associated Class
-            node_schema = None
-            for label in node["node"].labels:
-                if registry.has_schema(label):
-                    node_schema = registry.get_schema(label)
-                    break
+            node_id = node.get("uuid")
+            attrs = {"db_id": node.id, "id": node_id}
 
             if not node_schema:
-                raise Exception(f"Unable to find the Schema associated with {node_id}, {node['node'].labels}")
+                raise Exception(f"Unable to find the Schema associated with {node_id}, {node.labels}")
 
             # --------------------------------------------------------
             # Attributes
             # --------------------------------------------------------
-            for attr_name, attr in node.get("attrs").items():
+            for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
 
                 # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
-                    item = local_attributes[attr.attr_uuid]
+                    # item = local_attributes[attr.attr_uuid]
 
                     # replace NULL with None
-                    value = item.get("av").get("value")
+                    value = attr.value
                     value = None if value == "NULL" else value
 
                     attrs[attr_name] = dict(
-                        db_id=item.get("a").id,
-                        id=item.get("a").get("uuid"),
+                        db_id=attr.attr_id,  # .get("a").id,
+                        id=attr.attr_uuid,  # .get("a").get("uuid"),
                         # is_inherited=attr.is_inherited,
                         name=attr_name,
                         # permission=attr.permission,
                         value=value,
+                        updated_at=attr.updated_at,
                         # source=source_accounts.get(attr.source_uuid, None),
                     )
 
-            if not attrs:
-                return None
-
+            # Identify the proper Class to use for this Node
             node_class = Node
             if node_schema.kind in registry.node:
                 node_class = registry.node[node_schema.kind]

@@ -7,10 +7,7 @@ from graphene import (
     Mutation,
     String,
 )
-
-import aio_pika
-from aio_pika import DeliveryMode, ExchangeType, Message, connect
-from aio_pika.abc import AbstractRobustConnection, AbstractChannel, AbstractExchange
+from graphene.types.generic import GenericScalar
 
 from graphene.types.mutation import MutationOptions
 
@@ -25,7 +22,6 @@ from infrahub.exceptions import BranchNotFound, NodeNotFound
 from infrahub.message_bus.events import send_event, DataEvent, DataEventAction, BranchEvent, BranchEventAction
 
 from .query import BranchType
-from .types import Any
 from .utils import extract_fields
 
 
@@ -140,7 +136,7 @@ class BoolAttributeInput(InputObjectType):
 
 class AnyAttributeInput(InputObjectType):
     source = String(required=False)
-    value = Any(required=False)
+    value = GenericScalar(required=False)
     id = String(required=False)
 
 

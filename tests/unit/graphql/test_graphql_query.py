@@ -3,6 +3,7 @@ import pytest
 from graphql import graphql
 
 from infrahub.core import registry
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import get_gql_mutation, get_gql_query
@@ -70,16 +71,12 @@ async def test_nested_query(default_branch, car_person_schema):
         variable_values={},
     )
 
-    valid_names = ["John", "Jane"]
-
     assert result.errors is None
-    assert result.data["person"][0]["name"]["value"] in valid_names
-    assert len(result.data["person"][0]["cars"]) == 2
 
-    valid_names.remove(result.data["person"][0]["name"]["value"])
-    assert len(valid_names) == 1
-    assert result.data["person"][1]["name"]["value"] in valid_names
-    assert len(result.data["person"][1]["cars"]) == 1
+    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["cars"]) == 2
+    assert len(result_per_name["Jane"]["cars"]) == 1
 
 
 @pytest.mark.asyncio
@@ -171,7 +168,7 @@ async def test_query_oneway_relationship(default_branch, person_tag_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
         source=query,
         context_value={},
         root_value=None,
@@ -203,7 +200,7 @@ async def test_query_at_specific_time(default_branch, person_tag_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
         source=query,
         context_value={},
         root_value=None,
@@ -227,7 +224,7 @@ async def test_query_at_specific_time(default_branch, person_tag_schema):
     """
 
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
         source=query,
         context_value={"infrahub_at": time1},
         root_value=None,
@@ -238,3 +235,52 @@ async def test_query_at_specific_time(default_branch, person_tag_schema):
     assert len(result.data["tag"]) == 2
     names = sorted([tag["name"]["value"] for tag in result.data["tag"]])
     assert names == ["Blue", "Red"]
+
+
+@pytest.mark.asyncio
+async def test_query_updated_at(default_branch, person_tag_schema):
+
+    p11 = Node("Person").new(firstname="John", lastname="Doe").save()
+
+    query = """
+    query {
+        person {
+            id
+            firstname {
+                value
+                _updated_at
+            }
+            lastname {
+                value
+                _updated_at
+            }
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["firstname"]["_updated_at"]
+    assert result1.data["person"][0]["firstname"]["_updated_at"] == result1.data["person"][0]["lastname"]["_updated_at"]
+
+    p12 = NodeManager.get_one(p11.id)
+    p12.firstname.value = "Jim"
+    p12.save()
+
+    result2 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result2.errors is None
+    assert result2.data["person"][0]["firstname"]["_updated_at"]
+    assert result2.data["person"][0]["firstname"]["_updated_at"] != result2.data["person"][0]["lastname"]["_updated_at"]

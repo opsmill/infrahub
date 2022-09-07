@@ -60,7 +60,7 @@ def base_dataset_02():
       * time_m60 is now - 60s
 
     - 2 branches, main and branch1.
-        - branch1  was created at time1
+        - branch1  was created at time_m40
 
     - 2 Cars in Main and 1 in Branch1
         - Car1 was created at time_m60 in main

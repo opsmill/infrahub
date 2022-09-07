@@ -141,6 +141,7 @@ class Registry:
 
     def get_full_schema(self, branch: Union[Branch, str] = None) -> dict:
         """Return all the nodes in the schema for a given branch.
+
         The current implementation is a bit simplistic, will need to re-evaluate."""
         return self.get_all_item(kind="schema", branch=branch)
 

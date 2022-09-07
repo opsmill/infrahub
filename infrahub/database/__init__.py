@@ -1,7 +1,8 @@
 import os
 import time
 
-from neo4j import GraphDatabase, basic_auth
+from typing import Generator
+from neo4j import GraphDatabase, basic_auth, Driver, Session
 
 # from contextlib import asynccontextmanager
 from neo4j.exceptions import ClientError
@@ -16,7 +17,7 @@ def get_list_queries(tx):
     return list(tx.run("CALL dbms.listQueries()"))
 
 
-def create_database(tx, database_name):
+def create_database(tx, database_name: str):
     return list(tx.run(f"CREATE DATABASE {database_name}"))
 
 
@@ -29,11 +30,11 @@ NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
 
 URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
 
-driver = GraphDatabase.driver(URL, auth=basic_auth(NEO4J_USERNAME, NEO4J_PASSWORD))
+driver: Driver = GraphDatabase.driver(URL, auth=basic_auth(NEO4J_USERNAME, NEO4J_PASSWORD))
 validated_database = {}
 
 
-def get_db():
+def get_db() -> Generator[Session, None, None]:
     global validated_database
 
     if config.SETTINGS.database.database not in validated_database:
@@ -61,12 +62,12 @@ def get_db():
 
 
 @QUERY_READ_METRICS.time()
-def execute_read_query(query, params):
-    def work(tx, params):
+def execute_read_query(query: str, params: dict):
+    def work(tx, params: dict):
         return list(tx.run(query, params))
 
     time_start = time.time()
-    db = next(get_db())
+    db: Session = next(get_db())
     results = db.read_transaction(work, params)
     time_end = time.time() - time_start
 
@@ -77,10 +78,10 @@ def execute_read_query(query, params):
 
 
 @QUERY_WRITE_METRICS.time()
-def execute_write_query(query, params):
-    def work(tx, params):
+def execute_write_query(query: str, params: dict):
+    def work(tx, params: dict):
         return list(tx.run(query, params))
 
-    db = next(get_db())
+    db: Session = next(get_db())
 
     return db.write_transaction(work, params)

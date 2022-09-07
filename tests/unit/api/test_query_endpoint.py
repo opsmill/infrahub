@@ -46,12 +46,7 @@ def test_query_endpoint(default_branch, car_person_schema, client):
     assert response.json()["data"] is not None
     result = response.json()["data"]
 
-    valid_names = ["John", "Jane"]
-
-    assert result["person"][0]["name"]["value"] in valid_names
-    assert len(result["person"][0]["cars"]) == 2
-
-    valid_names.remove(result["person"][0]["name"]["value"])
-    assert len(valid_names) == 1
-    assert result["person"][1]["name"]["value"] in valid_names
-    assert len(result["person"][1]["cars"]) == 1
+    result_per_name = {result["name"]["value"]: result for result in result["person"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["cars"]) == 2
+    assert len(result_per_name["Jane"]["cars"]) == 1

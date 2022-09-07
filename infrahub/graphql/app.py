@@ -162,7 +162,7 @@ class InfrahubGraphQLApp:
         else:
             return cast(Response, response)
 
-    async def _get_context_value(self, request: HTTPConnection) -> Any:
+    async def _get_context_value(self, request: HTTPConnection) -> Dict:
 
         branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
         branch = get_branch(branch_name)
