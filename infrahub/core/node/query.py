@@ -28,7 +28,7 @@ class AttrToProcess:
     attr_value_uuid: Optional[str]
     value: Any
 
-    changed_at: str
+    updated_at: str
 
     branch: str
 
@@ -259,7 +259,7 @@ class NodeListGetAttributeQuery(Query):
                 attr_uuid=result.get("a").get("uuid"),
                 attr_value_id=result.get("av").id,
                 attr_value_uuid=result.get("av").get("uuid"),
-                changed_at=result.get("r2").get("from"),
+                updated_at=result.get("r2").get("from"),
                 value=result.get("av").get("value"),
                 # permission=result.permission_score,
                 branch=self.branch.name,

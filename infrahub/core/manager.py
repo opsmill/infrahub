@@ -209,7 +209,7 @@ class NodeManager:
                         name=attr_name,
                         # permission=attr.permission,
                         value=value,
-                        changed_at=attr.changed_at,
+                        updated_at=attr.updated_at,
                         # source=source_accounts.get(attr.source_uuid, None),
                     )
 
