@@ -7,6 +7,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.query import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
+    NodeListGetInfoQuery,
     NodeListGetLocalAttributeValueQuery,
 )
 from infrahub.core.relationship.query import RelationshipGetPeerQuery
@@ -147,6 +148,10 @@ class NodeManager:
         branch = get_branch(branch)
         at = Timestamp(at)
 
+        # Query all nodes
+        query = NodeListGetInfoQuery(ids=ids, branch=branch, account=account, at=at).execute()
+        nodes_info = query.get_nodes()
+
         # Query list of all Attributes
         query = NodeListGetAttributeQuery(ids=ids, fields=fields, branch=branch, account=account, at=at).execute()
         node_attributes = query.get_attributes_group_by_node()
@@ -175,24 +180,19 @@ class NodeManager:
         # local_attributes = query.get_results_by_id()
 
         nodes = {}
-        for node_id, node in node_attributes.items():
 
-            attrs = {"db_id": node["node"].id, "id": node_id}
+        for node, node_schema in nodes_info:
 
-            # Identify the type of the node and find its associated Class
-            node_schema = None
-            for label in node["node"].labels:
-                if registry.has_schema(label):
-                    node_schema = registry.get_schema(label)
-                    break
+            node_id = node.get("uuid")
+            attrs = {"db_id": node.id, "id": node_id}
 
             if not node_schema:
-                raise Exception(f"Unable to find the Schema associated with {node_id}, {node['node'].labels}")
+                raise Exception(f"Unable to find the Schema associated with {node_id}, {node.labels}")
 
             # --------------------------------------------------------
             # Attributes
             # --------------------------------------------------------
-            for attr_name, attr in node.get("attrs").items():
+            for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
 
                 # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
@@ -213,9 +213,7 @@ class NodeManager:
                         # source=source_accounts.get(attr.source_uuid, None),
                     )
 
-            if not attrs:
-                return None
-
+            # Identify the proper Class to use for this Node
             node_class = Node
             if node_schema.kind in registry.node:
                 node_class = registry.node[node_schema.kind]

@@ -3,11 +3,16 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Set, Optional, Any, Union, TYPE_CHECKING
+
+from infrahub.core import registry
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import QueryError
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
 
 @dataclass
@@ -37,6 +42,15 @@ class AttrToProcess:
     # source_uuid: Optional[str]
     # source_labels: Optional[List[str]]
     is_inherited: bool = False
+
+
+def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
+
+    for label in node.labels:
+        if registry.has_schema(label, branch=branch):
+            return registry.get_schema(label, branch=branch)
+
+    return None
 
 
 class NodeQuery(Query):
@@ -153,7 +167,7 @@ class NodeListGetAttributeQuery(Query):
     name: str = "node_list_get_attribute"
     order_by: List[str] = ["a.name"]
 
-    def __init__(self, ids, fields=None, account=None, *args, **kwargs):
+    def __init__(self, ids: List[str], fields: dict = None, account=None, *args, **kwargs):
         self.account = account
         self.ids = ids
         self.fields = fields
@@ -263,6 +277,49 @@ class NodeListGetAttributeQuery(Query):
             attrs_by_node[node_id]["attrs"][attr_name] = attr
 
         return attrs_by_node
+
+
+class NodeListGetInfoQuery(Query):
+
+    name: str = "node_list_get_info"
+
+    def __init__(self, ids: List[str], account=None, *args, **kwargs):
+        self.account = account
+        self.ids = ids
+        super().__init__(*args, **kwargs)
+
+    def query_init(self):
+
+        branches = list(self.branch.get_branches_and_times_to_query().keys())
+        self.params["branches"] = branches
+
+        branch_filter, branch_params = self.branch.get_query_filter_branch_to_node(
+            at=self.at.to_string(), rel_label="rb", branch_label="br", include_outside_parentheses=True
+        )
+        self.params.update(branch_params)
+
+        query = (
+            """
+        MATCH (br:Branch) WHERE br.name IN $branches
+        WITH (br)
+        MATCH p = ((br)<-[rb:IS_PART_OF]-(n))
+        WHERE all(r IN relationships(p) WHERE ((n.uuid IN $ids) AND %s))
+        """
+            % branch_filter
+        )
+
+        self.add_to_query(query)
+
+        self.params["ids"] = self.ids
+
+        self.return_labels = ["n", "rb"]
+
+    def get_nodes(self) -> Set[object, NodeSchema]:
+        """Return all the node objects from Ne04j with the associated schema"""
+        return [
+            (result.get("n"), find_node_schema(result.get("n"), self.branch))
+            for result in self.get_results_group_by(("n", "uuid"))
+        ]
 
 
 class NodeGetListQuery(Query):
