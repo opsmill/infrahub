@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Union, TYPE_CHECKING
+
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
@@ -11,6 +13,8 @@ from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 from .query import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 """
 Type of Nodes
  - Core node, wo/ branch : Branch, MergeRequest, Comment
@@ -49,7 +53,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def __repr__(self):
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(self, schema: NodeSchema, branch=None, at=None):
+    def __init__(
+        self, schema: Union[NodeSchema, str], branch: Union[Branch, str] = None, at: Union[Timestamp, str] = None
+    ):
 
         if isinstance(schema, NodeSchema):
             self._schema = schema
@@ -59,11 +65,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         else:
             raise ValueError(f"Invalid schema provided {schema}")
 
-        self._branch = get_branch(branch) if self._schema.branch else None
-        self._at = Timestamp(at)
+        self._branch: Branch = get_branch(branch) if self._schema.branch else None
+        self._at: Timestamp = Timestamp(at)
 
-        self.id = None
-        self.db_id = None
+        self._updated_at: Timestamp = None
+        self.id: str = None
+        self.db_id: int = None
 
         self._attributes = []
         self._relationships = []
@@ -142,10 +149,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._process_fields(kwargs)
         return self
 
-    def load(self, id: str = None, db_id: int = None, **kwargs):
+    def load(self, id: str = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, **kwargs):
 
         self.id = id
         self.db_id = db_id
+
+        if updated_at:
+            self._updated_at = Timestamp(updated_at)
+
         self._process_fields(kwargs)
         return self
 
@@ -156,7 +167,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = NodeCreateQuery(node=self, at=create_at)
         query.execute()
         self.id, self.db_id = query.get_new_ids()
-        self.at = create_at
+        self._at = create_at
+        self._updated_at = create_at
 
         # Go over the list of Attribute and create them one by one
         for name in self._attributes:
@@ -246,6 +258,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for field_name in fields.keys():
 
             if field_name in ["id"] or field_name in self._schema.relationship_names:
+                continue
+
+            if field_name == "_updated_at":
+                if self._updated_at:
+                    response[field_name] = self._updated_at.to_string()
+                else:
+                    response[field_name] = None
                 continue
 
             field = getattr(self, field_name)

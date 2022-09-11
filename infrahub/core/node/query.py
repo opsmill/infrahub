@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Set, Optional, Any, Union, TYPE_CHECKING
+from typing import Dict, List, Set, Optional, Any, Union, Generator, TYPE_CHECKING
 
 from infrahub.core import registry
 
@@ -13,6 +13,20 @@ from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from . import Node
+
+
+@dataclass
+class NodeToProcess:
+
+    schema: NodeSchema
+
+    node_id: int
+    node_uuid: str
+
+    updated_at: str
+
+    branch: str
 
 
 @dataclass
@@ -54,7 +68,7 @@ def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
 
 
 class NodeQuery(Query):
-    def __init__(self, node=None, id=None, *args, **kwargs):
+    def __init__(self, node: Node = None, id=None, *args, **kwargs):
         # TODO Validate that Node is a valid node
         # Eventually extract the branch from Node as well
         self.node = node
@@ -132,7 +146,7 @@ class NodeListGetLocalAttributeValueQuery(Query):
 
     name: str = "node_list_get_local_attribute_value"
 
-    def __init__(self, ids, *args, **kwargs):
+    def __init__(self, ids: List[str], *args, **kwargs):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
@@ -314,12 +328,18 @@ class NodeListGetInfoQuery(Query):
 
         self.return_labels = ["n", "rb"]
 
-    def get_nodes(self) -> Set[object, NodeSchema]:
-        """Return all the node objects from Ne04j with the associated schema"""
-        return [
-            (result.get("n"), find_node_schema(result.get("n"), self.branch))
-            for result in self.get_results_group_by(("n", "uuid"))
-        ]
+    def get_nodes(self) -> Generator[NodeToProcess, None, None]:
+        """Return all the node objects as NodeToProcess."""
+
+        for result in self.get_results_group_by(("n", "uuid")):
+            schema = find_node_schema(result.get("n"), self.branch)
+            yield NodeToProcess(
+                schema=schema,
+                node_id=result.get("n").id,
+                node_uuid=result.get("n").get("uuid"),
+                updated_at=result.get("rb").get("from"),
+                branch=self.branch,
+            )
 
 
 class NodeGetListQuery(Query):
@@ -328,7 +348,7 @@ class NodeGetListQuery(Query):
 
     order_by: List[str] = ["id(n)"]
 
-    def __init__(self, schema: NodeSchema, filters=None, *args, **kwargs):
+    def __init__(self, schema: NodeSchema, filters: dict = None, *args, **kwargs):
 
         self.schema = schema
         self.filters = filters
@@ -404,5 +424,5 @@ class NodeGetListQuery(Query):
             self.params.update(rels_params)
             self.add_to_query("WHERE " + "\n AND ".join(rels_filter))
 
-    def get_node_ids(self):
+    def get_node_ids(self) -> List[str]:
         return [str(result.get("n").get("uuid")) for result in self.get_results()]

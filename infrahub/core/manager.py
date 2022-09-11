@@ -181,12 +181,12 @@ class NodeManager:
 
         nodes = {}
 
-        for node, node_schema in nodes_info:
+        for node in nodes_info:
 
-            node_id = node.get("uuid")
-            attrs = {"db_id": node.id, "id": node_id}
+            node_id = node.node_uuid
+            attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
-            if not node_schema:
+            if not node.schema:
                 raise Exception(f"Unable to find the Schema associated with {node_id}, {node.labels}")
 
             # --------------------------------------------------------
@@ -215,10 +215,10 @@ class NodeManager:
 
             # Identify the proper Class to use for this Node
             node_class = Node
-            if node_schema.kind in registry.node:
-                node_class = registry.node[node_schema.kind]
+            if node.schema.kind in registry.node:
+                node_class = registry.node[node.schema.kind]
 
-            item = node_class(schema=node_schema, branch=branch, at=at).load(**attrs)
+            item = node_class(schema=node.schema, branch=branch, at=at).load(**attrs)
 
             nodes[node_id] = item
 
