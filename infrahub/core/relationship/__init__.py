@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union
+from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, Iterator, Generator, TypeVar
 
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
 # RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
+SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
+
 
 class Relationship:
 
@@ -32,43 +34,32 @@ class Relationship:
         schema: RelationshipSchema,
         branch: Branch,
         at: Timestamp,
-        node: Node,
-        name: str = None,
-        id=None,
-        db_id: int = None,
-        data=None,
+        node: Node = None,
+        node_id: str = None,
         *args,
         **kwargs,
     ):
 
-        self.id = kwargs.get("id", None)
+        if not node and not node_id:
+            raise ValueError("Either node or node_id must be provided.")
 
-        self.id = id
-        self.db_id = db_id
-
-        self.name = name
         self.schema = schema
-        self.node = node
+        self.name = schema.name
+
         self.branch = branch
         self.at = at
 
-        self.data = data
+        self._node = node
+        self.node_id = node_id or node.id
 
-        self.peer_id = None
+        self.id = None
+        self.db_id = None
+        self._updated_at = None
+
         self._peer = None
+        self.peer_id = None
 
-        # Validate Data
-        # Can be a list of UUIDs or a list of dict
-        # TODO add support for default value
-        peer = None
-        if isinstance(data, dict) and "peer" in data:
-            peer = data.get("peer", None)
-        else:
-            peer = data
-
-        self.validate(peer)
-
-    def validate(self, peer: Union[Node, str]) -> bool:
+    def _process_peer(self, peer: Union[Node, str]) -> bool:
 
         if hasattr(peer, "_schema"):
             if peer.get_kind() != self.schema.peer:
@@ -86,9 +77,76 @@ class Relationship:
 
         raise ValidationError({self.name: f"Unsupported type ({type(peer)}) must be a string or a node object"})
 
+    def new(
+        self,
+        data: Union[dict, Any] = None,
+        *args,
+        **kwargs,
+    ) -> SelfRelationship:
+
+        self.data = data
+
+        # TODO need to see if we can simplify the processing of data
+        # there is some redundancy with load() right now
+        peer = None
+        if isinstance(data, dict) and "peer" in data:
+            peer = data.get("peer", None)
+        else:
+            peer = data
+
+        self._process_peer(peer)
+
+        return self
+
+    def load(
+        self, id: str = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, data: Union[dict, Any] = None
+    ) -> SelfRelationship:
+
+        self.id = id
+        self.db_id = db_id
+
+        if updated_at:
+            self._updated_at = Timestamp(updated_at)
+
+        self.data = data
+
+        peer = None
+        if isinstance(data, dict) and "peer" in data:
+            peer = data.get("peer", None)
+        else:
+            peer = data
+
+        self._process_peer(peer)
+
+        return self
+
     def get_kind(self) -> str:
         """Return the kind of the relationship."""
         return self.schema.kind
+
+    @property
+    def node(self) -> Node:
+        """Return the node of the relationship."""
+        if self._node is None:
+            self._get_node()
+
+        return self._node
+
+    def _get_node(self):
+        from infrahub.core.manager import NodeManager
+
+        self._node = NodeManager.get_one(self.node_id, branch=self.branch, at=self.at)
+
+        if not self._node and self.schema.default_filter:
+            results = NodeManager.query(
+                self.schema, filters={self.schema.default_filterr: self.node_id}, branch=self.branch, at=self.at
+            )
+
+        if not results:
+            return None
+
+        self._node = results[0]
+        self.node_id = self._node.id
 
     @property
     def peer(self) -> Node:
@@ -126,7 +184,9 @@ class Relationship:
 
         # Assuming nothing is present in the database yet
         # Create a new Relationship node and attach each object to it
-        query = RelationshipCreateQuery(source=self.node, destination=self.peer, rel=self, at=create_at).execute()
+        query = RelationshipCreateQuery(
+            source=self.node, destination=self.peer, rel=self, branch=self.branch, at=create_at
+        ).execute()
         result = query.get_result()
 
         self.db_id = result.get("rl").id
@@ -152,7 +212,7 @@ class Relationship:
             rel=self, source=self.node, destination=self.peer, branch=self.branch, at=delete_at
         ).execute()
 
-    def save(self, at: Timestamp = None):
+    def save(self, at: Timestamp = None) -> SelfRelationship:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
@@ -161,7 +221,18 @@ class Relationship:
             return self._create(at=save_at)
 
         # UPDATE NOT SUPPORTED FOR NOW
-        return True
+        return self
+
+    def to_graphql(self, fields: dict = None) -> dict:
+        """Generate GraphQL Payload for the associated Peer."""
+
+        peer_fields = {key: value for key, value in fields.items() if not key.startswith("_relation")}
+        response = self.peer.to_graphql(fields=peer_fields)
+
+        if "_relation__updated_at" in fields:
+            response["_relation__updated_at"] = self._updated_at.to_graphql()
+
+        return response
 
 
 class RelationshipManager:
@@ -171,14 +242,13 @@ class RelationshipManager:
         branch: Branch,
         at: Timestamp,
         node: Node,
-        name: str = None,
         data=None,
         *args,
         **kwargs,
     ):
 
-        self.name = name
         self.schema = schema
+        self.name = schema.name
         self.node = node
         self.branch = branch
         self.at = at
@@ -205,9 +275,7 @@ class RelationshipManager:
                 raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
 
             self.relationships.append(
-                self.rel_class(
-                    schema=self.schema, branch=self.branch, at=self.at, node=self.node, name=self.name, data=item
-                )
+                self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(data=item)
             )
 
     def get_kind(self):
@@ -239,14 +307,13 @@ class RelationshipManager:
         current_peer_ids = [rel.peer_id for rel in self.relationships]
 
         query = RelationshipGetPeerQuery(
-            source_id=self.node.id,
+            source=self.node,
             schema=self.schema,
             branch=self.branch,
             at=at or self.at,
-            rel_type=self.rel_class.rel_type,
-        )
-        query.execute()
-        peer_ids = query.get_peer_ids() or []
+            rel=self.rel_class,
+        ).execute()
+        peer_ids = query.get_peer_ids()
 
         # Calculate which peer should be added or removed
         peers_present_both = intersection(current_peer_ids, peer_ids)
@@ -270,9 +337,7 @@ class RelationshipManager:
                     branch=self.branch,
                     at=at or self.at,
                     node=self.node,
-                    name=self.name,
-                    data=peer_id,
-                )
+                ).new(data=peer_id)
             )
 
     def get(self) -> Union[Node, List[Relationship]]:
@@ -303,9 +368,7 @@ class RelationshipManager:
                 continue
 
             self.relationships.append(
-                self.rel_class(
-                    schema=self.schema, branch=self.branch, at=self.at, node=self.node, name=self.name, data=item
-                )
+                self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(data=item)
             )
 
         new_rel_ids = [rel.peer.id for rel in self.relationships]

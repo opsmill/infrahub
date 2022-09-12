@@ -47,10 +47,13 @@ class BaseAttribute:
         if data is not None and isinstance(data, dict):
             self.value = data.get("value", None)
 
-            fields_to_extract_from_data = ["id", "db_id", "updated_at"]
+            fields_to_extract_from_data = ["id", "db_id"]
             for field_name in fields_to_extract_from_data:
                 if not getattr(self, field_name):
                     setattr(self, field_name, data.get(field_name, None))
+
+            if not self.updated_at and "updated_at" in data:
+                self.updated_at = Timestamp(data.get("updated_at"))
 
         elif data is not None:
             self.value = data
@@ -218,6 +221,13 @@ class BaseAttribute:
         for field_name in fields.keys():
 
             if field_name in ["_source", "_permission"]:
+                continue
+
+            if field_name == "_updated_at":
+                if self.updated_at:
+                    response[field_name] = self.updated_at.to_graphql()
+                else:
+                    response[field_name] = None
                 continue
 
             if field_name.startswith("_"):

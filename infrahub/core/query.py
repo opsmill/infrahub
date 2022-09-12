@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from enum import Enum
-from typing import Generator, List, Optional, Union, TYPE_CHECKING
+from typing import Generator, List, Optional, Union, TypeVar, TYPE_CHECKING
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
@@ -13,6 +13,8 @@ from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+
+SelfQuery = TypeVar("SelfQuery", bound="Query")
 
 
 class QueryType(Enum):
@@ -116,8 +118,15 @@ class Query(ABC):
 
     def __init__(self, branch: Branch = None, at: Union[Timestamp, str] = None, limit: int = None, *args, **kwargs):
 
-        self.branch = branch
-        self.at = Timestamp(at)
+        if branch:
+            self.branch = branch
+
+        if not hasattr(self, "at"):
+            self.at = None
+
+        if not self.at:
+            self.at = Timestamp(at)
+
         self.limit = limit
 
         # Initialize internal variables
@@ -165,7 +174,7 @@ class Query(ABC):
 
         return query_str
 
-    def execute(self) -> Query:
+    def execute(self) -> SelfQuery:
 
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined

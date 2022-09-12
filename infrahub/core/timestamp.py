@@ -46,6 +46,9 @@ class Timestamp:
     def to_string(self):
         return self.obj.to_iso8601_string()
 
+    def to_graphql(self):
+        return self.obj
+
     def __eq__(self, other):
         return self.obj == other.obj
 

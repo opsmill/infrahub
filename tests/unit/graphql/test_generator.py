@@ -9,7 +9,7 @@ def test_generate_graphql_object(default_branch, criticality_schema):
 
     result = generate_graphql_object(criticality_schema)
     assert result._meta.name == "Criticality"
-    assert sorted(list(result._meta.fields.keys())) == ["color", "description", "id", "level", "name"]
+    assert sorted(list(result._meta.fields.keys())) == ["_updated_at", "color", "description", "id", "level", "name"]
 
 
 def test_generate_graphql_mutation_create(default_branch, criticality_schema):
