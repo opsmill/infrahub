@@ -19,6 +19,9 @@ class PeerToProcess:
 
     peer_id: str
 
+    rel_id: int
+    rel_uuid: str
+
     updated_at: str
 
     branch: str
@@ -293,7 +296,11 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         for result in self.get_results_group_by(("p", "uuid")):
 
             yield PeerToProcess(
-                peer_id=result.get("p").get("uuid"), updated_at=result.get("r1").get("from"), branch=self.branch
+                peer_id=result.get("p").get("uuid"),
+                rel_id=result.get("rl").id,
+                rel_uuid=result.get("rl").get("uuid"),
+                updated_at=result.get("r1").get("from"),
+                branch=self.branch,
             )
 
 
