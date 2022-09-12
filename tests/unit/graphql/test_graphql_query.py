@@ -238,7 +238,7 @@ async def test_query_at_specific_time(default_branch, person_tag_schema):
 
 
 @pytest.mark.asyncio
-async def test_query_updated_at(default_branch, person_tag_schema):
+async def test_query_attribute_updated_at(default_branch, person_tag_schema):
 
     p11 = Node("Person").new(firstname="John", lastname="Doe").save()
 
@@ -284,3 +284,97 @@ async def test_query_updated_at(default_branch, person_tag_schema):
     assert result2.errors is None
     assert result2.data["person"][0]["firstname"]["_updated_at"]
     assert result2.data["person"][0]["firstname"]["_updated_at"] != result2.data["person"][0]["lastname"]["_updated_at"]
+
+
+@pytest.mark.asyncio
+async def test_query_node_updated_at(default_branch, person_tag_schema):
+
+    Node("Person").new(firstname="John", lastname="Doe").save()
+
+    query = """
+    query {
+        person {
+            _updated_at
+            id
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["_updated_at"]
+
+    Node("Person").new(firstname="Jane", lastname="Doe").save()
+
+    result2 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result2.errors is None
+    assert result2.data["person"][0]["_updated_at"]
+    assert result2.data["person"][1]["_updated_at"]
+    assert result2.data["person"][1]["_updated_at"] == Timestamp(result2.data["person"][1]["_updated_at"]).to_string()
+    assert result2.data["person"][0]["_updated_at"] != result2.data["person"][1]["_updated_at"]
+
+
+@pytest.mark.asyncio
+async def test_query_relationship_updated_at(default_branch, person_tag_schema):
+
+    t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
+    t2 = Node("Tag").new(name="Red").save()
+
+    query = """
+    query {
+        person {
+            id
+            tags {
+                _updated_at
+                _relation__updated_at
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"] == []
+
+    p1 = Node("Person").new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
+
+    result2 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result2.errors is None
+    assert len(result2.data["person"][0]["tags"]) == 2
+    assert (
+        result2.data["person"][0]["tags"][0]["_updated_at"]
+        != result2.data["person"][0]["tags"][0]["_relation__updated_at"]
+    )
+    assert (
+        result2.data["person"][0]["tags"][0]["_updated_at"]
+        == Timestamp(result2.data["person"][0]["tags"][0]["_updated_at"]).to_string()
+    )
