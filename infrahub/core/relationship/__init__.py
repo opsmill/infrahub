@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union
+from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, Iterator, Generator
 
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
@@ -34,9 +34,9 @@ class Relationship:
         at: Timestamp,
         node: Node,
         name: str = None,
-        id=None,
+        id: str = None,
         db_id: int = None,
-        data=None,
+        data: Union[dict, Any] = None,
         *args,
         **kwargs,
     ):
@@ -126,7 +126,9 @@ class Relationship:
 
         # Assuming nothing is present in the database yet
         # Create a new Relationship node and attach each object to it
-        query = RelationshipCreateQuery(source=self.node, destination=self.peer, rel=self, at=create_at).execute()
+        query = RelationshipCreateQuery(
+            source=self.node, destination=self.peer, rel=self, branch=self.branch, at=create_at
+        ).execute()
         result = query.get_result()
 
         self.db_id = result.get("rl").id
@@ -162,6 +164,13 @@ class Relationship:
 
         # UPDATE NOT SUPPORTED FOR NOW
         return True
+
+    def to_graphql(self, fields: dict = None):
+        """Generate GraphQL Payload for the associated Peer
+
+        Returns:
+            (dict): Return GraphQL Payload
+        """
 
 
 class RelationshipManager:
@@ -239,14 +248,13 @@ class RelationshipManager:
         current_peer_ids = [rel.peer_id for rel in self.relationships]
 
         query = RelationshipGetPeerQuery(
-            source_id=self.node.id,
+            source=self.node,
             schema=self.schema,
             branch=self.branch,
             at=at or self.at,
-            rel_type=self.rel_class.rel_type,
-        )
-        query.execute()
-        peer_ids = query.get_peer_ids() or []
+            rel=self.rel_class,
+        ).execute()
+        peer_ids = query.get_peer_ids()
 
         # Calculate which peer should be added or removed
         peers_present_both = intersection(current_peer_ids, peer_ids)

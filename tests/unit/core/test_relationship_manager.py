@@ -7,6 +7,7 @@ from infrahub.core.relationship.query import RelationshipGetPeerQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 
+
 def test_one_init_no_input_no_rel(default_branch, person_tag_schema):
 
     person_schema = registry.get_schema("Person")
@@ -142,6 +143,7 @@ def test_many_save_input_obj(default_branch, person_tag_schema):
 
     paths = get_paths_between_nodes(t2.db_id, p1.db_id, 2)
     assert len(paths) == 2
+
 
 def test_many_update(default_branch, person_tag_schema):
 

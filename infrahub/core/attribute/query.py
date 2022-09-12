@@ -1,23 +1,40 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from infrahub.core.query import Query, QueryType
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
     from . import BaseAttribute
 
 # flake8: noqa: F723
 
 
 class AttributeQuery(Query):
-    def __init__(self, attr: BaseAttribute = None, attr_id: int = None, *args, **kwargs):
+    def __init__(
+        self,
+        attr: BaseAttribute = None,
+        attr_id: int = None,
+        at: Union[Timestamp, str] = None,
+        branch: Branch = None,
+        *args,
+        **kwargs,
+    ):
         if not attr and not attr_id:
             raise ValueError("Either attr or attr_id must be defined, none provided")
 
         self.attr = attr
         self.attr_id = attr_id or attr.db_id
+
+        if at:
+            self.at = Timestamp(at)
+        else:
+            self.at = self.attr.at
+
+        self.branch = branch or self.attr.branch
 
         super().__init__(*args, **kwargs)
 
@@ -134,72 +151,6 @@ class AttributeGetValueQuery(AttributeQuery):
             return None
 
         return result.get("r")
-
-
-# ------------------------------------------------------
-# Remote Attribute Queries
-# ------------------------------------------------------
-
-
-# class RemoteAttributeCreateQuery(AttributeCreateQuery):
-#     name = "remote_attribute_create"
-#     type: QueryType = QueryType.WRITE
-
-#     def query_add_match(self):
-
-#         query = """
-#         MATCH (n) WHERE ID(n) = $node_id
-#         MATCH (rn) WHERE ID(rn) = $remote_node_id
-#         """
-#         self.add_to_query(query)
-
-#         self.params["node_id"] = self.attr.node._internal_id
-#         self.params["remote_node_id"] = self.attr.remote_node._internal_id
-
-#     def query_add_create(self):
-
-#         query = """
-#         CREATE (a:Attribute:Attribute%s { uuid: $uuid, branch: $branch, name: $name, type: $remote_node_type })
-#         CREATE (n)-[r1:%s { branch: $branch, from: $at, to: null }]->(a)
-#         CREATE (a)-[r2:%s { branch: $branch, from: $at, to: null }]->(rn)
-#         """ % (
-#             self.attr._attr_type,
-#             self.attr._rel_to_node_label,
-#             self.attr._rel_to_value_label,
-#         )
-
-#         self.add_to_query(query)
-
-#         self.params["remote_node_type"] = self.attr.remote_node.get_type()
-
-#         self.return_labels = ["a", "r1", "r2"]
-
-
-# class RemoteAttributeCreateNewValueQuery(AttributeQuery):
-
-#     name = "remote_attribute_create_new_values"
-#     type: QueryType = QueryType.WRITE  noqa: F723
-
-#     raise_error_if_empty: bool = True
-
-#     def query_init(self):
-
-#         self.params["attr_id"] = self.attr.id
-#         self.params["branch"] = self.attr.branch.name
-#         self.params["at"] = self.at or pendulum.now(tz="UTC").to_iso8601_string()
-#         self.params["remote_node_id"] = self.attr.remote_node.id
-
-#         query = (
-#             """
-#         MATCH (a) WHERE ID(a) = $attr_id
-#         MATCH (rn) WHERE ID(rn) = $remote_node_id
-#         CREATE (a)-[r:%s { branch: $branch, from: $at, to: null }]->(rn)
-#         """
-#             % self.attr._rel_to_value_label
-#         )
-
-#         self.add_to_query(query)
-#         self.return_labels = ["a", "rn", "r"]
 
 
 # ------------------------------------------------------
