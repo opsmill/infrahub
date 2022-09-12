@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union, TYPE_CHECKING
+from typing import Union, TypeVar, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import NodeSchema
@@ -31,6 +31,8 @@ ATTRIBUTES_MAPPING = {
     "Integer": Integer,
     "Boolean": Boolean,
 }
+
+SelfNode = TypeVar("SelfNode", bound="Node")
 
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
@@ -131,7 +133,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     rel_schema.name,
                     RelationshipManager(
                         data=fields.get(rel_schema.name, None),
-                        name=rel_schema.name,
                         schema=rel_schema,
                         branch=self._branch,
                         at=self._at,
@@ -144,12 +145,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if errors:
             raise ValidationError(errors)
 
-    def new(self, **kwargs):
+    def new(self, **kwargs) -> SelfNode:
 
         self._process_fields(kwargs)
         return self
 
-    def load(self, id: str = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, **kwargs):
+    def load(self, id: str = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, **kwargs) -> SelfNode:
 
         self.id = id
         self.db_id = db_id
@@ -201,7 +202,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(self, name)
             attr.save(at=update_at)
 
-    def save(self, at: Timestamp = None):
+    def save(self, at: Timestamp = None) -> SelfNode:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
