@@ -197,7 +197,7 @@ def generate_graphql_object(schema: NodeSchema) -> InfrahubObject:
 
     main_attrs = {
         "id": graphene.String(required=True),
-        "_updated_at": graphene.String(required=False),
+        "_updated_at": graphene.DateTime(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
@@ -220,8 +220,8 @@ def generate_related_graphql_object(schema: NodeSchema) -> InfrahubObject:
 
     main_attrs = {
         "id": graphene.String(required=True),
-        "_updated_at": graphene.String(required=False),
-        "_relation__updated_at": graphene.String(required=False),
+        "_updated_at": graphene.DateTime(required=False),
+        "_relation__updated_at": graphene.DateTime(required=False),
         # "_relation__owner": graphene.String(required=False),
         # "_relation__source": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),

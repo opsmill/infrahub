@@ -230,7 +230,7 @@ class Relationship:
         response = self.peer.to_graphql(fields=peer_fields)
 
         if "_relation__updated_at" in fields:
-            response["_relation__updated_at"] = self._updated_at.to_string()
+            response["_relation__updated_at"] = self._updated_at.to_graphql()
 
         return response
 

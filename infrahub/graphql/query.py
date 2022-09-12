@@ -1,6 +1,6 @@
 import dataclasses
 
-from graphene import Boolean, Field, Int, List, ObjectType, String
+from graphene import Boolean, Field, Int, List, ObjectType, String, DateTime
 from graphene.types.objecttype import ObjectTypeOptions
 from graphene.types.generic import GenericScalar
 
@@ -121,8 +121,7 @@ class InfrahubObject(ObjectType):
 class BaseAttribute(ObjectType):
     _is_inherited = Field(Boolean)
     _is_visible = Field(Boolean)
-    _created_at = Field(String)
-    _updated_at = Field(String)
+    _updated_at = Field(DateTime)
     _permission = Field(String)
     # _source = Field("infrahub.graphql.schema.AccountType")
 

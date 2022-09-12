@@ -263,7 +263,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if field_name == "_updated_at":
                 if self._updated_at:
-                    response[field_name] = self._updated_at.to_string()
+                    response[field_name] = self._updated_at.to_graphql()
                 else:
                     response[field_name] = None
                 continue
