@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Union, TYPE_CHECKING
+from typing import Dict, List, Union, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
@@ -10,8 +10,9 @@ from infrahub.core.node.query import (
     NodeListGetInfoQuery,
     NodeListGetLocalAttributeValueQuery,
 )
+from infrahub.core.relationship import Relationship
 from infrahub.core.relationship.query import RelationshipGetPeerQuery
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -72,8 +73,8 @@ class NodeManager:
     @classmethod
     def query_peers(
         cls,
-        id,
-        schema: Union[NodeSchema, str],
+        id: str,
+        schema: RelationshipSchema,
         filters: dict,
         fields: dict = None,
         limit: int = 100,
@@ -83,24 +84,27 @@ class NodeManager:
         account=None,
         *args,
         **kwargs,
-    ) -> List[Node]:
+    ) -> List[Relationship]:
         branch = get_branch(branch)
         at = Timestamp(at)
 
         query = RelationshipGetPeerQuery(
-            source_id=id, schema=schema, filters=filters, limit=limit, branch=branch, at=at
+            source_id=id, schema=schema, filters=filters, rel=Relationship, limit=limit, branch=branch, at=at
         ).execute()
-        peer_ids = query.get_peer_ids()
+        peers_info = list(query.get_peers())
+        peer_ids = [peer.peer_id for peer in peers_info]
 
-        return (
-            list(
-                cls.get_many(
-                    ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source
-                ).values()
+        if not peers_info:
+            return []
+
+        peers = cls.get_many(ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source)
+
+        return [
+            Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
+                id=peer.rel_uuid, db_id=peer.rel_id, updated_at=peer.updated_at, data={"peer": peers[peer.peer_id]}
             )
-            if peer_ids
-            else []
-        )
+            for peer in peers_info
+        ]
 
     @classmethod
     def get_one(
@@ -142,7 +146,7 @@ class NodeManager:
         account=None,
         *args,
         **kwargs,
-    ) -> List[Node]:
+    ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
         branch = get_branch(branch)
