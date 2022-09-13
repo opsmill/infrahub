@@ -173,6 +173,9 @@ class RelationshipSchema(BaseModel):
         return query_filters, query_params, nbr_rels
 
 
+NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
+
+
 class NodeSchema(BaseModel):
     name: str
     kind: str
@@ -258,7 +261,7 @@ class NodeSchema(BaseModel):
 
     @property
     def valid_input_names(self):
-        return self.attribute_names + self.relationship_names
+        return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES
 
     @property
     def attribute_names(self):

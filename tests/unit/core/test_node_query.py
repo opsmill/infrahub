@@ -48,6 +48,30 @@ def test_query_NodeListGetAttributeQuery_all_fields(base_dataset_02, car_person_
     assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 3
 
 
+def test_query_NodeListGetAttributeQuery_with_source(default_branch, criticality_schema, first_account, second_account):
+
+    obj1 = Node(criticality_schema).new(name="low", level=4, _source=first_account).save()
+    obj2 = (
+        Node(criticality_schema)
+        .new(
+            name="medium",
+            level={"value": 3, "source": second_account.id},
+            description="My desc",
+            color="#333333",
+            _source=first_account,
+        )
+        .save()
+    )
+
+    default_branch = get_branch("main")
+
+    query = NodeListGetAttributeQuery(ids=[obj1.id, obj2.id], branch=default_branch).execute()
+    assert sorted(query.get_attributes_group_by_node().keys()) == sorted([obj1.id, obj2.id])
+    assert query.get_attributes_group_by_node()[obj1.id]["attrs"]["name"].source_uuid == first_account.id
+    assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["level"].source_uuid == second_account.id
+    assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["name"].source_uuid == first_account.id
+
+
 def test_query_NodeListGetAttributeQuery(base_dataset_02, car_person_schema):
 
     default_branch = get_branch("main")

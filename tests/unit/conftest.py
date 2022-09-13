@@ -10,6 +10,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
+from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query
 from infrahub.test_data import dataset01 as ds01
@@ -345,6 +346,25 @@ def register_core_models_schema():
 
     schema = SchemaRoot(**core_models)
     SchemaManager.register_schema_to_registry(schema)
+
+
+@pytest.fixture()
+def register_account_schema():
+
+    account_schema = [node for node in core_models["nodes"] if node["kind"] == "Account"][0]
+    registry.set_schema(account_schema["kind"], NodeSchema(**account_schema))
+
+    return True
+
+
+@pytest.fixture()
+def first_account(register_account_schema):
+    return Node("Account").new(name="First Account", type="USER").save()
+
+
+@pytest.fixture()
+def second_account(register_account_schema):
+    return Node("Account").new(name="Second Account", type="GIT").save()
 
 
 @pytest.fixture

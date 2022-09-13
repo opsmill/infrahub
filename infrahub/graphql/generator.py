@@ -94,7 +94,7 @@ async def default_resolver(*args, **kwargs):
     branch = info.context.get("infrahub_branch")
     account = info.context.get("infrahub_account", None)
 
-    # Extract the name of the field in the GQL query
+    # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
 
     # Extract the schema of the node on the other end of the relationship from the GQL Schema

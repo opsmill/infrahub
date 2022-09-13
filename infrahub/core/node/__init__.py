@@ -74,12 +74,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self.id: str = None
         self.db_id: int = None
 
+        self._source: Node = None
+        self._owner: Node = None
+        self._is_protected: bool = None
+
         self._attributes = []
         self._relationships = []
 
-    def _process_fields(self, fields):
+    def _process_fields(self, fields: dict):
 
         errors = []
+
+        if "_source" in fields.keys():
+            self._source = fields["_source"]
+
         # Validate input
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
@@ -119,6 +127,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         branch=self._branch,
                         at=self._at,
                         node=self,
+                        source=self._source,
                     ),
                 )
             except ValidationError as exc:

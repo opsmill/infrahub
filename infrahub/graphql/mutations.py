@@ -111,45 +111,31 @@ class InfrahubMutation(Mutation):
 
 
 class BaseAttributeInput(InputObjectType):
-    id = String(required=False)
     is_visible = Boolean(required=False)
-    # criticality = Field(CriticalityInput, required=False)
-
-
-class StringAttributeInput(InputObjectType):
+    is_protected = Boolean(required=False)
     source = String(required=False)
+    owner = String(required=False)
+
+
+class StringAttributeInput(BaseAttributeInput):
     value = String(required=False)
-    id = String(required=False)
 
 
-class IntAttributeInput(InputObjectType):
-    source = String(required=False)
+class IntAttributeInput(BaseAttributeInput):
     value = Int(required=False)
-    id = String(required=False)
 
 
-class BoolAttributeInput(InputObjectType):
-    source = String(required=False)
+class BoolAttributeInput(BaseAttributeInput):
     value = Boolean(required=False)
-    id = String(required=False)
 
 
-class AnyAttributeInput(InputObjectType):
-    source = String(required=False)
+class AnyAttributeInput(BaseAttributeInput):
     value = GenericScalar(required=False)
-    id = String(required=False)
-
-
-class RemoteAttributeInput(InputObjectType):
-    source = String(required=False)
-    value = String(required=False)
 
 
 # --------------------------------------------------
 # Mutations Specific to Branch
 # --------------------------------------------------
-
-
 class BranchCreateInput(InputObjectType):
     id = String(required=False)
     name = String(required=True)

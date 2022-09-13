@@ -119,47 +119,50 @@ class InfrahubObject(ObjectType):
 #
 # ------------------------------------------
 class BaseAttribute(ObjectType):
-    _is_inherited = Field(Boolean)
-    _is_visible = Field(Boolean)
-    _updated_at = Field(DateTime)
-    _permission = Field(String)
-    # _source = Field("infrahub.graphql.schema.AccountType")
+    id = Field(String)
+    is_inherited = Field(Boolean)
+    is_protected = Field(Boolean)
+    is_visible = Field(Boolean)
+    updated_at = Field(DateTime)
+    source = Field("infrahub.graphql.query.AccountType")
 
 
 class StrAttributeType(BaseAttribute):
-    id = Field(String)
     value = Field(String)
 
     class Meta:
-        description = "Local Attribute of type String"
+        description = "Attribute of type String"
         name = "StrAttribute"
 
 
 class IntAttributeType(BaseAttribute):
-    id = Field(String)
     value = Field(Int)
 
     class Meta:
-        description = "Local Attribute of type Integer"
+        description = "Attribute of type Integer"
         name = "IntAttribute"
 
 
 class BoolAttributeType(BaseAttribute):
-    id = Field(String)
     value = Field(Boolean)
 
     class Meta:
-        description = "Local Attribute of type Boolean"
+        description = "Attribute of type Boolean"
         name = "BoolAttribute"
 
 
 class AnyAttributeType(BaseAttribute):
-    id = Field(String)
     value = Field(GenericScalar)
 
     class Meta:
-        description = "Local Attribute of type GenericScalar"
+        description = "Attribute of type GenericScalar"
         name = "AnyAttribute"
+
+
+class AccountType(InfrahubObjectType):
+    id = String(required=True)
+    name = Field(StrAttributeType, required=True)
+    description = Field(StrAttributeType, required=False)
 
 
 # ------------------------------------------

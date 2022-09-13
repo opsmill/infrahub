@@ -207,15 +207,17 @@ class NodeManager:
                     value = None if value == "NULL" else value
 
                     attrs[attr_name] = dict(
-                        db_id=attr.attr_id,  # .get("a").id,
-                        id=attr.attr_uuid,  # .get("a").get("uuid"),
+                        db_id=attr.attr_id,
+                        id=attr.attr_uuid,
                         # is_inherited=attr.is_inherited,
                         name=attr_name,
                         # permission=attr.permission,
                         value=value,
                         updated_at=attr.updated_at,
-                        # source=source_accounts.get(attr.source_uuid, None),
                     )
+
+                    if attr.source_uuid:
+                        attrs[attr_name]["source"] = attr.source_uuid
 
             # Identify the proper Class to use for this Node
             node_class = Node

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import Any
+from typing import Set, List, Dict, Any, Union, TYPE_CHECKING
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
@@ -12,7 +12,13 @@ from .query import (
     AttributeGetQuery,
     AttributeGetValueQuery,
     LocalAttributeCreateNewValueQuery,
+    AttributeCreateQuery,
 )
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
+    from infrahub.core.schema import AttributeSchema
 
 
 class BaseAttribute:
@@ -22,14 +28,24 @@ class BaseAttribute:
     _rel_to_node_label: str = "HAS_ATTRIBUTE"
     _rel_to_value_label: str = "HAS_VALUE"
 
-    query_create_class: str = "LocalAttributeCreateQuery"
-    query_attr_value_class: str = "AttributeGetValueQuery"
-
-    def get_kind(self):
+    def get_kind(self) -> str:
         return self.schema.kind
 
     def __init__(
-        self, name, schema, branch, at, node, id=None, db_id=None, data=None, updated_at=None, *args, **kwargs
+        self,
+        name: str,
+        schema: AttributeSchema,
+        branch: Branch,
+        at: Timestamp,
+        node: Node,
+        id: str = None,
+        db_id: int = None,
+        data: Union[dict, str] = None,
+        updated_at: Union[Timestamp, str] = None,
+        source: Node = None,
+        source_id: str = None,
+        *args,
+        **kwargs,
     ):
 
         self.id = id
@@ -42,6 +58,16 @@ class BaseAttribute:
         self.branch = branch
         self.at = at
 
+        self._source = source
+        self.source_id = source_id
+
+        if not self.source_id and self._source:
+            self.source_id = self._source.id
+
+        self.owner: Node = None
+        self.is_visible: bool = None
+        self.is_protected: bool = None
+
         self.value = None
 
         if data is not None and isinstance(data, dict):
@@ -51,6 +77,17 @@ class BaseAttribute:
             for field_name in fields_to_extract_from_data:
                 if not getattr(self, field_name):
                     setattr(self, field_name, data.get(field_name, None))
+
+            # TODO will need to revisit that before commit
+            if "source" in data:
+                if isinstance(data["source"], str):
+                    self.source_id = data["source"]
+                    self._source = None
+                elif isinstance(data["source"], dict) and "id" in data["source"]:
+                    self.source_id = data["source"]["id"]
+                    self._source = None
+                else:
+                    raise ValidationError({self.name: f"Unable to process 'source' : '{data['source']}'"})
 
             if not self.updated_at and "updated_at" in data:
                 self.updated_at = Timestamp(data.get("updated_at"))
@@ -65,8 +102,25 @@ class BaseAttribute:
             self.value = self.schema.default_value
 
     @classmethod
-    def validate(cls, value):
+    def validate(cls, value) -> bool:
         return True if isinstance(value, cls.type) else False
+
+    @property
+    def source(self) -> Node:
+        """Return the Source of the attribute."""
+        if self._source is None:
+            self._get_source()
+
+        if self._source and not self.source_id:
+            self.source_id = self._source.id
+
+        return self._source if self._source else None
+
+    def _get_source(self):
+        from infrahub.core.manager import NodeManager
+
+        self._source = NodeManager.get_one(self.source_id, branch=self.branch, at=self.at)
+        self.source_id = self._source.id
 
     def save(self, at: Timestamp = None):
         """Create or Update the Attribute in the database."""
@@ -78,7 +132,7 @@ class BaseAttribute:
 
         return self._create(at=save_at)
 
-    def delete(self, at: Timestamp = None):
+    def delete(self, at: Timestamp = None) -> bool:
 
         delete_at = Timestamp(at)
 
@@ -98,21 +152,18 @@ class BaseAttribute:
 
         return True
 
-    def _create(self, at: Timestamp = None):
+    def _create(self, at: Timestamp = None) -> bool:
 
         create_at = Timestamp(at)
 
-        local_module = import_module("infrahub.core.attribute.query")
-        query_create_class = getattr(local_module, self.query_create_class)
-        query = query_create_class(attr=self, at=create_at)
-        query.execute()
+        query = AttributeCreateQuery(attr=self, branch=self.branch, at=create_at).execute()
 
         self.id, self.db_id = query.get_new_ids()
         self.at = create_at
 
         return True
 
-    def _update(self, at: Timestamp = None):
+    def _update(self, at: Timestamp = None) -> bool:
         """Update the attribute in the database.
 
         for now we are able to update
@@ -159,7 +210,7 @@ class BaseAttribute:
         rels_offset: int = 0,
         include_match: bool = True,
         param_prefix: str = None,
-    ):
+    ) -> Set[List[str], Dict, int]:
         """Generate Query String Snippet to filter the right node."""
 
         query_filters = []
@@ -207,27 +258,22 @@ class BaseAttribute:
 
         return query_filters, query_params, nbr_rels
 
-    def to_graphql(self, fields=None):
+    def to_graphql(self, fields: dict = None) -> dict:
         """Generate GraphQL Payload for this attribute."""
 
-        response = {"id": self.id, "_source": None, "_permission": None}
-
-        # if "_source" in fields and self.source:
-        #     response["_source"] = self.source.to_graphql(fields=fields["_source"])
-
-        # if "_permission" in fields and self.permission:
-        #     response["_permission"] = self.permission.name.lower()
+        response = {"id": self.id}
 
         for field_name in fields.keys():
 
-            if field_name in ["_source", "_permission"]:
-                continue
-
-            if field_name == "_updated_at":
+            if field_name == "updated_at":
                 if self.updated_at:
                     response[field_name] = self.updated_at.to_graphql()
                 else:
                     response[field_name] = None
+                continue
+
+            if field_name == "source":
+                response[field_name] = self.source.to_graphql(fields=fields[field_name])
                 continue
 
             if field_name.startswith("_"):

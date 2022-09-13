@@ -53,8 +53,8 @@ class AttrToProcess:
     # time_from: Optional[str]
     # time_to: Optional[str]
 
-    # source_uuid: Optional[str]
-    # source_labels: Optional[List[str]]
+    source_uuid: Optional[str]
+    source_labels: Optional[List[str]]
     is_inherited: bool = False
 
 
@@ -193,7 +193,7 @@ class NodeListGetAttributeQuery(Query):
         self.params.update(rels_params)
 
         query = """
-        MATCH (n) WHERE ID(n) IN $ids OR n.uuid IN $ids
+        MATCH (n) WHERE n.uuid IN $ids
         MATCH p = ((n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE]-(av))
         """
 
@@ -209,30 +209,30 @@ class NodeListGetAttributeQuery(Query):
 
         self.return_labels = ["n", "a", "av", "r1", "r2"]
 
-        # self.query_add_source()
+        self.query_add_source()
 
         # if self.account and self.node.use_permission:
         #     self.query_add_permission()
 
-    # def query_add_source(self):
+    def query_add_source(self):
 
-    #     rels_filter_perms, rels_params = self.branch.get_query_filter_relationships(
-    #         rel_labels=["r3"], at=self.at, include_outside_parentheses=True
-    #     )
-    #     self.params.update(rels_params)
+        rels_filter_perms, rels_params = self.branch.get_query_filter_relationships(
+            rel_labels=["r3"], at=self.at, include_outside_parentheses=True
+        )
+        self.params.update(rels_params)
 
-    #     query = """
-    #     WITH %s
-    #     OPTIONAL MATCH (a)-[r3:HAS_SOURCE]-(src)
-    #     WHERE %s
-    #     """ % (
-    #         ",".join(self.return_labels),
-    #         "\n AND ".join(rels_filter_perms),
-    #     )
+        query = """
+        WITH %s
+        OPTIONAL MATCH (a)-[r3:HAS_SOURCE]-(src)
+        WHERE %s
+        """ % (
+            ",".join(self.return_labels),
+            "\n AND ".join(rels_filter_perms),
+        )
 
-    #     self.add_to_query(query)
+        self.add_to_query(query)
 
-    #     self.return_labels.extend(["src", "r3"])
+        self.return_labels.extend(["src", "r3"])
 
     # def query_add_permission(self):
 
@@ -278,11 +278,13 @@ class NodeListGetAttributeQuery(Query):
                 # permission=result.permission_score,
                 branch=self.branch.name,
                 is_inherited=False,
+                source_uuid=None,
+                source_labels=None,
             )
-            # source = result.get("src")
-            # if source:
-            #     attr.source_uuid = source.get("uuid")
-            #     attr.source_labels = source.labels
+            source = result.get("src")
+            if source:
+                attr.source_uuid = source.get("uuid")
+                attr.source_labels = source.labels
 
             if node_id not in attrs_by_node:
                 attrs_by_node[node_id]["node"] = result.get("n")

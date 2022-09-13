@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Set
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
@@ -43,6 +43,9 @@ class AttributeCreateQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
+    name = "attribute_create"
+    type: QueryType = QueryType.WRITE
+
     def query_init(self):
 
         self.query_add_match()
@@ -50,44 +53,69 @@ class AttributeCreateQuery(AttributeQuery):
         # if self.attr.node.use_permission:
         #     self.query_add_match_permission()
 
-        # if self.attr.source:
-        #     self.query_add_match_source()
+        if self.attr.source_id:
+            self.query_add_match_source()
 
         self.query_add_create()
 
         # if self.attr.node.use_permission:
         #     self.query_add_create_permission()
 
-        # if self.attr.source:
-        #     self.query_add_create_source()
+        if self.attr.source_id:
+            self.query_add_create_source()
 
-        at = self.at or self.attr.at
-        self.params["at"] = at.to_string()
-
+        self.params["at"] = self.at.to_string()
         self.params["uuid"] = str(uuid.uuid4())
         self.params["name"] = self.attr.name
-        self.params["branch"] = self.attr.branch.name
+        self.params["branch"] = self.branch.name
 
-    def get_new_ids(self):
+    def query_add_match(self):
+        query = """
+        MATCH (n { uuid: $node_id})
+        """
+
+        self.params["node_id"] = self.attr.node.id
+
+        self.add_to_query(query)
+
+    def query_add_create(self):
+
+        query = """
+        CREATE (a:Attribute:AttributeLocal { uuid: $uuid, name: $name, type: $attribute_type })
+        CREATE (n)-[r1:%s { branch: $branch, status: "active", from: $at, to: null }]->(a)
+        MERGE (av:AttributeValue { type: $attribute_type, value: $value })
+        CREATE (a)-[r2:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
+        """ % (
+            self.attr._rel_to_node_label,
+            self.attr._rel_to_value_label,
+        )
+        self.add_to_query(query)
+
+        self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
+        self.params["attribute_type"] = self.attr.get_kind()
+
+        self.return_labels = ["a", "av", "r1", "r2"]
+
+    def get_new_ids(self) -> Set[str, int]:
 
         result = self.get_result()
         attr = result.get("a")
 
         return attr.get("uuid"), attr.id
 
-    # def query_add_match_source(self):
+    def query_add_match_source(self):
 
-    #     self.add_to_query("MATCH (src) WHERE ID(src) = $source_id")
+        self.add_to_query("MATCH (src { uuid: $source_id })")
 
-    #     self.params["source_id"] = self.attr.source.id
+        self.params["source_id"] = self.attr.source_id
 
-    # def query_add_create_source(self):
+    def query_add_create_source(self):
 
-    #     query = """
-    #     CREATE (a)-[r4:HAS_SOURCE { branch: $branch, from: $at, to: null }]->(src)
-    #     """
+        query = """
+        CREATE (a)-[:HAS_SOURCE { branch: $branch, status: "active", from: $at, to: null }]->(src)
+        """
 
-    #     self.add_to_query(query)
+        self.add_to_query(query)
 
     # def query_add_match_permission(self):
 
@@ -156,39 +184,6 @@ class AttributeGetValueQuery(AttributeQuery):
 # ------------------------------------------------------
 # Local Attribute Queries
 # ------------------------------------------------------
-
-
-class LocalAttributeCreateQuery(AttributeCreateQuery):
-
-    name = "local_attribute_create"
-    type: QueryType = QueryType.WRITE
-
-    def query_add_match(self):
-        query = """
-        MATCH (n) WHERE ID(n) = $node_id
-        """
-
-        self.params["node_id"] = self.attr.node.db_id
-
-        self.add_to_query(query)
-
-    def query_add_create(self):
-
-        query = """
-        CREATE (a:Attribute:AttributeLocal { uuid: $uuid, name: $name, type: $attribute_type })
-        CREATE (n)-[r1:%s { branch: $branch, status: "active", from: $at, to: null }]->(a)
-        MERGE (av:AttributeValue { type: $attribute_type, value: $value })
-        CREATE (a)-[r2:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
-        """ % (
-            self.attr._rel_to_node_label,
-            self.attr._rel_to_value_label,
-        )
-        self.add_to_query(query)
-
-        self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
-        self.params["attribute_type"] = self.attr.get_kind()
-
-        self.return_labels = ["a", "av", "r1", "r2"]
 
 
 # class LocalAttributeGetAllValuesQuery(AttributeQuery):
