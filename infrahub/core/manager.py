@@ -209,12 +209,16 @@ class NodeManager:
                     attrs[attr_name] = dict(
                         db_id=attr.attr_id,
                         id=attr.attr_uuid,
-                        # is_inherited=attr.is_inherited,
                         name=attr_name,
-                        # permission=attr.permission,
                         value=value,
                         updated_at=attr.updated_at,
                     )
+
+                    if attr.is_protected is not None:
+                        attrs[attr_name]["is_protected"] = attr.is_protected
+
+                    if attr.is_visible is not None:
+                        attrs[attr_name]["is_visible"] = attr.is_visible
 
                     if attr.source_uuid:
                         attrs[attr_name]["source"] = attr.source_uuid

@@ -411,3 +411,40 @@ async def test_query_attribute_source(default_branch, register_core_models_schem
     assert result1.errors is None
     assert result1.data["person"][0]["firstname"]["source"]
     assert result1.data["person"][0]["firstname"]["source"]["name"]["value"] == first_account.name.value
+
+
+@pytest.mark.asyncio
+async def test_query_attribute_source(default_branch, register_core_models_schema, person_tag_schema, first_account):
+
+    Node("Person").new(
+        firstname={"value": "John", "is_protected": True},
+        lastname={"value": "Doe", "is_visible": False},
+        _source=first_account,
+    ).save()
+
+    query = """
+    query {
+        person {
+            id
+            firstname {
+                value
+                is_protected
+            }
+            lastname {
+                value
+                is_visible
+            }
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["firstname"]["is_protected"] == True
+    assert result1.data["person"][0]["lastname"]["is_visible"] == False

@@ -74,6 +74,34 @@ def test_get_one_local_attribute_with_source(default_branch, criticality_schema,
     assert obj.color.source_id == first_account.id
 
 
+def test_get_one_local_attribute_with_flags(default_branch, criticality_schema, first_account, second_account):
+
+    obj1 = (
+        Node(criticality_schema)
+        .new(name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False})
+        .save()
+    )
+
+    obj = NodeManager.get_one(obj1.id, fields={"name": True, "level": True, "color": True})
+
+    assert obj.id == obj1.id
+    assert obj.db_id == obj1.db_id
+    assert obj.name.value == "low"
+    assert obj.name.id
+    assert obj.name.is_visible == True
+    assert obj.name.is_protected == True
+
+    assert obj.level.value == 4
+    assert obj.level.id
+    assert obj.level.is_visible == False
+    assert obj.level.is_protected == False
+
+    assert obj.color.value == "#444444"
+    assert obj.color.id
+    assert obj.color.is_visible == True
+    assert obj.color.is_protected == False
+
+
 def test_get_one_relationship(default_branch, car_person_schema):
 
     car = registry.get_schema("Car")

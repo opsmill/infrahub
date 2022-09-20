@@ -46,8 +46,8 @@ class BaseAttribute:
         source_id: str = None,
         owner: Node = None,
         owner_id: str = None,
-        is_visible: bool = True,
-        is_protected: bool = False,
+        is_visible: bool = None,
+        is_protected: bool = None,
         *args,
         **kwargs,
     ):
@@ -83,7 +83,7 @@ class BaseAttribute:
         if data is not None and isinstance(data, dict):
             self.value = data.get("value", None)
 
-            fields_to_extract_from_data = ["id", "db_id"]
+            fields_to_extract_from_data = ["id", "db_id", "is_visible", "is_protected"]
             for field_name in fields_to_extract_from_data:
                 if not getattr(self, field_name):
                     setattr(self, field_name, data.get(field_name, None))
@@ -123,6 +123,12 @@ class BaseAttribute:
         if self.value is None and self.schema.default_value is not None:
             self.value = self.schema.default_value
 
+        if self.is_protected is None:
+            self.is_protected = False
+
+        if self.is_visible is None:
+            self.is_visible = True
+
     @classmethod
     def validate(cls, value) -> bool:
         return True if isinstance(value, cls.type) else False
@@ -143,7 +149,6 @@ class BaseAttribute:
 
         self._source = NodeManager.get_one(self.source_id, branch=self.branch, at=self.at)
         self.source_id = self._source.id
-
 
     @property
     def owner(self) -> Node:

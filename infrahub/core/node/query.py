@@ -55,7 +55,9 @@ class AttrToProcess:
 
     source_uuid: Optional[str]
     source_labels: Optional[List[str]]
-    is_inherited: bool = False
+    is_inherited: Optional[bool]
+    is_protected: Optional[bool]
+    is_visible: Optional[bool]
 
 
 def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
@@ -189,6 +191,8 @@ class NodeListGetAttributeQuery(Query):
 
     def query_init(self):
 
+        self.params["ids"] = self.ids
+
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(rels_params)
 
@@ -205,34 +209,23 @@ class NodeListGetAttributeQuery(Query):
 
         self.add_to_query(query)
 
-        self.params["ids"] = self.ids
-
         self.return_labels = ["n", "a", "av", "r1", "r2"]
 
-        self.query_add_source()
-
-        # if self.account and self.node.use_permission:
-        #     self.query_add_permission()
-
-    def query_add_source(self):
-
-        rels_filter_perms, rels_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r3"], at=self.at, include_outside_parentheses=True
-        )
-        self.params.update(rels_params)
-
-        query = """
-        WITH %s
+        # Add Source, Is_Protected and Is_visible
+        # NOTE We should be able to remove the OPTIONAL for IS_VISIBLE and IS_PROTECTED
+        # but this will require to update all the test dataset.
+        query = (
+            """
+        OPTIONAL MATCH (a)-[r4:IS_VISIBLE]-(isv:Boolean)
+        OPTIONAL MATCH (a)-[r5:IS_PROTECTED]-(isp:Boolean)
         OPTIONAL MATCH (a)-[r3:HAS_SOURCE]-(src)
-        WHERE %s
-        """ % (
-            ",".join(self.return_labels),
-            "\n AND ".join(rels_filter_perms),
+        WHERE all(r IN [r3, r4, r5] WHERE ( %s ))
+        """
+            % rels_filter
         )
 
         self.add_to_query(query)
-
-        self.return_labels.extend(["src", "r3"])
+        self.return_labels.extend(["src", "isv", "isp", "r3", "r4", "r5"])
 
     # def query_add_permission(self):
 
@@ -277,7 +270,9 @@ class NodeListGetAttributeQuery(Query):
                 value=result.get("av").get("value"),
                 # permission=result.permission_score,
                 branch=self.branch.name,
-                is_inherited=False,
+                is_inherited=None,
+                is_protected=None,
+                is_visible=None,
                 source_uuid=None,
                 source_labels=None,
             )
@@ -285,6 +280,12 @@ class NodeListGetAttributeQuery(Query):
             if source:
                 attr.source_uuid = source.get("uuid")
                 attr.source_labels = source.labels
+
+            if result.get("isp"):
+                attr.is_protected = result.get("isp").get("value")
+
+            if result.get("isv"):
+                attr.is_visible = result.get("isv").get("value")
 
             if node_id not in attrs_by_node:
                 attrs_by_node[node_id]["node"] = result.get("n")
