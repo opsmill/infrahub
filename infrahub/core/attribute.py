@@ -237,7 +237,7 @@ class BaseAttribute:
         ).execute()
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
-        if current_attr.get("a").get("value") != self.value:
+        if current_attr.get("av").get("value") != self.value:
             # Create the new AttributeValue and update the existing relationship
             query_create = AttributeCreateNewValueQuery(attr=self, at=update_at).execute()
 
