@@ -9,7 +9,7 @@ import pendulum
 from pydantic import validator
 
 import infrahub.config as config
-from infrahub.core.attribute.query import AttributeGetValueQuery
+from infrahub.core.query.attribute import AttributeGetValueQuery
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType

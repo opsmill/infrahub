@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from importlib import import_module
 from typing import Set, List, Dict, Any, Union, TYPE_CHECKING
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import ValidationError
 
-from .query import (
+from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.query.attribute import (
     AttributeDeleteQuery,
     AttributeGetQuery,
     AttributeGetValueQuery,
-    LocalAttributeCreateNewValueQuery,
+    AttributeCreateNewValueQuery,
     AttributeCreateQuery,
+    AttributeUpdateFlagsQuery,
 )
 
 if TYPE_CHECKING:
@@ -230,19 +231,33 @@ class BaseAttribute:
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(self.value)
 
-        query = AttributeGetValueQuery(attr=self).execute()
+        # query = AttributeGetValueQuery(attr=self).execute()
+        query = NodeListGetAttributeQuery(
+            ids=[self.node.id], fields={self.name: True}, branch=self.branch, at=update_at
+        ).execute()
+        current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
-        if query.get_value() == self.value:
-            return False
+        if current_attr.get("a").get("value") != self.value:
+            # Create the new AttributeValue and update the existing relationship
+            query_create = AttributeCreateNewValueQuery(attr=self, at=update_at).execute()
 
-        # Create the new AttributeValue and update the existing relationship
-        query_create = LocalAttributeCreateNewValueQuery(attr=self, at=update_at)
-        query_create.execute()
+            # TODO check that everything went well
+            rel = current_attr.get("r2")
+            if rel.get("branch") == self.branch.name:
+                update_relationships_to([rel.id], to=update_at)
 
-        # TODO check that everything went well
-        rel = query.get_relationship()
-        if rel.get("branch") == self.branch.name:
-            update_relationships_to([rel.id], to=update_at)
+        SUPPORTED_FLAGS = (
+            ("is_visible", "isv", "r4"),
+            ("is_protected", "isp", "r5"),
+        )
+
+        for flag_name, node_name, rel_name in SUPPORTED_FLAGS:
+            if current_attr.get(node_name).get("value") != getattr(self, flag_name):
+                query_create = AttributeUpdateFlagsQuery(attr=self, at=update_at, flag_name=flag_name).execute()
+
+                rel = current_attr.get(rel_name)
+                if rel.get("branch") == self.branch.name:
+                    update_relationships_to([rel.id], to=update_at)
 
         return True
 

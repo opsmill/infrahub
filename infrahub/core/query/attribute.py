@@ -187,33 +187,9 @@ class AttributeGetValueQuery(AttributeQuery):
         return result.get("r")
 
 
-# ------------------------------------------------------
-# Local Attribute Queries
-# ------------------------------------------------------
+class AttributeCreateNewValueQuery(AttributeQuery):
 
-
-# class LocalAttributeGetAllValuesQuery(AttributeQuery):
-
-#     name = "local_attribute_get_all_values"
-#     type: QueryType = QueryType.READ
-
-#     def query_init(self):
-
-#         self.params["attr_id"] = self.attr.id
-
-#         query = """
-#         MATCH (a) WHERE ID(a) = $attr_id
-#         MATCH (a)-[r:HAS_VALUE]-(av)
-#         """
-
-#         self.add_to_query(query)
-
-#         self.return_labels = ["a", "av", "r"]
-
-
-class LocalAttributeCreateNewValueQuery(AttributeQuery):
-
-    name = "local_attribute_create_new_values"
+    name = "attribute_create_new_value"
     type: QueryType = QueryType.WRITE
 
     raise_error_if_empty: bool = True
@@ -239,6 +215,51 @@ class LocalAttributeCreateNewValueQuery(AttributeQuery):
 
         self.add_to_query(query)
         self.return_labels = ["a", "av", "r"]
+
+
+class AttributeUpdateFlagsQuery(AttributeQuery):
+
+    name = "attribute_update_flag"
+    type: QueryType = QueryType.WRITE
+
+    raise_error_if_empty: bool = True
+
+    def __init__(
+        self,
+        flag_name: str,
+        *args,
+        **kwargs,
+    ):
+        SUPPORTED_FLAGS = ["is_visible", "is_protected"]
+
+        if flag_name not in SUPPORTED_FLAGS:
+            raise ValueError(f"Only {SUPPORTED_FLAGS} are supported for now.")
+
+        self.flag_name = flag_name
+
+        super().__init__(*args, **kwargs)
+
+    def query_init(self):
+
+        at = self.at or self.attr.at
+
+        self.params["attr_id"] = self.attr_id
+        self.params["branch"] = self.attr.branch.name
+        self.params["at"] = at.to_string()
+        self.params["flag_value"] = getattr(self.attr, self.flag_name)
+        self.params["flag_type"] = self.attr.get_kind()
+
+        query = (
+            """
+        MATCH (a) WHERE ID(a) = $attr_id
+        MERGE (flag:Boolean { value: $flag_value })
+        CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
+        """
+            % self.flag_name.upper()
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["a", "flag", "r"]
 
 
 class AttributeDeleteQuery(AttributeQuery):

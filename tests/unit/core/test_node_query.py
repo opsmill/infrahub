@@ -1,8 +1,7 @@
-from infrahub.core import branch, get_branch
+from infrahub.core import get_branch
 from infrahub.core.node import Node
-from infrahub.core.node.query import NodeListGetLocalAttributeValueQuery, NodeListGetAttributeQuery
+from infrahub.core.query.node import NodeListGetLocalAttributeValueQuery, NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
-from tests.unit.conftest import default_branch
 
 
 def test_query_NodeListGetLocalAttributeValueQuery(default_branch, car_person_schema):

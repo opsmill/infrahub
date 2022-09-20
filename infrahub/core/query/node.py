@@ -6,12 +6,11 @@ from dataclasses import dataclass
 from typing import Dict, List, Set, Optional, Any, Union, Generator, TYPE_CHECKING
 
 from infrahub.core import registry
-
-from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import NodeSchema
+from infrahub.core.query import Query, QueryType, QueryResult
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import NodeSchema
     from infrahub.core.branch import Branch
     from . import Node
 
@@ -294,6 +293,14 @@ class NodeListGetAttributeQuery(Query):
             attrs_by_node[node_id]["attrs"][attr_name] = attr
 
         return attrs_by_node
+
+    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> QueryResult:
+
+        for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
+            if result.get("n").get("uuid") == node_id and result.get("a").get("name") == attr_name:
+                return result
+
+        return None
 
 
 class NodeListGetInfoQuery(Query):

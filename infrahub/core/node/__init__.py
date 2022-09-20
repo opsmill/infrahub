@@ -11,7 +11,7 @@ from ..attribute import Any, BaseAttribute, Boolean, Integer, String
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
-from .query import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
+from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -292,13 +292,28 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         changed = False
 
+        STANDARD_FIELDS = ["value", "is_protected", "is_visible"]
+        NODE_FIELDS = ["source", "owner"]
+
         for key, value in data.items():
-            # For now, we only extract the value of the local attributes.
-            if key in self._attributes and isinstance(value, dict) and "value" in value:
-                attr = getattr(self, key)
-                if attr.value != value.get("value"):
-                    attr.value = value.get("value")
-                    changed = True
+            if key in self._attributes and isinstance(value, dict):
+                for field_name in value.keys():
+                    if field_name in STANDARD_FIELDS:
+                        attr = getattr(self, key)
+                        if getattr(attr, field_name) != value.get(field_name):
+                            setattr(attr, field_name, value.get(field_name))
+                            changed = True
+
+                    if field_name in NODE_FIELDS:
+                        attr = getattr(self, key)
+
+                        # For Node field we update the <node>_id and we reset the node itsel "_<node>"
+                        # NOTE At some point, it might be good to have a function update_node directly on the attribute
+                        # Class to move this logic at the right place.
+                        if getattr(attr, f"{field_name}_id") != value.get(field_name):
+                            setattr(attr, f"{field_name}_id", value.get(field_name))
+                            setattr(attr, f"_{field_name}", None)
+                            changed = True
 
             if key in self._relationships:
                 rel = getattr(self, key)

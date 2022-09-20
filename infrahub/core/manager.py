@@ -4,14 +4,14 @@ from typing import Dict, List, Union, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
-from infrahub.core.node.query import (
+from infrahub.core.relationship import Relationship
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
+from infrahub.core.query.node import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetLocalAttributeValueQuery,
 )
-from infrahub.core.relationship import Relationship
-from infrahub.core.relationship.query import RelationshipGetPeerQuery
 from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 

@@ -8,7 +8,7 @@ from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.utils import intersection
 
-from .query import (
+from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
     RelationshipDeleteQuery,
     RelationshipGetPeerQuery,
