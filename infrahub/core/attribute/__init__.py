@@ -44,6 +44,10 @@ class BaseAttribute:
         updated_at: Union[Timestamp, str] = None,
         source: Node = None,
         source_id: str = None,
+        owner: Node = None,
+        owner_id: str = None,
+        is_visible: bool = True,
+        is_protected: bool = False,
         *args,
         **kwargs,
     ):
@@ -58,15 +62,21 @@ class BaseAttribute:
         self.branch = branch
         self.at = at
 
+        self.is_visible = is_visible
+        self.is_protected = is_protected
+
+        # Source and Owner
         self._source = source
         self.source_id = source_id
 
         if not self.source_id and self._source:
             self.source_id = self._source.id
 
-        self.owner: Node = None
-        self.is_visible: bool = None
-        self.is_protected: bool = None
+        self._owner = owner
+        self.owner_id = owner_id
+
+        if not self.owner_id and self._owner:
+            self.owner_id = self._owner.id
 
         self.value = None
 
@@ -88,6 +98,18 @@ class BaseAttribute:
                     self._source = None
                 else:
                     raise ValidationError({self.name: f"Unable to process 'source' : '{data['source']}'"})
+
+            # TODO will need to revisit that too before commit
+            #  .. or at least remove the code duplicate with the previous section
+            if "owner" in data:
+                if isinstance(data["owner"], str):
+                    self.owner_id = data["owner"]
+                    self._owner = None
+                elif isinstance(data["owner"], dict) and "id" in data["owner"]:
+                    self.owner_id = data["owner"]["id"]
+                    self._owner = None
+                else:
+                    raise ValidationError({self.name: f"Unable to process 'owner' : '{data['owner']}'"})
 
             if not self.updated_at and "updated_at" in data:
                 self.updated_at = Timestamp(data.get("updated_at"))
@@ -121,6 +143,24 @@ class BaseAttribute:
 
         self._source = NodeManager.get_one(self.source_id, branch=self.branch, at=self.at)
         self.source_id = self._source.id
+
+
+    @property
+    def owner(self) -> Node:
+        """Return the Owner of the attribute."""
+        if self._owner is None:
+            self._get_owner()
+
+        if self._owner and not self.owner_id:
+            self.owner_id = self._owner.id
+
+        return self._owner if self._owner else None
+
+    def _get_owner(self):
+        from infrahub.core.manager import NodeManager
+
+        self._owner = NodeManager.get_one(self.owner_id, branch=self.branch, at=self.at)
+        self.owner_id = self._owner.id
 
     def save(self, at: Timestamp = None):
         """Create or Update the Attribute in the database."""
@@ -272,8 +312,8 @@ class BaseAttribute:
                     response[field_name] = None
                 continue
 
-            if field_name == "source":
-                response[field_name] = self.source.to_graphql(fields=fields[field_name])
+            if field_name in ["source", "owner"]:
+                response[field_name] = getattr(self, field_name).to_graphql(fields=fields[field_name])
                 continue
 
             if field_name.startswith("_"):

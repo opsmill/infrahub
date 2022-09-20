@@ -85,6 +85,10 @@ class AttributeCreateQuery(AttributeQuery):
         CREATE (n)-[r1:%s { branch: $branch, status: "active", from: $at, to: null }]->(a)
         MERGE (av:AttributeValue { type: $attribute_type, value: $value })
         CREATE (a)-[r2:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
+        MERGE (ip:Boolean { value: $is_protected })
+        MERGE (iv:Boolean { value: $is_visible })
+        CREATE (a)-[:IS_PROTECTED { branch: $branch, status: "active", from: $at, to: null }]->(ip)
+        CREATE (a)-[:IS_VISIBLE { branch: $branch, status: "active", from: $at, to: null }]->(iv)
         """ % (
             self.attr._rel_to_node_label,
             self.attr._rel_to_value_label,
@@ -92,6 +96,8 @@ class AttributeCreateQuery(AttributeQuery):
         self.add_to_query(query)
 
         self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
+        self.params["is_protected"] = self.attr.is_protected
+        self.params["is_visible"] = self.attr.is_visible
         self.params["attribute_type"] = self.attr.get_kind()
 
         self.return_labels = ["a", "av", "r1", "r2"]
