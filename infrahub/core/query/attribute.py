@@ -187,9 +187,9 @@ class AttributeGetValueQuery(AttributeQuery):
         return result.get("r")
 
 
-class AttributeCreateNewValueQuery(AttributeQuery):
+class AttributeUpdateValueQuery(AttributeQuery):
 
-    name = "attribute_create_new_value"
+    name = "attribute_update_value"
     type: QueryType = QueryType.WRITE
 
     raise_error_if_empty: bool = True
@@ -217,7 +217,7 @@ class AttributeCreateNewValueQuery(AttributeQuery):
         self.return_labels = ["a", "av", "r"]
 
 
-class AttributeUpdateFlagsQuery(AttributeQuery):
+class AttributeUpdateFlagQuery(AttributeQuery):
 
     name = "attribute_update_flag"
     type: QueryType = QueryType.WRITE
@@ -253,7 +253,7 @@ class AttributeUpdateFlagsQuery(AttributeQuery):
             """
         MATCH (a) WHERE ID(a) = $attr_id
         MERGE (flag:Boolean { value: $flag_value })
-        CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
+        CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(flag)
         """
             % self.flag_name.upper()
         )

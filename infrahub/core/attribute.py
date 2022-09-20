@@ -11,9 +11,9 @@ from infrahub.core.query.attribute import (
     AttributeDeleteQuery,
     AttributeGetQuery,
     AttributeGetValueQuery,
-    AttributeCreateNewValueQuery,
+    AttributeUpdateValueQuery,
     AttributeCreateQuery,
-    AttributeUpdateFlagsQuery,
+    AttributeUpdateFlagQuery,
 )
 
 if TYPE_CHECKING:
@@ -212,14 +212,6 @@ class BaseAttribute:
     def _update(self, at: Timestamp = None) -> bool:
         """Update the attribute in the database.
 
-        for now we are able to update
-        - Value
-
-        Items to consider in the future
-        - Owner
-        - Visiblity
-        - Criticality
-
         Get the current value
          - If the value is the same, do nothing
          - If the value is inherited and is different, raise error (for now just ignore)
@@ -228,10 +220,10 @@ class BaseAttribute:
         """
 
         update_at = Timestamp(at)
+
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(self.value)
 
-        # query = AttributeGetValueQuery(attr=self).execute()
         query = NodeListGetAttributeQuery(
             ids=[self.node.id], fields={self.name: True}, branch=self.branch, at=update_at
         ).execute()
@@ -239,7 +231,7 @@ class BaseAttribute:
 
         if current_attr.get("av").get("value") != self.value:
             # Create the new AttributeValue and update the existing relationship
-            query_create = AttributeCreateNewValueQuery(attr=self, at=update_at).execute()
+            query_create = AttributeUpdateValueQuery(attr=self, at=update_at).execute()
 
             # TODO check that everything went well
             rel = current_attr.get("r2")
@@ -253,7 +245,7 @@ class BaseAttribute:
 
         for flag_name, node_name, rel_name in SUPPORTED_FLAGS:
             if current_attr.get(node_name).get("value") != getattr(self, flag_name):
-                query_create = AttributeUpdateFlagsQuery(attr=self, at=update_at, flag_name=flag_name).execute()
+                query_create = AttributeUpdateFlagQuery(attr=self, at=update_at, flag_name=flag_name).execute()
 
                 rel = current_attr.get(rel_name)
                 if rel.get("branch") == self.branch.name:
