@@ -114,6 +114,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         account=None,
         *args,
         **kwargs,
@@ -125,6 +126,7 @@ class NodeManager:
             at=at,
             branch=branch,
             include_source=include_source,
+            include_owner=include_owner,
             account=account,
             *args,
             **kwargs,
@@ -143,6 +145,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         account=None,
         *args,
         **kwargs,
@@ -157,7 +160,15 @@ class NodeManager:
         nodes_info = query.get_nodes()
 
         # Query list of all Attributes
-        query = NodeListGetAttributeQuery(ids=ids, fields=fields, branch=branch, account=account, at=at).execute()
+        query = NodeListGetAttributeQuery(
+            ids=ids,
+            fields=fields,
+            branch=branch,
+            include_source=include_source,
+            include_owner=include_owner,
+            account=account,
+            at=at,
+        ).execute()
         node_attributes = query.get_attributes_group_by_node()
 
         # -----------------------------------------------

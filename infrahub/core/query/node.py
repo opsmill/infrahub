@@ -182,10 +182,22 @@ class NodeListGetAttributeQuery(Query):
     name: str = "node_list_get_attribute"
     order_by: List[str] = ["a.name"]
 
-    def __init__(self, ids: List[str], fields: dict = None, account=None, *args, **kwargs):
+    def __init__(
+        self,
+        ids: List[str],
+        fields: dict = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        account=None,
+        *args,
+        **kwargs,
+    ):
         self.account = account
         self.ids = ids
         self.fields = fields
+        self.include_source = include_source
+        self.include_owner = include_owner
+
         super().__init__(*args, **kwargs)
 
     def query_init(self):
@@ -210,21 +222,29 @@ class NodeListGetAttributeQuery(Query):
 
         self.return_labels = ["n", "a", "av", "r1", "r2"]
 
-        # Add Source, Is_Protected and Is_visible
-        # NOTE We should be able to remove the OPTIONAL for IS_VISIBLE and IS_PROTECTED
-        # but this will require to update all the test dataset.
+        # Add Is_Protected and Is_visible
         query = (
             """
-        OPTIONAL MATCH (a)-[r4:IS_VISIBLE]-(isv:Boolean)
-        OPTIONAL MATCH (a)-[r5:IS_PROTECTED]-(isp:Boolean)
-        OPTIONAL MATCH (a)-[r3:HAS_SOURCE]-(src)
-        WHERE all(r IN [r3, r4, r5] WHERE ( %s ))
+        MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
+        MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
+        WHERE all(r IN [rel_isv, rel_isp] WHERE ( %s))
         """
             % rels_filter
         )
-
         self.add_to_query(query)
-        self.return_labels.extend(["src", "isv", "isp", "r3", "r4", "r5"])
+
+        self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
+
+        if self.include_source:
+            query = (
+                """
+            OPTIONAL MATCH (a)-[r3:HAS_SOURCE]-(src)
+            WHERE all(r IN [r3] WHERE ( %s))
+            """
+                % rels_filter
+            )
+            self.add_to_query(query)
+            self.return_labels.extend(["src", "r3"])
 
     # def query_add_permission(self):
 
@@ -270,21 +290,15 @@ class NodeListGetAttributeQuery(Query):
                 # permission=result.permission_score,
                 branch=self.branch.name,
                 is_inherited=None,
-                is_protected=None,
-                is_visible=None,
+                is_protected=result.get("isp").get("value"),
+                is_visible=result.get("isv").get("value"),
                 source_uuid=None,
                 source_labels=None,
             )
-            source = result.get("src")
-            if source:
-                attr.source_uuid = source.get("uuid")
-                attr.source_labels = source.labels
 
-            if result.get("isp"):
-                attr.is_protected = result.get("isp").get("value")
-
-            if result.get("isv"):
-                attr.is_visible = result.get("isv").get("value")
+            if self.include_source and result.get("src"):
+                attr.source_uuid = result.get("src").get("uuid")
+                attr.source_labels = result.get("src").labels
 
             if node_id not in attrs_by_node:
                 attrs_by_node[node_id]["node"] = result.get("n")

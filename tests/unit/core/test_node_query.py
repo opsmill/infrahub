@@ -64,7 +64,7 @@ def test_query_NodeListGetAttributeQuery_with_source(default_branch, criticality
 
     default_branch = get_branch("main")
 
-    query = NodeListGetAttributeQuery(ids=[obj1.id, obj2.id], branch=default_branch).execute()
+    query = NodeListGetAttributeQuery(ids=[obj1.id, obj2.id], branch=default_branch, include_source=True).execute()
     assert sorted(query.get_attributes_group_by_node().keys()) == sorted([obj1.id, obj2.id])
     assert query.get_attributes_group_by_node()[obj1.id]["attrs"]["name"].source_uuid == first_account.id
     assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["level"].source_uuid == second_account.id

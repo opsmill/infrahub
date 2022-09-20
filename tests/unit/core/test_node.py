@@ -290,6 +290,21 @@ def test_node_update_local_attrs(default_branch, criticality_schema):
     assert obj3.level.value == 1
 
 
+def test_node_update_local_attrs_with_flags(default_branch, criticality_schema):
+
+    fields_to_query = {"name": True, "level": True}
+    obj1 = Node(criticality_schema).new(name="low", level=4).save()
+
+    obj2 = NodeManager.get_one(obj1.id, fields=fields_to_query)
+    obj2.name.is_protected = True
+    obj2.level.is_visible = False
+    obj2.save()
+
+    obj3 = NodeManager.get_one(obj1.id, fields=fields_to_query)
+    assert obj3.name.is_protected == True
+    assert obj3.level.is_visible == False
+
+
 # --------------------------------------------------------------------------
 # Delete
 # --------------------------------------------------------------------------

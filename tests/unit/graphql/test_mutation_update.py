@@ -45,6 +45,46 @@ async def test_update_simple_object(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
+async def test_update_object_with_flags(default_branch, car_person_schema):
+
+    obj = Node("Person").new(name="John", height=180).save()
+
+    query = (
+        """
+    mutation {
+        person_update(data: {id: "%s", name: { is_protected: true }, height: { is_visible: false}}) {
+            ok
+            object {
+                id
+                name {
+                    is_protected
+                }
+                height {
+                    is_visible
+                }
+            }
+        }
+    }
+    """
+        % obj.id
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+
+    obj1 = NodeManager.get_one(obj.id)
+    assert obj1.name.is_protected == True
+    assert obj1.height.value == 180
+    assert obj1.height.is_visible == False
+
+@pytest.mark.asyncio
 async def test_update_invalid_object(default_branch, car_person_schema):
 
     query = """

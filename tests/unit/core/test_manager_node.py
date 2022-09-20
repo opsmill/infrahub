@@ -56,7 +56,7 @@ def test_get_one_local_attribute_with_source(default_branch, criticality_schema,
         .save()
     )
 
-    obj = NodeManager.get_one(obj2.id)
+    obj = NodeManager.get_one(obj2.id, include_source=True)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id

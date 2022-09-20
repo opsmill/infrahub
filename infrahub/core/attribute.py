@@ -10,7 +10,6 @@ from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.query.attribute import (
     AttributeDeleteQuery,
     AttributeGetQuery,
-    AttributeGetValueQuery,
     AttributeUpdateValueQuery,
     AttributeCreateQuery,
     AttributeUpdateFlagQuery,
@@ -229,7 +228,10 @@ class BaseAttribute:
         ).execute()
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
-        if current_attr.get("av").get("value") != self.value:
+        current_value = current_attr.get("av").get("value")
+        if current_value == "NULL": current_value = None
+
+        if current_value != self.value:
             # Create the new AttributeValue and update the existing relationship
             query_create = AttributeUpdateValueQuery(attr=self, at=update_at).execute()
 
@@ -239,8 +241,8 @@ class BaseAttribute:
                 update_relationships_to([rel.id], to=update_at)
 
         SUPPORTED_FLAGS = (
-            ("is_visible", "isv", "r4"),
-            ("is_protected", "isp", "r5"),
+            ("is_visible", "isv", "rel_isv"),
+            ("is_protected", "isp", "rel_isp"),
         )
 
         for flag_name, node_name, rel_name in SUPPORTED_FLAGS:

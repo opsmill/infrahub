@@ -104,6 +104,9 @@ def base_dataset_02():
     CREATE (c1:Car { uuid: "c1" })
     CREATE (c1)-[:IS_PART_OF {from: $time_m60}]->(b0)
 
+    CREATE (bt:Boolean { value: true })
+    CREATE (bf:Boolean { value: false })
+
     CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name"})
     CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats"})
     CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric"})
@@ -118,9 +121,17 @@ def base_dataset_02():
     CREATE (c1av31:AttributeValue { uuid: "c1av31", value: True })
     CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60, to: $time_m20}]->(c1av11)
     CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c1av12)
+    CREATE (c1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bf)
+    CREATE (c1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
+
     CREATE (c1at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(c1av21)
     CREATE (c1at2)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m20 }]->(c1av22)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bf)
+    CREATE (c1at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
+
     CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60}]->(c1av31)
+    CREATE (c1at3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bf)
+    CREATE (c1at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
 
     CREATE (c2:Car { uuid: "c2" })
     CREATE (c2)-[:IS_PART_OF {from: $time_m20}]->(b0)
@@ -136,8 +147,16 @@ def base_dataset_02():
     CREATE (c2av21:AttributeValue { uuid: "c2av21", value: 8})
     CREATE (c2av31:AttributeValue { uuid: "c2av31", value: False})
     CREATE (c2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c2av11)
+    CREATE (c2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bf)
+    CREATE (c2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bt)
+
     CREATE (c2at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c2av21)
+    CREATE (c2at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bf)
+    CREATE (c2at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bt)
+
     CREATE (c2at3)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c2av31)
+    CREATE (c2at3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bf)
+    CREATE (c2at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bt)
 
     CREATE (c3:Car { uuid: "c3" })
     CREATE (c3)-[:IS_PART_OF {from: $time_m40}]->(b1)
@@ -153,8 +172,16 @@ def base_dataset_02():
     CREATE (c3av21:AttributeValue { uuid: "c3av21", value: 4})
     CREATE (c3av31:AttributeValue { uuid: "c3av31", value: False})
     CREATE (c3at1)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av11)
+    CREATE (c3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m40 }]->(bf)
+    CREATE (c3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m40 }]->(bt)
+
     CREATE (c3at2)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av21)
+    CREATE (c3at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m40 }]->(bf)
+    CREATE (c3at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m40 }]->(bt)
+
     CREATE (c3at3)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av31)
+    CREATE (c3at3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m40 }]->(bf)
+    CREATE (c3at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m40 }]->(bt)
 
     CREATE (p1:Person { uuid: "p1" })
     CREATE (p1)-[:IS_PART_OF {from: $time_m60}]->(b0)
@@ -162,6 +189,8 @@ def base_dataset_02():
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(p1av11)
+    CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bf)
+    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
 
     CREATE (p2:Person { uuid: "p2" })
     CREATE (p2)-[:IS_PART_OF {from: $time_m60}]->(b0)
@@ -169,6 +198,8 @@ def base_dataset_02():
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
     CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(p2av11)
+    CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bf)
+    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
 
     CREATE (r1:Relationship { uuid: "r1", type: "PERSON_CAR"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
