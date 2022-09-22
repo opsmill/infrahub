@@ -211,7 +211,6 @@ class NodeManager:
 
                 # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
-                    # item = local_attributes[attr.attr_uuid]
 
                     # replace NULL with None
                     value = attr.value

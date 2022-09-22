@@ -73,13 +73,13 @@ class QueryResult:
                 self.time_score += 1
 
     def check_rels_status(self):
-        """# Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""
+        """Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""
         for rel in self.get_rels():
             if rel.get("status", None) == "deleted":
                 self.has_deleted_rels = True
                 return
 
-    def get(self, label):
+    def get(self, label: str):
 
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
@@ -89,7 +89,7 @@ class QueryResult:
         return self.data[return_id]
 
     def get_rels(self) -> Generator:
-        """return all relationships."""
+        """Return all relationships."""
 
         for item in self.data:
             if hasattr(item, "nodes"):
