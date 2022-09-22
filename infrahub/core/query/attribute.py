@@ -262,6 +262,51 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         self.return_labels = ["a", "flag", "r"]
 
 
+class AttributeUpdateNodePropertyQuery(AttributeQuery):
+
+    name = "attribute_update_node_property"
+    type: QueryType = QueryType.WRITE
+
+    raise_error_if_empty: bool = True
+
+    def __init__(
+        self,
+        prop_name: str,
+        prop_id: str,
+        *args,
+        **kwargs,
+    ):
+
+        self.prop_name = prop_name
+        self.prop_id = prop_id
+
+        super().__init__(*args, **kwargs)
+
+    def query_init(self):
+
+        at = self.at or self.attr.at
+
+        self.params["attr_id"] = self.attr_id
+        self.params["branch"] = self.attr.branch.name
+        self.params["at"] = at.to_string()
+        self.params["prop_name"] = self.prop_name
+        self.params["prop_id"] = self.prop_id
+
+        rel_name = f"HAS_{self.prop_name.upper()}"
+
+        query = (
+            """
+        MATCH (a) WHERE ID(a) = $attr_id
+        MATCH (np { uuid: $prop_id })
+        CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(np)
+        """
+            % rel_name
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["a", "np", "r"]
+
+
 class AttributeDeleteQuery(AttributeQuery):
 
     name = "attribute_delete"

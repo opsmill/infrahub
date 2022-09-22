@@ -305,6 +305,18 @@ def test_node_update_local_attrs_with_flags(default_branch, criticality_schema):
     assert obj3.level.is_visible == False
 
 
+def test_node_update_local_attrs_with_source(default_branch, criticality_schema, first_account, second_account):
+
+    obj1 = Node(criticality_schema).new(name="low", level=4, _source=first_account).save()
+
+    obj2 = NodeManager.get_one(obj1.id, include_source=True)
+    obj2.name.source = second_account
+    obj2.save()
+
+    obj3 = NodeManager.get_one(obj1.id, include_source=True)
+    assert obj3.name.source_id == second_account.id
+
+
 # --------------------------------------------------------------------------
 # Delete
 # --------------------------------------------------------------------------

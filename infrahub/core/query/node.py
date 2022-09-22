@@ -238,13 +238,13 @@ class NodeListGetAttributeQuery(Query):
         if self.include_source:
             query = (
                 """
-            OPTIONAL MATCH (a)-[r3:HAS_SOURCE]-(src)
-            WHERE all(r IN [r3] WHERE ( %s))
+            OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
+            WHERE all(r IN [rel_source] WHERE ( %s))
             """
                 % rels_filter
             )
             self.add_to_query(query)
-            self.return_labels.extend(["src", "r3"])
+            self.return_labels.extend(["source", "rel_source"])
 
     # def query_add_permission(self):
 
@@ -296,9 +296,9 @@ class NodeListGetAttributeQuery(Query):
                 source_labels=None,
             )
 
-            if self.include_source and result.get("src"):
-                attr.source_uuid = result.get("src").get("uuid")
-                attr.source_labels = result.get("src").labels
+            if self.include_source and result.get("source"):
+                attr.source_uuid = result.get("source").get("uuid")
+                attr.source_labels = result.get("source").labels
 
             if node_id not in attrs_by_node:
                 attrs_by_node[node_id]["node"] = result.get("n")

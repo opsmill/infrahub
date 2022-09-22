@@ -304,15 +304,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                             setattr(attr, field_name, value.get(field_name))
                             changed = True
 
-                    if field_name in NODE_FIELDS:
+                    elif field_name in NODE_FIELDS:
                         attr = getattr(self, key)
 
-                        # For Node field we update the <node>_id and we reset the node itsel "_<node>"
-                        # NOTE At some point, it might be good to have a function update_node directly on the attribute
-                        # Class to move this logic at the right place.
+                        # Right now we assume that the UUID is provided from GraphQL
+                        # so we compare the value with <node>_id
                         if getattr(attr, f"{field_name}_id") != value.get(field_name):
-                            setattr(attr, f"{field_name}_id", value.get(field_name))
-                            setattr(attr, f"_{field_name}", None)
+                            setattr(attr, field_name, value.get(field_name))
                             changed = True
 
             if key in self._relationships:

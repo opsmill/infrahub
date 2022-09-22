@@ -382,8 +382,11 @@ def register_core_models_schema():
 @pytest.fixture()
 def register_account_schema():
 
-    account_schema = [node for node in core_models["nodes"] if node["kind"] == "Account"][0]
-    registry.set_schema(account_schema["kind"], NodeSchema(**account_schema))
+    SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
+
+    account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
+    for schema in account_schemas:
+        registry.set_schema(schema["kind"], NodeSchema(**schema))
 
     return True
 
