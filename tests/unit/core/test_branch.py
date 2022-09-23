@@ -115,23 +115,33 @@ def test_merge(base_dataset_02, register_core_models_schema, car_person_schema):
     branch1 = Branch.get_by_name("branch1")
     branch1.merge()
 
-    # Query all cars in main before and after the merge
+    # Query all cars in MAIN, AFTER the merge
     cars = sorted(NodeManager.query("Car"), key=lambda c: c.id)
     assert len(cars) == 3
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 4
+    assert cars[0].nbr_seats.is_protected == True
+    assert cars[2].id == "c3"
+    assert cars[2].name.value == "volt"
 
+    # Query All cars in MAIN, BEFORE the merge
     cars = sorted(NodeManager.query("Car", at=base_dataset_02["time0"]), key=lambda c: c.id)
     assert len(cars) == 2
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 5
+    assert cars[0].nbr_seats.is_protected == False
 
-    # Query all cars in branch1 before and after the merge
+    # Query all cars in BRANCH1, AFTER the merge
     cars = sorted(NodeManager.query("Car", branch=branch1), key=lambda c: c.id)
     assert len(cars) == 3
+    assert cars[2].id == "c3"
+    assert cars[2].name.value == "volt"
 
+    # Query all cars in BRANCH1, BEFORE the merge
     cars = sorted(NodeManager.query("Car", branch=branch1, at=base_dataset_02["time0"]), key=lambda c: c.id)
     assert len(cars) == 3
+    assert cars[0].id == "c1"
+    assert cars[0].nbr_seats.value == 4
 
 
 def test_rebase_flag(base_dataset_02, car_person_schema):

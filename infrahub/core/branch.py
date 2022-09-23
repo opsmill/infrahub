@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
-from re import A
-from typing import List, Dict, Set, Union, Optional
+from typing import List, Dict, Set, Union, Optional, Generator
 
-import pendulum
 from pydantic import validator
 
 import infrahub.config as config
-from infrahub.core.query.attribute import AttributeGetValueQuery
 from infrahub.core.constants import RelationshipStatus
-from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.diff import DiffNodeQuery, DiffAttributeQuery, DiffRelationshipQuery
+from infrahub.core.query.attribute import AttributeGetValueQuery
+from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.node.standard import StandardNode
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
@@ -22,12 +21,9 @@ from infrahub.database import execute_read_query
 from infrahub.exceptions import BranchNotFound
 
 
-class DiffQuery(Query):
-    pass
-
-
 class AddNodeToBranch(Query):
 
+    name: str = "node_add_to_branch"
     insert_return: bool = False
 
     type: QueryType = QueryType.WRITE
@@ -52,10 +48,6 @@ class AddNodeToBranch(Query):
         self.params["status"] = RelationshipStatus.ACTIVE.value
 
         self.add_to_query(query)
-        # results = execute_write_query(create_rel_query, params)
-        # if not results:
-        #     return None
-        # return results[0].values()[0]
 
 
 class Branch(StandardNode):
@@ -201,7 +193,7 @@ class Branch(StandardNode):
     def rebase(self):
         """Rebase the current Branch with its origin branch"""
 
-        self.branched_from = pendulum.now(tz="UTC").to_iso8601_string()
+        self.branched_from = Timestamp().to_string()
         self.save()
 
         # Update the branch in the registry after the rebase
@@ -238,7 +230,7 @@ class Branch(StandardNode):
     def diff(self):
         return Diff(branch=self)
 
-    def merge(self):
+    def merge(self, at=None):
         """Merge the current branch into main."""
 
         passed, messages = self.validate()
@@ -252,14 +244,13 @@ class Branch(StandardNode):
 
         default_branch = registry.branch[config.SETTINGS.main.default_branch]
 
-        at = Timestamp()
+        at = Timestamp(at)
 
         # ---------------------------------------------
         # NODES
         #  To access the internal value of this relationship, we need to re-query the list of nodes
         # ---------------------------------------------
-        query = DiffNodeQuery(branch=self)
-        query.execute()
+        query = DiffNodeQuery(branch=self).execute()
 
         for result in query.get_results():
 
@@ -273,22 +264,31 @@ class Branch(StandardNode):
                 add_query.execute()
                 rel_ids_to_update.append(result.get("r1").id)
 
-            # Create relationship
-            add_relationship(result.get("n"), result.get("a"), "HAS_ATTRIBUTE")
-            add_relationship(result.get("a"), result.get("av"), "HAS_VALUE")
-            rel_ids_to_update.append(result.get("r2").id)
-            rel_ids_to_update.append(result.get("r3").id)
+            # Create Relationships in main
+            add_relationship(src_node=result.get("n"), dst_node=result.get("a"), rel_type="HAS_ATTRIBUTE", at=at)
+            add_relationship(src_node=result.get("a"), dst_node=result.get("av"), rel_type="HAS_VALUE", at=at)
+            add_relationship(src_node=result.get("a"), dst_node=result.get("isv"), rel_type="IS_VISIBLE", at=at)
+            add_relationship(src_node=result.get("a"), dst_node=result.get("isp"), rel_type="IS_PROTECTED", at=at)
+            rel_ids_to_update.extend(
+                [result.get("r2").id, result.get("r3").id, result.get("rel_isv").id, result.get("rel_isp").id]
+            )
+
+            if result.get("source"):
+                add_relationship(src_node=result.get("a"), dst_node=result.get("source"), rel_type="HAS_SOURCE", at=at)
+                rel_ids_to_update.append(result.get("rel_source").id)
 
         # ---------------------------------------------
         # ATTRIBUTES
         # ---------------------------------------------
-        query = DiffAttributeQuery(branch=self)
-        query.execute()
+        query = DiffAttributeQuery(branch=self).execute()
 
         for result in query.get_results_group_by_branch_attribute():
 
+            node_id = result.get("n").get("uuid")
+            attr_name = result.get("a").get("name")
+
             # Ignore attributes that are associated with a new node
-            if result.get("n").get("uuid") in node_uuid_already_merged:
+            if node_id in node_uuid_already_merged:
                 continue
 
             # For now only consider the item that have been changed in the branch
@@ -296,14 +296,23 @@ class Branch(StandardNode):
                 continue
 
             # Need to find the current valid relationship in main and update its time
-            previous_value_query = AttributeGetValueQuery(
-                attr_id=result.get("a").id, branch=default_branch, at=at
+            current_attr_query = NodeListGetAttributeQuery(
+                ids=[node_id], fields={attr_name: True}, branch=default_branch, at=at, include_source=True
             ).execute()
-            previous_value_result = previous_value_query.get_result()
+            current_attr = current_attr_query.get_result_by_id_and_name(node_id, attr_name)
 
-            add_relationship(result.get("a"), result.get("av"), "HAS_VALUE")
-            rel_ids_to_update.append(result.get("r").id)
-            rel_ids_to_update.append(previous_value_result.get("r").id)
+            PROPERTY_TYPE_MAPPING = {
+                "HAS_VALUE": ("r2", "av"),
+                "HAS_OWNER": ("rel_owner", "owner"),
+                "HAS_SOURCE": ("rel_source", "source"),
+                "IS_PROTECTED": ("rel_isp", "isp"),
+                "IS_VISIBLE": ("rel_isv", "isv"),
+            }
+
+            current_rel_name = PROPERTY_TYPE_MAPPING[result.get("r").type][0]
+
+            add_relationship(src_node=result.get("a"), dst_node=result.get("ap"), rel_type=result.get("r").type, at=at)
+            rel_ids_to_update.extend([result.get("r").id, current_attr.get(current_rel_name).id])
 
         # ---------------------------------------------
         # RELATIONSHIPS
@@ -317,12 +326,16 @@ class Branch(StandardNode):
             if result.get("r1").get("branch") != self.name:
                 continue
 
-            add_relationship(result.get("sn"), result.get("rel"), result.get("r1").type)
-            add_relationship(result.get("dn"), result.get("rel"), result.get("r2").type)
+            add_relationship(
+                src_node=result.get("sn"), dst_node=result.get("rel"), rel_type=result.get("r1").type, at=at
+            )
+            add_relationship(
+                src_node=result.get("dn"), dst_node=result.get("rel"), rel_type=result.get("r2").type, at=at
+            )
             rel_ids_to_update.append(result.get("r1").id)
             rel_ids_to_update.append(result.get("r2").id)
 
-        update_relationships_to(ids=rel_ids_to_update)
+        update_relationships_to(ids=rel_ids_to_update, to=at)
 
         # ---------------------------------------------
         # FILES
@@ -347,110 +360,6 @@ class Branch(StandardNode):
         #     repo.merge()
 
         self.rebase()
-
-
-class DiffNodeQuery(DiffQuery):
-    def query_init(self):
-
-        # TODO need to improve the query to capture an object that has been delete into the branch
-        # TODO probably also need to consider a node what was merged already
-        query = """
-        MATCH (b:Branch { name: $branch })-[r1:IS_PART_OF]-(n)-[r2:HAS_ATTRIBUTE]-(a:Attribute)-[r3:HAS_VALUE]-(av)
-        """
-
-        self.add_to_query(query)
-        self.params["branch"] = self.branch.name
-        self.params["time0"] = self.branch.branched_from
-
-        self.order_by = ["n.uuid"]
-
-        self.return_labels = ["b", "n", "a", "av", "r1", "r2", "r3"]
-
-
-class DiffAttributeQuery(DiffQuery):
-    def query_init(self):
-
-        # TODO need to improve the query to capture an object that has been delete into the branch
-        query = """
-        MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)-[r { branch: $branch_name } ]->(av)
-        WHERE (r.from > $time0 ) OR (r.to < $time0 )
-        """
-
-        self.add_to_query(query)
-        self.params["branch_name"] = self.branch.name
-        self.params["time0"] = self.branch.branched_from
-
-        self.return_labels = ["n", "a", "av", "r"]
-
-    def get_results_group_by_branch_attribute(self):  # -> Generator[QueryResult]:
-        """Return results group by the label and attribute provided and filtered by scored."""
-
-        attrs_info = defaultdict(list)
-
-        # Extract all attrname and relationships on all branches
-        for idx, result in enumerate(self.results):
-            node_uuid = result.get("n").get("uuid")
-            attribute_name = result.get("a").get("name", None)
-            attribute_branch = result.get("r").get("branch")
-
-            attr_key = f"{node_uuid}__{attribute_branch}__{attribute_name}"
-            info = {"idx": idx, "branch_score": result.branch_score}
-            attrs_info[attr_key].append(info)
-
-        for attr_key, values in attrs_info.items():
-            attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
-
-            yield self.results[attr_info["idx"]]
-
-
-class DiffRelationshipQuery(DiffQuery):
-    def query_init(self):
-
-        query = """
-        MATCH (sn)-[r1 { branch: $branch_name }]->(rel:Relationship)<-[r2 { branch: $branch_name } ]->(dn)
-        """
-
-        self.add_to_query(query)
-        self.params["branch_name"] = self.branch.name
-        self.params["time0"] = self.branch.branched_from
-
-        self.return_labels = ["sn", "dn", "rel", "r1", "r2"]
-
-    def get_results_deduplicated(self):
-
-        attrs_info = defaultdict(list)
-        ids_set_processed = []
-
-        # Extract all attrname and relationships on all branches
-        for idx, result in enumerate(self.results):
-
-            # Generate unique set composed of all the IDs of th node and the relationship returned
-            # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
-            ids_set = set([item.id for item in result])
-            if ids_set in ids_set_processed:
-                continue
-            ids_set_processed.append(ids_set)
-
-            # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
-            source_node_uuid = result.get("sn").get("uuid")[8:]
-            dest_node_uuid = result.get("dn").get("uuid")[8:]
-            nodes = sorted([source_node_uuid, dest_node_uuid])
-            rel_name = result.get("rel").get("name")
-
-            attr_key = f"{nodes[0]}__{nodes[1]}__{rel_name}"
-            info = {"idx": idx, "branch_score": result.branch_score}
-            attrs_info[attr_key].append(info)
-
-        for attr_key, values in attrs_info.items():
-            attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
-
-            yield self.results[attr_info["idx"]]
-
-
-# For now a diff is always calculated between a given branch and the main branch
-#   need to search for
-#      relationships that are referencing the new branch
-#      relationships in main that have changed between the branched_from date and the current time
 
 
 @dataclass

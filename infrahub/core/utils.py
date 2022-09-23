@@ -17,7 +17,7 @@ def add_relationship(
     dst_node: int,
     rel_type: str,
     branch_name: str = None,
-    now: Timestamp = None,
+    at: Timestamp = None,
     status=RelationshipStatus.ACTIVE,
 ):
 
@@ -26,18 +26,18 @@ def add_relationship(
     MATCH (s) WHERE ID(s) = $src_node_id
     MATCH (d) WHERE ID(d) = $dst_node_id
     WITH s,d
-    CREATE (s)-[r:%s { branch: $branch, from: $now, to: null, status: $status }]->(d)
+    CREATE (s)-[r:%s { branch: $branch, from: $at, to: null, status: $status }]->(d)
     RETURN ID(r)
     """
         % str(rel_type).upper()
     )
 
-    now = Timestamp(now)
+    at = Timestamp(at)
 
     params = {
         "src_node_id": src_node.id,
         "dst_node_id": dst_node.id,
-        "now": now.to_string(),
+        "at": at.to_string(),
         "branch": branch_name or config.SETTINGS.main.default_branch,
         "status": status.value,
     }

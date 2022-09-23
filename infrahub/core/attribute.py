@@ -181,7 +181,7 @@ class BaseAttribute:
                 rel_ids_to_update.append(rel.id)
 
         if rel_ids_to_update:
-            update_relationships_to(rel_ids_to_update, to=delete_at)
+            update_relationships_to(ids=rel_ids_to_update, to=delete_at)
 
         AttributeDeleteQuery(attr=self, at=delete_at).execute()
 

@@ -127,6 +127,7 @@ def base_dataset_02():
     CREATE (c1at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(c1av21)
     CREATE (c1at2)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m20 }]->(c1av22)
     CREATE (c1at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bf)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m20 }]->(bt)
     CREATE (c1at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
 
     CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60}]->(c1av31)
@@ -172,16 +173,16 @@ def base_dataset_02():
     CREATE (c3av21:AttributeValue { uuid: "c3av21", value: 4})
     CREATE (c3av31:AttributeValue { uuid: "c3av31", value: False})
     CREATE (c3at1)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av11)
-    CREATE (c3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m40 }]->(bf)
-    CREATE (c3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m40 }]->(bt)
+    CREATE (c3at1)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bf)
+    CREATE (c3at1)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bt)
 
     CREATE (c3at2)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av21)
-    CREATE (c3at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m40 }]->(bf)
-    CREATE (c3at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m40 }]->(bt)
+    CREATE (c3at2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bf)
+    CREATE (c3at2)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bt)
 
     CREATE (c3at3)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av31)
-    CREATE (c3at3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m40 }]->(bf)
-    CREATE (c3at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m40 }]->(bt)
+    CREATE (c3at3)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bf)
+    CREATE (c3at3)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bt)
 
     CREATE (p1:Person { uuid: "p1" })
     CREATE (p1)-[:IS_PART_OF {from: $time_m60}]->(b0)
