@@ -43,6 +43,9 @@ class Timestamp:
 
         return DateTime.now(tz="UTC").subtract(**params)
 
+    def __repr__(self) -> str:
+        return f"Timestamp: {self.to_string()}"
+
     def to_string(self):
         return self.obj.to_iso8601_string()
 
