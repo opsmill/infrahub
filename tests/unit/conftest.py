@@ -102,7 +102,7 @@ def base_dataset_02():
     MATCH (b1:Branch { name: $branch1 })
 
     CREATE (c1:Car { uuid: "c1" })
-    CREATE (c1)-[:IS_PART_OF {from: $time_m60}]->(b0)
+    CREATE (c1)-[:IS_PART_OF { from: $time_m60, status: "active" }]->(b0)
 
     CREATE (bt:Boolean { value: true })
     CREATE (bf:Boolean { value: false })
@@ -135,7 +135,7 @@ def base_dataset_02():
     CREATE (c1at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
 
     CREATE (c2:Car { uuid: "c2" })
-    CREATE (c2)-[:IS_PART_OF {from: $time_m20}]->(b0)
+    CREATE (c2)-[:IS_PART_OF {from: $time_m20, status: "active"}]->(b0)
 
     CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
     CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats"})
@@ -160,7 +160,7 @@ def base_dataset_02():
     CREATE (c2at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bt)
 
     CREATE (c3:Car { uuid: "c3" })
-    CREATE (c3)-[:IS_PART_OF {from: $time_m40}]->(b1)
+    CREATE (c3)-[:IS_PART_OF {from: $time_m40, status: "active"}]->(b1)
 
     CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
     CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats"})
@@ -185,7 +185,7 @@ def base_dataset_02():
     CREATE (c3at3)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bt)
 
     CREATE (p1:Person { uuid: "p1" })
-    CREATE (p1)-[:IS_PART_OF {from: $time_m60}]->(b0)
+    CREATE (p1)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
@@ -194,7 +194,7 @@ def base_dataset_02():
     CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bt)
 
     CREATE (p2:Person { uuid: "p2" })
-    CREATE (p2)-[:IS_PART_OF {from: $time_m60}]->(b0)
+    CREATE (p2)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
