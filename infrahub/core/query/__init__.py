@@ -5,6 +5,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import Generator, List, Optional, Union, TypeVar, TYPE_CHECKING
 
+
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
 from infrahub.database import execute_read_query, execute_write_query
@@ -262,6 +263,26 @@ class Query(ABC):
             return None
 
         return len([result for result in self.results if not result.has_deleted_rels])
+
+    def print_table(self):
+
+        from rich import print as rprint
+        from rich.console import Console
+        from rich.table import Table
+
+        console = Console()
+
+        table = Table(title=f"Query {self.name} : params: {self.params}")
+
+        for label in self.return_labels:
+
+            # table.add_column("Name", justify="right", style="cyan", no_wrap=True)
+            table.add_column(label)
+
+        for result in self.results:
+            table.add_row(*[str(result.get(label)) for label in self.return_labels])
+
+        console.print(table)
 
     def print(self, include_var=False):
 
