@@ -12,6 +12,15 @@ class PermissionLevel(enum.Flag):
     DEFAULT = 0
 
 
+class DiffAction(enum.Flag):
+
+    ADDED = "added"
+
+    REMOVED = "removed"
+
+    UPDATED = "updated"
+
+
 class RelationshipStatus(enum.Flag):
 
     ACTIVE = "active"

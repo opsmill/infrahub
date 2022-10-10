@@ -4,7 +4,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 
 
-def test_get_query_filter_relationships_main(base_dataset_02, car_person_schema):
+def test_get_query_filter_relationships_main(base_dataset_02):
 
     default_branch = get_branch("main")
 
@@ -24,7 +24,7 @@ def test_get_query_filter_relationships_main(base_dataset_02, car_person_schema)
     assert sorted(params.keys()) == ["branch0", "time0"]
 
 
-def test_get_query_filter_relationships_branch1(base_dataset_02, car_person_schema):
+def test_get_query_filter_relationships_branch1(base_dataset_02):
 
     branch1 = get_branch("branch1")
 
@@ -38,7 +38,7 @@ def test_get_query_filter_relationships_branch1(base_dataset_02, car_person_sche
     assert sorted(params.keys()) == ["branch0", "branch1", "time0", "time1"]
 
 
-def test_get_branches_and_times_to_query_main(base_dataset_02, car_person_schema):
+def test_get_branches_and_times_to_query_main(base_dataset_02):
 
     now = Timestamp("1s")
 
@@ -52,7 +52,7 @@ def test_get_branches_and_times_to_query_main(base_dataset_02, car_person_schema
     assert results["main"] == t1.to_string()
 
 
-def test_get_branches_and_times_to_query_branch1(base_dataset_02, car_person_schema):
+def test_get_branches_and_times_to_query_branch1(base_dataset_02):
 
     now = Timestamp("1s")
 
@@ -73,34 +73,91 @@ def test_get_branches_and_times_to_query_branch1(base_dataset_02, car_person_sch
     assert results["main"] == results["branch1"]
 
 
-def test_diff_attribute(base_dataset_02, car_person_schema):
+def test_diff_has_changes(base_dataset_02):
 
     branch1 = Branch.get_by_name("branch1")
 
     diff = Diff(branch=branch1)
-    attrs = diff.get_attributes()
+    assert diff.has_changes
 
-    ordered_attributes = sorted(attrs, key=lambda a: a.attr_name)
+    diff = Diff(branch=branch1, diff_from=base_dataset_02["time0"])
+    assert not diff.has_changes
 
-    assert len(attrs) == 1
-    assert ordered_attributes[0].attr_name == "nbr_seats"
-    assert ordered_attributes[0].attr_uuid == "c1at2"
+    # Create a change in main to validate that a new change will be detected but not if main is excluded (branch_only)
+    c1 = NodeManager.get_one("c1")
+    c1.name.value = "new name"
+    c1.save()
+
+    diff = Diff(branch=branch1, diff_from=base_dataset_02["time0"])
+    assert diff.has_changes
+
+    diff = Diff(branch=branch1, branch_only=True, diff_from=base_dataset_02["time0"])
+    assert not diff.has_changes
 
 
-def test_diff_nodes(base_dataset_02, car_person_schema):
+def test_diff_has_conflict(base_dataset_02):
 
     branch1 = Branch.get_by_name("branch1")
 
     diff = Diff(branch=branch1)
-    nodes = diff.get_nodes()
+    assert not diff.has_conflict
 
-    ordered_attributes = sorted(nodes[0].attributes, key=lambda a: a.attr_name)
-    assert len(nodes) == 1
-    assert ordered_attributes[1].attr_name == "name"
-    assert ordered_attributes[1].attr_uuid == "c3at1"
+    # Change the name of C1 in Branch1 to create a conflict
+    c1 = NodeManager.get_one("c1", branch=branch1)
+    c1.name.value = "new name"
+    c1.save()
+
+    diff = Diff(branch=branch1)
+    assert diff.has_conflict
+
+    # The conflict shouldn't be reported if we are only considering the branch
+    diff = Diff(branch=branch1, branch_only=True)
+    assert not diff.has_conflict
 
 
-def test_diff_relationships(base_dataset_02, car_person_schema):
+def test_diff_get_modified_paths(base_dataset_02):
+
+    branch1 = Branch.get_by_name("branch1")
+
+    expected_paths_main = {
+        ("node", "c1", "name", "HAS_VALUE"),
+        ("node", "c2", "is_electric", "HAS_VALUE"),
+        ("node", "c2", "is_electric", "IS_PROTECTED"),
+        ("node", "c2", "is_electric", "IS_VISIBLE"),
+        ("node", "c2", "name", "HAS_VALUE"),
+        ("node", "c2", "name", "IS_PROTECTED"),
+        ("node", "c2", "name", "IS_VISIBLE"),
+        ("node", "c2", "nbr_seats", "HAS_VALUE"),
+        ("node", "c2", "nbr_seats", "IS_PROTECTED"),
+        ("node", "c2", "nbr_seats", "IS_VISIBLE"),
+        ("node", "c2", "color", "HAS_VALUE"),
+        ("node", "c2", "color", "IS_PROTECTED"),
+        ("node", "c2", "color", "IS_VISIBLE"),
+    }
+    expected_paths_branch1 = {
+        ("node", "c1", "nbr_seats", "HAS_VALUE"),
+        ("node", "c1", "nbr_seats", "IS_PROTECTED"),
+    }
+
+    diff = Diff(branch=branch1)
+    paths = diff.get_modified_paths()
+
+    assert paths["main"] == expected_paths_main
+    assert paths["branch1"] == expected_paths_branch1
+
+    # Change the name of C1 in Branch1 to create a conflict
+    c1 = NodeManager.get_one("c1", branch=branch1)
+    c1.name.value = "new name"
+    c1.save()
+
+    diff = Diff(branch=branch1)
+    paths = diff.get_modified_paths()
+    expected_paths_branch1.add(("node", "c1", "name", "HAS_VALUE"))
+
+    assert paths["branch1"] == expected_paths_branch1
+
+
+def test_diff_relationships(base_dataset_02):
 
     branch1 = Branch.get_by_name("branch1")
 
@@ -110,7 +167,7 @@ def test_diff_relationships(base_dataset_02, car_person_schema):
     assert len(rels) == 1
 
 
-def test_merge(base_dataset_02, register_core_models_schema, car_person_schema):
+def test_merge(base_dataset_02, register_core_models_schema):
 
     branch1 = Branch.get_by_name("branch1")
     branch1.merge()
@@ -144,7 +201,7 @@ def test_merge(base_dataset_02, register_core_models_schema, car_person_schema):
     assert cars[0].nbr_seats.value == 4
 
 
-def test_rebase_flag(base_dataset_02, car_person_schema):
+def test_rebase_flag(base_dataset_02):
 
     branch1 = Branch.get_by_name("branch1")
 

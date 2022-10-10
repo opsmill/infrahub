@@ -4,7 +4,7 @@ import glob
 import json
 import os
 from typing import (
-    List,
+    List, Dict
 )
 
 from git import Repo
@@ -69,7 +69,7 @@ class Repository(Node):
 
         # return self.account.get()
 
-    def ensure_exists_locally(self):
+    def ensure_exists_locally(self) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
         Returns
@@ -154,7 +154,7 @@ class Repository(Node):
 
         return True
 
-    def add_branch(self, branch_name, push_origin=True):
+    def add_branch(self, branch_name: str, push_origin: bool =True):
 
         repo = self.get_git_repo_main()
 
@@ -183,7 +183,7 @@ class Repository(Node):
 
         return changed_files or None
 
-    def merge(self, push_remote=True):
+    def merge(self, push_remote: bool = True) -> bool:
         """Merge the current branch into main."""
 
         if self.name.value == config.SETTINGS.main.default_branch:
@@ -206,10 +206,10 @@ class Repository(Node):
     def find_files(self, extension, recursive=True):
         return glob.glob(f"{self.get_active_directory()}/**/*.{extension}", recursive=recursive)
 
-    def run_checks(self, rebase=True):
+    def run_checks(self, rebase: bool = True) -> set(bool, List[str]):
         """Execute the checks for this repository using the infrahub cli.
 
-        The execution is done using the CLI to decouple the checks from the server, for security and other reasons.
+        The execution is done using the CLI to decouple the checks from the server, mainly for security reasons.
 
         The interface is very simple for now, this is something that need to be revisited.
         """
