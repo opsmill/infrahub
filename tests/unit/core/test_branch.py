@@ -1,7 +1,10 @@
+from infrahub.core import registry
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch, Diff
+from infrahub.core.node import Node
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.constants import RelationshipStatus, DiffAction
 
 
 def test_get_query_filter_relationships_main(base_dataset_02):
@@ -137,6 +140,18 @@ def test_diff_get_modified_paths(base_dataset_02):
     expected_paths_branch1 = {
         ("node", "c1", "nbr_seats", "HAS_VALUE"),
         ("node", "c1", "nbr_seats", "IS_PROTECTED"),
+        ("node", "c3", "color", "HAS_VALUE"),
+        ("node", "c3", "color", "IS_PROTECTED"),
+        ("node", "c3", "color", "IS_VISIBLE"),
+        ("node", "c3", "is_electric", "HAS_VALUE"),
+        ("node", "c3", "is_electric", "IS_PROTECTED"),
+        ("node", "c3", "is_electric", "IS_VISIBLE"),
+        ("node", "c3", "name", "HAS_VALUE"),
+        ("node", "c3", "name", "IS_PROTECTED"),
+        ("node", "c3", "name", "IS_VISIBLE"),
+        ("node", "c3", "nbr_seats", "HAS_VALUE"),
+        ("node", "c3", "nbr_seats", "IS_PROTECTED"),
+        ("node", "c3", "nbr_seats", "IS_VISIBLE"),
     }
 
     diff = Diff(branch=branch1)
@@ -155,6 +170,33 @@ def test_diff_get_modified_paths(base_dataset_02):
     expected_paths_branch1.add(("node", "c1", "name", "HAS_VALUE"))
 
     assert paths["branch1"] == expected_paths_branch1
+
+
+def test_diff_get_nodes(base_dataset_02):
+
+    branch1 = Branch.get_by_name("branch1")
+
+    diff = Diff(branch=branch1)
+    nodes = diff.get_nodes()
+
+    assert nodes["branch1"]["c1"].action == DiffAction.UPDATED.value
+    assert nodes["branch1"]["c1"].attributes["nbr_seats"].action == DiffAction.UPDATED.value
+    assert nodes["branch1"]["c1"].attributes["nbr_seats"].properties["HAS_VALUE"].action == DiffAction.UPDATED.value
+
+    assert nodes["branch1"]["c3"].action == DiffAction.ADDED.value
+    assert nodes["branch1"]["c3"].attributes["nbr_seats"].action == DiffAction.ADDED.value
+    assert nodes["branch1"]["c3"].attributes["nbr_seats"].properties["HAS_VALUE"].action == DiffAction.ADDED.value
+
+    # ADD a new node in Branch1 and validate that the diff is reporting it properly
+    p1 = Node("Person", branch=branch1).new(name="Bill", height=175).save()
+    diff = Diff(branch=branch1)
+    nodes = diff.get_nodes()
+
+    assert nodes["branch1"][p1.id].action == DiffAction.ADDED.value
+    assert nodes["branch1"][p1.id].attributes["name"].action == DiffAction.ADDED.value
+    assert nodes["branch1"][p1.id].attributes["name"].properties["HAS_VALUE"].action == DiffAction.ADDED.value
+
+    # TODO DELETE node
 
 
 def test_diff_relationships(base_dataset_02):

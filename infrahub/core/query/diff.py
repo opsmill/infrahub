@@ -48,7 +48,7 @@ class DiffNodeQuery(DiffQuery):
         # TODO probably also need to consider a node what was merged already
         query = """
         MATCH (b:Branch)-[r:IS_PART_OF]-(n)
-        WHERE (b.name in $branch_names AND r.from > $from ) OR (b.name in $branch_names AND r.to < $from)
+        WHERE (b.name in $branch_names AND r.from >= $from ) OR (b.name in $branch_names AND r.to <= $from)
         """
 
         self.add_to_query(query)
@@ -70,7 +70,7 @@ class DiffAttributeQuery(DiffQuery):
         # TODO need to improve the query to capture an object that has been deleted into the branch
         query = """
         MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2]->(ap)
-        WHERE (r2.branch IN $branch_names AND r2.from > $from ) OR (r2.branch IN $branch_names AND r2.to < $from)
+        WHERE (r2.branch IN $branch_names AND r2.from >= $from ) OR (r2.branch IN $branch_names AND r2.to <= $from)
         """
 
         self.add_to_query(query)

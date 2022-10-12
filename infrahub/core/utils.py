@@ -13,8 +13,8 @@ from infrahub.database import execute_read_query, execute_write_query
 
 
 def add_relationship(
-    src_node: int,
-    dst_node: int,
+    src_node_id: int,
+    dst_node_id: int,
     rel_type: str,
     branch_name: str = None,
     at: Timestamp = None,
@@ -35,8 +35,8 @@ def add_relationship(
     at = Timestamp(at)
 
     params = {
-        "src_node_id": src_node.id,
-        "dst_node_id": dst_node.id,
+        "src_node_id": src_node_id,
+        "dst_node_id": dst_node_id,
         "at": at.to_string(),
         "branch": branch_name or config.SETTINGS.main.default_branch,
         "status": status.value,

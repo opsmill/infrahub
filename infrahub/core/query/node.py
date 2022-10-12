@@ -182,6 +182,14 @@ class NodeListGetAttributeQuery(Query):
     name: str = "node_list_get_attribute"
     order_by: List[str] = ["a.name"]
 
+    property_type_mapping = {
+        "HAS_VALUE": ("r2", "av"),
+        "HAS_OWNER": ("rel_owner", "owner"),
+        "HAS_SOURCE": ("rel_source", "source"),
+        "IS_PROTECTED": ("rel_isp", "isp"),
+        "IS_VISIBLE": ("rel_isv", "isv"),
+    }
+
     def __init__(
         self,
         ids: List[str],

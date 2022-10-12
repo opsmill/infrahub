@@ -3,9 +3,7 @@ from __future__ import annotations
 import glob
 import json
 import os
-from typing import (
-    List, Dict
-)
+from typing import List, Dict
 
 from git import Repo
 
@@ -154,7 +152,7 @@ class Repository(Node):
 
         return True
 
-    def add_branch(self, branch_name: str, push_origin: bool =True):
+    def add_branch(self, branch_name: str, push_origin: bool = True):
 
         repo = self.get_git_repo_main()
 
