@@ -3,18 +3,18 @@ from __future__ import annotations
 from typing import Set, List, Dict, Any, Union, TYPE_CHECKING
 
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import update_relationships_to
+from infrahub.core.utils import update_relationships_to, add_relationship
 from infrahub.exceptions import ValidationError
 
 from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.query.attribute import (
-    AttributeDeleteQuery,
     AttributeGetQuery,
     AttributeUpdateValueQuery,
     AttributeCreateQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
 )
+from infrahub.core.constants import RelationshipStatus
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -172,18 +172,42 @@ class BaseAttribute:
         delete_at = Timestamp(at)
 
         query = AttributeGetQuery(attr=self).execute()
-        result = query.get_result()
+        results = query.get_results()
+
+        if not results:
+            return False
+
+        properties_to_delete = []
 
         # Check all the relationship and update the one that are in the same branch
-        rel_ids_to_update = []
-        for rel in result.get_rels():
-            if rel.get("branch") == self.branch.name:
-                rel_ids_to_update.append(rel.id)
+        rel_ids_to_update = set()
+        for result in results:
+            properties_to_delete.append((result.get("r2").type, result.get("ap").id))
+
+            add_relationship(
+                src_node_id=self.db_id,
+                dst_node_id=result.get("ap").id,
+                rel_type=result.get("r2").type,
+                branch_name=self.branch.name,
+                at=delete_at,
+                status=RelationshipStatus.DELETED,
+            )
+
+            for rel in result.get_rels():
+                if rel.get("branch") == self.branch.name:
+                    rel_ids_to_update.add(rel.id)
 
         if rel_ids_to_update:
-            update_relationships_to(ids=rel_ids_to_update, to=delete_at)
+            update_relationships_to(ids=list(rel_ids_to_update), to=delete_at)
 
-        AttributeDeleteQuery(attr=self, at=delete_at).execute()
+        add_relationship(
+            src_node_id=self.db_id,
+            dst_node_id=self.node.db_id,
+            rel_type="HAS_ATTRIBUTE",
+            branch_name=self.branch.name,
+            at=delete_at,
+            status=RelationshipStatus.DELETED,
+        )
 
         return True
 

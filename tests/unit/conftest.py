@@ -222,6 +222,15 @@ def base_dataset_02(default_branch, car_person_schema):
     CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
+    CREATE (p3:Person { uuid: "p3" })
+    CREATE (p3)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
+    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p3at1)
+    CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
+    CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(p3av11)
+    CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+
     CREATE (r1:Relationship { uuid: "r1", type: "PERSON_CAR"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
@@ -265,7 +274,7 @@ def car_person_schema():
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "String", "unique": True},
-                    {"name": "height", "kind": "Integer"},
+                    {"name": "height", "kind": "Integer", "optional": True},
                 ],
                 "relationships": [{"name": "cars", "peer": "Car", "cardinality": "many"}],
             },

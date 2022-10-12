@@ -69,7 +69,7 @@ class DiffAttributeQuery(DiffQuery):
 
         # TODO need to improve the query to capture an object that has been deleted into the branch
         query = """
-        MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2]->(ap)
+        MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
         WHERE (r2.branch IN $branch_names AND r2.from >= $from ) OR (r2.branch IN $branch_names AND r2.to <= $from)
         """
 

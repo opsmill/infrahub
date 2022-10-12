@@ -307,35 +307,33 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         self.return_labels = ["a", "np", "r"]
 
 
-class AttributeDeleteQuery(AttributeQuery):
+# class AttributeDeleteQuery(AttributeQuery):
 
-    name = "attribute_delete"
-    type: QueryType = QueryType.WRITE
+#     name = "attribute_delete"
+#     type: QueryType = QueryType.WRITE
 
-    raise_error_if_empty: bool = True
+#     raise_error_if_empty: bool = True
 
-    def query_init(self):
+#     def query_init(self):
 
-        self.params["attr_id"] = self.attr_id
-        self.params["node_id"] = self.attr.node.db_id
-        self.params["branch"] = self.attr.branch.name
-        self.params["at"] = self.at.to_string()
-        self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
-        self.params["attribute_type"] = self.attr.get_kind()
+#         self.params["attr_id"] = self.attr_id
+#         self.params["node_id"] = self.attr.node.db_id
+#         self.params["branch"] = self.attr.branch.name
+#         self.params["at"] = self.at.to_string()
+#         self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
+#         self.params["attribute_type"] = self.attr.get_kind()
 
-        query = (
-            """
-        MATCH (a) WHERE ID(a) = $attr_id
-        MATCH (n) WHERE ID(n) = $node_id
-        MERGE (av:AttributeValue { type: $attribute_type, value: $value })
-        CREATE (n)-[r1:HAS_ATTRIBUTE { branch: $branch, status: "deleted", from: $at, to: null }]->(a)
-        CREATE (a)-[r2:%s { branch: $branch, status: "deleted", from: $at, to: null }]->(av)
-        """
-            % self.attr._rel_to_value_label
-        )
+#         query = (
+#             """
+#         MATCH (a) WHERE ID(a) = $attr_id
+#         MATCH (n) WHERE ID(n) = $node_id
+#         CREATE (n)-[:HAS_ATTRIBUTE { branch: $branch, status: "deleted", from: $at, to: null }]->(a)
+#         """
+#             % self.attr._rel_to_value_label
+#         )
 
-        self.add_to_query(query)
-        self.return_labels = ["n", "a", "av", "r1", "r2"]
+#         self.add_to_query(query)
+#         self.return_labels = ["n", "a"]
 
 
 class AttributeGetQuery(AttributeQuery):
@@ -359,7 +357,7 @@ class AttributeGetQuery(AttributeQuery):
         query = """
         MATCH (n) WHERE ID(n) = $node_id
         MATCH (a) WHERE ID(a) = $attr_id
-        MATCH (n)-[r1]-(a)-[r2:HAS_VALUE]-(av)
+        MATCH (n)-[r1]-(a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(ap)
         WHERE %s
         """ % (
             "\n AND ".join(rels_filter),
@@ -367,4 +365,4 @@ class AttributeGetQuery(AttributeQuery):
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "a", "av", "r1", "r2"]
+        self.return_labels = ["n", "a", "ap", "r1", "r2"]

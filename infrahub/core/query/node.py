@@ -131,8 +131,8 @@ class NodeDeleteQuery(NodeQuery):
         query = (
             """
         MATCH (b:Branch { name: $branch })
-        MATCH (n:Node:%s { uuid: $uuid })
-        CREATE (n)-[r:IS_PART_OF { status: "deleted", from: $at}]->(b)
+        MATCH (n:%s { uuid: $uuid })
+        CREATE (n)-[r:IS_PART_OF { status: "deleted", from: $at }]->(b)
         """
             % self.node.get_kind()
         )

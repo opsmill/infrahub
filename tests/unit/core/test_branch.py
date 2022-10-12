@@ -198,6 +198,14 @@ def test_diff_get_nodes(base_dataset_02):
     assert nodes["branch1"][p1.id].attributes["name"].properties["HAS_VALUE"].action == DiffAction.ADDED.value
 
     # TODO DELETE node
+    p3 = NodeManager.get_one("p3", branch=branch1)
+    p3.delete()
+
+    diff = Diff(branch=branch1)
+    nodes = diff.get_nodes()
+    assert nodes["branch1"]["p3"].action == DiffAction.REMOVED.value
+    assert nodes["branch1"]["p3"].attributes["name"].action == DiffAction.REMOVED.value
+    assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED.value
 
 
 def test_diff_relationships(base_dataset_02):
