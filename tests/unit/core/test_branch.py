@@ -5,6 +5,7 @@ from infrahub.core.node import Node
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.constants import RelationshipStatus, DiffAction
+from infrahub.core.initialization import create_branch
 
 
 def test_get_query_filter_relationships_main(base_dataset_02):
@@ -207,6 +208,34 @@ def test_diff_relationships(base_dataset_02):
     rels = diff.get_relationships()
 
     assert len(rels) == 1
+
+
+def test_validate(base_dataset_02, register_core_models_schema):
+
+    branch1 = Branch.get_by_name("branch1")
+    passed, messages = branch1.validate()
+
+    assert passed is True
+    assert messages == []
+
+    # Change the name of C1 in Branch1 to create a conflict
+    c1 = NodeManager.get_one("c1", branch=branch1)
+    c1.name.value = "new name"
+    c1.save()
+
+    passed, messages = branch1.validate()
+    assert passed is False
+    assert messages == ["Conflict detected at node/c1/name/HAS_VALUE"]
+
+
+def test_validate_empty_branch(base_dataset_02, register_core_models_schema):
+
+    branch2 = create_branch("branch2")
+
+    passed, messages = branch2.validate()
+
+    assert passed is True
+    assert messages == []
 
 
 def test_merge(base_dataset_02, register_core_models_schema):

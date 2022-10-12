@@ -504,10 +504,12 @@ class Diff:
         # For now we assume that we can only have 2 branches but in the future we might need to support more
         branches = list(paths.keys())
 
-        # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
-        conflicts = paths[branches[0]] & paths[branches[1]]
+        # if we don't have at least 2 branches returned we can safely assumed there is no conflict
+        if len(branches) < 2:
+            return []
 
-        return conflicts
+        # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
+        return paths[branches[0]] & paths[branches[1]]
 
     def get_modified_paths(self) -> Dict[str, set]:
 

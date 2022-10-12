@@ -79,14 +79,13 @@ async def test_branch_rebase(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
-async def test_branch_validate(default_branch, register_core_models_schema):
+async def test_branch_validate(base_dataset_02, register_core_models_schema):
 
-    # Not much to validate on this one yet ...
-    branch2 = create_branch("branch2")
+    branch1 = Branch.get_by_name("branch1")
 
     query = """
     mutation {
-        branch_validate(data: { name: "branch2" }) {
+        branch_validate(data: { name: "branch1" }) {
             ok
             object {
                 id
@@ -104,18 +103,17 @@ async def test_branch_validate(default_branch, register_core_models_schema):
 
     assert result.errors is None
     assert result.data["branch_validate"]["ok"] is True
-    assert result.data["branch_validate"]["object"]["id"] == branch2.uuid
+    assert result.data["branch_validate"]["object"]["id"] == branch1.uuid
 
 
 @pytest.mark.asyncio
-async def test_branch_merge(default_branch, register_core_models_schema):
+async def test_branch_merge(base_dataset_02, register_core_models_schema):
 
-    # Not much to validate on this one yet ...
-    branch2 = create_branch("branch2")
+    branch1 = Branch.get_by_name("branch1")
 
     query = """
     mutation {
-        branch_merge(data: { name: "branch2" }) {
+        branch_merge(data: { name: "branch1" }) {
             ok
             object {
                 id
@@ -133,4 +131,4 @@ async def test_branch_merge(default_branch, register_core_models_schema):
 
     assert result.errors is None
     assert result.data["branch_merge"]["ok"] is True
-    assert result.data["branch_merge"]["object"]["id"] == branch2.uuid
+    assert result.data["branch_merge"]["object"]["id"] == branch1.uuid
