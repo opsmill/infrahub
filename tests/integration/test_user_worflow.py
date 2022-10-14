@@ -178,6 +178,7 @@ def test_query_spine1_loobpack0(client, dataset01):
     state["spine1_lo0_id"] = result["device"][0]["interfaces"][0]["id"]
     state["spine1_lo0_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
 
+
 def test_query_spine1_ethernet1(client, dataset01):
     """
     Query Ethernet1 to gether its ID
