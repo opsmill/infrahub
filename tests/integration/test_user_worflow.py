@@ -163,7 +163,6 @@ def test_query_spine1_loobpack0(client, dataset01):
     """
     global state
 
-    # expected_result = {"device": [{"interfaces": [{"name": {"value": "Eth0"}}], "name": {"value": "spine1"}}]}
     response = client.post(
         "/graphql",
         json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
@@ -178,6 +177,27 @@ def test_query_spine1_loobpack0(client, dataset01):
 
     state["spine1_lo0_id"] = result["device"][0]["interfaces"][0]["id"]
     state["spine1_lo0_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
+
+def test_query_spine1_ethernet1(client, dataset01):
+    """
+    Query Ethernet1 to gether its ID
+    """
+    global state
+
+    response = client.post(
+        "/graphql",
+        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert "errors" not in response.json()
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
+
+    assert result["device"][0]["interfaces"][0]["name"]["value"] == "Ethernet1"
+
+    state["spine1_eth1_id"] = result["device"][0]["interfaces"][0]["id"]
+    state["spine1_eth1_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
 
 
 def test_create_first_branch(client, dataset01):
@@ -230,16 +250,16 @@ def test_update_intf_description_branch1(client, dataset01):
 
 def test_update_intf_description_main(client, dataset01):
     """
-    Update the description of the interface in the main branch and validate that its being properly updated
+    Update the description of the interface Ethernet1 in the main branch and validate that its being properly updated
     """
     global state
 
     new_description = f"New description in {main_branch}"
 
-    assert state["spine1_lo0_id"]
+    assert state["spine1_eth1_id"]
 
     # Update the description in MAIN
-    variables = {"interface_id": state["spine1_lo0_id"], "description": new_description}
+    variables = {"interface_id": state["spine1_eth1_id"], "description": new_description}
     response = client.post("/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers)
     assert response.status_code == 200
     assert "errors" not in response.json()
@@ -250,7 +270,7 @@ def test_update_intf_description_main(client, dataset01):
     # Query the new description in MAIN to check its value
     response = client.post(
         "/graphql",
-        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
+        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
         headers=headers,
     )
     assert response.status_code == 200
@@ -308,13 +328,13 @@ def test_create_second_branch(client, dataset01):
 def test_update_intf_description_main_after_branch2(client, dataset01):
     global state
 
-    assert state["spine1_lo0_id"]
+    assert state["spine1_eth1_id"]
     new_description = f"New description in {main_branch} after creating {branch2}"
 
     # Query the description in main_branch to get its value
     response = client.post(
         "/graphql",
-        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
+        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
         headers=headers,
     )
     assert response.status_code == 200
@@ -324,7 +344,7 @@ def test_update_intf_description_main_after_branch2(client, dataset01):
     old_description = result["device"][0]["interfaces"][0]["description"]["value"]
 
     # Update the description in MAIN
-    variables = {"branch": main_branch, "interface_id": state["spine1_lo0_id"], "description": new_description}
+    variables = {"branch": main_branch, "interface_id": state["spine1_eth1_id"], "description": new_description}
     response = client.post("/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers)
     assert response.status_code == 200
     assert "errors" not in response.json()
@@ -335,7 +355,7 @@ def test_update_intf_description_main_after_branch2(client, dataset01):
     # Query the new description in MAIN to check its value
     response = client.post(
         "/graphql",
-        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
+        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
         headers=headers,
     )
     assert response.status_code == 200
@@ -347,7 +367,7 @@ def test_update_intf_description_main_after_branch2(client, dataset01):
     # Query the new description in BRANCH2 to check its value
     response = client.post(
         f"/graphql/{branch2}",
-        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
+        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
         headers=headers,
     )
     assert response.status_code == 200
@@ -371,7 +391,7 @@ def test_rebase_branch2(client, dataset01):
     # Query the description in MAIN to check its value
     response = client.post(
         "/graphql",
-        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
+        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
         headers=headers,
     )
     assert response.status_code == 200
@@ -383,7 +403,7 @@ def test_rebase_branch2(client, dataset01):
     # Query the new description in BRANCH2 to check its value
     response = client.post(
         f"/graphql/{branch2}",
-        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
+        json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
         headers=headers,
     )
     assert response.status_code == 200
