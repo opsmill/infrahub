@@ -201,8 +201,8 @@ class BaseAttribute:
             update_relationships_to(ids=list(rel_ids_to_update), to=delete_at)
 
         add_relationship(
-            src_node_id=self.db_id,
-            dst_node_id=self.node.db_id,
+            src_node_id=self.node.db_id,
+            dst_node_id=self.db_id,
             rel_type="HAS_ATTRIBUTE",
             branch_name=self.branch.name,
             at=delete_at,

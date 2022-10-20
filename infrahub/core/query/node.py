@@ -69,11 +69,29 @@ def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
 
 
 class NodeQuery(Query):
-    def __init__(self, node: Node = None, id=None, *args, **kwargs):
+    def __init__(
+        self,
+        node: Node = None,
+        node_id: str = None,
+        node_db_id: int = None,
+        id=None,
+        branch: Branch = None,
+        *args,
+        **kwargs,
+    ):
         # TODO Validate that Node is a valid node
         # Eventually extract the branch from Node as well
         self.node = node
-        self.id = id
+        self.node_id = node_id or id
+        self.node_db_id = node_db_id
+
+        if not self.node_id and self.node:
+            self.node_id = self.node.id
+
+        if not self.node_db_id and self.node:
+            self.node_db_id = self.node.db_id
+
+        self.branch = branch or self.node._branch
 
         super().__init__(*args, **kwargs)
 
@@ -88,7 +106,7 @@ class NodeCreateQuery(NodeQuery):
     def query_init(self):
 
         self.params["uuid"] = str(uuid.uuid4())
-        self.params["branch"] = self.node._branch.name
+        self.params["branch"] = self.branch.name
 
         query = (
             """
@@ -125,17 +143,14 @@ class NodeDeleteQuery(NodeQuery):
 
     def query_init(self):
 
-        self.params["uuid"] = self.node.id
-        self.params["branch"] = self.node._branch.name
+        self.params["uuid"] = self.node_id
+        self.params["branch"] = self.branch.name
 
-        query = (
-            """
+        query = """
         MATCH (b:Branch { name: $branch })
-        MATCH (n:%s { uuid: $uuid })
+        MATCH (n { uuid: $uuid })
         CREATE (n)-[r:IS_PART_OF { status: "deleted", from: $at }]->(b)
         """
-            % self.node.get_kind()
-        )
 
         self.params["at"] = self.at.to_string()
 

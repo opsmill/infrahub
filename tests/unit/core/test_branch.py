@@ -280,6 +280,23 @@ def test_merge(base_dataset_02, register_core_models_schema):
     assert cars[0].nbr_seats.value == 4
 
 
+def test_merge_delete(base_dataset_02, register_core_models_schema):
+
+    branch1 = Branch.get_by_name("branch1")
+
+    persons = sorted(NodeManager.query("Person"), key=lambda p: p.id)
+    assert len(persons) == 3
+
+    p3 = NodeManager.get_one("p3", branch=branch1)
+    p3.delete()
+
+    branch1.merge()
+
+    # Query all cars in MAIN, AFTER the merge
+    persons = sorted(NodeManager.query("Person"), key=lambda p: p.id)
+    assert len(persons) == 2
+
+
 def test_rebase_flag(base_dataset_02):
 
     branch1 = Branch.get_by_name("branch1")

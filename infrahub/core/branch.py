@@ -11,7 +11,7 @@ from infrahub.core.constants import RelationshipStatus, DiffAction
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import DiffNodeQuery, DiffAttributeQuery, DiffRelationshipQuery
 from infrahub.core.query.attribute import AttributeGetValueQuery
-from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.query.node import NodeListGetAttributeQuery, NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.timestamp import Timestamp
@@ -256,7 +256,6 @@ class Branch(StandardNode):
 
         from infrahub.core import registry
 
-        node_uuid_already_merged = []
         rel_ids_to_update = []
 
         default_branch = registry.branch[config.SETTINGS.main.default_branch]
@@ -266,22 +265,25 @@ class Branch(StandardNode):
         diff = Diff(branch=self)
         nodes = diff.get_nodes()
 
+        origin_nodes_query = NodeListGetInfoQuery(ids=list(nodes[self.name].keys()), branch=default_branch).execute()
+        origin_nodes = {
+            node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
+        }
+
+        # ---------------------------------------------
+        # NODES
+        # ---------------------------------------------
         for node_id, node in nodes[self.name].items():
 
             if node.action == DiffAction.ADDED.value:
                 AddNodeToBranch(node_id=node.db_id, branch=default_branch).execute()
                 rel_ids_to_update.append(node.rel_id)
 
-            elif node.action == DiffAction.UPDATED.value:
-                # Need to find the current valid relationships in main
-                current_attr_query = NodeListGetAttributeQuery(
-                    ids=[node_id], branch=default_branch, at=at, include_source=True
-                ).execute()
-
             elif node.action == DiffAction.REMOVED.value:
-                pass
+                NodeDeleteQuery(branch=default_branch, node_id=node_id, at=at).execute()
+                rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").id])
 
-            for attr_name, attr in node.attributes.items():
+            for _, attr in node.attributes.items():
 
                 if attr.action == DiffAction.ADDED.value:
                     add_relationship(
@@ -294,7 +296,15 @@ class Branch(StandardNode):
                     rel_ids_to_update.append(attr.rel_id)
 
                 elif attr.action == DiffAction.REMOVED.value:
-                    pass
+                    add_relationship(
+                        src_node_id=node.db_id,
+                        dst_node_id=attr.db_id,
+                        rel_type="HAS_ATTRIBUTE",
+                        branch_name=default_branch.name,
+                        at=at,
+                        status=RelationshipStatus.DELETED,
+                    )
+                    rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
 
                 elif attr.action == DiffAction.UPDATED.value:
                     pass
@@ -305,7 +315,7 @@ class Branch(StandardNode):
                         add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
-                            rel_type=prop.type,
+                            rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
                         )
@@ -313,19 +323,25 @@ class Branch(StandardNode):
 
                     elif prop.action == DiffAction.UPDATED.value:
 
-                        current_rel_name = current_attr_query.property_type_mapping[prop.type][0]
-                        current_attr = current_attr_query.get_result_by_id_and_name(node_id, attr_name)
                         add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
-                            rel_type=prop.type,
+                            rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
                         )
-                        rel_ids_to_update.extend([prop.rel_id, current_attr.get(current_rel_name).id])
+                        rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
                     elif prop.action == DiffAction.REMOVED.value:
-                        pass
+                        add_relationship(
+                            src_node_id=attr.db_id,
+                            dst_node_id=prop.db_id,
+                            rel_type=prop_type,
+                            at=at,
+                            branch_name=default_branch.name,
+                            status=RelationshipStatus.DELETED,
+                        )
+                        rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
         # ---------------------------------------------
         # RELATIONSHIPS
@@ -387,6 +403,7 @@ class AttributePropertyDiffElement:
     action: str
     db_id: int
     rel_id: int
+    origin_rel_id: Optional[int]
     # value: ValueElement
     changed_at: Timestamp
 
@@ -398,6 +415,7 @@ class NodeAttributeDiffElement:
     action: str
     db_id: int
     rel_id: int
+    origin_rel_id: Optional[int]
     changed_at: Timestamp
     properties: Dict[str, AttributePropertyDiffElement]
 
@@ -557,7 +575,7 @@ class Diff:
             if result.get("r").get("to"):
                 node_to = Timestamp(result.get("r").get("to"))
 
-            # If to_time is defined and if smaller than the diff_to time,
+            # If to_time is defined and is smaller than the diff_to time,
             #   then this is not the correct relationship to define this node
             #   NOTE would it make sense to move this logic into the Query itself ?
             if node_to and node_to < self.diff_to:
@@ -577,7 +595,6 @@ class Diff:
                 "changed_at": Timestamp(from_time),
             }
 
-            # Need to revisit this part altogether to properly account for deleted node.
             if branch_status == RelationshipStatus.ACTIVE.value:
                 item["action"] = DiffAction.ADDED.value
             elif branch_status == RelationshipStatus.DELETED.value:
@@ -622,6 +639,7 @@ class Diff:
                     "name": attr_name,
                     "rel_id": result.get("r1").id,
                     "properties": {},
+                    "origin_rel_id": None,
                 }
 
                 attr_to = None
@@ -661,8 +679,9 @@ class Diff:
 
         # ------------------------------------------------------------
         # Query the current value for all attributes that have been updated
+        #  Currently we are only using the result of this query to understand if a
         # ------------------------------------------------------------
-        current_attr_query = NodeListGetAttributeQuery(
+        origin_attr_query = NodeListGetAttributeQuery(
             ids=list(attrs_to_query["nodes"]), branch=self.origin_branch, at=self.diff_to, include_source=True
         ).execute()
 
@@ -674,9 +693,9 @@ class Diff:
             attr_name = result.get("a").get("name")
             prop_type = result.get("r2").type
 
-            current_attr = current_attr_query.get_result_by_id_and_name(node_id, attr_name)
-            current_rel_name = current_attr_query.property_type_mapping[prop_type][0]
-            current_node_name = current_attr_query.property_type_mapping[prop_type][1]
+            origin_attr = origin_attr_query.get_result_by_id_and_name(node_id, attr_name)
+            origin_rel_name = origin_attr_query.property_type_mapping[prop_type][0]
+            # current_node_name = origin_attr_query.property_type_mapping[prop_type][1]
 
             # Process the Property of the Attribute
             prop_to = None
@@ -695,9 +714,13 @@ class Diff:
                 "branch": branch_name,
                 "db_id": result.get("ap").id,
                 "rel_id": result.get("r2").id,
+                "origin_rel_id": None,
             }
 
-            if not current_attr and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
+            if origin_attr:
+                item["origin_rel_id"] = origin_attr.get(origin_rel_name).id
+
+            if not origin_attr and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
                 item["action"] = DiffAction.ADDED.value
                 item["changed_at"] = prop_from
             elif prop_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:
@@ -707,6 +730,7 @@ class Diff:
                 item["action"] = DiffAction.UPDATED.value
                 item["changed_at"] = prop_from
 
+            self._results[branch_name]["nodes"][node_id].attributes[attr_name].origin_rel_id = result.get("r1").id
             self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[
                 prop_type
             ] = AttributePropertyDiffElement(**item)
