@@ -1,18 +1,19 @@
 from __future__ import annotations
-
 from collections import defaultdict
-from dataclasses import dataclass
-from re import A
-from typing import List, Dict, Set, Union, Optional
 
-import pendulum
+from dataclasses import dataclass
+from typing import List, Dict, Set, Any, Union, Optional, Generator
+
 from pydantic import validator
 
 import infrahub.config as config
-from infrahub.core.attribute.query import AttributeGetValueQuery
-from infrahub.core.constants import RelationshipStatus
-from infrahub.core.node.standard import StandardNode
+from infrahub.core.constants import RelationshipStatus, DiffAction
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.diff import DiffNodeQuery, DiffAttributeQuery, DiffRelationshipQuery
+from infrahub.core.query.attribute import AttributeGetValueQuery
+from infrahub.core.query.node import NodeListGetAttributeQuery, NodeDeleteQuery, NodeListGetInfoQuery
+from infrahub.core.node.standard import StandardNode
+from infrahub.core.constants import RelationshipStatus
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
@@ -22,12 +23,9 @@ from infrahub.database import execute_read_query
 from infrahub.exceptions import BranchNotFound
 
 
-class DiffQuery(Query):
-    pass
-
-
 class AddNodeToBranch(Query):
 
+    name: str = "node_add_to_branch"
     insert_return: bool = False
 
     type: QueryType = QueryType.WRITE
@@ -52,10 +50,6 @@ class AddNodeToBranch(Query):
         self.params["status"] = RelationshipStatus.ACTIVE.value
 
         self.add_to_query(query)
-        # results = execute_write_query(create_rel_query, params)
-        # if not results:
-        #     return None
-        # return results[0].values()[0]
 
 
 class Branch(StandardNode):
@@ -93,6 +87,12 @@ class Branch(StandardNode):
             raise BranchNotFound(identifier=name)
 
         return cls._convert_node_to_obj(results[0].values()[0])
+
+    def get_origin_branch(self) -> Branch:
+
+        from infrahub.core import get_branch
+
+        return get_branch(self.origin_branch)
 
     def get_branches_and_times_to_query(self, at: Union[Timestamp, str] = None) -> Dict[str, str]:
         """Get all the branches that are constituing this branch with the associated times."""
@@ -201,7 +201,7 @@ class Branch(StandardNode):
     def rebase(self):
         """Rebase the current Branch with its origin branch"""
 
-        self.branched_from = pendulum.now(tz="UTC").to_iso8601_string()
+        self.branched_from = Timestamp().to_string()
         self.save()
 
         # Update the branch in the registry after the rebase
@@ -209,7 +209,7 @@ class Branch(StandardNode):
 
         registry.branch[self.name] = self
 
-    def validate(self):
+    def validate(self) -> set(bool, List[str]):
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -223,6 +223,12 @@ class Branch(StandardNode):
         passed = True
         messages = []
 
+        # Check the diff and ensure the branch doesn't have some conflict
+        if conflicts := self.diff().get_conflicts():
+            passed = False
+            for conflict in conflicts:
+                messages.append(f"Conflict detected at {'/'.join(conflict)}")
+
         from infrahub.core.manager import NodeManager
 
         # For all repositories in this branch, run all checks
@@ -235,81 +241,112 @@ class Branch(StandardNode):
 
         return passed, messages
 
-    def diff(self):
-        return Diff(branch=self)
+    def diff(self, diff_from: Union[str, Timestamp] = None, diff_to: Union[str, Timestamp] = None) -> Diff:
+        return Diff(branch=self, diff_from=diff_from, diff_to=diff_to)
 
-    def merge(self):
+    def merge(self, at: Union[str, Timestamp] = None):
         """Merge the current branch into main."""
 
-        passed, messages = self.validate()
+        passed, _ = self.validate()
         if not passed:
             raise Exception(f"Unable to merge branch {self.name}, validation failed")
 
+        if self.name == config.SETTINGS.main.default_branch:
+            raise Exception(f"Unable to merge the branch '{self.name}' into itself")
+
         from infrahub.core import registry
 
-        node_uuid_already_merged = []
         rel_ids_to_update = []
 
         default_branch = registry.branch[config.SETTINGS.main.default_branch]
 
-        at = Timestamp()
+        at = Timestamp(at)
+
+        diff = Diff(branch=self)
+        nodes = diff.get_nodes()
+
+        origin_nodes_query = NodeListGetInfoQuery(ids=list(nodes[self.name].keys()), branch=default_branch).execute()
+        origin_nodes = {
+            node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
+        }
 
         # ---------------------------------------------
         # NODES
-        #  To access the internal value of this relationship, we need to re-query the list of nodes
         # ---------------------------------------------
-        query = DiffNodeQuery(branch=self)
-        query.execute()
+        for node_id, node in nodes[self.name].items():
 
-        for result in query.get_results():
+            if node.action == DiffAction.ADDED.value:
+                AddNodeToBranch(node_id=node.db_id, branch=default_branch).execute()
+                rel_ids_to_update.append(node.rel_id)
 
-            # For now only consider the item that have been changed in the branch
-            if result.get("b").get("name") != self.name:
-                continue
+            elif node.action == DiffAction.REMOVED.value:
+                NodeDeleteQuery(branch=default_branch, node_id=node_id, at=at).execute()
+                rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").id])
 
-            if result.get("n").get("uuid") not in node_uuid_already_merged:
-                node_uuid_already_merged.append(result.get("n").get("uuid"))
-                add_query = AddNodeToBranch(node_id=result.get("n").id, branch=default_branch)
-                add_query.execute()
-                rel_ids_to_update.append(result.get("r1").id)
+            for _, attr in node.attributes.items():
 
-            # Create relationship
-            add_relationship(result.get("n"), result.get("a"), "HAS_ATTRIBUTE")
-            add_relationship(result.get("a"), result.get("av"), "HAS_VALUE")
-            rel_ids_to_update.append(result.get("r2").id)
-            rel_ids_to_update.append(result.get("r3").id)
+                if attr.action == DiffAction.ADDED.value:
+                    add_relationship(
+                        src_node_id=node.db_id,
+                        dst_node_id=attr.db_id,
+                        rel_type="HAS_ATTRIBUTE",
+                        at=at,
+                        branch_name=default_branch.name,
+                    )
+                    rel_ids_to_update.append(attr.rel_id)
 
-        # ---------------------------------------------
-        # ATTRIBUTES
-        # ---------------------------------------------
-        query = DiffAttributeQuery(branch=self)
-        query.execute()
+                elif attr.action == DiffAction.REMOVED.value:
+                    add_relationship(
+                        src_node_id=node.db_id,
+                        dst_node_id=attr.db_id,
+                        rel_type="HAS_ATTRIBUTE",
+                        branch_name=default_branch.name,
+                        at=at,
+                        status=RelationshipStatus.DELETED,
+                    )
+                    rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
 
-        for result in query.get_results_group_by_branch_attribute():
+                elif attr.action == DiffAction.UPDATED.value:
+                    pass
 
-            # Ignore attributes that are associated with a new node
-            if result.get("n").get("uuid") in node_uuid_already_merged:
-                continue
+                for prop_type, prop in attr.properties.items():
 
-            # For now only consider the item that have been changed in the branch
-            if result.get("r").get("branch") != self.name:
-                continue
+                    if prop.action == DiffAction.ADDED.value:
+                        add_relationship(
+                            src_node_id=attr.db_id,
+                            dst_node_id=prop.db_id,
+                            rel_type=prop_type,
+                            at=at,
+                            branch_name=default_branch.name,
+                        )
+                        rel_ids_to_update.append(prop.rel_id)
 
-            # Need to find the current valid relationship in main and update its time
-            previous_value_query = AttributeGetValueQuery(
-                attr_id=result.get("a").id, branch=default_branch, at=at
-            ).execute()
-            previous_value_result = previous_value_query.get_result()
+                    elif prop.action == DiffAction.UPDATED.value:
 
-            add_relationship(result.get("a"), result.get("av"), "HAS_VALUE")
-            rel_ids_to_update.append(result.get("r").id)
-            rel_ids_to_update.append(previous_value_result.get("r").id)
+                        add_relationship(
+                            src_node_id=attr.db_id,
+                            dst_node_id=prop.db_id,
+                            rel_type=prop_type,
+                            at=at,
+                            branch_name=default_branch.name,
+                        )
+                        rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
+
+                    elif prop.action == DiffAction.REMOVED.value:
+                        add_relationship(
+                            src_node_id=attr.db_id,
+                            dst_node_id=prop.db_id,
+                            rel_type=prop_type,
+                            at=at,
+                            branch_name=default_branch.name,
+                            status=RelationshipStatus.DELETED,
+                        )
+                        rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
         # ---------------------------------------------
         # RELATIONSHIPS
         # ---------------------------------------------
-        query = DiffRelationshipQuery(branch=self)
-        query.execute()
+        query = DiffRelationshipQuery(branch=self).execute()
 
         for result in query.get_results_deduplicated():
 
@@ -317,12 +354,16 @@ class Branch(StandardNode):
             if result.get("r1").get("branch") != self.name:
                 continue
 
-            add_relationship(result.get("sn"), result.get("rel"), result.get("r1").type)
-            add_relationship(result.get("dn"), result.get("rel"), result.get("r2").type)
+            add_relationship(
+                src_node_id=result.get("sn").id, dst_node_id=result.get("rel").id, rel_type=result.get("r1").type, at=at
+            )
+            add_relationship(
+                src_node_id=result.get("dn").id, dst_node_id=result.get("rel").id, rel_type=result.get("r2").type, at=at
+            )
             rel_ids_to_update.append(result.get("r1").id)
             rel_ids_to_update.append(result.get("r2").id)
 
-        update_relationships_to(ids=rel_ids_to_update)
+        update_relationships_to(ids=rel_ids_to_update, to=at)
 
         # ---------------------------------------------
         # FILES
@@ -349,126 +390,46 @@ class Branch(StandardNode):
         self.rebase()
 
 
-class DiffNodeQuery(DiffQuery):
-    def query_init(self):
-
-        # TODO need to improve the query to capture an object that has been delete into the branch
-        # TODO probably also need to consider a node what was merged already
-        query = """
-        MATCH (b:Branch { name: $branch })-[r1:IS_PART_OF]-(n)-[r2:HAS_ATTRIBUTE]-(a:Attribute)-[r3:HAS_VALUE]-(av)
-        """
-
-        self.add_to_query(query)
-        self.params["branch"] = self.branch.name
-        self.params["time0"] = self.branch.branched_from
-
-        self.order_by = ["n.uuid"]
-
-        self.return_labels = ["b", "n", "a", "av", "r1", "r2", "r3"]
+@dataclass
+class ValueElement:
+    previous: Any
+    new: Any
 
 
-class DiffAttributeQuery(DiffQuery):
-    def query_init(self):
-
-        # TODO need to improve the query to capture an object that has been delete into the branch
-        query = """
-        MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)-[r { branch: $branch_name } ]->(av)
-        WHERE (r.from > $time0 ) OR (r.to < $time0 )
-        """
-
-        self.add_to_query(query)
-        self.params["branch_name"] = self.branch.name
-        self.params["time0"] = self.branch.branched_from
-
-        self.return_labels = ["n", "a", "av", "r"]
-
-    def get_results_group_by_branch_attribute(self):  # -> Generator[QueryResult]:
-        """Return results group by the label and attribute provided and filtered by scored."""
-
-        attrs_info = defaultdict(list)
-
-        # Extract all attrname and relationships on all branches
-        for idx, result in enumerate(self.results):
-            node_uuid = result.get("n").get("uuid")
-            attribute_name = result.get("a").get("name", None)
-            attribute_branch = result.get("r").get("branch")
-
-            attr_key = f"{node_uuid}__{attribute_branch}__{attribute_name}"
-            info = {"idx": idx, "branch_score": result.branch_score}
-            attrs_info[attr_key].append(info)
-
-        for attr_key, values in attrs_info.items():
-            attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
-
-            yield self.results[attr_info["idx"]]
-
-
-class DiffRelationshipQuery(DiffQuery):
-    def query_init(self):
-
-        query = """
-        MATCH (sn)-[r1 { branch: $branch_name }]->(rel:Relationship)<-[r2 { branch: $branch_name } ]->(dn)
-        """
-
-        self.add_to_query(query)
-        self.params["branch_name"] = self.branch.name
-        self.params["time0"] = self.branch.branched_from
-
-        self.return_labels = ["sn", "dn", "rel", "r1", "r2"]
-
-    def get_results_deduplicated(self):
-
-        attrs_info = defaultdict(list)
-        ids_set_processed = []
-
-        # Extract all attrname and relationships on all branches
-        for idx, result in enumerate(self.results):
-
-            # Generate unique set composed of all the IDs of th node and the relationship returned
-            # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
-            ids_set = set([item.id for item in result])
-            if ids_set in ids_set_processed:
-                continue
-            ids_set_processed.append(ids_set)
-
-            # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
-            source_node_uuid = result.get("sn").get("uuid")[8:]
-            dest_node_uuid = result.get("dn").get("uuid")[8:]
-            nodes = sorted([source_node_uuid, dest_node_uuid])
-            rel_name = result.get("rel").get("name")
-
-            attr_key = f"{nodes[0]}__{nodes[1]}__{rel_name}"
-            info = {"idx": idx, "branch_score": result.branch_score}
-            attrs_info[attr_key].append(info)
-
-        for attr_key, values in attrs_info.items():
-            attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
-
-            yield self.results[attr_info["idx"]]
-
-
-# For now a diff is always calculated between a given branch and the main branch
-#   need to search for
-#      relationships that are referencing the new branch
-#      relationships in main that have changed between the branched_from date and the current time
+@dataclass
+class AttributePropertyDiffElement:
+    branch: str
+    type: str
+    action: str
+    db_id: int
+    rel_id: int
+    origin_rel_id: Optional[int]
+    # value: ValueElement
+    changed_at: Timestamp
 
 
 @dataclass
 class NodeAttributeDiffElement:
-    attr_uuid: str
-    attr_name: str
+    id: str
+    name: str
     action: str
-    changed_at: str
+    db_id: int
+    rel_id: int
+    origin_rel_id: Optional[int]
+    changed_at: Timestamp
+    properties: Dict[str, AttributePropertyDiffElement]
 
 
 @dataclass
 class NodeDiffElement:
     branch: str
-    node_labels: List[str]
-    node_uuid: str
+    labels: List[str]
+    id: str
     action: str
-    changed_at: str
-    attributes: List[NodeAttributeDiffElement]
+    db_id: int
+    rel_id: int
+    changed_at: Timestamp
+    attributes: Dict[str, NodeAttributeDiffElement]
 
 
 @dataclass
@@ -496,104 +457,291 @@ class RelationshipDiffElement:
 
 
 class Diff:
-    def __init__(self, branch):
+
+    diff_from: Timestamp
+    diff_to: Timestamp
+
+    def __init__(
+        self,
+        branch: Branch,
+        branch_only: bool = False,
+        diff_from: Union[str, Timestamp] = None,
+        diff_to: Union[str, Timestamp] = None,
+    ):
         self.branch = branch
+        self.origin_branch = self.branch.get_origin_branch()
 
-        # internal cache to avoir re-querying everything
-        self._nodes = None
+        self.branch_only = branch_only
 
-    def get_nodes(self, use_cache=True) -> List[NodeDiffElement]:
+        if diff_from:
+            self.diff_from = Timestamp(diff_from)
+        elif not diff_from and not self.branch.is_default:
+            self.diff_from = Timestamp(self.branch.branched_from)
+        else:
+            raise ValueError(f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`.")
 
-        if self._nodes and use_cache:
-            return self._nodes
+        # If diff_to is not defined it will automatically select the current time.
+        self.diff_to = Timestamp(diff_to)
 
-        query = DiffNodeQuery(branch=self.branch)
-        query.execute()
-        results = []
+        if self.diff_to < self.diff_from:
+            raise ValueError("diff_to must be later than diff_from")
 
-        node = None
-        for result in query.get_results():
+        # Results organized by Branch
+        self._results: Dict[str, dict] = defaultdict(lambda: dict(nodes={}, relationships={}, files={}))
 
-            # Determine if we need to create a new node
-            # Before creating a new one we need to save the previous one to the list of result
-            created_new_node = False  # noqa
-            if not node or node.node_uuid != result.get("n").get("uuid"):
-                created_new_node = True  # noqa
-                if node:
-                    results.append(node)
+        self._calculated_diff_nodes_at = None
+        self._calculated_diff_rels_at = None
+        self._calculated_diff_files_at = None
 
-                item = {
-                    "branch": result.get("b").get("name"),
-                    "node_labels": list(result.get("n").labels),
-                    "node_uuid": result.get("n").get("uuid"),
-                    "attributes": [],
-                }
+    @property
+    def has_conflict(self) -> bool:
+        """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-                from_time = result.get("r1").get("from")
-                to_time = result.get("r1").get("to")
+        if self.get_conflicts():
+            return True
 
-                if from_time and not to_time:
-                    item["changed_at"] = from_time
-                    item["action"] = "added"
+        return False
 
-                elif from_time and to_time:
-                    item["changed_at"] = to_time
-                    item["action"] = "removed"
+    @property
+    def has_changes(self) -> bool:
+        """Return True if the diff has identified some changes, False otherwise."""
 
-                node = NodeDiffElement(**item)
+        for _, paths in self.get_modified_paths().items():
+            if paths:
+                return True
 
-            node.attributes.append(
-                NodeAttributeDiffElement(
-                    attr_uuid=result.get("a").get("uuid"),
-                    attr_name=result.get("a").get("name"),
-                    changed_at=result.get("r2").get("from"),
-                    action="added",
-                )
-            )
+        return False
 
-        if node:
-            results.append(node)
+    def get_conflicts(self):
 
-        self._nodes = results
+        if self.branch_only:
+            return []
 
-        return results
+        paths = self.get_modified_paths()
 
-    def get_attributes(self):
+        # For now we assume that we can only have 2 branches but in the future we might need to support more
+        branches = list(paths.keys())
 
-        # TODO Currently only the attribute updated in the branch will be returned
-        # Need to also query the attribute that have been added/updated/deleted in main after the checkout time
-        query = DiffAttributeQuery(branch=self.branch)
-        query.execute()
-        results = []
+        # if we don't have at least 2 branches returned we can safely assumed there is no conflict
+        if len(branches) < 2:
+            return []
 
-        node_ids = [node.node_uuid for node in self.get_nodes()]
+        # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
+        return paths[branches[0]] & paths[branches[1]]
 
-        for result in query.get_results_group_by_branch_attribute():
+    def get_modified_paths(self) -> Dict[str, set]:
 
-            # Ignore attributes that are associated with a new node
-            if result.get("n").get("uuid") in node_ids:
+        paths = defaultdict(set)
+
+        for branch_name, data in self.get_nodes().items():
+            if self.branch_only and branch_name != self.branch.name:
                 continue
 
-            item = AttributeDiffElement(
-                branch=result.get("r").get("branch"),
-                node_labels=list(result.get("n").labels),
-                node_uuid=result.get("n").get("uuid"),
-                attr_name=result.get("a").get("name"),
-                attr_uuid=result.get("a").get("uuid"),
-                changed_at=result.get("r").get("from"),
-                action="updated",
-            )
+            for node_id, node in data.items():
+                for attr_name, attr in node.attributes.items():
+                    for prop_type, prop in attr.properties.items():
+                        paths[branch_name].add(("node", node_id, attr_name, prop_type))
 
-            results.append(item)
+        # TODO Relationships and Files
 
-        return results
+        return paths
 
-    def get_relationships(self):
+    def get_nodes(self) -> Dict[str, Dict[str, NodeDiffElement]]:
+
+        if not self._calculated_diff_nodes_at:
+            self._calculate_diff_nodes()
+
+        return {branch_name: data["nodes"] for branch_name, data in self._results.items()}
+
+    def _calculate_diff_nodes(self):
+        """Calculate the diff for all the nodes and attributes.
+
+        The results will be stored in self._results organized by branch.
+        """
+
+        # Query all the nodes and the attributes that have been modified in the branch between the two timestamps.
+        query_nodes = DiffNodeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute()
+        query_attrs = DiffAttributeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute()
+
+        attrs_to_query = {"nodes": set(), "fields": set()}
+
+        # ------------------------------------------------------------
+        # Process nodes that have been Added or Removed first
+        # ------------------------------------------------------------
+        for result in query_nodes.get_results():
+            node_id = result.get("n").get("uuid")
+
+            node_to = None
+            if result.get("r").get("to"):
+                node_to = Timestamp(result.get("r").get("to"))
+
+            # If to_time is defined and is smaller than the diff_to time,
+            #   then this is not the correct relationship to define this node
+            #   NOTE would it make sense to move this logic into the Query itself ?
+            if node_to and node_to < self.diff_to:
+                continue
+
+            branch_status = result.get("r").get("status")
+            branch_name = result.get("b").get("name")
+            from_time = result.get("r").get("from")
+
+            item = {
+                "branch": result.get("b").get("name"),
+                "labels": list(result.get("n").labels),
+                "id": node_id,
+                "db_id": result.get("n").id,
+                "attributes": {},
+                "rel_id": result.get("r").id,
+                "changed_at": Timestamp(from_time),
+            }
+
+            if branch_status == RelationshipStatus.ACTIVE.value:
+                item["action"] = DiffAction.ADDED.value
+            elif branch_status == RelationshipStatus.DELETED.value:
+                item["action"] = DiffAction.REMOVED.value
+
+            self._results[branch_name]["nodes"][node_id] = NodeDiffElement(**item)
+
+        # ------------------------------------------------------------
+        # Process Attributes that have been Added, Updated or Removed
+        #  We don't process the properties right away, instead we'll identify the node that mostlikely already exist
+        #  and we'll query the current value to fully understand what we need to do with it.
+        # ------------------------------------------------------------
+        for result in query_attrs.get_results():
+
+            node_id = result.get("n").get("uuid")
+            branch_name = result.get("r2").get("branch")
+
+            # Check if the node already exist, if not it means it was not added or removed so it was updated
+            if node_id not in self._results[branch_name]["nodes"].keys():
+
+                item = {
+                    "labels": list(result.get("n").labels),
+                    "id": node_id,
+                    "db_id": result.get("n").id,
+                    "attributes": {},
+                    "changed_at": None,
+                    "action": DiffAction.UPDATED.value,
+                    "rel_id": None,
+                    "branch": None,
+                }
+
+                self._results[branch_name]["nodes"][node_id] = NodeDiffElement(**item)
+
+            # Check if the Attribute is already present or if it was added during this time frame.
+            attr_name = result.get("a").get("name")
+            if attr_name not in self._results[branch_name]["nodes"][node_id].attributes.keys():
+
+                node = self._results[branch_name]["nodes"][node_id]
+                item = {
+                    "id": result.get("a").get("uuid"),
+                    "db_id": result.get("a").id,
+                    "name": attr_name,
+                    "rel_id": result.get("r1").id,
+                    "properties": {},
+                    "origin_rel_id": None,
+                }
+
+                attr_to = None
+                attr_from = None
+                branch_status = result.get("r1").get("status")
+
+                if result.get("r1").get("to"):
+                    attr_to = Timestamp(result.get("r1").get("to"))
+                if result.get("r1").get("from"):
+                    attr_from = Timestamp(result.get("r1").get("from"))
+
+                if attr_to and attr_to < self.diff_to:
+                    continue
+
+                if (
+                    node.action == DiffAction.ADDED.value
+                    and attr_from >= self.diff_from
+                    and branch_status == RelationshipStatus.ACTIVE.value
+                ):
+                    item["action"] = DiffAction.ADDED.value
+                    item["changed_at"] = attr_from
+
+                elif attr_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:
+                    item["action"] = DiffAction.REMOVED.value
+                    item["changed_at"] = attr_from
+
+                    attrs_to_query["nodes"].add(node_id)
+                    attrs_to_query["fields"].add(attr_name)
+                else:
+                    item["action"] = DiffAction.UPDATED.value
+                    item["changed_at"] = None
+
+                    attrs_to_query["nodes"].add(node_id)
+                    attrs_to_query["fields"].add(attr_name)
+
+                self._results[branch_name]["nodes"][node_id].attributes[attr_name] = NodeAttributeDiffElement(**item)
+
+        # ------------------------------------------------------------
+        # Query the current value for all attributes that have been updated
+        #  Currently we are only using the result of this query to understand if a
+        # ------------------------------------------------------------
+        origin_attr_query = NodeListGetAttributeQuery(
+            ids=list(attrs_to_query["nodes"]), branch=self.origin_branch, at=self.diff_to, include_source=True
+        ).execute()
+
+        for result in query_attrs.get_results():
+
+            node_id = result.get("n").get("uuid")
+            branch_name = result.get("r2").get("branch")
+            branch_status = result.get("r2").get("status")
+            attr_name = result.get("a").get("name")
+            prop_type = result.get("r2").type
+
+            origin_attr = origin_attr_query.get_result_by_id_and_name(node_id, attr_name)
+            origin_rel_name = origin_attr_query.property_type_mapping[prop_type][0]
+            # current_node_name = origin_attr_query.property_type_mapping[prop_type][1]
+
+            # Process the Property of the Attribute
+            prop_to = None
+            prop_from = None
+
+            if result.get("r2").get("to"):
+                prop_to = Timestamp(result.get("r2").get("to"))
+            if result.get("r2").get("from"):
+                prop_from = Timestamp(result.get("r2").get("from"))
+
+            if prop_to and prop_to < self.diff_to:
+                continue
+
+            item = {
+                "type": prop_type,
+                "branch": branch_name,
+                "db_id": result.get("ap").id,
+                "rel_id": result.get("r2").id,
+                "origin_rel_id": None,
+            }
+
+            if origin_attr:
+                item["origin_rel_id"] = origin_attr.get(origin_rel_name).id
+
+            if not origin_attr and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
+                item["action"] = DiffAction.ADDED.value
+                item["changed_at"] = prop_from
+            elif prop_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:
+                item["action"] = DiffAction.REMOVED.value
+                item["changed_at"] = prop_from
+            else:
+                item["action"] = DiffAction.UPDATED.value
+                item["changed_at"] = prop_from
+
+            self._results[branch_name]["nodes"][node_id].attributes[attr_name].origin_rel_id = result.get("r1").id
+            self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[
+                prop_type
+            ] = AttributePropertyDiffElement(**item)
+
+        self._calculated_diff_nodes_at = Timestamp()
+
+    def get_relationships(self) -> List[RelationshipDiffElement]:
 
         results = []
 
-        query = DiffRelationshipQuery(branch=self.branch)
-        query.execute()
+        query = DiffRelationshipQuery(branch=self.branch).execute()
 
         for result in query.get_results_deduplicated():
 
@@ -615,31 +763,30 @@ class Diff:
     def get_files(self):
 
         results = []
+        from infrahub.core.manager import NodeManager
 
-        # FIXME Need to revisit with new repository model
+        # Collect all Repositories in Main because we'll need the commit in Main for each one.
+        repos_in_main = {repo.id: repo for repo in NodeManager.query("Repository")}
 
-        # # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        # repos_in_main = {repo.uuid: repo for repo in Repository.get_list()}
+        for repo in NodeManager.query("Repository", branch=self.branch):
 
-        # for repo in Repository.get_list(branch=self.branch):
+            # Check if the repo, exist in main, if not ignore this repo
+            if repo.id not in repos_in_main:
+                continue
 
-        #     # Check if the repo, exist in main, if not ignore this repo
-        #     if repo.uuid not in repos_in_main:
-        #         continue
+            repo_in_main = repos_in_main[repo.id]
+            changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
 
-        #     repo_in_main = repos_in_main[repo.uuid]
-        #     changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
+            if not changed_files:
+                continue
 
-        #     if not changed_files:
-        #         continue
-
-        #     results.append(
-        #         {
-        #             "branch": repo.branch.name,
-        #             "repository_uuid": repo.uuid,
-        #             "repository_name": repo.name.value,
-        #             "files": changed_files,
-        #         }
-        #     )
+            results.append(
+                {
+                    "branch": repo.branch.name,
+                    "repository_uuid": repo.uuid,
+                    "repository_name": repo.name.value,
+                    "files": changed_files,
+                }
+            )
 
         return results

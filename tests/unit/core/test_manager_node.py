@@ -2,6 +2,7 @@ from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 
 # ("low", 2),
 # ("medium", 3),
@@ -38,6 +39,67 @@ def test_get_one_local_attribute(default_branch, criticality_schema):
     assert obj.description.id
     assert obj.color.value == "#444444"
     assert obj.color.id
+
+
+def test_get_one_local_attribute_with_source(default_branch, criticality_schema, first_account, second_account):
+
+    obj1 = Node(criticality_schema).new(name="low", level=4, _source=first_account).save()
+    obj2 = (
+        Node(criticality_schema)
+        .new(
+            name="medium",
+            level={"value": 3, "source": second_account.id},
+            description="My desc",
+            color="#333333",
+            _source=first_account,
+        )
+        .save()
+    )
+
+    obj = NodeManager.get_one(obj2.id, include_source=True)
+
+    assert obj.id == obj2.id
+    assert obj.db_id == obj2.db_id
+    assert obj.name.value == "medium"
+    assert obj.name.id
+    assert obj.name.source_id == first_account.id
+    assert obj.level.value == 3
+    assert obj.level.id
+    assert obj.level.source_id == second_account.id
+    assert obj.description.value == "My desc"
+    assert obj.description.id
+    assert obj.description.source_id == first_account.id
+    assert obj.color.value == "#333333"
+    assert obj.color.id
+    assert obj.color.source_id == first_account.id
+
+
+def test_get_one_local_attribute_with_flags(default_branch, criticality_schema, first_account, second_account):
+
+    obj1 = (
+        Node(criticality_schema)
+        .new(name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False})
+        .save()
+    )
+
+    obj = NodeManager.get_one(obj1.id, fields={"name": True, "level": True, "color": True})
+
+    assert obj.id == obj1.id
+    assert obj.db_id == obj1.db_id
+    assert obj.name.value == "low"
+    assert obj.name.id
+    assert obj.name.is_visible == True
+    assert obj.name.is_protected == True
+
+    assert obj.level.value == 4
+    assert obj.level.id
+    assert obj.level.is_visible == False
+    assert obj.level.is_protected == False
+
+    assert obj.color.value == "#444444"
+    assert obj.color.id
+    assert obj.color.is_visible == True
+    assert obj.color.is_protected == False
 
 
 def test_get_one_relationship(default_branch, car_person_schema):

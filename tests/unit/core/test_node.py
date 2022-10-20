@@ -11,7 +11,7 @@ from infrahub.core.utils import get_paths_between_nodes
 from infrahub.exceptions import ValidationError
 
 
-def test_node_init(default_branch, criticality_schema):
+def test_node_init(default_branch, criticality_schema, first_account):
 
     obj = Node(criticality_schema).new(name="low", level=4)
 
@@ -26,6 +26,13 @@ def test_node_init(default_branch, criticality_schema):
     assert obj.level.value == 3
     assert obj.description.value == "My desc"
     assert obj.color.value == "#333333"
+
+    obj = Node(criticality_schema).new(name="medium", level=3, description="My desc", _source=first_account)
+
+    assert obj.name.value == "medium"
+    assert obj.level.value == 3
+    assert obj.description.value == "My desc"
+    assert obj._source == first_account
 
 
 def test_node_init_schema_name(default_branch, criticality_schema):
@@ -143,8 +150,6 @@ def test_node_create_local_attrs(default_branch, criticality_schema):
     assert obj.description.id
     assert obj.color.value == "#444444"
     assert obj.color.id
-    assert obj.id
-    assert obj.db_id
 
     obj = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
 
@@ -158,6 +163,54 @@ def test_node_create_local_attrs(default_branch, criticality_schema):
     assert obj.description.id
     assert obj.color.value == "#333333"
     assert obj.color.id
+
+
+def test_node_create_local_attrs_with_source(default_branch, criticality_schema, first_account):
+
+    obj = Node(criticality_schema).new(name="low", level=4, _source=first_account).save()
+
+    assert obj.id
+    assert obj.db_id
+    assert obj._source == first_account
+    assert obj.name.value == "low"
+    assert obj.name.id
+    assert obj.name.source_id == first_account.id
+    assert obj.level.value == 4
+    assert obj.level.id
+    assert obj.level.source_id == first_account.id
+    assert obj.description.value is None
+    assert obj.description.id
+    assert obj.description.source_id == first_account.id
+    assert obj.color.value == "#444444"
+    assert obj.color.id
+    assert obj.color.source_id == first_account.id
+
+
+def test_node_create_local_attrs_with_different_sources(
+    default_branch, criticality_schema, first_account, second_account
+):
+
+    obj = (
+        Node(criticality_schema)
+        .new(name={"value": "low", "source": second_account.id}, level=4, _source=first_account)
+        .save()
+    )
+
+    assert obj.id
+    assert obj.db_id
+    assert obj._source == first_account
+    assert obj.name.value == "low"
+    assert obj.name.id
+    assert obj.name.source_id == second_account.id
+    assert obj.level.value == 4
+    assert obj.level.id
+    assert obj.level.source_id == first_account.id
+    assert obj.description.value is None
+    assert obj.description.id
+    assert obj.description.source_id == first_account.id
+    assert obj.color.value == "#444444"
+    assert obj.color.id
+    assert obj.color.source_id == first_account.id
 
 
 def test_node_create_with_single_relationship(default_branch, car_person_schema):
@@ -235,6 +288,33 @@ def test_node_update_local_attrs(default_branch, criticality_schema):
     obj3 = NodeManager.get_one(obj1.id)
     assert obj3.name.value == "high"
     assert obj3.level.value == 1
+
+
+def test_node_update_local_attrs_with_flags(default_branch, criticality_schema):
+
+    fields_to_query = {"name": True, "level": True}
+    obj1 = Node(criticality_schema).new(name="low", level=4).save()
+
+    obj2 = NodeManager.get_one(obj1.id, fields=fields_to_query)
+    obj2.name.is_protected = True
+    obj2.level.is_visible = False
+    obj2.save()
+
+    obj3 = NodeManager.get_one(obj1.id, fields=fields_to_query)
+    assert obj3.name.is_protected == True
+    assert obj3.level.is_visible == False
+
+
+def test_node_update_local_attrs_with_source(default_branch, criticality_schema, first_account, second_account):
+
+    obj1 = Node(criticality_schema).new(name="low", level=4, _source=first_account).save()
+
+    obj2 = NodeManager.get_one(obj1.id, include_source=True)
+    obj2.name.source = second_account
+    obj2.save()
+
+    obj3 = NodeManager.get_one(obj1.id, include_source=True)
+    assert obj3.name.source_id == second_account.id
 
 
 # --------------------------------------------------------------------------

@@ -33,6 +33,63 @@ async def test_create_simple_object(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
+async def test_create_object_with_flags(default_branch, car_person_schema):
+
+    graphql_schema = graphene.Schema(
+        query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False
+    ).graphql_schema
+
+    query = """
+    mutation {
+        person_create(data: {name: { value: "John", is_protected: true}, height: {value: 182, is_visible: false}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_create"]["ok"] is True
+    assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
+
+    # Query the newly created Node to ensure everything is as expected
+    query = """
+        query {
+            person {
+                id
+                name {
+                    value
+                    is_protected
+                }
+                height {
+                    is_visible
+                }
+            }
+        }
+    """
+    result1 = await graphql(
+        graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["name"]["is_protected"] == True
+    assert result1.data["person"][0]["height"]["is_visible"] == False
+
+
+@pytest.mark.asyncio
 async def test_create_object_with_rels(default_branch, car_person_schema):
 
     Node("Person").new(name="John", height=180).save()

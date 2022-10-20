@@ -6,12 +6,11 @@ from dataclasses import dataclass
 from typing import Dict, List, Set, Optional, Any, Union, Generator, TYPE_CHECKING
 
 from infrahub.core import registry
-
-from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import NodeSchema
+from infrahub.core.query import Query, QueryType, QueryResult
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import NodeSchema
     from infrahub.core.branch import Branch
     from . import Node
 
@@ -53,9 +52,11 @@ class AttrToProcess:
     # time_from: Optional[str]
     # time_to: Optional[str]
 
-    # source_uuid: Optional[str]
-    # source_labels: Optional[List[str]]
-    is_inherited: bool = False
+    source_uuid: Optional[str]
+    source_labels: Optional[List[str]]
+    is_inherited: Optional[bool]
+    is_protected: Optional[bool]
+    is_visible: Optional[bool]
 
 
 def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
@@ -68,11 +69,29 @@ def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
 
 
 class NodeQuery(Query):
-    def __init__(self, node: Node = None, id=None, *args, **kwargs):
+    def __init__(
+        self,
+        node: Node = None,
+        node_id: str = None,
+        node_db_id: int = None,
+        id=None,
+        branch: Branch = None,
+        *args,
+        **kwargs,
+    ):
         # TODO Validate that Node is a valid node
         # Eventually extract the branch from Node as well
         self.node = node
-        self.id = id
+        self.node_id = node_id or id
+        self.node_db_id = node_db_id
+
+        if not self.node_id and self.node:
+            self.node_id = self.node.id
+
+        if not self.node_db_id and self.node:
+            self.node_db_id = self.node.db_id
+
+        self.branch = branch or self.node._branch
 
         super().__init__(*args, **kwargs)
 
@@ -87,7 +106,7 @@ class NodeCreateQuery(NodeQuery):
     def query_init(self):
 
         self.params["uuid"] = str(uuid.uuid4())
-        self.params["branch"] = self.node._branch.name
+        self.params["branch"] = self.branch.name
 
         query = (
             """
@@ -124,17 +143,14 @@ class NodeDeleteQuery(NodeQuery):
 
     def query_init(self):
 
-        self.params["uuid"] = self.node.id
-        self.params["branch"] = self.node._branch.name
+        self.params["uuid"] = self.node_id
+        self.params["branch"] = self.branch.name
 
-        query = (
-            """
+        query = """
         MATCH (b:Branch { name: $branch })
-        MATCH (n:Node:%s { uuid: $uuid })
-        CREATE (n)-[r:IS_PART_OF { status: "deleted", from: $at}]->(b)
+        MATCH (n { uuid: $uuid })
+        CREATE (n)-[r:IS_PART_OF { status: "deleted", from: $at }]->(b)
         """
-            % self.node.get_kind()
-        )
 
         self.params["at"] = self.at.to_string()
 
@@ -181,19 +197,41 @@ class NodeListGetAttributeQuery(Query):
     name: str = "node_list_get_attribute"
     order_by: List[str] = ["a.name"]
 
-    def __init__(self, ids: List[str], fields: dict = None, account=None, *args, **kwargs):
+    property_type_mapping = {
+        "HAS_VALUE": ("r2", "av"),
+        "HAS_OWNER": ("rel_owner", "owner"),
+        "HAS_SOURCE": ("rel_source", "source"),
+        "IS_PROTECTED": ("rel_isp", "isp"),
+        "IS_VISIBLE": ("rel_isv", "isv"),
+    }
+
+    def __init__(
+        self,
+        ids: List[str],
+        fields: dict = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        account=None,
+        *args,
+        **kwargs,
+    ):
         self.account = account
         self.ids = ids
         self.fields = fields
+        self.include_source = include_source
+        self.include_owner = include_owner
+
         super().__init__(*args, **kwargs)
 
     def query_init(self):
+
+        self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(rels_params)
 
         query = """
-        MATCH (n) WHERE ID(n) IN $ids OR n.uuid IN $ids
+        MATCH (n) WHERE n.uuid IN $ids
         MATCH p = ((n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE]-(av))
         """
 
@@ -205,34 +243,31 @@ class NodeListGetAttributeQuery(Query):
 
         self.add_to_query(query)
 
-        self.params["ids"] = self.ids
-
         self.return_labels = ["n", "a", "av", "r1", "r2"]
 
-        # self.query_add_source()
+        # Add Is_Protected and Is_visible
+        query = (
+            """
+        MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
+        MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
+        WHERE all(r IN [rel_isv, rel_isp] WHERE ( %s))
+        """
+            % rels_filter
+        )
+        self.add_to_query(query)
 
-        # if self.account and self.node.use_permission:
-        #     self.query_add_permission()
+        self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
 
-    # def query_add_source(self):
-
-    #     rels_filter_perms, rels_params = self.branch.get_query_filter_relationships(
-    #         rel_labels=["r3"], at=self.at, include_outside_parentheses=True
-    #     )
-    #     self.params.update(rels_params)
-
-    #     query = """
-    #     WITH %s
-    #     OPTIONAL MATCH (a)-[r3:HAS_SOURCE]-(src)
-    #     WHERE %s
-    #     """ % (
-    #         ",".join(self.return_labels),
-    #         "\n AND ".join(rels_filter_perms),
-    #     )
-
-    #     self.add_to_query(query)
-
-    #     self.return_labels.extend(["src", "r3"])
+        if self.include_source:
+            query = (
+                """
+            OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
+            WHERE all(r IN [rel_source] WHERE ( %s))
+            """
+                % rels_filter
+            )
+            self.add_to_query(query)
+            self.return_labels.extend(["source", "rel_source"])
 
     # def query_add_permission(self):
 
@@ -277,12 +312,16 @@ class NodeListGetAttributeQuery(Query):
                 value=result.get("av").get("value"),
                 # permission=result.permission_score,
                 branch=self.branch.name,
-                is_inherited=False,
+                is_inherited=None,
+                is_protected=result.get("isp").get("value"),
+                is_visible=result.get("isv").get("value"),
+                source_uuid=None,
+                source_labels=None,
             )
-            # source = result.get("src")
-            # if source:
-            #     attr.source_uuid = source.get("uuid")
-            #     attr.source_labels = source.labels
+
+            if self.include_source and result.get("source"):
+                attr.source_uuid = result.get("source").get("uuid")
+                attr.source_labels = result.get("source").labels
 
             if node_id not in attrs_by_node:
                 attrs_by_node[node_id]["node"] = result.get("n")
@@ -291,6 +330,14 @@ class NodeListGetAttributeQuery(Query):
             attrs_by_node[node_id]["attrs"][attr_name] = attr
 
         return attrs_by_node
+
+    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> QueryResult:
+
+        for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
+            if result.get("n").get("uuid") == node_id and result.get("a").get("name") == attr_name:
+                return result
+
+        return None
 
 
 class NodeListGetInfoQuery(Query):

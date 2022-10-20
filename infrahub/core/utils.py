@@ -13,11 +13,11 @@ from infrahub.database import execute_read_query, execute_write_query
 
 
 def add_relationship(
-    src_node: int,
-    dst_node: int,
+    src_node_id: int,
+    dst_node_id: int,
     rel_type: str,
     branch_name: str = None,
-    now: Timestamp = None,
+    at: Timestamp = None,
     status=RelationshipStatus.ACTIVE,
 ):
 
@@ -26,18 +26,18 @@ def add_relationship(
     MATCH (s) WHERE ID(s) = $src_node_id
     MATCH (d) WHERE ID(d) = $dst_node_id
     WITH s,d
-    CREATE (s)-[r:%s { branch: $branch, from: $now, to: null, status: $status }]->(d)
+    CREATE (s)-[r:%s { branch: $branch, from: $at, to: null, status: $status }]->(d)
     RETURN ID(r)
     """
         % str(rel_type).upper()
     )
 
-    now = Timestamp(now)
+    at = Timestamp(at)
 
     params = {
-        "src_node_id": src_node.id,
-        "dst_node_id": dst_node.id,
-        "now": now.to_string(),
+        "src_node_id": src_node_id,
+        "dst_node_id": dst_node_id,
+        "at": at.to_string(),
         "branch": branch_name or config.SETTINGS.main.default_branch,
         "status": status.value,
     }
@@ -58,9 +58,7 @@ def delete_all_relationships_for_branch(branch_name: str):
     execute_write_query(query, params)
 
 
-def update_relationships_to(
-    ids: List[int], to: Timestamp = None, status: RelationshipStatus = RelationshipStatus.ACTIVE
-):
+def update_relationships_to(ids: List[int], to: Timestamp = None):
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -73,11 +71,10 @@ def update_relationships_to(
     MATCH ()-[r]->()
     WHERE {' or '.join(list_matches)}
     SET r.to = $to
-    SET r.status = $status
     RETURN ID(r)
     """
 
-    params = {"to": to.to_string(), "status": status.value}
+    params = {"to": to.to_string()}
 
     return execute_write_query(query, params)
 

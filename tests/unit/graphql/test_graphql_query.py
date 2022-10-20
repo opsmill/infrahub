@@ -248,11 +248,11 @@ async def test_query_attribute_updated_at(default_branch, person_tag_schema):
             id
             firstname {
                 value
-                _updated_at
+                updated_at
             }
             lastname {
                 value
-                _updated_at
+                updated_at
             }
         }
     }
@@ -266,8 +266,8 @@ async def test_query_attribute_updated_at(default_branch, person_tag_schema):
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["_updated_at"]
-    assert result1.data["person"][0]["firstname"]["_updated_at"] == result1.data["person"][0]["lastname"]["_updated_at"]
+    assert result1.data["person"][0]["firstname"]["updated_at"]
+    assert result1.data["person"][0]["firstname"]["updated_at"] == result1.data["person"][0]["lastname"]["updated_at"]
 
     p12 = NodeManager.get_one(p11.id)
     p12.firstname.value = "Jim"
@@ -282,8 +282,8 @@ async def test_query_attribute_updated_at(default_branch, person_tag_schema):
     )
 
     assert result2.errors is None
-    assert result2.data["person"][0]["firstname"]["_updated_at"]
-    assert result2.data["person"][0]["firstname"]["_updated_at"] != result2.data["person"][0]["lastname"]["_updated_at"]
+    assert result2.data["person"][0]["firstname"]["updated_at"]
+    assert result2.data["person"][0]["firstname"]["updated_at"] != result2.data["person"][0]["lastname"]["updated_at"]
 
 
 @pytest.mark.asyncio
@@ -378,3 +378,73 @@ async def test_query_relationship_updated_at(default_branch, person_tag_schema):
         result2.data["person"][0]["tags"][0]["_updated_at"]
         == Timestamp(result2.data["person"][0]["tags"][0]["_updated_at"]).to_string()
     )
+
+
+@pytest.mark.asyncio
+async def test_query_attribute_source(default_branch, register_core_models_schema, person_tag_schema, first_account):
+
+    Node("Person").new(firstname="John", lastname="Doe", _source=first_account).save()
+
+    query = """
+    query {
+        person {
+            id
+            firstname {
+                value
+                source {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["firstname"]["source"]
+    assert result1.data["person"][0]["firstname"]["source"]["name"]["value"] == first_account.name.value
+
+
+@pytest.mark.asyncio
+async def test_query_attribute_source(default_branch, register_core_models_schema, person_tag_schema, first_account):
+
+    Node("Person").new(
+        firstname={"value": "John", "is_protected": True},
+        lastname={"value": "Doe", "is_visible": False},
+        _source=first_account,
+    ).save()
+
+    query = """
+    query {
+        person {
+            id
+            firstname {
+                value
+                is_protected
+            }
+            lastname {
+                value
+                is_visible
+            }
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=get_gql_query(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["firstname"]["is_protected"] == True
+    assert result1.data["person"][0]["lastname"]["is_visible"] == False

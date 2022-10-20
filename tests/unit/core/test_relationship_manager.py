@@ -3,7 +3,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.relationship import RelationshipManager
-from infrahub.core.relationship.query import RelationshipGetPeerQuery
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 

@@ -4,14 +4,14 @@ from typing import Dict, List, Union, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
-from infrahub.core.node.query import (
+from infrahub.core.relationship import Relationship
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
+from infrahub.core.query.node import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetLocalAttributeValueQuery,
 )
-from infrahub.core.relationship import Relationship
-from infrahub.core.relationship.query import RelationshipGetPeerQuery
 from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 
@@ -114,6 +114,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         account=None,
         *args,
         **kwargs,
@@ -125,6 +126,7 @@ class NodeManager:
             at=at,
             branch=branch,
             include_source=include_source,
+            include_owner=include_owner,
             account=account,
             *args,
             **kwargs,
@@ -143,6 +145,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         account=None,
         *args,
         **kwargs,
@@ -157,7 +160,15 @@ class NodeManager:
         nodes_info = query.get_nodes()
 
         # Query list of all Attributes
-        query = NodeListGetAttributeQuery(ids=ids, fields=fields, branch=branch, account=account, at=at).execute()
+        query = NodeListGetAttributeQuery(
+            ids=ids,
+            fields=fields,
+            branch=branch,
+            include_source=include_source,
+            include_owner=include_owner,
+            account=account,
+            at=at,
+        ).execute()
         node_attributes = query.get_attributes_group_by_node()
 
         # -----------------------------------------------
@@ -200,22 +211,27 @@ class NodeManager:
 
                 # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
-                    # item = local_attributes[attr.attr_uuid]
 
                     # replace NULL with None
                     value = attr.value
                     value = None if value == "NULL" else value
 
                     attrs[attr_name] = dict(
-                        db_id=attr.attr_id,  # .get("a").id,
-                        id=attr.attr_uuid,  # .get("a").get("uuid"),
-                        # is_inherited=attr.is_inherited,
+                        db_id=attr.attr_id,
+                        id=attr.attr_uuid,
                         name=attr_name,
-                        # permission=attr.permission,
                         value=value,
                         updated_at=attr.updated_at,
-                        # source=source_accounts.get(attr.source_uuid, None),
                     )
+
+                    if attr.is_protected is not None:
+                        attrs[attr_name]["is_protected"] = attr.is_protected
+
+                    if attr.is_visible is not None:
+                        attrs[attr_name]["is_visible"] = attr.is_visible
+
+                    if attr.source_uuid:
+                        attrs[attr_name]["source"] = attr.source_uuid
 
             # Identify the proper Class to use for this Node
             node_class = Node
