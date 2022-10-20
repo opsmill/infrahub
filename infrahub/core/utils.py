@@ -58,9 +58,7 @@ def delete_all_relationships_for_branch(branch_name: str):
     execute_write_query(query, params)
 
 
-def update_relationships_to(
-    ids: List[int], to: Timestamp = None, status: RelationshipStatus = RelationshipStatus.ACTIVE
-):
+def update_relationships_to(ids: List[int], to: Timestamp = None):
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -73,11 +71,10 @@ def update_relationships_to(
     MATCH ()-[r]->()
     WHERE {' or '.join(list_matches)}
     SET r.to = $to
-    SET r.status = $status
     RETURN ID(r)
     """
 
-    params = {"to": to.to_string(), "status": status.value}
+    params = {"to": to.to_string()}
 
     return execute_write_query(query, params)
 
