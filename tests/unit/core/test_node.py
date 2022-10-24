@@ -235,7 +235,7 @@ def test_node_create_with_single_relationship(default_branch, car_person_schema)
     # We should have 2 paths between c1 and p1
     # First for the relationship
     # Second via the branch
-    paths = get_paths_between_nodes(c1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=c1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
     c2 = Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
@@ -244,7 +244,7 @@ def test_node_create_with_single_relationship(default_branch, car_person_schema)
     assert c2.is_electric.value is False
     assert c2.owner.peer.id == p1.id
 
-    paths = get_paths_between_nodes(c2.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=c2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
 
@@ -263,11 +263,11 @@ def test_node_create_with_multiple_relationship(default_branch, fruit_tag_schema
 
     # We should have 2 paths between f1 and t1, t2 & t3
     # First for the relationship, second via the branch
-    paths = get_paths_between_nodes(f1.db_id, t1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=f1.db_id, destination_id=t1.db_id, max_length=2)
     assert len(paths) == 2
-    paths = get_paths_between_nodes(f1.db_id, t2.db_id, 2)
+    paths = get_paths_between_nodes(source_id=f1.db_id, destination_id=t2.db_id, max_length=2)
     assert len(paths) == 2
-    paths = get_paths_between_nodes(f1.db_id, t3.db_id, 2)
+    paths = get_paths_between_nodes(source_id=f1.db_id, destination_id=t3.db_id, max_length=2)
     assert len(paths) == 2
 
 
