@@ -7,11 +7,13 @@ from typing import Union, Type, List, Generator, TYPE_CHECKING
 from dataclasses import dataclass
 
 from infrahub.core.query import Query, QueryType
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.relationship import Relationship
     from infrahub.core.node import Node
     from infrahub.core.schema import RelationshipSchema
+    from infrahub.core.branch import Branch
 
 
 @dataclass
@@ -37,6 +39,8 @@ class RelationshipQuery(Query):
         destination: Node = None,
         destination_id: str = None,
         schema: RelationshipSchema = None,
+        branch: Branch = None,
+        at: Union[Timestamp, str] = None,
         *args,
         **kwargs,
     ):
@@ -64,19 +68,19 @@ class RelationshipQuery(Query):
         self.rel_type = rel_type or self.rel.rel_type
         self.schema = schema or self.rel.schema
 
-        super().__init__(*args, **kwargs)
-
-        if not hasattr(self, "branch") and inspect.isclass(rel) and not hasattr(rel, "branch"):
+        if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
             raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
 
-        if not hasattr(self, "at") and inspect.isclass(rel) and not hasattr(rel, "at"):
-            raise ValueError("Either an instance of Relationship or a valid 'at' must be provided.")
+        self.branch = branch or self.rel.branch
 
-        if not hasattr(self, "branch"):
-            self.branch = self.rel.branch
-
-        if not hasattr(self, "at"):
+        if at:
+            self.at = Timestamp(at)
+        elif inspect.isclass(rel) and hasattr(rel, "at"):
             self.at = self.rel.at
+        else:
+            self.at = Timestamp()
+
+        super().__init__(*args, **kwargs)
 
 
 class RelationshipCreateQuery(RelationshipQuery):
@@ -117,8 +121,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         """
         self.add_to_query(query_match)
 
-        if hasattr(self.rel, "source_id") and getattr(self.rel, "source_id"):
-            self.query_add_source_match()
+        self.query_add_all_node_property_match()
 
         query_create = """
         CREATE (rl:Relationship { uuid: $uuid, name: $name})
@@ -135,25 +138,30 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         self.add_to_query(query_create)
         self.return_labels = ["s", "d", "rl", "r1", "r2", "r3", "r4"]
+        self.query_add_all_node_property_create()
 
-        if hasattr(self.rel, "source_id") and getattr(self.rel, "source_id"):
-            self.query_add_source_create()
+    def query_add_all_node_property_match(self):
+        for prop_name in self.rel._node_properties:
+            if hasattr(self.rel, f"{prop_name}_id") and getattr(self.rel, f"{prop_name}_id"):
+                self.query_add_node_property_match(name=prop_name)
 
-    def query_add_source_match(self):
+    def query_add_node_property_match(self, name: str):
+        self.add_to_query("MATCH (%s { uuid: $prop_%s_id })" % (name, name))
+        self.params[f"prop_{name}_id"] = getattr(self.rel, f"{name}_id")
+        self.return_labels.append(name)
 
+    def query_add_all_node_property_create(self):
+        for prop_name in self.rel._node_properties:
+            if hasattr(self.rel, f"{prop_name}_id") and getattr(self.rel, f"{prop_name}_id"):
+                self.query_add_node_property_create(name=prop_name)
+
+    def query_add_node_property_create(self, name: str):
         query = """
-        MATCH (src { uuid: $source_id })
-        """
-        self.add_to_query(query)
-        self.params["source_id"] = self.rel.source_id
-
-        self.return_labels.extend(["src"])
-
-    def query_add_source_create(self):
-
-        query = """
-        CREATE (rl)-[:HAS_SOURCE { branch: $branch, status: "active", from: $at, to: null }]->(src)
-        """
+        CREATE (rl)-[:HAS_%s { branch: $branch, status: "active", from: $at, to: null }]->(%s)
+        """ % (
+            name.upper(),
+            name,
+        )
         self.add_to_query(query)
 
 

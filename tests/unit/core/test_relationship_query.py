@@ -79,28 +79,31 @@ def test_query_RelationshipCreateQuery(default_branch, person_tag_schema):
 
     # We should have 2 paths between t1 and p1
     # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
 
-# def test_query_RelationshipCreateQuery_w_source(default_branch, person_tag_schema):
+def test_query_RelationshipCreateQuery_w_node_property(default_branch, person_tag_schema, first_account):
 
-#     person_schema = registry.get_schema("Person")
-#     rel_schema = person_schema.get_relationship("tags")
+    person_schema = registry.get_schema("Person")
+    rel_schema = person_schema.get_relationship("tags")
 
-#     t1 = Node("Tag").new(name="blue").save()
-#     t2 = Node("Tag").new(name="red").save()
-#     p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+    t1 = Node("Tag").new(name="blue").save()
+    t2 = Node("Tag").new(name="red").save()
+    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
-#     query = RelationshipCreateQuery(
-#         source=p1, destination=t1, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
-#     )
-#     query.execute()
+    paths = get_paths_between_nodes(
+        source_id=t1.db_id, destination_id=p1.db_id, relationships=["IS_RELATED"], max_length=2
+    )
+    assert len(paths) == 0
 
-#     # We should have 2 paths between t1 and p1
-#     # First for the relationship, Second via the branch
-#     paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
-#     assert len(paths) == 2
+    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1, source=first_account, owner=first_account)
+    query = RelationshipCreateQuery(source=p1, destination=t1, rel=rel).execute()
+
+    paths = get_paths_between_nodes(
+        source_id=t1.db_id, destination_id=p1.db_id, relationships=["IS_RELATED"], max_length=2
+    )
+    assert len(paths) == 1
 
 
 def test_query_RelationshipDeleteQuery(default_branch, person_tag_schema):
@@ -114,7 +117,7 @@ def test_query_RelationshipDeleteQuery(default_branch, person_tag_schema):
 
     # We should have 2 paths between t1 and p1
     # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
     query = RelationshipDeleteQuery(
@@ -125,7 +128,7 @@ def test_query_RelationshipDeleteQuery(default_branch, person_tag_schema):
     # We should have 5 paths between t1 and p1
     # Because we have 3 "real" paths between the nodes
     # but if we calculate all the permutations it will equal to 5 paths.
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 5
 
 
