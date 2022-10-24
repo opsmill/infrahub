@@ -10,10 +10,19 @@ class NodePropertyMixin:
 
     _node_properties: list[str] = ["source", "owner"]
 
-    def _init_node_property_mixin(self):
+    def _init_node_property_mixin(self, kwargs: dict = None):
         for node in self._node_properties:
             setattr(self, f"_{node}", None)
             setattr(self, f"{node}_id", None)
+
+        if not kwargs:
+            return
+
+        for node in self._node_properties:
+            if node in kwargs.keys():
+                setattr(self, node, kwargs.get(node))
+            if f"{node}_id" in kwargs.keys():
+                setattr(self, f"{node}_id", kwargs.get(f"{node}_id"))
 
     @property
     def source(self):

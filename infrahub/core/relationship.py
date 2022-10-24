@@ -63,7 +63,7 @@ class Relationship(NodePropertyMixin):
         self._peer = None
         self.peer_id = None
 
-        self._init_node_property_mixin()
+        self._init_node_property_mixin(kwargs=kwargs)
 
     def _process_peer(self, peer: Union[Node, str]) -> bool:
 
@@ -83,7 +83,7 @@ class Relationship(NodePropertyMixin):
 
         raise ValidationError({self.name: f"Unsupported type ({type(peer)}) must be a string or a node object"})
 
-    def _process_data(self, data):
+    def _process_data(self, data: Union[Dict, str]):
 
         self.data = data
 
@@ -117,10 +117,6 @@ class Relationship(NodePropertyMixin):
         id: str = None,
         db_id: int = None,
         updated_at: Union[Timestamp, str] = None,
-        # is_visible: bool = None,
-        # is_protected: bool = None,
-        # source: Union[Node, str] = None,
-        # owner: Union[Node, str] = None,
         data: Union[dict, Any] = None,
     ) -> SelfRelationship:
 

@@ -43,8 +43,6 @@ class BaseAttribute(NodePropertyMixin):
         updated_at: Union[Timestamp, str] = None,
         is_visible: bool = None,
         is_protected: bool = None,
-        source: Union[Node, str] = None,
-        owner: Union[Node, str] = None,
         *args,
         **kwargs,
     ):
@@ -62,10 +60,7 @@ class BaseAttribute(NodePropertyMixin):
         self.is_visible = is_visible
         self.is_protected = is_protected
 
-        self._init_node_property_mixin()
-
-        self.source = source
-        self.owner = owner
+        self._init_node_property_mixin(kwargs)
 
         self.value = None
 
