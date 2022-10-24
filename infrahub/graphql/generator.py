@@ -54,6 +54,22 @@ class DeleteInput(graphene.InputObjectType):
     id = graphene.String(required=True)
 
 
+class RelatedNodeInputOptional(graphene.InputObjectType):
+    id = graphene.String(required=False)
+    _relation__is_visible = graphene.Boolean(required=False)
+    _relation__is_protected = graphene.Boolean(required=False)
+    _relation__owner = graphene.String(required=False)
+    _relation__source = graphene.String(required=False)
+
+
+class RelatedNodeInputRequired(graphene.InputObjectType):
+    id = graphene.String(required=True)
+    _relation__is_visible = graphene.Boolean(required=False)
+    _relation__is_protected = graphene.Boolean(required=False)
+    _relation__owner = graphene.String(required=False)
+    _relation__source = graphene.String(required=False)
+
+
 async def default_resolver(*args, **kwargs):
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
@@ -122,7 +138,7 @@ def generate_object_types(branch: Union[Branch, str] = None):
 
     full_schema = registry.get_full_schema(branch=branch)
 
-    # Generate all Graphql objectType and store them in the registry
+    # Generate all Graphql ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
         node_type = generate_graphql_object(node_schema)
         related_node_type = generate_related_graphql_object(node_schema)
@@ -222,16 +238,18 @@ def generate_related_graphql_object(schema: NodeSchema) -> InfrahubObject:
         "id": graphene.String(required=True),
         "_updated_at": graphene.DateTime(required=False),
         "_relation__updated_at": graphene.DateTime(required=False),
-        # "_relation__owner": graphene.String(required=False),
-        # "_relation__source": graphene.String(required=False),
+        "_relation__is_visible": graphene.Boolean(required=False),
+        "_relation__is_protected": graphene.Boolean(required=False),
+        "_relation__owner": graphene.Field("infrahub.graphql.query.AccountType", required=False),
+        "_relation__source": graphene.Field("infrahub.graphql.query.AccountType", required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
-
     for attr in schema.attributes:
+
         attr_type = TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
-    return type(f"{schema.kind}Rel", (InfrahubObject,), main_attrs)
+    return type(f"Related{schema.kind}", (InfrahubObject,), main_attrs)
 
 
 def generate_graphql_mutations(schema: NodeSchema):
@@ -264,12 +282,18 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> graphene.Input
         attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
 
     for rel in schema.relationships:
+
+        rel_input_type = RelatedNodeInputRequired
+        required = not rel.optional
+        if rel.optional:
+            rel_input_type = RelatedNodeInputOptional
+
         if rel.cardinality == "one":
-            attrs[rel.name] = graphene.InputField(graphene.String, required=False, description=rel.description)
+            attrs[rel.name] = graphene.InputField(rel_input_type, required=required, description=rel.description)
 
         elif rel.cardinality == "many":
             attrs[rel.name] = graphene.InputField(
-                graphene.List(graphene.String), required=False, description=rel.description
+                graphene.List(rel_input_type), required=required, description=rel.description
             )
 
     return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
@@ -293,11 +317,11 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.Input
 
     for rel in schema.relationships:
         if rel.cardinality == "one":
-            attrs[rel.name] = graphene.InputField(graphene.String, required=False, description=rel.description)
+            attrs[rel.name] = graphene.InputField(RelatedNodeInputOptional, required=False, description=rel.description)
 
         elif rel.cardinality == "many":
             attrs[rel.name] = graphene.InputField(
-                graphene.List(graphene.String), required=False, description=rel.description
+                graphene.List(RelatedNodeInputOptional), required=False, description=rel.description
             )
 
     return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)

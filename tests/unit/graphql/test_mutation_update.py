@@ -190,7 +190,7 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
 
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ "%s" ] }) {
+        person_update(data: {id: "%s", tags: [ { id: "%s" } ] }) {
             ok
             object {
                 id

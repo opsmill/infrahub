@@ -100,7 +100,7 @@ async def test_create_object_with_rels(default_branch, car_person_schema):
             name: { value: "Accord" },
             nbr_seats: { value: 5 },
             is_electric: { value: false },
-            owner: "John"
+            owner: { id: "John" }
         }) {
             ok
             object {

@@ -47,6 +47,8 @@ class RelationshipQuery(Query):
             raise ValueError("Either rel or rel_type must be provided.")
         if not inspect.isclass(rel) and not hasattr(rel, "schema"):
             raise ValueError("Rel must be a Relationship class or an instance of Relationship.")
+        if not schema and inspect.isclass(rel) and not hasattr(rel, "schema"):
+            raise ValueError("Either an instance of Relationship or a valid schema must be provided.")
 
         self.source_id = source_id or source.id
         self.source = source
@@ -64,9 +66,16 @@ class RelationshipQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-        if not self.branch:
+        if not hasattr(self, "branch") and inspect.isclass(rel) and not hasattr(rel, "branch"):
+            raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
+
+        if not hasattr(self, "at") and inspect.isclass(rel) and not hasattr(rel, "at"):
+            raise ValueError("Either an instance of Relationship or a valid 'at' must be provided.")
+
+        if not hasattr(self, "branch"):
             self.branch = self.rel.branch
-        if not self.at:
+
+        if not hasattr(self, "at"):
             self.at = self.rel.at
 
 
@@ -97,22 +106,55 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["uuid"] = str(uuid.uuid4())
 
         self.params["branch"] = self.branch.name
+        self.params["at"] = self.at.to_string()
 
-        query = """
+        self.params["is_protected"] = self.rel.is_protected
+        self.params["is_visible"] = self.rel.is_visible
+
+        query_match = """
         MATCH (s { uuid: $source_id })
         MATCH (d { uuid: $destination_id })
+        """
+        self.add_to_query(query_match)
+
+        if hasattr(self.rel, "source_id") and getattr(self.rel, "source_id"):
+            self.query_add_source_match()
+
+        query_create = """
         CREATE (rl:Relationship { uuid: $uuid, name: $name})
         CREATE (s)-[r1:%s { branch: $branch, status: "active", from: $at, to: null }]->(rl)
         CREATE (d)-[r2:%s { branch: $branch, status: "active", from: $at, to: null  }]->(rl)
+        MERGE (ip:Boolean { value: $is_protected })
+        MERGE (iv:Boolean { value: $is_visible })
+        CREATE (rl)-[r3:IS_PROTECTED { branch: $branch, status: "active", from: $at, to: null }]->(ip)
+        CREATE (rl)-[r4:IS_VISIBLE { branch: $branch, status: "active", from: $at, to: null }]->(iv)
         """ % (
             self.rel_type,
             self.rel_type,
         )
 
-        self.params["at"] = self.at.to_string()
+        self.add_to_query(query_create)
+        self.return_labels = ["s", "d", "rl", "r1", "r2", "r3", "r4"]
 
+        if hasattr(self.rel, "source_id") and getattr(self.rel, "source_id"):
+            self.query_add_source_create()
+
+    def query_add_source_match(self):
+
+        query = """
+        MATCH (src { uuid: $source_id })
+        """
         self.add_to_query(query)
-        self.return_labels = ["s", "d", "rl", "r1", "r2"]
+        self.params["source_id"] = self.rel.source_id
+
+        self.return_labels.extend(["src"])
+
+    def query_add_source_create(self):
+
+        query = """
+        CREATE (rl)-[:HAS_SOURCE { branch: $branch, status: "active", from: $at, to: null }]->(src)
+        """
+        self.add_to_query(query)
 
 
 class RelationshipDeleteQuery(RelationshipQuery):
@@ -219,8 +261,6 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
             self.return_labels = ["n", "p", "rl", "r1", "r2"]
 
-        # import pdb
-        # pdb.set_trace()
         # query = """
         # MATCH (s { uuid: $source_id })
         # MATCH (s)-[r1]->(rl:Relationship { name: $identifier })<-[r2]-(d)

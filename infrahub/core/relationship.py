@@ -14,26 +14,30 @@ from infrahub.core.query.relationship import (
     RelationshipGetPeerQuery,
     RelationshipGetQuery,
 )
+from infrahub.core.property import NodePropertyMixin
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import RelationshipSchema
+    from infrahub.core.schema import RelationshipSchema, NodeSchema
 
 # RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
 
 
-class Relationship:
+class Relationship(NodePropertyMixin):
 
-    rel_type = "IS_RELATED"
+    rel_type: str = "IS_RELATED"
+
+    is_visible: bool = True
+    is_protected: bool = True
 
     def __init__(
         self,
         schema: RelationshipSchema,
         branch: Branch,
-        at: Timestamp,
+        at: Timestamp = None,
         node: Node = None,
         node_id: str = None,
         *args,
@@ -47,17 +51,19 @@ class Relationship:
         self.name = schema.name
 
         self.branch = branch
-        self.at = at
+        self.at = Timestamp(at)
 
         self._node = node
         self.node_id = node_id or node.id
 
         self.id = None
         self.db_id = None
-        self._updated_at = None
+        self.updated_at = None
 
         self._peer = None
         self.peer_id = None
+
+        self._init_node_property_mixin()
 
     def _process_peer(self, peer: Union[Node, str]) -> bool:
 
@@ -77,6 +83,24 @@ class Relationship:
 
         raise ValidationError({self.name: f"Unsupported type ({type(peer)}) must be a string or a node object"})
 
+    def _process_data(self, data):
+
+        self.data = data
+
+        peer = None
+        prop_prefix = "_relation__"
+
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if key in ["peer", "id"]:
+                    peer = data.get(key, None)
+                if key.startswith(prop_prefix) and hasattr(self.key.replace(prop_prefix, "")):
+                    setattr(self, key.replace(prop_prefix, ""), value)
+        else:
+            peer = data
+
+        self._process_peer(peer)
+
     def new(
         self,
         data: Union[dict, Any] = None,
@@ -84,39 +108,29 @@ class Relationship:
         **kwargs,
     ) -> SelfRelationship:
 
-        self.data = data
-
-        # TODO need to see if we can simplify the processing of data
-        # there is some redundancy with load() right now
-        peer = None
-        if isinstance(data, dict) and "peer" in data:
-            peer = data.get("peer", None)
-        else:
-            peer = data
-
-        self._process_peer(peer)
+        self._process_data(data)
 
         return self
 
     def load(
-        self, id: str = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, data: Union[dict, Any] = None
+        self,
+        id: str = None,
+        db_id: int = None,
+        updated_at: Union[Timestamp, str] = None,
+        # is_visible: bool = None,
+        # is_protected: bool = None,
+        # source: Union[Node, str] = None,
+        # owner: Union[Node, str] = None,
+        data: Union[dict, Any] = None,
     ) -> SelfRelationship:
 
         self.id = id
         self.db_id = db_id
 
         if updated_at:
-            self._updated_at = Timestamp(updated_at)
+            self.updated_at = Timestamp(updated_at)
 
-        self.data = data
-
-        peer = None
-        if isinstance(data, dict) and "peer" in data:
-            peer = data.get("peer", None)
-        else:
-            peer = data
-
-        self._process_peer(peer)
+        self._process_data(data)
 
         return self
 
@@ -132,21 +146,29 @@ class Relationship:
 
         return self._node
 
-    def _get_node(self):
+    def _get_node(self) -> bool:
         from infrahub.core.manager import NodeManager
 
         self._node = NodeManager.get_one(self.node_id, branch=self.branch, at=self.at)
 
-        if not self._node and self.schema.default_filter:
-            results = NodeManager.query(
-                self.schema, filters={self.schema.default_filterr: self.node_id}, branch=self.branch, at=self.at
-            )
+        if self._node:
+            return True
+
+        if not self.schema.default_filter:
+            return False
+
+        # if a default_filter is defined, try to query the node by its default filter
+        results = NodeManager.query(
+            self.schema, filters={self.schema.default_filterr: self.node_id}, branch=self.branch, at=self.at
+        )
 
         if not results:
-            return None
+            return False
 
         self._node = results[0]
         self.node_id = self._node.id
+
+        return True
 
     @property
     def peer(self) -> Node:
@@ -174,7 +196,7 @@ class Relationship:
         self._peer = results[0]
         self.peer_id = self._peer.id
 
-    def get_peer_schema(self):
+    def get_peer_schema(self) -> NodeSchema:
         return registry.get_schema(self.schema.peer)
 
     def _create(self, at: Timestamp = None):
@@ -230,7 +252,7 @@ class Relationship:
         response = self.peer.to_graphql(fields=peer_fields)
 
         if "_relation__updated_at" in fields:
-            response["_relation__updated_at"] = self._updated_at.to_graphql()
+            response["_relation__updated_at"] = self.updated_at.to_graphql()
 
         return response
 
@@ -242,30 +264,30 @@ class RelationshipManager:
         branch: Branch,
         at: Timestamp,
         node: Node,
-        data=None,
+        data: Union[Dict, List, str] = None,
         *args,
         **kwargs,
     ):
 
-        self.schema = schema
-        self.name = schema.name
-        self.node = node
-        self.branch = branch
+        self.schema: RelationshipSchema = schema
+        self.name: str = schema.name
+        self.node: Node = node
+        self.branch: Branch = branch
         self.at = at
 
-        # TODO Ideally this informaiton should come from the Schema
+        # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        self.relationships = []
+        self.relationships: List[Relationship] = []
 
         if data is None:
             self._fetch_relationships()
             return
 
         # Data can be
-        # A String, pass it to one relationsip object
-        # A Dict, pass it to one relationship object
-        # A list of str or dict, pass it to multiple objects
+        #  - A String, pass it to one relationsip object
+        #  - A Dict, pass it to one relationship object
+        #  - A list of str or dict, pass it to multiple objects
         if not isinstance(data, list):
             data = [data]
 
@@ -278,7 +300,7 @@ class RelationshipManager:
                 self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(data=item)
             )
 
-    def get_kind(self):
+    def get_kind(self) -> str:
         return self.schema.kind
 
     def __iter__(self):
@@ -297,7 +319,7 @@ class RelationshipManager:
 
         return self.relationships[0].peer
 
-    def _fetch_relationship_ids(self, at: Timestamp = None) -> Tuple[List[str, List[str], List[str]]]:
+    def _fetch_relationship_ids(self, at: Timestamp = None) -> Tuple[List[str], List[str], List[str]]:
         """Fetch the latest relationships from the database and returns :
         - the list of nodes present on both sides
         - the list of nodes present only locally
@@ -367,11 +389,12 @@ class RelationshipManager:
                 self.relationships.append(previous_relationships[item])
                 continue
 
+            # If the item is not present in the previous list of relationship, we create a new one.
             self.relationships.append(
                 self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(data=item)
             )
 
-        new_rel_ids = [rel.peer.id for rel in self.relationships]
+        new_rel_ids = [rel.peer_id for rel in self.relationships]
 
         # Return True if the list of relationship has been updated
         changed = sorted(new_rel_ids) != sorted(list(previous_relationships.keys()))
@@ -419,9 +442,11 @@ class RelationshipManager:
             rel.delete(at=delete_at)
 
     def to_graphql(self, fields: dict = None) -> dict:
+        # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
+        if self.schema.cardinality == "many":
+            raise TypeError("to_graphql is not available for relationship with multiple cardinality")
 
-        peer = self.peer
-        if not peer:
+        if not self.relationships:
             return None
 
-        return peer.to_graphql(fields=fields)
+        return self.relationships[0].to_graphql(fields=fields)
