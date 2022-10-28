@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, Iterator, Generator, TypeVar
+from uuid import UUID
+from typing import TYPE_CHECKING, List, Union
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -8,7 +9,7 @@ if TYPE_CHECKING:
 
 class NodePropertyMixin:
 
-    _node_properties: list[str] = ["source", "owner"]
+    _node_properties: List[str] = ["source", "owner"]
 
     def _init_node_property_mixin(self, kwargs: dict = None):
         for node in self._node_properties:
@@ -50,13 +51,13 @@ class NodePropertyMixin:
 
         return getattr(self, f"_{name}", None)
 
-    def _set_node_property(self, name: str, value: Union[Node, str]):
+    def _set_node_property(self, name: str, value: Union[Node, UUID]):
         """Set the value of the node_property.
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
         if the value is None, we just initialize the 2 variables."""
 
-        if isinstance(value, str):
+        if isinstance(value, (str, UUID)):
             setattr(self, f"{name}_id", value)
             setattr(self, f"_{name}", None)
         elif isinstance(value, dict) and "id" in value:

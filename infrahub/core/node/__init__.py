@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from uuid import UUID
 from typing import Union, TypeVar, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
@@ -159,7 +160,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._process_fields(kwargs)
         return self
 
-    def load(self, id: str = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, **kwargs) -> SelfNode:
+    def load(self, id: UUID = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, **kwargs) -> SelfNode:
 
         self.id = id
         self.db_id = db_id

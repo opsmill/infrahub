@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Set, List, Dict, Any, Union, TYPE_CHECKING
 
+from uuid import UUID
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to, add_relationship
 from infrahub.exceptions import ValidationError
@@ -37,7 +38,7 @@ class BaseAttribute(NodePropertyMixin):
         branch: Branch,
         at: Timestamp,
         node: Node,
-        id: str = None,
+        id: UUID = None,
         db_id: int = None,
         data: Union[dict, str] = None,
         updated_at: Union[Timestamp, str] = None,
