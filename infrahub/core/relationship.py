@@ -65,41 +65,20 @@ class Relationship(NodePropertyMixin):
 
         self._init_node_property_mixin(kwargs=kwargs)
 
-    def _process_peer(self, peer: Union[Node, str]) -> bool:
-
-        if hasattr(peer, "_schema"):
-            if peer.get_kind() != self.schema.peer:
-                raise ValidationError(
-                    {self.name: f"Got an object of type {peer.get_kind()} instead of {self.schema.peer}"}
-                )
-
-            self._peer = peer
-            self.peer_id = peer.id
-            return True
-
-        if isinstance(peer, str):
-            self.peer_id = peer
-            return True
-
-        raise ValidationError({self.name: f"Unsupported type ({type(peer)}) must be a string or a node object"})
-
     def _process_data(self, data: Union[Dict, str]):
 
         self.data = data
 
-        peer = None
         prop_prefix = "_relation__"
 
         if isinstance(data, dict):
             for key, value in data.items():
                 if key in ["peer", "id"]:
-                    peer = data.get(key, None)
+                    self.peer = data.get(key, None)
                 if key.startswith(prop_prefix) and hasattr(self.key.replace(prop_prefix, "")):
                     setattr(self, key.replace(prop_prefix, ""), value)
         else:
-            peer = data
-
-        self._process_peer(peer)
+            self.peer = data
 
     def new(
         self,
@@ -173,6 +152,25 @@ class Relationship(NodePropertyMixin):
             self._get_peer()
 
         return self._peer if self._peer else None
+
+    @peer.setter
+    def peer(self, value: Union[Node, str]):
+
+        if hasattr(value, "_schema"):
+            if value.get_kind() != self.schema.peer:
+                raise ValidationError(
+                    {self.name: f"Got an object of type {value.get_kind()} instead of {self.schema.peer}"}
+                )
+
+            self._peer = value
+            self.peer_id = value.id
+            return True
+
+        if isinstance(value, str):
+            self.peer_id = value
+            return True
+
+        raise ValidationError({self.name: f"Unsupported type ({type(value)}) must be a string or a node object"})
 
     def _get_peer(self):
         from infrahub.core.manager import NodeManager
