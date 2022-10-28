@@ -16,7 +16,7 @@ from infrahub.core.query.attribute import (
     AttributeUpdateNodePropertyQuery,
 )
 from infrahub.core.constants import RelationshipStatus
-from infrahub.core.property import NodePropertyMixin
+from infrahub.core.property import NodePropertyMixin, FlagPropertyMixin
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
 
 
-class BaseAttribute(NodePropertyMixin):
+class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     type = None
 
@@ -42,8 +42,6 @@ class BaseAttribute(NodePropertyMixin):
         db_id: int = None,
         data: Union[dict, str] = None,
         updated_at: Union[Timestamp, str] = None,
-        is_visible: bool = None,
-        is_protected: bool = None,
         *args,
         **kwargs,
     ):
@@ -58,17 +56,15 @@ class BaseAttribute(NodePropertyMixin):
         self.branch = branch
         self.at = at
 
-        self.is_visible = is_visible
-        self.is_protected = is_protected
-
         self._init_node_property_mixin(kwargs)
+        self._init_flag_property_mixin(kwargs)
 
         self.value = None
 
         if data is not None and isinstance(data, dict):
             self.value = data.get("value", None)
 
-            fields_to_extract_from_data = ["id", "db_id", "is_visible", "is_protected", "source", "owner"]
+            fields_to_extract_from_data = ["id", "db_id"] + self._flag_properties + self._node_properties
             for field_name in fields_to_extract_from_data:
                 setattr(self, field_name, data.get(field_name, None))
 

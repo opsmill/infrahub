@@ -13,8 +13,9 @@ from infrahub.core.query.relationship import (
     RelationshipDeleteQuery,
     RelationshipGetPeerQuery,
     RelationshipGetQuery,
+    RelationshipPeerData,
 )
-from infrahub.core.property import NodePropertyMixin
+from infrahub.core.property import NodePropertyMixin, FlagPropertyMixin
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -26,12 +27,9 @@ if TYPE_CHECKING:
 SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
 
 
-class Relationship(NodePropertyMixin):
+class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     rel_type: str = "IS_RELATED"
-
-    is_visible: bool = True
-    is_protected: bool = True
 
     def __init__(
         self,
@@ -64,25 +62,35 @@ class Relationship(NodePropertyMixin):
         self.peer_id = None
 
         self._init_node_property_mixin(kwargs=kwargs)
+        self._init_flag_property_mixin(kwargs=kwargs)
 
-    def _process_data(self, data: Union[Dict, str]):
+    def _process_data(self, data: Union[Dict, RelationshipPeerData, str]):
 
         self.data = data
 
         prop_prefix = "_relation__"
 
-        if isinstance(data, dict):
+        if isinstance(data, RelationshipPeerData):
+            self.peer = data.peer_id
+
+            if not self.id and data.rel_node_id:
+                self.id = data.rel_node_id
+            if not self.db_id and data.rel_node_db_id:
+                self.db_id = data.rel_node_db_id
+
+        elif isinstance(data, dict):
             for key, value in data.items():
                 if key in ["peer", "id"]:
                     self.peer = data.get(key, None)
                 if key.startswith(prop_prefix) and hasattr(self.key.replace(prop_prefix, "")):
                     setattr(self, key.replace(prop_prefix, ""), value)
+
         else:
             self.peer = data
 
     def new(
         self,
-        data: Union[dict, Any] = None,
+        data: Union[dict, RelationshipPeerData, Any] = None,
         *args,
         **kwargs,
     ) -> SelfRelationship:
@@ -96,7 +104,7 @@ class Relationship(NodePropertyMixin):
         id: str = None,
         db_id: int = None,
         updated_at: Union[Timestamp, str] = None,
-        data: Union[dict, Any] = None,
+        data: Union[dict, RelationshipPeerData, Any] = None,
     ) -> SelfRelationship:
 
         self.id = id
@@ -313,7 +321,9 @@ class RelationshipManager:
 
         return self.relationships[0].peer
 
-    def _fetch_relationship_ids(self, at: Timestamp = None) -> Tuple[List[str], List[str], List[str]]:
+    def _fetch_relationship_ids(
+        self, at: Timestamp = None
+    ) -> Tuple[List[str], List[str], List[str], Dict[str, RelationshipPeerData]]:
         """Fetch the latest relationships from the database and returns :
         - the list of nodes present on both sides
         - the list of nodes present only locally
@@ -324,36 +334,39 @@ class RelationshipManager:
 
         query = RelationshipGetPeerQuery(
             source=self.node,
-            schema=self.schema,
-            branch=self.branch,
             at=at or self.at,
-            rel=self.rel_class,
+            rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
         ).execute()
-        peer_ids = query.get_peer_ids()
+
+        peers_database: dict = {peer.peer_id: peer for peer in query.get_peers()}
+        peer_ids = list(peers_database.keys())
 
         # Calculate which peer should be added or removed
-        peers_present_both = intersection(current_peer_ids, peer_ids)
-        peers_present_local = list(set(current_peer_ids) - set(peers_present_both))
-        peers_present_database = list(set(peer_ids) - set(peers_present_both))
+        peer_ids_present_both = intersection(current_peer_ids, peer_ids)
+        peer_ids_present_local_only = list(set(current_peer_ids) - set(peer_ids_present_both))
+        peer_ids_present_database_only = list(set(peer_ids) - set(peer_ids_present_both))
 
-        return peers_present_both, peers_present_local, peers_present_database
+        return peer_ids_present_both, peer_ids_present_local_only, peer_ids_present_database_only, peers_database
 
     def _fetch_relationships(self, at: Timestamp = None):
         """Fetch the latest relationships from the database and update the local cache."""
 
-        _, peers_present_local, peers_present_database = self._fetch_relationship_ids(at=at)
+        _, peer_ids_present_local_only, peer_ids_present_database_only, peers_database = self._fetch_relationship_ids(
+            at=at
+        )
 
-        for peer_id in peers_present_local:
+        for peer_id in peer_ids_present_local_only:
             self.remove(peer_id)
 
-        for peer_id in peers_present_database:
+        for peer_id in peer_ids_present_database_only:
+
             self.relationships.append(
                 Relationship(
                     schema=self.schema,
                     branch=self.branch,
                     at=at or self.at,
                     node=self.node,
-                ).new(data=peer_id)
+                ).new(data=peers_database[peer_id])
             )
 
     def get(self) -> Union[Node, List[Relationship]]:
@@ -413,14 +426,14 @@ class RelationshipManager:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
-        peers_present_both, peers_present_local, peers_present_database = self._fetch_relationship_ids()
+        _, peer_ids_present_local_only, peer_ids_present_database_only, peers_database = self._fetch_relationship_ids()
 
         # Update the relationships in the database
-        for peer_id in peers_present_database:
+        for peer_id in peer_ids_present_database_only:
             self.remove(peer_id=peer_id, update_db=True)
 
         for rel in self.relationships:
-            if rel.peer_id in peers_present_local:
+            if rel.peer_id in peer_ids_present_local_only:
                 rel.save(at=save_at)
 
         return True

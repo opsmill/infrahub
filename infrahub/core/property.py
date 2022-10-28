@@ -7,6 +7,22 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
 
 
+class FlagPropertyMixin:
+
+    _flag_properties: List[str] = ["is_visible", "is_protected"]
+
+    is_visible = True
+    is_protected = False
+
+    def _init_flag_property_mixin(self, kwargs: dict = None):
+        if not kwargs:
+            return
+
+        for flag in self._flag_properties:
+            if flag in kwargs.keys():
+                setattr(self, flag, kwargs.get(flag))
+
+
 class NodePropertyMixin:
 
     _node_properties: List[str] = ["source", "owner"]

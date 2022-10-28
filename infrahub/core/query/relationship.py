@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import uuid
 import inspect
-from typing import Union, Type, List, Generator, TYPE_CHECKING
-
 from dataclasses import dataclass
+
+from uuid import UUID, uuid4
+from typing import Union, Type, List, Dict, Generator, TYPE_CHECKING
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
@@ -17,16 +17,44 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class PeerToProcess:
+class FlagPropertyData:
+    name: str
+    prop_db_id: int
+    rel_db_id: int
+    value: bool
 
-    peer_id: str
 
-    rel_id: int
-    rel_uuid: str
+@dataclass
+class NodePropertyData:
+    name: str
+    prop_db_id: int
+    rel_db_id: int
 
-    updated_at: str
+
+@dataclass
+class RelationshipPeerData:
 
     branch: str
+
+    peer_id: UUID
+    """UUID of the Peer Node."""
+
+    properties: Dict[str, Union[FlagPropertyData, NodePropertyData]]
+    """UUID of the Relationship Node."""
+
+    rel_node_id: UUID = None
+    """UUID of the Relationship Node."""
+
+    peer_db_id: int = None
+    """Internal DB ID of the Peer Node."""
+
+    rel_node_db_id: int = None
+    """Internal DB ID of the Relationship Node."""
+
+    rel_db_ids: List[int] = None
+    """Internal DB IDs if both relationships pointing at this Relationship Node."""
+
+    updated_at: str = None
 
 
 class RelationshipQuery(Query):
@@ -35,9 +63,9 @@ class RelationshipQuery(Query):
         rel: Union[Type[Relationship], Relationship] = None,
         rel_type: str = None,
         source: Node = None,
-        source_id: str = None,
+        source_id: UUID = None,
         destination: Node = None,
-        destination_id: str = None,
+        destination_id: UUID = None,
         schema: RelationshipSchema = None,
         branch: Branch = None,
         at: Union[Timestamp, str] = None,
@@ -91,7 +119,7 @@ class RelationshipCreateQuery(RelationshipQuery):
     def __init__(
         self,
         destination: Node = None,
-        destination_id: str = None,
+        destination_id: UUID = None,
         *args,
         **kwargs,
     ):
@@ -107,7 +135,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
 
-        self.params["uuid"] = str(uuid.uuid4())
+        self.params["uuid"] = str(uuid4())
 
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
@@ -269,87 +297,59 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
             self.return_labels = ["n", "p", "rl", "r1", "r2"]
 
-        # query = """
-        # MATCH (s { uuid: $source_id })
-        # MATCH (s)-[r1]->(rl:Relationship { name: $identifier })<-[r2]-(d)
-        # WHERE %s
-        # """ % (
-        #     "\n AND ".join(
-        #         rels_filter,
-        #     ),
-        # )
-
-        # self.add_to_query(query)
-        # self.return_labels = ["s", "d", "rl"] + [f"r{i}" for i in range(1, nbr_rels+1)]
-
-        # if self.filters:
-
-        #     clean_filters = {
-        #         key.replace(f"{self.schema.name}__", ""): value
-        #         for key, value in self.filters.items()
-        #         if key.startswith(f"{self.schema.name}__")
-        #     }
-
-        #     peer_filters, peer_params, nbr_rels = self.schema.get_query_filter(filters=clean_filters, branch=self.branch, rels_offset=2)
-        #     self.params.update(peer_params)
-
-        #     self.add_to_query(
-        #         "WITH " + ",".join(self.return_labels)
-        #     )  # [label for label in self.return_labels if not label.startswith("r")]))
-
-        #     for field_filter in peer_filters:
-        #         self.add_to_query(field_filter)
-
-        # if Filters are provided
-        # Remove the first part of the query that identify the field
-        # { "name__name": value }
-
-        # for field_name in self.peer_schema.valid_input_names:
-
-        #     attr_filters = {
-        #         key.replace(f"{self.schema.name}__{field_name}__", ""): value
-        #         for key, value in self.filters.items()
-        #         if key.startswith(f"{self.schema.name}__{field_name}__")
-        #     }
-
-        #     field = self.peer_schema.get_field(field_name)
-
-        # field_filters, field_params, nbr_rels = field.get_query_filter(
-        #     name=field_name, filters=attr_filters, branch=self.branch
-        # )
-        # self.params.update(field_params)
-
-        # self.add_to_query(
-        #     "WITH " + ",".join(self.return_labels)
-        # )  # [label for label in self.return_labels if not label.startswith("r")]))
-
-        # for field_filter in field_filters:
-        #     self.add_to_query(field_filter)
-
+        ## Add Flag Properties
         # rels_filter, rels_params = self.branch.get_query_filter_relationships(
-        #     rel_labels=[f"r{y+1}" for y in range(nbr_rels)],
-        #     at=self.at.to_string(),
-        #     include_outside_parentheses=True,
+        #     rel_labels=["rel_is_visible", "rel_is_protected"], at=self.at.to_string(), include_outside_parentheses=True
         # )
         # self.params.update(rels_params)
-        # self.add_to_query("WHERE " + "\n AND ".join(rels_filter))
+
+        # query = """
+        # WITH %s
+        # MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
+        # MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
+        # WHERE %s
+        # """ % (",".join(self.return_labels), "\n AND ".join(
+        #             rels_filter,
+        #         ))
+        # self.add_to_query(query)
+
+        # ## Add Node Properties
+
+        # ## FIXME, make this part dynamic to generate the query based on the list of supported properties
+        # rels_filter, rels_params = self.branch.get_query_filter_relationships(
+        #     rel_labels=["rel_has_source", "rel_has_owner"], at=self.at.to_string(), include_outside_parentheses=True
+        # )
+        # self.params.update(rels_params)
+
+        # query = """
+        # WITH %s
+        # MATCH OPTIONAL (rl)-[rel_has_source:HAS_SOURCE]-(has_source)
+        # MATCH OPTIONAL (rl)-[rel_has_owner:HAS_OWNER]-(has_owner)
+        # WHERE %s
+        # """ % (",".join(self.return_labels), "\n AND ".join(
+        #             rels_filter,
+        #         ))
+        # self.return_labels.extend(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
 
     def get_peer_ids(self) -> List[str]:
         """Return a list of UUID of nodes associated with this relationship."""
 
         return [peer.peer_id for peer in self.get_peers()]
 
-    def get_peers(self) -> Generator[PeerToProcess, None, None]:
+    def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
 
         for result in self.get_results_group_by(("p", "uuid")):
 
-            yield PeerToProcess(
+            data = RelationshipPeerData(
                 peer_id=result.get("p").get("uuid"),
-                rel_id=result.get("rl").id,
-                rel_uuid=result.get("rl").get("uuid"),
+                rel_node_db_id=result.get("rl").id,
+                rel_node_id=result.get("rl").get("uuid"),
                 updated_at=result.get("r1").get("from"),
                 branch=self.branch,
+                properties=dict(),
             )
+
+            yield data
 
 
 class RelationshipGetQuery(RelationshipQuery):
