@@ -21,7 +21,6 @@ def test_one_init_no_input_no_rel(default_branch, person_tag_schema):
         iter(relm)
 
     assert not relm.peer
-    assert not relm.get()
 
 
 def test_one_init_no_input_existing_rel(default_branch, person_tag_schema):
@@ -34,7 +33,6 @@ def test_one_init_no_input_existing_rel(default_branch, person_tag_schema):
     relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag")
 
     assert relm.peer.id == t1.id
-    assert relm.get().id == t1.id
 
 
 def test_many_init_no_input_no_rel(default_branch, person_tag_schema):

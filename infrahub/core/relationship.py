@@ -78,11 +78,18 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             if not self.db_id and data.rel_node_db_id:
                 self.db_id = data.rel_node_db_id
 
+            # Extract the properties
+            for prop_name, prop in data.properties.items():
+                if hasattr(self, "_flag_properties") and prop_name in self._flag_properties:
+                    setattr(self, prop_name, prop.value)
+                elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
+                    setattr(self, prop_name, prop.value)
+
         elif isinstance(data, dict):
             for key, value in data.items():
                 if key in ["peer", "id"]:
                     self.peer = data.get(key, None)
-                if key.startswith(prop_prefix) and hasattr(self.key.replace(prop_prefix, "")):
+                elif key.startswith(prop_prefix) and hasattr(self, key.replace(prop_prefix, "")):
                     setattr(self, key.replace(prop_prefix, ""), value)
 
         else:
@@ -282,6 +289,8 @@ class RelationshipManager:
 
         self.relationships: List[Relationship] = []
 
+        # FIXME, we are prefetching all the relationship by default
+        # Ideally we should have a lazy implementation here to speed things up
         if data is None:
             self._fetch_relationships()
             return
@@ -359,21 +368,20 @@ class RelationshipManager:
             self.remove(peer_id)
 
         for peer_id in peer_ids_present_database_only:
-
             self.relationships.append(
                 Relationship(
                     schema=self.schema,
                     branch=self.branch,
                     at=at or self.at,
                     node=self.node,
-                ).new(data=peers_database[peer_id])
+                ).load(data=peers_database[peer_id])
             )
 
-    def get(self) -> Union[Node, List[Relationship]]:
+    def get(self) -> Union[Relationship, List[Relationship]]:
         if self.schema.cardinality == "one":
-            return self.peer
+            return self.relationships[0]
 
-        return [rel.peer for rel in self.relationships]
+        return self.relationships
 
     def update(self, data: Union[List[str], List[Node], str, Node]) -> bool:
         """Replace and Update the list of relationships with this one."""

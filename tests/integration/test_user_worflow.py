@@ -116,12 +116,12 @@ INTERFACE_UPDATE = """
 INTERFACE_CREATE = """
     mutation($device: String!, $intf_name: String!, $description: String!, $speed: Int!, $role: String!, $status: String!) {
         interface_create(data: {
-            device: $device,
+            device: { id: $device },
             name: { value: $intf_name },
             description: { value: $description },
-            role: $role,
+            role: { id: $role },
             speed: { value: $speed },
-            status: $status
+            status: { id: $status }
         })
         {
             ok

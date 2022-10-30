@@ -26,7 +26,7 @@ class RFile(Node):
 
     def get_query(self, at=None):
 
-        gql_query = self.query.get()
+        gql_query = self.query.peer
         query = gql_query.query.value
 
         return query

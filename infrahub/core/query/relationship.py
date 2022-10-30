@@ -29,6 +29,7 @@ class NodePropertyData:
     name: str
     prop_db_id: int
     rel_db_id: int
+    value: UUID
 
 
 @dataclass
@@ -52,7 +53,7 @@ class RelationshipPeerData:
     """Internal DB ID of the Relationship Node."""
 
     rel_db_ids: List[int] = None
-    """Internal DB IDs if both relationships pointing at this Relationship Node."""
+    """Internal DB IDs of both relationships pointing at this Relationship Node."""
 
     updated_at: str = None
 
@@ -297,39 +298,43 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
             self.return_labels = ["n", "p", "rl", "r1", "r2"]
 
-        ## Add Flag Properties
-        # rels_filter, rels_params = self.branch.get_query_filter_relationships(
-        #     rel_labels=["rel_is_visible", "rel_is_protected"], at=self.at.to_string(), include_outside_parentheses=True
-        # )
-        # self.params.update(rels_params)
+        # Add Flag Properties
+        rels_filter, rels_params = self.branch.get_query_filter_relationships(
+            rel_labels=["rel_is_visible", "rel_is_protected"], at=self.at.to_string(), include_outside_parentheses=True
+        )
+        self.params.update(rels_params)
 
-        # query = """
-        # WITH %s
-        # MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
-        # MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
-        # WHERE %s
-        # """ % (",".join(self.return_labels), "\n AND ".join(
-        #             rels_filter,
-        #         ))
-        # self.add_to_query(query)
+        query = """
+        WITH %s
+        MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
+        MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
+        WHERE %s
+        """ % (
+            ",".join(self.return_labels),
+            "\n AND ".join(
+                rels_filter,
+            ),
+        )
+        self.add_to_query(query)
+        self.return_labels.extend(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
 
-        # ## Add Node Properties
+        ## Add Node Properties
 
         # ## FIXME, make this part dynamic to generate the query based on the list of supported properties
         # rels_filter, rels_params = self.branch.get_query_filter_relationships(
-        #     rel_labels=["rel_has_source", "rel_has_owner"], at=self.at.to_string(), include_outside_parentheses=True
+        #     rel_labels=["rel_source", "rel_owner"], at=self.at.to_string(), include_outside_parentheses=True
         # )
         # self.params.update(rels_params)
 
         # query = """
         # WITH %s
-        # MATCH OPTIONAL (rl)-[rel_has_source:HAS_SOURCE]-(has_source)
-        # MATCH OPTIONAL (rl)-[rel_has_owner:HAS_OWNER]-(has_owner)
+        # MATCH OPTIONAL (rl)-[rel_source:HAS_SOURCE]-(source)
+        # MATCH OPTIONAL (rl)-[rel_owner:HAS_OWNER]-(owner)
         # WHERE %s
         # """ % (",".join(self.return_labels), "\n AND ".join(
         #             rels_filter,
         #         ))
-        # self.return_labels.extend(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
+        # self.return_labels.extend(["rel_source", "rel_owner", "source", "owner"])
 
     def get_peer_ids(self) -> List[str]:
         """Return a list of UUID of nodes associated with this relationship."""
@@ -345,9 +350,31 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                 rel_node_db_id=result.get("rl").id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=result.get("r1").get("from"),
+                rel_db_ids=[result.get("r1").id, result.get("r2").id],
                 branch=self.branch,
                 properties=dict(),
             )
+
+            if hasattr(self.rel, "_flag_properties"):
+                for prop in self.rel._flag_properties:
+
+                    if prop_node := result.get(prop):
+                        data.properties[prop] = FlagPropertyData(
+                            name=prop,
+                            prop_db_id=prop_node.id,
+                            rel_db_id=result.get(f"rel_{prop}").id,
+                            value=prop_node.get("value"),
+                        )
+
+            # if hasattr(self.rel, "_node_properties"):
+            #     for prop in self.rel._node_properties:
+
+            #         if prop_node := result.get(prop):
+            #             data.properties[prop] = NodePropertyData(
+            #                 name=prop,
+            #                 prop_db_id=prop_node.id,
+            #                 rel_db_id=result.get(f"rel_{prop}").id,
+            #             )
 
             yield data
 
