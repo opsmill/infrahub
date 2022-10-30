@@ -224,10 +224,55 @@ async def test_update_single_relationship(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
+async def test_update_single_relationship_flag_property(default_branch, car_person_schema):
+
+    p1 = Node("Person").new(name="John", height=180).save()
+    p2 = Node("Person").new(name="Jim", height=170).save()
+
+    c1 = Node("Car").new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+
+    query = """
+    mutation {
+        car_update(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
+            ok
+            object {
+                id
+                owner {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        c1.id,
+        p2.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["car_update"]["ok"] is True
+    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "Jim"
+
+    car = NodeManager.get_one(c1.id)
+    assert car.owner.peer.id == p2.id
+    assert car.owner.get().is_protected is True
+
+
+@pytest.mark.asyncio
 async def test_update_relationship_many(default_branch, person_tag_schema):
 
     t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
-    Node("Tag").new(name="Red").save()
+    t2 = Node("Tag").new(name="Red", description="The Red tag").save()
+    t3 = Node("Tag").new(name="Black", description="The Black tag").save()
+
     p1 = Node("Person").new(firstname="John", lastname="Doe").save()
 
     query = """
@@ -259,3 +304,273 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 1
+
+    p11 = NodeManager.get_one(p1.id)
+    assert len(list(p11.tags)) == 1
+
+    # Replace the current value (t1) with t2 and t3
+    query = """
+    mutation {
+        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+            ok
+            object {
+                id
+                tags {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        t2.id,
+        t3.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+    assert len(result.data["person_update"]["object"]["tags"]) == 2
+
+    p12 = NodeManager.get_one(p1.id)
+    tags = p12.tags
+    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
+
+    # Replace the current value (t2, t3) with t1 and t3
+    query = """
+    mutation {
+        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+            ok
+            object {
+                id
+                tags {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        t1.id,
+        t3.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+    assert len(result.data["person_update"]["object"]["tags"]) == 2
+
+    p13 = NodeManager.get_one(p1.id)
+    tags = p13.tags
+    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
+
+
+@pytest.mark.asyncio
+async def test_update_relationship_many(default_branch, person_tag_schema):
+
+    t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
+    t2 = Node("Tag").new(name="Red", description="The Red tag").save()
+    t3 = Node("Tag").new(name="Black", description="The Black tag").save()
+
+    p1 = Node("Person").new(firstname="John", lastname="Doe").save()
+
+    query = """
+    mutation {
+        person_update(data: {id: "%s", tags: [ { id: "%s" } ] }) {
+            ok
+            object {
+                id
+                tags {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        t1.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+    assert len(result.data["person_update"]["object"]["tags"]) == 1
+
+    p11 = NodeManager.get_one(p1.id)
+    assert len(list(p11.tags)) == 1
+
+    # Replace the current value (t1) with t2 and t3
+    query = """
+    mutation {
+        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+            ok
+            object {
+                id
+                tags {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        t2.id,
+        t3.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+    assert len(result.data["person_update"]["object"]["tags"]) == 2
+
+    p12 = NodeManager.get_one(p1.id)
+    tags = p12.tags
+    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
+
+
+@pytest.mark.skip(reason="Currently not working need to investigate")
+@pytest.mark.asyncio
+async def test_update_relationship_previously_deleted(default_branch, person_tag_schema):
+
+    t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
+    t2 = Node("Tag").new(name="Red", description="The Red tag").save()
+    t3 = Node("Tag").new(name="Black", description="The Black tag").save()
+
+    p1 = Node("Person").new(firstname="John", lastname="Doe").save()
+
+    query = """
+    mutation {
+        person_update(data: {id: "%s", tags: [ { id: "%s" } ] }) {
+            ok
+            object {
+                id
+                tags {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        t1.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+    assert len(result.data["person_update"]["object"]["tags"]) == 1
+
+    p11 = NodeManager.get_one(p1.id)
+    assert len(list(p11.tags)) == 1
+
+    # Replace the current value (t1) with t2 and t3
+    query = """
+    mutation {
+        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+            ok
+            object {
+                id
+                tags {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        t2.id,
+        t3.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+    assert len(result.data["person_update"]["object"]["tags"]) == 2
+
+    p12 = NodeManager.get_one(p1.id)
+    tags = p12.tags
+    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
+
+    # Replace the current value (t2, t3) with t1 and t3
+    query = """
+    mutation {
+        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+            ok
+            object {
+                id
+                tags {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        t1.id,
+        t3.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_update"]["ok"] is True
+    assert len(result.data["person_update"]["object"]["tags"]) == 2
+
+    p13 = NodeManager.get_one(p1.id)
+    tags = p13.tags
+    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
