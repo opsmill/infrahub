@@ -54,15 +54,7 @@ class DeleteInput(graphene.InputObjectType):
     id = graphene.String(required=True)
 
 
-class RelatedNodeInputOptional(graphene.InputObjectType):
-    id = graphene.String(required=False)
-    _relation__is_visible = graphene.Boolean(required=False)
-    _relation__is_protected = graphene.Boolean(required=False)
-    _relation__owner = graphene.String(required=False)
-    _relation__source = graphene.String(required=False)
-
-
-class RelatedNodeInputRequired(graphene.InputObjectType):
+class RelatedNodeInput(graphene.InputObjectType):
     id = graphene.String(required=True)
     _relation__is_visible = graphene.Boolean(required=False)
     _relation__is_protected = graphene.Boolean(required=False)
@@ -283,17 +275,13 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> graphene.Input
 
     for rel in schema.relationships:
 
-        rel_input_type = RelatedNodeInputRequired
         required = not rel.optional
-        if rel.optional:
-            rel_input_type = RelatedNodeInputOptional
-
         if rel.cardinality == "one":
-            attrs[rel.name] = graphene.InputField(rel_input_type, required=required, description=rel.description)
+            attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=required, description=rel.description)
 
         elif rel.cardinality == "many":
             attrs[rel.name] = graphene.InputField(
-                graphene.List(rel_input_type), required=required, description=rel.description
+                graphene.List(RelatedNodeInput), required=required, description=rel.description
             )
 
     return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
@@ -317,11 +305,11 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.Input
 
     for rel in schema.relationships:
         if rel.cardinality == "one":
-            attrs[rel.name] = graphene.InputField(RelatedNodeInputOptional, required=False, description=rel.description)
+            attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=False, description=rel.description)
 
         elif rel.cardinality == "many":
             attrs[rel.name] = graphene.InputField(
-                graphene.List(RelatedNodeInputOptional), required=False, description=rel.description
+                graphene.List(RelatedNodeInput), required=False, description=rel.description
             )
 
     return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)

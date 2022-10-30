@@ -224,7 +224,7 @@ async def test_update_single_relationship(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
-async def test_update_single_relationship_flag_property(default_branch, car_person_schema):
+async def test_update_new_single_relationship_flag_property(default_branch, car_person_schema):
 
     p1 = Node("Person").new(name="John", height=180).save()
     p2 = Node("Person").new(name="Jim", height=170).save()
@@ -263,6 +263,47 @@ async def test_update_single_relationship_flag_property(default_branch, car_pers
 
     car = NodeManager.get_one(c1.id)
     assert car.owner.peer.id == p2.id
+    assert car.owner.get().is_protected is True
+
+
+@pytest.mark.asyncio
+async def test_update_existing_single_relationship_flag_property(default_branch, car_person_schema):
+
+    p1 = Node("Person").new(name="John", height=180).save()
+    c1 = Node("Car").new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+
+    query = """
+    mutation {
+        car_update(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
+            ok
+            object {
+                id
+                owner {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        c1.id,
+        p1.id,
+    )
+    result = await graphql(
+        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["car_update"]["ok"] is True
+    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "John"
+
+    car = NodeManager.get_one(c1.id)
+    assert car.owner.peer.id == p1.id
     assert car.owner.get().is_protected is True
 
 

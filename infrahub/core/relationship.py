@@ -11,6 +11,7 @@ from infrahub.utils import intersection
 
 from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
+    RelationshipUpdatePropertyQuery,
     RelationshipDeleteQuery,
     RelationshipDataDeleteQuery,
     RelationshipGetPeerQuery,
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
 # RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
+SelfRelationshipManager = TypeVar("SelfRelationshipManager", bound="RelationshipManager")
 
 
 class Relationship(FlagPropertyMixin, NodePropertyMixin):
@@ -210,6 +212,21 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     def get_peer_schema(self) -> NodeSchema:
         return registry.get_schema(self.schema.peer)
 
+    def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
+
+        different_properties = []
+
+        for prop_name, prop in data.properties.items():
+            if hasattr(self, "_flag_properties") and prop_name in self._flag_properties:
+                if prop.value != getattr(self, prop_name):
+                    different_properties.append(prop_name)
+
+            elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
+                if prop.value != getattr(self, f"{prop_name}_id"):
+                    different_properties.append(prop_name)
+
+        return different_properties
+
     def _create(self, at: Optional[Timestamp] = None):
         """Add a relationship with another object by creating a new relationship node."""
 
@@ -224,6 +241,28 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         self.db_id = result.get("rl").id
         self.id = result.get("rl").get("uuid")
+
+    def update(self, properties_to_update: List[str], data: RelationshipPeerData, at: Optional[Timestamp] = None):
+        """Update the properties of an existing relationship."""
+
+        update_at = Timestamp(at)
+
+        rel_ids_to_update = []
+        for prop_name, prop in data.properties.items():
+            if prop_name in properties_to_update and prop.rel.branch == self.branch.name:
+                rel_ids_to_update.append(prop.rel.db_id)
+
+        if rel_ids_to_update:
+            update_relationships_to(rel_ids_to_update, to=update_at)
+
+        RelationshipUpdatePropertyQuery(
+            source=self.node,
+            rel=self,
+            properties_to_update=properties_to_update,
+            data=data,
+            branch=self.branch,
+            at=update_at,
+        ).execute()
 
     def delete(self, at: Optional[Timestamp] = None):
 
@@ -251,9 +290,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         save_at = Timestamp(at)
 
         if not self.id:
-            return self._create(at=save_at)
+            self._create(at=save_at)
+            return self
 
-        # UPDATE NOT SUPPORTED FOR NOW
         return self
 
     def to_graphql(self, fields) -> dict:
@@ -391,9 +430,10 @@ class RelationshipManager:
             data = [data]
 
         # Reset the list of relationship and save the previous one to see if we can reuse some
-        previous_relationships = {rel.peer.id: rel for rel in self.relationships}
+        previous_relationships = {rel.peer_id: rel for rel in self.relationships}
         self.relationships = []
 
+        changed = False
         for item in data:
             if not isinstance(item, (self.rel_class, str, dict)) and not hasattr(item, "_schema"):
                 raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
@@ -407,18 +447,23 @@ class RelationshipManager:
                 continue
 
             if isinstance(item, dict) and item.get("id", None) in previous_relationships:
-                self.relationships.append(previous_relationships[item["id"]])
+                rel = previous_relationships[item["id"]]
+                rel.load(data=item)
+                # TODO Add a check to identify if the relationship was changed or not
+                # changed = True
+                self.relationships.append(rel)
                 continue
 
             # If the item is not present in the previous list of relationship, we create a new one.
             self.relationships.append(
                 self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(data=item)
             )
+            changed = True
 
-        new_rel_ids = [rel.peer_id for rel in self.relationships]
+        # Check if some relationship got removed by checking if the previous list of relationship is a subset of the current list of not
+        if set(list(previous_relationships.keys())) <= set([rel.peer_id for rel in self.relationships]):
+            changed = True
 
-        # Return True if the list of relationship has been updated
-        changed = sorted(new_rel_ids) != sorted(list(previous_relationships.keys()))
         return changed
 
     def remove(self, peer_id: UUID, update_db: bool = False):
@@ -452,21 +497,34 @@ class RelationshipManager:
             rel=self.rel_class, schema=self.schema, source=self.node, data=peer_data, branch=self.branch, at=remove_at
         ).execute()
 
-    def save(self, at: Optional[Timestamp] = None):
+    def save(self, at: Optional[Timestamp] = None) -> SelfRelationshipManager:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
-        _, peer_ids_present_local_only, peer_ids_present_database_only, peers_database = self._fetch_relationship_ids()
+        (
+            peer_ids_present_both,
+            peer_ids_present_local_only,
+            peer_ids_present_database_only,
+            peers_database,
+        ) = self._fetch_relationship_ids()
 
-        # Update the relationships in the database
+        # Update the relationships in the database that shouldn't be here.
         for peer_id in peer_ids_present_database_only:
             self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at)
 
+        # Create the new relationship that are not present in the database
+        #  and Compare the existing one
         for rel in self.relationships:
             if rel.peer_id in peer_ids_present_local_only:
                 rel.save(at=save_at)
 
-        return True
+            elif rel.peer_id in peer_ids_present_both:
+                if properties_not_matching := rel.compare_properties_with_data(data=peers_database[rel.peer_id]):
+                    rel.update(
+                        at=save_at, properties_to_update=properties_not_matching, data=peers_database[rel.peer_id]
+                    )
+
+        return self
 
     def delete(self, at: Optional[Timestamp] = None):
         """Delete all the relationships."""

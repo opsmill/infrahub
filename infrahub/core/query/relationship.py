@@ -220,6 +220,64 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.add_to_query(query)
 
 
+class RelationshipUpdatePropertyQuery(RelationshipQuery):
+    name = "relationship_property_update"
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        properties_to_update: List[str],
+        data: RelationshipPeerData,
+        *args,
+        **kwargs,
+    ):
+
+        self.properties_to_update = properties_to_update
+        self.data = data
+
+        super().__init__(*args, **kwargs)
+
+    def query_init(self):
+
+        self.params["rel_node_id"] = self.data.rel_node_id
+        self.params["branch"] = self.branch.name
+        self.params["at"] = self.at.to_string()
+
+        query = """
+        MATCH (rl { uuid: $rel_node_id })
+        """
+        self.add_to_query(query)
+
+        self.query_add_all_flag_property_merge()
+
+        self.query_add_all_flag_property_create()
+
+    def query_add_all_flag_property_merge(self):
+        for prop_name in self.rel._flag_properties:
+            if prop_name in self.properties_to_update:
+                self.query_add_flag_property_merge(name=prop_name)
+
+    def query_add_flag_property_merge(self, name: str):
+        self.add_to_query("MERGE (prop_%s:Boolean { value: $prop_%s })" % (name, name))
+        self.params[f"prop_{name}"] = getattr(self.rel, name)
+        self.return_labels.append(f"prop_{name}")
+
+    def query_add_all_flag_property_create(self):
+        for prop_name in self.rel._flag_properties:
+            if prop_name in self.properties_to_update:
+                self.query_add_flag_property_create(name=prop_name)
+
+    def query_add_flag_property_create(self, name: str):
+        query = """
+        CREATE (rl)-[:%s { branch: $branch, status: "active", from: $at, to: null }]->(prop_%s)
+        """ % (
+            name.upper(),
+            name,
+        )
+        self.add_to_query(query)
+
+
 class RelationshipDataDeleteQuery(RelationshipQuery):
     name = "relationship_data_delete"
 
