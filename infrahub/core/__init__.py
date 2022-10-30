@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Optional
 
 import infrahub.config as config
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
 
 
-def get_branch(branch):
+def get_branch(branch: Optional[Union[Branch, str]]) -> Branch:
 
     from .branch import Branch
 
@@ -83,8 +83,8 @@ def get_account_by_id(id):
 class Registry:
     branch: dict = field(default_factory=dict)
     node: dict = field(default_factory=dict)
-    schema: defaultdict(dict) = field(default_factory=lambda: defaultdict(dict))
-    graphql_type: defaultdict(dict) = field(default_factory=lambda: defaultdict(dict))
+    schema: dict = field(default_factory=lambda: defaultdict(dict))
+    graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     account: dict = field(default_factory=dict)
     account_id: dict = field(default_factory=dict)
     node_group: dict = field(default_factory=dict)
@@ -102,7 +102,7 @@ class Registry:
         except ValueError:
             return False
 
-    def get_item(self, kind: str, name: str, branch: Union[Branch, str] = None):
+    def get_item(self, kind: str, name: str, branch: Optional[Union[Branch, str]] = None):
 
         branch = get_branch(branch)
 
@@ -117,7 +117,7 @@ class Registry:
 
         raise ValueError(f"Unable to find the {kind} {name} for the branch {branch.name} in the registry")
 
-    def get_all_item(self, kind: str, branch: Union[Branch, str] = None) -> dict:
+    def get_all_item(self, kind: str, branch: Optional[Union[Branch, str]] = None) -> dict:
         """Return all the nodes in the schema for a given branch.
         The current implementation is a bit simplistic, will need to re-evaluate."""
         branch = get_branch(branch)
@@ -130,31 +130,31 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    def set_schema(self, name: str, schema: NodeSchema, branch: Union[Branch, str] = None) -> bool:
+    def set_schema(self, name: str, schema: NodeSchema, branch: Optional[Union[Branch, str]] = None) -> bool:
         return self.set_item(kind="schema", name=name, item=schema, branch=branch)
 
-    def has_schema(self, name: str, branch: Union[Branch, str] = None) -> bool:
+    def has_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         return self.has_item(kind="schema", name=name, branch=branch)
 
-    def get_schema(self, name: str, branch: Union[Branch, str] = None) -> NodeSchema:
+    def get_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
         return self.get_item(kind="schema", name=name, branch=branch)
 
-    def get_full_schema(self, branch: Union[Branch, str] = None) -> dict:
+    def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> dict:
         """Return all the nodes in the schema for a given branch.
 
         The current implementation is a bit simplistic, will need to re-evaluate."""
         return self.get_all_item(kind="schema", branch=branch)
 
-    def set_graphql_type(self, name: str, graphql_type, branch: Union[Branch, str] = None) -> bool:
+    def set_graphql_type(self, name: str, graphql_type, branch: Optional[Union[Branch, str]] = None) -> bool:
         return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
 
-    def has_graphql_type(self, name: str, branch: Union[Branch, str] = None):
+    def has_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None):
         return self.has_item(kind="graphql_type", name=name, branch=branch)
 
-    def get_graphql_type(self, name: str, branch: Union[Branch, str] = None):
+    def get_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None):
         return self.get_item(kind="graphql_type", name=name, branch=branch)
 
-    def get_all_graphql_type(self, branch: Union[Branch, str] = None) -> dict:
+    def get_all_graphql_type(self, branch: Optional[Union[Branch, str]] = None) -> dict:
         """Return all the graphql_type for a given branch."""
         return self.get_all_item(kind="graphql_type", branch=branch)
 

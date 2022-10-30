@@ -57,6 +57,7 @@ class RelationshipSchema(BaseModel):
     label: Optional[str]
     description: Optional[str]
     identifier: Optional[str]
+    kind: str = "Relationship"
     inherit_from: str = "Relationship"
     cardinality: str = "many"
     branch: bool = True

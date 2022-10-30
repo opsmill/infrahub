@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from inspect import isclass
-from typing import (
-    List,
-)
+from typing import List, Optional
 
 
 import infrahub.config as config
@@ -17,7 +15,7 @@ def add_relationship(
     dst_node_id: int,
     rel_type: str,
     branch_name: str = None,
-    at: Timestamp = None,
+    at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
 ):
 

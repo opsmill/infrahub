@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Set, List, Dict, Any, Union, TYPE_CHECKING
+from typing import Set, List, Dict, Any, Union, Optional, TYPE_CHECKING
 
 from uuid import UUID
 from infrahub.core.timestamp import Timestamp
@@ -94,7 +94,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def validate(cls, value) -> bool:
         return True if isinstance(value, cls.type) else False
 
-    def save(self, at: Timestamp = None):
+    def save(self, at: Optional[Timestamp] = None):
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
@@ -104,7 +104,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return self._create(at=save_at)
 
-    def delete(self, at: Timestamp = None) -> bool:
+    def delete(self, at: Optional[Timestamp] = None) -> bool:
 
         delete_at = Timestamp(at)
 
@@ -148,7 +148,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return True
 
-    def _create(self, at: Timestamp = None) -> bool:
+    def _create(self, at: Optional[Timestamp] = None) -> bool:
 
         create_at = Timestamp(at)
 
@@ -159,7 +159,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return True
 
-    def _update(self, at: Timestamp = None) -> bool:
+    def _update(self, at: Optional[Timestamp] = None) -> bool:
         """Update the attribute in the database.
 
         Get the current value

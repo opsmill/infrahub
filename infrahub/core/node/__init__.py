@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import Union, TypeVar, TYPE_CHECKING
+from typing import Union, TypeVar, Optional, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import NodeSchema
@@ -57,7 +57,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
     def __init__(
-        self, schema: Union[NodeSchema, str], branch: Union[Branch, str] = None, at: Union[Timestamp, str] = None
+        self,
+        schema: Union[NodeSchema, str],
+        branch: Optional[Union[Branch, str]] = None,
+        at: Optional[Union[Timestamp, str]] = None,
     ):
 
         if isinstance(schema, NodeSchema):
@@ -71,7 +74,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._branch: Branch = get_branch(branch) if self._schema.branch else None
         self._at: Timestamp = Timestamp(at)
 
-        self._updated_at: Timestamp = None
+        self._updated_at: Optional[Timestamp] = None
         self.id: str = None
         self.db_id: int = None
 
@@ -171,7 +174,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._process_fields(kwargs)
         return self
 
-    def _create(self, at: Timestamp = None):
+    def _create(self, at: Optional[Timestamp] = None):
 
         create_at = Timestamp(at)
 
@@ -197,7 +200,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return True
 
-    def _update(self, at: Timestamp = None):
+    def _update(self, at: Optional[Timestamp] = None):
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
@@ -212,7 +215,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(self, name)
             attr.save(at=update_at)
 
-    def save(self, at: Timestamp = None) -> SelfNode:
+    def save(self, at: Optional[Timestamp] = None) -> SelfNode:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
@@ -224,7 +227,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._create(at=save_at)
         return self
 
-    def delete(self, at: Timestamp = None):
+    def delete(self, at: Optional[Timestamp] = None):
         """Delete the Node in the database."""
 
         delete_at = Timestamp(at)
