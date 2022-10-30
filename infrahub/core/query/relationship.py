@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict
 
 import inspect
 from dataclasses import dataclass
@@ -17,10 +18,24 @@ if TYPE_CHECKING:
 
 
 @dataclass
+class RelData:
+    """Represent a relationship object in the database."""
+
+    db_id: int
+    branch: str
+    type: str
+    status: str
+
+    @classmethod
+    def from_db(cls, obj):
+        return cls(db_id=obj.id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
+
+
+@dataclass
 class FlagPropertyData:
     name: str
     prop_db_id: int
-    rel_db_id: int
+    rel: RelData
     value: bool
 
 
@@ -28,7 +43,7 @@ class FlagPropertyData:
 class NodePropertyData:
     name: str
     prop_db_id: int
-    rel_db_id: int
+    rel: RelData
     value: UUID
 
 
@@ -52,10 +67,21 @@ class RelationshipPeerData:
     rel_node_db_id: int = None
     """Internal DB ID of the Relationship Node."""
 
-    rel_db_ids: List[int] = None
-    """Internal DB IDs of both relationships pointing at this Relationship Node."""
+    rels: List[RelData] = None
+    """Both relationships pointing at this Relationship Node."""
 
     updated_at: str = None
+
+    def rel_ids_per_branch(self):
+
+        response = defaultdict(list)
+        for rel in self.rels:
+            response[rel.branch].append(rel.db_id)
+
+        for prop in self.properties.values():
+            response[prop.rel.branch].append(prop.rel.db_id)
+
+        return response
 
 
 class RelationshipQuery(Query):
@@ -194,6 +220,67 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.add_to_query(query)
 
 
+class RelationshipDataDeleteQuery(RelationshipQuery):
+    name = "relationship_data_delete"
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        data: RelationshipPeerData,
+        *args,
+        **kwargs,
+    ):
+
+        self.data = data
+        super().__init__(*args, **kwargs)
+
+    def query_init(self):
+
+        self.params["source_id"] = self.source_id
+        self.params["destination_id"] = self.data.peer_id
+        self.params["rel_node_id"] = self.data.rel_node_id
+        self.params["name"] = self.schema.identifier
+        self.params["branch"] = self.branch.name
+        self.params["at"] = self.at.to_string()
+
+        # -----------------------------------------------------------------------
+        # Match all nodes, including properties
+        # -----------------------------------------------------------------------
+        query = """
+        MATCH (s { uuid: $source_id })
+        MATCH (d { uuid: $destination_id })
+        MATCH (rl { uuid: $rel_node_id })
+        """
+        self.add_to_query(query)
+        self.return_labels = ["s", "d", "rl"]
+
+        for prop_name, prop in self.data.properties.items():
+            self.add_to_query("MATCH (prop_%s) WHERE ID(prop_%s) = $prop_%s_id" % (prop_name, prop_name, prop_name))
+            self.params[f"prop_{prop_name}_id"] = prop.prop_db_id
+            self.return_labels.append(f"prop_{prop_name}")
+
+        # -----------------------------------------------------------------------
+        # Create all the DELETE relationships, including properties
+        # -----------------------------------------------------------------------
+        query = """
+        CREATE (s)-[r1:%s { branch: $branch, status: "deleted", from: $at, to: null }]->(rl)
+        CREATE (d)-[r2:%s { branch: $branch, status: "deleted", from: $at, to: null  }]->(rl)
+        """ % (
+            self.rel_type,
+            self.rel_type,
+        )
+        self.add_to_query(query)
+        self.return_labels.extend(["r1", "r2"])
+
+        for prop_name, prop in self.data.properties.items():
+            self.add_to_query(
+                'CREATE (prop_%s)-[rel_prop_%s:%s { branch: $branch, status: "deleted", from: $at, to: null  }]->(rl)'
+                % (prop_name, prop_name, prop_name.upper()),
+            )
+            self.return_labels.append(f"rel_prop_{prop_name}")
+
+
 class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
 
@@ -206,7 +293,6 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
-
         self.params["branch"] = self.branch.name
 
         query = """
@@ -344,13 +430,12 @@ class RelationshipGetPeerQuery(RelationshipQuery):
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
 
         for result in self.get_results_group_by(("p", "uuid")):
-
             data = RelationshipPeerData(
                 peer_id=result.get("p").get("uuid"),
                 rel_node_db_id=result.get("rl").id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=result.get("r1").get("from"),
-                rel_db_ids=[result.get("r1").id, result.get("r2").id],
+                rels=[RelData.from_db(result.get("r1")), RelData.from_db(result.get("r2"))],
                 branch=self.branch,
                 properties=dict(),
             )
@@ -362,7 +447,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                         data.properties[prop] = FlagPropertyData(
                             name=prop,
                             prop_db_id=prop_node.id,
-                            rel_db_id=result.get(f"rel_{prop}").id,
+                            rel=RelData.from_db(result.get(f"rel_{prop}")),
                             value=prop_node.get("value"),
                         )
 
@@ -373,7 +458,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             #             data.properties[prop] = NodePropertyData(
             #                 name=prop,
             #                 prop_db_id=prop_node.id,
-            #                 rel_db_id=result.get(f"rel_{prop}").id,
+            #                 rel==RelData.from_db(result.get(f"rel_{prop}")),
             #             )
 
             yield data

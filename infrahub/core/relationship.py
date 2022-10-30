@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, Iterator, Generator, TypeVar
+from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, Iterator, Generator, TypeVar, Optional
+from uuid import UUID
 
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
@@ -11,6 +12,7 @@ from infrahub.utils import intersection
 from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
     RelationshipDeleteQuery,
+    RelationshipDataDeleteQuery,
     RelationshipGetPeerQuery,
     RelationshipGetQuery,
     RelationshipPeerData,
@@ -35,9 +37,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self,
         schema: RelationshipSchema,
         branch: Branch,
-        at: Timestamp = None,
-        node: Node = None,
-        node_id: str = None,
+        at: Optional[Timestamp] = None,
+        node: Optional[Node] = None,
+        node_id: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -208,7 +210,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     def get_peer_schema(self) -> NodeSchema:
         return registry.get_schema(self.schema.peer)
 
-    def _create(self, at: Timestamp = None):
+    def _create(self, at: Optional[Timestamp] = None):
         """Add a relationship with another object by creating a new relationship node."""
 
         create_at = Timestamp(at)
@@ -223,7 +225,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.db_id = result.get("rl").id
         self.id = result.get("rl").get("uuid")
 
-    def delete(self, at: Timestamp = None):
+    def delete(self, at: Optional[Timestamp] = None):
 
         delete_at = Timestamp(at)
 
@@ -243,7 +245,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             rel=self, source=self.node, destination=self.peer, branch=self.branch, at=delete_at
         ).execute()
 
-    def save(self, at: Timestamp = None) -> SelfRelationship:
+    def save(self, at: Optional[Timestamp] = None) -> SelfRelationship:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
@@ -254,7 +256,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # UPDATE NOT SUPPORTED FOR NOW
         return self
 
-    def to_graphql(self, fields: dict = None) -> dict:
+    def to_graphql(self, fields) -> dict:
         """Generate GraphQL Payload for the associated Peer."""
 
         peer_fields = {key: value for key, value in fields.items() if not key.startswith("_relation")}
@@ -273,7 +275,7 @@ class RelationshipManager:
         branch: Branch,
         at: Timestamp,
         node: Node,
-        data: Union[Dict, List, str] = None,
+        data: Optional[Union[Dict, List, str]] = None,
         *args,
         **kwargs,
     ):
@@ -321,7 +323,7 @@ class RelationshipManager:
         return iter(self.relationships)
 
     @property
-    def peer(self) -> Node:
+    def peer(self) -> Optional[Node]:
         if self.schema.cardinality == "many":
             raise TypeError("peer is not available for relationship with multiple cardinality")
 
@@ -331,7 +333,7 @@ class RelationshipManager:
         return self.relationships[0].peer
 
     def _fetch_relationship_ids(
-        self, at: Timestamp = None
+        self, at: Optional[Timestamp] = None
     ) -> Tuple[List[str], List[str], List[str], Dict[str, RelationshipPeerData]]:
         """Fetch the latest relationships from the database and returns :
         - the list of nodes present on both sides
@@ -357,7 +359,7 @@ class RelationshipManager:
 
         return peer_ids_present_both, peer_ids_present_local_only, peer_ids_present_database_only, peers_database
 
-    def _fetch_relationships(self, at: Timestamp = None):
+    def _fetch_relationships(self, at: Optional[Timestamp] = None):
         """Fetch the latest relationships from the database and update the local cache."""
 
         _, peer_ids_present_local_only, peer_ids_present_database_only, peers_database = self._fetch_relationship_ids(
@@ -404,6 +406,10 @@ class RelationshipManager:
                 self.relationships.append(previous_relationships[item])
                 continue
 
+            if isinstance(item, dict) and item.get("id", None) in previous_relationships:
+                self.relationships.append(previous_relationships[item["id"]])
+                continue
+
             # If the item is not present in the previous list of relationship, we create a new one.
             self.relationships.append(
                 self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(data=item)
@@ -415,9 +421,10 @@ class RelationshipManager:
         changed = sorted(new_rel_ids) != sorted(list(previous_relationships.keys()))
         return changed
 
-    def remove(self, peer_id: str, update_db: bool = False):
+    def remove(self, peer_id: UUID, update_db: bool = False):
         """Remote a peer id from the local relationships list,
         need to investigate if and when we should update the relationship in the database."""
+
         for idx, rel in enumerate(self.relationships):
             if rel.peer_id != peer_id:
                 continue
@@ -430,7 +437,22 @@ class RelationshipManager:
 
         raise Exception("Relationship not found ... unexpected")
 
-    def save(self, at: Timestamp = None):
+    def remove_in_db(self, peer_id: UUID, peer_data: RelationshipPeerData, at: Optional[Timestamp] = None):
+
+        remove_at = Timestamp(at)
+
+        # when we remove a relationship we need to :
+        # - Update the existing relationship if we are on the same branch
+        # - Create a new rel of type DELETED in the right branch
+        rel_ids_per_branch = peer_data.rel_ids_per_branch()
+        if self.branch.name in rel_ids_per_branch:
+            update_relationships_to(rel_ids_per_branch[self.branch.name], to=remove_at)
+
+        RelationshipDataDeleteQuery(
+            rel=self.rel_class, schema=self.schema, source=self.node, data=peer_data, branch=self.branch, at=remove_at
+        ).execute()
+
+    def save(self, at: Optional[Timestamp] = None):
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
@@ -438,7 +460,7 @@ class RelationshipManager:
 
         # Update the relationships in the database
         for peer_id in peer_ids_present_database_only:
-            self.remove(peer_id=peer_id, update_db=True)
+            self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at)
 
         for rel in self.relationships:
             if rel.peer_id in peer_ids_present_local_only:
@@ -446,7 +468,7 @@ class RelationshipManager:
 
         return True
 
-    def delete(self, at: Timestamp = None):
+    def delete(self, at: Optional[Timestamp] = None):
         """Delete all the relationships."""
 
         delete_at = Timestamp(at)
@@ -456,7 +478,7 @@ class RelationshipManager:
         for rel in self.relationships:
             rel.delete(at=delete_at)
 
-    def to_graphql(self, fields: dict = None) -> dict:
+    def to_graphql(self, fields: Optional[dict] = None) -> Union[dict, None]:
         # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
         if self.schema.cardinality == "many":
             raise TypeError("to_graphql is not available for relationship with multiple cardinality")
