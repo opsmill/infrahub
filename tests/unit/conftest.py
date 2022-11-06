@@ -61,7 +61,7 @@ def base_dataset_02(default_branch, car_person_schema):
       * time_m60 is now - 60s
 
     - 2 branches, main and branch1.
-        - branch1  was created at time_m40
+        - branch1 was created at time_m40
 
     - 2 Cars in Main and 1 in Branch1
         - Car1 was created at time_m60 in main
@@ -90,8 +90,13 @@ def base_dataset_02(default_branch, car_person_schema):
         "main_branch": "main",
         "branch1": "branch1",
         "time0": time0.to_iso8601_string(),
+        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
         "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
+        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
+        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
+        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
         "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
+        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
         "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
     }
 
@@ -231,13 +236,19 @@ def base_dataset_02(default_branch, car_person_schema):
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (r1:Relationship { uuid: "r1", type: "PERSON_CAR"})
+    CREATE (r1:Relationship { uuid: "r1", type: "car_person"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
+    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
+    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m30 }]->(bool_true)
+    CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (r1)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)
 
-    CREATE (r2:Relationship { uuid: "r2", type: "PERSON_CAR"})
+    CREATE (r2:Relationship { uuid: "r2", type: "car_person"})
     CREATE (p1)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
+    CREATE (r2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m20 }]->(bool_true)
 
     RETURN c1, c2, c3
     """
