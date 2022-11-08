@@ -238,7 +238,11 @@ class Query(ABC):
         for idx, result in enumerate(self.results):
             identifier = []
             for label, attribute in args:
-                identifier.append(result.get(label).get(attribute, None))
+                node = result.get(label)
+                if hasattr(node, attribute):
+                    identifier.append(getattr(node, attribute))
+                else:
+                    identifier.append(node.get(attribute, None))
 
             info = {
                 "idx": idx,

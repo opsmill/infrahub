@@ -17,6 +17,7 @@ from infrahub.core.query.diff import (
     DiffRelationshipPropertyQuery,
 )
 from infrahub.core.query.node import NodeListGetAttributeQuery, NodeDeleteQuery, NodeListGetInfoQuery
+from infrahub.core.query.relationship import RelationshipListGetPropertiesQuery
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
@@ -554,6 +555,7 @@ class Diff:
         return paths[branches[0]] & paths[branches[1]]
 
     def get_modified_paths(self) -> Dict[str, set]:
+        """Return a list of all the modified paths per branch."""
 
         paths = defaultdict(set)
 
@@ -777,7 +779,10 @@ class Diff:
         return {branch_name: data["rels"] for branch_name, data in self._results.items()}
 
     def _calculated_diff_rels(self):
+        """Calculate the diff for all the relationships between Nodes.
 
+        The results will be stored in self._results organized by branch.
+        """
         # Query the diff on the main path
         query_rels = DiffRelationshipQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute()
 
@@ -786,7 +791,12 @@ class Diff:
             branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         ).execute()
 
-        # First query the main path of the relationships, to identify the relationship that have been added or deleted
+        rel_ids_to_query = []
+
+        # ------------------------------------------------------------
+        # Process the main path of the relationships
+        # to identify the relationship that have been added or deleted
+        # ------------------------------------------------------------
         for result in query_rels.get_results():
 
             branch_name = result.get("r1").get("branch")
@@ -829,11 +839,15 @@ class Diff:
             elif branch_status == RelationshipStatus.DELETED.value:
                 item["action"] = DiffAction.REMOVED.value
                 item["changed_at"] = from_time
+                rel_ids_to_query.append(rel_id)
             else:
                 raise Exception(f"Unexpected value for branch_status: {branch_status}")
 
             self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
 
+        # ------------------------------------------------------------
+        # Process the properties of the relationships that changed
+        # ------------------------------------------------------------
         for result in query_props.get_results():
 
             branch_name = result.get("r3").get("branch")
@@ -842,40 +856,58 @@ class Diff:
             rel_id = result.get("rel").get("uuid")
 
             # Check if the relationship already exist, if not we need to create it
-            if rel_id not in self._results[branch_name]["rels"][rel_name]:
+            if rel_id in self._results[branch_name]["rels"][rel_name]:
+                continue
 
-                src_node_id = result.get("sn").get("uuid")
-                dst_node_id = result.get("dn").get("uuid")
+            src_node_id = result.get("sn").get("uuid")
+            dst_node_id = result.get("dn").get("uuid")
 
-                item = dict(
-                    id=rel_id,
-                    db_id=result.get("rel").id,
-                    name=rel_name,
-                    nodes={
-                        src_node_id: RelationshipEdgeNodeDiffElement(
-                            id=src_node_id,
-                            db_id=result.get("sn").id,
-                            rel_id=result.get("r1").id,
-                            labels=result.get("sn").labels,
-                        ),
-                        dst_node_id: RelationshipEdgeNodeDiffElement(
-                            id=src_node_id,
-                            db_id=result.get("dn").id,
-                            rel_id=result.get("r2").id,
-                            labels=result.get("dn").labels,
-                        ),
-                    },
-                    properties={},
-                    action=DiffAction.UPDATED.value,
-                    changed_at=None,
-                    branch=None,
-                )
+            item = dict(
+                id=rel_id,
+                db_id=result.get("rel").id,
+                name=rel_name,
+                nodes={
+                    src_node_id: RelationshipEdgeNodeDiffElement(
+                        id=src_node_id,
+                        db_id=result.get("sn").id,
+                        rel_id=result.get("r1").id,
+                        labels=result.get("sn").labels,
+                    ),
+                    dst_node_id: RelationshipEdgeNodeDiffElement(
+                        id=src_node_id,
+                        db_id=result.get("dn").id,
+                        rel_id=result.get("r2").id,
+                        labels=result.get("dn").labels,
+                    ),
+                },
+                properties={},
+                action=DiffAction.UPDATED.value,
+                changed_at=None,
+                branch=None,
+            )
 
-                self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
+            self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
+
+            rel_ids_to_query.append(rel_id)
+
+        # ------------------------------------------------------------
+        # Query the current value of the relationships that have been updated
+        # ------------------------------------------------------------
+        origin_rel_properties_query = RelationshipListGetPropertiesQuery(
+            ids=rel_ids_to_query, branch=self.origin_branch, at=self.diff_to
+        ).execute()
+
+        for result in query_props.get_results():
+
+            branch_name = result.get("r3").get("branch")
+            branch_status = result.get("r3").get("status")
+            rel_name = result.get("rel").get("type")
+            rel_id = result.get("rel").get("uuid")
 
             prop_type = result.get("r3").type
             prop_from = Timestamp(result.get("r3").get("from"))
 
+            origin_prop = origin_rel_properties_query.get_by_id_and_prop_type(rel_id=rel_id, type=prop_type)
             prop = {
                 "type": prop_type,
                 "branch": branch_name,
@@ -884,7 +916,10 @@ class Diff:
                 "origin_rel_id": None,
             }
 
-            if prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
+            if origin_prop:
+                prop["origin_rel_id"] = origin_prop.get("r").id
+
+            if not origin_prop and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
                 prop["action"] = DiffAction.ADDED.value
                 prop["changed_at"] = prop_from
             elif prop_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:

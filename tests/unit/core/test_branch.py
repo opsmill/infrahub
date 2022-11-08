@@ -214,7 +214,6 @@ def test_diff_get_nodes(base_dataset_02):
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED.value
 
 
-@pytest.mark.skip(reason="Need to fix get_relationships to differentiate Added andd Updated")
 def test_diff_get_relationships(base_dataset_02):
 
     branch1 = Branch.get_by_name("branch1")
