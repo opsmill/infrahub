@@ -244,13 +244,10 @@ def neo4j_start(context):
     exec_cmd = """docker run --name neo4j-dev \
                 -p 7474:7474 -p 7687:7687 \
                 --env NEO4J_ACCEPT_LICENSE_AGREEMENT=yes \
-                --env NEO4J_apoc_export_file_enabled=true \
-                --env NEO4J_apoc_import_file_enabled=true \
-                --env NEO4J_apoc_import_file_use__neo4j__config=true \
                 --env NEO4J_dbms_security_procedures_unrestricted=apoc.\\\* \
-                --env NEO4JLABS_PLUGINS=\[\"apoc\"\] \
+                --env NEO4J_PLUGINS=\[\"apoc\"\] \
                 --env NEO4J_AUTH=neo4j/admin \
-                -d --rm neo4j:enterprise
+                -d --rm neo4j:5.1-enterprise
                 """
     context.run("docker rm neo4j-dev", pty=False, warn=True)
     return context.run(exec_cmd, pty=True)

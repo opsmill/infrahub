@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from inspect import isclass
-from typing import (
-    List,
-)
+from typing import List, Optional
 
 
 import infrahub.config as config
@@ -17,7 +15,7 @@ def add_relationship(
     dst_node_id: int,
     rel_type: str,
     branch_name: str = None,
-    at: Timestamp = None,
+    at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
 ):
 
@@ -79,19 +77,28 @@ def update_relationships_to(ids: List[int], to: Timestamp = None):
     return execute_write_query(query, params)
 
 
-def get_paths_between_nodes(source_id: int, destination_id: int, max_length: int = None):
+def get_paths_between_nodes(
+    source_id: int, destination_id: int, relationships: List[str] = None, max_length: int = None, print_query=False
+):
     """Return all paths between 2 nodes."""
 
     length_limit = f"..{max_length}" if max_length else ""
 
-    query = (
-        """
-    MATCH p = (s)-[*%s]-(d)
+    relationships_str = ""
+    if isinstance(relationships, list):
+        relationships_str = ":" + "|".join(relationships)
+
+    query = """
+    MATCH p = (s)-[%s*%s]-(d)
     WHERE ID(s) = $source_id AND ID(d) = $destination_id
     RETURN p
-    """
-        % length_limit
+    """ % (
+        relationships_str.upper(),
+        length_limit,
     )
+
+    if print_query:
+        print(query)
 
     params = {
         "source_id": source_id,

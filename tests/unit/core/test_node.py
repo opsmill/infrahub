@@ -226,26 +226,52 @@ def test_node_create_with_single_relationship(default_branch, car_person_schema)
 
     p1.save()
 
+    # Pass entire object for owner
     c1 = Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
     assert c1.name.value == "volt"
     assert c1.nbr_seats.value == 4
     assert c1.is_electric.value is True
     assert c1.owner.peer == p1
 
-    # We should have 2 paths between c1 and p1
-    # First for the relationship
-    # Second via the branch
-    paths = get_paths_between_nodes(c1.db_id, p1.db_id, 2)
-    assert len(paths) == 2
+    paths = get_paths_between_nodes(
+        source_id=c1.db_id, destination_id=p1.db_id, max_length=2, relationships=["IS_RELATED"]
+    )
+    assert len(paths) == 1
 
+    # Pass ID of an object for owner
     c2 = Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
     assert c2.name.value == "accord"
     assert c2.nbr_seats.value == 5
     assert c2.is_electric.value is False
     assert c2.owner.peer.id == p1.id
 
-    paths = get_paths_between_nodes(c2.db_id, p1.db_id, 2)
-    assert len(paths) == 2
+    paths = get_paths_between_nodes(
+        source_id=c2.db_id, destination_id=p1.db_id, max_length=2, relationships=["IS_RELATED"]
+    )
+    assert len(paths) == 1
+
+    # Define metadata along object ID for owner
+    c3 = (
+        Node(car)
+        .new(
+            name="smart",
+            nbr_seats=2,
+            is_electric=True,
+            owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        )
+        .save()
+    )
+    assert c3.name.value == "smart"
+    assert c3.nbr_seats.value == 2
+    assert c3.is_electric.value is True
+    assert c3.owner.peer.id == p1.id
+    rel = c3.owner.get()
+    assert rel.is_protected is True
+    assert rel.is_visible is False
+    paths = get_paths_between_nodes(
+        source_id=c3.db_id, destination_id=p1.db_id, max_length=2, relationships=["IS_RELATED"]
+    )
+    assert len(paths) == 1
 
 
 def test_node_create_with_multiple_relationship(default_branch, fruit_tag_schema):
@@ -263,11 +289,11 @@ def test_node_create_with_multiple_relationship(default_branch, fruit_tag_schema
 
     # We should have 2 paths between f1 and t1, t2 & t3
     # First for the relationship, second via the branch
-    paths = get_paths_between_nodes(f1.db_id, t1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=f1.db_id, destination_id=t1.db_id, max_length=2)
     assert len(paths) == 2
-    paths = get_paths_between_nodes(f1.db_id, t2.db_id, 2)
+    paths = get_paths_between_nodes(source_id=f1.db_id, destination_id=t2.db_id, max_length=2)
     assert len(paths) == 2
-    paths = get_paths_between_nodes(f1.db_id, t3.db_id, 2)
+    paths = get_paths_between_nodes(source_id=f1.db_id, destination_id=t3.db_id, max_length=2)
     assert len(paths) == 2
 
 

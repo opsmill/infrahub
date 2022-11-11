@@ -14,7 +14,7 @@ from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
 
 # Check Database Status
 def get_list_queries(tx):
-    return list(tx.run("CALL dbms.listQueries()"))
+    return list(tx.run("SHOW TRANSACTIONS"))
 
 
 def create_database(tx, database_name: str):

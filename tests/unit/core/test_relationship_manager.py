@@ -21,7 +21,6 @@ def test_one_init_no_input_no_rel(default_branch, person_tag_schema):
         iter(relm)
 
     assert not relm.peer
-    assert not relm.get()
 
 
 def test_one_init_no_input_existing_rel(default_branch, person_tag_schema):
@@ -34,7 +33,6 @@ def test_one_init_no_input_existing_rel(default_branch, person_tag_schema):
     relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag")
 
     assert relm.peer.id == t1.id
-    assert relm.get().id == t1.id
 
 
 def test_many_init_no_input_no_rel(default_branch, person_tag_schema):
@@ -89,7 +87,7 @@ def test_one_save_input_obj(default_branch, person_tag_schema):
     p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
     # We should have only 1 paths between t1 and p1 via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
     relm = RelationshipManager(
@@ -99,7 +97,7 @@ def test_one_save_input_obj(default_branch, person_tag_schema):
 
     # We should have 2 paths between t1 and p1
     # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
 
@@ -127,10 +125,10 @@ def test_many_save_input_obj(default_branch, person_tag_schema):
     p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
     # We should have only 1 paths between t1 and p1 via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    paths = get_paths_between_nodes(t2.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
     relm = RelationshipManager(
@@ -138,10 +136,10 @@ def test_many_save_input_obj(default_branch, person_tag_schema):
     )
     relm.save()
 
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
-    paths = get_paths_between_nodes(t2.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
 
@@ -157,26 +155,26 @@ def test_many_update(default_branch, person_tag_schema):
     relm.save()
 
     # We should have only 1 paths between t1 and p1 via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    paths = get_paths_between_nodes(t2.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
     relm.update(t1)
     relm.save()
 
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
-    paths = get_paths_between_nodes(t2.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
     relm.update([t1, t2])
     relm.save()
 
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
-    paths = get_paths_between_nodes(t2.db_id, p1.db_id, 2)
+    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2

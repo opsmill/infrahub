@@ -4,12 +4,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 
-# ("low", 2),
-# ("medium", 3),
-# ("high", 4),
 
-
-def test_get_one_local_attribute(default_branch, criticality_schema):
+def test_get_one_attribute(default_branch, criticality_schema):
 
     obj1 = Node(criticality_schema).new(name="low", level=4).save()
     obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
@@ -41,7 +37,7 @@ def test_get_one_local_attribute(default_branch, criticality_schema):
     assert obj.color.id
 
 
-def test_get_one_local_attribute_with_source(default_branch, criticality_schema, first_account, second_account):
+def test_get_one_attribute_with_node_property(default_branch, criticality_schema, first_account, second_account):
 
     obj1 = Node(criticality_schema).new(name="low", level=4, _source=first_account).save()
     obj2 = (
@@ -74,7 +70,7 @@ def test_get_one_local_attribute_with_source(default_branch, criticality_schema,
     assert obj.color.source_id == first_account.id
 
 
-def test_get_one_local_attribute_with_flags(default_branch, criticality_schema, first_account, second_account):
+def test_get_one_attribute_with_flag_property(default_branch, criticality_schema, first_account, second_account):
 
     obj1 = (
         Node(criticality_schema)
@@ -123,6 +119,47 @@ def test_get_one_relationship(default_branch, car_person_schema):
     assert p11.name.value == "John"
     assert p11.height.value == 180
     assert len(list(p11.cars)) == 2
+
+
+def test_get_one_relationship_with_flag_property(default_branch, car_person_schema):
+
+    p1 = Node("Person").new(name="John", height=180).save()
+
+    c1 = (
+        Node("Car")
+        .new(
+            name="volt",
+            nbr_seats=4,
+            is_electric=True,
+            owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        )
+        .save()
+    )
+    Node("Car").new(
+        name="accord",
+        nbr_seats=5,
+        is_electric=False,
+        owner={"id": p1.id, "_relation__is_visible": False},
+    ).save()
+
+    c11 = NodeManager.get_one(c1.id)
+
+    assert c11.name.value == "volt"
+    assert c11.nbr_seats.value == 4
+    assert c11.is_electric.value is True
+    assert c11.owner.peer.id == p1.id
+    rel = c11.owner.get()
+    assert rel.is_visible is False
+    assert rel.is_protected is True
+
+    p11 = NodeManager.get_one(p1.id)
+    assert p11.name.value == "John"
+    assert p11.height.value == 180
+
+    rels = p11.cars.get()
+    assert len(rels) == 2
+    assert rels[0].is_visible is False
+    assert rels[1].is_visible is False
 
 
 def test_get_many(default_branch, criticality_schema):

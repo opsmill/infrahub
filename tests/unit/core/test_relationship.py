@@ -1,91 +1,129 @@
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.timestamp import Timestamp
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.relationship import Relationship
-from infrahub.core.query.relationship import RelationshipGetPeerQuery, RelationshipCreateQuery, RelationshipDeleteQuery
-from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import get_paths_between_nodes
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
 
 
-def test_query_RelationshipCreateQuery(default_branch, person_tag_schema):
+def test_relationship_init(default_branch, person_tag_schema):
 
     person_schema = registry.get_schema("Person")
     rel_schema = person_schema.get_relationship("tags")
 
     t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
     p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
-    query = RelationshipCreateQuery(
-        source=p1, destination=t1, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
-    )
-    query.execute()
+    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1)
 
-    # We should have 2 paths between t1 and p1
-    # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
-    assert len(paths) == 2
+    assert rel.schema == rel_schema
+    assert rel.name == rel_schema.name
+    assert rel.branch == default_branch
+    assert rel.node_id == p1.id
+    assert rel.node == p1
+
+    rel = Relationship(schema=rel_schema, branch=default_branch, node_id=p1.id)
+
+    assert rel.schema == rel_schema
+    assert rel.name == rel_schema.name
+    assert rel.branch == default_branch
+    assert rel.node_id == p1.id
+    assert type(rel.node) == Node
+    assert rel.node.id == p1.id
 
 
-def test_query_RelationshipDeleteQuery(default_branch, person_tag_schema):
+def test_relationship_init_w_node_property(default_branch, person_tag_schema, first_account, second_account):
 
     person_schema = registry.get_schema("Person")
     rel_schema = person_schema.get_relationship("tags")
 
     t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
+    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
-    # We should have 2 paths between t1 and p1
-    # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
-    assert len(paths) == 2
+    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1, source=first_account, owner=second_account)
 
-    query = RelationshipDeleteQuery(
-        source=p1, destination=t1, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
+    assert rel.schema == rel_schema
+    assert rel.name == rel_schema.name
+    assert rel.branch == default_branch
+    assert rel.node_id == p1.id
+    assert rel.node == p1
+    assert rel.source_id == first_account.id
+    assert rel.owner_id == second_account.id
+
+
+def test_relationship_load_existing(default_branch, car_person_schema):
+
+    car_schema = registry.get_schema("Car")
+    rel_schema = car_schema.get_relationship("owner")
+
+    p1 = Node("Person").new(name="John", height=180).save()
+    c3 = (
+        Node("Car")
+        .new(
+            name="smart",
+            nbr_seats=2,
+            is_electric=True,
+            owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        )
+        .save()
     )
-    query.execute()
 
-    # We should have 5 paths between t1 and p1
-    # Because we have 3 "real" paths between the nodes
-    # but if we calculate all the permutations it will equal to 5 paths.
-    paths = get_paths_between_nodes(t1.db_id, p1.db_id, 2)
-    assert len(paths) == 5
-
-
-def test_query_RelationshipGetPeerQuery(default_branch, person_tag_schema):
-
-    person_schema = registry.get_schema("Person")
-    rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
+    rel = Relationship(schema=rel_schema, branch=default_branch, node=c3)
 
     query = RelationshipGetPeerQuery(
-        source_id=p1.id, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
-    )
-    query.execute()
-
-    assert len(query.get_peer_ids()) == 2
-
-
-def test_query_RelationshipGetPeerQuery_with_filter(default_branch, person_tag_schema):
-
-    person_schema = registry.get_schema("Person")
-    rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
-
-    query = RelationshipGetPeerQuery(
-        source_id=p1.id,
-        schema=rel_schema,
-        filters={"tags__name__value": "blue"},
-        rel=Relationship,
-        branch=default_branch,
+        source=c3,
         at=Timestamp(),
-    )
-    query.execute()
+        rel=rel,
+    ).execute()
 
-    assert len(query.get_peer_ids()) == 1
+    peers = list(query.get_peers())
+
+    assert peers[0].properties["is_protected"].value == True
+
+    rel.load(data=peers[0])
+
+    assert rel.id == peers[0].rel_node_id
+    assert rel.db_id == peers[0].rel_node_db_id
+
+    assert rel.is_protected == True
+    assert rel.is_visible == False
+
+
+def test_relationship_peer(default_branch, person_tag_schema, first_account, second_account):
+
+    person_schema = registry.get_schema("Person")
+    rel_schema = person_schema.get_relationship("tags")
+
+    t1 = Node("Tag").new(name="blue").save()
+    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+
+    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1)
+    rel.peer = t1
+
+    assert rel.schema == rel_schema
+    assert rel.name == rel_schema.name
+    assert rel.branch == default_branch
+    assert rel.node_id == p1.id
+    assert rel.node == p1
+    assert rel.peer_id == t1.id
+    assert rel.peer == t1
+
+
+def test_relationship_save(default_branch, person_tag_schema):
+
+    person_schema = registry.get_schema("Person")
+    rel_schema = person_schema.get_relationship("tags")
+
+    t1 = Node("Tag").new(name="blue").save()
+    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+
+    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1)
+    rel.peer = t1
+    rel.save()
+
+    p11 = NodeManager.get_one(p1.id)
+    tags = list(p11.tags)
+    assert len(tags) == 1
+    assert tags[0].id == rel.id

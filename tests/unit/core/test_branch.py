@@ -1,5 +1,6 @@
-from infrahub.core import registry
-from infrahub.core import get_branch
+import pytest
+
+from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, Diff
 from infrahub.core.node import Node
 from infrahub.core.manager import NodeManager
@@ -85,6 +86,7 @@ def test_diff_has_changes(base_dataset_02):
     assert diff.has_changes
 
     diff = Diff(branch=branch1, diff_from=base_dataset_02["time0"])
+
     assert not diff.has_changes
 
     # Create a change in main to validate that a new change will be detected but not if main is excluded (branch_only)
@@ -137,6 +139,7 @@ def test_diff_get_modified_paths(base_dataset_02):
         ("node", "c2", "color", "HAS_VALUE"),
         ("node", "c2", "color", "IS_PROTECTED"),
         ("node", "c2", "color", "IS_VISIBLE"),
+        ("relationships", "car_person", "r1", "IS_PROTECTED"),
     }
     expected_paths_branch1 = {
         ("node", "c1", "nbr_seats", "HAS_VALUE"),
@@ -153,6 +156,9 @@ def test_diff_get_modified_paths(base_dataset_02):
         ("node", "c3", "nbr_seats", "HAS_VALUE"),
         ("node", "c3", "nbr_seats", "IS_PROTECTED"),
         ("node", "c3", "nbr_seats", "IS_VISIBLE"),
+        ("relationships", "car_person", "r1", "IS_VISIBLE"),
+        ("relationships", "car_person", "r2", "IS_VISIBLE"),
+        ("relationships", "car_person", "r2", "IS_PROTECTED"),
     }
 
     diff = Diff(branch=branch1)
@@ -208,14 +214,22 @@ def test_diff_get_nodes(base_dataset_02):
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED.value
 
 
-def test_diff_relationships(base_dataset_02):
+def test_diff_get_relationships(base_dataset_02):
 
     branch1 = Branch.get_by_name("branch1")
 
     diff = Diff(branch=branch1)
     rels = diff.get_relationships()
 
-    assert len(rels) == 1
+    assert sorted(rels.keys()) == ["branch1", "main"]
+
+    assert sorted(rels["branch1"]["car_person"].keys()) == ["r1", "r2"]
+    assert rels["branch1"]["car_person"]["r1"].action == DiffAction.UPDATED.value
+
+    assert rels["branch1"]["car_person"]["r2"].action == DiffAction.ADDED.value
+
+    assert rels["main"]["car_person"]["r1"].action == DiffAction.UPDATED.value
+    assert rels["main"]["car_person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED.value
 
 
 def test_validate(base_dataset_02, register_core_models_schema):

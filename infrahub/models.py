@@ -11,9 +11,9 @@ infrastructure_models = {
                 {"name": "type", "kind": "String"},
             ],
             "relationships": [
-                {"name": "site", "peer": "Location", "cardinality": "one"},
-                {"name": "status", "peer": "Status", "cardinality": "one"},
-                {"name": "role", "peer": "Role", "cardinality": "one"},
+                {"name": "site", "peer": "Location", "optional": False, "cardinality": "one"},
+                {"name": "status", "peer": "Status", "optional": False, "cardinality": "one"},
+                {"name": "role", "peer": "Role", "optional": False, "cardinality": "one"},
                 {"name": "interfaces", "peer": "Interface", "optional": True, "cardinality": "many"},
                 {"name": "asn", "peer": "AutonomousSystem", "optional": True, "cardinality": "one"},
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
@@ -30,9 +30,9 @@ infrastructure_models = {
                 {"name": "enabled", "kind": "Boolean", "default_value": True},
             ],
             "relationships": [
-                {"name": "status", "peer": "Status", "cardinality": "one"},
-                {"name": "role", "peer": "Role", "cardinality": "one"},
-                {"name": "device", "peer": "Device", "cardinality": "one"},
+                {"name": "status", "peer": "Status", "optional": False, "cardinality": "one"},
+                {"name": "role", "peer": "Role", "optional": False, "cardinality": "one"},
+                {"name": "device", "peer": "Device", "optional": False, "cardinality": "one"},
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
                 {"name": "ip_addresses", "peer": "IPAddress", "optional": True, "cardinality": "many"},
                 {"name": "connected_circuit", "peer": "CircuitEndpoint", "optional": True, "cardinality": "one"},
@@ -49,7 +49,7 @@ infrastructure_models = {
                 {"name": "description", "kind": "String", "optional": True},
             ],
             "relationships": [
-                {"name": "interface", "peer": "Interface", "cardinality": "one"},
+                {"name": "interface", "peer": "Interface", "optional": True, "cardinality": "one"},
             ],
         },
         {
@@ -63,9 +63,9 @@ infrastructure_models = {
                 {"name": "vendor_id", "kind": "String", "optional": True},
             ],
             "relationships": [
-                {"name": "status", "peer": "Status", "cardinality": "one"},
-                {"name": "role", "peer": "Role", "cardinality": "one"},
-                {"name": "provider", "peer": "Organization", "cardinality": "one"},
+                {"name": "status", "peer": "Status", "optional": False, "cardinality": "one"},
+                {"name": "role", "peer": "Role", "optional": False, "cardinality": "one"},
+                {"name": "provider", "peer": "Organization", "optional": False, "cardinality": "one"},
                 {"name": "endpoints", "peer": "CircuitEndpoint", "optional": True, "cardinality": "many"},
             ],
         },
@@ -77,8 +77,8 @@ infrastructure_models = {
                 {"name": "description", "kind": "String", "optional": True},
             ],
             "relationships": [
-                {"name": "site", "peer": "Location", "cardinality": "one"},
-                {"name": "circuit", "peer": "Circuit", "cardinality": "one"},
+                {"name": "site", "peer": "Location", "optional": False, "cardinality": "one"},
+                {"name": "circuit", "peer": "Circuit", "optional": False, "cardinality": "one"},
                 {"name": "connected_interface", "peer": "Interface", "optional": True, "cardinality": "one"},
             ],
         },
@@ -93,7 +93,7 @@ infrastructure_models = {
                 {"name": "description", "kind": "String", "optional": True},
             ],
             "relationships": [
-                {"name": "organization", "peer": "Organization", "cardinality": "one"},
+                {"name": "organization", "peer": "Organization", "optional": False, "cardinality": "one"},
             ],
         },
         {
@@ -136,8 +136,8 @@ infrastructure_models = {
                 {"name": "export_policies", "kind": "String", "optional": True},
             ],
             "relationships": [
-                {"name": "status", "peer": "Status", "cardinality": "one"},
-                {"name": "role", "peer": "Role", "cardinality": "one"},
+                {"name": "status", "peer": "Status", "optional": False, "cardinality": "one"},
+                {"name": "role", "peer": "Role", "optional": False, "cardinality": "one"},
                 {
                     "name": "local_as",
                     "identifier": "bgpsession__local_as",

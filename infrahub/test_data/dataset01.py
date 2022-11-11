@@ -126,6 +126,9 @@ def load_data():
     roles_dict = {}
     device_profiles_dict = {}
 
+    LOGGER.info("Creating Site")
+    site_hq = Node("Location").new(name="HQ", type="Site").save()
+
     LOGGER.info("Creating Roles & Status")
     for role in ROLES:
         obj = Node("Role").new(description=role.title(), name=role).save()
@@ -160,7 +163,7 @@ def load_data():
         role_id = None
         if device[4]:
             role_id = roles_dict[device[4]].id
-        obj = Node("Device").new(name=device[0], status=status.id, type=device[2], role=role_id)
+        obj = Node("Device").new(name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
 
         # # Connect tags
         # for tag_name in device[5]:

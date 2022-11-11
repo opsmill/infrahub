@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from uuid import UUID
 from typing import Dict, List, Union, TYPE_CHECKING
 
 from infrahub.core import get_branch, registry
@@ -73,7 +74,7 @@ class NodeManager:
     @classmethod
     def query_peers(
         cls,
-        id: str,
+        id: UUID,
         schema: RelationshipSchema,
         filters: dict,
         fields: dict = None,
@@ -88,9 +89,12 @@ class NodeManager:
         branch = get_branch(branch)
         at = Timestamp(at)
 
+        rel = Relationship(schema=schema, branch=branch, node_id=id)
+
         query = RelationshipGetPeerQuery(
-            source_id=id, schema=schema, filters=filters, rel=Relationship, limit=limit, branch=branch, at=at
+            source_id=id, schema=schema, filters=filters, rel=rel, limit=limit, at=at
         ).execute()
+
         peers_info = list(query.get_peers())
         peer_ids = [peer.peer_id for peer in peers_info]
 
@@ -101,7 +105,10 @@ class NodeManager:
 
         return [
             Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
-                id=peer.rel_uuid, db_id=peer.rel_id, updated_at=peer.updated_at, data={"peer": peers[peer.peer_id]}
+                id=peer.rel_node_id,
+                db_id=peer.rel_node_db_id,
+                updated_at=peer.updated_at,
+                data={"peer": peers[peer.peer_id]},
             )
             for peer in peers_info
         ]
@@ -109,7 +116,7 @@ class NodeManager:
     @classmethod
     def get_one(
         cls,
-        id: str,
+        id: UUID,
         fields: dict = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -140,7 +147,7 @@ class NodeManager:
     @classmethod
     def get_many(
         cls,
-        ids: List[str],
+        ids: List[UUID],
         fields: dict = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -247,15 +254,15 @@ class NodeManager:
 
 class SchemaManager(NodeManager):
     @classmethod
-    def register_schema_to_registry(cls, schema: SchemaRoot, branch=None):
+    def register_schema_to_registry(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
         """Register all nodes from a SchemaRoot object into the registry."""
         for node in schema.nodes:
-            registry.set_schema(node.kind, node)
+            registry.set_schema(node.kind, node, branch=branch)
 
         return True
 
     @classmethod
-    def load_schema_to_db(cls, schema: SchemaRoot, branch=None):
+    def load_schema_to_db(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
         """Load all nodes from a SchemaRoot object into the database."""
 
         branch = get_branch(branch)
@@ -266,13 +273,13 @@ class SchemaManager(NodeManager):
         return True
 
     @classmethod
-    def load_schema_node_to_db(cls, schema_node: NodeSchema, branch=None):
+    def load_schema_node_to_db(cls, schema_node: NodeSchema, branch: Union[str, Branch] = None):
 
         branch = get_branch(branch)
 
-        node_schema = registry.get_schema("NodeSchema")
-        attribute_schema = registry.get_schema("AttributeSchema")
-        relationship_schema = registry.get_schema("RelationshipSchema")
+        node_schema = registry.get_schema("NodeSchema", branch=branch)
+        attribute_schema = registry.get_schema("AttributeSchema", branch=branch)
+        relationship_schema = registry.get_schema("RelationshipSchema", branch=branch)
 
         attrs = []
         rels = []
@@ -299,14 +306,14 @@ class SchemaManager(NodeManager):
         return True
 
     @classmethod
-    def load_schema_from_db(self, branch=None) -> SchemaRoot:
+    def load_schema_from_db(self, branch: Union[str, Branch] = None) -> SchemaRoot:
         """Query all the node of type node_schema from the database and convert them to NodeSchema."""
 
         branch = get_branch(branch)
 
         schema = SchemaRoot(nodes=[])
 
-        node_schema = registry.get_schema("NodeSchema")
+        node_schema = registry.get_schema("NodeSchema", branch=branch)
         for schema_node in self.query(node_schema, branch=branch):
             schema.nodes.append(self.convert_node_schema_to_schema(schema_node))
 

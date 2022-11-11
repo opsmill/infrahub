@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Set, List, Dict, Any, Union, TYPE_CHECKING
+from typing import Set, List, Dict, Any, Union, Optional, TYPE_CHECKING
 
+from uuid import UUID
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to, add_relationship
 from infrahub.exceptions import ValidationError
@@ -15,6 +16,7 @@ from infrahub.core.query.attribute import (
     AttributeUpdateNodePropertyQuery,
 )
 from infrahub.core.constants import RelationshipStatus
+from infrahub.core.property import NodePropertyMixin, FlagPropertyMixin
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -22,17 +24,12 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
 
 
-class BaseAttribute:
+class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     type = None
 
     _rel_to_node_label: str = "HAS_ATTRIBUTE"
     _rel_to_value_label: str = "HAS_VALUE"
-
-    _node_properties: list[str] = ["source", "owner"]
-
-    def get_kind(self) -> str:
-        return self.schema.kind
 
     def __init__(
         self,
@@ -41,14 +38,10 @@ class BaseAttribute:
         branch: Branch,
         at: Timestamp,
         node: Node,
-        id: str = None,
+        id: UUID = None,
         db_id: int = None,
         data: Union[dict, str] = None,
         updated_at: Union[Timestamp, str] = None,
-        is_visible: bool = None,
-        is_protected: bool = None,
-        source: Union[Node, str] = None,
-        owner: Union[Node, str] = None,
         *args,
         **kwargs,
     ):
@@ -63,18 +56,15 @@ class BaseAttribute:
         self.branch = branch
         self.at = at
 
-        self.is_visible = is_visible
-        self.is_protected = is_protected
-
-        self.source = source
-        self.owner = owner
+        self._init_node_property_mixin(kwargs)
+        self._init_flag_property_mixin(kwargs)
 
         self.value = None
 
         if data is not None and isinstance(data, dict):
             self.value = data.get("value", None)
 
-            fields_to_extract_from_data = ["id", "db_id", "is_visible", "is_protected", "source", "owner"]
+            fields_to_extract_from_data = ["id", "db_id"] + self._flag_properties + self._node_properties
             for field_name in fields_to_extract_from_data:
                 setattr(self, field_name, data.get(field_name, None))
 
@@ -97,67 +87,14 @@ class BaseAttribute:
         if self.is_visible is None:
             self.is_visible = True
 
+    def get_kind(self) -> str:
+        return self.schema.kind
+
     @classmethod
     def validate(cls, value) -> bool:
         return True if isinstance(value, cls.type) else False
 
-    @property
-    def source(self):
-        return self._get_node_property("source")
-
-    @source.setter
-    def source(self, value):
-        self._set_node_property("source", value)
-
-    @property
-    def owner(self):
-        return self._get_node_property("owner")
-
-    @owner.setter
-    def owner(self, value):
-        self._set_node_property("owner", value)
-
-    def _get_node_property(self, name: str) -> Node:
-        """Return the node attribute.
-        If the node is already present in cache, serve from the cache
-        If the node is not present, query it on the fly using the node_id
-        """
-        if getattr(self, f"_{name}") is None:
-            self._retrieve_node_property(name)
-
-        return getattr(self, f"_{name}", None)
-
-    def _set_node_property(self, name: str, value: Union[Node, str]):
-        """Set the value of the node_property.
-        If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
-        If the value is a Node, we save the node and we extract the ID
-        if the value is None, we just initialize the 2 variables."""
-
-        if isinstance(value, str):
-            setattr(self, f"{name}_id", value)
-            setattr(self, f"_{name}", None)
-        elif isinstance(value, dict) and "id" in value:
-            setattr(self, f"{name}_id", value["id"])
-            setattr(self, f"_{name}", None)
-        elif hasattr(value, "_schema"):
-            setattr(self, f"_{name}", value)
-            setattr(self, f"{name}_id", value.id)
-        elif value is None:
-            setattr(self, f"_{name}", None)
-            setattr(self, f"{name}_id", None)
-        else:
-            raise ValueError("Unable to process the node property")
-
-    def _retrieve_node_property(self, name: str):
-        """Query the node associated with this node_property from the database."""
-        from infrahub.core.manager import NodeManager
-
-        node = NodeManager.get_one(getattr(self, f"{name}_id"), branch=self.branch, at=self.at)
-        setattr(self, f"_{name}", node)
-        if node:
-            setattr(self, f"{name}_id", node.id)
-
-    def save(self, at: Timestamp = None):
+    def save(self, at: Optional[Timestamp] = None):
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
@@ -167,7 +104,7 @@ class BaseAttribute:
 
         return self._create(at=save_at)
 
-    def delete(self, at: Timestamp = None) -> bool:
+    def delete(self, at: Optional[Timestamp] = None) -> bool:
 
         delete_at = Timestamp(at)
 
@@ -211,7 +148,7 @@ class BaseAttribute:
 
         return True
 
-    def _create(self, at: Timestamp = None) -> bool:
+    def _create(self, at: Optional[Timestamp] = None) -> bool:
 
         create_at = Timestamp(at)
 
@@ -222,7 +159,7 @@ class BaseAttribute:
 
         return True
 
-    def _update(self, at: Timestamp = None) -> bool:
+    def _update(self, at: Optional[Timestamp] = None) -> bool:
         """Update the attribute in the database.
 
         Get the current value
