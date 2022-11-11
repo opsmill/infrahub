@@ -351,22 +351,43 @@ class Branch(StandardNode):
         # ---------------------------------------------
         # RELATIONSHIPS
         # ---------------------------------------------
-        query = DiffRelationshipQuery(branch=self).execute()
+        rels = diff.get_relationships()
 
-        for result in query.get_results():
+        for rel_name in rels[self.name].keys():
+            for rel_id, rel in rels[self.name][rel_name].items():
+                for node in rel.nodes.values():
+                    if rel.action in [DiffAction.ADDED.value, DiffAction.REMOVED.value]:
+                        rel_status = RelationshipStatus.ACTIVE
+                        if rel.action == DiffAction.REMOVED.value:
+                            rel_status = RelationshipStatus.DELETED
 
-            # For now only consider the item that have been changed in the branch
-            if result.get("r1").get("branch") != self.name:
-                continue
+                        add_relationship(
+                            src_node_id=node.db_id,
+                            dst_node_id=rel.db_id,
+                            rel_type="IS_RELATED",
+                            at=at,
+                            branch_name=default_branch.name,
+                            status=rel_status,
+                        )
+                        rel_ids_to_update.append(node.rel_id)
 
-            add_relationship(
-                src_node_id=result.get("sn").id, dst_node_id=result.get("rel").id, rel_type=result.get("r1").type, at=at
-            )
-            add_relationship(
-                src_node_id=result.get("dn").id, dst_node_id=result.get("rel").id, rel_type=result.get("r2").type, at=at
-            )
-            rel_ids_to_update.append(result.get("r1").id)
-            rel_ids_to_update.append(result.get("r2").id)
+                for prop_type, prop in rel.properties.items():
+
+                    rel_status = status = RelationshipStatus.ACTIVE
+                    if prop.action == DiffAction.REMOVED.value:
+                        rel_status = RelationshipStatus.DELETED
+
+                    add_relationship(
+                        src_node_id=rel.db_id,
+                        dst_node_id=prop.db_id,
+                        rel_type=prop.type,
+                        at=at,
+                        branch_name=default_branch.name,
+                    )
+                    rel_ids_to_update.append(prop.rel_id)
+
+                    if rel.action in [DiffAction.UPDATED.value, DiffAction.REMOVED.value]:
+                        rel_ids_to_update.append(prop.origin_rel_id)
 
         update_relationships_to(ids=rel_ids_to_update, to=at)
 
@@ -771,7 +792,7 @@ class Diff:
 
         self._calculated_diff_nodes_at = Timestamp()
 
-    def get_relationships(self) -> List[RelationshipDiffElement]:
+    def get_relationships(self) -> Dict[str, Dict[str, RelationshipDiffElement]]:
 
         if not self._calculated_diff_rels_at:
             self._calculated_diff_rels()
