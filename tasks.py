@@ -233,68 +233,29 @@ def pydocstyle(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
 
 
 @task
-def neo4j_start(context):
-    """Start a local instance of NEO4J.
+def dev_start(context):
+    """Start a local instance of NEO4J & RabbitMQ.
 
     Args:
         context (obj): Used to run specific commands
     """
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = """docker run --name neo4j-dev \
-                -p 7474:7474 -p 7687:7687 \
-                --env NEO4J_ACCEPT_LICENSE_AGREEMENT=yes \
-                --env NEO4J_dbms_security_procedures_unrestricted=apoc.\\\* \
-                --env NEO4J_PLUGINS=\[\"apoc\"\] \
-                --env NEO4J_AUTH=neo4j/admin \
-                -d --rm neo4j:5.1-enterprise
-                """
-    context.run("docker rm neo4j-dev", pty=False, warn=True)
+    exec_cmd = """docker compose -f development/docker-compose.yml up -d"""
     return context.run(exec_cmd, pty=True)
 
 
 @task
-def neo4j_stop(context):
-    """Stop the local instance of NEO4J.
+def dev_stop(context):
+    """Start a local instance of NEO4J & RabbitMQ.
 
     Args:
         context (obj): Used to run specific commands
     """
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = "docker stop neo4j-dev"
-    _ = context.run(exec_cmd, pty=True)
-
-
-@task
-def rabbitmq_start(context):
-    """Start a local instance of RabbitMQ.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
-    # pty is set to true to properly run the docker commands due to the invocation process of docker
-    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = """docker run --name rabbitmq-dev \
-                -d -p 5672:5672 \
-                -p 15672:15672 \
-                rabbitmq:3-management
-                """
-    context.run("docker rm rabbitmq-dev", pty=False, warn=True)
+    exec_cmd = """docker compose -f development/docker-compose.yml down"""
     return context.run(exec_cmd, pty=True)
-
-
-@task
-def rabbitmq_stop(context):
-    """Stop the local instance of RabbitMQ.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
-    # pty is set to true to properly run the docker commands due to the invocation process of docker
-    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = "docker stop rabbitmq-dev"
-    result = context.run(exec_cmd, pty=True)
 
 
 @task
