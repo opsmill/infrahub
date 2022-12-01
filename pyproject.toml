@@ -37,6 +37,7 @@ pre-commit = "^2.20.0"
 isort = "*"
 autoflake = "*"
 pytest-clarity = "^1.0.1"
+locust = "^2.13.1"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"

@@ -1,9 +1,13 @@
 """Replacement for Makefile."""
 import os
 import sys
+import glob
 from distutils.util import strtobool
+from datetime import datetime
 
-from invoke import task  # type: ignore
+from typing import Tuple
+
+from invoke import task, Context  # type: ignore
 
 try:
     import toml
@@ -13,10 +17,17 @@ except ImportError:
 # flake8: noqa: W605
 
 
-def project_ver():
+def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
     with open("pyproject.toml", encoding="UTF-8") as file:
         return toml.load(file)["tool"]["poetry"].get("version", "latest")
+
+
+def git_info(context: Context) -> Tuple[str, str]:
+    """Return the name of the current branch and hash of the current commit."""
+    branch_name = context.run("git rev-parse --abbrev-ref HEAD", hide=True, pty=False)
+    hash = context.run("git rev-parse --short HEAD", hide=True, pty=False)
+    return branch_name.stdout.strip(), hash.stdout.strip()
 
 
 def is_truthy(arg):
@@ -295,6 +306,27 @@ def rabbitmq_stop(context):
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
     exec_cmd = "docker stop rabbitmq-dev"
     result = context.run(exec_cmd, pty=True)
+
+
+@task
+def performance_test(context, directory="utilities", dataset="dataset03"):
+
+    PERFORMANCE_FILE_PREFIX = "locust_"
+    NOW = datetime.now()
+    date_format = NOW.strftime("%Y-%m-%d-%H-%M-%S")
+
+    local_dir = os.path.dirname(os.path.abspath(__file__))
+    test_files = glob.glob(f"{local_dir}/{directory}/{PERFORMANCE_FILE_PREFIX}{dataset}*.py")
+
+    branch_name, hash = git_info(context)
+
+    for test_file in test_files:
+        cmd = f"locust -f {test_file} --host=http://localhost:8000 --headless --reset-stats -u 2 -r 2 -t 20s --only-summary"
+        result = context.run(cmd, pty=True)
+
+        result_file_name = f"{local_dir}/{directory}/summary_{dataset}_{branch_name}_{hash}_{date_format}.txt"
+        with open(result_file_name, "w") as f:
+            print(result.stdout, file=f)
 
 
 @task
