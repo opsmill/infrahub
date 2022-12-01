@@ -21,7 +21,7 @@ jobs:
       - name: "Setup environment"
         run: "pip install poetry==1.1.15 toml invoke"
       - name: "Start database"
-        run: "invoke neo4j-start"
+        run: "invoke dev-start"
       - name: "Install project"
         run: "poetry install"
       - name: "Unit Tests"
