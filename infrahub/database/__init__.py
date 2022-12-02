@@ -12,15 +12,6 @@ import infrahub.config as config
 from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
 
 
-# Check Database Status
-def get_list_queries(tx):
-    return list(tx.run("SHOW TRANSACTIONS"))
-
-
-def create_database(tx, database_name: str):
-    return list(tx.run(f"CREATE DATABASE {database_name}"))
-
-
 NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
 NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
@@ -39,49 +30,44 @@ def get_db() -> Generator[Session, None, None]:
 
     if config.SETTINGS.database.database not in validated_database:
         try:
-            # print(f"Checking if connection is working as expected ({config.SETTINGS.database.database})")
             db = driver.session(database=config.SETTINGS.database.database)
-            db.read_transaction(get_list_queries)
+            results = db.run("SHOW TRANSACTIONS")
             validated_database[config.SETTINGS.database.database] = True
 
         except ClientError as exc:
             if "database does not exist" in exc.message:
-                # print(f"Unable to find the database {config.SETTINGS.database.database}, creating")
+
                 default_db = driver.session()
+                results = default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
+
                 # TODO Catch possible exception here
-                default_db.write_transaction(create_database, config.SETTINGS.database.database)
+
             else:
                 raise
 
     db = driver.session(database=config.SETTINGS.database.database)
 
-    try:
-        yield db
-    finally:
-        db.close()
+    # FIXME should be enclosed in try/finally block but somehow it is not working right now
+    yield db
+
+    db.close()
 
 
 @QUERY_READ_METRICS.time()
-def execute_read_query(query: str, params: dict):
-    def work(tx, params: dict):
-        return list(tx.run(query, params))
+def execute_read_query(query: str, params: dict, session: Session = None):
 
-    time_start = time.time()
-    db: Session = next(get_db())
-    results = db.read_transaction(work, params)
-    time_end = time.time() - time_start
+    if not session:
+        session: Session = next(get_db())
 
-    if config.SETTINGS.main.print_query_details:
-        print(f"Execution Time: {int(time_end*1000)}ms")
-
-    return results
+    response = session.run(query, params)
+    return list(response)
 
 
 @QUERY_WRITE_METRICS.time()
-def execute_write_query(query: str, params: dict):
-    def work(tx, params: dict):
-        return list(tx.run(query, params))
+def execute_write_query(query: str, params: dict, session: Session = None):
 
-    db: Session = next(get_db())
+    if not session:
+        session: Session = next(get_db())
 
-    return db.write_transaction(work, params)
+    response = session.run(query, params)
+    return list(response)
