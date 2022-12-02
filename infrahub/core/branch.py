@@ -8,6 +8,7 @@ from typing import List, Dict, Set, Tuple, Any, Union, Optional, Generator
 from pydantic import validator
 
 import infrahub.config as config
+from infrahub.core.utils import element_id_to_id
 from infrahub.core.constants import RelationshipStatus, DiffAction
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
@@ -49,7 +50,7 @@ class AddNodeToBranch(Query):
         RETURN ID(r)
         """
 
-        self.params["node_id"] = self.node_id
+        self.params["node_id"] = element_id_to_id(self.node_id)
         self.params["now"] = self.at.to_string()
         self.params["branch"] = self.branch.name
         self.params["status"] = RelationshipStatus.ACTIVE.value
@@ -286,7 +287,7 @@ class Branch(StandardNode):
 
             elif node.action == DiffAction.REMOVED.value:
                 NodeDeleteQuery(branch=default_branch, node_id=node_id, at=at).execute()
-                rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").id])
+                rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
             for _, attr in node.attributes.items():
 
@@ -427,9 +428,9 @@ class PropertyDiffElement:
     branch: str
     type: str
     action: DiffAction
-    db_id: int
-    rel_id: int
-    origin_rel_id: Optional[int]
+    db_id: str
+    rel_id: str
+    origin_rel_id: Optional[str]
     # value: ValueElement
     changed_at: Timestamp
 
@@ -439,9 +440,9 @@ class NodeAttributeDiffElement:
     id: UUID
     name: str
     action: DiffAction
-    db_id: int
-    rel_id: int
-    origin_rel_id: Optional[int]
+    db_id: str
+    rel_id: str
+    origin_rel_id: Optional[str]
     changed_at: Timestamp
     properties: Dict[str, PropertyDiffElement]
 
@@ -452,8 +453,8 @@ class NodeDiffElement:
     labels: List[str]
     id: UUID
     action: DiffAction
-    db_id: int
-    rel_id: int
+    db_id: str
+    rel_id: str
     changed_at: Timestamp
     attributes: Dict[str, NodeAttributeDiffElement]
 
@@ -481,7 +482,7 @@ class RelationshipEdgeNodeDiffElement:
 class RelationshipDiffElement:
     branch: str
     id: UUID
-    db_id: int
+    db_id: str
     name: str
     action: DiffAction
     nodes: Dict[str, RelationshipEdgeNodeDiffElement]
@@ -645,9 +646,9 @@ class Diff:
                 "branch": result.get("b").get("name"),
                 "labels": list(result.get("n").labels),
                 "id": node_id,
-                "db_id": result.get("n").id,
+                "db_id": result.get("n").element_id,
                 "attributes": {},
-                "rel_id": result.get("r").id,
+                "rel_id": result.get("r").element_id,
                 "changed_at": Timestamp(from_time),
             }
 
@@ -674,7 +675,7 @@ class Diff:
                 item = {
                     "labels": list(result.get("n").labels),
                     "id": node_id,
-                    "db_id": result.get("n").id,
+                    "db_id": result.get("n").element_id,
                     "attributes": {},
                     "changed_at": None,
                     "action": DiffAction.UPDATED.value,
@@ -691,9 +692,9 @@ class Diff:
                 node = self._results[branch_name]["nodes"][node_id]
                 item = {
                     "id": result.get("a").get("uuid"),
-                    "db_id": result.get("a").id,
+                    "db_id": result.get("a").element_id,
                     "name": attr_name,
-                    "rel_id": result.get("r1").id,
+                    "rel_id": result.get("r1").element_id,
                     "properties": {},
                     "origin_rel_id": None,
                 }
@@ -767,13 +768,13 @@ class Diff:
             item = {
                 "type": prop_type,
                 "branch": branch_name,
-                "db_id": result.get("ap").id,
-                "rel_id": result.get("r2").id,
+                "db_id": result.get("ap").element_id,
+                "rel_id": result.get("r2").element_id,
                 "origin_rel_id": None,
             }
 
             if origin_attr:
-                item["origin_rel_id"] = origin_attr.get(origin_rel_name).id
+                item["origin_rel_id"] = origin_attr.get(origin_rel_name).element_id
 
             if not origin_attr and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
                 item["action"] = DiffAction.ADDED.value
@@ -785,7 +786,9 @@ class Diff:
                 item["action"] = DiffAction.UPDATED.value
                 item["changed_at"] = prop_from
 
-            self._results[branch_name]["nodes"][node_id].attributes[attr_name].origin_rel_id = result.get("r1").id
+            self._results[branch_name]["nodes"][node_id].attributes[attr_name].origin_rel_id = result.get(
+                "r1"
+            ).element_id
             self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[
                 prop_type
             ] = PropertyDiffElement(**item)
@@ -834,19 +837,19 @@ class Diff:
             item = dict(
                 branch=branch_name,
                 id=rel_id,
-                db_id=result.get("rel").id,
+                db_id=result.get("rel").element_id,
                 name=rel_name,
                 nodes={
                     src_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
-                        db_id=result.get("sn").id,
-                        rel_id=result.get("r1").id,
+                        db_id=result.get("sn").element_id,
+                        rel_id=result.get("r1").element_id,
                         labels=result.get("sn").labels,
                     ),
                     dst_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
-                        db_id=result.get("dn").id,
-                        rel_id=result.get("r2").id,
+                        db_id=result.get("dn").element_id,
+                        rel_id=result.get("r2").element_id,
                         labels=result.get("dn").labels,
                     ),
                 },
@@ -885,19 +888,19 @@ class Diff:
 
             item = dict(
                 id=rel_id,
-                db_id=result.get("rel").id,
+                db_id=result.get("rel").element_id,
                 name=rel_name,
                 nodes={
                     src_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
-                        db_id=result.get("sn").id,
-                        rel_id=result.get("r1").id,
+                        db_id=result.get("sn").element_id,
+                        rel_id=result.get("r1").element_id,
                         labels=result.get("sn").labels,
                     ),
                     dst_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
-                        db_id=result.get("dn").id,
-                        rel_id=result.get("r2").id,
+                        db_id=result.get("dn").element_id,
+                        rel_id=result.get("r2").element_id,
                         labels=result.get("dn").labels,
                     ),
                 },
@@ -932,13 +935,13 @@ class Diff:
             prop = {
                 "type": prop_type,
                 "branch": branch_name,
-                "db_id": result.get("rp").id,
-                "rel_id": result.get("r3").id,
+                "db_id": result.get("rp").element_id,
+                "rel_id": result.get("r3").element_id,
                 "origin_rel_id": None,
             }
 
             if origin_prop:
-                prop["origin_rel_id"] = origin_prop.get("r").id
+                prop["origin_rel_id"] = origin_prop.get("r").element_id
 
             if not origin_prop and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
                 prop["action"] = DiffAction.ADDED.value

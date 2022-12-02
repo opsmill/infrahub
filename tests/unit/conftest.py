@@ -17,9 +17,8 @@ from infrahub.test_data import dataset01 as ds01
 
 
 @pytest.fixture
-def simple_dataset_01():
+def simple_dataset_01(empty_database):
 
-    delete_all_nodes()
     create_default_branch()
 
     params = {
@@ -398,15 +397,18 @@ def fruit_tag_schema():
 
 
 @pytest.fixture
-def init_db():
+def empty_database():
     delete_all_nodes()
+
+
+@pytest.fixture
+def init_db(empty_database):
     first_time_initialization()
     initialization()
 
 
 @pytest.fixture()
-def default_branch():
-    delete_all_nodes()
+def default_branch(empty_database):
     return create_default_branch()
 
 

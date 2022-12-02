@@ -5,6 +5,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import Generator, List, Optional, Union, TypeVar, TYPE_CHECKING
 
+from neo4j.graph import Node, Relationship
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
@@ -80,7 +81,7 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def get(self, label: str):
+    def get(self, label: str) -> Union[Node, Relationship]:
 
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
@@ -89,14 +90,14 @@ class QueryResult:
 
         return self.data[return_id]
 
-    def get_rels(self) -> Generator:
+    def get_rels(self) -> Generator[Relationship, None, None]:
         """Return all relationships."""
 
         for item in self.data:
             if hasattr(item, "nodes"):
                 yield item
 
-    def get_nodes(self) -> Generator:
+    def get_nodes(self) -> Generator[Node, None, None]:
         """Return all nodes."""
         for item in self.data:
             if hasattr(item, "labels"):

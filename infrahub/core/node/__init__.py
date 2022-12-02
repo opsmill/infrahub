@@ -187,7 +187,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and create them one by one
         for name in self._attributes:
 
-            attr = getattr(self, name)
+            attr: BaseAttribute = getattr(self, name)
             # Handle LocalAttribute attributes
             if issubclass(attr.__class__, BaseAttribute):
                 attr.save(at=create_at)
@@ -238,7 +238,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
-            attr = getattr(self, name)
+            attr: BaseAttribute = getattr(self, name)
             attr.delete(at=delete_at)
 
         # Go over the list of relationships and update them one by one
@@ -256,7 +256,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         result = query.get_result()
 
         if result.get("br").get("name") == self._branch.name:
-            update_relationships_to([result.get("rb").id], to=delete_at)
+            update_relationships_to([result.get("rb").element_id], to=delete_at)
 
         NodeDeleteQuery(node=self, at=delete_at).execute()
 

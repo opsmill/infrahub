@@ -134,7 +134,7 @@ class DiffRelationshipQuery(DiffQuery):
 
             # Generate unique set composed of all the IDs of the nodes and the relationship returned
             # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
-            ids_set = set([item.id for item in result])
+            ids_set = set([item.element_id for item in result])
             if ids_set in ids_set_processed:
                 continue
             ids_set_processed.append(ids_set)
@@ -200,7 +200,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 
             # Generate unique set composed of all the IDs of the nodes and the relationship returned
             # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
-            ids_set = set([item.id for item in result])
+            ids_set = set([item.element_id for item in result])
             if ids_set in ids_set_processed:
                 continue
             ids_set_processed.append(ids_set)

@@ -39,15 +39,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         at: Timestamp,
         node: Node,
         id: UUID = None,
-        db_id: int = None,
+        db_id: str = None,
         data: Union[dict, str] = None,
         updated_at: Union[Timestamp, str] = None,
         *args,
         **kwargs,
     ):
 
-        self.id = id
-        self.db_id = db_id
+        self.id: UUID = id
+        self.db_id: str = db_id
 
         self.updated_at = updated_at
         self.name = name
@@ -106,6 +106,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     def delete(self, at: Optional[Timestamp] = None) -> bool:
 
+        if not self.db_id:
+            return False
+
         delete_at = Timestamp(at)
 
         query = AttributeGetQuery(attr=self).execute()
@@ -119,11 +122,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
         for result in results:
-            properties_to_delete.append((result.get("r2").type, result.get("ap").id))
+            properties_to_delete.append((result.get("r2").type, result.get("ap").element_id))
 
             add_relationship(
                 src_node_id=self.db_id,
-                dst_node_id=result.get("ap").id,
+                dst_node_id=result.get("ap").element_id,
                 rel_type=result.get("r2").type,
                 branch_name=self.branch.name,
                 at=delete_at,
@@ -132,7 +135,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             for rel in result.get_rels():
                 if rel.get("branch") == self.branch.name:
-                    rel_ids_to_update.add(rel.id)
+                    rel_ids_to_update.add(rel.element_id)
 
         if rel_ids_to_update:
             update_relationships_to(ids=list(rel_ids_to_update), to=delete_at)
@@ -191,7 +194,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             # TODO check that everything went well
             rel = current_attr.get("r2")
             if rel.get("branch") == self.branch.name:
-                update_relationships_to([rel.id], to=update_at)
+                update_relationships_to([rel.element_id], to=update_at)
 
         # ---------- Update the Flags ----------
         SUPPORTED_FLAGS = (
@@ -205,7 +208,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
                 rel = current_attr.get(rel_name)
                 if rel.get("branch") == self.branch.name:
-                    update_relationships_to([rel.id], to=update_at)
+                    update_relationships_to([rel.element_id], to=update_at)
 
         # ---------- Update the Node Properties ----------
         for prop in self._node_properties:
@@ -214,7 +217,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 and current_attr.get(
                     prop,
                 )
-                and current_attr.get(prop).id != getattr(self, f"{prop}_id")
+                and current_attr.get(prop).element_id != getattr(self, f"{prop}_id")
             ):
                 AttributeUpdateNodePropertyQuery(
                     attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
@@ -222,7 +225,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
                 rel = current_attr.get(f"rel_{prop}")
                 if rel.get("branch") == self.branch.name:
-                    update_relationships_to([rel.id], to=update_at)
+                    update_relationships_to([rel.element_id], to=update_at)
 
         return True
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Set, Optional, Any, Union, Generator, TYPE_CHECKING
+from typing import Dict, List, Set, Optional, Any, Union, Generator, Tuple, TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.query import Query, QueryType, QueryResult
@@ -123,7 +123,7 @@ class NodeCreateQuery(NodeQuery):
         self.add_to_query(query)
         self.return_labels = ["n"]
 
-    def get_new_ids(self):
+    def get_new_ids(self) -> Tuple[str, str]:
 
         result = self.get_result()
         node = result.get("n")
@@ -131,7 +131,7 @@ class NodeCreateQuery(NodeQuery):
         if node is None:
             raise QueryError(self.get_query(), self.params)
 
-        return node["uuid"], int(node.id)
+        return node["uuid"], node.element_id
 
 
 class NodeDeleteQuery(NodeQuery):
@@ -178,7 +178,7 @@ class NodeListGetLocalAttributeValueQuery(Query):
 
         query = (
             """
-        MATCH (a:Attribute) WHERE ID(a) IN $attrs_ids
+        MATCH (a:Attribute) WHERE a.uuid IN $attrs_ids
         MATCH (a)-[r1:HAS_VALUE]-(av:AttributeValue)
         WHERE %s
         """
@@ -304,9 +304,9 @@ class NodeListGetAttributeQuery(Query):
                 name=attr_name,
                 type=result.get("a").get("type"),
                 attr_labels=result.get("a").labels,
-                attr_id=result.get("a").id,
+                attr_id=result.get("a").element_id,
                 attr_uuid=result.get("a").get("uuid"),
-                attr_value_id=result.get("av").id,
+                attr_value_id=result.get("av").element_id,
                 attr_value_uuid=result.get("av").get("uuid"),
                 updated_at=result.get("r2").get("from"),
                 value=result.get("av").get("value"),
@@ -382,7 +382,7 @@ class NodeListGetInfoQuery(Query):
             schema = find_node_schema(result.get("n"), self.branch)
             yield NodeToProcess(
                 schema=schema,
-                node_id=result.get("n").id,
+                node_id=result.get("n").element_id,
                 node_uuid=result.get("n").get("uuid"),
                 updated_at=result.get("rb").get("from"),
                 branch=self.branch,

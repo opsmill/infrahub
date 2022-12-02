@@ -1,25 +1,27 @@
 import uuid
+from uuid import UUID
 from typing import List, Optional
 
 from pydantic import BaseModel
 
 from infrahub.database import execute_read_query, execute_write_query
+from infrahub.core.utils import element_id_to_id
 
 
 class StandardNode(BaseModel):
 
-    id: Optional[int]
-    uuid: Optional[str]
+    id: Optional[str]
+    uuid: Optional[UUID]
 
     # owner: Optional[str]
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner"]
 
     @classmethod
-    def get_type(cls):
+    def get_type(cls) -> str:
         return cls.__name__
 
-    def to_graphql(self, fields=None):
+    def to_graphql(self, fields: dict = None) -> dict:
 
         response = {"id": self.uuid}
 
@@ -80,7 +82,7 @@ class StandardNode(BaseModel):
 
         node = results[0].values()[0]
 
-        self.id = int(node.id)
+        self.id = node.element_id
         self.uuid = node["uuid"]
 
         return True
@@ -95,8 +97,7 @@ class StandardNode(BaseModel):
             attrs.append(f"{attr_name}: '{getattr(self, attr_name)}'")
 
         query = """
-        MATCH (n:%s)
-        WHERE ID(n) = $node_id
+        MATCH (n:%s { uuid: $uuid })
         SET n = { %s }
         RETURN n
         """ % (
@@ -104,7 +105,7 @@ class StandardNode(BaseModel):
             ",".join(attrs),
         )
 
-        params = {"node_id": self.id}
+        params = {"uuid": str(self.uuid)}
 
         results = execute_write_query(query, params)
 
@@ -154,7 +155,7 @@ class StandardNode(BaseModel):
             StandardNode: Proper StandardNode object
         """
         attrs = dict(node)
-        attrs["id"] = node.id
+        attrs["id"] = node.element_id
         return cls(**attrs)
 
     @classmethod

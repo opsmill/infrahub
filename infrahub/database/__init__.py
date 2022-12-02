@@ -54,7 +54,7 @@ def get_db() -> Generator[Session, None, None]:
 
 
 @QUERY_READ_METRICS.time()
-def execute_read_query(query: str, params: dict, session: Session = None):
+def execute_read_query(query: str, params: dict = None, session: Session = None):
 
     if not session:
         session: Session = next(get_db())
@@ -64,7 +64,7 @@ def execute_read_query(query: str, params: dict, session: Session = None):
 
 
 @QUERY_WRITE_METRICS.time()
-def execute_write_query(query: str, params: dict, session: Session = None):
+def execute_write_query(query: str, params: dict = None, session: Session = None):
 
     if not session:
         session: Session = next(get_db())

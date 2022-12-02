@@ -72,7 +72,7 @@ async def test_branch_rebase(default_branch, car_person_schema):
 
     assert result.errors is None
     assert result.data["branch_rebase"]["ok"] is True
-    assert result.data["branch_rebase"]["object"]["id"] == branch2.uuid
+    assert result.data["branch_rebase"]["object"]["id"] == str(branch2.uuid)
 
     new_branch2 = Branch.get_by_name("branch2")
     assert new_branch2.branched_from != branch2.branched_from
@@ -103,7 +103,7 @@ async def test_branch_validate(base_dataset_02, register_core_models_schema):
 
     assert result.errors is None
     assert result.data["branch_validate"]["ok"] is True
-    assert result.data["branch_validate"]["object"]["id"] == branch1.uuid
+    assert result.data["branch_validate"]["object"]["id"] == str(branch1.uuid)
 
 
 @pytest.mark.asyncio
@@ -131,4 +131,4 @@ async def test_branch_merge(base_dataset_02, register_core_models_schema):
 
     assert result.errors is None
     assert result.data["branch_merge"]["ok"] is True
-    assert result.data["branch_merge"]["object"]["id"] == branch1.uuid
+    assert result.data["branch_merge"]["object"]["id"] == str(branch1.uuid)

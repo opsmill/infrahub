@@ -239,7 +239,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         ).execute()
         result = query.get_result()
 
-        self.db_id = result.get("rl").id
+        self.db_id = result.get("rl").element_id
         self.id = result.get("rl").get("uuid")
 
     def update(self, properties_to_update: List[str], data: RelationshipPeerData, at: Optional[Timestamp] = None):
@@ -277,7 +277,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # - Update the existing relationship if we are on the same branch
         # - Create a new rel of type DELETED in the right branch
 
-        if rel_ids_to_update := [rel.id for rel in result.get_rels() if rel.get("branch") == self.branch.name]:
+        if rel_ids_to_update := [rel.element_id for rel in result.get_rels() if rel.get("branch") == self.branch.name]:
             update_relationships_to(rel_ids_to_update, to=delete_at)
 
         RelationshipDeleteQuery(

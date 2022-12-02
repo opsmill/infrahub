@@ -11,14 +11,14 @@ def test_query_NodeListGetLocalAttributeValueQuery(default_branch, car_person_sc
     car2 = Node("Car").new(name="model3", nbr_seats=5, is_electric=True, owner=p1).save()
 
     ids = [
-        car1.name.db_id,
-        car1.nbr_seats.db_id,
-        car1.is_electric.db_id,
-        car1.color.db_id,
-        car2.name.db_id,
-        car2.nbr_seats.db_id,
-        car2.is_electric.db_id,
-        car2.color.db_id,
+        car1.name.id,
+        car1.nbr_seats.id,
+        car1.is_electric.id,
+        car1.color.id,
+        car2.name.id,
+        car2.nbr_seats.id,
+        car2.is_electric.id,
+        car2.color.id,
     ]
 
     query = NodeListGetLocalAttributeValueQuery(ids, branch=default_branch, at=Timestamp()).execute()

@@ -10,6 +10,8 @@ from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
+from neo4j import AsyncGraphDatabase, AsyncDriver
+
 import infrahub.config as config
 from infrahub.auth import BaseTokenAuth
 from infrahub.message_bus import connect_to_broker, close_broker_connection
@@ -24,7 +26,13 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-app.add_event_handler("shutdown", close_broker_connection)
+
+async def get_session(request: Request):
+    session = request.app.state.db.session(database=config.SETTINGS.database.database)
+    try:
+        yield session
+    finally:
+        await session.close()
 
 
 @app.on_event("startup")
@@ -33,8 +41,20 @@ async def app_initialization():
     config_file_path = os.path.abspath(config_file_name)
     logger.info(f"Loading the configuration from {config_file_path}")
     config.load_and_exit(config_file_path)
+
+    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
+    app.state.db = AsyncGraphDatabase.driver(
+        URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password)
+    )
+
     initialization()
     await connect_to_broker()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await close_broker_connection()
+    await app.state.db.close()
 
 
 @app.middleware("http")

@@ -11,7 +11,6 @@ from infrahub.core.query.node import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
-    NodeListGetLocalAttributeValueQuery,
 )
 from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp

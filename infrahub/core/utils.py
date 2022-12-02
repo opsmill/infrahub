@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from inspect import isclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
 import infrahub.config as config
@@ -11,8 +11,8 @@ from infrahub.database import execute_read_query, execute_write_query
 
 
 def add_relationship(
-    src_node_id: int,
-    dst_node_id: int,
+    src_node_id: str,
+    dst_node_id: str,
     rel_type: str,
     branch_name: str = None,
     at: Optional[Timestamp] = None,
@@ -33,8 +33,8 @@ def add_relationship(
     at = Timestamp(at)
 
     params = {
-        "src_node_id": src_node_id,
-        "dst_node_id": dst_node_id,
+        "src_node_id": element_id_to_id(src_node_id),
+        "dst_node_id": element_id_to_id(dst_node_id),
         "at": at.to_string(),
         "branch": branch_name or config.SETTINGS.main.default_branch,
         "status": status.value,
@@ -56,12 +56,12 @@ def delete_all_relationships_for_branch(branch_name: str):
     execute_write_query(query, params)
 
 
-def update_relationships_to(ids: List[int], to: Timestamp = None):
+def update_relationships_to(ids: List[str], to: Timestamp = None):
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
 
-    list_matches = [f"id(r) = {int(id)}" for id in ids]
+    list_matches = [f"id(r) = {element_id_to_id(id)}" for id in ids]
 
     to = Timestamp(to)
 
@@ -78,7 +78,7 @@ def update_relationships_to(ids: List[int], to: Timestamp = None):
 
 
 def get_paths_between_nodes(
-    source_id: int, destination_id: int, relationships: List[str] = None, max_length: int = None, print_query=False
+    source_id: str, destination_id: str, relationships: List[str] = None, max_length: int = None, print_query=False
 ):
     """Return all paths between 2 nodes."""
 
@@ -101,8 +101,8 @@ def get_paths_between_nodes(
         print(query)
 
     params = {
-        "source_id": source_id,
-        "destination_id": destination_id,
+        "source_id": element_id_to_id(source_id),
+        "destination_id": element_id_to_id(destination_id),
     }
 
     return execute_read_query(query, params)
@@ -118,6 +118,11 @@ def delete_all_nodes():
     params = {}
 
     return execute_write_query(query, params)
+
+
+def element_id_to_id(element_id: str) -> int:
+
+    return int(element_id.split(":")[2])
 
 
 # --------------------------------------------------------------------------------

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 from typing import Union, Type, List, Dict, Generator, TYPE_CHECKING
 
+from neo4j.graph import Relationship as Neo4jRelationship
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -27,8 +28,8 @@ class RelData:
     status: str
 
     @classmethod
-    def from_db(cls, obj):
-        return cls(db_id=obj.id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
+    def from_db(cls, obj: Neo4jRelationship):
+        return cls(db_id=obj.element_id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
 
 
 @dataclass
@@ -72,7 +73,7 @@ class RelationshipPeerData:
 
     updated_at: str = None
 
-    def rel_ids_per_branch(self):
+    def rel_ids_per_branch(self) -> dict[str, List[str]]:
 
         response = defaultdict(list)
         for rel in self.rels:
@@ -490,7 +491,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         for result in self.get_results_group_by(("p", "uuid")):
             data = RelationshipPeerData(
                 peer_id=result.get("p").get("uuid"),
-                rel_node_db_id=result.get("rl").id,
+                rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=result.get("r1").get("from"),
                 rels=[RelData.from_db(result.get("r1")), RelData.from_db(result.get("r2"))],
@@ -504,7 +505,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                     if prop_node := result.get(prop):
                         data.properties[prop] = FlagPropertyData(
                             name=prop,
-                            prop_db_id=prop_node.id,
+                            prop_db_id=prop_node.element_id,
                             rel=RelData.from_db(result.get(f"rel_{prop}")),
                             value=prop_node.get("value"),
                         )

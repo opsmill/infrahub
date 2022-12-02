@@ -148,15 +148,15 @@ def test_query_RelationshipGetPeerQuery(default_branch, person_tag_schema):
     peers = list(query.get_peers())
     assert len(peers) == 2
     assert len(peers[0].rels) == 2
-    assert isinstance(peers[0].rel_node_db_id, int)
+    assert isinstance(peers[0].rel_node_db_id, str)
     assert isinstance(peers[0].rel_node_id, str)
     assert list(peers[0].properties.keys()) == ["is_visible", "is_protected"]
     assert peers[0].properties["is_visible"].value == True
     assert peers[0].properties["is_protected"].value == False
     assert peers[0].properties["is_protected"].prop_db_id == peers[1].properties["is_protected"].prop_db_id
-    assert isinstance(peers[0].properties["is_protected"].prop_db_id, int)
-    assert isinstance(peers[0].properties["is_protected"].rel.db_id, int)
-    assert isinstance(peers[0].properties["is_protected"].prop_db_id, int)
+    assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
+    assert isinstance(peers[0].properties["is_protected"].rel.db_id, str)
+    assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
 
 
 def test_query_RelationshipGetPeerQuery_with_filter(default_branch, person_tag_schema):
