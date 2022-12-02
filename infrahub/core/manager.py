@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import Dict, List, Union, TYPE_CHECKING
+from typing import Dict, List, Union, Optional, TYPE_CHECKING
+
+from neo4j import Session
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
@@ -30,6 +32,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        session: Optional[Session] = None,
         account=None,
         *args,
         **kwargs,
@@ -48,7 +51,7 @@ class NodeManager:
             List[Node]: List of Node object
         """
 
-        branch = get_branch(branch)
+        branch = get_branch(branch, session=session)
         at = Timestamp(at)
 
         if isinstance(schema, str):
@@ -57,13 +60,21 @@ class NodeManager:
             raise ValueError(f"Invalid schema provided {schema}")
 
         # Query the list of nodes matching this Query
-        query = NodeGetListQuery(schema=schema, branch=branch, limit=limit, filters=filters, at=at).execute()
+        query = NodeGetListQuery(schema=schema, branch=branch, limit=limit, filters=filters, at=at).execute(
+            session=session
+        )
         node_ids = query.get_node_ids()
 
         return (
             list(
                 cls.get_many(
-                    ids=node_ids, fields=fields, branch=branch, account=account, at=at, include_source=include_source
+                    ids=node_ids,
+                    fields=fields,
+                    branch=branch,
+                    account=account,
+                    at=at,
+                    include_source=include_source,
+                    session=session,
                 ).values()
             )
             if node_ids
@@ -81,18 +92,19 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        session: Optional[Session] = None,
         account=None,
         *args,
         **kwargs,
     ) -> List[Relationship]:
-        branch = get_branch(branch)
+        branch = get_branch(branch, session=session)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id=id)
 
         query = RelationshipGetPeerQuery(
             source_id=id, schema=schema, filters=filters, rel=rel, limit=limit, at=at
-        ).execute()
+        ).execute(session=session)
 
         peers_info = list(query.get_peers())
         peer_ids = [peer.peer_id for peer in peers_info]
@@ -100,7 +112,9 @@ class NodeManager:
         if not peers_info:
             return []
 
-        peers = cls.get_many(ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source)
+        peers = cls.get_many(
+            ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source, session=session
+        )
 
         return [
             Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
@@ -121,6 +135,7 @@ class NodeManager:
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
+        session: Optional[Session] = None,
         account=None,
         *args,
         **kwargs,
@@ -134,6 +149,7 @@ class NodeManager:
             include_source=include_source,
             include_owner=include_owner,
             account=account,
+            session=session,
             *args,
             **kwargs,
         )
@@ -152,17 +168,18 @@ class NodeManager:
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
+        session: Optional[Session] = None,
         account=None,
         *args,
         **kwargs,
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
-        branch = get_branch(branch)
+        branch = get_branch(branch, session=session)
         at = Timestamp(at)
 
         # Query all nodes
-        query = NodeListGetInfoQuery(ids=ids, branch=branch, account=account, at=at).execute()
+        query = NodeListGetInfoQuery(ids=ids, branch=branch, account=account, at=at).execute(session=session)
         nodes_info = query.get_nodes()
 
         # Query list of all Attributes
@@ -174,7 +191,7 @@ class NodeManager:
             include_owner=include_owner,
             account=account,
             at=at,
-        ).execute()
+        ).execute(session=session)
         node_attributes = query.get_attributes_group_by_node()
 
         # -----------------------------------------------
@@ -261,7 +278,9 @@ class SchemaManager(NodeManager):
         return True
 
     @classmethod
-    def load_schema_to_db(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
+    def load_schema_to_db(
+        cls, schema: SchemaRoot, branch: Union[str, Branch] = None, session: Optional[Session] = None
+    ):
         """Load all nodes from a SchemaRoot object into the database."""
 
         branch = get_branch(branch)
@@ -272,7 +291,9 @@ class SchemaManager(NodeManager):
         return True
 
     @classmethod
-    def load_schema_node_to_db(cls, schema_node: NodeSchema, branch: Union[str, Branch] = None):
+    def load_schema_node_to_db(
+        cls, schema_node: NodeSchema, branch: Union[str, Branch] = None, session: Optional[Session] = None
+    ):
 
         branch = get_branch(branch)
 
@@ -300,15 +321,19 @@ class SchemaManager(NodeManager):
         schema_dict["attributes"] = attribute_ids
 
         node = Node(schema=node_schema, branch=branch).new(**schema_dict)
-        node.save()
+        node.save(session=session)
 
         return True
 
     @classmethod
-    def load_schema_from_db(self, branch: Union[str, Branch] = None) -> SchemaRoot:
+    def load_schema_from_db(
+        self,
+        branch: Union[str, Branch] = None,
+        session: Optional[Session] = None,
+    ) -> SchemaRoot:
         """Query all the node of type node_schema from the database and convert them to NodeSchema."""
 
-        branch = get_branch(branch)
+        branch = get_branch(branch, session=session)
 
         schema = SchemaRoot(nodes=[])
 

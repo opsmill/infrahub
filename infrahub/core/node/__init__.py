@@ -3,6 +3,8 @@ from __future__ import annotations
 from uuid import UUID
 from typing import Union, TypeVar, Optional, TYPE_CHECKING
 
+from neo4j import Session
+
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
@@ -174,7 +176,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._process_fields(kwargs)
         return self
 
-    def _create(self, at: Optional[Timestamp] = None):
+    def _create(self, at: Optional[Timestamp] = None, session: Optional[Session] = None):
 
         create_at = Timestamp(at)
 
@@ -200,7 +202,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return True
 
-    def _update(self, at: Optional[Timestamp] = None):
+    def _update(self, at: Optional[Timestamp] = None, session: Optional[Session] = None):
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
@@ -215,19 +217,19 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(self, name)
             attr.save(at=update_at)
 
-    def save(self, at: Optional[Timestamp] = None) -> SelfNode:
+    def save(self, at: Optional[Timestamp] = None, session: Optional[Session] = None) -> SelfNode:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
 
         if self.id:
-            self._update(at=save_at)
+            self._update(at=save_at, session=session)
             return self
 
-        self._create(at=save_at)
+        self._create(at=save_at, session=session)
         return self
 
-    def delete(self, at: Optional[Timestamp] = None):
+    def delete(self, at: Optional[Timestamp] = None, session: Optional[Session] = None):
         """Delete the Node in the database."""
 
         delete_at = Timestamp(at)
@@ -239,12 +241,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            attr.delete(at=delete_at)
+            attr.delete(at=delete_at, session=session)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
-            rel = getattr(self, name)
-            rel.delete(at=delete_at)
+            rel: RelationshipManager = getattr(self, name)
+            rel.delete(at=delete_at, session=session)
 
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
@@ -252,13 +254,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Update the relationship to the branch itself
         query = NodeGetListQuery(
             schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
-        ).execute()
+        ).execute(session=session)
         result = query.get_result()
 
         if result.get("br").get("name") == self._branch.name:
             update_relationships_to([result.get("rb").element_id], to=delete_at)
 
-        NodeDeleteQuery(node=self, at=delete_at).execute()
+        NodeDeleteQuery(node=self, at=delete_at).execute(session=session)
 
     def to_graphql(self, fields: dict = None) -> dict:
         """Generate GraphQL Payload for all attributes

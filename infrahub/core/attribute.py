@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Set, List, Dict, Any, Union, Optional, TYPE_CHECKING
 
 from uuid import UUID
+
+from neo4j import Session
+
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to, add_relationship
 from infrahub.exceptions import ValidationError
@@ -94,24 +97,24 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def validate(cls, value) -> bool:
         return True if isinstance(value, cls.type) else False
 
-    def save(self, at: Optional[Timestamp] = None):
+    def save(self, at: Optional[Timestamp] = None, session: Optional[Session] = None):
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
 
         if self.id:
-            return self._update(at=save_at)
+            return self._update(at=save_at, session=session)
 
-        return self._create(at=save_at)
+        return self._create(at=save_at, session=session)
 
-    def delete(self, at: Optional[Timestamp] = None) -> bool:
+    def delete(self, at: Optional[Timestamp] = None, session: Optional[Session] = None) -> bool:
 
         if not self.db_id:
             return False
 
         delete_at = Timestamp(at)
 
-        query = AttributeGetQuery(attr=self).execute()
+        query = AttributeGetQuery(attr=self).execute(session=session)
         results = query.get_results()
 
         if not results:
@@ -131,6 +134,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 branch_name=self.branch.name,
                 at=delete_at,
                 status=RelationshipStatus.DELETED,
+                session=session,
             )
 
             for rel in result.get_rels():
@@ -138,7 +142,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                     rel_ids_to_update.add(rel.element_id)
 
         if rel_ids_to_update:
-            update_relationships_to(ids=list(rel_ids_to_update), to=delete_at)
+            update_relationships_to(ids=list(rel_ids_to_update), to=delete_at, session=session)
 
         add_relationship(
             src_node_id=self.node.db_id,
@@ -147,22 +151,23 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch_name=self.branch.name,
             at=delete_at,
             status=RelationshipStatus.DELETED,
+            session=session,
         )
 
         return True
 
-    def _create(self, at: Optional[Timestamp] = None) -> bool:
+    def _create(self, at: Optional[Timestamp] = None, session: Optional[Session] = None) -> bool:
 
         create_at = Timestamp(at)
 
-        query = AttributeCreateQuery(attr=self, branch=self.branch, at=create_at).execute()
+        query = AttributeCreateQuery(attr=self, branch=self.branch, at=create_at).execute(session=session)
 
         self.id, self.db_id = query.get_new_ids()
         self.at = create_at
 
         return True
 
-    def _update(self, at: Optional[Timestamp] = None) -> bool:
+    def _update(self, at: Optional[Timestamp] = None, session: Optional[Session] = None) -> bool:
         """Update the attribute in the database.
 
         Get the current value
@@ -179,7 +184,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         query = NodeListGetAttributeQuery(
             ids=[self.node.id], fields={self.name: True}, branch=self.branch, at=update_at, include_source=True
-        ).execute()
+        ).execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
         # ---------- Update the Value ----------
@@ -189,12 +194,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if current_value != self.value:
             # Create the new AttributeValue and update the existing relationship
-            AttributeUpdateValueQuery(attr=self, at=update_at).execute()
+            AttributeUpdateValueQuery(attr=self, at=update_at).execute(session=session)
 
             # TODO check that everything went well
             rel = current_attr.get("r2")
             if rel.get("branch") == self.branch.name:
-                update_relationships_to([rel.element_id], to=update_at)
+                update_relationships_to([rel.element_id], to=update_at, session=session)
 
         # ---------- Update the Flags ----------
         SUPPORTED_FLAGS = (
@@ -204,11 +209,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         for flag_name, node_name, rel_name in SUPPORTED_FLAGS:
             if current_attr.get(node_name).get("value") != getattr(self, flag_name):
-                AttributeUpdateFlagQuery(attr=self, at=update_at, flag_name=flag_name).execute()
+                AttributeUpdateFlagQuery(attr=self, at=update_at, flag_name=flag_name).execute(session=session)
 
                 rel = current_attr.get(rel_name)
                 if rel.get("branch") == self.branch.name:
-                    update_relationships_to([rel.element_id], to=update_at)
+                    update_relationships_to([rel.element_id], to=update_at, session=session)
 
         # ---------- Update the Node Properties ----------
         for prop in self._node_properties:
@@ -221,11 +226,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             ):
                 AttributeUpdateNodePropertyQuery(
                     attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
-                ).execute()
+                ).execute(session=session)
 
                 rel = current_attr.get(f"rel_{prop}")
                 if rel.get("branch") == self.branch.name:
-                    update_relationships_to([rel.element_id], to=update_at)
+                    update_relationships_to([rel.element_id], to=update_at, session=session)
 
         return True
 

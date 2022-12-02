@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+from neo4j import Session
+
 from infrahub.database import execute_read_query, execute_write_query
 from infrahub.core.utils import element_id_to_id
 
@@ -36,26 +38,26 @@ class StandardNode(BaseModel):
 
         return response
 
-    def save(self):
+    def save(self, session: Optional[Session] = None):
         """Create or Update the Node in the database."""
 
         if self.id:
-            return self._update()
+            return self._update(session=session)
 
-        return self._create()
+        return self._create(session=session)
 
-    def refresh(self, at=None, branch="main"):
+    def refresh(self, at=None, branch="main", session: Optional[Session] = None):
         """Pull the latest state of the object from the database."""
 
         # Might need ot check how to manage the default value
-        raw_attrs = self._get_item_raw(self.id, at=at, branch=branch)
+        raw_attrs = self._get_item_raw(self.id, at=at, branch=branch, session=session)
         for item in raw_attrs:
             if item[1] != getattr(self, item[0]):
                 setattr(self, item[0], item[1])
 
         return True
 
-    def _create(self, id=None, branch="main"):
+    def _create(self, id=None, branch="main", session: Optional[Session] = None):
         """Create a new node in the database."""
 
         node_type = self.get_type()
@@ -76,7 +78,7 @@ class StandardNode(BaseModel):
 
         params = {"uuid": str(uuid.uuid4())}
 
-        results = execute_write_query(query, params)
+        results = execute_write_query(query, params, session=session)
         if not results:
             raise Exception("Unexpected error, unable to create the new node.")
 
@@ -87,7 +89,7 @@ class StandardNode(BaseModel):
 
         return True
 
-    def _update(self):
+    def _update(self, session: Optional[Session] = None):
         """Update the node in the database if needed."""
 
         attrs = []
@@ -107,7 +109,7 @@ class StandardNode(BaseModel):
 
         params = {"uuid": str(self.uuid)}
 
-        results = execute_write_query(query, params)
+        results = execute_write_query(query, params, session=session)
 
         if not results:
             raise Exception(f"Unexpected error, unable to update the node {self.id} / {self.uuid}.")
@@ -117,17 +119,17 @@ class StandardNode(BaseModel):
         return True
 
     @classmethod
-    def get(cls, id):
+    def get(cls, id, session: Optional[Session] = None):
         """Get a node from the database identied by its ID."""
 
-        node = cls._get_item_raw(id=id)
+        node = cls._get_item_raw(id=id, session=session)
         if node:
             return cls._convert_node_to_obj(node)
 
         return None
 
     @classmethod
-    def _get_item_raw(cls, id):
+    def _get_item_raw(cls, id, session: Optional[Session] = None):
 
         query = (
             """
@@ -140,7 +142,7 @@ class StandardNode(BaseModel):
 
         params = {"node_id": id}
 
-        results = execute_read_query(query, params)
+        results = execute_read_query(query, params, session=session)
         if len(results):
             return results[0].values()[0]
 
@@ -159,7 +161,7 @@ class StandardNode(BaseModel):
         return cls(**attrs)
 
     @classmethod
-    def get_list(cls, limit=1000):
+    def get_list(cls, limit=1000, session: Optional[Session] = None):
 
         query = (
             """
@@ -173,5 +175,5 @@ class StandardNode(BaseModel):
 
         params = {"limit": 1000}
 
-        results = execute_read_query(query, params)
+        results = execute_read_query(query, params, session=session)
         return [cls._convert_node_to_obj(node.values()[0]) for node in results]

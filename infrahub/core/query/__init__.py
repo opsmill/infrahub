@@ -5,6 +5,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import Generator, List, Optional, Union, TypeVar, TYPE_CHECKING
 
+from neo4j import Session, AsyncSession
 from neo4j.graph import Node, Relationship
 
 import infrahub.config as config
@@ -176,7 +177,7 @@ class Query(ABC):
 
         return query_str
 
-    def execute(self) -> SelfQuery:
+    def execute(self, session: Session = None) -> SelfQuery:
 
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
@@ -185,9 +186,9 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            results = execute_read_query(query=self.get_query(), params=self.params)
+            results = execute_read_query(query=self.get_query(), params=self.params, session=session)
         elif self.type == QueryType.WRITE:
-            results = execute_write_query(query=self.get_query(), params=self.params)
+            results = execute_write_query(query=self.get_query(), params=self.params, session=session)
         else:
             raise ValueError(f"unknown value for {self.type}")
 

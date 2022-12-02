@@ -4,6 +4,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Union, Optional
 
+from neo4j import Session
+
 import infrahub.config as config
 
 if TYPE_CHECKING:
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
 
 
-def get_branch(branch: Optional[Union[Branch, str]]) -> Branch:
+def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Session] = None) -> Branch:
 
     from .branch import Branch
 
@@ -28,13 +30,13 @@ def get_branch(branch: Optional[Union[Branch, str]]) -> Branch:
     if branch in registry.branch:
         return registry.branch[branch]
 
-    obj = Branch.get_by_name(branch)
+    obj = Branch.get_by_name(branch, session=session)
     registry.branch[branch] = obj
 
     return obj
 
 
-def get_account(account, branch=None, at=None):
+def get_account(account, branch=None, at=None, session: Optional[Session] = None):
 
     # No default value supported for now
     if not account:
@@ -53,7 +55,9 @@ def get_account(account, branch=None, at=None):
 
     account_schema = registry.get_schema("Account")
 
-    obj = NodeManager.query(account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at)
+    obj = NodeManager.query(
+        account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, session=session
+    )
     registry.account[account] = obj
 
     return obj

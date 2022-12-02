@@ -3,6 +3,7 @@ from __future__ import annotations
 from inspect import isclass
 from typing import List, Optional, Union
 
+from neo4j import Session
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
@@ -17,6 +18,7 @@ def add_relationship(
     branch_name: str = None,
     at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
+    session: Optional[Session] = None,
 ):
 
     create_rel_query = (
@@ -40,23 +42,23 @@ def add_relationship(
         "status": status.value,
     }
 
-    results = execute_write_query(create_rel_query, params)
+    results = execute_write_query(create_rel_query, params, session=session)
     if not results:
         return None
     return results[0].values()[0]
 
 
-def delete_all_relationships_for_branch(branch_name: str):
+def delete_all_relationships_for_branch(branch_name: str, session: Optional[Session] = None):
 
     query = """
     MATCH ()-[r { branch: $branch_name }]-() DELETE r
     """
     params = {"branch_name": branch_name}
 
-    execute_write_query(query, params)
+    execute_write_query(query, params, session=session)
 
 
-def update_relationships_to(ids: List[str], to: Timestamp = None):
+def update_relationships_to(ids: List[str], to: Timestamp = None, session: Optional[Session] = None):
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -74,11 +76,16 @@ def update_relationships_to(ids: List[str], to: Timestamp = None):
 
     params = {"to": to.to_string()}
 
-    return execute_write_query(query, params)
+    return execute_write_query(query, params, session=session)
 
 
 def get_paths_between_nodes(
-    source_id: str, destination_id: str, relationships: List[str] = None, max_length: int = None, print_query=False
+    source_id: str,
+    destination_id: str,
+    relationships: List[str] = None,
+    max_length: int = None,
+    print_query=False,
+    session: Optional[Session] = None,
 ):
     """Return all paths between 2 nodes."""
 
@@ -105,10 +112,10 @@ def get_paths_between_nodes(
         "destination_id": element_id_to_id(destination_id),
     }
 
-    return execute_read_query(query, params)
+    return execute_read_query(query, params, session=session)
 
 
-def delete_all_nodes():
+def delete_all_nodes(session: Optional[Session] = None):
 
     query = """
     MATCH (n)
@@ -117,7 +124,7 @@ def delete_all_nodes():
 
     params = {}
 
-    return execute_write_query(query, params)
+    return execute_write_query(query, params, session=session)
 
 
 def element_id_to_id(element_id: str) -> int:

@@ -7,6 +7,8 @@ from typing import List, Dict, Set, Tuple, Any, Union, Optional, Generator
 
 from pydantic import validator
 
+from neo4j import Session
+
 import infrahub.config as config
 from infrahub.core.utils import element_id_to_id
 from infrahub.core.constants import RelationshipStatus, DiffAction
@@ -204,11 +206,11 @@ class Branch(StandardNode):
 
         return filter, params
 
-    def rebase(self):
+    def rebase(self, session: Optional[Session] = None):
         """Rebase the current Branch with its origin branch"""
 
         self.branched_from = Timestamp().to_string()
-        self.save()
+        self.save(session=session)
 
         # Update the branch in the registry after the rebase
         from infrahub.core import registry
@@ -247,10 +249,15 @@ class Branch(StandardNode):
 
         return passed, messages
 
-    def diff(self, diff_from: Union[str, Timestamp] = None, diff_to: Union[str, Timestamp] = None) -> Diff:
+    def diff(
+        self,
+        diff_from: Union[str, Timestamp] = None,
+        diff_to: Union[str, Timestamp] = None,
+        session: Optional[Session] = None,
+    ) -> Diff:
         return Diff(branch=self, diff_from=diff_from, diff_to=diff_to)
 
-    def merge(self, at: Union[str, Timestamp] = None):
+    def merge(self, at: Union[str, Timestamp] = None, session: Optional[Session] = None):
         """Merge the current branch into main."""
 
         passed, _ = self.validate()
@@ -514,11 +521,14 @@ class Diff:
         branch_only: bool = False,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
+        session: Optional[Session] = None,
     ):
         self.branch = branch
         self.origin_branch = self.branch.get_origin_branch()
 
         self.branch_only = branch_only
+
+        self.session = session
 
         if diff_from:
             self.diff_from = Timestamp(diff_from)
@@ -617,8 +627,12 @@ class Diff:
         """
 
         # Query all the nodes and the attributes that have been modified in the branch between the two timestamps.
-        query_nodes = DiffNodeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute()
-        query_attrs = DiffAttributeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute()
+        query_nodes = DiffNodeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute(
+            session=self.session
+        )
+        query_attrs = DiffAttributeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute(
+            session=self.session
+        )
 
         attrs_to_query = {"nodes": set(), "fields": set()}
 
@@ -740,7 +754,7 @@ class Diff:
         # ------------------------------------------------------------
         origin_attr_query = NodeListGetAttributeQuery(
             ids=list(attrs_to_query["nodes"]), branch=self.origin_branch, at=self.diff_to, include_source=True
-        ).execute()
+        ).execute(session=self.session)
 
         for result in query_attrs.get_results():
 
@@ -808,12 +822,14 @@ class Diff:
         The results will be stored in self._results organized by branch.
         """
         # Query the diff on the main path
-        query_rels = DiffRelationshipQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute()
+        query_rels = DiffRelationshipQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute(
+            session=self.session
+        )
 
         # Query the diff on the properties
         query_props = DiffRelationshipPropertyQuery(
             branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
-        ).execute()
+        ).execute(session=self.session)
 
         rel_ids_to_query = []
 
@@ -919,7 +935,7 @@ class Diff:
         # ------------------------------------------------------------
         origin_rel_properties_query = RelationshipListGetPropertiesQuery(
             ids=rel_ids_to_query, branch=self.origin_branch, at=self.diff_to
-        ).execute()
+        ).execute(session=self.session)
 
         for result in query_props.get_results():
 
