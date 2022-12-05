@@ -1,3 +1,4 @@
+import pytest
 from infrahub.core.query import Query
 
 
@@ -22,12 +23,27 @@ def test_query_base():
     assert query.get_query() == expected_query
 
 
-def test_query_results(simple_dataset_01):
+@pytest.mark.asyncio
+async def test_query_results(session, simple_dataset_01):
 
     query = Query01()
 
     assert query.has_been_executed is False
-    query.execute()
+    await query.execute(session=session)
+
+    assert query.has_been_executed is True
+
+    assert query.num_of_results == 3
+    assert query.results[0].get("at") is not None
+
+
+@pytest.mark.asyncio
+async def test_query_async(session, simple_dataset_01):
+
+    query = Query01()
+
+    assert query.has_been_executed is False
+    await query.execute(session=session)
 
     assert query.has_been_executed is True
 

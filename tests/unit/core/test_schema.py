@@ -81,10 +81,10 @@ def test_node_schema_unique_identifiers():
     assert schema.relationships[0].identifier == "criticality__criticality"
     assert schema.relationships[1].identifier == "something_unique"
 
+@pytest.mark.asyncio
+async def test_rel_schema_query_filter(session, car_person_schema):
 
-def test_rel_schema_query_filter(car_person_schema):
-
-    person = registry.get_schema("Person")
+    person = await registry.get_schema(session=session, name="Person")
     rel = person.relationships[0]
 
     filters, params, nbr_rels = rel.get_query_filter()

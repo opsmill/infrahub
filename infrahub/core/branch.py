@@ -3,11 +3,10 @@ from collections import defaultdict
 
 from uuid import UUID
 from dataclasses import dataclass
-from typing import List, Dict, Set, Tuple, Any, Union, Optional, Generator
+from typing import List, Dict, Set, Tuple, Any, Union, Optional, Generator, TYPE_CHECKING
 
 from pydantic import validator
 
-from neo4j import Session
 
 import infrahub.config as config
 from infrahub.core.utils import element_id_to_id
@@ -27,8 +26,11 @@ from infrahub.core.utils import (
     add_relationship,
     update_relationships_to,
 )
-from infrahub.database import execute_read_query
+from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 
 class AddNodeToBranch(Query):
@@ -79,7 +81,7 @@ class Branch(StandardNode):
         return value or Timestamp().to_string()
 
     @classmethod
-    def get_by_name(cls, name: str) -> Branch:
+    async def get_by_name(cls, name: str, session: AsyncSession) -> Branch:
 
         query = """
         MATCH (n:Branch)
@@ -89,18 +91,18 @@ class Branch(StandardNode):
 
         params = {"name": name}
 
-        results = execute_read_query(query, params)
+        results = await execute_read_query_async(session=session, query=query, params=params)
 
         if len(results) == 0:
             raise BranchNotFound(identifier=name)
 
         return cls._convert_node_to_obj(results[0].values()[0])
 
-    def get_origin_branch(self) -> Branch:
+    async def get_origin_branch(self, session: AsyncSession) -> Branch:
 
         from infrahub.core import get_branch
 
-        return get_branch(self.origin_branch)
+        return await get_branch(self.origin_branch, session=session)
 
     def get_branches_and_times_to_query(self, at: Union[Timestamp, str] = None) -> Dict[str, str]:
         """Get all the branches that are constituing this branch with the associated times."""
@@ -206,18 +208,18 @@ class Branch(StandardNode):
 
         return filter, params
 
-    def rebase(self, session: Optional[Session] = None):
+    async def rebase(self, session: Optional[AsyncSession] = None):
         """Rebase the current Branch with its origin branch"""
 
         self.branched_from = Timestamp().to_string()
-        self.save(session=session)
+        await self.save(session=session)
 
         # Update the branch in the registry after the rebase
         from infrahub.core import registry
 
         registry.branch[self.name] = self
 
-    def validate(self) -> set(bool, List[str]):
+    async def validate(self, session: Optional[AsyncSession] = None) -> set(bool, List[str]):
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -240,7 +242,7 @@ class Branch(StandardNode):
         from infrahub.core.manager import NodeManager
 
         # For all repositories in this branch, run all checks
-        repos = NodeManager.query("Repository", branch=self)
+        repos = await NodeManager.query(schema="Repository", branch=self, session=session)
         for repo in repos:
             result, errors = repo.run_checks()
             if not result:
@@ -253,11 +255,11 @@ class Branch(StandardNode):
         self,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
-        session: Optional[Session] = None,
+        session: Optional[AsyncSession] = None,
     ) -> Diff:
-        return Diff(branch=self, diff_from=diff_from, diff_to=diff_to)
+        return Diff(branch=self, diff_from=diff_from, diff_to=diff_to, session=session)
 
-    def merge(self, at: Union[str, Timestamp] = None, session: Optional[Session] = None):
+    async def merge(self, at: Union[str, Timestamp] = None, session: Optional[AsyncSession] = None):
         """Merge the current branch into main."""
 
         passed, _ = self.validate()
@@ -276,9 +278,11 @@ class Branch(StandardNode):
         at = Timestamp(at)
 
         diff = Diff(branch=self)
-        nodes = diff.get_nodes()
+        nodes = await diff.get_nodes()
 
-        origin_nodes_query = NodeListGetInfoQuery(ids=list(nodes[self.name].keys()), branch=default_branch).execute()
+        origin_nodes_query = await NodeListGetInfoQuery(
+            ids=list(nodes[self.name].keys()), branch=default_branch
+        ).execute(session=session)
         origin_nodes = {
             node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
         }
@@ -289,33 +293,35 @@ class Branch(StandardNode):
         for node_id, node in nodes[self.name].items():
 
             if node.action == DiffAction.ADDED.value:
-                AddNodeToBranch(node_id=node.db_id, branch=default_branch).execute()
+                await AddNodeToBranch(node_id=node.db_id, branch=default_branch).execute(session=session)
                 rel_ids_to_update.append(node.rel_id)
 
             elif node.action == DiffAction.REMOVED.value:
-                NodeDeleteQuery(branch=default_branch, node_id=node_id, at=at).execute()
+                await NodeDeleteQuery(branch=default_branch, node_id=node_id, at=at).execute(session=session)
                 rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
             for _, attr in node.attributes.items():
 
                 if attr.action == DiffAction.ADDED.value:
-                    add_relationship(
+                    await add_relationship(
                         src_node_id=node.db_id,
                         dst_node_id=attr.db_id,
                         rel_type="HAS_ATTRIBUTE",
                         at=at,
                         branch_name=default_branch.name,
+                        session=session,
                     )
                     rel_ids_to_update.append(attr.rel_id)
 
                 elif attr.action == DiffAction.REMOVED.value:
-                    add_relationship(
+                    await add_relationship(
                         src_node_id=node.db_id,
                         dst_node_id=attr.db_id,
                         rel_type="HAS_ATTRIBUTE",
                         branch_name=default_branch.name,
                         at=at,
                         status=RelationshipStatus.DELETED,
+                        session=session,
                     )
                     rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
 
@@ -325,41 +331,44 @@ class Branch(StandardNode):
                 for prop_type, prop in attr.properties.items():
 
                     if prop.action == DiffAction.ADDED.value:
-                        add_relationship(
+                        await add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
                             rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
+                            session=session,
                         )
                         rel_ids_to_update.append(prop.rel_id)
 
                     elif prop.action == DiffAction.UPDATED.value:
 
-                        add_relationship(
+                        await add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
                             rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
+                            session=session,
                         )
                         rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
                     elif prop.action == DiffAction.REMOVED.value:
-                        add_relationship(
+                        await add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
                             rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
                             status=RelationshipStatus.DELETED,
+                            session=session,
                         )
                         rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
         # ---------------------------------------------
         # RELATIONSHIPS
         # ---------------------------------------------
-        rels = diff.get_relationships()
+        rels = await diff.get_relationships()
 
         for rel_name in rels[self.name].keys():
             for rel_id, rel in rels[self.name][rel_name].items():
@@ -369,13 +378,14 @@ class Branch(StandardNode):
                         if rel.action == DiffAction.REMOVED.value:
                             rel_status = RelationshipStatus.DELETED
 
-                        add_relationship(
+                        await add_relationship(
                             src_node_id=node.db_id,
                             dst_node_id=rel.db_id,
                             rel_type="IS_RELATED",
                             at=at,
                             branch_name=default_branch.name,
                             status=rel_status,
+                            session=session,
                         )
                         rel_ids_to_update.append(node.rel_id)
 
@@ -385,19 +395,20 @@ class Branch(StandardNode):
                     if prop.action == DiffAction.REMOVED.value:
                         rel_status = RelationshipStatus.DELETED
 
-                    add_relationship(
+                    await add_relationship(
                         src_node_id=rel.db_id,
                         dst_node_id=prop.db_id,
                         rel_type=prop.type,
                         at=at,
                         branch_name=default_branch.name,
+                        session=session,
                     )
                     rel_ids_to_update.append(prop.rel_id)
 
                     if rel.action in [DiffAction.UPDATED.value, DiffAction.REMOVED.value]:
                         rel_ids_to_update.append(prop.origin_rel_id)
 
-        update_relationships_to(ids=rel_ids_to_update, to=at)
+        await update_relationships_to(ids=rel_ids_to_update, to=at, session=session)
 
         # ---------------------------------------------
         # FILES
@@ -521,7 +532,7 @@ class Diff:
         branch_only: bool = False,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
-        session: Optional[Session] = None,
+        session: Optional[AsyncSession] = None,
     ):
         self.branch = branch
         self.origin_branch = self.branch.get_origin_branch()

@@ -1,24 +1,29 @@
 from __future__ import annotations
 
 from inspect import isclass
-from typing import List, Optional, Union
+from typing import List, Optional, TYPE_CHECKING
 
-from neo4j import Session
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import execute_read_query, execute_write_query
+from infrahub.database import (
+    execute_write_query_async,
+    execute_read_query_async,
+)
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 
-def add_relationship(
+async def add_relationship(
     src_node_id: str,
     dst_node_id: str,
     rel_type: str,
+    session: AsyncSession,
     branch_name: str = None,
     at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
-    session: Optional[Session] = None,
 ):
 
     create_rel_query = (
@@ -42,23 +47,31 @@ def add_relationship(
         "status": status.value,
     }
 
-    results = execute_write_query(create_rel_query, params, session=session)
+    results = await execute_write_query_async(
+        session=session,
+        query=create_rel_query,
+        params=params,
+    )
     if not results:
         return None
-    return results[0].values()[0]
+    return results[0][0]
 
 
-def delete_all_relationships_for_branch(branch_name: str, session: Optional[Session] = None):
+async def delete_all_relationships_for_branch(branch_name: str, session: AsyncSession):
 
     query = """
     MATCH ()-[r { branch: $branch_name }]-() DELETE r
     """
     params = {"branch_name": branch_name}
 
-    execute_write_query(query, params, session=session)
+    await execute_write_query_async(session=session, query=query, params=params)
 
 
-def update_relationships_to(ids: List[str], to: Timestamp = None, session: Optional[Session] = None):
+async def update_relationships_to(
+    ids: List[str],
+    session: AsyncSession,
+    to: Timestamp = None,
+):
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -76,16 +89,16 @@ def update_relationships_to(ids: List[str], to: Timestamp = None, session: Optio
 
     params = {"to": to.to_string()}
 
-    return execute_write_query(query, params, session=session)
+    return await execute_write_query_async(session=session, query=query, params=params)
 
 
-def get_paths_between_nodes(
+async def get_paths_between_nodes(
+    session: AsyncSession,
     source_id: str,
     destination_id: str,
     relationships: List[str] = None,
     max_length: int = None,
     print_query=False,
-    session: Optional[Session] = None,
 ):
     """Return all paths between 2 nodes."""
 
@@ -112,10 +125,10 @@ def get_paths_between_nodes(
         "destination_id": element_id_to_id(destination_id),
     }
 
-    return execute_read_query(query, params, session=session)
+    return await execute_read_query_async(session=session, query=query, params=params)
 
 
-def delete_all_nodes(session: Optional[Session] = None):
+async def delete_all_nodes(session: AsyncSession):
 
     query = """
     MATCH (n)
@@ -124,7 +137,7 @@ def delete_all_nodes(session: Optional[Session] = None):
 
     params = {}
 
-    return execute_write_query(query, params, session=session)
+    return await execute_write_query_async(session=session, query=query, params=params)
 
 
 def element_id_to_id(element_id: str) -> int:

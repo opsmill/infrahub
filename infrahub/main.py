@@ -78,14 +78,14 @@ async def generate_rfile(
 
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
     rfile = NodeManager.get_one(id=rfile_id, branch=branch, at=at)
 
     if not rfile:
-        rfile_schema = registry.get_schema("RFile")
+        rfile_schema = await registry.get_schema(session=session, name="RFile")
         items = NodeManager.query(rfile_schema, filters={rfile_schema.default_filter: rfile_id}, branch=branch, at=at)
         if items:
             rfile = items[0]
@@ -138,14 +138,14 @@ async def graphql_query(
 
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
     graphql_query = NodeManager.get_one(query_id, branch=branch, at=at)
 
     if not graphql_query:
-        gqlquery_schema = registry.get_schema("GraphQLQuery")
+        gqlquery_schema = await registry.get_schema(session=session, name="GraphQLQuery")
         items = NodeManager.query(
             gqlquery_schema, filters={gqlquery_schema.default_filter: query_id}, branch=branch, at=at
         )
@@ -225,7 +225,7 @@ async def openconfig_interfaces(
 ):
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
@@ -340,7 +340,7 @@ async def openconfig_bgp(
 ):
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 

@@ -10,6 +10,7 @@ from infrahub.core.query import Query, QueryType, QueryResult
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.schema import NodeSchema
     from infrahub.core.branch import Branch
     from . import Node
@@ -59,11 +60,11 @@ class AttrToProcess:
     is_visible: Optional[bool]
 
 
-def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
+async def find_node_schema(node, branch: Union[Branch, str], session: AsyncSession) -> NodeSchema:
 
     for label in node.labels:
-        if registry.has_schema(label, branch=branch):
-            return registry.get_schema(label, branch=branch)
+        if await registry.has_schema(name=label, branch=branch, session=session):
+            return await registry.get_schema(name=label, branch=branch, session=session)
 
     return None
 
@@ -375,11 +376,11 @@ class NodeListGetInfoQuery(Query):
 
         self.return_labels = ["n", "rb"]
 
-    def get_nodes(self) -> Generator[NodeToProcess, None, None]:
+    async def get_nodes(self, session: AsyncSession) -> Generator[NodeToProcess, None, None]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = find_node_schema(result.get("n"), self.branch)
+            schema = await find_node_schema(node=result.get("n"), branch=self.branch, session=session)
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get("n").element_id,

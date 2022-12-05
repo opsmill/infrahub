@@ -1,5 +1,9 @@
 import logging
 
+from typing import TYPE_CHECKING
+
+from neo4j import AsyncSession
+
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -7,15 +11,16 @@ from infrahub.core.manager import NodeManager, SchemaManager
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.models import infrastructure_models
 
+
 LOGGER = logging.getLogger("infrahub")
 
 
-def initialization():
+async def initialization(session: AsyncSession):
 
     # ---------------------------------------------------
     # Load all existing branches into the registry
     # ---------------------------------------------------
-    branches = Branch.get_list()
+    branches = await Branch.get_list(session=session)
     for branch in branches:
         registry.branch[branch.name] = branch
 
@@ -25,7 +30,7 @@ def initialization():
     schema = SchemaRoot(**internal_schema)
     SchemaManager.register_schema_to_registry(schema)
 
-    schema = SchemaManager.load_schema_from_db()
+    schema = await SchemaManager.load_schema_from_db(session=session)
     SchemaManager.register_schema_to_registry(schema)
 
     # ---------------------------------------------------
@@ -42,8 +47,8 @@ def initialization():
     # ---------------------------------------------------
     # Load all existing Groups into the registry
     # ---------------------------------------------------
-    group_schema = registry.get_schema("Group")
-    groups = NodeManager.query(group_schema)
+    group_schema = await registry.get_schema(session=session, name="Group")
+    groups = await NodeManager.query(group_schema, session=session)
     for group in groups:
         registry.node_group[group.name.value] = group
 
@@ -52,12 +57,12 @@ def initialization():
     #     registry.attr_group[group.name.value] = group
 
 
-def create_default_branch():
+async def create_default_branch(session: AsyncSession) -> Branch:
 
     default_branch = Branch(
         name=config.SETTINGS.main.default_branch, status="OPEN", description="Default Branch", is_default=True
     )
-    default_branch.save()
+    await default_branch.save(session=session)
     registry.branch[default_branch.name] = default_branch
 
     LOGGER.info(f"Created default branch : {default_branch.name}")
@@ -65,10 +70,10 @@ def create_default_branch():
     return default_branch
 
 
-def create_branch(branch_name):
+async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
 
     branch = Branch(name=branch_name, status="OPEN", description=f"Branch {branch_name}", is_default=False)
-    branch.save()
+    await branch.save(session=session)
     registry.branch[branch.name] = branch
 
     LOGGER.info(f"Created branch : {branch.name}")
@@ -76,21 +81,21 @@ def create_branch(branch_name):
     return branch
 
 
-def first_time_initialization():
+async def first_time_initialization(session: AsyncSession):
 
     from infrahub.core.node import Node
 
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
-    create_default_branch()
+    await create_default_branch(session=session)
 
     # --------------------------------------------------
     # Load the internal schema in the database
     # --------------------------------------------------
     schema = SchemaRoot(**internal_schema)
     SchemaManager.register_schema_to_registry(schema)
-    SchemaManager.load_schema_to_db(schema)
+    await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the internal Schema in the database")
 
     # --------------------------------------------------
@@ -98,12 +103,12 @@ def first_time_initialization():
     # --------------------------------------------------
     schema = SchemaRoot(**core_models)
     SchemaManager.register_schema_to_registry(schema)
-    SchemaManager.load_schema_to_db(schema)
+    await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the core models in the database")
 
     schema = SchemaRoot(**infrastructure_models)
     SchemaManager.register_schema_to_registry(schema)
-    SchemaManager.load_schema_to_db(schema)
+    await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the infrastructure models in the database")
 
     # --------------------------------------------------
@@ -119,17 +124,17 @@ def first_time_initialization():
         # ("very critical", 7),
     )
 
-    criticality_schema = registry.get_schema("Criticality")
+    criticality_schema = await registry.get_schema(session=session, name="Criticality")
     for level in CRITICALITY_LEVELS:
-        obj = Node(criticality_schema).new(name=level[0], level=level[1]).save()
+        obj = await Node(criticality_schema).new(name=level[0], level=level[1]).save(session=session)
 
     # ----
-    group_schema = registry.get_schema("Group")
-    account_schema = registry.get_schema("Account")
-    admin_grp = obj = Node(group_schema).new(name="admin").save()
+    group_schema = await registry.get_schema(session=session, name="Group")
+    account_schema = await registry.get_schema(session=session, name="Account")
+    admin_grp = obj = await Node(group_schema).new(name="admin").save(session=session)
     # default_grp = obj = Node(group_schema).new(name="default").save()
 
-    obj = Node(account_schema).new(name="admin", type="USER", groups=[admin_grp]).save()
+    obj = await Node(account_schema).new(name="admin", type="USER", groups=[admin_grp]).save(session=session)
     LOGGER.info(f"Created Account: {obj.name.value}")
 
     # # FIXME Remove these hardcoded Token Value

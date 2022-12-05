@@ -4,6 +4,7 @@ from uuid import UUID
 from typing import TYPE_CHECKING, List, Union
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.node import Node
 
 
@@ -57,13 +58,13 @@ class NodePropertyMixin:
     def owner(self, value):
         self._set_node_property("owner", value)
 
-    def _get_node_property(self, name: str) -> Node:
+    async def _get_node_property(self, session: AsyncSession, name: str) -> Node:
         """Return the node attribute.
         If the node is already present in cache, serve from the cache
         If the node is not present, query it on the fly using the node_id
         """
         if getattr(self, f"_{name}") is None:
-            self._retrieve_node_property(name)
+            await self._retrieve_node_property(session=session, name=name)
 
         return getattr(self, f"_{name}", None)
 
@@ -88,11 +89,13 @@ class NodePropertyMixin:
         else:
             raise ValueError("Unable to process the node property")
 
-    def _retrieve_node_property(self, name: str):
+    async def _retrieve_node_property(self, session: AsyncSession, name: str):
         """Query the node associated with this node_property from the database."""
         from infrahub.core.manager import NodeManager
 
-        node = NodeManager.get_one(getattr(self, f"{name}_id"), branch=self.branch, at=self.at)
+        node = await NodeManager.get_one(
+            session=session, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at
+        )
         setattr(self, f"_{name}", node)
         if node:
             setattr(self, f"{name}_id", node.id)

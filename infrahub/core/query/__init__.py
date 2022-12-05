@@ -5,16 +5,19 @@ from collections import defaultdict
 from enum import Enum
 from typing import Generator, List, Optional, Union, TypeVar, TYPE_CHECKING
 
-from neo4j import Session, AsyncSession
 from neo4j.graph import Node, Relationship
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
-from infrahub.database import execute_read_query, execute_write_query
+from infrahub.database import (
+    execute_read_query_async,
+    execute_write_query_async,
+)
 from infrahub.exceptions import QueryError
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.branch import Branch
 
 SelfQuery = TypeVar("SelfQuery", bound="Query")
@@ -177,7 +180,7 @@ class Query(ABC):
 
         return query_str
 
-    def execute(self, session: Session = None) -> SelfQuery:
+    async def execute(self, session: AsyncSession = None) -> SelfQuery:
 
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
@@ -186,9 +189,9 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            results = execute_read_query(query=self.get_query(), params=self.params, session=session)
+            results = await execute_read_query_async(query=self.get_query(), params=self.params, session=session)
         elif self.type == QueryType.WRITE:
-            results = execute_write_query(query=self.get_query(), params=self.params, session=session)
+            results = await execute_write_query_async(query=self.get_query(), params=self.params, session=session)
         else:
             raise ValueError(f"unknown value for {self.type}")
 

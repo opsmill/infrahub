@@ -2,7 +2,7 @@ import os
 import time
 
 from typing import Generator
-from neo4j import GraphDatabase, basic_auth, Driver, Session
+from neo4j import GraphDatabase, basic_auth, Driver, Session, AsyncSession
 
 # from contextlib import asynccontextmanager
 from neo4j.exceptions import ClientError
@@ -71,3 +71,25 @@ def execute_write_query(query: str, params: dict = None, session: Session = None
 
     response = session.run(query, params)
     return list(response)
+
+
+@QUERY_READ_METRICS.time()
+async def execute_read_query_async(
+    session: AsyncSession,
+    query: str,
+    params: dict = None,
+):
+    async def work(tx, params: dict):
+        response = await tx.run(query, params)
+        return [item async for item in response]
+
+    return await session.execute_read(work, params)
+
+
+@QUERY_WRITE_METRICS.time()
+async def execute_write_query_async(session: AsyncSession, query: str, params: dict = None):
+    async def work(tx, params: dict):
+        response = await tx.run(query, params)
+        return await response.values()
+
+    return await session.execute_write(work, params)
