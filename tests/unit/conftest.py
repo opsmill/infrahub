@@ -460,13 +460,13 @@ async def default_branch(empty_database, session):
 
 
 @pytest_asyncio.fixture
-async def register_core_models_schema(session):
+async def register_core_models_schema():
 
     schema = SchemaRoot(**internal_schema)
-    await SchemaManager.register_schema_to_registry(session=session, schema=schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
     schema = SchemaRoot(**core_models)
-    await SchemaManager.register_schema_to_registry(session=session, schema=schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
 
 @pytest_asyncio.fixture

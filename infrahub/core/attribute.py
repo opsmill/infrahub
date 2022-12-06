@@ -115,7 +115,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         delete_at = Timestamp(at)
 
-        query = await AttributeGetQuery(attr=self).execute(session=session)
+        query = await AttributeGetQuery.init(session=session, attr=self)
+        await query.execute(session=session)
         results = query.get_results()
 
         if not results:
@@ -161,7 +162,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         create_at = Timestamp(at)
 
-        query = await AttributeCreateQuery(attr=self, branch=self.branch, at=create_at).execute(session=session)
+        query = await AttributeCreateQuery.init(session=session, attr=self, branch=self.branch, at=create_at)
+        await query.execute(session=session)
 
         self.id, self.db_id = query.get_new_ids()
         self.at = create_at
@@ -183,9 +185,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(self.value)
 
-        query = await NodeListGetAttributeQuery(
-            ids=[self.node.id], fields={self.name: True}, branch=self.branch, at=update_at, include_source=True
-        ).execute(session=session)
+        query = await NodeListGetAttributeQuery.init(
+            session=session,
+            ids=[self.node.id],
+            fields={self.name: True},
+            branch=self.branch,
+            at=update_at,
+            include_source=True,
+        )
+        await query.execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
         # ---------- Update the Value ----------
@@ -195,7 +203,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if current_value != self.value:
             # Create the new AttributeValue and update the existing relationship
-            await AttributeUpdateValueQuery(attr=self, at=update_at).execute(session=session)
+            query = await AttributeUpdateValueQuery.init(session=session, attr=self, at=update_at)
+            await query.execute(session=session)
 
             # TODO check that everything went well
             rel = current_attr.get("r2")
@@ -210,7 +219,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         for flag_name, node_name, rel_name in SUPPORTED_FLAGS:
             if current_attr.get(node_name).get("value") != getattr(self, flag_name):
-                await AttributeUpdateFlagQuery(attr=self, at=update_at, flag_name=flag_name).execute(session=session)
+                query = await AttributeUpdateFlagQuery.init(
+                    session=session, attr=self, at=update_at, flag_name=flag_name
+                )
+                await query.execute(session=session)
 
                 rel = current_attr.get(rel_name)
                 if rel.get("branch") == self.branch.name:
@@ -225,9 +237,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 )
                 and current_attr.get(prop).element_id != getattr(self, f"{prop}_id")
             ):
-                await AttributeUpdateNodePropertyQuery(
-                    attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
-                ).execute(session=session)
+                query = await AttributeUpdateNodePropertyQuery.init(
+                    session=session, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
+                )
+                await query.execute(session=session)
 
                 rel = current_attr.get(f"rel_{prop}")
                 if rel.get("branch") == self.branch.name:

@@ -212,7 +212,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         create_at = Timestamp(at)
 
-        query = NodeCreateQuery(node=self, at=create_at)
+        query = await NodeCreateQuery.init(session=session, node=self, at=create_at)
         await query.execute(session=session)
         self.id, self.db_id = query.get_new_ids()
         self._at = create_at
@@ -292,15 +292,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
 
         # Update the relationship to the branch itself
-        query = await NodeGetListQuery(
-            schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
-        ).execute(session=session)
+        query = await NodeGetListQuery.init(
+            session=session, schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
+        )
+        await query.execute(session=session)
         result = query.get_result()
 
         if result.get("br").get("name") == self._branch.name:
             await update_relationships_to([result.get("rb").element_id], to=delete_at, session=session)
 
-        await NodeDeleteQuery(node=self, at=delete_at).execute(session=session)
+        query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
+        await query.execute(session=session)
 
     async def to_graphql(self, fields: dict = None) -> dict:
         """Generate GraphQL Payload for all attributes

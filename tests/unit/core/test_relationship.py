@@ -90,11 +90,13 @@ async def test_relationship_load_existing(session, default_branch, car_person_sc
 
     rel = Relationship(schema=rel_schema, branch=default_branch, node=c3)
 
-    query = await RelationshipGetPeerQuery(
+    query = await RelationshipGetPeerQuery.init(
+        session=session,
         source=c3,
         at=Timestamp(),
         rel=rel,
-    ).execute(session=session)
+    )
+    await query.execute(session=session)
 
     peers = list(query.get_peers())
 

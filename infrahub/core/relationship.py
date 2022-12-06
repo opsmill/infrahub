@@ -244,9 +244,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # Create a new Relationship node and attach each object to it
         node = await self.get_node(session=session)
         peer = await self.get_peer(session=session)
-        query = await RelationshipCreateQuery(
-            source=node, destination=peer, rel=self, branch=self.branch, at=create_at
-        ).execute(session=session)
+        query = await RelationshipCreateQuery.init(
+            session=session, source=node, destination=peer, rel=self, branch=self.branch, at=create_at
+        )
+        await query.execute(session=session)
         result = query.get_result()
 
         self.db_id = result.get("rl").element_id
@@ -273,14 +274,16 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         node = await self.get_node(session=session)
 
-        await RelationshipUpdatePropertyQuery(
+        query = await RelationshipUpdatePropertyQuery.init(
+            session=session,
             source=node,
             rel=self,
             properties_to_update=properties_to_update,
             data=data,
             branch=self.branch,
             at=update_at,
-        ).execute(session=session)
+        )
+        await query.execute(session=session)
 
     async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None):
 
@@ -289,9 +292,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node = await self.get_node(session=session)
         peer = await self.get_peer(session=session)
 
-        query = await RelationshipGetQuery(
-            source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
-        ).execute(session=session)
+        query = await RelationshipGetQuery.init(
+            session=session, source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
+        )
+        await query.execute(session=session)
         result = query.get_result()
 
         # when we remove a relationship we need to :
@@ -301,9 +305,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         if rel_ids_to_update := [rel.element_id for rel in result.get_rels() if rel.get("branch") == self.branch.name]:
             await update_relationships_to(rel_ids_to_update, to=delete_at, session=session)
 
-        await RelationshipDeleteQuery(
-            rel=self, source=node, destination=peer, branch=self.branch, at=delete_at
-        ).execute(session=session)
+        query = await RelationshipDeleteQuery.init(
+            session=session, rel=self, source=node, destination=peer, branch=self.branch, at=delete_at
+        )
+        await query.execute(session=session)
 
     async def save(self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None) -> SelfRelationship:
         """Create or Update the Relationship in the database."""
@@ -422,11 +427,13 @@ class RelationshipManager:
 
         current_peer_ids = [rel.peer_id for rel in self.relationships]
 
-        query = await RelationshipGetPeerQuery(
+        query = await RelationshipGetPeerQuery.init(
+            session=session,
             source=self.node,
             at=at or self.at,
             rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
-        ).execute(session=session)
+        )
+        await query.execute(session=session)
 
         peers_database: dict = {peer.peer_id: peer for peer in query.get_peers()}
         peer_ids = list(peers_database.keys())
@@ -501,7 +508,9 @@ class RelationshipManager:
 
             # If the item is not present in the previous list of relationship, we create a new one.
             self.relationships.append(
-                self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(data=item)
+                await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
+                    session=session, data=item
+                )
             )
             changed = True
 
@@ -544,9 +553,16 @@ class RelationshipManager:
         if self.branch.name in rel_ids_per_branch:
             await update_relationships_to(rel_ids_per_branch[self.branch.name], to=remove_at, session=session)
 
-        await RelationshipDataDeleteQuery(
-            rel=self.rel_class, schema=self.schema, source=self.node, data=peer_data, branch=self.branch, at=remove_at
-        ).execute(session=session)
+        query = await RelationshipDataDeleteQuery.init(
+            session=session,
+            rel=self.rel_class,
+            schema=self.schema,
+            source=self.node,
+            data=peer_data,
+            branch=self.branch,
+            at=remove_at,
+        )
+        await query.execute(session=session)
 
     async def save(
         self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None

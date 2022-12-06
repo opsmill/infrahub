@@ -104,7 +104,7 @@ class NodeCreateQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["uuid"] = str(uuid.uuid4())
         self.params["branch"] = self.branch.name
@@ -142,7 +142,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
@@ -167,7 +167,7 @@ class NodeListGetLocalAttributeValueQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["attrs_ids"] = self.ids
 
@@ -224,7 +224,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["ids"] = self.ids
 
@@ -350,7 +350,7 @@ class NodeListGetInfoQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         branches = list(self.branch.get_branches_and_times_to_query().keys())
         self.params["branches"] = branches
@@ -403,7 +403,7 @@ class NodeGetListQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         branches = list(self.branch.get_branches_and_times_to_query().keys())
 
@@ -452,8 +452,8 @@ class NodeGetListQuery(Query):
 
             field = self.schema.get_field(field_name)
 
-            field_filters, field_params, nbr_rels = field.get_query_filter(
-                name=field_name, filters=attr_filters, branch=self.branch
+            field_filters, field_params, nbr_rels = await field.get_query_filter(
+                session=session, name=field_name, filters=attr_filters, branch=self.branch
             )
             self.params.update(field_params)
 

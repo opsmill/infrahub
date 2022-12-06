@@ -30,9 +30,10 @@ async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch
         car2.color.id,
     ]
 
-    query = await NodeListGetLocalAttributeValueQuery(ids, branch=default_branch, at=Timestamp()).execute(
-        session=session
+    query = await NodeListGetLocalAttributeValueQuery.init(
+        session=session, ids=ids, branch=default_branch, at=Timestamp()
     )
+    await query.execute(session=session)
     assert len(query.get_results_by_id()) == 8
 
 
@@ -44,7 +45,8 @@ async def test_query_NodeListGetAttributeQuery_all_fields(session, base_dataset_
 
     # Query all the nodes in main but only c1 and c2 present
     # Expect 4 attributes per node(x2) = 8 attributes
-    query = await NodeListGetAttributeQuery(ids=["c1", "c2", "c3"], branch=default_branch).execute(session=session)
+    query = await NodeListGetAttributeQuery.init(session=session, ids=["c1", "c2", "c3"], branch=default_branch)
+    await query.execute(session=session)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2"]
     assert len(list(query.get_results())) == 8
     assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
@@ -52,7 +54,8 @@ async def test_query_NodeListGetAttributeQuery_all_fields(session, base_dataset_
 
     # Query all the nodes in branch1, only c1 and c3 present
     # Expect 9 attributes because each node has 4 but c1at2 has a value both in Main and Branch1
-    query = await NodeListGetAttributeQuery(ids=["c1", "c2", "c3"], branch=branch1).execute(session=session)
+    query = await NodeListGetAttributeQuery.init(session=session, ids=["c1", "c2", "c3"], branch=branch1)
+    await query.execute(session=session)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c3"]
     assert len(list(query.get_results())) == 11
     assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
@@ -81,9 +84,10 @@ async def test_query_NodeListGetAttributeQuery_with_source(
 
     default_branch = await get_branch(session=session, branch="main")
 
-    query = await NodeListGetAttributeQuery(ids=[obj1.id, obj2.id], branch=default_branch, include_source=True).execute(
-        session=session
+    query = await NodeListGetAttributeQuery.init(
+        session=session, ids=[obj1.id, obj2.id], branch=default_branch, include_source=True
     )
+    await query.execute(session=session)
     assert sorted(query.get_attributes_group_by_node().keys()) == sorted([obj1.id, obj2.id])
     assert query.get_attributes_group_by_node()[obj1.id]["attrs"]["name"].source_uuid == first_account.id
     assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["level"].source_uuid == second_account.id
@@ -98,9 +102,10 @@ async def test_query_NodeListGetAttributeQuery(session, base_dataset_02):
 
     # Query all the nodes in main but only c1 and c2 present
     # Expect 2 attributes per node(x2) = 4 attributes
-    query = await NodeListGetAttributeQuery(
-        ids=["c1", "c2", "c3"], branch=default_branch, fields={"name": True, "is_electric": True}
-    ).execute(session=session)
+    query = await NodeListGetAttributeQuery.init(
+        session=session, ids=["c1", "c2", "c3"], branch=default_branch, fields={"name": True, "is_electric": True}
+    )
+    await query.execute(session=session)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2"]
     assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 2
     assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 2
@@ -108,9 +113,10 @@ async def test_query_NodeListGetAttributeQuery(session, base_dataset_02):
 
     # Query all the nodes in branch1, only c1 and c3 present
     # Expect 5 attributes because each node has 1 but c1at2 has its value and its protected flag defined both in Main and Branch1
-    query = await NodeListGetAttributeQuery(ids=["c1", "c2", "c3"], branch=branch1, fields={"nbr_seats": True}).execute(
-        session=session
+    query = await NodeListGetAttributeQuery.init(
+        session=session, ids=["c1", "c2", "c3"], branch=branch1, fields={"nbr_seats": True}
     )
+    await query.execute(session=session)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c3"]
     assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 1
     assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 1
@@ -118,9 +124,10 @@ async def test_query_NodeListGetAttributeQuery(session, base_dataset_02):
 
     # Query all the nodes in branch1, only c1 and c3 present
     # Expect 4 attributes because c1at2 has its value and its protected flag defined both in Main and Branch1
-    query = await NodeListGetAttributeQuery(ids=["c1"], branch=branch1, fields={"nbr_seats": True}).execute(
-        session=session
+    query = await NodeListGetAttributeQuery.init(
+        session=session, ids=["c1"], branch=branch1, fields={"nbr_seats": True}
     )
+    await query.execute(session=session)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1"]
     assert len(list(query.get_results())) == 4
     assert query.results[0].branch_score != query.results[1].branch_score

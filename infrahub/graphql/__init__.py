@@ -49,10 +49,10 @@ async def execute_query(
 ) -> ExecutionResult:
     """Helper function to Execute a GraphQL Query."""
 
-    branch = branch or get_branch(branch)
+    branch = branch or await get_branch(branch)
     at = Timestamp(at)
 
-    items = NodeManager.query("GraphQLQuery", filters={name: name}, branch=branch, at=at)
+    items = await NodeManager.query("GraphQLQuery", filters={name: name}, branch=branch, at=at)
     if not items:
         raise ValueError(f"Unable to find the GraphQLQuery {name}")
 

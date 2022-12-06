@@ -42,7 +42,7 @@ class DiffNodeQuery(DiffQuery):
     name: str = "diff_node"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         # TODO need to improve the query to capture an object that has been delete into the branch
         # TODO probably also need to consider a node what was merged already
@@ -65,7 +65,7 @@ class DiffAttributeQuery(DiffQuery):
     name: str = "diff_attribute"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         # TODO need to improve the query to capture an object that has been deleted into the branch
         query = """
@@ -106,7 +106,7 @@ class DiffRelationshipQuery(DiffQuery):
     name: str = "diff_relationship"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         query = """
         MATCH p = ((sn)-[r1]->(rel:Relationship)<-[r2]-(dn))
@@ -161,7 +161,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.diff_to)
         self.params.update(rels_params)

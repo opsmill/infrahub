@@ -1,9 +1,12 @@
 import pytest
+
+from neo4j import AsyncSession
+
 from infrahub.core.query import Query
 
 
 class Query01(Query):
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
         MATCH (n) WHERE n.uuid = $uuid
         MATCH (n)-[r1]-(at:Attribute)-[r2]-(av)
@@ -15,9 +18,10 @@ class Query01(Query):
         self.add_to_query(query)
 
 
-def test_query_base():
+@pytest.mark.asyncio
+async def test_query_base(session):
 
-    query = Query01()
+    query = await Query01.init(session=session)
     expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2"
 
     assert query.get_query() == expected_query
@@ -26,7 +30,7 @@ def test_query_base():
 @pytest.mark.asyncio
 async def test_query_results(session, simple_dataset_01):
 
-    query = Query01()
+    query = await Query01.init(session=session)
 
     assert query.has_been_executed is False
     await query.execute(session=session)
@@ -40,7 +44,7 @@ async def test_query_results(session, simple_dataset_01):
 @pytest.mark.asyncio
 async def test_query_async(session, simple_dataset_01):
 
-    query = Query01()
+    query = await Query01.init(session=session)
 
     assert query.has_been_executed is False
     await query.execute(session=session)

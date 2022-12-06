@@ -45,7 +45,7 @@ class AddNodeToBranch(Query):
         self.node_id = node_id
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
         MATCH (b:Branch { name: $branch })
         MATCH (d) WHERE ID(d) = $node_id
@@ -234,7 +234,8 @@ class Branch(StandardNode):
         messages = []
 
         # Check the diff and ensure the branch doesn't have some conflict
-        if conflicts := self.diff().get_conflicts():
+        diff = await self.diff(session=session)
+        if conflicts := await diff.get_conflicts(session=session):
             passed = False
             for conflict in conflicts:
                 messages.append(f"Conflict detected at {'/'.join(conflict)}")
@@ -251,18 +252,18 @@ class Branch(StandardNode):
 
         return passed, messages
 
-    def diff(
+    async def diff(
         self,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
         session: Optional[AsyncSession] = None,
     ) -> Diff:
-        return Diff(branch=self, diff_from=diff_from, diff_to=diff_to, session=session)
+        return await Diff.init(branch=self, diff_from=diff_from, diff_to=diff_to, session=session)
 
     async def merge(self, at: Union[str, Timestamp] = None, session: Optional[AsyncSession] = None):
         """Merge the current branch into main."""
 
-        passed, _ = self.validate()
+        passed, _ = await self.validate(session=session)
         if not passed:
             raise Exception(f"Unable to merge the branch '{self.name}', validation failed")
 
@@ -277,12 +278,13 @@ class Branch(StandardNode):
 
         at = Timestamp(at)
 
-        diff = Diff(branch=self)
-        nodes = await diff.get_nodes()
+        diff = await Diff.init(branch=self, session=session)
+        nodes = await diff.get_nodes(session=session)
 
-        origin_nodes_query = await NodeListGetInfoQuery(
-            ids=list(nodes[self.name].keys()), branch=default_branch
-        ).execute(session=session)
+        origin_nodes_query = await NodeListGetInfoQuery.init(
+            session=session, ids=list(nodes[self.name].keys()), branch=default_branch
+        )
+        await origin_nodes_query.execute(session=session)
         origin_nodes = {
             node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
         }
@@ -293,11 +295,13 @@ class Branch(StandardNode):
         for node_id, node in nodes[self.name].items():
 
             if node.action == DiffAction.ADDED.value:
-                await AddNodeToBranch(node_id=node.db_id, branch=default_branch).execute(session=session)
+                query = await AddNodeToBranch.init(session=session, node_id=node.db_id, branch=default_branch)
+                await query.execute(session=session)
                 rel_ids_to_update.append(node.rel_id)
 
             elif node.action == DiffAction.REMOVED.value:
-                await NodeDeleteQuery(branch=default_branch, node_id=node_id, at=at).execute(session=session)
+                query = await NodeDeleteQuery.init(session=session, branch=default_branch, node_id=node_id, at=at)
+                await query.execute(session=session)
                 rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
             for _, attr in node.attributes.items():
@@ -368,7 +372,7 @@ class Branch(StandardNode):
         # ---------------------------------------------
         # RELATIONSHIPS
         # ---------------------------------------------
-        rels = await diff.get_relationships()
+        rels = await diff.get_relationships(session=session)
 
         for rel_name in rels[self.name].keys():
             for rel_id, rel in rels[self.name][rel_name].items():
@@ -432,7 +436,7 @@ class Branch(StandardNode):
 
         #     repo.merge()
 
-        self.rebase()
+        await self.rebase(session=session)
 
 
 @dataclass
@@ -529,17 +533,14 @@ class Diff:
     def __init__(
         self,
         branch: Branch,
+        origin_branch: Branch,
         branch_only: bool = False,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
-        session: Optional[AsyncSession] = None,
     ):
         self.branch = branch
-        self.origin_branch = self.branch.get_origin_branch()
-
         self.branch_only = branch_only
-
-        self.session = session
+        self.origin_branch = origin_branch
 
         if diff_from:
             self.diff_from = Timestamp(diff_from)
@@ -561,31 +562,46 @@ class Diff:
         self._calculated_diff_rels_at = None
         self._calculated_diff_files_at = None
 
-    @property
-    def has_conflict(self) -> bool:
+    @classmethod
+    async def init(
+        cls,
+        branch: Branch,
+        branch_only: bool = False,
+        diff_from: Union[str, Timestamp] = None,
+        diff_to: Union[str, Timestamp] = None,
+        session: Optional[AsyncSession] = None,
+    ):
+
+        origin_branch = await branch.get_origin_branch(session=session)
+
+        return cls(
+            branch=branch, origin_branch=origin_branch, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
+        )
+
+    async def has_conflict(self, session: AsyncSession) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        if self.get_conflicts():
+        if await self.get_conflicts(session=session):
             return True
 
         return False
 
-    @property
-    def has_changes(self) -> bool:
+    async def has_changes(self, session: AsyncSession) -> bool:
         """Return True if the diff has identified some changes, False otherwise."""
 
-        for _, paths in self.get_modified_paths().items():
+        mpaths = await self.get_modified_paths(session=session)
+        for _, paths in mpaths.items():
             if paths:
                 return True
 
         return False
 
-    def get_conflicts(self):
+    async def get_conflicts(self, session: AsyncSession):
 
         if self.branch_only:
             return []
 
-        paths = self.get_modified_paths()
+        paths = await self.get_modified_paths(session=session)
 
         # For now we assume that we can only have 2 branches but in the future we might need to support more
         branches = list(paths.keys())
@@ -597,12 +613,13 @@ class Diff:
         # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
         return paths[branches[0]] & paths[branches[1]]
 
-    def get_modified_paths(self) -> Dict[str, set]:
+    async def get_modified_paths(self, session: AsyncSession) -> Dict[str, set]:
         """Return a list of all the modified paths per branch."""
 
         paths = defaultdict(set)
 
-        for branch_name, data in self.get_nodes().items():
+        nodes = await self.get_nodes(session=session)
+        for branch_name, data in nodes.items():
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
@@ -611,7 +628,8 @@ class Diff:
                     for prop_type, prop in attr.properties.items():
                         paths[branch_name].add(("node", node_id, attr_name, prop_type))
 
-        for branch_name, data in self.get_relationships().items():
+        rels = await self.get_relationships(session=session)
+        for branch_name, data in rels.items():
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
@@ -624,26 +642,28 @@ class Diff:
 
         return paths
 
-    def get_nodes(self) -> Dict[str, Dict[str, NodeDiffElement]]:
+    async def get_nodes(self, session: AsyncSession) -> Dict[str, Dict[str, NodeDiffElement]]:
 
         if not self._calculated_diff_nodes_at:
-            self._calculate_diff_nodes()
+            await self._calculate_diff_nodes(session=session)
 
         return {branch_name: data["nodes"] for branch_name, data in self._results.items()}
 
-    def _calculate_diff_nodes(self):
+    async def _calculate_diff_nodes(self, session: AsyncSession):
         """Calculate the diff for all the nodes and attributes.
 
         The results will be stored in self._results organized by branch.
         """
 
         # Query all the nodes and the attributes that have been modified in the branch between the two timestamps.
-        query_nodes = DiffNodeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute(
-            session=self.session
+        query_nodes = await DiffNodeQuery.init(
+            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
-        query_attrs = DiffAttributeQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute(
-            session=self.session
+        await query_nodes.execute(session=session)
+        query_attrs = await DiffAttributeQuery.init(
+            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
+        await query_attrs.execute(session=session)
 
         attrs_to_query = {"nodes": set(), "fields": set()}
 
@@ -763,9 +783,14 @@ class Diff:
         # Query the current value for all attributes that have been updated
         #  Currently we are only using the result of this query to understand if a
         # ------------------------------------------------------------
-        origin_attr_query = NodeListGetAttributeQuery(
-            ids=list(attrs_to_query["nodes"]), branch=self.origin_branch, at=self.diff_to, include_source=True
-        ).execute(session=self.session)
+        origin_attr_query = await NodeListGetAttributeQuery.init(
+            session=session,
+            ids=list(attrs_to_query["nodes"]),
+            branch=self.origin_branch,
+            at=self.diff_to,
+            include_source=True,
+        )
+        await origin_attr_query.execute(session=session)
 
         for result in query_attrs.get_results():
 
@@ -820,27 +845,29 @@ class Diff:
 
         self._calculated_diff_nodes_at = Timestamp()
 
-    def get_relationships(self) -> Dict[str, Dict[str, RelationshipDiffElement]]:
+    async def get_relationships(self, session: AsyncSession) -> Dict[str, Dict[str, RelationshipDiffElement]]:
 
         if not self._calculated_diff_rels_at:
-            self._calculated_diff_rels()
+            await self._calculated_diff_rels(session=session)
 
         return {branch_name: data["rels"] for branch_name, data in self._results.items()}
 
-    def _calculated_diff_rels(self):
+    async def _calculated_diff_rels(self, session: AsyncSession):
         """Calculate the diff for all the relationships between Nodes.
 
         The results will be stored in self._results organized by branch.
         """
         # Query the diff on the main path
-        query_rels = DiffRelationshipQuery(branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to).execute(
-            session=self.session
+        query_rels = await DiffRelationshipQuery.init(
+            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
+        await query_rels.execute(session=session)
 
         # Query the diff on the properties
-        query_props = DiffRelationshipPropertyQuery(
-            branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
-        ).execute(session=self.session)
+        query_props = await DiffRelationshipPropertyQuery.init(
+            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+        )
+        await query_props.execute(session=session)
 
         rel_ids_to_query = []
 
@@ -944,9 +971,10 @@ class Diff:
         # ------------------------------------------------------------
         # Query the current value of the relationships that have been updated
         # ------------------------------------------------------------
-        origin_rel_properties_query = RelationshipListGetPropertiesQuery(
-            ids=rel_ids_to_query, branch=self.origin_branch, at=self.diff_to
-        ).execute(session=self.session)
+        origin_rel_properties_query = await RelationshipListGetPropertiesQuery.init(
+            session=session, ids=rel_ids_to_query, branch=self.origin_branch, at=self.diff_to
+        )
+        await origin_rel_properties_query.execute(session=session)
 
         for result in query_props.get_results():
 
@@ -984,15 +1012,15 @@ class Diff:
 
         self._calculated_diff_rels_at = Timestamp()
 
-    def get_files(self):
+    async def get_files(self, session: AsyncSession):
 
         results = []
         from infrahub.core.manager import NodeManager
 
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main = {repo.id: repo for repo in NodeManager.query("Repository")}
+        repos_in_main = {repo.id: repo for repo in await NodeManager.query(schema="Repository", session=session)}
 
-        for repo in NodeManager.query("Repository", branch=self.branch):
+        for repo in await NodeManager.query(schema="Repository", branch=self.branch, session=session):
 
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:

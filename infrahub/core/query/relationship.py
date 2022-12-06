@@ -12,6 +12,8 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
+
     from infrahub.core.relationship import Relationship
     from infrahub.core.node import Node
     from infrahub.core.schema import RelationshipSchema
@@ -157,7 +159,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         super().__init__(destination=destination, destination_id=destination_id, *args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
@@ -239,7 +241,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
@@ -294,7 +296,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.data = data
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
@@ -345,7 +347,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     type: QueryType = QueryType.WRITE
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         # FIXME DO we need to check if both nodes are part of the same Branch right now ?
 
@@ -387,7 +389,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
 
@@ -401,8 +403,8 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         }
 
         if clean_filters:
-            peer_filters, peer_params, nbr_rels = self.schema.get_query_filter(
-                filters=clean_filters, branch=self.branch, rels_offset=0
+            peer_filters, peer_params, nbr_rels = await self.schema.get_query_filter(
+                session=session, filters=clean_filters, branch=self.branch, rels_offset=0
             )
             self.params.update(peer_params)
 
@@ -528,7 +530,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
@@ -575,7 +577,7 @@ class RelationshipListGetPropertiesQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["branch"] = self.branch.name
         self.params["ids"] = self.ids

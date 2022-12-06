@@ -144,10 +144,25 @@ class Query(ABC):
         self.has_been_executed: bool = False
         self.has_errors: bool = False
 
-        self.query_init(*args, **kwargs)
+    @classmethod
+    async def init(
+        cls,
+        session: AsyncSession,
+        branch: Branch = None,
+        at: Union[Timestamp, str] = None,
+        limit: int = None,
+        *args,
+        **kwargs,
+    ):
+
+        query = cls(branch=branch, at=at, limit=limit, *args, **kwargs)
+
+        await query.query_init(session=session, *args, **kwargs)
+
+        return query
 
     @abstractmethod
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
         raise NotImplementedError
 
     def add_to_query(self, query: str):

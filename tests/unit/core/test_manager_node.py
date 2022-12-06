@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -5,12 +7,17 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 
 
-def test_get_one_attribute(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_get_one_attribute(session, default_branch, criticality_schema):
 
-    obj1 = Node(criticality_schema).new(name="low", level=4).save()
-    obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
 
-    obj = NodeManager.get_one(obj2.id)
+    obj = await NodeManager.get_one(session=session, id=obj2.id)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -23,7 +30,7 @@ def test_get_one_attribute(default_branch, criticality_schema):
     assert obj.color.value == "#333333"
     assert obj.color.id
 
-    obj = NodeManager.get_one(obj1.id)
+    obj = await NodeManager.get_one(session=session, id=obj1.id)
 
     assert obj.id == obj1.id
     assert obj.db_id == obj1.db_id
@@ -37,22 +44,26 @@ def test_get_one_attribute(default_branch, criticality_schema):
     assert obj.color.id
 
 
-def test_get_one_attribute_with_node_property(default_branch, criticality_schema, first_account, second_account):
+@pytest.mark.asyncio
+async def test_get_one_attribute_with_node_property(
+    session, default_branch, criticality_schema, first_account, second_account
+):
 
-    obj1 = Node(criticality_schema).new(name="low", level=4, _source=first_account).save()
-    obj2 = (
-        Node(criticality_schema)
-        .new(
-            name="medium",
-            level={"value": 3, "source": second_account.id},
-            description="My desc",
-            color="#333333",
-            _source=first_account,
-        )
-        .save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4, _source=first_account)
+    await obj1.save(session=session)
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(
+        session=session,
+        name="medium",
+        level={"value": 3, "source": second_account.id},
+        description="My desc",
+        color="#333333",
+        _source=first_account,
     )
+    await obj2.save(session=session)
 
-    obj = NodeManager.get_one(obj2.id, include_source=True)
+    obj = await NodeManager.get_one(session=session, id=obj2.id, include_source=True)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -70,15 +81,18 @@ def test_get_one_attribute_with_node_property(default_branch, criticality_schema
     assert obj.color.source_id == first_account.id
 
 
-def test_get_one_attribute_with_flag_property(default_branch, criticality_schema, first_account, second_account):
+@pytest.mark.asyncio
+async def test_get_one_attribute_with_flag_property(
+    session, default_branch, criticality_schema, first_account, second_account
+):
 
-    obj1 = (
-        Node(criticality_schema)
-        .new(name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False})
-        .save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(
+        session=session, name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False}
     )
+    await obj1.save(session=session)
 
-    obj = NodeManager.get_one(obj1.id, fields={"name": True, "level": True, "color": True})
+    obj = await NodeManager.get_one(session=session, id=obj1.id, fields={"name": True, "level": True, "color": True})
 
     assert obj.id == obj1.id
     assert obj.db_id == obj1.db_id
@@ -98,61 +112,76 @@ def test_get_one_attribute_with_flag_property(default_branch, criticality_schema
     assert obj.color.is_protected == False
 
 
-def test_get_one_relationship(default_branch, car_person_schema):
+@pytest.mark.asyncio
+async def test_get_one_relationship(session, default_branch, car_person_schema):
 
-    car = registry.get_schema("Car")
-    person = registry.get_schema("Person")
+    car = await registry.get_schema(session=session, name="Car")
+    person = await registry.get_schema(session=session, name="Person")
 
-    p1 = Node(person).new(name="John", height=180).save()
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
 
-    c1 = Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
-    Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=car)
+    await c2.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
+    await c2.save(session=session)
 
-    c11 = NodeManager.get_one(c1.id)
+    c11 = await NodeManager.get_one(session=session, id=c1.id)
 
     assert c11.name.value == "volt"
     assert c11.nbr_seats.value == 4
     assert c11.is_electric.value is True
-    assert c11.owner.peer.id == p1.id
+    c11_peer = await c11.owner.get_peer(session=session)
+    assert c11_peer.id == p1.id
 
-    p11 = NodeManager.get_one(p1.id)
+    p11 = await NodeManager.get_one(session=session, id=p1.id)
     assert p11.name.value == "John"
     assert p11.height.value == 180
     assert len(list(p11.cars)) == 2
 
 
-def test_get_one_relationship_with_flag_property(default_branch, car_person_schema):
+@pytest.mark.asyncio
+async def test_get_one_relationship_with_flag_property(session, default_branch, car_person_schema):
 
-    p1 = Node("Person").new(name="John", height=180).save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
 
-    c1 = (
-        Node("Car")
-        .new(
-            name="volt",
-            nbr_seats=4,
-            is_electric=True,
-            owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
-        )
-        .save()
+    c1 = await Node.init(session=session, schema="Car")
+    await c1.new(
+        session=session,
+        name="volt",
+        nbr_seats=4,
+        is_electric=True,
+        owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
     )
-    Node("Car").new(
+    await c1.save(session=session)
+
+    c2 = await Node.init(session=session, schema="Car")
+    await c2.new(
+        session=session,
         name="accord",
         nbr_seats=5,
         is_electric=False,
         owner={"id": p1.id, "_relation__is_visible": False},
-    ).save()
+    )
+    await c2.save(session=session)
 
-    c11 = NodeManager.get_one(c1.id)
+    c11 = await NodeManager.get_one(session=session, id=c1.id)
 
     assert c11.name.value == "volt"
     assert c11.nbr_seats.value == 4
     assert c11.is_electric.value is True
-    assert c11.owner.peer.id == p1.id
+    c11_peer = await c11.owner.get_peer(session=session)
+    assert c11_peer.id == p1.id
     rel = c11.owner.get()
     assert rel.is_visible is False
     assert rel.is_protected is True
 
-    p11 = NodeManager.get_one(p1.id)
+    p11 = await NodeManager.get_one(session=session, id=p1.id)
     assert p11.name.value == "John"
     assert p11.height.value == 180
 
@@ -162,103 +191,159 @@ def test_get_one_relationship_with_flag_property(default_branch, car_person_sche
     assert rels[1].is_visible is False
 
 
-def test_get_many(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_get_many(session, default_branch, criticality_schema):
 
-    obj1 = Node(criticality_schema).new(name="low", level=4).save()
-    obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
 
-    nodes = NodeManager.get_many(ids=[obj1.id, obj2.id])
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+
+    nodes = await NodeManager.get_many(session=session, ids=[obj1.id, obj2.id])
     assert len(nodes) == 2
 
 
-def test_query_no_filter(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_query_no_filter(session, default_branch, criticality_schema):
 
-    Node(criticality_schema).new(name="low", level=4).save()
-    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
-    Node(criticality_schema).new(name="high", level=3, description="My desc", color="#333333").save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
 
-    nodes = NodeManager.query(criticality_schema)
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+
+    obj3 = await Node.init(session=session, schema=criticality_schema)
+    await obj3.new(session=session, name="high", level=3, description="My desc", color="#333333")
+    await obj3.save(session=session)
+
+    nodes = await NodeManager.query(session=session, schema=criticality_schema)
     assert len(nodes) == 3
 
 
-def test_query_with_filter_string_int(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_query_with_filter_string_int(session, default_branch, criticality_schema):
 
-    Node(criticality_schema).new(name="low", level=3).save()
-    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
-    Node(criticality_schema).new(name="high", level=4, description="My other desc", color="#333333").save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=3)
+    await obj1.save(session=session)
 
-    nodes = NodeManager.query(criticality_schema, filters={"color__value": "#333333"})
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+
+    obj3 = await Node.init(session=session, schema=criticality_schema)
+    await obj3.new(session=session, name="high", level=4, description="My other desc", color="#333333")
+    await obj3.save(session=session)
+
+    nodes = await NodeManager.query(session=session, schema=criticality_schema, filters={"color__value": "#333333"})
     assert len(nodes) == 2
 
-    nodes = NodeManager.query(criticality_schema, filters={"description__value": "My other desc"})
+    nodes = await NodeManager.query(
+        session=session, schema=criticality_schema, filters={"description__value": "My other desc"}
+    )
     assert len(nodes) == 1
 
-    nodes = NodeManager.query(criticality_schema, filters={"level__value": 3, "color__value": "#333333"})
+    nodes = await NodeManager.query(
+        session=session, schema=criticality_schema, filters={"level__value": 3, "color__value": "#333333"}
+    )
     assert len(nodes) == 1
 
 
-def test_query_with_filter_bool_rel(default_branch, car_person_schema):
+@pytest.mark.asyncio
+async def test_query_with_filter_bool_rel(session, default_branch, car_person_schema):
 
-    car = registry.get_schema("Car")
-    person = registry.get_schema("Person")
+    car = await registry.get_schema(session=session, name="Car")
+    person = await registry.get_schema(session=session, name="Person")
 
-    p1 = Node(person).new(name="John", height=180).save()
-    p2 = Node(person).new(name="Jane", height=160).save()
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
 
-    Node(car).new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
-    Node(car).new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
-    Node(car).new(name="camry", nbr_seats=5, is_electric=False, owner=p2).save()
-    Node(car).new(name="yaris", nbr_seats=4, is_electric=False, owner=p2).save()
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=160)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=car)
+    await c2.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=car)
+    await c3.new(session=session, name="camry", nbr_seats=5, is_electric=False, owner=p2)
+    await c3.save(session=session)
+    c4 = await Node.init(session=session, schema=car)
+    await c4.new(session=session, name="yaris", nbr_seats=4, is_electric=False, owner=p2)
+    await c4.save(session=session)
 
     # Check filter with a boolean
-    nodes = NodeManager.query(car, filters={"is_electric__value": False})
+    nodes = await NodeManager.query(session=session, schema=car, filters={"is_electric__value": False})
     assert len(nodes) == 3
 
     # Check filter with a relationship
-    nodes = NodeManager.query(car, filters={"owner__name__value": "John"})
+    nodes = await NodeManager.query(session=session, schema=car, filters={"owner__name__value": "John"})
     assert len(nodes) == 2
 
 
-def test_query_non_default_class(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_query_non_default_class(session, default_branch, criticality_schema):
     class Criticality(Node):
         def always_true(self):
             return True
 
     registry.node["Criticality"] = Criticality
 
-    Node(criticality_schema).new(name="low", level=4).save()
-    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
 
-    nodes = NodeManager.query(criticality_schema)
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+
+    nodes = await NodeManager.query(session=session, schema=criticality_schema)
     assert len(nodes) == 2
     assert isinstance(nodes[0], Criticality)
     assert nodes[0].always_true()
 
 
-def test_query_class_name(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_query_class_name(session, default_branch, criticality_schema):
 
-    Node(criticality_schema).new(name="low", level=4).save()
-    Node(criticality_schema).new(name="medium", level=3, description="My desc", color="#333333").save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=3)
+    await obj1.save(session=session)
 
-    nodes = NodeManager.query("Criticality")
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+
+    nodes = await NodeManager.query(session=session, schema="Criticality")
     assert len(nodes) == 2
 
 
 # ------------------------------------------------------------------------
 # WITH BRANCH
 # ------------------------------------------------------------------------
-def test_get_one_local_attribute_with_branch(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_get_one_local_attribute_with_branch(session, default_branch, criticality_schema):
 
-    obj1 = Node(criticality_schema).new(name="low", level=4).save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
 
-    second_branch = create_branch("branch2")
-    obj2 = (
-        Node(criticality_schema, branch=second_branch)
-        .new(name="medium", level=3, description="My desc", color="#333333")
-        .save()
-    )
+    second_branch = await create_branch(branch_name="branch2", session=session)
 
-    obj = NodeManager.get_one(obj2.id, branch=second_branch)
+    obj2 = await Node.init(session=session, schema=criticality_schema, branch=second_branch)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+
+    obj = await NodeManager.get_one(session=session, id=obj2.id, branch=second_branch)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -271,7 +356,7 @@ def test_get_one_local_attribute_with_branch(default_branch, criticality_schema)
     assert obj.color.value == "#333333"
     assert obj.color.id
 
-    obj = NodeManager.get_one(obj1.id, branch=second_branch)
+    obj = await NodeManager.get_one(session=session, id=obj1.id, branch=second_branch)
 
     assert obj.id == obj1.id
     assert obj.db_id == obj1.db_id

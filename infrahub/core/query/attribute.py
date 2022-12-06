@@ -46,7 +46,7 @@ class AttributeCreateQuery(AttributeQuery):
     name = "attribute_create"
     type: QueryType = QueryType.WRITE
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.query_add_match()
 
@@ -148,7 +148,7 @@ class AttributeGetValueQuery(AttributeQuery):
     name = "attribute_get_value"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["attr_uuid"] = self.attr.id
         at = self.at or self.attr.at
@@ -193,7 +193,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         at = self.at or self.attr.at
 
@@ -238,7 +238,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         at = self.at or self.attr.at
 
@@ -281,7 +281,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         at = self.at or self.attr.at
 
@@ -313,7 +313,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
 #     raise_error_if_empty: bool = True
 
-#     def query_init(self):
+#     async def query_init(self, session: AsyncSession, *args, **kwargs):
 
 #         self.params["attr_id"] = self.attr_id
 #         self.params["node_id"] = self.attr.node.db_id
@@ -340,7 +340,7 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id

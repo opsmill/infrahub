@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from infrahub.core import get_branch
 from infrahub.core.query import Query
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 
 class AccountTokenValidateQuery(Query):
@@ -10,7 +15,7 @@ class AccountTokenValidateQuery(Query):
         self.token = token
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         token_filter_perms, token_params = self.branch.get_query_filter_relationships(
             rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
