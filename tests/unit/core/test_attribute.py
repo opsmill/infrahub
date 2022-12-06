@@ -1,9 +1,12 @@
+import pytest
+
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.attribute import String
 from infrahub.core.node import Node
 
 
-def test_init(default_branch, criticality_schema, first_account, second_account):
+@pytest.mark.asyncio
+async def test_init(session, default_branch, criticality_schema, first_account, second_account):
 
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
@@ -27,12 +30,15 @@ def test_init(default_branch, criticality_schema, first_account, second_account)
     assert attr.source_id == second_account.id
 
 
-def test_node_property_getter(default_branch, criticality_schema):
+@pytest.mark.asyncio
+async def test_node_property_getter(session, default_branch, criticality_schema):
 
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
-    obj1 = Node(criticality_schema).new(name="low", level=4).save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
 
     attr.source = "myuuid"
     assert attr._source == None
@@ -51,7 +57,8 @@ def test_node_property_getter(default_branch, criticality_schema):
     assert attr.owner_id == "yetotheruuid"
 
 
-def test_string_attr_query_filter(default_branch):
+@pytest.mark.asyncio
+async def test_string_attr_query_filter(session, default_branch):
 
     filters, params, nbr_rels = String.get_query_filter(name="description")
     assert filters == []

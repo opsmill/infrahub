@@ -97,9 +97,9 @@ class Repository(Node):
 
         return True
 
-    def new(self, **kwargs):
+    async def new(self, **kwargs):
 
-        super().new(**kwargs)
+        await super().new(**kwargs)
         self.ensure_exists_locally()
         self.update_commit_value()
 

@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import os
 
+from typing import TYPE_CHECKING
+
 import jinja2
 
 from infrahub.core.node import Node
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 
 class RFile(Node):
@@ -24,9 +29,9 @@ class RFile(Node):
 
         return output_filelocation
 
-    def get_query(self, at=None):
+    async def get_query(self, session: AsyncSession, at=None):
 
-        gql_query = self.query.peer
+        gql_query = await self.query.get_peer(session=session)
         query = gql_query.query.value
 
         return query

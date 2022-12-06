@@ -27,12 +27,13 @@ def edge_repo_main_only(tmp_path):
     return repositories_dir / "infrahub-demo-edge"
 
 
-def test_initialize_class(register_core_models_schema, edge_repo_main_only):
+@pytest.mark.asyncio
+async def test_initialize_class(session, register_core_models_schema, edge_repo_main_only):
 
-    rfile_schema = registry.get_schema("RFile")
-    repo_schema = registry.get_schema("Repository")
-    query_schema = registry.get_schema("GraphQLQuery")
-    criticality_schema = registry.get_schema("Criticality")
+    rfile_schema = await registry.get_schema(session=session, name="RFile")
+    repo_schema = await registry.get_schema(session=session, name="Repository")
+    query_schema = await registry.get_schema(session=session, name="GraphQLQuery")
+    criticality_schema = await registry.get_schema(session=session, name="Criticality")
 
     registry.node["RFile"] = RFile
 
@@ -46,20 +47,27 @@ def test_initialize_class(register_core_models_schema, edge_repo_main_only):
     }
     """
 
-    obj1 = Node(criticality_schema).new(name="low", level=4)
-    obj1.save()
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
 
-    obj2 = Node(criticality_schema).new(name="medium", level=3, description="My desc")
-    obj2.save()
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc")
+    await obj2.save(session=session)
 
-    repo1 = Repository(repo_schema).new(name="infrahub-demo-edge", location="notvalid").save()
-    gql1 = Node(query_schema).new(name="query1", query=query).save()
+    repo1 = await Repository.init(session=session, schema=repo_schema)
+    await repo1.new(session=session, name="infrahub-demo-edge", location="notvalid")
+    await repo1.save(session=session)
 
-    rfile1 = (
-        RFile(rfile_schema)
-        .new(name="rfile1", template_path="mytemplate.j2", template_repository=repo1, query=gql1)
-        .save()
+    gql1 = await Node.init(session=session, schema=query_schema)
+    await gql1.new(session=session, name="query1", query=query)
+    await gql1.save(session=session)
+
+    rfile1 = await RFile.init(session=session, schema=rfile_schema)
+    await rfile1.new(
+        session=session, name="rfile1", template_path="mytemplate.j2", template_repository=repo1, query=gql1
     )
+    await rfile1.save(session=session)
 
     assert rfile1.id
-    assert rfile1.get_query() == query
+    assert await rfile1.get_query(session=session) == query

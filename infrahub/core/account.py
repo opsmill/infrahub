@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Union, TYPE_CHECKING
 
 from infrahub.core import get_branch
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from infrahub.core.branch import Branch
 
 
 class AccountTokenValidateQuery(Query):
@@ -52,10 +53,11 @@ class AccountTokenValidateQuery(Query):
         return None
 
 
-def validate_token(token, branch=None, at=None):
+async def validate_token(token, session: AsyncSession, branch: Union[Branch, str] = None, at=None):
 
-    branch = get_branch(branch)
-    query = AccountTokenValidateQuery(branch=branch, token=token, at=at).execute()
+    branch = await get_branch(session=session, branch=branch)
+    query = await AccountTokenValidateQuery.init(session=session, branch=branch, token=token, at=at)
+    await query.execute(session=session)
     account_name = query.get_account_name()
 
     return account_name or False
