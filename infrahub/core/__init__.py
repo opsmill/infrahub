@@ -36,7 +36,12 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
     return obj
 
 
-async def get_account(account, branch=None, at=None, session: Optional[AsyncSession] = None):
+async def get_account(
+    account,
+    session: AsyncSession,
+    branch=None,
+    at=None,
+):
 
     # No default value supported for now
     if not account:

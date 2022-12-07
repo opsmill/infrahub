@@ -13,13 +13,24 @@ def client():
 headers = {"Authorization": "Token XXXX"}
 
 
-def test_query_endpoint(default_branch, car_person_schema, client):
+@pytest.mark.asyncio
+async def test_query_endpoint(session, default_branch, car_person_schema):
 
-    p1 = Node("Person").new(name="John", height=180).save()
-    p2 = Node("Person").new(name="Jane", height=170).save()
-    Node("Car").new(name="volt", nbr_seats=4, is_electric=True, owner=p1).save()
-    Node("Car").new(name="bolt", nbr_seats=4, is_electric=True, owner=p1).save()
-    Node("Car").new(name="nolt", nbr_seats=4, is_electric=True, owner=p2).save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema="Person")
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+    c1 = await Node.init(session=session, schema="Car")
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema="Car")
+    await c2.new(session=session, name="bolt", nbr_seats=4, is_electric=True, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema="Car")
+    await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
+    await c3.save(session=session)
 
     query = """
     query {
@@ -36,11 +47,14 @@ def test_query_endpoint(default_branch, car_person_schema, client):
     }
     """
 
-    response = client.post(
-        "/graphql",
-        json={"query": query},
-        headers=headers,
-    )
+    # Must execute in a with block to execute the startup/shutdown events
+    with TestClient(app) as client:
+        response = client.post(
+            "/graphql",
+            json={"query": query},
+            headers=headers,
+        )
+
     assert response.status_code == 200
     assert "errors" not in response.json()
     assert response.json()["data"] is not None

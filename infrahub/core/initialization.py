@@ -28,10 +28,10 @@ async def initialization(session: AsyncSession):
     # Load all schema in the database into the registry
     # ---------------------------------------------------
     schema = SchemaRoot(**internal_schema)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema)
 
     schema = await SchemaManager.load_schema_from_db(session=session)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
     # ---------------------------------------------------
     # Load internal models into the registry
@@ -47,10 +47,10 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     # Load all existing Groups into the registry
     # ---------------------------------------------------
-    group_schema = await registry.get_schema(session=session, name="Group")
-    groups = await NodeManager.query(group_schema, session=session)
-    for group in groups:
-        registry.node_group[group.name.value] = group
+    # group_schema = await registry.get_schema(session=session, name="Group")
+    # groups = await NodeManager.query(group_schema, session=session)
+    # for group in groups:
+    #     registry.node_group[group.name.value] = group
 
     # groups = AttrGroup.get_list()
     # for group in groups:

@@ -22,6 +22,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import get_gql_mutation, get_gql_query  # Query, Mutation
 from infrahub.graphql.app import InfrahubGraphQLApp
 
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
@@ -37,17 +38,23 @@ async def get_session(request: Request):
 
 @app.on_event("startup")
 async def app_initialization():
-    config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-    config_file_path = os.path.abspath(config_file_name)
-    logger.info(f"Loading the configuration from {config_file_path}")
-    config.load_and_exit(config_file_path)
+
+    if not config.SETTINGS:
+        config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+        config_file_path = os.path.abspath(config_file_name)
+        logger.info(f"Loading the configuration from {config_file_path}")
+        config.load_and_exit(config_file_path)
+
+    # TODO check the DB information properly and exist if it can't reach the database
 
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
     app.state.db = AsyncGraphDatabase.driver(
         URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password)
     )
 
-    initialization()
+    async with app.state.db.session(database=config.SETTINGS.database.database) as session:
+        await initialization(session=session)
+
     await connect_to_broker()
 
 
