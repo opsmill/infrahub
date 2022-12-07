@@ -163,19 +163,21 @@ class BranchCreate(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
+        session = info.context.get("infrahub_session")
+
         # Check if the branch already exist
         try:
-            Branch.get_by_name(data["name"])
+            await Branch.get_by_name(session=session, name=data["name"])
             raise ValueError(f"The branch {data['name']}, already exist")
         except BranchNotFound:
             pass
 
         obj = Branch(**data)
-        obj.save()
+        await obj.save(session=session)
 
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
-            repositories = NodeManager.query("Repository")
+            repositories = await NodeManager.query(session=session, schema="Repository")
             for repo in repositories:
                 repo.add_branch(obj.name)
 
@@ -188,7 +190,7 @@ class BranchCreate(Mutation):
                 send_event, BranchEvent(action=BranchEventAction.CREATE, branch=obj.name)
             )
 
-        return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
 
 class BranchNameInput(InputObjectType):
@@ -204,8 +206,11 @@ class BranchRebase(Mutation):
 
     @classmethod
     async def mutate(cls, root, info, data):
-        obj = Branch.get_by_name(data["name"])
-        obj.rebase()
+
+        session = info.context.get("infrahub_session")
+
+        obj = await Branch.get_by_name(session=session, name=data["name"])
+        await obj.rebase(session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
@@ -216,7 +221,7 @@ class BranchRebase(Mutation):
                 send_event, BranchEvent(action=BranchEventAction.REBASE, branch=obj.name)
             )
 
-        return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
 
 class BranchValidate(Mutation):
@@ -229,12 +234,15 @@ class BranchValidate(Mutation):
 
     @classmethod
     async def mutate(cls, root, info, data):
-        obj = Branch.get_by_name(data["name"])
-        ok, messages = obj.validate()
+
+        session = info.context.get("infrahub_session")
+
+        obj = await Branch.get_by_name(session=session, name=data["name"])
+        ok, messages = await obj.validate(session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        return cls(object=obj.to_graphql(fields=fields.get("object", {})), messages=messages, ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), messages=messages, ok=ok)
 
 
 class BranchMerge(Mutation):
@@ -246,8 +254,11 @@ class BranchMerge(Mutation):
 
     @classmethod
     async def mutate(cls, root, info, data):
-        obj = Branch.get_by_name(data["name"])
-        obj.merge()
+
+        session = info.context.get("infrahub_session")
+
+        obj = await Branch.get_by_name(session=session, name=data["name"])
+        await obj.merge(session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
@@ -258,4 +269,4 @@ class BranchMerge(Mutation):
                 send_event, BranchEvent(action=BranchEventAction.MERGE, branch=obj.name)
             )
 
-        return cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
