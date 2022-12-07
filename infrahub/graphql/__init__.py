@@ -14,12 +14,13 @@ from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.branch import Branch
 
 
-def get_gql_query(branch: Union[Branch, str] = None):
+async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None):
 
-    QueryMixin = generate_query_mixin(branch=branch)
+    QueryMixin = await generate_query_mixin(session=session, branch=branch)
 
     class Query(InfrahubBaseQuery, QueryMixin):
         pass
@@ -27,9 +28,9 @@ def get_gql_query(branch: Union[Branch, str] = None):
     return Query
 
 
-def get_gql_mutation(branch: Union[Branch, str] = None):
+async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = None):
 
-    MutationMixin = generate_mutation_mixin(branch=branch)
+    MutationMixin = await generate_mutation_mixin(session=session, branch=branch)
 
     class Mutation(InfrahubBaseMutation, MutationMixin):
         pass
@@ -37,7 +38,7 @@ def get_gql_mutation(branch: Union[Branch, str] = None):
     return Mutation
 
 
-def get_gql_subscription(branch: Union[Branch, str] = None):
+async def get_gql_subscription(session: AsyncSession, branch: Union[Branch, str] = None):
     class Subscription(InfrahubBaseSubscription):
         pass
 
@@ -45,14 +46,18 @@ def get_gql_subscription(branch: Union[Branch, str] = None):
 
 
 async def execute_query(
-    name, params: dict = None, branch: Union[Branch, str] = None, at: Union[Timestamp, str] = None
+    name: str,
+    session: AsyncSession,
+    params: dict = None,
+    branch: Union[Branch, str] = None,
+    at: Union[Timestamp, str] = None,
 ) -> ExecutionResult:
     """Helper function to Execute a GraphQL Query."""
 
-    branch = branch or await get_branch(branch)
+    branch = branch or await get_branch(session=session, branch=branch)
     at = Timestamp(at)
 
-    items = await NodeManager.query("GraphQLQuery", filters={name: name}, branch=branch, at=at)
+    items = await NodeManager.query(session=session, schema="GraphQLQuery", filters={name: name}, branch=branch, at=at)
     if not items:
         raise ValueError(f"Unable to find the GraphQLQuery {name}")
 

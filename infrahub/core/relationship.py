@@ -321,7 +321,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return self
 
-    async def to_graphql(self, fields, session: AsyncSession) -> dict:
+    async def to_graphql(self, fields: dict, session: AsyncSession) -> dict:
         """Generate GraphQL Payload for the associated Peer."""
 
         peer_fields = {key: value for key, value in fields.items() if not key.startswith("_relation")}
@@ -474,9 +474,7 @@ class RelationshipManager:
 
         return self.relationships
 
-    async def update(
-        self, data: Union[List[str], List[Node], str, Node], session: Optional[AsyncSession] = None
-    ) -> bool:
+    async def update(self, data: Union[List[str], List[Node], str, Node], session: AsyncSession) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
             data = [data]
@@ -500,7 +498,7 @@ class RelationshipManager:
 
             if isinstance(item, dict) and item.get("id", None) in previous_relationships:
                 rel = previous_relationships[item["id"]]
-                await rel.load(data=item)
+                await rel.load(data=item, session=session)
                 # TODO Add a check to identify if the relationship was changed or not
                 # changed = True
                 self.relationships.append(rel)
@@ -609,7 +607,9 @@ class RelationshipManager:
             await rel.delete(at=delete_at, session=session)
 
     async def to_graphql(
-        self, fields: Optional[dict] = None, session: Optional[AsyncSession] = None
+        self,
+        session: AsyncSession,
+        fields: Optional[dict] = None,
     ) -> Union[dict, None]:
         # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
         if self.schema.cardinality == "many":

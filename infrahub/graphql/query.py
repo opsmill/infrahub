@@ -88,6 +88,7 @@ class InfrahubObject(ObjectType):
     @classmethod
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
 
+        session = context.get("infrahub_session")
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
@@ -95,8 +96,9 @@ class InfrahubObject(ObjectType):
         filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
         if filters:
-            objs = NodeManager.query(
-                cls._meta.schema,
+            objs = await NodeManager.query(
+                session=session,
+                schema=cls._meta.schema,
                 filters=filters,
                 fields=fields,
                 at=at,
@@ -105,14 +107,20 @@ class InfrahubObject(ObjectType):
                 include_source=True,
             )
         else:
-            objs = NodeManager.query(
-                cls._meta.schema, fields=fields, at=at, branch=branch, account=account, include_source=True
+            objs = await NodeManager.query(
+                session=session,
+                schema=cls._meta.schema,
+                fields=fields,
+                at=at,
+                branch=branch,
+                account=account,
+                include_source=True,
             )
 
         if not objs:
             return []
 
-        return [obj.to_graphql(fields=fields) for obj in objs]
+        return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
 
 
 # ------------------------------------------
@@ -247,7 +255,7 @@ class BranchDiffType(ObjectType):
     @classmethod
     async def get_diff(cls, branch, fields, *args, **kwargs):
 
-        branch = get_branch(branch)
+        branch = await get_branch(branch=branch)
         diff = branch.diff()
 
         return {

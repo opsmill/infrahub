@@ -305,7 +305,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return query_filters, query_params, nbr_rels
 
-    async def to_graphql(self, fields: dict = None) -> dict:
+    async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
         """Generate GraphQL Payload for this attribute."""
 
         response = {"id": self.id}
@@ -314,13 +314,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if field_name == "updated_at":
                 if self.updated_at:
-                    response[field_name] = self.updated_at.to_graphql()
+                    response[field_name] = await self.updated_at.to_graphql()
                 else:
                     response[field_name] = None
                 continue
 
             if field_name in ["source", "owner"]:
-                response[field_name] = getattr(self, field_name).to_graphql(fields=fields[field_name])
+                response[field_name] = getattr(self, field_name).to_graphql(session=session, fields=fields[field_name])
                 continue
 
             if field_name.startswith("_"):

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING, Union, Optional, Dict
 
 import infrahub.config as config
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from infrahub.graphql.query import InfrahubObject
     from infrahub.core.branch import Branch
     from infrahub.core.schema import NodeSchema
 
@@ -98,7 +99,7 @@ class Registry:
         getattr(self, kind)[branch][name] = item
         return True
 
-    async def has_item(self, session: AsyncSession, kind: str, name: str, branch=None):
+    async def has_item(self, session: AsyncSession, kind: str, name: str, branch=None) -> bool:
         try:
             await self.get_item(session=session, kind=kind, name=name, branch=branch)
             return True
@@ -144,22 +145,32 @@ class Registry:
     ) -> NodeSchema:
         return await self.get_item(session=session, kind="schema", name=name, branch=branch)
 
-    async def get_full_schema(self, session: AsyncSession, branch: Optional[Union[Branch, str]] = None) -> dict:
+    async def get_full_schema(
+        self, session: AsyncSession, branch: Optional[Union[Branch, str]] = None
+    ) -> Dict[str, NodeSchema]:
         """Return all the nodes in the schema for a given branch.
 
         The current implementation is a bit simplistic, will need to re-evaluate."""
         return await self.get_all_item(session=session, kind="schema", branch=branch)
 
-    async def set_graphql_type(self, name: str, graphql_type, branch: Optional[Union[Branch, str]] = None) -> bool:
+    async def set_graphql_type(
+        self, name: str, graphql_type: InfrahubObject, branch: Optional[Union[Branch, str]] = None
+    ) -> bool:
         return await self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
 
-    async def has_graphql_type(self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None):
+    async def has_graphql_type(
+        self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None
+    ) -> bool:
         return await self.has_item(session=session, kind="graphql_type", name=name, branch=branch)
 
-    async def get_graphql_type(self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None):
+    async def get_graphql_type(
+        self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None
+    ) -> InfrahubObject:
         return await self.get_item(session=session, kind="graphql_type", name=name, branch=branch)
 
-    async def get_all_graphql_type(self, session: AsyncSession, branch: Optional[Union[Branch, str]] = None) -> dict:
+    async def get_all_graphql_type(
+        self, session: AsyncSession, branch: Optional[Union[Branch, str]] = None
+    ) -> Dict[str, InfrahubObject]:
         """Return all the graphql_type for a given branch."""
         return await self.get_all_item(session=session, kind="graphql_type", branch=branch)
 

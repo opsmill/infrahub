@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Tuple
 import graphene
 from graphene.types.generic import GenericScalar
+
+import infrahub.config as config
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
@@ -26,6 +28,7 @@ from .schema import default_list_resolver
 from .utils import extract_fields
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.branch import Branch
 
 TYPES_MAPPING_INFRAHUB_GRAPHQL = {
@@ -91,7 +94,7 @@ async def default_resolver(*args, **kwargs):
         raise ValueError(f"expected either 2 or 4 args for default_resolver, got {len(args)}")
 
     # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema = info.parent_type.graphene_type._meta.schema
+    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
     # If the field is an attribute, return its value directly
     if field_name not in node_schema.relationship_names:
@@ -101,6 +104,8 @@ async def default_resolver(*args, **kwargs):
     at = info.context.get("infrahub_at")
     branch = info.context.get("infrahub_branch")
     account = info.context.get("infrahub_account", None)
+    session = info.context.get("infrahub_session")
+    db = info.context.get("infrahub_database")
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -111,41 +116,53 @@ async def default_resolver(*args, **kwargs):
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     filters = {f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value}
 
-    objs = NodeManager.query_peers(
-        id=parent["id"], schema=node_rel, filters=filters, at=at, branch=branch, account=account, include_source=True
-    )
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        objs = await NodeManager.query_peers(
+            session=new_session,
+            id=parent["id"],
+            schema=node_rel,
+            filters=filters,
+            at=at,
+            branch=branch,
+            account=account,
+            include_source=True,
+        )
 
     if node_rel.cardinality == "many":
-        return [obj.to_graphql(fields=fields) for obj in objs]
+        return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
 
     # If cardinality is one
     if not objs:
         return None
 
-    return objs[0].to_graphql(fields=fields)
+    return await objs[0].to_graphql(session=session, fields=fields)
 
 
-def generate_object_types(branch: Union[Branch, str] = None):
+async def generate_object_types(session: AsyncSession, branch: Union[Branch, str] = None):
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = await registry.get_full_schema(session=session, branch=branch)
 
     # Generate all Graphql ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
         node_type = generate_graphql_object(node_schema)
         related_node_type = generate_related_graphql_object(node_schema)
-        registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch)
-        registry.set_graphql_type(name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch)
+        await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch)
+        await registry.set_graphql_type(
+            name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch
+        )
 
     # Extend all type with relationships
     for node_name, node_schema in full_schema.items():
-        node_type = registry.get_graphql_type(name=node_name, branch=branch)
+        node_type = await registry.get_graphql_type(session=session, name=node_name, branch=branch)
 
         for rel in node_schema.relationships:
 
-            peer_schema = rel.get_peer_schema()
-            peer_filters = generate_filters(peer_schema, attribute_only=True)
-            peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch)
+            peer_schema = await rel.get_peer_schema(session=session)
+            peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
+            peer_type = await registry.get_graphql_type(
+                session=session, name=f"Related{peer_schema.kind}", branch=branch
+            )
 
             if rel.cardinality == "one":
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
@@ -154,19 +171,19 @@ def generate_object_types(branch: Union[Branch, str] = None):
                 node_type._meta.fields[rel.name] = graphene.Field.mounted(graphene.List(peer_type, **peer_filters))
 
 
-def generate_query_mixin(branch: Union[Branch, str] = None) -> object:
+async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> object:
 
     class_attrs = {}
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = await registry.get_full_schema(session=session, branch=branch)
 
     # Generate all Graphql objectType and store them in the registry
-    generate_object_types()
+    await generate_object_types(session=session)
 
     for node_name, node_schema in full_schema.items():
 
-        node_type = registry.get_graphql_type(name=node_name, branch=branch)
-        node_filters = generate_filters(node_schema)
+        node_type = await registry.get_graphql_type(session=session, name=node_name, branch=branch)
+        node_filters = await generate_filters(session=session, schema=node_schema)
 
         class_attrs[node_schema.name] = graphene.List(
             node_type,
@@ -177,11 +194,11 @@ def generate_query_mixin(branch: Union[Branch, str] = None) -> object:
     return type("QueryMixin", (object,), class_attrs)
 
 
-def generate_mutation_mixin(branch: Union[Branch, str] = None) -> object:
+async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> object:
 
     class_attrs = {}
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = await registry.get_full_schema(session=session, branch=branch)
 
     for node_schema in full_schema.values():
 
@@ -244,7 +261,7 @@ def generate_related_graphql_object(schema: NodeSchema) -> InfrahubObject:
     return type(f"Related{schema.kind}", (InfrahubObject,), main_attrs)
 
 
-def generate_graphql_mutations(schema: NodeSchema):
+def generate_graphql_mutations(schema: NodeSchema) -> Tuple[InfrahubMutation, InfrahubMutation, InfrahubMutation]:
 
     create = generate_graphql_mutation_create(schema)
     update = generate_graphql_mutation_update(schema)
@@ -372,7 +389,7 @@ def generate_graphql_mutation_delete(schema: NodeSchema) -> InfrahubMutation:
     return type(name, (InfrahubMutation,), main_attrs)
 
 
-def generate_filters(schema: NodeSchema, attribute_only: bool = False) -> dict:
+async def generate_filters(session: AsyncSession, schema: NodeSchema, attribute_only: bool = False) -> dict:
     """Generate the GraphQL filters for a given NodeSchema object."""
     filters = {"id": graphene.UUID()}
     for attr in schema.attributes:
@@ -383,8 +400,8 @@ def generate_filters(schema: NodeSchema, attribute_only: bool = False) -> dict:
         return filters
 
     for rel in schema.relationships:
-        peer_schema = rel.get_peer_schema()
-        peer_filters = generate_filters(peer_schema, attribute_only=True)
+        peer_schema = await rel.get_peer_schema(session=session)
+        peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
 
         for key, value in peer_filters.items():
             filters[f"{rel.name}__{key}"] = value

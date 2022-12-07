@@ -304,7 +304,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
         await query.execute(session=session)
 
-    async def to_graphql(self, fields: dict = None) -> dict:
+    async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
         """Generate GraphQL Payload for all attributes
 
         Returns:
@@ -320,7 +320,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if field_name == "_updated_at":
                 if self._updated_at:
-                    response[field_name] = self._updated_at.to_graphql()
+                    response[field_name] = await self._updated_at.to_graphql()
                 else:
                     response[field_name] = None
                 continue
@@ -331,7 +331,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 response[field_name] = None
                 continue
 
-            response[field_name] = field.to_graphql(fields=fields[field_name])
+            response[field_name] = await field.to_graphql(session=session, fields=fields[field_name])
 
         return response
 

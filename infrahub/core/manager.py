@@ -84,12 +84,12 @@ class NodeManager:
         id: UUID,
         schema: RelationshipSchema,
         filters: dict,
+        session: AsyncSession,
         fields: dict = None,
         limit: int = 100,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
-        session: Optional[AsyncSession] = None,
         account=None,
         *args,
         **kwargs,
@@ -115,7 +115,8 @@ class NodeManager:
         )
 
         return [
-            Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
+            await Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
+                session=session,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
                 updated_at=peer.updated_at,
