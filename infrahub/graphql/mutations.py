@@ -73,35 +73,43 @@ class InfrahubMutation(Mutation):
     @classmethod
     async def mutate_create(cls, root, info, data, branch=None, at=None):
 
-        obj = Node(cls._meta.schema, branch=branch, at=at).new(**data).save()
+        session = info.context.get("infrahub_session")
+
+        obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
+        await obj.new(session=session, **data)
+        await obj.save(session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
         ok = True
 
-        return obj, cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
 
     @classmethod
     async def mutate_update(cls, root, info, data, branch=None, at=None):
 
-        if not (obj := NodeManager.get_one(data.get("id"), branch=branch, at=at)):
+        session = info.context.get("infrahub_session")
+
+        if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
-        obj.from_graphql(data)
-        obj.save()
+        await obj.from_graphql(session=session, data=data)
+        await obj.save(session=session)
 
         ok = True
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        return obj, cls(object=obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
 
     @classmethod
     async def mutate_delete(cls, root, info, data, branch=None, at=None):
 
-        if not (obj := NodeManager.get_one(data.get("id"), branch=branch, at=at)):
+        session = info.context.get("infrahub_session")
+
+        if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
-        obj.delete()
+        await obj.delete(session=session)
         ok = True
 
         return obj, cls(ok=ok)

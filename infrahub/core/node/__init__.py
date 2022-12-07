@@ -335,7 +335,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return response
 
-    def from_graphql(self, data: dict) -> bool:
+    async def from_graphql(self, session: AsyncSession, data: dict) -> bool:
         """Update object from a GraphQL payload."""
 
         changed = False
@@ -363,6 +363,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel = getattr(self, key)
-                changed = rel.update(value)
+                changed = await rel.update(session=session, data=value)
 
         return changed

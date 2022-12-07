@@ -8,9 +8,11 @@ from infrahub.graphql import get_gql_mutation, get_gql_query
 
 
 @pytest.mark.asyncio
-async def test_update_simple_object(default_branch, car_person_schema):
+async def test_update_simple_object(db, session, default_branch, car_person_schema):
 
-    obj = Node("Person").new(name="John", height=180).save()
+    obj = await Node.init(session=session, schema="Person")
+    await obj.new(session=session, name="John", height=180)
+    await obj.save(session=session)
 
     query = (
         """
@@ -29,9 +31,13 @@ async def test_update_simple_object(default_branch, car_person_schema):
         % obj.id
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -39,15 +45,17 @@ async def test_update_simple_object(default_branch, car_person_schema):
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
 
-    obj1 = NodeManager.get_one(obj.id)
+    obj1 = await NodeManager.get_one(session=session, id=obj.id)
     assert obj1.name.value == "Jim"
     assert obj1.height.value == 180
 
 
 @pytest.mark.asyncio
-async def test_update_object_with_flag_property(default_branch, car_person_schema):
+async def test_update_object_with_flag_property(db, session, default_branch, car_person_schema):
 
-    obj = Node("Person").new(name="John", height=180).save()
+    obj = await Node.init(session=session, schema="Person")
+    await obj.new(session=session, name="John", height=180)
+    await obj.save(session=session)
 
     query = (
         """
@@ -69,9 +77,13 @@ async def test_update_object_with_flag_property(default_branch, car_person_schem
         % obj.id
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -79,16 +91,20 @@ async def test_update_object_with_flag_property(default_branch, car_person_schem
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
 
-    obj1 = NodeManager.get_one(obj.id)
+    obj1 = await NodeManager.get_one(session=session, id=obj.id)
     assert obj1.name.is_protected == True
     assert obj1.height.value == 180
     assert obj1.height.is_visible == False
 
 
 @pytest.mark.asyncio
-async def test_update_object_with_node_property(default_branch, car_person_schema, first_account, second_account):
+async def test_update_object_with_node_property(
+    db, session, default_branch, car_person_schema, first_account, second_account
+):
 
-    obj = Node("Person").new(name="John", height=180, _source=first_account).save()
+    obj = await Node.init(session=session, schema="Person")
+    await obj.new(session=session, name="John", height=180, _source=first_account)
+    await obj.save(session=session)
 
     query = """
     mutation {
@@ -104,9 +120,13 @@ async def test_update_object_with_node_property(default_branch, car_person_schem
         second_account.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -114,13 +134,13 @@ async def test_update_object_with_node_property(default_branch, car_person_schem
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
 
-    obj1 = NodeManager.get_one(obj.id, include_source=True)
+    obj1 = await NodeManager.get_one(session=session, id=obj.id, include_source=True)
     assert obj1.name.source_id == second_account.id
     assert obj1.height.source_id == first_account.id
 
 
 @pytest.mark.asyncio
-async def test_update_invalid_object(default_branch, car_person_schema):
+async def test_update_invalid_object(db, session, default_branch, car_person_schema):
 
     query = """
     mutation {
@@ -137,9 +157,13 @@ async def test_update_invalid_object(default_branch, car_person_schema):
     """
 
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -149,9 +173,11 @@ async def test_update_invalid_object(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
-async def test_update_invalid_input(default_branch, car_person_schema):
+async def test_update_invalid_input(db, session, default_branch, car_person_schema):
 
-    obj = Node("Person").new(name="John", height=180).save()
+    obj = await Node.init(session=session, schema="Person")
+    await obj.new(session=session, name="John", height=180)
+    await obj.save(session=session)
 
     query = (
         """
@@ -170,9 +196,13 @@ async def test_update_invalid_input(default_branch, car_person_schema):
         % obj.id
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -182,12 +212,19 @@ async def test_update_invalid_input(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
-async def test_update_single_relationship(default_branch, car_person_schema):
+async def test_update_single_relationship(db, session, default_branch, car_person_schema):
 
-    p1 = Node("Person").new(name="John", height=180).save()
-    p2 = Node("Person").new(name="Jim", height=170).save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
 
-    c1 = Node("Car").new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+    p2 = await Node.init(session=session, schema="Person")
+    await p2.new(session=session, name="Jim", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema="Car")
+    await c1.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
+    await c1.save(session=session)
 
     query = """
     mutation {
@@ -208,9 +245,13 @@ async def test_update_single_relationship(default_branch, car_person_schema):
         p2.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -219,17 +260,25 @@ async def test_update_single_relationship(default_branch, car_person_schema):
     assert result.data["car_update"]["ok"] is True
     assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "Jim"
 
-    car = NodeManager.get_one(c1.id)
-    assert car.owner.peer.id == p2.id
+    car = await NodeManager.get_one(session=session, id=c1.id)
+    car_peer = await car.owner.get_peer(session=session)
+    assert car_peer.id == p2.id
 
 
 @pytest.mark.asyncio
-async def test_update_new_single_relationship_flag_property(default_branch, car_person_schema):
+async def test_update_new_single_relationship_flag_property(db, session, default_branch, car_person_schema):
 
-    p1 = Node("Person").new(name="John", height=180).save()
-    p2 = Node("Person").new(name="Jim", height=170).save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
 
-    c1 = Node("Car").new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+    p2 = await Node.init(session=session, schema="Person")
+    await p2.new(session=session, name="Jim", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema="Car")
+    await c1.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
+    await c1.save(session=session)
 
     query = """
     mutation {
@@ -250,9 +299,13 @@ async def test_update_new_single_relationship_flag_property(default_branch, car_
         p2.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -261,16 +314,22 @@ async def test_update_new_single_relationship_flag_property(default_branch, car_
     assert result.data["car_update"]["ok"] is True
     assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "Jim"
 
-    car = NodeManager.get_one(c1.id)
-    assert car.owner.peer.id == p2.id
+    car = await NodeManager.get_one(session=session, id=c1.id)
+    car_peer = await car.owner.get_peer(session=session)
+    assert car_peer.id == p2.id
     assert car.owner.get().is_protected is True
 
 
 @pytest.mark.asyncio
-async def test_update_existing_single_relationship_flag_property(default_branch, car_person_schema):
+async def test_update_existing_single_relationship_flag_property(db, session, default_branch, car_person_schema):
 
-    p1 = Node("Person").new(name="John", height=180).save()
-    c1 = Node("Car").new(name="accord", nbr_seats=5, is_electric=False, owner=p1.id).save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    c1 = await Node.init(session=session, schema="Car")
+    await c1.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
+    await c1.save(session=session)
 
     query = """
     mutation {
@@ -291,9 +350,13 @@ async def test_update_existing_single_relationship_flag_property(default_branch,
         p1.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -302,19 +365,28 @@ async def test_update_existing_single_relationship_flag_property(default_branch,
     assert result.data["car_update"]["ok"] is True
     assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "John"
 
-    car = NodeManager.get_one(c1.id)
-    assert car.owner.peer.id == p1.id
+    car = await NodeManager.get_one(session=session, id=c1.id)
+    car_peer = await car.owner.get_peer(session=session)
+    assert car_peer.id == p1.id
     assert car.owner.get().is_protected is True
 
 
 @pytest.mark.asyncio
-async def test_update_relationship_many(default_branch, person_tag_schema):
+async def test_update_relationship_many(db, session, default_branch, person_tag_schema):
 
-    t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
-    t2 = Node("Tag").new(name="Red", description="The Red tag").save()
-    t3 = Node("Tag").new(name="Black", description="The Black tag").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="Blue", description="The Blue tag")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="Red", description="The Red tag")
+    await t2.save(session=session)
+    t3 = await Node.init(session=session, schema="Tag")
+    await t3.new(session=session, name="Black", description="The Black tag")
+    await t3.save(session=session)
 
-    p1 = Node("Person").new(firstname="John", lastname="Doe").save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
     query = """
     mutation {
@@ -335,9 +407,13 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
         t1.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -346,7 +422,7 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 1
 
-    p11 = NodeManager.get_one(p1.id)
+    p11 = await NodeManager.get_one(session=session, id=p1.id)
     assert len(list(p11.tags)) == 1
 
     # Replace the current value (t1) with t2 and t3
@@ -370,9 +446,13 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -381,7 +461,7 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
-    p12 = NodeManager.get_one(p1.id)
+    p12 = await NodeManager.get_one(session=session, id=p1.id)
     tags = p12.tags
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
 
@@ -406,9 +486,13 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -417,19 +501,27 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
-    p13 = NodeManager.get_one(p1.id)
+    p13 = await NodeManager.get_one(session=session, id=p1.id)
     tags = p13.tags
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
 
 
 @pytest.mark.asyncio
-async def test_update_relationship_many(default_branch, person_tag_schema):
+async def test_update_relationship_many(db, session, default_branch, person_tag_schema):
 
-    t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
-    t2 = Node("Tag").new(name="Red", description="The Red tag").save()
-    t3 = Node("Tag").new(name="Black", description="The Black tag").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="Blue", description="The Blue tag")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="Red", description="The Red tag")
+    await t2.save(session=session)
+    t3 = await Node.init(session=session, schema="Tag")
+    await t3.new(session=session, name="Black", description="The Black tag")
+    await t3.save(session=session)
 
-    p1 = Node("Person").new(firstname="John", lastname="Doe").save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
     query = """
     mutation {
@@ -450,9 +542,13 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
         t1.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -461,7 +557,7 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 1
 
-    p11 = NodeManager.get_one(p1.id)
+    p11 = await NodeManager.get_one(session=session, id=p1.id)
     assert len(list(p11.tags)) == 1
 
     # Replace the current value (t1) with t2 and t3
@@ -485,9 +581,13 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -496,20 +596,29 @@ async def test_update_relationship_many(default_branch, person_tag_schema):
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
-    p12 = NodeManager.get_one(p1.id)
+    p12 = await NodeManager.get_one(session=session, id=p1.id)
     tags = p12.tags
-    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
+    peers = [await tag.get_peer(session=session) for tag in tags]
+    assert sorted([peer.name.value for peer in peers]) == ["Black", "Red"]
 
 
 @pytest.mark.skip(reason="Currently not working need to investigate")
 @pytest.mark.asyncio
-async def test_update_relationship_previously_deleted(default_branch, person_tag_schema):
+async def test_update_relationship_previously_deleted(db, session, default_branch, person_tag_schema):
 
-    t1 = Node("Tag").new(name="Blue", description="The Blue tag").save()
-    t2 = Node("Tag").new(name="Red", description="The Red tag").save()
-    t3 = Node("Tag").new(name="Black", description="The Black tag").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="Blue", description="The Blue tag")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="Red", description="The Red tag")
+    await t2.save(session=session)
+    t3 = await Node.init(session=session, schema="Tag")
+    await t3.new(session=session, name="Black", description="The Black tag")
+    await t3.save(session=session)
 
-    p1 = Node("Person").new(firstname="John", lastname="Doe").save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
     query = """
     mutation {
@@ -530,9 +639,13 @@ async def test_update_relationship_previously_deleted(default_branch, person_tag
         t1.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -541,7 +654,7 @@ async def test_update_relationship_previously_deleted(default_branch, person_tag
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 1
 
-    p11 = NodeManager.get_one(p1.id)
+    p11 = await NodeManager.get_one(session=session, id=p1.id)
     assert len(list(p11.tags)) == 1
 
     # Replace the current value (t1) with t2 and t3
@@ -565,9 +678,13 @@ async def test_update_relationship_previously_deleted(default_branch, person_tag
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -576,7 +693,7 @@ async def test_update_relationship_previously_deleted(default_branch, person_tag
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
-    p12 = NodeManager.get_one(p1.id)
+    p12 = await NodeManager.get_one(session=session, id=p1.id)
     tags = p12.tags
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
 
@@ -601,9 +718,13 @@ async def test_update_relationship_previously_deleted(default_branch, person_tag
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -612,6 +733,6 @@ async def test_update_relationship_previously_deleted(default_branch, person_tag
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
-    p13 = NodeManager.get_one(p1.id)
+    p13 = await NodeManager.get_one(session=session, id=p1.id)
     tags = p13.tags
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
