@@ -463,7 +463,8 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
 
     p12 = await NodeManager.get_one(session=session, id=p1.id)
     tags = p12.tags
-    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
+    peers = [await tag.get_peer(session=session) for tag in tags]
+    assert sorted([peer.name.value for peer in peers]) == ["Black", "Red"]
 
     # Replace the current value (t2, t3) with t1 and t3
     query = """
@@ -503,7 +504,8 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
 
     p13 = await NodeManager.get_one(session=session, id=p1.id)
     tags = p13.tags
-    assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
+    peers = [await tag.get_peer(session=session) for tag in tags]
+    assert sorted([peer.name.value for peer in peers]) == ["Black", "Blue"]
 
 
 @pytest.mark.asyncio

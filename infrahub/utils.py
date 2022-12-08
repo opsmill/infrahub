@@ -10,7 +10,7 @@ def is_valid_uuid(value: Any) -> bool:
     try:
         UUID(str(value))
         return True
-    except:
+    except ValueError:
         return False
 
 
