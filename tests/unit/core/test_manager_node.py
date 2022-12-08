@@ -108,7 +108,7 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.color.value == "#444444"
     assert obj.color.id
     assert obj.color.is_visible is True
-    assert obj.color.is_protected == False
+    assert obj.color.is_protected is False
 
 
 @pytest.mark.asyncio

@@ -32,7 +32,7 @@ async def get_db():
         try:
 
             session = driver.session(database=config.SETTINGS.database.database)
-            results = await session.run("SHOW TRANSACTIONS")
+            await session.run("SHOW TRANSACTIONS")
             validated_database[config.SETTINGS.database.database] = True
 
         except ClientError as exc:
@@ -43,7 +43,7 @@ async def get_db():
             elif "Unable to get a routing table for database" in exc.message:
 
                 default_db = driver.session()
-                results = await default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
+                await default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
 
             else:
                 raise
