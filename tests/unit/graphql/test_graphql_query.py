@@ -6,7 +6,7 @@ from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import get_gql_mutation, get_gql_query
+from infrahub.graphql import get_gql_query
 
 
 @pytest.mark.asyncio
@@ -468,7 +468,7 @@ async def test_query_attribute_source(
 
 
 @pytest.mark.asyncio
-async def test_query_attribute_source(
+async def test_query_attribute_source2(
     db, session, default_branch, register_core_models_schema, person_tag_schema, first_account
 ):
 
@@ -505,5 +505,5 @@ async def test_query_attribute_source(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["is_protected"] == True
-    assert result1.data["person"][0]["lastname"]["is_visible"] == False
+    assert result1.data["person"][0]["firstname"]["is_protected"] is True
+    assert result1.data["person"][0]["lastname"]["is_visible"] is False

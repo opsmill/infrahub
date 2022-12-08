@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from uuid import UUID
 from dataclasses import dataclass
-from typing import List, Dict, Set, Tuple, Any, Union, Optional, Generator, TYPE_CHECKING
+from typing import List, Dict, Tuple, Any, Union, Optional, TYPE_CHECKING
 
 from pydantic import validator
 
@@ -395,7 +395,7 @@ class Branch(StandardNode):
 
                 for prop_type, prop in rel.properties.items():
 
-                    rel_status = status = RelationshipStatus.ACTIVE
+                    rel_status = RelationshipStatus.ACTIVE
                     if prop.action == DiffAction.REMOVED.value:
                         rel_status = RelationshipStatus.DELETED
 

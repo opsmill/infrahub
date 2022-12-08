@@ -465,7 +465,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         self.add_to_query(query)
         self.return_labels.extend(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
 
-        ## Add Node Properties
+        # Add Node Properties
 
         # ## FIXME, make this part dynamic to generate the query based on the list of supported properties
         # rels_filter, rels_params = self.branch.get_query_filter_relationships(

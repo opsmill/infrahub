@@ -3,7 +3,7 @@ from __future__ import annotations
 import glob
 import json
 import os
-from typing import List, Dict
+from typing import List
 
 from git import Repo
 

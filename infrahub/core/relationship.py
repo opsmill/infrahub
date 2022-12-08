@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, Iterator, Generator, TypeVar, Optional
+from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, TypeVar, Optional
 from uuid import UUID
 
 from infrahub.core import registry

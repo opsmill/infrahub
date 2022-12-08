@@ -386,8 +386,8 @@ async def test_node_update_local_attrs_with_flags(session, default_branch, criti
     await obj2.save(session=session)
 
     obj3 = await NodeManager.get_one(id=obj1.id, fields=fields_to_query, session=session)
-    assert obj3.name.is_protected == True
-    assert obj3.level.is_visible == False
+    assert obj3.name.is_protected is True
+    assert obj3.level.is_visible is False
 
 
 @pytest.mark.asyncio

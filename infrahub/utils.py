@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Union, Any
+from typing import Any
 from itertools import groupby
 
 from enum import Enum, EnumMeta

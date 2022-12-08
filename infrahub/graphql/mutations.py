@@ -11,8 +11,6 @@ from graphene.types.generic import GenericScalar
 
 from graphene.types.mutation import MutationOptions
 
-from infrahub.message_bus.events import get_broker
-
 import infrahub.config as config
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager

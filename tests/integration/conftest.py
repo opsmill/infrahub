@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 
-from neo4j import AsyncGraphDatabase, AsyncDriver, GraphDatabase, Driver
+from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
 

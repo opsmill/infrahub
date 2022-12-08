@@ -14,8 +14,8 @@ async def test_init(session, default_branch, criticality_schema, first_account, 
 
     assert attr.value == "mystring"
     assert hasattr(attr, "source")
-    assert attr.source_id == None
-    assert attr._source == None
+    assert attr.source_id is None
+    assert attr._source is None
 
     # initialize with a more complex data structure
     attr = String(
@@ -42,11 +42,11 @@ async def test_node_property_getter(session, default_branch, criticality_schema)
     await obj1.save(session=session)
 
     attr.source = "myuuid"
-    assert attr._source == None
+    assert attr._source is None
     assert attr.source_id == "myuuid"
 
     attr.owner = "myotheruuid"
-    assert attr._owner == None
+    assert attr._owner is None
     assert attr.owner_id == "myotheruuid"
 
     attr.owner = obj1
@@ -54,7 +54,7 @@ async def test_node_property_getter(session, default_branch, criticality_schema)
     assert attr.owner_id == obj1.id
 
     attr.owner = "yetotheruuid"
-    assert attr._owner == None
+    assert attr._owner is None
     assert attr.owner_id == "yetotheruuid"
 
 

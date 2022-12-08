@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import importlib
-from re import A
-from typing import Generator, Any, TYPE_CHECKING
+
+from typing import Generator, TYPE_CHECKING
 from infrahub.exceptions import ValidationError
 
 from infrahub.utils import BaseEnum
 
 import json
-from aio_pika import DeliveryMode, ExchangeType, Message, connect, IncomingMessage
-from aio_pika.abc import AbstractRobustConnection, AbstractChannel, AbstractExchange
-
-from fastapi import Depends
+from aio_pika import DeliveryMode, ExchangeType, Message, IncomingMessage
 
 import infrahub.config as config
 

@@ -4,7 +4,6 @@ from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.timestamp import Timestamp
 
 
 @pytest.mark.asyncio
@@ -98,8 +97,8 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.db_id == obj1.db_id
     assert obj.name.value == "low"
     assert obj.name.id
-    assert obj.name.is_visible == True
-    assert obj.name.is_protected == True
+    assert obj.name.is_visible is True
+    assert obj.name.is_protected is True
 
     assert obj.level.value == 4
     assert obj.level.id
@@ -108,7 +107,7 @@ async def test_get_one_attribute_with_flag_property(
 
     assert obj.color.value == "#444444"
     assert obj.color.id
-    assert obj.color.is_visible == True
+    assert obj.color.is_visible is True
     assert obj.color.is_protected == False
 
 

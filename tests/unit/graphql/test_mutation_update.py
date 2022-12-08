@@ -92,9 +92,9 @@ async def test_update_object_with_flag_property(db, session, default_branch, car
     assert result.data["person_update"]["ok"] is True
 
     obj1 = await NodeManager.get_one(session=session, id=obj.id)
-    assert obj1.name.is_protected == True
+    assert obj1.name.is_protected is True
     assert obj1.height.value == 180
-    assert obj1.height.is_visible == False
+    assert obj1.height.is_visible is False
 
 
 @pytest.mark.asyncio
@@ -507,7 +507,7 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
 
 
 @pytest.mark.asyncio
-async def test_update_relationship_many(db, session, default_branch, person_tag_schema):
+async def test_update_relationship_many2(db, session, default_branch, person_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
     await t1.new(session=session, name="Blue", description="The Blue tag")

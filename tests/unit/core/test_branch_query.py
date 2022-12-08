@@ -1,5 +1,5 @@
 import pytest
-from infrahub.core import get_branch, registry
+from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.query.diff import DiffRelationshipQuery, DiffRelationshipPropertyQuery
 

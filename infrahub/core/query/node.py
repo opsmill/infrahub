@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Set, Optional, Any, Union, Generator, Tuple, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, Union, Generator, Tuple, TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.query import Query, QueryType, QueryResult

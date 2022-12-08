@@ -1,11 +1,11 @@
 import pytest
 
-from infrahub.core import get_branch, registry
+from infrahub.core import get_branch
 from infrahub.core.branch import Branch, Diff
 from infrahub.core.node import Node
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.constants import RelationshipStatus, DiffAction
+from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 
 
@@ -285,7 +285,7 @@ async def test_merge(session, base_dataset_02, register_core_models_schema):
     assert len(cars) == 3
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 4
-    assert cars[0].nbr_seats.is_protected == True
+    assert cars[0].nbr_seats.is_protected is True
     assert cars[2].id == "c3"
     assert cars[2].name.value == "volt"
 
@@ -296,7 +296,7 @@ async def test_merge(session, base_dataset_02, register_core_models_schema):
     assert len(cars) == 2
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 5
-    assert cars[0].nbr_seats.is_protected == False
+    assert cars[0].nbr_seats.is_protected is False
 
     # Query all cars in BRANCH1, AFTER the merge
     cars = sorted(await NodeManager.query(schema="Car", branch=branch1, session=session), key=lambda c: c.id)

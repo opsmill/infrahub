@@ -4,9 +4,6 @@ This code has been forked from https://github.com/ciscorn/starlette-graphene3 in
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-import os
 import asyncio
 import json
 import logging
@@ -47,11 +44,8 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
-from fastapi import Depends
 
-from aio_pika.abc import AbstractExchange
-
-from neo4j import AsyncGraphDatabase, AsyncSession
+from neo4j import AsyncSession
 
 try:
     # graphql-core==3.2.*

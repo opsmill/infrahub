@@ -100,15 +100,15 @@ async def test_relationship_load_existing(session, default_branch, car_person_sc
 
     peers = list(query.get_peers())
 
-    assert peers[0].properties["is_protected"].value == True
+    assert peers[0].properties["is_protected"].value is True
 
     await rel.load(session=session, data=peers[0])
 
     assert rel.id == peers[0].rel_node_id
     assert rel.db_id == peers[0].rel_node_db_id
 
-    assert rel.is_protected == True
-    assert rel.is_visible == False
+    assert rel.is_protected is True
+    assert rel.is_visible is False
 
 
 @pytest.mark.asyncio

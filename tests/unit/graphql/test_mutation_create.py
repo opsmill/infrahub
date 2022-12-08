@@ -92,8 +92,8 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["name"]["is_protected"] == True
-    assert result1.data["person"][0]["height"]["is_visible"] == False
+    assert result1.data["person"][0]["name"]["is_protected"] is True
+    assert result1.data["person"][0]["height"]["is_visible"] is False
 
 
 @pytest.mark.asyncio
@@ -176,7 +176,7 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
     assert len(result.data["car_create"]["object"]["id"]) == 36
 
     car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
-    assert car.owner.get().is_protected == True
+    assert car.owner.get().is_protected is True
 
 
 @pytest.mark.asyncio

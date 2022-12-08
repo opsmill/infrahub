@@ -1,11 +1,9 @@
 import os
-import time
 
-from typing import Generator
-from neo4j import GraphDatabase, basic_auth, Driver, Session, AsyncSession, AsyncGraphDatabase
+from neo4j import GraphDatabase, basic_auth, Driver, AsyncSession, AsyncGraphDatabase
 
 # from contextlib import asynccontextmanager
-from neo4j.exceptions import ClientError
+# from neo4j.exceptions import ClientError
 
 import infrahub.config as config
 

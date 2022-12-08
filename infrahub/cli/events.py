@@ -3,9 +3,7 @@ import typer
 import asyncio
 from asyncio import run as aiorun
 
-import aio_pika
-from aio_pika import DeliveryMode, ExchangeType, Message, connect, IncomingMessage
-
+from aio_pika import IncomingMessage
 
 import infrahub.config as config
 from infrahub.database import get_db
@@ -14,9 +12,9 @@ from infrahub.core.manager import NodeManager
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import get_event_exchange, EventType, Event, DataEvent
 
-app = typer.Typer()
-
 from rich import print as rprint
+
+app = typer.Typer()
 
 
 async def print_event(event: IncomingMessage) -> None:

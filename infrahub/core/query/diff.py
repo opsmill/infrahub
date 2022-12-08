@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Generator, List
+from typing import Generator, List, TYPE_CHECKING
+
 
 from infrahub.core.query import Query, QueryType, QueryResult
 from infrahub.core.timestamp import Timestamp
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 
 class DiffQuery(Query):

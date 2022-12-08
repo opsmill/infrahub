@@ -1,11 +1,8 @@
-from re import A
 import pytest
-
-from typing import TYPE_CHECKING
 
 from neo4j import AsyncSession
 
-from infrahub.core import branch, registry
+from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.relationship import Relationship
 from infrahub.core.query.relationship import (
@@ -201,8 +198,8 @@ async def test_query_RelationshipGetPeerQuery(session, default_branch, person_ta
     assert isinstance(peers[0].rel_node_db_id, str)
     assert isinstance(peers[0].rel_node_id, str)
     assert list(peers[0].properties.keys()) == ["is_visible", "is_protected"]
-    assert peers[0].properties["is_visible"].value == True
-    assert peers[0].properties["is_protected"].value == False
+    assert peers[0].properties["is_visible"].value is True
+    assert peers[0].properties["is_protected"].value is False
     assert peers[0].properties["is_protected"].prop_db_id == peers[1].properties["is_protected"].prop_db_id
     assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
     assert isinstance(peers[0].properties["is_protected"].rel.db_id, str)

@@ -1,13 +1,11 @@
 import logging
 
-from typing import TYPE_CHECKING
-
 from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.manager import NodeManager, SchemaManager
+from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.models import infrastructure_models
 
