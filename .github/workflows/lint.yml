@@ -23,12 +23,12 @@ jobs:
         run: "pip install black==22.8.0"
       - name: "Linting: BLACK"
         run: "black --check ."
-  flake9-lint:
+  flake8-lint:
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
       - name: "Setup environment"
-        run: "pip install invoke flake8"
+        run: "pip install invoke toml flake8"
       - name: "Linting: Flake8"
         run: "invoke flake8"
