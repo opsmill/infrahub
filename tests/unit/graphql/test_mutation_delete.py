@@ -8,11 +8,17 @@ from infrahub.graphql import get_gql_mutation, get_gql_query
 
 
 @pytest.mark.asyncio
-async def test_delete_object(default_branch, car_person_schema):
+async def test_delete_object(db, session, default_branch, car_person_schema):
 
-    obj1 = Node("Person").new(name="John", height=180).save()
-    Node("Person").new(name="Jim", height=160).save()
-    Node("Person").new(name="Joe", height=170).save()
+    obj1 = await Node.init(session=session, schema="Person")
+    await obj1.new(session=session, name="John", height=180)
+    await obj1.save(session=session)
+    obj2 = await Node.init(session=session, schema="Person")
+    await obj2.new(session=session, name="Jim", height=160)
+    await obj2.save(session=session)
+    obj3 = await Node.init(session=session, schema="Person")
+    await obj3.new(session=session, name="Joe", height=170)
+    await obj3.save(session=session)
 
     query = (
         """
@@ -25,9 +31,13 @@ async def test_delete_object(default_branch, car_person_schema):
         % obj1.id
     )
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -35,4 +45,4 @@ async def test_delete_object(default_branch, car_person_schema):
     assert result.errors is None
     assert result.data["person_delete"]["ok"] is True
 
-    assert not NodeManager.get_one(obj1.id)
+    assert not await NodeManager.get_one(session=session, id=obj1.id)

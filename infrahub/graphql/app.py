@@ -1,6 +1,9 @@
 """
 This code has been forked from https://github.com/ciscorn/starlette-graphene3 in order to support branch and dynamic schema.
 """
+
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -41,9 +44,8 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
-from fastapi import Depends
 
-from aio_pika.abc import AbstractExchange
+from neo4j import AsyncSession
 
 try:
     # graphql-core==3.2.*
@@ -61,6 +63,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
+
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"
@@ -117,14 +120,13 @@ class InfrahubGraphQLApp:
         if playground and self.on_get is None:
             self.on_get = make_playground_handler()
 
-    @property
-    def schema(self):
+    async def _get_schema(self, session: AsyncSession):
 
         if not self._schema:
             self._schema = graphene.Schema(
-                query=get_gql_query(),
-                mutation=get_gql_mutation(),
-                subscription=get_gql_subscription(),
+                query=await get_gql_query(session=session),
+                mutation=await get_gql_mutation(session=session),
+                subscription=await get_gql_subscription(session=session),
                 auto_camelcase=False,
             )
 
@@ -135,7 +137,7 @@ class InfrahubGraphQLApp:
             request = Request(scope=scope, receive=receive)
             response: Optional[Response] = None
             if request.method == "POST":
-                response = await self._handle_http_request(request)
+                response = await self._handle_http_request(request=request)
             elif request.method == "GET":
                 response = await self._get_on_get(request)
 
@@ -162,10 +164,10 @@ class InfrahubGraphQLApp:
         else:
             return cast(Response, response)
 
-    async def _get_context_value(self, request: HTTPConnection) -> Dict:
+    async def _get_context_value(self, session: AsyncSession, request: HTTPConnection) -> Dict:
 
         branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
-        branch = get_branch(branch_name)
+        branch = await get_branch(session=session, branch=branch_name)
         branch.ephemeral_rebase = bool(strtobool(str(request.query_params.get("rebase", False))))
 
         # info.context["infrahub_account"] = account
@@ -175,6 +177,8 @@ class InfrahubGraphQLApp:
             "infrahub_at": Timestamp(request.query_params.get("at", None)),
             "request": request,
             "background": BackgroundTasks(),
+            "infrahub_database": request.app.state.db,
+            "infrahub_session": session,
         }
 
         return context_value
@@ -194,31 +198,33 @@ class InfrahubGraphQLApp:
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
 
-        try:
-            context_value = await self._get_context_value(request)
-        except BranchNotFound as exc:
-            return JSONResponse({"errors": [exc.message]}, status_code=404)
+        async with request.app.state.db.session(database=config.SETTINGS.database.database) as session:
+            try:
+                context_value = await self._get_context_value(session=session, request=request)
+            except BranchNotFound as exc:
+                return JSONResponse({"errors": [exc.message]}, status_code=404)
 
-        result = await graphql(
-            self.schema.graphql_schema,
-            source=query,
-            context_value=context_value,
-            root_value=self.root_value,
-            middleware=self.middleware,
-            variable_values=variable_values,
-            operation_name=operation_name,
-            execution_context_class=self.execution_context_class,
-        )
+            schema = await self._get_schema(session=session)
+            result = await graphql(
+                schema.graphql_schema,
+                source=query,
+                context_value=context_value,
+                root_value=self.root_value,
+                middleware=self.middleware,
+                variable_values=variable_values,
+                operation_name=operation_name,
+                execution_context_class=self.execution_context_class,
+            )
 
-        response: Dict[str, Any] = {"data": result.data}
-        if result.errors:
-            for error in result.errors:
-                if error.original_error:
-                    self.logger.error(
-                        "An exception occurred in resolvers",
-                        exc_info=error.original_error,
-                    )
-            response["errors"] = [self.error_formatter(error) for error in result.errors]
+            response: Dict[str, Any] = {"data": result.data}
+            if result.errors:
+                for error in result.errors:
+                    if error.original_error:
+                        self.logger.error(
+                            "An exception occurred in resolvers",
+                            exc_info=error.original_error,
+                        )
+                response["errors"] = [self.error_formatter(error) for error in result.errors]
 
         return JSONResponse(
             response,

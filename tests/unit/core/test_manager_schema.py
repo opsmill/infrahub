@@ -1,3 +1,5 @@
+import pytest
+
 from deepdiff import DeepDiff
 
 from infrahub.core import registry
@@ -5,10 +7,11 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import NodeSchema, SchemaRoot, internal_schema
 
 
-def test_load_schema_node_to_db(default_branch):
+@pytest.mark.asyncio
+async def test_load_schema_node_to_db(session, default_branch):
 
     schema = SchemaRoot(**internal_schema)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
     SCHEMA = {
         "name": "criticality",
@@ -23,27 +26,29 @@ def test_load_schema_node_to_db(default_branch):
         ],
     }
     node = NodeSchema(**SCHEMA)
-    SchemaManager.load_schema_node_to_db(node)
+    await SchemaManager.load_schema_node_to_db(schema_node=node, session=session)
 
     assert True
 
 
-def test_load_schema_to_db(default_branch):
+@pytest.mark.asyncio
+async def test_load_schema_to_db(session, default_branch):
 
     schema = SchemaRoot(**internal_schema)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
-    SchemaManager.load_schema_to_db(schema)
+    await SchemaManager.load_schema_to_db(schema=schema, session=session)
 
-    node_schema = registry.get_schema("NodeSchema")
-    results = SchemaManager.query(node_schema)
+    node_schema = await registry.get_schema(name="NodeSchema", session=session)
+    results = await SchemaManager.query(schema=node_schema, session=session)
     assert len(results) > 1
 
 
-def test_load_schema_from_db(default_branch):
+@pytest.mark.asyncio
+async def test_load_schema_from_db(session, default_branch):
 
     schema = SchemaRoot(**internal_schema)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
     SCHEMA = {
         "name": "criticality",
@@ -58,9 +63,9 @@ def test_load_schema_from_db(default_branch):
         ],
     }
     node = NodeSchema(**SCHEMA)
-    SchemaManager.load_schema_node_to_db(node)
+    await SchemaManager.load_schema_node_to_db(schema_node=node, session=session)
 
-    schema = SchemaManager.load_schema_from_db()
+    schema = await SchemaManager.load_schema_from_db(session=session)
     assert len(schema.nodes) == 1
 
     diff = DeepDiff(node.dict(), schema.nodes[0].dict(), ignore_order=True)

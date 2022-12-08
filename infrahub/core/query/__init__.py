@@ -5,14 +5,19 @@ from collections import defaultdict
 from enum import Enum
 from typing import Generator, List, Optional, Union, TypeVar, TYPE_CHECKING
 
+from neo4j.graph import Node, Relationship
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
-from infrahub.database import execute_read_query, execute_write_query
+from infrahub.database import (
+    execute_read_query_async,
+    execute_write_query_async,
+)
 from infrahub.exceptions import QueryError
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.branch import Branch
 
 SelfQuery = TypeVar("SelfQuery", bound="Query")
@@ -80,7 +85,7 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def get(self, label: str):
+    def get(self, label: str) -> Union[Node, Relationship]:
 
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
@@ -89,14 +94,14 @@ class QueryResult:
 
         return self.data[return_id]
 
-    def get_rels(self) -> Generator:
+    def get_rels(self) -> Generator[Relationship, None, None]:
         """Return all relationships."""
 
         for item in self.data:
             if hasattr(item, "nodes"):
                 yield item
 
-    def get_nodes(self) -> Generator:
+    def get_nodes(self) -> Generator[Node, None, None]:
         """Return all nodes."""
         for item in self.data:
             if hasattr(item, "labels"):
@@ -139,10 +144,25 @@ class Query(ABC):
         self.has_been_executed: bool = False
         self.has_errors: bool = False
 
-        self.query_init(*args, **kwargs)
+    @classmethod
+    async def init(
+        cls,
+        session: AsyncSession,
+        branch: Branch = None,
+        at: Union[Timestamp, str] = None,
+        limit: int = None,
+        *args,
+        **kwargs,
+    ):
+
+        query = cls(branch=branch, at=at, limit=limit, *args, **kwargs)
+
+        await query.query_init(session=session, *args, **kwargs)
+
+        return query
 
     @abstractmethod
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
         raise NotImplementedError
 
     def add_to_query(self, query: str):
@@ -175,7 +195,7 @@ class Query(ABC):
 
         return query_str
 
-    def execute(self) -> SelfQuery:
+    async def execute(self, session: AsyncSession = None) -> SelfQuery:
 
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
@@ -184,9 +204,9 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            results = execute_read_query(query=self.get_query(), params=self.params)
+            results = await execute_read_query_async(query=self.get_query(), params=self.params, session=session)
         elif self.type == QueryType.WRITE:
-            results = execute_write_query(query=self.get_query(), params=self.params)
+            results = await execute_write_query_async(query=self.get_query(), params=self.params, session=session)
         else:
             raise ValueError(f"unknown value for {self.type}")
 
@@ -270,7 +290,6 @@ class Query(ABC):
 
     def print_table(self):
 
-        from rich import print as rprint
         from rich.console import Console
         from rich.table import Table
 

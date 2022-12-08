@@ -175,7 +175,7 @@ def flake8(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = "flake8 ."
+    exec_cmd = "flake8 --ignore=E203,E501,W503,W504,E701,E251,E231 --exclude=examples ."
     run_cmd(context, exec_cmd, name, image_ver, local)
 
 

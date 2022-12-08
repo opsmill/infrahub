@@ -1,4 +1,4 @@
-from graphene import Field, List, ObjectType, Schema, String
+from graphene import Field, List, ObjectType, String
 
 
 from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate

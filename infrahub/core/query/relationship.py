@@ -7,10 +7,13 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 from typing import Union, Type, List, Dict, Generator, TYPE_CHECKING
 
+from neo4j.graph import Relationship as Neo4jRelationship
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
+
     from infrahub.core.relationship import Relationship
     from infrahub.core.node import Node
     from infrahub.core.schema import RelationshipSchema
@@ -27,8 +30,8 @@ class RelData:
     status: str
 
     @classmethod
-    def from_db(cls, obj):
-        return cls(db_id=obj.id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
+    def from_db(cls, obj: Neo4jRelationship):
+        return cls(db_id=obj.element_id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
 
 
 @dataclass
@@ -72,7 +75,7 @@ class RelationshipPeerData:
 
     updated_at: str = None
 
-    def rel_ids_per_branch(self):
+    def rel_ids_per_branch(self) -> dict[str, List[str]]:
 
         response = defaultdict(list)
         for rel in self.rels:
@@ -156,7 +159,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         super().__init__(destination=destination, destination_id=destination_id, *args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
@@ -238,7 +241,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
@@ -293,7 +296,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.data = data
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
@@ -344,7 +347,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     type: QueryType = QueryType.WRITE
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         # FIXME DO we need to check if both nodes are part of the same Branch right now ?
 
@@ -386,7 +389,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
 
@@ -400,8 +403,8 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         }
 
         if clean_filters:
-            peer_filters, peer_params, nbr_rels = self.schema.get_query_filter(
-                filters=clean_filters, branch=self.branch, rels_offset=0
+            peer_filters, peer_params, nbr_rels = await self.schema.get_query_filter(
+                session=session, filters=clean_filters, branch=self.branch, rels_offset=0
             )
             self.params.update(peer_params)
 
@@ -462,7 +465,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         self.add_to_query(query)
         self.return_labels.extend(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
 
-        ## Add Node Properties
+        # Add Node Properties
 
         # ## FIXME, make this part dynamic to generate the query based on the list of supported properties
         # rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -490,7 +493,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         for result in self.get_results_group_by(("p", "uuid")):
             data = RelationshipPeerData(
                 peer_id=result.get("p").get("uuid"),
-                rel_node_db_id=result.get("rl").id,
+                rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=result.get("r1").get("from"),
                 rels=[RelData.from_db(result.get("r1")), RelData.from_db(result.get("r2"))],
@@ -504,7 +507,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                     if prop_node := result.get(prop):
                         data.properties[prop] = FlagPropertyData(
                             name=prop,
-                            prop_db_id=prop_node.id,
+                            prop_db_id=prop_node.element_id,
                             rel=RelData.from_db(result.get(f"rel_{prop}")),
                             value=prop_node.get("value"),
                         )
@@ -527,7 +530,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
@@ -574,7 +577,7 @@ class RelationshipListGetPropertiesQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["branch"] = self.branch.name
         self.params["ids"] = self.ids

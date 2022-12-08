@@ -33,9 +33,9 @@ class MainSettings(BaseSettings):
 
 class DatabaseSettings(BaseSettings):
 
-    protocol: str = "neo4j+s"
+    protocol: str = "neo4j"
     username: str = "neo4j"
-    password: str = ""
+    password: str = "admin"
     address: str = "localhost"
     port: int = 7687
     database: str = Field(

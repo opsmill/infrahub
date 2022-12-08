@@ -3,178 +3,242 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.relationship import RelationshipManager
-from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 
 
-def test_one_init_no_input_no_rel(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_one_init_no_input_no_rel(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
-    relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag")
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
+
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag"
+    )
 
     # shouldn't be able to iterate over it since it's a "one" relationship
     with pytest.raises(TypeError):
         iter(relm)
 
-    assert not relm.peer
+    assert not await relm.get_peer(session=session)
 
 
-def test_one_init_no_input_existing_rel(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_one_init_no_input_existing_rel(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
-    t1 = Node("Tag").new(name="blue").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", primary_tag=t1).save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe", primary_tag=t1)
+    await p1.save(session=session)
 
-    relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag")
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag"
+    )
 
-    assert relm.peer.id == t1.id
+    peer = await relm.get_peer(session=session)
+    assert peer.id == t1.id
 
 
-def test_many_init_no_input_no_rel(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_many_init_no_input_no_rel(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("tags")
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
-    relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags")
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags"
+    )
 
     # shouldn't be able to query the peer since it's many type relationship
     with pytest.raises(TypeError):
-        relm.peer
+        await relm.get_peer()
 
     assert not len(list(relm))
     assert not len(relm.get())
 
 
-def test_many_init_no_input_existing_rel(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_many_init_no_input_existing_rel(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
+    await p1.save(session=session)
 
-    relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags")
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags"
+    )
 
     assert len(list(relm)) == 2
     assert len(relm.get()) == 2
 
 
-def test_one_init_input_obj(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_one_init_input_obj(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
-    t1 = Node("Tag").new(name="blue").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
-    relm = RelationshipManager(
-        schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag", data=t1
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag", data=t1
     )
 
-    assert relm.peer.id == t1.id
+    peer = await relm.get_peer(session=session)
+    assert peer.id == t1.id
 
 
-def test_one_save_input_obj(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_one_save_input_obj(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
-    t1 = Node("Tag").new(name="blue").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
     # We should have only 1 paths between t1 and p1 via the branch
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    relm = RelationshipManager(
-        schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag", data=t1
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="primary_tag", data=t1
     )
-    relm.save()
+    await relm.save(session=session)
 
     # We should have 2 paths between t1 and p1
     # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
 
-def test_many_init_input_obj(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_many_init_input_obj(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
-    relm = RelationshipManager(
-        schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags", data=[t1, t2]
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
+
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags", data=[t1, t2]
     )
 
     assert len(list(relm)) == 2
 
 
-def test_many_save_input_obj(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_many_save_input_obj(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
     # We should have only 1 paths between t1 and p1 via the branch
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    relm = RelationshipManager(
-        schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags", data=[t1, t2]
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags", data=[t1, t2]
     )
-    relm.save()
+    await relm.save(session=session)
 
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
-    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
 
-def test_many_update(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_many_update(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
 
-    relm = RelationshipManager(schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags")
-    relm.save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
+
+    relm = await RelationshipManager.init(
+        session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags"
+    )
+    await relm.save(session=session)
 
     # We should have only 1 paths between t1 and p1 via the branch
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    relm.update(t1)
-    relm.save()
+    await relm.update(session=session, data=t1)
+    await relm.save(session=session)
 
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
-    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 1
 
-    relm.update([t1, t2])
-    relm.save()
+    await relm.update(session=session, data=[t1, t2])
+    await relm.save(session=session)
 
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
-    paths = get_paths_between_nodes(source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t2.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2

@@ -49,19 +49,25 @@ def test_initialize_repositories_directory_present(tmp_path):
     assert len(list(tmp_path.iterdir())) == 1
 
 
-def test_ensure_exists_locally_when_present(register_core_models_schema, edge_repo_main_only):
+@pytest.mark.asyncio
+async def test_ensure_exists_locally_when_present(session, register_core_models_schema, edge_repo_main_only):
 
-    repo_schema = registry.get_schema("Repository")
-    obj = Repository(repo_schema).new(name="infrahub-demo-edge", location="notvalid")
+    repo_schema = await registry.get_schema(session=session, name="Repository")
+
+    obj = await Repository.init(session=session, schema=repo_schema)
+    await obj.new(session=session, name="infrahub-demo-edge", location="notvalid")
 
     assert obj.ensure_exists_locally() is False
     assert obj.commit.value == "dd60ae4804c0d0e71c8de0640bb84b095fc3ee61"
 
 
-def test_add_branch(register_core_models_schema, edge_repo_main_only):
+@pytest.mark.asyncio
+async def test_add_branch(session, register_core_models_schema, edge_repo_main_only):
 
-    repo_schema = registry.get_schema("Repository")
-    obj = Repository(repo_schema).new(name="infrahub-demo-edge", location="notvalid")
+    repo_schema = await registry.get_schema(session=session, name="Repository")
+
+    obj = await Repository.init(session=session, schema=repo_schema)
+    await obj.new(session=session, name="infrahub-demo-edge", location="notvalid")
     obj.add_branch("newbranch", push_origin=False)
 
     assert os.path.isdir(str(edge_repo_main_only / "newbranch"))

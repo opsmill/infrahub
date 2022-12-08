@@ -4,6 +4,8 @@ import os
 import sys
 from typing import List, Optional
 
+from asyncio import run as aiorun
+
 
 import httpx
 import jinja2
@@ -13,6 +15,7 @@ from git import Repo
 from rich.logging import RichHandler
 
 import infrahub.config as config
+from infrahub.database import get_db
 from infrahub.cli.check import app as check_app
 from infrahub.cli.db import app as db_app
 from infrahub.cli.server import app as server_app
@@ -70,11 +73,19 @@ def find_graphql_query(name, directory="."):
     return None
 
 
-@app.command()
-def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+async def _init_shell(config_file: str):
     """Launch a Python Interactive shell."""
     config.load_and_exit(config_file_name=config_file)
-    initialization()
+
+    db = await get_db()
+
+    async with db.session(database=config.SETTINGS.database.database) as session:
+        await initialization(session=session)
+
+
+@app.command()
+def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+    aiorun(_init_shell(config_file=config_file))
 
     # TODO add check to properly exit of ipython is not installed
     from IPython import embed

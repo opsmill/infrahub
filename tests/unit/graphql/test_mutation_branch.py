@@ -8,7 +8,7 @@ from infrahub.graphql import get_gql_mutation, get_gql_query
 
 
 @pytest.mark.asyncio
-async def test_branch_create(default_branch, car_person_schema):
+async def test_branch_create(db, session, default_branch, car_person_schema):
 
     query = """
     mutation {
@@ -22,9 +22,13 @@ async def test_branch_create(default_branch, car_person_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -33,13 +37,17 @@ async def test_branch_create(default_branch, car_person_schema):
     assert result.data["branch_create"]["ok"] is True
     assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
 
-    assert Branch.get_by_name("branch2")
+    assert await Branch.get_by_name(session=session, name="branch2")
 
     # Validate that we can't create a branch with a name that already exist
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -48,9 +56,9 @@ async def test_branch_create(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
-async def test_branch_rebase(default_branch, car_person_schema):
+async def test_branch_rebase(db, session, default_branch, car_person_schema):
 
-    branch2 = create_branch("branch2")
+    branch2 = await create_branch(session=session, branch_name="branch2")
 
     query = """
     mutation {
@@ -63,25 +71,29 @@ async def test_branch_rebase(default_branch, car_person_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
     assert result.data["branch_rebase"]["ok"] is True
-    assert result.data["branch_rebase"]["object"]["id"] == branch2.uuid
+    assert result.data["branch_rebase"]["object"]["id"] == str(branch2.uuid)
 
-    new_branch2 = Branch.get_by_name("branch2")
+    new_branch2 = await Branch.get_by_name(session=session, name="branch2")
     assert new_branch2.branched_from != branch2.branched_from
 
 
 @pytest.mark.asyncio
-async def test_branch_validate(base_dataset_02, register_core_models_schema):
+async def test_branch_validate(db, session, base_dataset_02, register_core_models_schema):
 
-    branch1 = Branch.get_by_name("branch1")
+    branch1 = await Branch.get_by_name(session=session, name="branch1")
 
     query = """
     mutation {
@@ -94,22 +106,26 @@ async def test_branch_validate(base_dataset_02, register_core_models_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
     assert result.data["branch_validate"]["ok"] is True
-    assert result.data["branch_validate"]["object"]["id"] == branch1.uuid
+    assert result.data["branch_validate"]["object"]["id"] == str(branch1.uuid)
 
 
 @pytest.mark.asyncio
-async def test_branch_merge(base_dataset_02, register_core_models_schema):
+async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
 
-    branch1 = Branch.get_by_name("branch1")
+    branch1 = await Branch.get_by_name(session=session, name="branch1")
 
     query = """
     mutation {
@@ -122,13 +138,17 @@ async def test_branch_merge(base_dataset_02, register_core_models_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
     assert result.data["branch_merge"]["ok"] is True
-    assert result.data["branch_merge"]["object"]["id"] == branch1.uuid
+    assert result.data["branch_merge"]["object"]["id"] == str(branch1.uuid)

@@ -2,6 +2,8 @@ import logging
 
 from infrahub.core.node import Node
 
+from neo4j import AsyncSession
+
 # from infrahub.core.account import Account, AccountToken, Group
 
 # flake8: noqa
@@ -73,7 +75,7 @@ INTERFACE_ROLES = {
 LOGGER = logging.getLogger("infrahub")
 
 
-def load_data():
+async def load_data(session: AsyncSession):
 
     # ------------------------------------------
     # Create User Accounts and Groups
@@ -85,7 +87,7 @@ def load_data():
 
     # for perm in PERMS:
     #     obj = Permission.init(name=perm[0], type=perm[1])
-    #     obj.save()
+    #     obj.save(session=session)
     #     perms_dict[perm[0]] = obj
 
     #     # Associate the permissions with the right attr group
@@ -100,7 +102,9 @@ def load_data():
     #     groups_dict[group.slug.value] = group
 
     for group in GROUPS:
-        obj = Node("Group").new(description=group[0], name=group[1]).save()
+        obj = await Node.init(session=session, schema="Group")
+        await obj.new(session=session, description=group[0], name=group[1])
+        await obj.save(session=session)
         groups_dict[group[1]] = obj
         LOGGER.info(f"Group Created: {obj.name.value}")
 
@@ -111,7 +115,7 @@ def load_data():
         #     add_relationship(obj, perm, f"HAS_PERM")
 
     # for account in ACCOUNTS:
-    #     obj =  Node("Account").new(name=account[0], type=account[1]).save()
+    #     obj =  await Node.init(session=session, schema="Account").new(session=session, name=account[0], type=account[1]).save(session=session)
     #     accounts_dict[account[0]] = obj
 
     #     for group in account[2]:
@@ -127,23 +131,31 @@ def load_data():
     device_profiles_dict = {}
 
     LOGGER.info("Creating Site")
-    site_hq = Node("Location").new(name="HQ", type="Site").save()
+    site_hq = await Node.init(session=session, schema="Location")
+    await site_hq.new(session=session, name="HQ", type="Site")
+    await site_hq.save(session=session)
 
     LOGGER.info("Creating Roles & Status")
     for role in ROLES:
-        obj = Node("Role").new(description=role.title(), name=role).save()
+        obj = await Node.init(session=session, schema="Role")
+        await obj.new(session=session, description=role.title(), name=role)
+        await obj.save(session=session)
         roles_dict[role] = obj
         LOGGER.info(f"Created Role: {role}")
 
     STATUSES = ["active", "provisionning", "maintenance"]
     for status in STATUSES:
-        obj = Node("Status").new(description=status.title(), name=status).save()
+        obj = await Node.init(session=session, schema="Status")
+        await obj.new(session=session, description=status.title(), name=status)
+        await obj.save(session=session)
         statuses_dict[status] = obj
         LOGGER.info(f"Created Status: {status}")
 
     TAGS = ["blue", "green", "red"]
     for tag in TAGS:
-        obj = Node("Tag").new(name=tag).save()
+        obj = await Node.init(session=session, schema="Tag")
+        await obj.new(session=session, name=tag)
+        await obj.save(session=session)
         tags_dict[tag] = obj
         LOGGER.info(f"Created Tag: {tag}")
 
@@ -163,32 +175,34 @@ def load_data():
         role_id = None
         if device[4]:
             role_id = roles_dict[device[4]].id
-        obj = Node("Device").new(name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
+        obj = await Node.init(session=session, schema="Device")
+        await obj.new(session=session, name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
 
         # # Connect tags
         # for tag_name in device[5]:
         #     tag = tags_dict[tag_name]
         #     obj.tags.add_peer(tag)
 
-        obj.save()
+        await obj.save(session=session)
         LOGGER.info(f"- Created Device: {device[0]}")
 
         # Add a special interface for spine1
         if device[0] == "spine1":
-            intf = (
-                Node("Interface")
-                .new(
-                    device="spine1",
-                    name="Loopback0",
-                    enabled=True,
-                    status=active_status.id,
-                    role=role_loopback.id,
-                    speed=10000,
-                )
-                .save()
+            intf = await Node.init(session=session, schema="Interface")
+            await intf.new(
+                session=session,
+                device="spine1",
+                name="Loopback0",
+                enabled=True,
+                status=active_status.id,
+                role=role_loopback.id,
+                speed=10000,
             )
+            await intf.save(session=session)
 
-            ip = Node("IPAddress").new(interface=intf, address=f"192.168.{idx}.10/24").save()
+            ip = await Node.init(session=session, schema="IPAddress")
+            await ip.new(session=session, interface=intf, address=f"192.168.{idx}.10/24")
+            await ip.save(session=session)
 
         if device[4] not in ["spine", "leaf"]:
             continue
@@ -204,18 +218,19 @@ def load_data():
             if intf_idx in [0, 1]:
                 enabled = False
 
-            intf = (
-                Node("Interface")
-                .new(
-                    device=obj,
-                    name=intf_name,
-                    speed=10000,
-                    enabled=enabled,
-                    status=active_status.id,
-                    role=intf_role_id,
-                )
-                .save()
+            intf = await Node.init(session=session, schema="Interface")
+            await intf.new(
+                session=session,
+                device=obj,
+                name=intf_name,
+                speed=10000,
+                enabled=enabled,
+                status=active_status.id,
+                role=intf_role_id,
             )
+            await intf.save(session=session)
 
             if intf_idx == 1:
-                ip = Node("IPAddress").new(interface=intf, address=f"192.168.{idx}.{intf_idx}/24").save()
+                ip = await Node.init(session=session, schema="IPAddress")
+                await ip.new(session=session, interface=intf, address=f"192.168.{idx}.{intf_idx}/24")
+                await ip.save(session=session)

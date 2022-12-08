@@ -7,7 +7,7 @@ authors = ["Your Name <you@example.com>"]
 [tool.poetry.dependencies]
 python = "^3.8"
 fastapi = "~0.81"
-neo4j = "~4.4"
+neo4j = "~5.3"
 pendulum = "~2.1"
 uvicorn = {version = "~0.18", extras = ["standard"]}
 graphene = "~3.1"
@@ -91,7 +91,7 @@ notes = """,
 min-similarity-lines = 20
 
 [tool.pytest.ini_options]
-asyncio_mode = "strict"
+asyncio_mode = "auto"
 testpaths = [
     "tests"
 ]

@@ -1,13 +1,14 @@
-import uuid
+from uuid import UUID
+from typing import Any
 from itertools import groupby
 
 from enum import Enum, EnumMeta
 
 
-def is_valid_uuid(val) -> bool:
+def is_valid_uuid(value: Any) -> bool:
     """Check if the input is a valid UUID."""
     try:
-        uuid.UUID(str(val))
+        UUID(str(value))
         return True
     except ValueError:
         return False

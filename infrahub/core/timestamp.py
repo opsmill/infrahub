@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import Optional, TYPE_CHECKING
 import re
 
 import pendulum
 from pendulum.datetime import DateTime
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 REGEX_MAPPING = {
     "seconds": r"(\d+)(s|sec|second|seconds)",
@@ -49,7 +53,7 @@ class Timestamp:
     def to_string(self):
         return self.obj.to_iso8601_string()
 
-    def to_graphql(self):
+    async def to_graphql(self, session: Optional[AsyncSession] = None):
         return self.obj
 
     def __eq__(self, other):

@@ -8,7 +8,7 @@ from infrahub.graphql import get_gql_mutation, get_gql_query
 
 
 @pytest.mark.asyncio
-async def test_create_simple_object(default_branch, car_person_schema):
+async def test_create_simple_object(db, session, default_branch, car_person_schema):
 
     query = """
     mutation {
@@ -21,9 +21,13 @@ async def test_create_simple_object(default_branch, car_person_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -34,10 +38,12 @@ async def test_create_simple_object(default_branch, car_person_schema):
 
 
 @pytest.mark.asyncio
-async def test_create_object_with_flag_property(default_branch, car_person_schema):
+async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
 
     graphql_schema = graphene.Schema(
-        query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False
+        query=await get_gql_query(session=session),
+        mutation=await get_gql_mutation(session=session),
+        auto_camelcase=False,
     ).graphql_schema
 
     query = """
@@ -53,7 +59,7 @@ async def test_create_object_with_flag_property(default_branch, car_person_schem
     result = await graphql(
         graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -80,20 +86,22 @@ async def test_create_object_with_flag_property(default_branch, car_person_schem
     result1 = await graphql(
         graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["name"]["is_protected"] == True
-    assert result1.data["person"][0]["height"]["is_visible"] == False
+    assert result1.data["person"][0]["name"]["is_protected"] is True
+    assert result1.data["person"][0]["height"]["is_visible"] is False
 
 
 @pytest.mark.asyncio
-async def test_create_object_with_single_relationship(default_branch, car_person_schema):
+async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
 
-    Node("Person").new(name="John", height=180).save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
 
     query = """
     mutation {
@@ -112,9 +120,13 @@ async def test_create_object_with_single_relationship(default_branch, car_person
     """
 
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -125,9 +137,11 @@ async def test_create_object_with_single_relationship(default_branch, car_person
 
 
 @pytest.mark.asyncio
-async def test_create_object_with_single_relationship_flap_property(default_branch, car_person_schema):
+async def test_create_object_with_single_relationship_flap_property(db, session, default_branch, car_person_schema):
 
-    Node("Person").new(name="John", height=180).save()
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
 
     query = """
     mutation {
@@ -146,9 +160,13 @@ async def test_create_object_with_single_relationship_flap_property(default_bran
     """
 
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -157,16 +175,22 @@ async def test_create_object_with_single_relationship_flap_property(default_bran
     assert result.data["car_create"]["ok"] is True
     assert len(result.data["car_create"]["object"]["id"]) == 36
 
-    car = NodeManager.get_one(result.data["car_create"]["object"]["id"])
-    assert car.owner.get().is_protected == True
+    car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
+    assert car.owner.get().is_protected is True
 
 
 @pytest.mark.asyncio
-async def test_create_object_with_multiple_relationships(default_branch, fruit_tag_schema):
+async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
 
-    t1 = Node("Tag").new(name="tag1").save()
-    t2 = Node("Tag").new(name="tag2").save()
-    t3 = Node("Tag").new(name="tag3").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="tag1")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="tag2")
+    await t2.save(session=session)
+    t3 = await Node.init(session=session, schema="Tag")
+    await t3.new(session=session, name="tag3")
+    await t3.save(session=session)
 
     query = """
     mutation {
@@ -183,9 +207,13 @@ async def test_create_object_with_multiple_relationships(default_branch, fruit_t
     """
 
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -194,16 +222,22 @@ async def test_create_object_with_multiple_relationships(default_branch, fruit_t
     assert result.data["fruit_create"]["ok"] is True
     assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
 
-    fruit = NodeManager.get_one(result.data["fruit_create"]["object"]["id"])
+    fruit = await NodeManager.get_one(session=session, id=result.data["fruit_create"]["object"]["id"])
     assert len(fruit.tags.get()) == 3
 
 
 @pytest.mark.asyncio
-async def test_create_object_with_multiple_relationships_flag_property(default_branch, fruit_tag_schema):
+async def test_create_object_with_multiple_relationships_flag_property(db, session, default_branch, fruit_tag_schema):
 
-    t1 = Node("Tag").new(name="tag1").save()
-    t2 = Node("Tag").new(name="tag2").save()
-    t3 = Node("Tag").new(name="tag3").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="tag1")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="tag2")
+    await t2.save(session=session)
+    t3 = await Node.init(session=session, schema="Tag")
+    await t3.new(session=session, name="tag3")
+    await t3.save(session=session)
 
     query = """
     mutation {
@@ -224,9 +258,13 @@ async def test_create_object_with_multiple_relationships_flag_property(default_b
     """
 
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -235,7 +273,7 @@ async def test_create_object_with_multiple_relationships_flag_property(default_b
     assert result.data["fruit_create"]["ok"] is True
     assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
 
-    fruit = NodeManager.get_one(result.data["fruit_create"]["object"]["id"])
+    fruit = await NodeManager.get_one(session=session, id=result.data["fruit_create"]["object"]["id"])
     rels = fruit.tags.get()
     assert len(rels) == 3
     assert rels[0].is_protected is True
@@ -244,7 +282,7 @@ async def test_create_object_with_multiple_relationships_flag_property(default_b
 
 
 @pytest.mark.asyncio
-async def test_create_person_not_valid(default_branch, car_person_schema):
+async def test_create_person_not_valid(db, session, default_branch, car_person_schema):
 
     query = """
     mutation {
@@ -257,9 +295,13 @@ async def test_create_person_not_valid(default_branch, car_person_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=get_gql_query(), mutation=get_gql_mutation(), auto_camelcase=False).graphql_schema,
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
         source=query,
-        context_value={},
+        context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
         variable_values={},
     )

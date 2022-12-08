@@ -1,4 +1,4 @@
-from graphene import Boolean, DateTime, Field, Int, List, ObjectType, Schema, String
+from graphene import Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 
 import infrahub.config as config

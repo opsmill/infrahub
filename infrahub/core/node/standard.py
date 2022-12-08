@@ -1,25 +1,28 @@
 import uuid
+from uuid import UUID
 from typing import List, Optional
 
 from pydantic import BaseModel
 
-from infrahub.database import execute_read_query, execute_write_query
+from neo4j import AsyncSession
+
+from infrahub.database import execute_read_query_async, execute_write_query_async
 
 
 class StandardNode(BaseModel):
 
-    id: Optional[int]
-    uuid: Optional[str]
+    id: Optional[str]
+    uuid: Optional[UUID]
 
     # owner: Optional[str]
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner"]
 
     @classmethod
-    def get_type(cls):
+    def get_type(cls) -> str:
         return cls.__name__
 
-    def to_graphql(self, fields=None):
+    async def to_graphql(self, fields: dict = None) -> dict:
 
         response = {"id": self.uuid}
 
@@ -34,26 +37,26 @@ class StandardNode(BaseModel):
 
         return response
 
-    def save(self):
+    async def save(self, session: AsyncSession):
         """Create or Update the Node in the database."""
 
         if self.id:
-            return self._update()
+            return await self._update(session=session)
 
-        return self._create()
+        return await self._create(session=session)
 
-    def refresh(self, at=None, branch="main"):
+    async def refresh(self, session: AsyncSession, at=None, branch="main"):
         """Pull the latest state of the object from the database."""
 
         # Might need ot check how to manage the default value
-        raw_attrs = self._get_item_raw(self.id, at=at, branch=branch)
+        raw_attrs = self._get_item_raw(self.id, at=at, branch=branch, session=session)
         for item in raw_attrs:
             if item[1] != getattr(self, item[0]):
                 setattr(self, item[0], item[1])
 
         return True
 
-    def _create(self, id=None, branch="main"):
+    async def _create(self, session: AsyncSession, id=None, branch="main"):
         """Create a new node in the database."""
 
         node_type = self.get_type()
@@ -74,18 +77,18 @@ class StandardNode(BaseModel):
 
         params = {"uuid": str(uuid.uuid4())}
 
-        results = execute_write_query(query, params)
+        results = await execute_write_query_async(session=session, query=query, params=params)
         if not results:
             raise Exception("Unexpected error, unable to create the new node.")
 
-        node = results[0].values()[0]
+        node = results[0][0]
 
-        self.id = int(node.id)
+        self.id = node.element_id
         self.uuid = node["uuid"]
 
         return True
 
-    def _update(self):
+    async def _update(self, session: AsyncSession):
         """Update the node in the database if needed."""
 
         attrs = []
@@ -95,8 +98,7 @@ class StandardNode(BaseModel):
             attrs.append(f"{attr_name}: '{getattr(self, attr_name)}'")
 
         query = """
-        MATCH (n:%s)
-        WHERE ID(n) = $node_id
+        MATCH (n:%s { uuid: $uuid })
         SET n = { %s }
         RETURN n
         """ % (
@@ -104,29 +106,29 @@ class StandardNode(BaseModel):
             ",".join(attrs),
         )
 
-        params = {"node_id": self.id}
+        params = {"uuid": str(self.uuid)}
 
-        results = execute_write_query(query, params)
+        results = await execute_write_query_async(session=session, query=query, params=params)
 
         if not results:
             raise Exception(f"Unexpected error, unable to update the node {self.id} / {self.uuid}.")
 
-        results[0].values()[0]
+        results[0][0]
 
         return True
 
     @classmethod
-    def get(cls, id):
+    async def get(cls, id, session: AsyncSession):
         """Get a node from the database identied by its ID."""
 
-        node = cls._get_item_raw(id=id)
+        node = await cls._get_item_raw(id=id, session=session)
         if node:
             return cls._convert_node_to_obj(node)
 
         return None
 
     @classmethod
-    def _get_item_raw(cls, id):
+    async def _get_item_raw(cls, id, session: AsyncSession):
 
         query = (
             """
@@ -139,7 +141,7 @@ class StandardNode(BaseModel):
 
         params = {"node_id": id}
 
-        results = execute_read_query(query, params)
+        results = await execute_read_query_async(session=session, query=query, params=params)
         if len(results):
             return results[0].values()[0]
 
@@ -154,11 +156,11 @@ class StandardNode(BaseModel):
             StandardNode: Proper StandardNode object
         """
         attrs = dict(node)
-        attrs["id"] = node.id
+        attrs["id"] = node.element_id
         return cls(**attrs)
 
     @classmethod
-    def get_list(cls, limit=1000):
+    async def get_list(cls, session: AsyncSession, limit=1000):
 
         query = (
             """
@@ -172,5 +174,5 @@ class StandardNode(BaseModel):
 
         params = {"limit": 1000}
 
-        results = execute_read_query(query, params)
+        results = await execute_read_query_async(session=session, query=query, params=params)
         return [cls._convert_node_to_obj(node.values()[0]) for node in results]

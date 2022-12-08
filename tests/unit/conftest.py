@@ -1,7 +1,13 @@
 import pendulum
+
+import asyncio
 import pytest
+import pytest_asyncio
+
+import infrahub.config as config
 
 from infrahub.core import registry
+from infrahub.database import get_db
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
@@ -12,15 +18,52 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import execute_write_query
+from infrahub.database import execute_write_query_async
 from infrahub.test_data import dataset01 as ds01
 
 
-@pytest.fixture
-def simple_dataset_01():
+# NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
+# NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
+# NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
+# NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
+# NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
+# NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
 
-    delete_all_nodes()
-    create_default_branch()
+# URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Overrides pytest default function scoped event loop"""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(scope="module")
+async def db():
+    db = await get_db()
+
+    yield db
+
+    await db.close()
+
+
+@pytest_asyncio.fixture
+async def session(db):
+
+    session = db.session(database=config.SETTINGS.database.database)
+
+    yield session
+
+    await session.close()
+
+
+@pytest_asyncio.fixture
+async def simple_dataset_01(session, empty_database):
+
+    await create_default_branch(session)
 
     params = {
         "branch": "main",
@@ -48,11 +91,11 @@ def simple_dataset_01():
     RETURN c, at1, at2
     """
 
-    execute_write_query(query, params)
+    await execute_write_query_async(session=session, query=query, params=params)
 
 
-@pytest.fixture
-def base_dataset_02(default_branch, car_person_schema):
+@pytest_asyncio.fixture
+async def base_dataset_02(session, default_branch, car_person_schema):
     """This Dataset includes:
     - 4 timestamps
       * time0 is now
@@ -83,7 +126,7 @@ def base_dataset_02(default_branch, car_person_schema):
         is_data_only=True,
         branched_from=time0.subtract(seconds=40).to_iso8601_string(),
     )
-    branch1.save()
+    await branch1.save(session=session)
     registry.branch[branch1.name] = branch1
 
     params = {
@@ -253,13 +296,13 @@ def base_dataset_02(default_branch, car_person_schema):
     RETURN c1, c2, c3
     """
 
-    execute_write_query(query, params)
+    await execute_write_query_async(session=session, query=query, params=params)
 
     return params
 
 
-@pytest.fixture
-def car_person_schema():
+@pytest_asyncio.fixture
+async def car_person_schema(session):
 
     SCHEMA = {
         "nodes": [
@@ -294,13 +337,13 @@ def car_person_schema():
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        registry.set_schema(node.kind, node)
+        await registry.set_schema(name=node.kind, schema=node)
 
     return True
 
 
-@pytest.fixture
-def person_tag_schema():
+@pytest_asyncio.fixture
+async def person_tag_schema(session):
 
     SCHEMA = {
         "nodes": [
@@ -333,13 +376,13 @@ def person_tag_schema():
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        registry.set_schema(node.kind, node)
+        await registry.set_schema(name=node.kind, schema=node)
 
     return True
 
 
-@pytest.fixture
-def criticality_schema():
+@pytest_asyncio.fixture
+async def criticality_schema(session):
 
     SCHEMA = {
         "name": "criticality",
@@ -355,13 +398,13 @@ def criticality_schema():
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.set_schema(node.kind, node)
+    await registry.set_schema(name=node.kind, schema=node)
 
     return node
 
 
-@pytest.fixture
-def fruit_tag_schema():
+@pytest_asyncio.fixture
+async def fruit_tag_schema(session):
 
     SCHEMA = {
         "nodes": [
@@ -392,54 +435,65 @@ def fruit_tag_schema():
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        registry.set_schema(node.kind, node)
+        await registry.set_schema(name=node.kind, schema=node)
 
     return True
 
 
-@pytest.fixture
-def init_db():
-    delete_all_nodes()
-    first_time_initialization()
-    initialization()
+@pytest_asyncio.fixture
+async def empty_database(session):
+    await delete_all_nodes(session=session)
 
 
-@pytest.fixture()
-def default_branch():
-    delete_all_nodes()
-    return create_default_branch()
+@pytest_asyncio.fixture
+async def init_db(empty_database, session):
+    await first_time_initialization(session=session)
+    await initialization(session=session)
 
 
-@pytest.fixture()
-def register_core_models_schema():
+@pytest_asyncio.fixture
+async def default_branch(empty_database, session):
+    return await create_default_branch(session=session)
+
+
+@pytest_asyncio.fixture
+async def register_core_models_schema():
 
     schema = SchemaRoot(**internal_schema)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
     schema = SchemaRoot(**core_models)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema=schema)
 
 
-@pytest.fixture()
-def register_account_schema():
+@pytest_asyncio.fixture
+async def register_account_schema(session):
 
     SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
 
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
     for schema in account_schemas:
-        registry.set_schema(schema["kind"], NodeSchema(**schema))
+        await registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
 
     return True
 
 
-@pytest.fixture()
-def first_account(register_account_schema):
-    return Node("Account").new(name="First Account", type="USER").save()
+@pytest_asyncio.fixture
+async def first_account(session, register_account_schema):
+
+    obj = await Node.init(session=session, schema="Account")
+    await obj.new(session=session, name="First Account", type="GIT")
+    await obj.save(session=session)
+    return obj
 
 
-@pytest.fixture()
-def second_account(register_account_schema):
-    return Node("Account").new(name="Second Account", type="GIT").save()
+@pytest_asyncio.fixture
+async def second_account(session, register_account_schema):
+
+    obj = await Node.init(session=session, schema="Account")
+    await obj.new(session=session, name="Second Account", type="GIT")
+    await obj.save(session=session)
+    return obj
 
 
 @pytest.fixture

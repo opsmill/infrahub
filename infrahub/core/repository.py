@@ -3,7 +3,7 @@ from __future__ import annotations
 import glob
 import json
 import os
-from typing import List, Dict
+from typing import List
 
 from git import Repo
 
@@ -97,9 +97,9 @@ class Repository(Node):
 
         return True
 
-    def new(self, **kwargs):
+    async def new(self, **kwargs):
 
-        super().new(**kwargs)
+        await super().new(**kwargs)
         self.ensure_exists_locally()
         self.update_commit_value()
 

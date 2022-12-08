@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, root_validator, validator
 
@@ -11,6 +11,7 @@ from infrahub.core.relationship import Relationship
 from infrahub.utils import duplicates
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.branch import Branch
 
 ATTRIBUTES_MAPPING = {
@@ -47,7 +48,7 @@ class AttributeSchema(BaseModel):
     def get_class(self):
         return ATTRIBUTES_MAPPING.get(self.kind, None)
 
-    def get_query_filter(self, *args, **kwargs):
+    async def get_query_filter(self, session: AsyncSession, *args, **kwargs):
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
@@ -76,11 +77,12 @@ class RelationshipSchema(BaseModel):
     def get_class(self):
         return RELATIONSHIPS_MAPPING.get(self.inherit_from, None)
 
-    def get_peer_schema(self):
-        return registry.get_schema(self.peer)
+    async def get_peer_schema(self, session: AsyncSession):
+        return await registry.get_schema(session=session, name=self.peer)
 
-    def get_query_filter(
+    async def get_query_filter(
         self,
+        session: AsyncSession,
         name: str = None,
         filters: dict = None,
         branch: Branch = None,
@@ -98,7 +100,7 @@ class RelationshipSchema(BaseModel):
         if not filters:
             return query_filters, query_params, nbr_rels
 
-        peer_schema = self.get_peer_schema()
+        peer_schema = await self.get_peer_schema(session=session)
 
         query_params[f"{prefix}_rel_name"] = self.identifier
 
@@ -158,8 +160,13 @@ class RelationshipSchema(BaseModel):
 
             field = peer_schema.get_field(field_name)
 
-            field_filter, field_params, field_nbr_rels = field.get_query_filter(
-                name=field_name, filters=attr_filters, branch=branch, rels_offset=2, include_match=False
+            field_filter, field_params, field_nbr_rels = await field.get_query_filter(
+                session=session,
+                name=field_name,
+                filters=attr_filters,
+                branch=branch,
+                rels_offset=2,
+                include_match=False,
             )
 
             if field_nbr_rels > max_field_nbr_rels:
@@ -216,7 +223,7 @@ class NodeSchema(BaseModel):
             raise ValueError(f"Identifier of relationships must be unique : {identifier_dup}")
         return values
 
-    def get_field(self, name, raise_on_error=True):
+    def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
 
         if field := self.get_attribute(name, raise_on_error=False):
             return field
@@ -229,7 +236,7 @@ class NodeSchema(BaseModel):
 
         raise ValueError(f"Unable to find the field {name}")
 
-    def get_attribute(self, name, raise_on_error=True):
+    def get_attribute(self, name, raise_on_error=True) -> AttributeSchema:
         for item in self.attributes:
             if item.name == name:
                 return item
@@ -239,7 +246,7 @@ class NodeSchema(BaseModel):
 
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_relationship(self, name, raise_on_error=True):
+    def get_relationship(self, name, raise_on_error=True) -> RelationshipSchema:
         for item in self.relationships:
             if item.name == name:
                 return item
@@ -249,7 +256,7 @@ class NodeSchema(BaseModel):
 
         raise ValueError(f"Unable to find the relationship {name}")
 
-    def get_relationship_by_identifier(self, id, raise_on_error=True):
+    def get_relationship_by_identifier(self, id, raise_on_error=True) -> RelationshipSchema:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -260,27 +267,27 @@ class NodeSchema(BaseModel):
         raise ValueError(f"Unable to find the relationship {id}")
 
     @property
-    def valid_input_names(self):
+    def valid_input_names(self) -> List[str]:
         return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES
 
     @property
-    def attribute_names(self):
+    def attribute_names(self) -> List[str]:
         return [item.name for item in self.attributes]
 
     @property
-    def relationship_names(self):
+    def relationship_names(self) -> List[str]:
         return [item.name for item in self.relationships]
 
     @property
-    def mandatory_input_names(self):
+    def mandatory_input_names(self) -> List[str]:
         return self.mandatory_attribute_names + self.mandatory_relationship_names
 
     @property
-    def mandatory_attribute_names(self):
+    def mandatory_attribute_names(self) -> List[str]:
         return [item.name for item in self.attributes if not item.optional and not item.default_value]
 
     @property
-    def mandatory_relationship_names(self):
+    def mandatory_relationship_names(self) -> List[str]:
         return [item.name for item in self.relationships if not item.optional]
 
 

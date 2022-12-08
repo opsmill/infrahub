@@ -3,13 +3,14 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Set, Optional, Any, Union, Generator, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, Union, Generator, Tuple, TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.query import Query, QueryType, QueryResult
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.schema import NodeSchema
     from infrahub.core.branch import Branch
     from . import Node
@@ -59,11 +60,11 @@ class AttrToProcess:
     is_visible: Optional[bool]
 
 
-def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
+async def find_node_schema(node, branch: Union[Branch, str], session: AsyncSession) -> NodeSchema:
 
     for label in node.labels:
-        if registry.has_schema(label, branch=branch):
-            return registry.get_schema(label, branch=branch)
+        if await registry.has_schema(name=label, branch=branch, session=session):
+            return await registry.get_schema(name=label, branch=branch, session=session)
 
     return None
 
@@ -103,7 +104,7 @@ class NodeCreateQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["uuid"] = str(uuid.uuid4())
         self.params["branch"] = self.branch.name
@@ -123,7 +124,7 @@ class NodeCreateQuery(NodeQuery):
         self.add_to_query(query)
         self.return_labels = ["n"]
 
-    def get_new_ids(self):
+    def get_new_ids(self) -> Tuple[str, str]:
 
         result = self.get_result()
         node = result.get("n")
@@ -131,7 +132,7 @@ class NodeCreateQuery(NodeQuery):
         if node is None:
             raise QueryError(self.get_query(), self.params)
 
-        return node["uuid"], int(node.id)
+        return node["uuid"], node.element_id
 
 
 class NodeDeleteQuery(NodeQuery):
@@ -141,7 +142,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
@@ -166,7 +167,7 @@ class NodeListGetLocalAttributeValueQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["attrs_ids"] = self.ids
 
@@ -178,7 +179,7 @@ class NodeListGetLocalAttributeValueQuery(Query):
 
         query = (
             """
-        MATCH (a:Attribute) WHERE ID(a) IN $attrs_ids
+        MATCH (a:Attribute) WHERE a.uuid IN $attrs_ids
         MATCH (a)-[r1:HAS_VALUE]-(av:AttributeValue)
         WHERE %s
         """
@@ -223,7 +224,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.params["ids"] = self.ids
 
@@ -304,9 +305,9 @@ class NodeListGetAttributeQuery(Query):
                 name=attr_name,
                 type=result.get("a").get("type"),
                 attr_labels=result.get("a").labels,
-                attr_id=result.get("a").id,
+                attr_id=result.get("a").element_id,
                 attr_uuid=result.get("a").get("uuid"),
-                attr_value_id=result.get("av").id,
+                attr_value_id=result.get("av").element_id,
                 attr_value_uuid=result.get("av").get("uuid"),
                 updated_at=result.get("r2").get("from"),
                 value=result.get("av").get("value"),
@@ -349,7 +350,7 @@ class NodeListGetInfoQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         branches = list(self.branch.get_branches_and_times_to_query().keys())
         self.params["branches"] = branches
@@ -375,14 +376,14 @@ class NodeListGetInfoQuery(Query):
 
         self.return_labels = ["n", "rb"]
 
-    def get_nodes(self) -> Generator[NodeToProcess, None, None]:
+    async def get_nodes(self, session: AsyncSession) -> Generator[NodeToProcess, None, None]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = find_node_schema(result.get("n"), self.branch)
+            schema = await find_node_schema(node=result.get("n"), branch=self.branch, session=session)
             yield NodeToProcess(
                 schema=schema,
-                node_id=result.get("n").id,
+                node_id=result.get("n").element_id,
                 node_uuid=result.get("n").get("uuid"),
                 updated_at=result.get("rb").get("from"),
                 branch=self.branch,
@@ -402,7 +403,7 @@ class NodeGetListQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         branches = list(self.branch.get_branches_and_times_to_query().keys())
 
@@ -451,8 +452,8 @@ class NodeGetListQuery(Query):
 
             field = self.schema.get_field(field_name)
 
-            field_filters, field_params, nbr_rels = field.get_query_filter(
-                name=field_name, filters=attr_filters, branch=self.branch
+            field_filters, field_params, nbr_rels = await field.get_query_filter(
+                session=session, name=field_name, filters=attr_filters, branch=self.branch
             )
             self.params.update(field_params)
 

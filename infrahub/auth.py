@@ -1,11 +1,17 @@
-import typing
+from __future__ import annotations
+
+from typing import List, Optional, Callable, Awaitable, TYPE_CHECKING
 
 from starlette import authentication as auth
 from starlette.authentication import AuthenticationError
 from starlette.requests import HTTPConnection
 
+import infrahub.config as config
 from infrahub.core import get_account
 from infrahub.core.account import validate_token
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 # from ..datatypes import AuthResult
 # from ..exceptions import InvalidCredentials
@@ -29,7 +35,7 @@ class AuthBackend(auth.AuthenticationBackend):
 class _BaseSchemeAuth(AuthBackend):
     scheme: str
 
-    def get_credentials(self, conn: HTTPConnection) -> typing.Optional[str]:
+    def get_credentials(self, conn: HTTPConnection) -> Optional[str]:
         if "Authorization" not in conn.headers:
             return None
 
@@ -40,10 +46,10 @@ class _BaseSchemeAuth(AuthBackend):
 
         return credentials
 
-    def parse_credentials(self, credentials: str) -> typing.List[str]:
+    def parse_credentials(self, credentials: str) -> List[str]:
         return [credentials]
 
-    verify: typing.Callable[..., typing.Awaitable[typing.Optional[auth.BaseUser]]]
+    verify: Callable[..., Awaitable[Optional[auth.BaseUser]]]
 
     async def authenticate(self, conn: HTTPConnection):
         credentials = self.get_credentials(conn)
@@ -51,7 +57,10 @@ class _BaseSchemeAuth(AuthBackend):
             return None
 
         parts = self.parse_credentials(credentials)
-        user = await self.verify(*parts)
+
+        async with conn.app.state.db.session(database=config.SETTINGS.database.database) as session:
+            user = await self.verify(session=session, token=parts[0])
+
         if user is None:
             raise InvalidCredentials
 
@@ -98,14 +107,14 @@ class _BaseSchemeAuth(AuthBackend):
 class BaseTokenAuth(_BaseSchemeAuth):
     scheme = "Token"
 
-    def parse_credentials(self, credentials: str) -> typing.List[str]:
+    def parse_credentials(self, credentials: str) -> List[str]:
         token = credentials
         return [token]
 
-    async def verify(self, token: str) -> typing.Optional[auth.BaseUser]:
+    async def verify(self, session: AsyncSession, token: str) -> Optional[auth.BaseUser]:
 
-        if account_name := validate_token(token):
-            account = get_account(account_name)
+        if account_name := await validate_token(session=session, token=token):
+            account = await get_account(session=session, account=account_name)
             return account
 
         return False

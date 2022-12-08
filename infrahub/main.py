@@ -4,37 +4,61 @@ import logging
 from typing import Optional
 
 import graphene
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, Depends
 from graphql import graphql
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
+from neo4j import AsyncSession
+
 import infrahub.config as config
 from infrahub.auth import BaseTokenAuth
 from infrahub.message_bus import connect_to_broker, close_broker_connection
 from infrahub.core import get_branch, registry
+from infrahub.database import get_db
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import get_gql_mutation, get_gql_query  # Query, Mutation
+from infrahub.graphql import get_gql_mutation, get_gql_query
 from infrahub.graphql.app import InfrahubGraphQLApp
+from infrahub.core.rfile import RFile
+
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-app.add_event_handler("shutdown", close_broker_connection)
+
+async def get_session(request: Request) -> AsyncSession:
+    session = request.app.state.db.session(database=config.SETTINGS.database.database)
+    try:
+        yield session
+    finally:
+        await session.close()
 
 
 @app.on_event("startup")
 async def app_initialization():
-    config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-    config_file_path = os.path.abspath(config_file_name)
-    logger.info(f"Loading the configuration from {config_file_path}")
-    config.load_and_exit(config_file_path)
-    initialization()
+
+    if not config.SETTINGS:
+        config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+        config_file_path = os.path.abspath(config_file_name)
+        logger.info(f"Loading the configuration from {config_file_path}")
+        config.load_and_exit(config_file_path)
+
+    app.state.db = await get_db()
+
+    async with app.state.db.session(database=config.SETTINGS.database.database) as session:
+        await initialization(session=session)
+
     await connect_to_broker()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await close_broker_connection()
+    await app.state.db.close()
 
 
 @app.middleware("http")
@@ -50,6 +74,7 @@ async def add_process_time_header(request: Request, call_next):
 async def generate_rfile(
     request: Request,
     rfile_id: str,
+    session: AsyncSession = Depends(get_session),
     save_on_disk: bool = False,
     branch: Optional[str] = None,
     at: Optional[str] = None,
@@ -58,31 +83,37 @@ async def generate_rfile(
 
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(session=session, branch=branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
-    rfile = NodeManager.get_one(id=rfile_id, branch=branch, at=at)
+    rfile: RFile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch, at=at)
 
     if not rfile:
-        rfile_schema = registry.get_schema("RFile")
-        items = NodeManager.query(rfile_schema, filters={rfile_schema.default_filter: rfile_id}, branch=branch, at=at)
+        rfile_schema = await registry.get_schema(session=session, name="RFile")
+        items = await NodeManager.query(
+            session=session, schema=rfile_schema, filters={rfile_schema.default_filter: rfile_id}, branch=branch, at=at
+        )
         if items:
             rfile = items[0]
 
     if not rfile:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    query = rfile.get_query()
+    query = await rfile.get_query(session=session)
 
     result = await graphql(
         graphene.Schema(
-            query=get_gql_query(branch=branch), mutation=get_gql_mutation(branch=branch), auto_camelcase=False
+            query=await get_gql_query(session=session, branch=branch),
+            mutation=await get_gql_mutation(session=session, branch=branch),
+            auto_camelcase=False,
         ).graphql_schema,
         source=query,
         context_value={
             "infrahub_branch": branch,
             "infrahub_at": at,
+            "infrahub_database": request.app.state.db,
+            "infrahub_session": session,
         },
         root_value=None,
         variable_values=params,
@@ -111,6 +142,7 @@ async def graphql_query(
     request: Request,
     response: Response,
     query_id: str,
+    session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
     at: Optional[str] = None,
     rebase: bool = False,
@@ -118,16 +150,20 @@ async def graphql_query(
 
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(session=session, branch=branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
-    graphql_query = NodeManager.get_one(query_id, branch=branch, at=at)
+    graphql_query = await NodeManager.get_one(session=session, id=query_id, branch=branch, at=at)
 
     if not graphql_query:
-        gqlquery_schema = registry.get_schema("GraphQLQuery")
-        items = NodeManager.query(
-            gqlquery_schema, filters={gqlquery_schema.default_filter: query_id}, branch=branch, at=at
+        gqlquery_schema = await registry.get_schema(session=session, name="GraphQLQuery")
+        items = await NodeManager.query(
+            session=session,
+            schema=gqlquery_schema,
+            filters={gqlquery_schema.default_filter: query_id},
+            branch=branch,
+            at=at,
         )
         if items:
             graphql_query = items[0]
@@ -137,12 +173,16 @@ async def graphql_query(
 
     result = await graphql(
         graphene.Schema(
-            query=get_gql_query(branch=branch), mutation=get_gql_mutation(branch=branch), auto_camelcase=False
+            query=await get_gql_query(session=session, branch=branch),
+            mutation=await get_gql_mutation(session=session, branch=branch),
+            auto_camelcase=False,
         ).graphql_schema,
         source=graphql_query.query.value,
         context_value={
             "infrahub_branch": branch,
             "infrahub_at": at,
+            "infrahub_database": request.app.state.db,
+            "infrahub_session": session,
         },
         root_value=None,
         variable_values=params,
@@ -205,7 +245,7 @@ async def openconfig_interfaces(
 ):
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
@@ -320,7 +360,7 @@ async def openconfig_bgp(
 ):
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = get_branch(branch)
+    branch = await get_branch(branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 

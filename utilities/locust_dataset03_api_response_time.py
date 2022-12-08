@@ -1,41 +1,4 @@
-from locust import TaskSet, task, HttpUser
-
-
-# class InfrahubDataset03(TaskSet):
-
-# class InfrahubDataset03(TaskSet):
-#     @task
-#     def get_device_names(self):
-#         query = """
-#         query {
-#             device {
-#                 name {
-#                     value
-#                 }
-#             }
-#         }
-#         """
-#         data = {"query": query}
-#         self.client.post("/graphql", json=data)
-
-#     @task(2)
-#     def get_one_device(self):
-#         query = """
-#         query {
-#             device(name__value: "ord1-edge1"){
-#                 name {
-#                     value
-#                 }
-#                 interfaces {
-#                     name {
-#                         value
-#                     }
-#                 }
-#             }
-#         }
-#         """
-#         data = {"query": query}
-#         self.client.post("/graphql", json=data)
+from locust import task, HttpUser
 
 
 class InfrahubUser(HttpUser):

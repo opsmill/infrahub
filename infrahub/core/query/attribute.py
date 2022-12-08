@@ -17,7 +17,7 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute = None,
-        attr_id: int = None,
+        attr_id: str = None,
         at: Union[Timestamp, str] = None,
         branch: Branch = None,
         *args,
@@ -46,7 +46,7 @@ class AttributeCreateQuery(AttributeQuery):
     name = "attribute_create"
     type: QueryType = QueryType.WRITE
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         self.query_add_match()
 
@@ -107,7 +107,7 @@ class AttributeCreateQuery(AttributeQuery):
         result = self.get_result()
         attr = result.get("a")
 
-        return attr.get("uuid"), attr.id
+        return attr.get("uuid"), attr.element_id
 
     def query_add_match_source(self):
 
@@ -148,10 +148,9 @@ class AttributeGetValueQuery(AttributeQuery):
     name = "attribute_get_value"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
-        self.params["attr_id"] = self.attr_id
-
+        self.params["attr_uuid"] = self.attr.id
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
 
@@ -161,7 +160,7 @@ class AttributeGetValueQuery(AttributeQuery):
         self.params.update(rel_params)
 
         query = """
-        MATCH (a) WHERE ID(a) = $attr_id
+        MATCH (a { uuid: $attr_uuid })
         MATCH (a)-[r:HAS_VALUE]-(av)
         WHERE %s
         """ % (
@@ -194,11 +193,11 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         at = self.at or self.attr.at
 
-        self.params["attr_id"] = self.attr_id
+        self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.attr.branch.name
         self.params["at"] = at.to_string()
         self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
@@ -206,7 +205,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
         query = (
             """
-        MATCH (a) WHERE ID(a) = $attr_id
+        MATCH (a { uuid: $attr_uuid })
         MERGE (av:AttributeValue { type: $attribute_type, value: $value })
         CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
         """
@@ -239,11 +238,11 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         at = self.at or self.attr.at
 
-        self.params["attr_id"] = self.attr_id
+        self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.attr.branch.name
         self.params["at"] = at.to_string()
         self.params["flag_value"] = getattr(self.attr, self.flag_name)
@@ -251,7 +250,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         query = (
             """
-        MATCH (a) WHERE ID(a) = $attr_id
+        MATCH (a { uuid: $attr_uuid })
         MERGE (flag:Boolean { value: $flag_value })
         CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(flag)
         """
@@ -282,11 +281,11 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         super().__init__(*args, **kwargs)
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
         at = self.at or self.attr.at
 
-        self.params["attr_id"] = self.attr_id
+        self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.attr.branch.name
         self.params["at"] = at.to_string()
         self.params["prop_name"] = self.prop_name
@@ -296,7 +295,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         query = (
             """
-        MATCH (a) WHERE ID(a) = $attr_id
+        MATCH (a { uuid: $attr_uuid })
         MATCH (np { uuid: $prop_id })
         CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(np)
         """
@@ -314,7 +313,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
 #     raise_error_if_empty: bool = True
 
-#     def query_init(self):
+#     async def query_init(self, session: AsyncSession, *args, **kwargs):
 
 #         self.params["attr_id"] = self.attr_id
 #         self.params["node_id"] = self.attr.node.db_id
@@ -341,10 +340,10 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
 
-        self.params["attr_id"] = self.attr_id
-        self.params["node_id"] = self.attr.node.db_id
+        self.params["attr_uuid"] = self.attr.id
+        self.params["node_uuid"] = self.attr.node.id
 
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
@@ -355,8 +354,8 @@ class AttributeGetQuery(AttributeQuery):
         self.params.update(rel_params)
 
         query = """
-        MATCH (n) WHERE ID(n) = $node_id
-        MATCH (a) WHERE ID(a) = $attr_id
+        MATCH (n { uuid: $node_uuid })
+        MATCH (a { uuid: $attr_uuid })
         MATCH (n)-[r1]-(a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(ap)
         WHERE %s
         """ % (

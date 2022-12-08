@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import Dict, List, Union, TYPE_CHECKING
+from typing import Dict, List, Union, Optional, TYPE_CHECKING
+
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
@@ -11,18 +12,18 @@ from infrahub.core.query.node import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
-    NodeListGetLocalAttributeValueQuery,
 )
 from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.branch import Branch
 
 
 class NodeManager:
     @classmethod
-    def query(
+    async def query(
         cls,
         schema: Union[NodeSchema, str],
         filters: dict = None,
@@ -31,6 +32,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        session: Optional[AsyncSession] = None,
         account=None,
         *args,
         **kwargs,
@@ -49,34 +51,40 @@ class NodeManager:
             List[Node]: List of Node object
         """
 
-        branch = get_branch(branch)
+        branch = await get_branch(branch, session=session)
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = registry.get_schema(schema, branch=branch.name)
+            schema = await registry.get_schema(session=session, name=schema, branch=branch.name)
         elif not isinstance(schema, NodeSchema):
             raise ValueError(f"Invalid schema provided {schema}")
 
         # Query the list of nodes matching this Query
-        query = NodeGetListQuery(schema=schema, branch=branch, limit=limit, filters=filters, at=at).execute()
+        query = await NodeGetListQuery.init(
+            session=session, schema=schema, branch=branch, limit=limit, filters=filters, at=at
+        )
+        await query.execute(session=session)
         node_ids = query.get_node_ids()
 
-        return (
-            list(
-                cls.get_many(
-                    ids=node_ids, fields=fields, branch=branch, account=account, at=at, include_source=include_source
-                ).values()
-            )
-            if node_ids
-            else []
+        response = await cls.get_many(
+            ids=node_ids,
+            fields=fields,
+            branch=branch,
+            account=account,
+            at=at,
+            include_source=include_source,
+            session=session,
         )
 
+        return list(response.values()) if node_ids else []
+
     @classmethod
-    def query_peers(
+    async def query_peers(
         cls,
         id: UUID,
         schema: RelationshipSchema,
         filters: dict,
+        session: AsyncSession,
         fields: dict = None,
         limit: int = 100,
         at: Union[Timestamp, str] = None,
@@ -86,14 +94,15 @@ class NodeManager:
         *args,
         **kwargs,
     ) -> List[Relationship]:
-        branch = get_branch(branch)
+        branch = await get_branch(branch, session=session)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id=id)
 
-        query = RelationshipGetPeerQuery(
-            source_id=id, schema=schema, filters=filters, rel=rel, limit=limit, at=at
-        ).execute()
+        query = await RelationshipGetPeerQuery.init(
+            session=session, source_id=id, schema=schema, filters=filters, rel=rel, limit=limit, at=at
+        )
+        await query.execute(session=session)
 
         peers_info = list(query.get_peers())
         peer_ids = [peer.peer_id for peer in peers_info]
@@ -101,10 +110,13 @@ class NodeManager:
         if not peers_info:
             return []
 
-        peers = cls.get_many(ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source)
+        peers = await cls.get_many(
+            ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source, session=session
+        )
 
         return [
-            Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
+            await Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
+                session=session,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
                 updated_at=peer.updated_at,
@@ -114,7 +126,7 @@ class NodeManager:
         ]
 
     @classmethod
-    def get_one(
+    async def get_one(
         cls,
         id: UUID,
         fields: dict = None,
@@ -122,12 +134,13 @@ class NodeManager:
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
+        session: Optional[AsyncSession] = None,
         account=None,
         *args,
         **kwargs,
     ) -> Node:
         """Return one node based on its ID."""
-        result = cls.get_many(
+        result = await cls.get_many(
             ids=[id],
             fields=fields,
             at=at,
@@ -135,6 +148,7 @@ class NodeManager:
             include_source=include_source,
             include_owner=include_owner,
             account=account,
+            session=session,
             *args,
             **kwargs,
         )
@@ -145,7 +159,7 @@ class NodeManager:
         return result[id]
 
     @classmethod
-    def get_many(
+    async def get_many(
         cls,
         ids: List[UUID],
         fields: dict = None,
@@ -153,21 +167,24 @@ class NodeManager:
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
+        session: Optional[AsyncSession] = None,
         account=None,
         *args,
         **kwargs,
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
-        branch = get_branch(branch)
+        branch = await get_branch(branch=branch, session=session)
         at = Timestamp(at)
 
         # Query all nodes
-        query = NodeListGetInfoQuery(ids=ids, branch=branch, account=account, at=at).execute()
-        nodes_info = query.get_nodes()
+        query = await NodeListGetInfoQuery.init(session=session, ids=ids, branch=branch, account=account, at=at)
+        await query.execute(session=session)
+        nodes_info = query.get_nodes(session=session)
 
         # Query list of all Attributes
-        query = NodeListGetAttributeQuery(
+        query = await NodeListGetAttributeQuery.init(
+            session=session,
             ids=ids,
             fields=fields,
             branch=branch,
@@ -175,7 +192,8 @@ class NodeManager:
             include_owner=include_owner,
             account=account,
             at=at,
-        ).execute()
+        )
+        await query.execute(session=session)
         node_attributes = query.get_attributes_group_by_node()
 
         # -----------------------------------------------
@@ -203,7 +221,7 @@ class NodeManager:
 
         nodes = {}
 
-        for node in nodes_info:
+        async for node in nodes_info:
 
             node_id = node.node_uuid
             attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
@@ -245,7 +263,8 @@ class NodeManager:
             if node.schema.kind in registry.node:
                 node_class = registry.node[node.schema.kind]
 
-            item = node_class(schema=node.schema, branch=branch, at=at).load(**attrs)
+            item = await node_class.init(schema=node.schema, branch=branch, at=at, session=session)
+            await item.load(**attrs, session=session)
 
             nodes[node_id] = item
 
@@ -254,43 +273,50 @@ class NodeManager:
 
 class SchemaManager(NodeManager):
     @classmethod
-    def register_schema_to_registry(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
+    async def register_schema_to_registry(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
         """Register all nodes from a SchemaRoot object into the registry."""
         for node in schema.nodes:
-            registry.set_schema(node.kind, node, branch=branch)
+            await registry.set_schema(node.kind, node, branch=branch)
 
         return True
 
     @classmethod
-    def load_schema_to_db(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
+    async def load_schema_to_db(cls, schema: SchemaRoot, session: AsyncSession, branch: Union[str, Branch] = None):
         """Load all nodes from a SchemaRoot object into the database."""
 
-        branch = get_branch(branch)
+        branch = await get_branch(branch, session=session)
 
         for node in schema.nodes:
-            cls.load_schema_node_to_db(node, branch=branch)
+            await cls.load_schema_node_to_db(schema_node=node, branch=branch, session=session)
 
         return True
 
     @classmethod
-    def load_schema_node_to_db(cls, schema_node: NodeSchema, branch: Union[str, Branch] = None):
+    async def load_schema_node_to_db(
+        cls,
+        session: AsyncSession,
+        schema_node: NodeSchema,
+        branch: Union[str, Branch] = None,
+    ):
 
-        branch = get_branch(branch)
+        branch = await get_branch(branch)
 
-        node_schema = registry.get_schema("NodeSchema", branch=branch)
-        attribute_schema = registry.get_schema("AttributeSchema", branch=branch)
-        relationship_schema = registry.get_schema("RelationshipSchema", branch=branch)
+        node_schema = await registry.get_schema(session=session, name="NodeSchema", branch=branch)
+        attribute_schema = await registry.get_schema(session=session, name="AttributeSchema", branch=branch)
+        relationship_schema = await registry.get_schema(session=session, name="RelationshipSchema", branch=branch)
 
         attrs = []
         rels = []
         for item in schema_node.attributes:
-            attr = Node(attribute_schema, branch=branch).new(**item.dict())
-            attr.save()
+            attr = await Node.init(schema=attribute_schema, branch=branch, session=session)
+            await attr.new(**item.dict(), session=session)
+            await attr.save(session=session)
             attrs.append(attr)
 
         for item in schema_node.relationships:
-            rel = Node(relationship_schema, branch=branch).new(**item.dict())
-            rel.save()
+            rel = await Node.init(schema=relationship_schema, branch=branch, session=session)
+            await rel.new(**item.dict(), session=session)
+            await rel.save(session=session)
             rels.append(rel)
 
         attribute_ids = [attr.id for attr in attrs] or None
@@ -300,27 +326,32 @@ class SchemaManager(NodeManager):
         schema_dict["relationships"] = relationship_ids
         schema_dict["attributes"] = attribute_ids
 
-        node = Node(schema=node_schema, branch=branch).new(**schema_dict)
-        node.save()
+        node = await Node.init(schema=node_schema, branch=branch, session=session)
+        await node.new(**schema_dict, session=session)
+        await node.save(session=session)
 
         return True
 
     @classmethod
-    def load_schema_from_db(self, branch: Union[str, Branch] = None) -> SchemaRoot:
+    async def load_schema_from_db(
+        self,
+        session: AsyncSession,
+        branch: Union[str, Branch] = None,
+    ) -> SchemaRoot:
         """Query all the node of type node_schema from the database and convert them to NodeSchema."""
 
-        branch = get_branch(branch)
+        branch = await get_branch(branch, session=session)
 
         schema = SchemaRoot(nodes=[])
 
-        node_schema = registry.get_schema("NodeSchema", branch=branch)
-        for schema_node in self.query(node_schema, branch=branch):
-            schema.nodes.append(self.convert_node_schema_to_schema(schema_node))
+        node_schema = await registry.get_schema(session=session, name="NodeSchema", branch=branch)
+        for schema_node in await self.query(node_schema, branch=branch, session=session):
+            schema.nodes.append(await self.convert_node_schema_to_schema(schema_node=schema_node, session=session))
 
         return schema
 
     @staticmethod
-    def convert_node_schema_to_schema(schema_node: Node) -> NodeSchema:
+    async def convert_node_schema_to_schema(schema_node: Node, session: AsyncSession) -> NodeSchema:
         """Convert a schema_node object loaded from the database into NodeSchema object."""
 
         node_data = {}
@@ -337,7 +368,7 @@ class SchemaManager(NodeManager):
 
             for rel in getattr(schema_node, rel_name):
                 item_data = {}
-                item = rel.peer
+                item = await rel.get_peer(session=session)
                 for item_name in item._attributes:
                     item_data[item_name] = getattr(item, item_name).value
 

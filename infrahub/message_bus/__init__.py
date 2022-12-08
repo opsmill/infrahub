@@ -1,5 +1,3 @@
-from typing import Generator
-
 import aio_pika
 
 import infrahub.config as config

@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 from typing import Union, TypeVar, Optional, TYPE_CHECKING
 
+
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
@@ -15,6 +16,7 @@ from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
     from infrahub.core.branch import Branch
 """
 Type of Nodes
@@ -58,21 +60,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     def __init__(
         self,
-        schema: Union[NodeSchema, str],
-        branch: Optional[Union[Branch, str]] = None,
-        at: Optional[Union[Timestamp, str]] = None,
+        schema: NodeSchema,
+        branch: Branch,
+        at: Timestamp,
     ):
 
-        if isinstance(schema, NodeSchema):
-            self._schema = schema
-        elif isinstance(schema, str):
-            # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
-            self._schema = registry.get_schema(schema, branch=branch)
-        else:
-            raise ValueError(f"Invalid schema provided {schema}")
-
-        self._branch: Branch = get_branch(branch) if self._schema.branch else None
-        self._at: Timestamp = Timestamp(at)
+        self._schema: NodeSchema = schema
+        self._branch: Branch = branch
+        self._at: Timestamp = at
 
         self._updated_at: Optional[Timestamp] = None
         self.id: str = None
@@ -85,7 +80,36 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._attributes = []
         self._relationships = []
 
-    def _process_fields(self, fields: dict):
+    @classmethod
+    async def init(
+        cls,
+        session: AsyncSession,
+        schema: Union[NodeSchema, str],
+        branch: Optional[Union[Branch, str]] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+    ) -> SelfNode:
+
+        attrs = {}
+
+        if isinstance(schema, NodeSchema):
+            attrs["schema"] = schema
+        elif isinstance(schema, str):
+
+            # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
+            attrs["schema"] = await registry.get_schema(session=session, name=schema, branch=branch)
+        else:
+            raise ValueError(f"Invalid schema provided {schema}")
+
+        if not attrs["schema"].branch:
+            attrs["branch"] = None
+        else:
+            attrs["branch"] = await get_branch(session=session, branch=branch)
+
+        attrs["at"] = Timestamp(at)
+
+        return cls(**attrs)
+
+    async def _process_fields(self, fields: dict, session: AsyncSession):
 
         errors = []
 
@@ -141,16 +165,19 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             self._relationships.append(rel_schema.name)
 
             try:
+                rm = await RelationshipManager.init(
+                    session=session,
+                    data=fields.get(rel_schema.name, None),
+                    schema=rel_schema,
+                    branch=self._branch,
+                    at=self._at,
+                    node=self,
+                )
+
                 setattr(
                     self,
                     rel_schema.name,
-                    RelationshipManager(
-                        data=fields.get(rel_schema.name, None),
-                        schema=rel_schema,
-                        branch=self._branch,
-                        at=self._at,
-                        node=self,
-                    ),
+                    rm,
                 )
             except ValidationError as exc:
                 errors.append(exc)
@@ -158,12 +185,19 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if errors:
             raise ValidationError(errors)
 
-    def new(self, **kwargs) -> SelfNode:
+    async def new(self, session: AsyncSession, **kwargs) -> SelfNode:
 
-        self._process_fields(kwargs)
+        await self._process_fields(session=session, fields=kwargs)
         return self
 
-    def load(self, id: UUID = None, db_id: int = None, updated_at: Union[Timestamp, str] = None, **kwargs) -> SelfNode:
+    async def load(
+        self,
+        session: AsyncSession,
+        id: UUID = None,
+        db_id: int = None,
+        updated_at: Union[Timestamp, str] = None,
+        **kwargs,
+    ) -> SelfNode:
 
         self.id = id
         self.db_id = db_id
@@ -171,15 +205,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if updated_at:
             self._updated_at = Timestamp(updated_at)
 
-        self._process_fields(kwargs)
+        await self._process_fields(session=session, fields=kwargs)
         return self
 
-    def _create(self, at: Optional[Timestamp] = None):
+    async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None):
 
         create_at = Timestamp(at)
 
-        query = NodeCreateQuery(node=self, at=create_at)
-        query.execute()
+        query = await NodeCreateQuery.init(session=session, node=self, at=create_at)
+        await query.execute(session=session)
         self.id, self.db_id = query.get_new_ids()
         self._at = create_at
         self._updated_at = create_at
@@ -187,20 +221,24 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and create them one by one
         for name in self._attributes:
 
-            attr = getattr(self, name)
+            attr: BaseAttribute = getattr(self, name)
             # Handle LocalAttribute attributes
             if issubclass(attr.__class__, BaseAttribute):
-                attr.save(at=create_at)
+                await attr.save(at=create_at, session=session)
 
         # Go over the list of relationships and create them one by one
         for name in self._relationships:
 
             rel = getattr(self, name)
-            rel.save(at=create_at)
+            await rel.save(at=create_at, session=session)
 
         return True
 
-    def _update(self, at: Optional[Timestamp] = None):
+    async def _update(
+        self,
+        session: AsyncSession,
+        at: Optional[Timestamp] = None,
+    ):
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
@@ -208,26 +246,30 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr = getattr(self, name)
-            attr.save(at=update_at)
+            await attr.save(at=update_at, session=session)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
-            attr = getattr(self, name)
-            attr.save(at=update_at)
+            rel = getattr(self, name)
+            await rel.save(at=update_at, session=session)
 
-    def save(self, at: Optional[Timestamp] = None) -> SelfNode:
+    async def save(
+        self,
+        session: AsyncSession,
+        at: Optional[Timestamp] = None,
+    ) -> SelfNode:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
 
         if self.id:
-            self._update(at=save_at)
+            await self._update(at=save_at, session=session)
             return self
 
-        self._create(at=save_at)
+        await self._create(at=save_at, session=session)
         return self
 
-    def delete(self, at: Optional[Timestamp] = None):
+    async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None):
         """Delete the Node in the database."""
 
         delete_at = Timestamp(at)
@@ -238,29 +280,31 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
-            attr = getattr(self, name)
-            attr.delete(at=delete_at)
+            attr: BaseAttribute = getattr(self, name)
+            await attr.delete(at=delete_at, session=session)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
-            rel = getattr(self, name)
-            rel.delete(at=delete_at)
+            rel: RelationshipManager = getattr(self, name)
+            await rel.delete(at=delete_at, session=session)
 
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
 
         # Update the relationship to the branch itself
-        query = NodeGetListQuery(
-            schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
-        ).execute()
+        query = await NodeGetListQuery.init(
+            session=session, schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
+        )
+        await query.execute(session=session)
         result = query.get_result()
 
         if result.get("br").get("name") == self._branch.name:
-            update_relationships_to([result.get("rb").id], to=delete_at)
+            await update_relationships_to([result.get("rb").element_id], to=delete_at, session=session)
 
-        NodeDeleteQuery(node=self, at=delete_at).execute()
+        query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
+        await query.execute(session=session)
 
-    def to_graphql(self, fields: dict = None) -> dict:
+    async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
         """Generate GraphQL Payload for all attributes
 
         Returns:
@@ -276,7 +320,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if field_name == "_updated_at":
                 if self._updated_at:
-                    response[field_name] = self._updated_at.to_graphql()
+                    response[field_name] = await self._updated_at.to_graphql()
                 else:
                     response[field_name] = None
                 continue
@@ -287,11 +331,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 response[field_name] = None
                 continue
 
-            response[field_name] = field.to_graphql(fields=fields[field_name])
+            response[field_name] = await field.to_graphql(session=session, fields=fields[field_name])
 
         return response
 
-    def from_graphql(self, data: dict) -> bool:
+    async def from_graphql(self, session: AsyncSession, data: dict) -> bool:
         """Update object from a GraphQL payload."""
 
         changed = False
@@ -319,6 +363,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel = getattr(self, key)
-                changed = rel.update(value)
+                changed = await rel.update(session=session, data=value)
 
         return changed

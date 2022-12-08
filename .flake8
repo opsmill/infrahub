@@ -1,3 +1,12 @@
 [flake8]
 # E501: Line length, already enforced by Black.
-ignore = E501,W503
+ignore =
+    E203,
+    E501,
+    W503,
+    W504,
+exclude =
+    .git,
+    __pycache__,
+    examples,
+    dist,

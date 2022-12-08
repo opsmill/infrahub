@@ -1,7 +1,8 @@
-from re import A
 import pytest
 
-from infrahub.core import branch, registry
+from neo4j import AsyncSession
+
+from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.relationship import Relationship
 from infrahub.core.query.relationship import (
@@ -15,17 +16,22 @@ from infrahub.core.utils import get_paths_between_nodes
 
 
 class DummyRelationshipQuery(RelationshipQuery):
-    def query_init(self):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
         pass
 
 
-def test_RelationshipQuery_init(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_RelationshipQuery_init(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(name="Person", session=session)
     rel_schema = person_schema.get_relationship("tags")
 
-    t1 = Node("Tag").new(name="blue").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
     with pytest.raises(ValueError) as exc:
         rq = DummyRelationshipQuery()
@@ -63,111 +69,161 @@ def test_RelationshipQuery_init(default_branch, person_tag_schema):
     assert rq.branch == default_branch
 
 
-def test_query_RelationshipCreateQuery(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_query_RelationshipCreateQuery(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(name="Person", session=session)
     rel_schema = person_schema.get_relationship("tags")
 
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
-    query = RelationshipCreateQuery(
-        source=p1, destination=t1, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
+    query = await RelationshipCreateQuery.init(
+        session=session,
+        source=p1,
+        destination=t1,
+        schema=rel_schema,
+        rel=Relationship,
+        branch=default_branch,
+        at=Timestamp(),
     )
-    query.execute()
+    await query.execute(session=session)
 
     # We should have 2 paths between t1 and p1
     # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
 
-def test_query_RelationshipCreateQuery_w_node_property(default_branch, person_tag_schema, first_account):
+@pytest.mark.asyncio
+async def test_query_RelationshipCreateQuery_w_node_property(session, default_branch, person_tag_schema, first_account):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(name="Person", session=session)
     rel_schema = person_schema.get_relationship("tags")
 
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe").save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
 
-    paths = get_paths_between_nodes(
-        source_id=t1.db_id, destination_id=p1.db_id, relationships=["IS_RELATED"], max_length=2
+    paths = await get_paths_between_nodes(
+        session=session, source_id=t1.db_id, destination_id=p1.db_id, relationships=["IS_RELATED"], max_length=2
     )
     assert len(paths) == 0
 
     rel = Relationship(schema=rel_schema, branch=default_branch, node=p1, source=first_account, owner=first_account)
-    query = RelationshipCreateQuery(source=p1, destination=t1, rel=rel).execute()
+    query = await RelationshipCreateQuery.init(session=session, source=p1, destination=t1, rel=rel)
+    await query.execute(session=session)
 
-    paths = get_paths_between_nodes(
-        source_id=t1.db_id, destination_id=p1.db_id, relationships=["IS_RELATED"], max_length=2
+    paths = await get_paths_between_nodes(
+        session=session, source_id=t1.db_id, destination_id=p1.db_id, relationships=["IS_RELATED"], max_length=2
     )
     assert len(paths) == 1
 
 
-def test_query_RelationshipDeleteQuery(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_query_RelationshipDeleteQuery(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(name="Person", session=session)
     rel_schema = person_schema.get_relationship("tags")
 
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
+    await p1.save(session=session)
 
     # We should have 2 paths between t1 and p1
     # First for the relationship, Second via the branch
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 2
 
-    query = RelationshipDeleteQuery(
-        source=p1, destination=t1, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
+    query = await RelationshipDeleteQuery.init(
+        session=session,
+        source=p1,
+        destination=t1,
+        schema=rel_schema,
+        rel=Relationship,
+        branch=default_branch,
+        at=Timestamp(),
     )
-    query.execute()
+    await query.execute(session=session)
 
     # We should have 5 paths between t1 and p1
     # Because we have 3 "real" paths between the nodes
     # but if we calculate all the permutations it will equal to 5 paths.
-    paths = get_paths_between_nodes(source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
+    paths = await get_paths_between_nodes(session=session, source_id=t1.db_id, destination_id=p1.db_id, max_length=2)
     assert len(paths) == 5
 
 
-def test_query_RelationshipGetPeerQuery(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_query_RelationshipGetPeerQuery(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
+    await p1.save(session=session)
 
-    query = RelationshipGetPeerQuery(
-        source_id=p1.id, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
+    query = await RelationshipGetPeerQuery.init(
+        session=session, source_id=p1.id, schema=rel_schema, rel=Relationship, branch=default_branch, at=Timestamp()
     )
-    query.execute()
+    await query.execute(session=session)
 
     peers = list(query.get_peers())
     assert len(peers) == 2
     assert len(peers[0].rels) == 2
-    assert isinstance(peers[0].rel_node_db_id, int)
+    assert isinstance(peers[0].rel_node_db_id, str)
     assert isinstance(peers[0].rel_node_id, str)
     assert list(peers[0].properties.keys()) == ["is_visible", "is_protected"]
-    assert peers[0].properties["is_visible"].value == True
-    assert peers[0].properties["is_protected"].value == False
+    assert peers[0].properties["is_visible"].value is True
+    assert peers[0].properties["is_protected"].value is False
     assert peers[0].properties["is_protected"].prop_db_id == peers[1].properties["is_protected"].prop_db_id
-    assert isinstance(peers[0].properties["is_protected"].prop_db_id, int)
-    assert isinstance(peers[0].properties["is_protected"].rel.db_id, int)
-    assert isinstance(peers[0].properties["is_protected"].prop_db_id, int)
+    assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
+    assert isinstance(peers[0].properties["is_protected"].rel.db_id, str)
+    assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
 
 
-def test_query_RelationshipGetPeerQuery_with_filter(default_branch, person_tag_schema):
+@pytest.mark.asyncio
+async def test_query_RelationshipGetPeerQuery_with_filter(session, default_branch, person_tag_schema):
 
-    person_schema = registry.get_schema("Person")
+    person_schema = await registry.get_schema(session=session, name="Person")
     rel_schema = person_schema.get_relationship("tags")
-    t1 = Node("Tag").new(name="blue").save()
-    t2 = Node("Tag").new(name="red").save()
-    p1 = Node(person_schema).new(firstname="John", lastname="Doe", tags=[t1, t2]).save()
 
-    query = RelationshipGetPeerQuery(
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="blue")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="red")
+    await t2.save(session=session)
+    p1 = await Node.init(session=session, schema=person_schema)
+    await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
+    await p1.save(session=session)
+
+    query = await RelationshipGetPeerQuery.init(
+        session=session,
         source_id=p1.id,
         schema=rel_schema,
         filters={"tags__name__value": "blue"},
@@ -175,6 +231,6 @@ def test_query_RelationshipGetPeerQuery_with_filter(default_branch, person_tag_s
         branch=default_branch,
         at=Timestamp(),
     )
-    query.execute()
+    await query.execute(session=session)
 
     assert len(query.get_peer_ids()) == 1

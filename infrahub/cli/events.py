@@ -1,23 +1,20 @@
 import typer
-import uvicorn
-
-import json
 
 import asyncio
 from asyncio import run as aiorun
 
-import aio_pika
-from aio_pika import DeliveryMode, ExchangeType, Message, connect, IncomingMessage
+from aio_pika import IncomingMessage
 
 import infrahub.config as config
+from infrahub.database import get_db
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import get_event_exchange, EventType, Event, DataEvent
 
-app = typer.Typer()
-
 from rich import print as rprint
+
+app = typer.Typer()
 
 
 async def print_event(event: IncomingMessage) -> None:
@@ -52,8 +49,13 @@ async def _listen(topic: str, config_file: str):
 async def _generate(type: EventType, config_file: str):
 
     config.load_and_exit(config_file)
-    initialization()
-    nodes = NodeManager.query("Criticality")
+
+    db = await get_db()
+
+    async with db.session(database=config.SETTINGS.database.database) as session:
+
+        await initialization(session=session)
+        nodes = await NodeManager.query(session=session, schema="Criticality")
 
     event = DataEvent(action="create", node=nodes[0])
     await event.send()
