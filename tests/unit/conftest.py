@@ -1,14 +1,13 @@
 import pendulum
-import os
 
+import asyncio
 import pytest
 import pytest_asyncio
-
-from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
 
 from infrahub.core import registry
+from infrahub.database import get_db
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
@@ -23,19 +22,28 @@ from infrahub.database import execute_write_query_async
 from infrahub.test_data import dataset01 as ds01
 
 
-NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
-NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
-NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
-NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
-NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
+# NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
+# NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
+# NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
+# NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
+# NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
+# NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
 
-URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
+# URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
 
 
-@pytest_asyncio.fixture
+@pytest.fixture(scope="session")
+def event_loop():
+    """Overrides pytest default function scoped event loop"""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(scope="module")
 async def db():
-    db = AsyncGraphDatabase.driver(URL, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
+    db = await get_db()
 
     yield db
 

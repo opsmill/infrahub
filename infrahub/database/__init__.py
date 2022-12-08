@@ -1,33 +1,54 @@
-import os
-
-from neo4j import GraphDatabase, basic_auth, Driver, AsyncSession, AsyncGraphDatabase
+from neo4j import AsyncSession, AsyncGraphDatabase
 
 # from contextlib import asynccontextmanager
-# from neo4j.exceptions import ClientError
+from neo4j.exceptions import ClientError
 
 import infrahub.config as config
 
 from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
 
 
-NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
-NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
-NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
-NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
-NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
+# NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
+# NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
+# NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
+# NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
+# NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
+# NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
 
-URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
+# URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
 
-driver: Driver = GraphDatabase.driver(URL, auth=basic_auth(NEO4J_USERNAME, NEO4J_PASSWORD))
+# driver: Driver = GraphDatabase.driver(URL, auth=basic_auth(NEO4J_USERNAME, NEO4J_PASSWORD))
 validated_database = {}
 
 
 async def get_db():
 
-    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
+    global validated_database
 
-    return AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
+    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
+    driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
+
+    if config.SETTINGS.database.database not in validated_database:
+        try:
+
+            session = driver.session(database=config.SETTINGS.database.database)
+            results = await session.run("SHOW TRANSACTIONS")
+            validated_database[config.SETTINGS.database.database] = True
+
+        except ClientError as exc:
+            if "database does not exist" in exc.message:
+
+                default_db = driver.session()
+                await default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
+            elif "Unable to get a routing table for database" in exc.message:
+
+                default_db = driver.session()
+                results = await default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
+
+            else:
+                raise
+
+    return driver
 
 
 # def get_db() -> Generator[Session, None, None]:

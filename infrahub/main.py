@@ -10,16 +10,17 @@ from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
-from neo4j import AsyncGraphDatabase
+from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.auth import BaseTokenAuth
 from infrahub.message_bus import connect_to_broker, close_broker_connection
 from infrahub.core import get_branch, registry
+from infrahub.database import get_db
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import get_gql_mutation, get_gql_query  # Query, Mutation
+from infrahub.graphql import get_gql_mutation, get_gql_query
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.core.rfile import RFile
 
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 
-async def get_session(request: Request):
+async def get_session(request: Request) -> AsyncSession:
     session = request.app.state.db.session(database=config.SETTINGS.database.database)
     try:
         yield session
@@ -46,12 +47,7 @@ async def app_initialization():
         logger.info(f"Loading the configuration from {config_file_path}")
         config.load_and_exit(config_file_path)
 
-    # TODO check the DB information properly and exist if it can't reach the database
-
-    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
-    app.state.db = AsyncGraphDatabase.driver(
-        URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password)
-    )
+    app.state.db = await get_db()
 
     async with app.state.db.session(database=config.SETTINGS.database.database) as session:
         await initialization(session=session)
@@ -78,7 +74,7 @@ async def add_process_time_header(request: Request, call_next):
 async def generate_rfile(
     request: Request,
     rfile_id: str,
-    session: Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     save_on_disk: bool = False,
     branch: Optional[str] = None,
     at: Optional[str] = None,
@@ -146,7 +142,7 @@ async def graphql_query(
     request: Request,
     response: Response,
     query_id: str,
-    session: Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
     at: Optional[str] = None,
     rebase: bool = False,

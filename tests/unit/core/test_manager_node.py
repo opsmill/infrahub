@@ -102,8 +102,8 @@ async def test_get_one_attribute_with_flag_property(
 
     assert obj.level.value == 4
     assert obj.level.id
-    assert obj.level.is_visible == False
-    assert obj.level.is_protected == False
+    assert obj.level.is_visible is False
+    assert obj.level.is_protected is False
 
     assert obj.color.value == "#444444"
     assert obj.color.id
