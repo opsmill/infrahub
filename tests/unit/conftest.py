@@ -4,7 +4,7 @@ import os
 import pytest
 import pytest_asyncio
 
-from neo4j import AsyncGraphDatabase, AsyncDriver, GraphDatabase, Driver
+from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
 
@@ -19,7 +19,7 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import execute_write_query, execute_write_query_async
+from infrahub.database import execute_write_query_async
 from infrahub.test_data import dataset01 as ds01
 
 
@@ -50,17 +50,6 @@ async def session(db):
     yield session
 
     await session.close()
-
-
-@pytest.fixture
-def sync_session():
-    driver = GraphDatabase.driver(URL, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
-    session = driver.session(database=config.SETTINGS.database.database)
-
-    yield session
-
-    session.close()
-    driver.close()
 
 
 @pytest_asyncio.fixture
