@@ -2,7 +2,7 @@ import os
 import time
 
 from typing import Generator
-from neo4j import GraphDatabase, basic_auth, Driver, Session, AsyncSession
+from neo4j import GraphDatabase, basic_auth, Driver, Session, AsyncSession, AsyncGraphDatabase
 
 # from contextlib import asynccontextmanager
 from neo4j.exceptions import ClientError
@@ -25,52 +25,59 @@ driver: Driver = GraphDatabase.driver(URL, auth=basic_auth(NEO4J_USERNAME, NEO4J
 validated_database = {}
 
 
-def get_db() -> Generator[Session, None, None]:
-    global validated_database
+async def get_db():
 
-    if config.SETTINGS.database.database not in validated_database:
-        try:
-            db = driver.session(database=config.SETTINGS.database.database)
-            results = db.run("SHOW TRANSACTIONS")
-            validated_database[config.SETTINGS.database.database] = True
+    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
 
-        except ClientError as exc:
-            if "database does not exist" in exc.message:
-
-                default_db = driver.session()
-                results = default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
-
-                # TODO Catch possible exception here
-
-            else:
-                raise
-
-    db = driver.session(database=config.SETTINGS.database.database)
-
-    # FIXME should be enclosed in try/finally block but somehow it is not working right now
-    yield db
-
-    db.close()
+    return AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
 
 
-@QUERY_READ_METRICS.time()
-def execute_read_query(query: str, params: dict = None, session: Session = None):
+# def get_db() -> Generator[Session, None, None]:
+#     global validated_database
 
-    if not session:
-        session: Session = next(get_db())
+#     if config.SETTINGS.database.database not in validated_database:
+#         try:
+#             db = driver.session(database=config.SETTINGS.database.database)
+#             results = db.run("SHOW TRANSACTIONS")
+#             validated_database[config.SETTINGS.database.database] = True
 
-    response = session.run(query, params)
-    return list(response)
+#         except ClientError as exc:
+#             if "database does not exist" in exc.message:
+
+#                 default_db = driver.session()
+#                 results = default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
+
+#                 # TODO Catch possible exception here
+
+#             else:
+#                 raise
+
+#     db = driver.session(database=config.SETTINGS.database.database)
+
+#     # FIXME should be enclosed in try/finally block but somehow it is not working right now
+#     yield db
+
+#     db.close()
 
 
-@QUERY_WRITE_METRICS.time()
-def execute_write_query(query: str, params: dict = None, session: Session = None):
+# @QUERY_READ_METRICS.time()
+# def execute_read_query(query: str, params: dict = None, session: Session = None):
 
-    if not session:
-        session: Session = next(get_db())
+#     if not session:
+#         session: Session = next(get_db())
 
-    response = session.run(query, params)
-    return list(response)
+#     response = session.run(query, params)
+#     return list(response)
+
+
+# @QUERY_WRITE_METRICS.time()
+# def execute_write_query(query: str, params: dict = None, session: Session = None):
+
+#     if not session:
+#         session: Session = next(get_db())
+
+#     response = session.run(query, params)
+#     return list(response)
 
 
 @QUERY_READ_METRICS.time()

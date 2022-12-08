@@ -94,7 +94,7 @@ async def first_time_initialization(session: AsyncSession):
     # Load the internal schema in the database
     # --------------------------------------------------
     schema = SchemaRoot(**internal_schema)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema)
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the internal Schema in the database")
 
@@ -102,12 +102,12 @@ async def first_time_initialization(session: AsyncSession):
     # Load the schema for the common models in the database
     # --------------------------------------------------
     schema = SchemaRoot(**core_models)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema)
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the core models in the database")
 
     schema = SchemaRoot(**infrastructure_models)
-    SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.register_schema_to_registry(schema)
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the infrastructure models in the database")
 
@@ -126,15 +126,21 @@ async def first_time_initialization(session: AsyncSession):
 
     criticality_schema = await registry.get_schema(session=session, name="Criticality")
     for level in CRITICALITY_LEVELS:
-        obj = await Node(criticality_schema).new(name=level[0], level=level[1]).save(session=session)
+        obj = await Node.init(session=session, schema=criticality_schema)
+        await obj.new(session=session, name=level[0], level=level[1])
+        await obj.save(session=session)
 
     # ----
     group_schema = await registry.get_schema(session=session, name="Group")
     account_schema = await registry.get_schema(session=session, name="Account")
-    admin_grp = obj = await Node(group_schema).new(name="admin").save(session=session)
+    admin_grp = await Node.init(session=session, schema=group_schema)
+    await admin_grp.new(session=session, name="admin")
+    await admin_grp.save(session=session)
     # default_grp = obj = Node(group_schema).new(name="default").save()
 
-    obj = await Node(account_schema).new(name="admin", type="USER", groups=[admin_grp]).save(session=session)
+    obj = await Node.init(session=session, schema=account_schema)
+    await obj.new(session=session, name="admin", type="USER", groups=[admin_grp])
+    await obj.save(session=session)
     LOGGER.info(f"Created Account: {obj.name.value}")
 
     # # FIXME Remove these hardcoded Token Value

@@ -4,6 +4,8 @@ import uuid
 from collections import defaultdict
 from ipaddress import IPv4Network
 
+from neo4j import AsyncSession
+
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -122,7 +124,7 @@ BGP_PEER_GROUPS = (
 LOGGER = logging.getLogger("infrahub")
 
 
-def load_data():
+async def load_data(session: AsyncSession):
 
     # ------------------------------------------
     # Create User Accounts and Groups
@@ -139,10 +141,12 @@ def load_data():
     loopback_ip_dict = {}
     device_dict = {}
 
-    registry.get_schema("Account")
+    await registry.get_schema(session=session, name="Account")
 
     for account in ACCOUNTS:
-        obj = Node("Account").new(name=account[0], type=account[1]).save()
+        obj = await Node.init(session=session, schema="Account")
+        await obj.new(session=session, name=account[0], type=account[1])
+        await obj.save(session=session)
         accounts_dict[account[0]] = obj
 
         # for group in account[2]:
@@ -151,9 +155,13 @@ def load_data():
         LOGGER.info(f"Account Created: {obj.name.value}")
 
     for org in ORGANIZATIONS:
-        obj = Node("Organization").new(name=org[0]).save()
+        obj = await Node.init(session=session, schema="Organization")
+        await obj.new(session=session, name=org[0])
+        await obj.save(session=session)
 
-        asn = Node("AutonomousSystem").new(name=f"AS{org[1]}", asn=org[1], organization=obj).save()
+        asn = await Node.init(session=session, schema="AutonomousSystem")
+        await asn.new(session=session, name=f"AS{org[1]}", asn=org[1], organization=obj)
+        await asn.save(session=session)
 
         asn_dict[org[0]] = asn
         orgs_dict[org[0]] = obj
@@ -161,17 +169,16 @@ def load_data():
 
     for peer_group in BGP_PEER_GROUPS:
 
-        obj = (
-            Node("BGPPeerGroup")
-            .new(
-                name=peer_group[0],
-                import_policies=peer_group[1],
-                export_policies=peer_group[2],
-                local_as=asn_dict.get(peer_group[3], None),
-                remote_as=asn_dict.get(peer_group[4], None),
-            )
-            .save()
+        obj = await Node.init(session=session, schema="BGPPeerGroup")
+        await obj.new(
+            session=session,
+            name=peer_group[0],
+            import_policies=peer_group[1],
+            export_policies=peer_group[2],
+            local_as=asn_dict.get(peer_group[3], None),
+            remote_as=asn_dict.get(peer_group[4], None),
         )
+        await obj.save(session=session)
 
         peer_group_dict[peer_group[0]] = obj
         LOGGER.info(f"Peer Group Created: {obj.name.value}")
@@ -185,17 +192,23 @@ def load_data():
 
     LOGGER.info("Creating Roles, Status & Tag")
     for role in DEVICE_ROLES + INTF_ROLES:
-        obj = Node("Role").new(description=role.title(), name=role).save()
+        obj = await Node.init(session=session, schema="Role")
+        await obj.new(session=session, description=role.title(), name=role)
+        await obj.save(session=session)
         roles_dict[role] = obj
         LOGGER.info(f" Created Role: {role}")
 
     for status in STATUSES:
-        obj = Node("Status").new(description=status.title(), name=status).save()
+        obj = await Node.init(session=session, schema="Status")
+        await obj.new(session=session, description=status.title(), name=status)
+        await obj.save(session=session)
         statuses_dict[status] = obj
         LOGGER.info(f" Created Status: {status}")
 
     for tag in TAGS:
-        obj = Node("Tag").new(name=tag).save()
+        obj = await Node.init(session=session, schema="Tag")
+        await obj.new(session=session, name=tag)
+        await obj.save(session=session)
         tags_dict[tag] = obj
         LOGGER.info(f" Created Tag: {tag}")
 
@@ -207,7 +220,9 @@ def load_data():
 
     for site_idx, site_name in enumerate(SITES):
 
-        site = Node("Location").new(name=site_name, type="SITE").save()
+        site = await Node.init(session=session, schema="Location")
+        await site.new(session=session, name=site_name, type="SITE")
+        await site.save(session=session)
         LOGGER.info(f"Created Site: {site_name}")
 
         # site_networks = next(NETWORKS_POOL_INTERNAL).subnets(new_prefix=24)
@@ -228,57 +243,60 @@ def load_data():
             role_id = roles_dict[device[4]].id
             device_type = device[2]
 
-            obj = (
-                Node("Device")
-                .new(
-                    site=site,
-                    name=device_name,
-                    status=status_id,
-                    type=device[2],
-                    role=role_id,
-                    # source=pop_builder_account,
-                    asn=asn_dict["Duff"],
-                    tags=[tags_dict[tag_name] for tag_name in device[5]],
-                )
-                .save()
+            obj = await Node.init(session=session, schema="Device")
+            await obj.new(
+                session=session,
+                site=site,
+                name=device_name,
+                status=status_id,
+                type=device[2],
+                role=role_id,
+                # source=pop_builder_account,
+                asn=asn_dict["Duff"],
+                tags=[tags_dict[tag_name] for tag_name in device[5]],
             )
+            await obj.save(session=session)
 
             device_dict[device_name] = obj
             LOGGER.info(f"- Created Device: {device_name}")
 
             # Loopback Interface
-            intf = (
-                Node("Interface")
-                .new(
-                    device=obj.id,
-                    name="Loopback0",
-                    enabled=True,
-                    status=active_status.id,
-                    role=roles_dict["loopback"].id,
-                    speed=1000,
-                    # source=pop_builder_account,
-                )
-                .save()
+            intf = await Node.init(session=session, schema="Interface")
+            await intf.new(
+                session=session,
+                device=obj.id,
+                name="Loopback0",
+                enabled=True,
+                status=active_status.id,
+                role=roles_dict["loopback"].id,
+                speed=1000,
+                # source=pop_builder_account,
             )
-            ip = Node("IPAddress").new(interface=intf.id, address=f"{str(next(LOOPBACK_POOL))}/32").save()
+            await intf.save(session=session)
+
+            ip = await Node.init(session=session, schema="IPAddress")
+            await ip.new(session=session, interface=intf.id, address=f"{str(next(LOOPBACK_POOL))}/32")
+            await ip.save(session=session)
 
             loopback_ip_dict[device_name] = ip
 
             # Management Interface
-            intf = (
-                Node("Interface")
-                .new(
-                    device=obj.id,
-                    name=INTERFACE_MGMT_NAME[device_type],
-                    enabled=True,
-                    status=active_status.id,
-                    role=roles_dict["management"].id,
-                    speed=1000,
-                    # source=pop_builder_account,
-                )
-                .save()
+            intf = await Node.init(session=session, schema="Interface")
+            await intf.new(
+                session=session,
+                device=obj.id,
+                name=INTERFACE_MGMT_NAME[device_type],
+                enabled=True,
+                status=active_status.id,
+                role=roles_dict["management"].id,
+                speed=1000,
+                # source=pop_builder_account,
             )
-            ip = Node("IPAddress").new(interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24").save()
+            await intf.save(session=session)
+
+            ip = await Node.init(session=session, schema="IPAddress")
+            await ip.new(session=session, interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24")
+            await ip.save(session=session)
 
             # Other Interfaces
             for intf_idx, intf_name in enumerate(INTERFACE_NAMES[device_type]):
@@ -286,19 +304,18 @@ def load_data():
                 intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
                 intf_role_id = roles_dict[intf_role].id
 
-                intf = (
-                    Node("Interface")
-                    .new(
-                        device=obj.id,
-                        name=intf_name,
-                        speed=10000,
-                        enabled=True,
-                        status=active_status.id,
-                        role=intf_role_id,
-                        # source=pop_builder_account,
-                    )
-                    .save()
+                intf = await Node.init(session=session, schema="Interface")
+                await intf.new(
+                    session=session,
+                    device=obj.id,
+                    name=intf_name,
+                    speed=10000,
+                    enabled=True,
+                    status=active_status.id,
+                    role=intf_role_id,
+                    # source=pop_builder_account,
                 )
+                await intf.save(session=session)
 
                 INTERFACE_OBJS[device_name].append(intf)
 
@@ -322,15 +339,14 @@ def load_data():
                 if not address:
                     continue
 
-                ip = (
-                    Node("IPAddress")
-                    .new(
-                        interface=intf.id,
-                        address=address,
-                        # source=pop_builder_account
-                    )
-                    .save()
+                ip = await Node.init(session=session, schema="IPAddress")
+                await ip.new(
+                    session=session,
+                    interface=intf.id,
+                    address=address,
+                    # source=pop_builder_account
                 )
+                await ip.save(session=session)
 
                 # Create Circuit and BGP session for transit and peering
                 if intf_role in ["transit", "peering"]:
@@ -344,22 +360,21 @@ def load_data():
 
                     provider = orgs_dict[provider_name]
 
-                    circuit = (
-                        Node("Circuit")
-                        .new(
-                            circuit_id=circuit_id,
-                            vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
-                            provider=provider.id,
-                            # type=intf_role.upper(),
-                            status=active_status.id,
-                            role=roles_dict[intf_role].id,
-                        )
-                        .save()
+                    circuit = await Node.init(session=session, schema="Circuit")
+                    await circuit.new(
+                        session=session,
+                        circuit_id=circuit_id,
+                        vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
+                        provider=provider.id,
+                        # type=intf_role.upper(),
+                        status=active_status.id,
+                        role=roles_dict[intf_role].id,
                     )
+                    await circuit.save(session=session)
 
-                    endpoint1 = (
-                        Node("CircuitEndpoint").new(site=site, circuit=circuit.id, connected_interface=intf.id).save()
-                    )
+                    endpoint1 = await Node.init(session=session, schema="CircuitEndpoint")
+                    await endpoint1.new(session=session, site=site, circuit=circuit.id, connected_interface=intf.id)
+                    await endpoint1.save(session=session)
 
                     intf.description.value = f"Connected to {provider_name} via {circuit_id}"
 
@@ -368,31 +383,29 @@ def load_data():
                             "TRANSIT_TELIA" if "telia" in provider.name.value.lower() else "TRANSIT_DEFAULT"
                         )
 
-                        peer_ip = (
-                            Node("IPAddress")
-                            .new(
-                                address=peer_address,
-                                # source=pop_builder_account
-                            )
-                            .save()
+                        peer_ip = await Node.init(session=session, schema="IPAddress")
+                        await peer_ip.new(
+                            session=session,
+                            address=peer_address,
+                            # source=pop_builder_account
                         )
+                        await peer_ip.save(session=session)
 
                         peer_as = asn_dict[provider_name]
-                        session = (
-                            Node("BGPSession")
-                            .new(
-                                type="EXTERNAL",
-                                local_as=internal_as,
-                                local_ip=ip,
-                                remote_as=peer_as,
-                                remote_ip=peer_ip,
-                                peer_group=peer_group_dict[peer_group_name],
-                                device=device_dict[device_name],
-                                status=active_status.id,
-                                role=roles_dict[intf_role].id,
-                            )
-                            .save()
+                        bgp_session = await Node.init(session=session, schema="BGPSession")
+                        await bgp_session.new(
+                            session=session,
+                            type="EXTERNAL",
+                            local_as=internal_as,
+                            local_ip=ip,
+                            remote_as=peer_as,
+                            remote_ip=peer_ip,
+                            peer_group=peer_group_dict[peer_group_name],
+                            device=device_dict[device_name],
+                            status=active_status.id,
+                            role=roles_dict[intf_role].id,
                         )
+                        await bgp_session.save(session=session)
 
                         LOGGER.info(
                             f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
@@ -403,12 +416,12 @@ def load_data():
             intf1 = INTERFACE_OBJS[f"{site_name}-edge1"][idx]
             intf2 = INTERFACE_OBJS[f"{site_name}-edge2"][idx]
 
-            intf1.connected_interface.update(intf2)
+            await intf1.connected_interface.update(session=session, data=intf2)
             intf1.description.value = f"Connected to {site_name}-edge2 {intf2.name.value}"
-            intf1.save()
+            await intf1.save(session=session)
 
             intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
-            intf2.save()
+            await intf2.save(session=session)
 
             LOGGER.debug(
                 f"Connected  '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'"
@@ -427,21 +440,20 @@ def load_data():
 
             peer_group_name = "POP_INTERNAL" if site1 == site2 else "POP_GLOBAL"
 
-            obj = (
-                Node("BGPSession")
-                .new(
-                    type="INTERNAL",
-                    local_as=internal_as,
-                    local_ip=loopback1,
-                    remote_as=internal_as,
-                    remote_ip=loopback2,
-                    peer_group=peer_group_dict[peer_group_name].id,
-                    device=device_dict[device1].id,
-                    status=active_status.id,
-                    role=roles_dict["backbone"],
-                )
-                .save()
+            obj = await Node.init(session=session, schema="BGPSession")
+            await obj.new(
+                session=session,
+                type="INTERNAL",
+                local_as=internal_as,
+                local_ip=loopback1,
+                remote_as=internal_as,
+                remote_ip=loopback2,
+                peer_group=peer_group_dict[peer_group_name].id,
+                device=device_dict[device1].id,
+                status=active_status.id,
+                role=roles_dict["backbone"],
             )
+            await obj.save(session=session)
 
             LOGGER.info(
                 f" Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
@@ -476,28 +488,31 @@ def load_data():
             provider_name = "Zayo"
 
         provider = orgs_dict[provider_name]
-        obj = (
-            Node("Circuit")
-            .new(
-                circuit_id=BACKBONE_CIRCUIT_IDS[idx],
-                vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
-                provider=provider,
-                # type="DARK FIBER",
-                status=active_status,
-                role=roles_dict["backbone"],
-            )
-            .save()
+        obj = await Node.init(session=session, schema="Circuit")
+        await obj.new(
+            session=session,
+            circuit_id=BACKBONE_CIRCUIT_IDS[idx],
+            vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
+            provider=provider,
+            # type="DARK FIBER",
+            status=active_status,
+            role=roles_dict["backbone"],
         )
+        await obj.save(session=session)
 
-        endpoint1 = Node("CircuitEndpoint").new(site=site1, circuit=obj, connected_interface=intf1).save()
-        endpoint2 = Node("CircuitEndpoint").new(site=site2, circuit=obj, connected_interface=intf2).save()
+        endpoint1 = await Node.init(session=session, schema="CircuitEndpoint")
+        await endpoint1.new(session=session, site=site1, circuit=obj, connected_interface=intf1)
+        await endpoint1.save(session=session)
+        endpoint2 = await Node.init(session=session, schema="CircuitEndpoint")
+        await endpoint2.new(session=session, site=site2, circuit=obj, connected_interface=intf2)
+        await endpoint2.save(session=session)
 
-        intf11 = NodeManager.get_one(intf1.id)
+        intf11 = await NodeManager.get_one(session=session, id=intf1.id)
         intf11.description.value = f"Connected to {site2}-{device} via {circuit_id}"
-        intf11.save()
+        await intf11.save(session=session)
 
-        intf21 = NodeManager.get_one(intf2.id)
+        intf21 = await NodeManager.get_one(session=session, id=intf2.id)
         intf21.description.value = f"Connected to {site1}-{device} via {circuit_id}"
-        intf21.save()
+        await intf21.save(session=session)
 
         LOGGER.info(f"Connected  '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
