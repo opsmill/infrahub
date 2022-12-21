@@ -31,6 +31,10 @@ class InfrahubRpcClient:
 
     async def connect(self) -> InfrahubRpcClient:
         self.connection = await get_broker()
+
+        if not self.connection:
+            return self
+
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
         await self.callback_queue.consume(self.on_response)
@@ -44,7 +48,7 @@ class InfrahubRpcClient:
 
         future: asyncio.Future = self.futures.pop(message.correlation_id)
 
-        future.set_result(InfrahubMessage.init(message))
+        future.set_result(InfrahubMessage.convert(message))
 
     async def call(self, message: InfrahubRPC) -> Any:
         correlation_id = str(uuid.uuid4())

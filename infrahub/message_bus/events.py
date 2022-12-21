@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import importlib
 
-from typing import Generator, TYPE_CHECKING
-from infrahub.exceptions import ValidationError
+from typing import TypeVar, Generator, Any, TYPE_CHECKING
 
-from infrahub.utils import BaseEnum
-
+import pickle
 import json
 from aio_pika import DeliveryMode, ExchangeType, Message, IncomingMessage
+from aio_pika.patterns.base import Base as PickleSerializer
 
 import infrahub.config as config
+from infrahub.exceptions import ValidationError
+from infrahub.utils import BaseEnum
+
 
 from . import get_broker
 
@@ -40,7 +42,7 @@ class MessageType(str, BaseEnum):
     # INTERNAL = "internal"   # cache
 
 
-EVENT_MAPPING = {
+MESSAGE_MAPPING = {
     MessageType.DATA: "InfrahubDataMessage",
     MessageType.SCHEMA: "InfrahubSchemaMessage",
     MessageType.BRANCH: "InfrahubBranchMessage",
@@ -77,29 +79,69 @@ class GitMessageAction(str, BaseEnum):
     MERGE = "merge"
 
 
-class InfrahubMessage:
+class RPCStatusCode(int, BaseEnum):
+    OK = 200
+    CREATED = 201
+    ACCEPTED = 202
+    # Requester Errors
+    BAD_REQUEST = 400
+    UNAUTHORIZED = 401
+    FORBIDDEN = 403
+    NOT_FOUND = 404
+    NOT_ALLOWED = 405
+    REQUEST_TIMEOUT = 408
+    TOO_EARLY = 425
+    # Worker Errors
+    INTERNAL_ERROR = 500
+
+SelfInfrahubMessage = TypeVar("SelfInfrahubMessage", bound="InfrahubMessage")
+
+
+class InfrahubMessage(PickleSerializer):
     """
     Generic Object to help send and receive message over the message Bus (RabbitMQ)
     """
 
     type = None
 
+    SERIALIZER = pickle
+    CONTENT_TYPE = "application/python-pickle"
+
     def __init__(self, *args, **kwargs):
 
         self._message = None
 
     @classmethod
-    def init(cls, message: IncomingMessage) -> InfrahubMessage:
+    def convert(cls, message: IncomingMessage) -> SelfInfrahubMessage:
+        """
+        Convert an IncomingMessage into its proper InfrahubMessage class
+        """
 
         if message.type not in MessageType:
             raise TypeError(f"Message type not recognized : {message.type}")
 
-        body = json.loads(message.body)
+        body = cls.deserialize(message.body)
 
         module = importlib.import_module(".", package=__name__)
-        message_class = getattr(module, EVENT_MAPPING[message.type])
+        message_class = getattr(module, MESSAGE_MAPPING[message.type])
 
-        return message_class.init(body=body, message=message)
+        return message_class.init(message=message, **body)
+
+    @classmethod
+    def init(cls, message: IncomingMessage, *args, **kwargs) -> SelfInfrahubMessage:
+        """Initialize an Message from an Incoming Message."""
+
+        return cls(message=message, *args, **kwargs)
+
+    @classmethod
+    def serialize(cls, data: Any) -> bytes:
+        """Serialize data to the bytes."""
+        return cls.SERIALIZER.dumps(data)
+
+    @classmethod
+    def deserialize(cls, data: bytes) -> Any:
+        """Deserialize data from bytes."""
+        return cls.SERIALIZER.loads(data)
 
     def generate_message_body(self) -> dict:
         """Generate the body of the message as a dict."""
@@ -111,8 +153,8 @@ class InfrahubMessage:
 
         self._message = Message(
             type=self.type.value,
-            content_type="application/json",
-            body=json.dumps(self.generate_message_body()).encode(),
+            content_type=self.CONTENT_TYPE,
+            body=self.serialize(self.generate_message_body()),
             delivery_mode=DeliveryMode.PERSISTENT,
         )
 
@@ -211,9 +253,9 @@ class InfrahubRPCResponse(InfrahubMessage):
 
     def __init__(
         self,
-        status: bool,
-        # message: str = None,
-        context: dict = None,
+        status: RPCStatusCode,
+        response: dict = None,
+        errors: list = None,
         *args,
         **kwargs,
     ):
@@ -221,17 +263,9 @@ class InfrahubRPCResponse(InfrahubMessage):
         super().__init__(*args, **kwargs)
 
         self.status = status
-        # self.message = message
-        self.context = context
+        self.errors = errors
+        self.response = response
 
-    @classmethod
-    def init(cls, body: dict, message: IncomingMessage) -> InfrahubRPCResponse:
-        """Initialize an Message from an Incoming Message and a body."""
-
-        status = body.get("status")
-        context = body.get("context", None)
-
-        return cls(message=message, status=status, context=context)
 
     async def send(self, channel, correlation_id: str, reply_to: str):
         """Send the Response to the Queue specified."""
@@ -245,8 +279,8 @@ class InfrahubRPCResponse(InfrahubMessage):
 
         body = super().generate_message_body()
         body["status"] = self.status
-        body["context"] = self.context
-
+        body["response"] = self.response
+        body["errors"] = self.errors
         return body
 
 
@@ -278,22 +312,22 @@ class InfrahubGitRPC(InfrahubRPC):
         self.branch_name = branch_name
         self.source_branch_name = source_branch_name
 
-    @classmethod
-    def init(cls, body: dict, message: IncomingMessage) -> InfrahubGitRPC:
-        """Initialize an Message from an Incoming Message and a body."""
+    # @classmethod
+    # def init(cls, body: dict, message: IncomingMessage) -> InfrahubGitRPC:
+    #     """Initialize an Message from an Incoming Message and a body."""
 
-        action = body.get("action")
-        repository_id = body.get("repository_id")
-        branch_name = body.get("branch_name", None)
-        source_branch_name = body.get("source_branch_name", None)
+    #     action = body.get("action")
+    #     repository_id = body.get("repository_id")
+    #     branch_name = body.get("branch_name", None)
+    #     source_branch_name = body.get("source_branch_name", None)
 
-        return cls(
-            action=action,
-            message=message,
-            repository_id=repository_id,
-            branch_name=branch_name,
-            source_branch_name=source_branch_name,
-        )
+    #     return cls(
+    #         action=action,
+    #         message=message,
+    #         repository_id=repository_id,
+    #         branch_name=branch_name,
+    #         source_branch_name=source_branch_name,
+    #     )
 
     def generate_message_body(self) -> dict:
         """Generate the body of the message as a dict."""
@@ -325,16 +359,16 @@ class InfrahubDataMessage(InfrahubActionMessage):
         self.branch = branch or node._branch.name
         self._node = node
 
-    @classmethod
-    def init(cls, body: dict, message: IncomingMessage) -> InfrahubDataMessage:
-        """Initialize an Message from an Incoming Message and a body."""
+    # @classmethod
+    # def init(cls, body: dict, message: IncomingMessage) -> InfrahubDataMessage:
+    #     """Initialize an Message from an Incoming Message and a body."""
 
-        action = body.get("action")
-        branch = body.get("branch")
-        node_id = body.get("node", {}).get("id")
-        node_kind = body.get("node", {}).get("kind")
+    #     action = body.get("action")
+    #     branch = body.get("branch")
+    #     node_id = body.get("node", {}).get("id")
+    #     node_kind = body.get("node", {}).get("kind")
 
-        return cls(action=action, branch=branch, node_id=node_id, node_kind=node_kind)
+    #     return cls(action=action, branch=branch, node_id=node_id, node_kind=node_kind)
 
     def __repr__(self) -> str:
         return f"[{self.type.value.upper()}] branch: {self.branch} | {self.action} | {self.node_kind} | {self.node_id} "
@@ -349,7 +383,8 @@ class InfrahubDataMessage(InfrahubActionMessage):
 
         body = super().generate_message_body()
         body["branch"] = self.branch
-        body["node"] = {"kind": self.node_kind, "id": self.node_id}
+        body["node_kind"] = self.node_kind
+        body["node_id"] = self.node_id
 
         return body
 
@@ -378,14 +413,14 @@ class InfrahubBranchMessage(InfrahubActionMessage):
         super().__init__(*args, **kwargs)
         self.branch = branch
 
-    @classmethod
-    def init(cls, body: dict, message: IncomingMessage) -> InfrahubBranchMessage:
-        """Initialize an Message from an Incoming Message and a body."""
+    # @classmethod
+    # def init(cls, body: dict, message: IncomingMessage) -> InfrahubBranchMessage:
+    #     """Initialize an Message from an Incoming Message and a body."""
 
-        action = body.get("action")
-        branch = body.get("branch")
+    #     action = body.get("action")
+    #     branch = body.get("branch")
 
-        return cls(action=action, branch=branch)
+    #     return cls(action=action, branch=branch)
 
     @property
     def topic(self) -> str:
