@@ -15,6 +15,7 @@ from neo4j import AsyncSession
 import infrahub.config as config
 from infrahub.auth import BaseTokenAuth
 from infrahub.message_bus import connect_to_broker, close_broker_connection
+from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.core import get_branch, registry
 from infrahub.database import get_db
 from infrahub.core.initialization import initialization
@@ -47,12 +48,17 @@ async def app_initialization():
         logger.info(f"Loading the configuration from {config_file_path}")
         config.load_and_exit(config_file_path)
 
+    # Initialize database Driver and load local registry
     app.state.db = await get_db()
 
     async with app.state.db.session(database=config.SETTINGS.database.database) as session:
         await initialization(session=session)
 
+    # Initialize connection to the RabbitMQ bus
     await connect_to_broker()
+
+    # Initialize RPC Client
+    app.state.rpc_client = await InfrahubRpcClient().connect()
 
 
 @app.on_event("shutdown")

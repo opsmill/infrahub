@@ -17,7 +17,13 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import BranchNotFound, NodeNotFound
-from infrahub.message_bus.events import send_event, DataEvent, DataEventAction, BranchEvent, BranchEventAction
+from infrahub.message_bus.events import (
+    send_event,
+    InfrahubDataMessage,
+    DataMessageAction,
+    InfrahubBranchMessage,
+    BranchMessageAction,
+)
 
 from .query import BranchType
 from .utils import extract_fields
@@ -55,16 +61,16 @@ class InfrahubMutation(Mutation):
         action = None
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(root, info, branch=branch, at=at, *args, **kwargs)
-            action = DataEventAction.CREATE
+            action = DataMessageAction.CREATE
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(root, info, branch=branch, at=at, *args, **kwargs)
-            action = DataEventAction.UPDATE
+            action = DataMessageAction.UPDATE
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(root, info, branch=branch, at=at, *args, **kwargs)
-            action = DataEventAction.DELETE
+            action = DataMessageAction.DELETE
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(send_event, DataEvent(action=action, node=obj))
+            info.context.get("background").add_task(send_event, InfrahubDataMessage(action=action, node=obj))
 
         return mutation
 
@@ -185,7 +191,7 @@ class BranchCreate(Mutation):
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(
-                send_event, BranchEvent(action=BranchEventAction.CREATE, branch=obj.name)
+                send_event, InfrahubBranchMessage(action=BranchMessageAction.CREATE, branch=obj.name)
             )
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
@@ -216,7 +222,7 @@ class BranchRebase(Mutation):
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(
-                send_event, BranchEvent(action=BranchEventAction.REBASE, branch=obj.name)
+                send_event, InfrahubBranchMessage(action=BranchMessageAction.REBASE, branch=obj.name)
             )
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
@@ -264,7 +270,7 @@ class BranchMerge(Mutation):
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(
-                send_event, BranchEvent(action=BranchEventAction.MERGE, branch=obj.name)
+                send_event, InfrahubBranchMessage(action=BranchMessageAction.MERGE, branch=obj.name)
             )
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)

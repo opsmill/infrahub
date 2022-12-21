@@ -56,7 +56,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class BrokerSettings(BaseSettings):
-    enable: bool = False
+    enable: bool = True
     username: str = "guest"
     password: str = "guest"
     address: str = "localhost"
