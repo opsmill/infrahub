@@ -7,7 +7,6 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import NodeSchema, SchemaRoot, internal_schema
 
 
-@pytest.mark.asyncio
 async def test_load_schema_node_to_db(session, default_branch):
 
     schema = SchemaRoot(**internal_schema)
@@ -31,7 +30,6 @@ async def test_load_schema_node_to_db(session, default_branch):
     assert True
 
 
-@pytest.mark.asyncio
 async def test_load_schema_to_db(session, default_branch):
 
     schema = SchemaRoot(**internal_schema)
@@ -44,7 +42,6 @@ async def test_load_schema_to_db(session, default_branch):
     assert len(results) > 1
 
 
-@pytest.mark.asyncio
 async def test_load_schema_from_db(session, default_branch):
 
     schema = SchemaRoot(**internal_schema)

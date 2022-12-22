@@ -6,7 +6,6 @@ from infrahub.core.query.node import NodeListGetLocalAttributeValueQuery, NodeLi
 from infrahub.core.timestamp import Timestamp
 
 
-@pytest.mark.asyncio
 async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -37,7 +36,6 @@ async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch
     assert len(query.get_results_by_id()) == 8
 
 
-@pytest.mark.asyncio
 async def test_query_NodeListGetAttributeQuery_all_fields(session, base_dataset_02):
 
     default_branch = await get_branch(session=session, branch="main")
@@ -62,7 +60,6 @@ async def test_query_NodeListGetAttributeQuery_all_fields(session, base_dataset_
     assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 4
 
 
-@pytest.mark.asyncio
 async def test_query_NodeListGetAttributeQuery_with_source(
     session, default_branch, criticality_schema, first_account, second_account
 ):
@@ -94,7 +91,6 @@ async def test_query_NodeListGetAttributeQuery_with_source(
     assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["name"].source_uuid == first_account.id
 
 
-@pytest.mark.asyncio
 async def test_query_NodeListGetAttributeQuery(session, base_dataset_02):
 
     default_branch = await get_branch(session=session, branch="main")

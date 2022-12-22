@@ -20,7 +20,6 @@ class DummyRelationshipQuery(RelationshipQuery):
         pass
 
 
-@pytest.mark.asyncio
 async def test_RelationshipQuery_init(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(name="Person", session=session)
@@ -69,7 +68,6 @@ async def test_RelationshipQuery_init(session, default_branch, person_tag_schema
     assert rq.branch == default_branch
 
 
-@pytest.mark.asyncio
 async def test_query_RelationshipCreateQuery(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(name="Person", session=session)
@@ -102,7 +100,6 @@ async def test_query_RelationshipCreateQuery(session, default_branch, person_tag
     assert len(paths) == 2
 
 
-@pytest.mark.asyncio
 async def test_query_RelationshipCreateQuery_w_node_property(session, default_branch, person_tag_schema, first_account):
 
     person_schema = await registry.get_schema(name="Person", session=session)
@@ -133,7 +130,6 @@ async def test_query_RelationshipCreateQuery_w_node_property(session, default_br
     assert len(paths) == 1
 
 
-@pytest.mark.asyncio
 async def test_query_RelationshipDeleteQuery(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(name="Person", session=session)
@@ -172,7 +168,6 @@ async def test_query_RelationshipDeleteQuery(session, default_branch, person_tag
     assert len(paths) == 5
 
 
-@pytest.mark.asyncio
 async def test_query_RelationshipGetPeerQuery(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -206,7 +201,6 @@ async def test_query_RelationshipGetPeerQuery(session, default_branch, person_ta
     assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
 
 
-@pytest.mark.asyncio
 async def test_query_RelationshipGetPeerQuery_with_filter(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")

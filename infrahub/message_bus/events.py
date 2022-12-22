@@ -94,6 +94,7 @@ class RPCStatusCode(int, BaseEnum):
     # Worker Errors
     INTERNAL_ERROR = 500
 
+
 SelfInfrahubMessage = TypeVar("SelfInfrahubMessage", bound="InfrahubMessage")
 
 
@@ -265,7 +266,6 @@ class InfrahubRPCResponse(InfrahubMessage):
         self.status = status
         self.errors = errors
         self.response = response
-
 
     async def send(self, channel, correlation_id: str, reply_to: str):
         """Send the Response to the Queue specified."""

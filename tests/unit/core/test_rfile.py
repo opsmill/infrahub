@@ -27,7 +27,6 @@ def edge_repo_main_only(tmp_path):
     return repositories_dir / "infrahub-demo-edge"
 
 
-@pytest.mark.asyncio
 async def test_initialize_class(session, register_core_models_schema, edge_repo_main_only):
 
     rfile_schema = await registry.get_schema(session=session, name="RFile")

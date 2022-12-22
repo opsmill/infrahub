@@ -8,7 +8,6 @@ from infrahub.core.relationship import Relationship
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 
 
-@pytest.mark.asyncio
 async def test_relationship_init(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -41,7 +40,6 @@ async def test_relationship_init(session, default_branch, person_tag_schema):
     assert rel_node.id == p1.id
 
 
-@pytest.mark.asyncio
 async def test_relationship_init_w_node_property(
     session, default_branch, person_tag_schema, first_account, second_account
 ):
@@ -68,7 +66,6 @@ async def test_relationship_init_w_node_property(
     assert rel.owner_id == second_account.id
 
 
-@pytest.mark.asyncio
 async def test_relationship_load_existing(session, default_branch, car_person_schema):
 
     car_schema = await registry.get_schema(session=session, name="Car")
@@ -111,7 +108,6 @@ async def test_relationship_load_existing(session, default_branch, car_person_sc
     assert rel.is_visible is False
 
 
-@pytest.mark.asyncio
 async def test_relationship_peer(session, default_branch, person_tag_schema, first_account, second_account):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -137,7 +133,6 @@ async def test_relationship_peer(session, default_branch, person_tag_schema, fir
     assert await rel.get_peer(session=session) == t1
 
 
-@pytest.mark.asyncio
 async def test_relationship_save(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")

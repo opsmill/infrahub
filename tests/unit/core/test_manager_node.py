@@ -6,7 +6,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 
 
-@pytest.mark.asyncio
 async def test_get_one_attribute(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -43,7 +42,6 @@ async def test_get_one_attribute(session, default_branch, criticality_schema):
     assert obj.color.id
 
 
-@pytest.mark.asyncio
 async def test_get_one_attribute_with_node_property(
     session, default_branch, criticality_schema, first_account, second_account
 ):
@@ -80,7 +78,6 @@ async def test_get_one_attribute_with_node_property(
     assert obj.color.source_id == first_account.id
 
 
-@pytest.mark.asyncio
 async def test_get_one_attribute_with_flag_property(
     session, default_branch, criticality_schema, first_account, second_account
 ):
@@ -111,7 +108,6 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.color.is_protected is False
 
 
-@pytest.mark.asyncio
 async def test_get_one_relationship(session, default_branch, car_person_schema):
 
     car = await registry.get_schema(session=session, name="Car")
@@ -142,7 +138,6 @@ async def test_get_one_relationship(session, default_branch, car_person_schema):
     assert len(list(p11.cars)) == 2
 
 
-@pytest.mark.asyncio
 async def test_get_one_relationship_with_flag_property(session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -190,7 +185,6 @@ async def test_get_one_relationship_with_flag_property(session, default_branch, 
     assert rels[1].is_visible is False
 
 
-@pytest.mark.asyncio
 async def test_get_many(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -205,7 +199,6 @@ async def test_get_many(session, default_branch, criticality_schema):
     assert len(nodes) == 2
 
 
-@pytest.mark.asyncio
 async def test_query_no_filter(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -224,7 +217,6 @@ async def test_query_no_filter(session, default_branch, criticality_schema):
     assert len(nodes) == 3
 
 
-@pytest.mark.asyncio
 async def test_query_with_filter_string_int(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -253,7 +245,6 @@ async def test_query_with_filter_string_int(session, default_branch, criticality
     assert len(nodes) == 1
 
 
-@pytest.mark.asyncio
 async def test_query_with_filter_bool_rel(session, default_branch, car_person_schema):
 
     car = await registry.get_schema(session=session, name="Car")
@@ -289,7 +280,6 @@ async def test_query_with_filter_bool_rel(session, default_branch, car_person_sc
     assert len(nodes) == 2
 
 
-@pytest.mark.asyncio
 async def test_query_non_default_class(session, default_branch, criticality_schema):
     class Criticality(Node):
         def always_true(self):
@@ -311,7 +301,6 @@ async def test_query_non_default_class(session, default_branch, criticality_sche
     assert nodes[0].always_true()
 
 
-@pytest.mark.asyncio
 async def test_query_class_name(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -329,7 +318,8 @@ async def test_query_class_name(session, default_branch, criticality_schema):
 # ------------------------------------------------------------------------
 # WITH BRANCH
 # ------------------------------------------------------------------------
-@pytest.mark.asyncio
+
+
 async def test_get_one_local_attribute_with_branch(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)

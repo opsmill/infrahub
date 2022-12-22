@@ -13,7 +13,6 @@ def client():
 headers = {"Authorization": "Token XXXX"}
 
 
-@pytest.mark.asyncio
 async def test_query_endpoint(session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")

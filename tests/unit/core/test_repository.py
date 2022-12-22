@@ -49,7 +49,6 @@ def test_initialize_repositories_directory_present(tmp_path):
     assert len(list(tmp_path.iterdir())) == 1
 
 
-@pytest.mark.asyncio
 async def test_ensure_exists_locally_when_present(session, register_core_models_schema, edge_repo_main_only):
 
     repo_schema = await registry.get_schema(session=session, name="Repository")
@@ -61,7 +60,6 @@ async def test_ensure_exists_locally_when_present(session, register_core_models_
     assert obj.commit.value == "dd60ae4804c0d0e71c8de0640bb84b095fc3ee61"
 
 
-@pytest.mark.asyncio
 async def test_add_branch(session, register_core_models_schema, edge_repo_main_only):
 
     repo_schema = await registry.get_schema(session=session, name="Repository")

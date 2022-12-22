@@ -11,7 +11,6 @@ from infrahub.core.utils import get_paths_between_nodes
 from infrahub.exceptions import ValidationError
 
 
-@pytest.mark.asyncio
 async def test_node_init(session, default_branch, criticality_schema, first_account):
 
     obj = await Node.init(session=session, schema=criticality_schema)
@@ -39,7 +38,6 @@ async def test_node_init(session, default_branch, criticality_schema, first_acco
     assert obj._source == first_account
 
 
-@pytest.mark.asyncio
 async def test_node_init_schema_name(session, default_branch, criticality_schema):
 
     await registry.set_schema(name="Criticality", schema=criticality_schema)
@@ -52,7 +50,6 @@ async def test_node_init_schema_name(session, default_branch, criticality_schema
     assert obj.color.value == "#444444"
 
 
-@pytest.mark.asyncio
 async def test_node_init_mandatory_missing(session, default_branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
@@ -63,7 +60,6 @@ async def test_node_init_mandatory_missing(session, default_branch, criticality_
     assert "mandatory" in str(exc.value)
 
 
-@pytest.mark.asyncio
 async def test_node_init_invalid_attribute(session, default_branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
@@ -74,7 +70,6 @@ async def test_node_init_invalid_attribute(session, default_branch, criticality_
     assert "not a valid input" in str(exc.value)
 
 
-@pytest.mark.asyncio
 async def test_node_init_invalid_value(session, default_branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
@@ -90,7 +85,6 @@ async def test_node_init_invalid_value(session, default_branch, criticality_sche
     assert "not of type String" in str(exc.value)
 
 
-@pytest.mark.asyncio
 async def test_node_default_value(session, default_branch):
 
     SCHEMA = {
@@ -124,7 +118,6 @@ async def test_node_default_value(session, default_branch):
     assert obj.mybool_default.value is True
 
 
-@pytest.mark.asyncio
 async def test_node_init_with_single_relationship(session, default_branch, car_person_schema):
 
     car = await registry.get_schema(session=session, name="Car")
@@ -160,7 +153,8 @@ async def test_node_init_with_single_relationship(session, default_branch, car_p
 # --------------------------------------------------------------------------
 # Create
 # --------------------------------------------------------------------------
-@pytest.mark.asyncio
+
+
 async def test_node_create_local_attrs(session, default_branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
@@ -194,7 +188,6 @@ async def test_node_create_local_attrs(session, default_branch, criticality_sche
     assert obj.color.id
 
 
-@pytest.mark.asyncio
 async def test_node_create_local_attrs_with_source(session, default_branch, criticality_schema, first_account):
 
     obj = await Node.init(session=session, schema=criticality_schema)
@@ -218,7 +211,6 @@ async def test_node_create_local_attrs_with_source(session, default_branch, crit
     assert obj.color.source_id == first_account.id
 
 
-@pytest.mark.asyncio
 async def test_node_create_local_attrs_with_different_sources(
     session, default_branch, criticality_schema, first_account, second_account
 ):
@@ -244,7 +236,6 @@ async def test_node_create_local_attrs_with_different_sources(
     assert obj.color.source_id == first_account.id
 
 
-@pytest.mark.asyncio
 async def test_node_create_with_single_relationship(session, default_branch, car_person_schema):
 
     car = await registry.get_schema(session=session, name="Car")
@@ -316,7 +307,6 @@ async def test_node_create_with_single_relationship(session, default_branch, car
     assert len(paths) == 1
 
 
-@pytest.mark.asyncio
 async def test_node_create_with_multiple_relationship(session, default_branch, fruit_tag_schema):
 
     fruit = await registry.get_schema(session=session, name="Fruit")
@@ -355,7 +345,6 @@ async def test_node_create_with_multiple_relationship(session, default_branch, f
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
 async def test_node_update_local_attrs(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -372,7 +361,6 @@ async def test_node_update_local_attrs(session, default_branch, criticality_sche
     assert obj3.level.value == 1
 
 
-@pytest.mark.asyncio
 async def test_node_update_local_attrs_with_flags(session, default_branch, criticality_schema):
 
     fields_to_query = {"name": True, "level": True}
@@ -390,7 +378,6 @@ async def test_node_update_local_attrs_with_flags(session, default_branch, criti
     assert obj3.level.is_visible is False
 
 
-@pytest.mark.asyncio
 async def test_node_update_local_attrs_with_source(
     session, default_branch, criticality_schema, first_account, second_account
 ):
@@ -410,7 +397,8 @@ async def test_node_update_local_attrs_with_source(
 # --------------------------------------------------------------------------
 # Delete
 # --------------------------------------------------------------------------
-@pytest.mark.asyncio
+
+
 async def test_node_delete_local_attrs(session, default_branch, criticality_schema):
 
     obj2 = await Node.init(session=session, schema=criticality_schema)
@@ -432,7 +420,6 @@ async def test_node_delete_local_attrs(session, default_branch, criticality_sche
     assert not await NodeManager.get_one(id=obj2.id, session=session)
 
 
-@pytest.mark.asyncio
 async def test_node_delete_query_past(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -455,7 +442,6 @@ async def test_node_delete_query_past(session, default_branch, criticality_schem
     assert await NodeManager.get_one(id=obj2.id, at=time1, session=session)
 
 
-@pytest.mark.asyncio
 async def test_node_delete_local_attrs_in_branch(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -485,7 +471,6 @@ async def test_node_delete_local_attrs_in_branch(session, default_branch, critic
     assert len(resp) == 1
 
 
-@pytest.mark.asyncio
 async def test_node_delete_with_relationship_bidir(session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -519,7 +504,8 @@ async def test_node_delete_with_relationship_bidir(session, default_branch, car_
 # ---------------------------------------   -----------------------------------
 # With Branch
 # --------------------------------------------------------------------------
-@pytest.mark.asyncio
+
+
 async def test_node_create_in_branch(session, default_branch, criticality_schema):
 
     branch1 = Branch(name="branch1", status="OPEN")
@@ -534,7 +520,6 @@ async def test_node_create_in_branch(session, default_branch, criticality_schema
     assert obj2.id == obj.id
 
 
-@pytest.mark.asyncio
 async def test_node_update_in_branch(session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
