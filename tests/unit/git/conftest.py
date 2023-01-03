@@ -1,16 +1,20 @@
-
 import os
 import tarfile
 
-import asyncio
-import pytest
-import pytest_asyncio
+from typing import Dict
 
+import json
+import uuid
+import pytest
+
+from pytest_httpx import HTTPXMock
 import infrahub.config as config
+
+from infrahub.git import InfrahubRepository, QUERY_BRANCHES, QUERY_REPOSITORY
 
 
 @pytest.fixture
-def git_sources_dir(tmpdir):
+def git_sources_dir(tmpdir) -> str:
 
     source_dir = os.path.join(str(tmpdir), "sources")
 
@@ -18,8 +22,9 @@ def git_sources_dir(tmpdir):
 
     return source_dir
 
+
 @pytest.fixture
-def git_repos_dir(tmpdir):
+def git_repos_dir(tmpdir) -> str:
 
     repos_dir = os.path.join(str(tmpdir), "repositories")
 
@@ -29,15 +34,85 @@ def git_repos_dir(tmpdir):
 
     return repos_dir
 
-@pytest.fixture
-def git_upstream_repo_01(git_sources_dir):
 
+@pytest.fixture
+def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
+
+    name = "infrahub-test-fixture-01"
     fixtures_dir = os.path.join(os.getcwd(), "tests/fixtures")
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-test-fixture-01-0b341c0.tar.gz" )
+    fixture_repo = os.path.join(fixtures_dir, "infrahub-test-fixture-01-0b341c0.tar.gz")
 
     # Extract the fixture package in the source directory
     file = tarfile.open(fixture_repo)
     file.extractall(git_sources_dir)
     file.close()
 
-    return os.path.join(git_sources_dir, "infrahub-test-fixture-01")
+    return dict(name=name, path=os.path.join(git_sources_dir, "infrahub-test-fixture-01"))
+
+
+@pytest.fixture
+async def git_repo_01(git_upstream_repo_01, git_repos_dir) -> InfrahubRepository:
+
+    repo = await InfrahubRepository.new(
+        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=f"file:/{git_upstream_repo_01['path']}"
+    )
+
+    return repo
+
+
+@pytest.fixture
+async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
+
+    response = {
+        "data": {
+            "branch": [
+                {
+                    "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
+                    "name": "main",
+                    "is_data_only": False,
+                },
+                {
+                    "id": "7d9f817a-b958-4e76-8528-8afd0c689ada",
+                    "name": "cr1234",
+                    "is_data_only": True,
+                },
+            ]
+        }
+    }
+    request_content = json.dumps({"query": QUERY_BRANCHES}).encode()
+
+    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
+
+    response1 = {
+        "data": {
+            "repository": [
+                {
+                    "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                    "name": {"value": "infrahub-demo-edge"},
+                    "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
+                    "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                }
+            ]
+        }
+    }
+    response2 = {
+        "data": {
+            "repository": [
+                {
+                    "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                    "name": {"value": "infrahub-demo-edge"},
+                    "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
+                    "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                }
+            ]
+        }
+    }
+
+    httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json=response1)
+    httpx_mock.add_response(method="POST", url="http://mock/graphql/cr1234", json=response2)
+    return httpx_mock

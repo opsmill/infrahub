@@ -38,6 +38,7 @@ isort = "*"
 autoflake = "*"
 pytest-clarity = "^1.0.1"
 locust = "^2.13.1"
+pytest-httpx = "^0.21.2"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"

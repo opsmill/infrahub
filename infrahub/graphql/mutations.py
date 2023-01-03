@@ -8,8 +8,9 @@ from graphene import (
     String,
 )
 from graphene.types.generic import GenericScalar
-
 from graphene.types.mutation import MutationOptions
+
+from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.core.branch import Branch
@@ -23,7 +24,10 @@ from infrahub.message_bus.events import (
     DataMessageAction,
     InfrahubBranchMessage,
     BranchMessageAction,
+    InfrahubGitRPC,
+    GitMessageAction,
 )
+from infrahub.message_bus.rpc import InfrahubRpcClient
 
 from .query import BranchType
 from .utils import extract_fields
@@ -77,7 +81,7 @@ class InfrahubMutation(Mutation):
     @classmethod
     async def mutate_create(cls, root, info, data, branch=None, at=None):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
         await obj.new(session=session, **data)
@@ -91,7 +95,7 @@ class InfrahubMutation(Mutation):
     @classmethod
     async def mutate_update(cls, root, info, data, branch=None, at=None):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
@@ -108,7 +112,7 @@ class InfrahubMutation(Mutation):
     @classmethod
     async def mutate_delete(cls, root, info, data, branch=None, at=None):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
@@ -167,7 +171,8 @@ class BranchCreate(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         # Check if the branch already exist
         try:
@@ -182,13 +187,21 @@ class BranchCreate(Mutation):
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
             repositories = await NodeManager.query(session=session, schema="Repository")
+
             for repo in repositories:
-                repo.add_branch(obj.name)
+                resp = await rpc_client.call(
+                    InfrahubGitRPC(
+                        action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
+                    )
+                )
+                # TODO need to validate that everything go as expected
+                # TODO need to run all repos in //
 
         ok = True
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
+        # Generate Event in message bus
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(
                 send_event, InfrahubBranchMessage(action=BranchMessageAction.CREATE, branch=obj.name)
@@ -211,7 +224,7 @@ class BranchRebase(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
         await obj.rebase(session=session)
@@ -239,7 +252,7 @@ class BranchValidate(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
         ok, messages = await obj.validate(session=session)
@@ -259,7 +272,7 @@ class BranchMerge(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
         await obj.merge(session=session)

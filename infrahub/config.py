@@ -19,6 +19,8 @@ class MainSettings(BaseSettings):
     default_account: str = "default"
     default_account_perm: str = "CAN_READ"
 
+    internal_address: str = "http://localhost:8000"
+
     print_query_details: bool = False
 
     repositories_directory: str = "repositories"

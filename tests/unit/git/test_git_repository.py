@@ -48,7 +48,7 @@ async def test_get_worktrees(git_repo_01: InfrahubRepository):
     assert worktrees[0].directory.startswith(repo.directory_root)
 
 
-async def test_get_branches_in_local(git_repo_01: InfrahubRepository):
+async def test_get_branches_from_local(git_repo_01: InfrahubRepository):
     repo = git_repo_01
 
     local_branches = repo.get_branches_from_local()
@@ -56,9 +56,20 @@ async def test_get_branches_in_local(git_repo_01: InfrahubRepository):
     assert sorted(list(local_branches.keys())) == ["main"]
 
 
-async def test_get_branches_in_remote(git_repo_01: InfrahubRepository):
+async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
     repo = git_repo_01
 
     remote_branches = repo.get_branches_from_remote()
     assert isinstance(remote_branches, dict)
     assert sorted(list(remote_branches.keys())) == ["branch01", "branch02", "clean-branch", "main"]
+
+
+async def test_get_branches_from_graph(
+    git_repo_01: InfrahubRepository, mock_branches_list_query, mock_repositories_query
+):
+    repo = git_repo_01
+
+    branches = await repo.get_branches_from_graph()
+    assert isinstance(branches, dict)
+    assert len(branches) == 2
+    assert branches["cr1234"].commit == "bbbbbbbbbbbbbbbbbbbb"

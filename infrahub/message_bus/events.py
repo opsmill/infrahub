@@ -72,11 +72,13 @@ class BranchMessageAction(str, BaseEnum):
 
 
 class GitMessageAction(str, BaseEnum):
-    CREATE = "create"
     PULL = "pull"
     PUSH = "push"
     REBASE = "rebase"
     MERGE = "merge"
+    DIFF = "diff"
+    REPO_ADD = "repo-add"
+    BRANCH_ADD = "branch-add"
 
 
 class RPCStatusCode(int, BaseEnum):
@@ -291,10 +293,11 @@ class InfrahubGitRPC(InfrahubRPC):
 
     def __init__(
         self,
-        branch_name: str = None,
         repository: Repository = None,
+        repository_name: str = None,
         repository_id: str = None,
-        source_branch_name: str = None,
+        location: str = None,
+        params: dict = None,
         *args,
         **kwargs,
     ):
@@ -302,40 +305,39 @@ class InfrahubGitRPC(InfrahubRPC):
         if not repository and not repository_id:
             raise ValueError("Either Repository or repository_id must be provided for InfrahubGitRPC.")
 
+        if not repository and not repository_name:
+            raise ValueError("Either Repository or repository_name must be provided for InfrahubGitRPC.")
+
+        if not repository and not location:
+            raise ValueError("Either Repository or location must be provided for InfrahubGitRPC.")
+
         super().__init__(*args, **kwargs)
 
         self.repository = repository
         self.repository_id = repository_id
+        self.repository_name = repository_name
+        self.location = location
+
         if repository and not repository_id:
             self.repository_id = repository.id
+        if repository and not repository_name:
+            self.repository_name = repository.name.value
+        if repository and not location:
+            self.location = repository.location.value
 
-        self.branch_name = branch_name
-        self.source_branch_name = source_branch_name
+        self.params = params or {}
 
-    # @classmethod
-    # def init(cls, body: dict, message: IncomingMessage) -> InfrahubGitRPC:
-    #     """Initialize an Message from an Incoming Message and a body."""
-
-    #     action = body.get("action")
-    #     repository_id = body.get("repository_id")
-    #     branch_name = body.get("branch_name", None)
-    #     source_branch_name = body.get("source_branch_name", None)
-
-    #     return cls(
-    #         action=action,
-    #         message=message,
-    #         repository_id=repository_id,
-    #         branch_name=branch_name,
-    #         source_branch_name=source_branch_name,
-    #     )
+        # self.branch_name = branch_name
+        # self.source_branch_name = source_branch_name
 
     def generate_message_body(self) -> dict:
         """Generate the body of the message as a dict."""
 
         body = super().generate_message_body()
         body["repository_id"] = self.repository_id
-        body["branch_name"] = self.branch_name
-        body["source_branch_name"] = self.source_branch_name
+        body["repository_name"] = self.repository_name
+        body["location"] = self.location
+        body["params"] = self.params
 
         return body
 

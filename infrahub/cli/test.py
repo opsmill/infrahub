@@ -23,6 +23,7 @@ def unit(
     config.load_and_exit(config_file_name=config_file)
     config.SETTINGS.database.database = TEST_DATABASE
     config.SETTINGS.broker.enable = False
+    config.SETTINGS.main.internal_address = "http://mock"
 
     verbose_str = "-" + "v" * verbose if verbose else "-v"
 
@@ -45,6 +46,7 @@ def integration(
     config.load_and_exit(config_file_name=config_file)
     config.SETTINGS.database.database = TEST_DATABASE
     config.SETTINGS.broker.enable = False
+    config.SETTINGS.main.internal_address = "http://mock"
 
     verbose_str = "-" + "v" * verbose if verbose else "-v"
 

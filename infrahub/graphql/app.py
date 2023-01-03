@@ -178,6 +178,7 @@ class InfrahubGraphQLApp:
             "request": request,
             "background": BackgroundTasks(),
             "infrahub_database": request.app.state.db,
+            "infrahub_rpc_client": request.app.state.rpc_client,
             "infrahub_session": session,
         }
 
