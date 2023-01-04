@@ -4,18 +4,25 @@ import git
 import glob
 import os
 import asyncio
+import shutil
+import logging
 from typing import List, Dict, Optional
 
 from uuid import UUID
 from pydantic import BaseModel, validator
 from git import Repo
+from git.exc import InvalidGitRepositoryError, GitCommandError
 import httpx
 
 import infrahub.config as config
+from infrahub.exceptions import RepositoryError
+from infrahub.message_bus.events import InfrahubGitRPC, InfrahubRPCResponse, GitMessageAction, RPCStatusCode
 
+LOGGER = logging.getLogger("infrahub.git")
 
-# INFRAHUB_URL = os.environ.get("INFRAHUB_GRAPHQL_URL", "http://localhost:8000")
-# INFRAHUB_GRAPHQL_URL = f"{INFRAHUB_URL}/graphql"
+COMMITS_DIRECTORY_NAME = "commits"
+BRANCHES_DIRECTORY_NAME = "branches"
+TEMPORARY_DIRECTORY_NAME = "temp"
 
 QUERY_BRANCHES = """
 query {
@@ -56,6 +63,47 @@ mutation ($repository_id: String!, $commit: String!) {
     }
 }
 """
+
+
+async def handle_git_rpc_message(message: InfrahubGitRPC) -> InfrahubRPCResponse:
+
+    if message.action == GitMessageAction.REPO_ADD.value:
+
+        try:
+            repo = await InfrahubRepository.new(
+                id=message.repository_id, name=message.repository_name, location=message.location
+            )
+        except RepositoryError as exc:
+            return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
+
+        return InfrahubRPCResponse(status=RPCStatusCode.CREATED.value)
+
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+
+    if message.action == GitMessageAction.BRANCH_ADD.value:
+        ok = repo.create_branch_in_git(branch_name=message.params["branch_name"])
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+
+    elif message.action == GitMessageAction.DIFF.value:
+
+        # Calculate the diff between 2 timestamps / branches
+        files_changed = repo.calculate_diff_between_commits(
+            first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
+        )
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": files_changed})
+
+    elif message.action == GitMessageAction.MERGE.value:
+        ok = repo.merge(source_branch=message.params["branch_name"])
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+
+    elif message.action == GitMessageAction.REBASE.value:
+        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+    elif message.action == GitMessageAction.PUSH.value:
+        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+    elif message.action == GitMessageAction.PULL.value:
+        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+
+    return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
 
 
 def initialize_repositories_directory() -> bool:
@@ -116,8 +164,8 @@ class BranchInLocal(BaseModel):
 class InfrahubRepository(BaseModel):
     """
     Local version of a Git repository organized to work with Infrahub.
-    The idea is that all commit that are being tracked in the graph will be checkout out
-    individually as worktree under the <repo_name>/commit subdirectory
+    The idea is that all commits that are being tracked in the graph will be checkout out
+    individually as worktree under the <repo_name>/commits subdirectory
 
     Directory organization
     <repo_directory>/
@@ -131,6 +179,7 @@ class InfrahubRepository(BaseModel):
     default_branch_name: Optional[str]
     type: Optional[str]
     location: Optional[str]
+    has_origin: bool = False
 
     class Config:
         arbitrary_types_allowed = True
@@ -157,22 +206,61 @@ class InfrahubRepository(BaseModel):
     @property
     def directory_branches(self) -> str:
         """Return the path to the directory where the worktrees of all the branches are stored."""
-        return os.path.join(self.directory_root, "branches")
+        return os.path.join(self.directory_root, BRANCHES_DIRECTORY_NAME)
 
     @property
     def directory_commits(self) -> str:
         """Return the path to the directory where the worktrees of all the commits are stored."""
-        return os.path.join(self.directory_root, "commits")
+        return os.path.join(self.directory_root, COMMITS_DIRECTORY_NAME)
 
     @property
     def directory_temp(self) -> str:
         """Return the path to the directory where the temp worktrees of all the commits pending validation are stored."""
-        return os.path.join(self.directory_root, "temp")
+        return os.path.join(self.directory_root, TEMPORARY_DIRECTORY_NAME)
 
     def get_git_repo_main(self) -> Repo:
+        """Return Git Repo object of the main repository.
+
+        Returns:
+            Repo: git object of the main repository
+
+        Raises:
+            git.exc.InvalidGitRepositoryError if the default directory is not a valid Git repository.
+        """
         return Repo(self.directory_default)
 
-    def ensure_exists_locally(self) -> bool:
+    def validate_local_directories(self) -> bool:
+        """Check if the local directories structure to ensure that the repository has been properly initialized."""
+
+        directories_to_validate = [
+            self.directory_root,
+            self.directory_branches,
+            self.directory_commits,
+            self.directory_temp,
+            self.directory_default,
+        ]
+
+        for directory in directories_to_validate:
+            if not os.path.isdir(directory):
+                return False
+
+        # Validate that a worktree for the commit in main is present
+        try:
+            repo = self.get_git_repo_main()
+            if "origin" in repo.remotes:
+                self.has_origin = True
+
+        except InvalidGitRepositoryError:
+            return False
+
+        # Validate that at least one worktree for the active commit in main has been created
+        commit = str(repo.head.commit)
+        if not os.path.isdir(os.path.join(self.directory_commits, commit)):
+            return False
+
+        return True
+
+    def create_locally(self) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
         Returns
@@ -182,35 +270,50 @@ class InfrahubRepository(BaseModel):
 
         initialize_repositories_directory()
 
-        # Check if the root, commits and branches directories are already present, create them if needed
-        if not os.path.isdir(self.directory_root):
-            os.makedirs(self.directory_root)
-
-        if not os.path.isdir(self.directory_branches):
-            os.makedirs(self.directory_branches)
-
-        if not os.path.isdir(self.directory_commits):
-            os.makedirs(self.directory_commits)
-
-        if not os.path.isdir(self.directory_temp):
-            os.makedirs(self.directory_temp)
-
-        if os.path.isdir(self.directory_default):
-            return False
-
-        # if the repo doesn't exist, create it
-        # Ensure the default branch in infrahub matches the default_branch configured for this repo
-        if not self.location or not self.default_branch_name:
-            raise Exception(
-                f"Unable to initialize the repository {self.name} without the location and the default_branch"
+        if not self.location:
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"Unable to initialize the repository {self.name} without a remote location.",
             )
 
-        git_repo = Repo.clone_from(self.location, self.directory_default)
-        git_repo.git.checkout(self.default_branch_name)
+        # Check if the root, commits and branches directories are already present, create them if needed
+        if os.path.isdir(self.directory_root):
+            shutil.rmtree(self.directory_root)
+            LOGGER.warning(f"Found an existing directory at {self.directory_root}, deleted it")
+        elif os.path.isfile(self.directory_root):
+            os.remove(self.directory_root)
+            LOGGER.warning(f"Found an existing file at {self.directory_root}, deleted it")
+
+        # Initialize directory structure
+        os.makedirs(self.directory_root)
+        os.makedirs(self.directory_branches)
+        os.makedirs(self.directory_commits)
+        os.makedirs(self.directory_temp)
+
+        try:
+            repo = Repo.clone_from(self.location, self.directory_default)
+            repo.git.checkout(self.default_branch_name)
+        except GitCommandError as exc:
+            if "Repository not found" in exc.stderr or "does not appear to be a git" in exc.stderr:
+                raise RepositoryError(
+                    identifier=self.name,
+                    message=f"Unable to clone the repository {self.name}, please check the address and the credential",
+                )
+
+            if "error: pathspec" in exc.stderr:
+                raise RepositoryError(
+                    identifier=self.name,
+                    message=f"The branch {self.default_branch_name} isn't a valid branch for the repository {self.name} at {self.location}.",
+                )
+
+            raise RepositoryError(identifier=self.name)
+
+        self.has_origin = True
 
         # Create a worktree for the commit in main
-        commit = str(git_repo.head.commit)
-        git_repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
+        # TODO Need to handle the potential exceptions coming from repo.git.worktree
+        commit = str(repo.head.commit)
+        repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
 
         return True
 
@@ -218,8 +321,15 @@ class InfrahubRepository(BaseModel):
     async def new(cls, **kwargs):
 
         self = cls(**kwargs)
-        self.ensure_exists_locally()
-        # await self.update_commit_value()
+        self.create_locally()
+
+        return self
+
+    @classmethod
+    async def init(cls, **kwargs):
+
+        self = cls(**kwargs)
+        self.validate_local_directories()
 
         return self
 
@@ -354,14 +464,18 @@ class InfrahubRepository(BaseModel):
         return True
 
     def create_branch_in_graph(self, branch_name: str):
-        """Create a new branch in the graph,."""
+        """Create a new branch in the graph."""
 
         repo = self.get_git_repo_main()
         # TODO
         pass
 
     def calculate_diff_between_commits(self, first_commit: str, second_commit: str) -> List[str]:
-        # TODO Add to RPC Framework
+        """TODO need to refactor this function to return more information.
+        Like :
+          - What has changed inside the files
+          - Are there some conflicts between the files.
+        """
 
         git_repo = self.get_git_repo_main()
 
@@ -380,12 +494,16 @@ class InfrahubRepository(BaseModel):
         return changed_files or None
 
     def merge(self, source_branch: str, dest_branch: str = "main", push_remote: bool = True) -> bool:
-        """Merge the current branch into main."""
+        """Merge the current branch into main.
+
+        After the rebase we need to resync the data
+        """
 
         if source_branch == config.SETTINGS.main.default_branch:
             raise Exception("Unable to merge the default branch into itself.")
 
-        git_repo = self.get_git_repo_main()
+        repo = self.get_git_repo_main()
+
         # FIXME need to redesign this part to account for the new architecture
 
         # git_repo.git.merge(self.commit)
@@ -398,6 +516,25 @@ class InfrahubRepository(BaseModel):
         # if push_remote:
         #     for remote in git_repo.remotes:
         #         print(remote.push())
+
+        return True
+
+    def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
+        """Rebase the current branch with main.
+
+        Technically we are not doing a Git rebase because it will change the git history
+        We'll merge the content of the source_branch into branch_name instead to keep the history clear.
+
+        TODO need to see how we manage conflict
+
+        After the rebase we need to resync the data
+        """
+
+        if source_branch == config.SETTINGS.main.default_branch:
+            raise Exception("Unable to rebase the default branch into itself.")
+
+        git_repo = self.get_git_repo_main()
+        # FIXME need to redesign this part to account for the new architecture
 
         return True
 

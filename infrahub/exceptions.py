@@ -6,6 +6,13 @@ class DatabaseError(Error):
     pass
 
 
+class RepositoryError(Error):
+    def __init__(self, identifier, message=None):
+        self.identifier = identifier
+        self.message = message or f"An error occured with GitRepository '{identifier}'."
+        super().__init__(self.message)
+
+
 class BranchNotFound(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier

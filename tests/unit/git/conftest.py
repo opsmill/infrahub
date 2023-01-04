@@ -2,7 +2,6 @@ import os
 import tarfile
 
 from typing import Dict
-
 import json
 import uuid
 import pytest
@@ -11,6 +10,11 @@ from pytest_httpx import HTTPXMock
 import infrahub.config as config
 
 from infrahub.git import InfrahubRepository, QUERY_BRANCHES, QUERY_REPOSITORY
+from infrahub.message_bus.events import (
+    InfrahubGitRPC,
+    GitMessageAction,
+)
+
 
 
 @pytest.fixture
@@ -116,3 +120,14 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json=response1)
     httpx_mock.add_response(method="POST", url="http://mock/graphql/cr1234", json=response2)
     return httpx_mock
+
+
+@pytest.fixture
+def git_rpc_repo_add_01(git_upstream_repo_01):
+
+    return InfrahubGitRPC(
+        action=GitMessageAction.REPO_ADD.value,
+        repository_id=uuid.uuid4(),
+        repository_name=git_upstream_repo_01["name"],
+        location=f"file:/{git_upstream_repo_01['path']}",
+    )

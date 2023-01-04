@@ -14,7 +14,12 @@ def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
 
     if debug:
         uvicorn.run(
-            "infrahub.main:app", host=listen, port=port, log_level="info", reload=True, reload_excludes="examples"
+            "infrahub.main:app",
+            host=listen,
+            port=port,
+            log_level="info",
+            reload=True,
+            reload_excludes=["examples", "repositories"],
         )
     else:
         uvicorn.run("infrahub.main:app", host=listen, port=port, log_level="info")
