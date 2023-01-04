@@ -40,21 +40,7 @@ class InfrahubMutationOptions(MutationOptions):
     schema = None
 
 
-class InfrahubMutation(Mutation):
-    @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
-
-        # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, NodeSchema):
-            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
-
-        if not _meta:
-            _meta = InfrahubMutationOptions(cls)
-
-        _meta.schema = schema
-
-        super().__init_subclass_with_meta__(_meta=_meta, **options)
-
+class InfrahubMutationMixin:
     @classmethod
     async def mutate(cls, root, info, *args, **kwargs):
 
@@ -123,7 +109,37 @@ class InfrahubMutation(Mutation):
         return obj, cls(ok=ok)
 
 
-class InfrahubRepositoryMutation(InfrahubMutation):
+class InfrahubMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
+
+        # Make sure schema is a valid NodeSchema Node Class
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+
+class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
+
+        # Make sure schema is a valid NodeSchema Node Class
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
     @classmethod
     async def mutate_create(cls, root, info, data, branch=None, at=None):
 
@@ -144,36 +160,6 @@ class InfrahubRepositoryMutation(InfrahubMutation):
         ok = True
 
         return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
-
-    # @classmethod
-    # async def mutate_update(cls, root, info, data, branch=None, at=None):
-
-    #     session: AsyncSession = info.context.get("infrahub_session")
-
-    #     if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
-    #         raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
-
-    #     await obj.from_graphql(session=session, data=data)
-    #     await obj.save(session=session)
-
-    #     ok = True
-
-    #     fields = await extract_fields(info.field_nodes[0].selection_set)
-
-    #     return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
-
-    # @classmethod
-    # async def mutate_delete(cls, root, info, data, branch=None, at=None):
-
-    #     session: AsyncSession = info.context.get("infrahub_session")
-
-    #     if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
-    #         raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
-
-    #     await obj.delete(session=session)
-    #     ok = True
-
-    #     return obj, cls(ok=ok)
 
 
 # --------------------------------------------------------------------------------

@@ -146,8 +146,8 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
     # Generate all Graphql ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
-        node_type = generate_graphql_object(node_schema)
-        related_node_type = generate_related_graphql_object(node_schema)
+        node_type = generate_graphql_object(schema=node_schema)
+        related_node_type = generate_related_graphql_object(schema=node_schema)
         await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch)
         await registry.set_graphql_type(
             name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch
@@ -203,10 +203,9 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
     for node_schema in full_schema.values():
 
+        base_class = InfrahubMutation
         if node_schema.name == "repository":
             base_class = InfrahubRepositoryMutation
-        else:
-            base_class = InfrahubMutation
 
         create, update, delete = generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
