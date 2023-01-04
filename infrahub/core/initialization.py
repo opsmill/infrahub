@@ -35,12 +35,10 @@ async def initialization(session: AsyncSession):
     # Load internal models into the registry
     # ---------------------------------------------------
     from infrahub.core.node import Node
-    from infrahub.core.repository import Repository
     from infrahub.core.rfile import RFile
 
     registry.node["RFile"] = RFile
     registry.node["Node"] = Node
-    registry.node["Repository"] = Repository
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry

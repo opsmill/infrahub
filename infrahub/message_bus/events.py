@@ -18,7 +18,6 @@ from . import get_broker
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
-    from infrahub.core.repository import Repository
 
 
 class MessageType(str, BaseEnum):
@@ -294,7 +293,7 @@ class InfrahubGitRPC(InfrahubRPC):
 
     def __init__(
         self,
-        repository: Repository = None,
+        repository: Node = None,
         repository_name: str = None,
         repository_id: str = None,
         location: str = None,

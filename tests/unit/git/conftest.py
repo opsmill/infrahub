@@ -16,7 +16,6 @@ from infrahub.message_bus.events import (
 )
 
 
-
 @pytest.fixture
 def git_sources_dir(tmpdir) -> str:
 

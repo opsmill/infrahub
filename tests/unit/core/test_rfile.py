@@ -6,7 +6,6 @@ import pytest
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.node import Node
-from infrahub.core.repository import Repository
 from infrahub.core.rfile import RFile
 
 
@@ -54,7 +53,7 @@ async def test_initialize_class(session, register_core_models_schema, edge_repo_
     await obj2.new(session=session, name="medium", level=3, description="My desc")
     await obj2.save(session=session)
 
-    repo1 = await Repository.init(session=session, schema=repo_schema)
+    repo1 = await Node.init(session=session, schema=repo_schema)
     await repo1.new(session=session, name="infrahub-demo-edge", location="notvalid")
     await repo1.save(session=session)
 
