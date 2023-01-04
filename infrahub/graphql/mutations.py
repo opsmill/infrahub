@@ -123,6 +123,59 @@ class InfrahubMutation(Mutation):
         return obj, cls(ok=ok)
 
 
+class InfrahubRepositoryMutation(InfrahubMutation):
+    @classmethod
+    async def mutate_create(cls, root, info, data, branch=None, at=None):
+
+        session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+
+        # Create the new repository in the database.
+        obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
+        await obj.new(session=session, **data)
+        await obj.save(session=session)
+
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+
+        # Create the new repository in the filesystem.
+        resp = await rpc_client.call(InfrahubGitRPC(action=GitMessageAction.REPO_ADD, repository=obj))
+
+        # TODO Validate that the creation of the repository went as expected
+        ok = True
+
+        return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
+
+    # @classmethod
+    # async def mutate_update(cls, root, info, data, branch=None, at=None):
+
+    #     session: AsyncSession = info.context.get("infrahub_session")
+
+    #     if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
+    #         raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
+
+    #     await obj.from_graphql(session=session, data=data)
+    #     await obj.save(session=session)
+
+    #     ok = True
+
+    #     fields = await extract_fields(info.field_nodes[0].selection_set)
+
+    #     return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
+
+    # @classmethod
+    # async def mutate_delete(cls, root, info, data, branch=None, at=None):
+
+    #     session: AsyncSession = info.context.get("infrahub_session")
+
+    #     if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
+    #         raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
+
+    #     await obj.delete(session=session)
+    #     ok = True
+
+    #     return obj, cls(ok=ok)
+
+
 # --------------------------------------------------------------------------------
 
 

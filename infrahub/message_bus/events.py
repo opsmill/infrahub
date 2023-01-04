@@ -95,6 +95,7 @@ class RPCStatusCode(int, BaseEnum):
     TOO_EARLY = 425
     # Worker Errors
     INTERNAL_ERROR = 500
+    NOT_IMPLEMENTED = 501
 
 
 SelfInfrahubMessage = TypeVar("SelfInfrahubMessage", bound="InfrahubMessage")
