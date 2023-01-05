@@ -69,9 +69,8 @@ mutation ($branch_name: String!) {
     branch_create(data: { name: $branch_name, is_data_only: false }) {
         ok
         object {
-            commit {
-                value
-            }
+            id
+            name
         }
     }
 }
@@ -148,6 +147,7 @@ def initialize_repositories_directory() -> bool:
 
 
 class Worktree(BaseModel):
+    identifier: str
     directory: str
     commit: str
     branch: Optional[str]
@@ -156,8 +156,27 @@ class Worktree(BaseModel):
     def init(cls, text):
         lines = text.split("\n")
 
+        full_directory = lines[0].replace("worktree ", "")
+
+        # Extract the identifier from the directory name
+        # We first need to substract the main repository_directory to get the relative path.
+        repo_directory = get_repositories_directory()
+        relative_directory = full_directory.replace(repo_directory, "")
+        relative_paths = relative_directory.split("/")
+
+        identifier = None
+        if len(relative_paths) == 3:
+            # this is the main worktree for the main branch
+            identifier = relative_paths[2]
+        elif len(relative_paths) == 4:
+            # this is the either a commit or a branch worktree
+            identifier = relative_paths[3]
+        else:
+            raise Exception("Unexpected directory path for a worktree.")
+
         item = cls(
-            directory=lines[0].replace("worktree ", ""),
+            identifier=identifier,
+            directory=full_directory,
             commit=lines[1].replace("HEAD ", ""),
         )
 
@@ -182,7 +201,7 @@ class BranchInRemote(BaseModel):
 class BranchInLocal(BaseModel):
     name: str
     commit: str
-    has_worktree: bool
+    has_worktree: bool = False
 
 
 class InfrahubRepository(BaseModel):
@@ -205,7 +224,7 @@ class InfrahubRepository(BaseModel):
     location: Optional[str]
     has_origin: bool = False
 
-    _repo: Optional[Repo] = None
+    cache_repo: Optional[Repo]
 
     class Config:
         arbitrary_types_allowed = True
@@ -254,10 +273,22 @@ class InfrahubRepository(BaseModel):
             git.exc.InvalidGitRepositoryError if the default directory is not a valid Git repository.
         """
 
-        if not self._repo:
-            self._repo = Repo(self.directory_default)
+        if not self.cache_repo:
+            self.cache_repo = Repo(self.directory_default)
 
-        return self._repo
+        return self.cache_repo
+
+    def get_git_repo_worktree(self, identifier: str) -> Repo:
+        """Return Git Repo object of the given worktree.
+
+        Returns:
+            Repo: git object of the main repository
+
+        """
+        if worktree := self.get_worktree(identifier=identifier):
+            return Repo(worktree.directory)
+
+        return None
 
     def validate_local_directories(self) -> bool:
         """Check if the local directories structure to ensure that the repository has been properly initialized.
@@ -374,10 +405,32 @@ class InfrahubRepository(BaseModel):
 
         return self
 
+    def has_worktree(self, identifier: str) -> bool:
+        """Return True if a worktree with a given identifier already exist."""
+
+        worktrees = self.get_worktrees()
+
+        for worktree in worktrees:
+            if worktree.identifier == identifier:
+                return True
+
+        return False
+
+    def get_worktree(self, identifier: str) -> Worktree:
+        """Access a specific worktree by its identifier."""
+
+        worktrees = self.get_worktrees()
+
+        for worktree in worktrees:
+            if worktree.identifier == identifier:
+                return worktree
+
+        return None
+
     def get_worktrees(self) -> List[Worktree]:
         """Return the list of worktrees configured for this repository."""
-        git_repo = self.get_git_repo_main()
-        responses = git_repo.git.worktree("list", "--porcelain").split("\n\n")
+        repo = self.get_git_repo_main()
+        responses = repo.git.worktree("list", "--porcelain").split("\n\n")
 
         return [Worktree.init(response) for response in responses]
 
@@ -446,11 +499,13 @@ class InfrahubRepository(BaseModel):
 
         return branches
 
-    def get_branches_from_local(self) -> Dict[str, BranchInLocal]:
+    def get_branches_from_local(self, include_worktree: bool = True) -> Dict[str, BranchInLocal]:
         """Return a dict with all the branches present locally."""
 
         git_repo = self.get_git_repo_main()
-        worktrees = self.get_worktrees()
+
+        if include_worktree:
+            worktrees = self.get_worktrees()
 
         branches = {}
 
@@ -460,10 +515,11 @@ class InfrahubRepository(BaseModel):
 
             has_worktree = False
 
-            for worktree in worktrees:
-                if worktree.branch and worktree.branch == local_branch.name:
-                    has_worktree = True
-                    break
+            if include_worktree:
+                for worktree in worktrees:
+                    if worktree.branch and worktree.branch == local_branch.name:
+                        has_worktree = True
+                        break
 
             branches[local_branch.name] = BranchInLocal(
                 name=local_branch.name, commit=str(local_branch.commit), has_worktree=has_worktree
@@ -471,8 +527,21 @@ class InfrahubRepository(BaseModel):
 
         return branches
 
+    def get_commit_value(self, branch_name, remote: bool = False):
+
+        branches = None
+        if remote:
+            branches = self.get_branches_from_remote()
+        else:
+            branches = self.get_branches_from_local(include_worktree=False)
+
+        if not branch_name in branches:
+            raise ValueError(f"Branch {branch_name} not found.")
+
+        return branches[branch_name].commit
+
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
-        """Compare the value of the commit in the db with the current commit on the filesystem.
+        """Compare the value of the commit in the graph with the current commit on the filesystem.
         update it if they don't match.
 
         Returns:
@@ -480,7 +549,7 @@ class InfrahubRepository(BaseModel):
             False if they already had the same value
         """
 
-        variables = {"repository_id": self.id, "commt": commit}
+        variables = {"repository_id": str(self.id), "commit": str(commit)}
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{config.SETTINGS.main.internal_address}/graphql/{branch_name}",
@@ -490,17 +559,36 @@ class InfrahubRepository(BaseModel):
 
         return True
 
-    def create_branch_in_git(self, branch_name: str, push_origin: bool = True) -> True:
+    async def create_branch_in_git(self, branch_name: str, push_origin: bool = True) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
 
         repo = self.get_git_repo_main()
 
+        # Check if the branch already exist locally, if it does do nothing
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        if branch_name in local_branches.keys():
+            return False
+
         # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
         repo.git.branch(branch_name)
-        repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+        await self.create_branch_worktree(branch_name=branch_name)
+
+        # If there is not remote configured, we are done
+        #  Since the branch is a match for the main branch we don't need to create a commit worktree
+        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
+        if not self.has_origin:
+            return True
+
+        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
+
+        if remote_branch:
+            br_repo = self.get_git_repo_worktree(identifier=branch_name)
+            br_repo.head.reference.set_tracking_branch(remote_branch[0])
+            br_repo.remotes.origin.pull(branch_name)
+            await self.create_commit_worktree(str(br_repo.head.reference.commit))
 
         if push_origin:
-            self.push(branch_name)
+            await self.push(branch_name)
 
         return True
 
@@ -510,8 +598,6 @@ class InfrahubRepository(BaseModel):
         NOTE We need to validate that we are not gonna end up with a race condition
         since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
         """
-
-        repo = self.get_git_repo_main()
 
         variables = {"branch_name": branch_name}
         async with httpx.AsyncClient() as client:
@@ -523,7 +609,31 @@ class InfrahubRepository(BaseModel):
 
         return True
 
-    def calculate_diff_between_commits(self, first_commit: str, second_commit: str) -> List[str]:
+    async def create_commit_worktree(self, commit: str) -> bool:
+        """Create a new worktree for a given commit."""
+
+        # Check of the worktree already exist
+        if self.has_worktree(identifier=commit):
+            return False
+
+        repo = self.get_git_repo_main()
+        repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
+
+        return True
+
+    async def create_branch_worktree(self, branch_name: str) -> bool:
+        """Create a new worktree for a given branch."""
+
+        # Check if the worktree already exist
+        if self.has_worktree(identifier=branch_name):
+            return False
+
+        repo = self.get_git_repo_main()
+        repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+
+        return True
+
+    async def calculate_diff_between_commits(self, first_commit: str, second_commit: str) -> List[str]:
         """TODO need to refactor this function to return more information.
         Like :
           - What has changed inside the files
@@ -546,85 +656,105 @@ class InfrahubRepository(BaseModel):
 
         return changed_files or None
 
-    def push(self, branch_name: str) -> bool:
+    async def push(self, branch_name: str) -> bool:
+        """Push a given branch to the remote Origin repository"""
 
         if not self.has_origin:
             return False
 
         # TODO Catch potential exceptions coming from origin.push
-
         repo = self.get_git_repo_main()
         repo.remotes.origin.push(branch_name)
 
         return True
 
-    def fetch(self) -> Set[List[str], List[str]]:
-        """Fetch the latest update from the remote repository and bring a copy locally.
-
-        If a change in any branch has been detected we need to validate the content of the branch first.
-        to ensure that we are pulling a valid directory/branch
-        """
+    async def fetch(self) -> bool:
+        """Fetch the latest update from the remote repository and bring a copy locally."""
         if not self.has_origin:
             return False
 
         repo = self.get_git_repo_main()
         repo.remotes.origin.fetch()
 
+        return True
+
+    async def sync(self):
+
+        await self.fetch()
+
+        new_branches, updated_branches = await self.compare_local_remote()
+
+        # TODO need to handle properly the situation when a branch is not valid.
+        for branch_name in new_branches:
+            is_valid = await self.validate_remote_branch(branch_name=branch_name)
+            if not is_valid:
+                continue
+
+            await self.create_branch_in_graph(branch_name=branch_name)
+            await self.create_branch_in_git(branch_name=branch_name)
+
+            commit = self.get_commit_value(branch_name=branch_name, remote=False)
+            await self.create_commit_worktree(commit=commit)
+            await self.update_commit_value(branch_name=branch_name, commit=commit)
+
+        for branch_name in updated_branches:
+            is_valid = await self.validate_remote_branch(branch_name=branch_name)
+            if not is_valid:
+                continue
+
+            self.pull()
+            commit = self.get_commit_value(branch_name=branch_name, remote=False)
+            await self.update_commit_value(branch_name=branch_name, commit=commit)
+
+    async def compare_local_remote(self) -> Set[List[str], List[str]]:
+        """
+        Returns:
+            List[str] New Branches in Remote
+            List[str] Branches with different commit in Remote
+        """
+        if not self.has_origin:
+            return [], []
+
+        # TODO move this section into a dedicated function to compare and bring in sync the remote repo with the local one.
+        # It can be useful just after a clone etc ...
         local_branches = self.get_branches_from_local()
         remote_branches = self.get_branches_from_remote()
 
         new_branches = set(remote_branches.keys()) - set(local_branches.keys())
         existing_branches = set(local_branches.keys()) - new_branches
 
+        updated_branches = []
+
         for branch_name in existing_branches:
             if remote_branches[branch_name].commit != local_branches[branch_name].commit:
                 LOGGER.info(f"New commit detected in branch {branch_name}")
+                updated_branches.append(branch_name)
 
-    def pull(self):
+        return sorted(list(new_branches)), sorted(updated_branches)
+
+    async def validate_remote_branch(self, branch_name: str) -> bool:
+        """Validate a branch present on the remote repository.
+        To check a branch we need to first create a worktree in the temporary folder then apply some checks:
+        - xxx
+
+        At the end, we need to delete the worktree in the temporary folder.
+        """
+
+        # Find the commit on the remote branch
+        # Check out the commit in a worktree
+        # Validate
+
+        return True
+
+    async def pull(self, branch_name: str) -> bool:
+        """Pull the latest update from the remote repository on a given branch."""
 
         repo = self.get_git_repo_main()
+        repo.remotes.origin.pull(branch_name)
 
-        # Pull the latest update from the remote repo
-        repo.remotes.origin.fetch()
-        repo.remotes.origin.pull()
+        return True
 
-        if str(repo.head.commit) != str(repo.commit.value):
-
-            # TODO Check if there is a new commit in all branches
-
-            # Remove stale branches from the remote repo
-            for stale_branch in repo.remotes.origin.stale_refs:
-                if not isinstance(stale_branch, git.refs.remote.RemoteReference):
-                    continue
-
-                LOGGER.debug(f"{self.name}: Cleaning branch {stale_branch.name} no longer present on remote.")
-                type(stale_branch).delete(repo, stale_branch)
-
-            # Got over all branches in the remote and check if they already exist locally
-            # If not, create a new branch locally in the database and in Git and track the remote branch
-            for remote_branch in repo.remotes.origin.refs:
-                if not isinstance(remote_branch, git.refs.remote.RemoteReference):
-                    continue
-                short_name = remote_branch.name.replace("origin/", "")
-
-                # TODO need to revisit that
-                # if short_name == "HEAD" or short_name in db_branche_names:
-                #     continue
-
-                LOGGER.info(f"{self.name}: Found new branch {short_name}")
-
-                # Create the new branch in the database
-                # Don't do more for now because we'll process all other repos in the next section
-                # FIXME
-                # new_branch = Branch(name=short_name, description=f"Created from Repository: {self.name}")
-                # new_branch.save()
-
-                # Create the new Branch locally in Git too
-                local_branch_names = [br.name for br in repo.refs if not br.is_remote()]
-                if short_name not in local_branch_names:
-                    self.create_branch_in_git(branch_name=short_name)
-
-    def merge(self, source_branch: str, dest_branch: str = "main", push_remote: bool = True) -> bool:
+    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
         """Merge the current branch into main.
 
         After the rebase we need to resync the data
@@ -639,18 +769,9 @@ class InfrahubRepository(BaseModel):
 
         # git_repo.git.merge(self.commit)
 
-        # # Update the commit value in main
-        # repo_main = self.get(id=self.id)
-        # repo_main.commit.value = str(git_repo.head.commit)
-        # repo_main.save()
-
-        # if push_remote:
-        #     for remote in git_repo.remotes:
-        #         print(remote.push())
-
         return True
 
-    def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
+    async def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
         """Rebase the current branch with main.
 
         Technically we are not doing a Git rebase because it will change the git history
@@ -669,7 +790,7 @@ class InfrahubRepository(BaseModel):
 
         return True
 
-    def fetch_latest_from_remote(self):
+    async def fetch_latest_from_remote(self):
 
         # Fetch the latest updates from the remote repository
         # Check all the branches to see of the commit are matching or not,

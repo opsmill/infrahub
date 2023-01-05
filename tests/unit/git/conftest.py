@@ -6,10 +6,12 @@ import json
 import uuid
 import pytest
 
+from git import Repo
+
 from pytest_httpx import HTTPXMock
 import infrahub.config as config
 
-from infrahub.git import InfrahubRepository, QUERY_BRANCHES, QUERY_REPOSITORY
+from infrahub.git import InfrahubRepository, QUERY_BRANCHES, QUERY_REPOSITORY, MUTATION_BRANCH_CREATE
 from infrahub.message_bus.events import (
     InfrahubGitRPC,
     GitMessageAction,
@@ -40,6 +42,8 @@ def git_repos_dir(tmpdir) -> str:
 
 @pytest.fixture
 def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
+    """Git Repository with 4 branches main, branch01, branch02, and clean-branch.
+    There is conflict between branch01 and branch02."""
 
     name = "infrahub-test-fixture-01"
     fixtures_dir = os.path.join(os.getcwd(), "tests/fixtures")
@@ -54,10 +58,59 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
 
 
 @pytest.fixture
+def git_upstream_repo_02(git_upstream_repo_01) -> Dict[str, str]:
+    """Delete all the branches but the main branch from git_upstream_repo_01"""
+    repo = Repo(git_upstream_repo_01["path"])
+
+    for local_branch in repo.refs:
+        if local_branch.is_remote() or str(local_branch) == "main":
+            continue
+
+        repo.git.branch("-D", str(local_branch))
+
+    return git_upstream_repo_01
+
+
+@pytest.fixture
+def git_upstream_repo_03(git_upstream_repo_01) -> Dict[str, str]:
+    """Delete all the branches but the main branch and the branch branch01 from git_upstream_repo_01"""
+    repo = Repo(git_upstream_repo_01["path"])
+
+    for local_branch in repo.refs:
+        if local_branch.is_remote() or str(local_branch) in ["main", "branch01"]:
+            continue
+
+        repo.git.branch("-D", str(local_branch))
+
+    return git_upstream_repo_01
+
+
+@pytest.fixture
 async def git_repo_01(git_upstream_repo_01, git_repos_dir) -> InfrahubRepository:
+    """Git Repository with  as remote"""
 
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=f"file:/{git_upstream_repo_01['path']}"
+    )
+
+    return repo
+
+
+@pytest.fixture
+async def git_repo_02(git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
+
+    repo = await InfrahubRepository.new(
+        id=uuid.uuid4(), name=git_upstream_repo_02["name"], location=f"file:/{git_upstream_repo_02['path']}"
+    )
+
+    return repo
+
+
+@pytest.fixture
+async def git_repo_03(git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
+
+    repo = await InfrahubRepository.new(
+        id=uuid.uuid4(), name=git_upstream_repo_03["name"], location=f"file:/{git_upstream_repo_03['path']}"
     )
 
     return repo
@@ -118,6 +171,34 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json=response1)
     httpx_mock.add_response(method="POST", url="http://mock/graphql/cr1234", json=response2)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
+
+    response = {
+        "data": {
+            "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
+        }
+    }
+    request_content = json.dumps({"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01"}}).encode()
+
+    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
+
+    response = {
+        "data": {
+            "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
+        }
+    }
+    request_content = json.dumps({"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01"}}).encode()
+
+    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
     return httpx_mock
 
 
