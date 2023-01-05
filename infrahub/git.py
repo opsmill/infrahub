@@ -6,7 +6,7 @@ import os
 import asyncio
 import shutil
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Set, Optional
 
 from uuid import UUID
 from pydantic import BaseModel, validator
@@ -64,6 +64,19 @@ mutation ($repository_id: String!, $commit: String!) {
 }
 """
 
+MUTATION_BRANCH_CREATE = """
+mutation ($branch_name: String!) {
+    branch_create(data: { name: $branch_name, is_data_only: false }) {
+        ok
+        object {
+            commit {
+                value
+            }
+        }
+    }
+}
+"""
+
 
 async def handle_git_rpc_message(message: InfrahubGitRPC) -> InfrahubRPCResponse:
 
@@ -81,7 +94,11 @@ async def handle_git_rpc_message(message: InfrahubGitRPC) -> InfrahubRPCResponse
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
 
     if message.action == GitMessageAction.BRANCH_ADD.value:
-        ok = repo.create_branch_in_git(branch_name=message.params["branch_name"])
+        try:
+            ok = repo.create_branch_in_git(branch_name=message.params["branch_name"])
+        except RepositoryError as exc:
+            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
+
         return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
 
     elif message.action == GitMessageAction.DIFF.value:
@@ -98,12 +115,20 @@ async def handle_git_rpc_message(message: InfrahubGitRPC) -> InfrahubRPCResponse
 
     elif message.action == GitMessageAction.REBASE.value:
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+
     elif message.action == GitMessageAction.PUSH.value:
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+
     elif message.action == GitMessageAction.PULL.value:
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
 
     return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+
+
+def get_repositories_directory() -> str:
+    current_dir = os.getcwd()
+    repos_dir = os.path.join(current_dir, config.SETTINGS.main.repositories_directory)
+    return str(repos_dir)
 
 
 def initialize_repositories_directory() -> bool:
@@ -113,8 +138,7 @@ def initialize_repositories_directory() -> bool:
         True if the directory has been created,
         False if the directory was already present.
     """
-    current_dir = os.getcwd()
-    repos_dir = os.path.join(current_dir, config.SETTINGS.main.repositories_directory)
+    repos_dir = get_repositories_directory()
     isdir = os.path.isdir(repos_dir)
     if not isdir:
         os.makedirs(repos_dir)
@@ -181,6 +205,8 @@ class InfrahubRepository(BaseModel):
     location: Optional[str]
     has_origin: bool = False
 
+    _repo: Optional[Repo] = None
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -227,10 +253,18 @@ class InfrahubRepository(BaseModel):
         Raises:
             git.exc.InvalidGitRepositoryError if the default directory is not a valid Git repository.
         """
-        return Repo(self.directory_default)
+
+        if not self._repo:
+            self._repo = Repo(self.directory_default)
+
+        return self._repo
 
     def validate_local_directories(self) -> bool:
-        """Check if the local directories structure to ensure that the repository has been properly initialized."""
+        """Check if the local directories structure to ensure that the repository has been properly initialized.
+
+        Returns True if everything is correct
+        Raises a RepositoryError exception if something is not correct
+        """
 
         directories_to_validate = [
             self.directory_root,
@@ -242,7 +276,10 @@ class InfrahubRepository(BaseModel):
 
         for directory in directories_to_validate:
             if not os.path.isdir(directory):
-                return False
+                raise RepositoryError(
+                    identifier=self.name,
+                    message=f"Invalid file system for {self.name}, Local directory {directory} missing.",
+                )
 
         # Validate that a worktree for the commit in main is present
         try:
@@ -251,12 +288,16 @@ class InfrahubRepository(BaseModel):
                 self.has_origin = True
 
         except InvalidGitRepositoryError:
-            return False
+            raise RepositoryError(
+                identifier=self.name, message=f"The data on disk is not a valid Git repository for {self.name}."
+            )
 
         # Validate that at least one worktree for the active commit in main has been created
         commit = str(repo.head.commit)
         if not os.path.isdir(os.path.join(self.directory_commits, commit)):
-            return False
+            raise RepositoryError(
+                identifier=self.name, message=f"The directory for the main commit is missing for {self.name}"
+            )
 
         return True
 
@@ -454,21 +495,33 @@ class InfrahubRepository(BaseModel):
 
         repo = self.get_git_repo_main()
 
+        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
         repo.git.branch(branch_name)
         repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
 
-        # TODO add a check to ensure the repo has a remote configured
         if push_origin:
-            repo.remotes.origin.push(branch_name)
+            self.push(branch_name)
 
         return True
 
-    def create_branch_in_graph(self, branch_name: str):
-        """Create a new branch in the graph."""
+    async def create_branch_in_graph(self, branch_name: str):
+        """Create a new branch in the graph.
+
+        NOTE We need to validate that we are not gonna end up with a race condition
+        since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
+        """
 
         repo = self.get_git_repo_main()
-        # TODO
-        pass
+
+        variables = {"branch_name": branch_name}
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{config.SETTINGS.main.internal_address}/graphql/",
+                json={"query": MUTATION_BRANCH_CREATE, "variables": variables},
+            )
+            resp.raise_for_status()
+
+        return True
 
     def calculate_diff_between_commits(self, first_commit: str, second_commit: str) -> List[str]:
         """TODO need to refactor this function to return more information.
@@ -492,6 +545,84 @@ class InfrahubRepository(BaseModel):
                 changed_files.append(x.b_blob.path)
 
         return changed_files or None
+
+    def push(self, branch_name: str) -> bool:
+
+        if not self.has_origin:
+            return False
+
+        # TODO Catch potential exceptions coming from origin.push
+
+        repo = self.get_git_repo_main()
+        repo.remotes.origin.push(branch_name)
+
+        return True
+
+    def fetch(self) -> Set[List[str], List[str]]:
+        """Fetch the latest update from the remote repository and bring a copy locally.
+
+        If a change in any branch has been detected we need to validate the content of the branch first.
+        to ensure that we are pulling a valid directory/branch
+        """
+        if not self.has_origin:
+            return False
+
+        repo = self.get_git_repo_main()
+        repo.remotes.origin.fetch()
+
+        local_branches = self.get_branches_from_local()
+        remote_branches = self.get_branches_from_remote()
+
+        new_branches = set(remote_branches.keys()) - set(local_branches.keys())
+        existing_branches = set(local_branches.keys()) - new_branches
+
+        for branch_name in existing_branches:
+            if remote_branches[branch_name].commit != local_branches[branch_name].commit:
+                LOGGER.info(f"New commit detected in branch {branch_name}")
+
+    def pull(self):
+
+        repo = self.get_git_repo_main()
+
+        # Pull the latest update from the remote repo
+        repo.remotes.origin.fetch()
+        repo.remotes.origin.pull()
+
+        if str(repo.head.commit) != str(repo.commit.value):
+
+            # TODO Check if there is a new commit in all branches
+
+            # Remove stale branches from the remote repo
+            for stale_branch in repo.remotes.origin.stale_refs:
+                if not isinstance(stale_branch, git.refs.remote.RemoteReference):
+                    continue
+
+                LOGGER.debug(f"{self.name}: Cleaning branch {stale_branch.name} no longer present on remote.")
+                type(stale_branch).delete(repo, stale_branch)
+
+            # Got over all branches in the remote and check if they already exist locally
+            # If not, create a new branch locally in the database and in Git and track the remote branch
+            for remote_branch in repo.remotes.origin.refs:
+                if not isinstance(remote_branch, git.refs.remote.RemoteReference):
+                    continue
+                short_name = remote_branch.name.replace("origin/", "")
+
+                # TODO need to revisit that
+                # if short_name == "HEAD" or short_name in db_branche_names:
+                #     continue
+
+                LOGGER.info(f"{self.name}: Found new branch {short_name}")
+
+                # Create the new branch in the database
+                # Don't do more for now because we'll process all other repos in the next section
+                # FIXME
+                # new_branch = Branch(name=short_name, description=f"Created from Repository: {self.name}")
+                # new_branch.save()
+
+                # Create the new Branch locally in Git too
+                local_branch_names = [br.name for br in repo.refs if not br.is_remote()]
+                if short_name not in local_branch_names:
+                    self.create_branch_in_git(branch_name=short_name)
 
     def merge(self, source_branch: str, dest_branch: str = "main", push_remote: bool = True) -> bool:
         """Merge the current branch into main.
