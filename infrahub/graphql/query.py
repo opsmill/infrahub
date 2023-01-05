@@ -188,6 +188,7 @@ class BranchType(InfrahubObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     is_data_only = Boolean(required=False)
+    is_default = Boolean(required=False)
 
     class Meta:
         description = "Branch"

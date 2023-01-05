@@ -105,9 +105,7 @@ class RepositoryData(BaseModel):
 async def get_list_branches() -> Dict[str, BranchData]:
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{config.SETTINGS.main.internal_address}/graphql/", json={"query": QUERY_ALL_BRANCHES}
-        )
+        resp = await client.post(f"{config.SETTINGS.main.internal_address}/graphql", json={"query": QUERY_ALL_BRANCHES})
 
     branches = {
         branch["name"]: BranchData(id=branch["id"], name=branch["name"], is_data_only=branch["is_data_only"])

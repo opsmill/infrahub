@@ -32,7 +32,7 @@ class StandardNode(BaseModel):
             if field_name in ["id"]:
                 continue
             field = getattr(self, field_name)
-            if not field:
+            if field is None:
                 response[field_name] = None
                 continue
             response[field_name] = field

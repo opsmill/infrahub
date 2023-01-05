@@ -211,3 +211,14 @@ def git_rpc_repo_add_01(git_upstream_repo_01):
         repository_name=git_upstream_repo_01["name"],
         location=f"file:/{git_upstream_repo_01['path']}",
     )
+
+
+@pytest.fixture
+def git_rpc_repo_add_02(git_upstream_repo_02):
+
+    return InfrahubGitRPC(
+        action=GitMessageAction.REPO_ADD.value,
+        repository_id=uuid.uuid4(),
+        repository_name=git_upstream_repo_02["name"],
+        location=f"file:/{git_upstream_repo_02['path']}",
+    )

@@ -56,7 +56,11 @@ async def initialization(session: AsyncSession):
 async def create_default_branch(session: AsyncSession) -> Branch:
 
     default_branch = Branch(
-        name=config.SETTINGS.main.default_branch, status="OPEN", description="Default Branch", is_default=True
+        name=config.SETTINGS.main.default_branch,
+        status="OPEN",
+        description="Default Branch",
+        is_default=True,
+        is_data_only=False,
     )
     await default_branch.save(session=session)
     registry.branch[default_branch.name] = default_branch
@@ -85,7 +89,6 @@ async def first_time_initialization(session: AsyncSession):
     # Create the default Branch
     # --------------------------------------------------
     await create_default_branch(session=session)
-
     # --------------------------------------------------
     # Load the internal schema in the database
     # --------------------------------------------------
