@@ -10,16 +10,23 @@ from infrahub.database import get_db
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.message_bus import get_broker
-from infrahub.message_bus.events import get_event_exchange, EventType, Event, DataEvent
-
+from infrahub.message_bus.events import (
+    get_event_exchange,
+    MessageType,
+    InfrahubMessage,
+    InfrahubDataMessage,
+    InfrahubGitRPC,
+)
+from infrahub.message_bus.rpc import InfrahubRpcClient
 from rich import print as rprint
+from rich import inspect
 
 app = typer.Typer()
 
 
 async def print_event(event: IncomingMessage) -> None:
 
-    event = Event.init(event)
+    event = InfrahubMessage.init(event)
     rprint(event)
 
 
@@ -46,7 +53,7 @@ async def _listen(topic: str, config_file: str):
         await asyncio.Future()
 
 
-async def _generate(type: EventType, config_file: str):
+async def _generate(type: MessageType, config_file: str):
 
     config.load_and_exit(config_file)
 
@@ -57,7 +64,7 @@ async def _generate(type: EventType, config_file: str):
         await initialization(session=session)
         nodes = await NodeManager.query(session=session, schema="Criticality")
 
-    event = DataEvent(action="create", node=nodes[0])
+    event = InfrahubDataMessage(action="create", node=nodes[0])
     await event.send()
 
 
@@ -68,5 +75,5 @@ def listen(topic: str = "#", config_file: str = typer.Argument("infrahub.toml", 
 
 
 @app.command()
-def generate(type: EventType, config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+def generate(type: MessageType, config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
     aiorun(_generate(type, config_file=config_file))
