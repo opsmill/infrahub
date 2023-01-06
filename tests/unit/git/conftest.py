@@ -11,11 +11,19 @@ from git import Repo
 from pytest_httpx import HTTPXMock
 import infrahub.config as config
 
+from infrahub_client import InfrahubClient
+
 from infrahub.git import InfrahubRepository, QUERY_BRANCHES, QUERY_REPOSITORY, MUTATION_BRANCH_CREATE
 from infrahub.message_bus.events import (
     InfrahubGitRPC,
     GitMessageAction,
 )
+
+
+@pytest.fixture
+async def client() -> InfrahubClient:
+
+    return await InfrahubClient.init(address="http://mock")
 
 
 @pytest.fixture
@@ -86,31 +94,40 @@ def git_upstream_repo_03(git_upstream_repo_01) -> Dict[str, str]:
 
 
 @pytest.fixture
-async def git_repo_01(git_upstream_repo_01, git_repos_dir) -> InfrahubRepository:
+async def git_repo_01(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRepository:
     """Git Repository with  as remote"""
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=f"file:/{git_upstream_repo_01['path']}"
+        id=uuid.uuid4(),
+        name=git_upstream_repo_01["name"],
+        location=f"file:/{git_upstream_repo_01['path']}",
+        client=client,
     )
 
     return repo
 
 
 @pytest.fixture
-async def git_repo_02(git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
+async def git_repo_02(client, git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_02["name"], location=f"file:/{git_upstream_repo_02['path']}"
+        id=uuid.uuid4(),
+        name=git_upstream_repo_02["name"],
+        location=f"file:/{git_upstream_repo_02['path']}",
+        client=client,
     )
 
     return repo
 
 
 @pytest.fixture
-async def git_repo_03(git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
+async def git_repo_03(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_03["name"], location=f"file:/{git_upstream_repo_03['path']}"
+        id=uuid.uuid4(),
+        name=git_upstream_repo_03["name"],
+        location=f"file:/{git_upstream_repo_03['path']}",
+        client=client,
     )
 
     return repo
@@ -149,8 +166,8 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
             "repository": [
                 {
                     "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
-                    "name": {"value": "infrahub-demo-edge"},
-                    "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
+                    "name": {"value": "infrahub-test-fixture-01"},
+                    "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
                     "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
                 }
             ]
@@ -161,8 +178,8 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
             "repository": [
                 {
                     "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
-                    "name": {"value": "infrahub-demo-edge"},
-                    "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
+                    "name": {"value": "infrahub-test-fixture-01"},
+                    "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
                     "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
                 }
             ]

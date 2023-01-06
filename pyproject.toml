@@ -2,7 +2,12 @@
 name = "infrahub"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Damien Garros <dgarros@gmail.com>"]
+
+packages = [
+    { include = "infrahub" },
+    { include = "infrahub_client" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"

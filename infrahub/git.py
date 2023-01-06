@@ -12,7 +12,8 @@ from uuid import UUID
 from pydantic import BaseModel, validator
 from git import Repo
 from git.exc import InvalidGitRepositoryError, GitCommandError
-import httpx
+
+from infrahub_client import InfrahubClient
 
 import infrahub.config as config
 from infrahub.exceptions import RepositoryError
@@ -77,24 +78,26 @@ mutation ($branch_name: String!) {
 """
 
 
-async def handle_git_rpc_message(message: InfrahubGitRPC) -> InfrahubRPCResponse:
+async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
 
     if message.action == GitMessageAction.REPO_ADD.value:
 
         try:
             repo = await InfrahubRepository.new(
-                id=message.repository_id, name=message.repository_name, location=message.location
+                id=message.repository_id, name=message.repository_name, location=message.location, client=client
             )
+            await repo.sync()
+
         except RepositoryError as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
 
         return InfrahubRPCResponse(status=RPCStatusCode.CREATED.value)
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
     if message.action == GitMessageAction.BRANCH_ADD.value:
         try:
-            ok = repo.create_branch_in_git(branch_name=message.params["branch_name"])
+            ok = await repo.create_branch_in_git(branch_name=message.params["branch_name"])
         except RepositoryError as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
@@ -223,6 +226,8 @@ class InfrahubRepository(BaseModel):
     type: Optional[str]
     location: Optional[str]
     has_origin: bool = False
+
+    client: Optional[InfrahubClient]
 
     cache_repo: Optional[Repo]
 
@@ -439,45 +444,23 @@ class InfrahubRepository(BaseModel):
         Query the list of branches first then query the repository for each branch.
         """
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(f"{config.SETTINGS.main.internal_address}/graphql", json={"query": QUERY_BRANCHES})
+        response = {}
 
-            tasks = []
-            branches = {}
-            raw_branches = {branch["name"]: branch for branch in resp.json()["data"]["branch"]}
-            branch_names = sorted(raw_branches.keys())
+        branches = await self.client.get_list_branches()
 
-            for branch_name in branch_names:
-                tasks.append(
-                    client.post(
-                        f"{config.SETTINGS.main.internal_address}/graphql/{branch_name}",
-                        json={"query": QUERY_REPOSITORY, "variables": {"repository_name": self.name}},
-                    )
-                )
+        # TODO Need to optimize this query, right now we are querying everything unnecessarily
+        repositories = await self.client.get_list_repositories(branches=branches)
+        repository = repositories[self.name]
 
-            responses = await asyncio.gather(*tasks, return_exceptions=True)
+        for branch_name, branch in branches.items():
+            response[branch_name] = BranchInGraph(
+                id=branch.id,
+                name=branch.name,
+                is_data_only=branch.is_data_only,
+                commit=repository.branches[branch_name] or None,
+            )
 
-            # TODO add error handling
-            #  No response from the API, authentification, empty response etc ..
-
-            for branch_name, response in zip(branch_names, responses):
-                data = response.json()
-                repository = data["data"]["repository"]
-
-                # if the response is empty it probably mean that this repository is not present in this branch
-                if not repository:
-                    continue
-
-                branches[branch_name] = BranchInGraph(
-                    id=raw_branches[branch_name]["id"],
-                    name=raw_branches[branch_name]["name"],
-                    is_data_only=raw_branches[branch_name]["is_data_only"],
-                    commit=repository[0]["commit"]["value"],
-                )
-
-        # TODO Extend the GraphQL API to return all the commits across all branches for a given repo at once
-
-        return branches
+        return response
 
     def get_branches_from_remote(self) -> Dict[str, BranchInRemote]:
         """Return a dict with all the branches present on the remote."""
@@ -549,13 +532,7 @@ class InfrahubRepository(BaseModel):
             False if they already had the same value
         """
 
-        variables = {"repository_id": str(self.id), "commit": str(commit)}
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{config.SETTINGS.main.internal_address}/graphql/{branch_name}",
-                json={"query": MUTATION_COMMIT_UPDATE, "variables": variables},
-            )
-            resp.raise_for_status()
+        await self.client.repository_update_commit(branch_name=branch_name, repository_id=self.id, commit=commit)
 
         return True
 
@@ -599,13 +576,7 @@ class InfrahubRepository(BaseModel):
         since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
         """
 
-        variables = {"branch_name": branch_name}
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{config.SETTINGS.main.internal_address}/graphql/",
-                json={"query": MUTATION_BRANCH_CREATE, "variables": variables},
-            )
-            resp.raise_for_status()
+        await self.client.create_branch(branch_name=branch_name)
 
         return True
 
@@ -726,7 +697,11 @@ class InfrahubRepository(BaseModel):
         updated_branches = []
 
         for branch_name in existing_branches:
-            if remote_branches[branch_name].commit != local_branches[branch_name].commit:
+            if (
+                branch_name in remote_branches
+                and branch_name in local_branches
+                and remote_branches[branch_name].commit != local_branches[branch_name].commit
+            ):
                 LOGGER.info(f"New commit detected in branch {branch_name}")
                 updated_branches.append(branch_name)
 

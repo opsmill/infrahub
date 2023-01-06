@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from aio_pika import IncomingMessage
 from rich.logging import RichHandler
 
-import httpx
+from infrahub_client import InfrahubClient
 
 import infrahub.config as config
 from infrahub.message_bus import get_broker
@@ -31,6 +31,11 @@ from infrahub.git import (
 from infrahub.lock import registry as lock_registry
 
 app = typer.Typer()
+
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("aio_pika").setLevel(logging.ERROR)
+logging.getLogger("aiormq").setLevel(logging.ERROR)
+logging.getLogger("git").setLevel(logging.ERROR)
 
 
 def signal_handler(signal, frame):
@@ -61,101 +66,8 @@ signal.signal(signal.SIGINT, signal_handler)
 #     Checks.               RPC ?
 #     API Endpoint.    HTTP
 
-QUERY_ALL_REPOSITORIES = """
-query {
-    repository {
-        id
-        name {
-            value
-        }
-        location {
-            value
-        }
-        commit {
-            value
-        }
-    }
-}
-"""
 
-QUERY_ALL_BRANCHES = """
-query {
-    branch {
-        id
-        name
-        is_data_only
-    }
-}
-"""
-
-
-class BranchData(BaseModel):
-    id: str
-    name: str
-    is_data_only: bool
-
-
-class RepositoryData(BaseModel):
-    id: str
-    name: str
-    location: str
-    branches: Dict[str, str]
-
-
-async def get_list_branches() -> Dict[str, BranchData]:
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{config.SETTINGS.main.internal_address}/graphql", json={"query": QUERY_ALL_BRANCHES})
-
-    branches = {
-        branch["name"]: BranchData(id=branch["id"], name=branch["name"], is_data_only=branch["is_data_only"])
-        for branch in resp.json()["data"]["branch"]
-    }
-
-    return branches
-
-
-async def get_list_repositories(branches: Dict[str, RepositoryData] = None) -> Dict[str, RepositoryData]:
-
-    # branch_name = branch_name or config.SETTINGS.main.default_branch
-
-    if not branches:
-        branches = await get_list_branches()
-
-    branch_names = sorted(branches.keys())
-
-    async with httpx.AsyncClient() as client:
-
-        tasks = []
-        for branch_name in branch_names:
-            tasks.append(
-                client.post(
-                    f"{config.SETTINGS.main.internal_address}/graphql/{branch_name}",
-                    json={"query": QUERY_ALL_REPOSITORIES},
-                )
-            )
-
-        # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
-        responses = await asyncio.gather(*tasks, return_exceptions=True)
-
-    repositories = {}
-
-    for branch_name, response in zip(branch_names, responses):
-        data = response.json()
-        repos = data["data"]["repository"]
-        for repository in repos:
-            repo_name = repository["name"]["value"]
-            if repo_name not in repositories:
-                repositories[repo_name] = RepositoryData(
-                    id=repository["id"], name=repo_name, commit=repository["commit"]["value"], branches={}
-                )
-
-            repositories[repo_name].branches[branch_name] = repository["commit"]["value"]
-
-    return repositories
-
-
-async def subscribe_rpcs_queue(log: logging.Logger):
+async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
     """Subscribe to the RPCs queue and execute the corresponding action when a valid RPC is received."""
     # TODO generate an exception if the broker is not properly configured
     # and return a proper message to the user
@@ -176,7 +88,7 @@ async def subscribe_rpcs_queue(log: logging.Logger):
                     rpc = InfrahubMessage.convert(message)
 
                     if rpc.type == MessageType.GIT:
-                        response = await handle_git_rpc_message(message=rpc)
+                        response = await handle_git_rpc_message(message=rpc, client=client)
 
                     else:
                         response = InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
@@ -190,14 +102,14 @@ async def subscribe_rpcs_queue(log: logging.Logger):
                 log.exception("Processing error for message %r", message)
 
 
-async def initialize_git_agent(log: logging.Logger):
+async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
 
     repos_dir = get_repositories_directory()
     initialize_repositories_directory()
 
     # TODO Validate access to the GraphQL API with the proper credentials
-    branches = await get_list_branches()
-    repositories = await get_list_repositories(branches=branches)
+    branches = await client.get_list_branches()
+    repositories = await client.get_list_repositories(branches=branches)
 
     for repo_name, repository in repositories.items():
         async with lock_registry.get(repo_name):
@@ -210,17 +122,19 @@ async def initialize_git_agent(log: logging.Logger):
                     id=repository.id, name=repository.name, location=repository.location
                 )
 
-            # Identify the branches that are missing locally and add them
-            local_branches = repo.get_branches_from_local()
-            missing_branches_locally = set(repository.branches.keys()) - set(local_branches.keys())
+            await repo.sync()
 
-            # TODO we need to check if the commit are matching between the database and the value we have on disk
-            for branch_name in missing_branches_locally:
-                if branch_name in branches and not branches[branch_name].is_data_only:
-                    repo.create_branch_in_git(push_origin=True)
+            # # Identify the branches that are missing locally and add them
+            # local_branches = repo.get_branches_from_local()
+            # missing_branches_locally = set(repository.branches.keys()) - set(local_branches.keys())
+
+            # # TODO we need to check if the commit are matching between the database and the value we have on disk
+            # for branch_name in missing_branches_locally:
+            #     if branch_name in branches and not branches[branch_name].is_data_only:
+            #         repo.create_branch_in_git(push_origin=True)
 
 
-async def monitor_remote_activity(interval: int, log: logging.Logger):
+async def monitor_remote_activity(client: InfrahubClient, interval: int, log: logging.Logger):
     log.info("Monitoring remote repository for updates .. ")
 
     while True:
@@ -350,11 +264,13 @@ async def _start(listen: str, port: int, debug: bool, interval: int, config_file
 
     loop = asyncio.get_event_loop()
 
-    await initialize_git_agent(log=log)
+    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address)
+
+    await initialize_git_agent(client=client, log=log)
 
     tasks = [
-        asyncio.create_task(subscribe_rpcs_queue(log=log)),
-        asyncio.create_task(monitor_remote_activity(interval=interval, log=log)),
+        asyncio.create_task(subscribe_rpcs_queue(client=client, log=log)),
+        asyncio.create_task(monitor_remote_activity(client=client, interval=interval, log=log)),
     ]
 
     await asyncio.gather(*tasks)
