@@ -5,6 +5,7 @@ from typing import Optional
 
 import graphene
 from fastapi import FastAPI, HTTPException, Request, Response, Depends
+from fastapi.logger import logger
 from graphql import graphql
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
@@ -26,9 +27,10 @@ from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.core.rfile import RFile
 
 
-logger = logging.getLogger(__name__)
-
 app = FastAPI()
+
+gunicorn_logger = logging.getLogger("gunicorn.error")
+logger.handlers = gunicorn_logger.handlers
 
 
 async def get_session(request: Request) -> AsyncSession:
@@ -438,3 +440,6 @@ app.add_route("/graphql", InfrahubGraphQLApp())
 app.add_route("/graphql/{branch_name:str}", InfrahubGraphQLApp())
 app.add_websocket_route("/graphql", InfrahubGraphQLApp())
 app.add_websocket_route("/graphql/{branch_name:str}", InfrahubGraphQLApp())
+
+if __name__ != "main":
+    logger.setLevel(gunicorn_logger.level)
