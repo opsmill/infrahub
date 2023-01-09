@@ -659,15 +659,10 @@ class InfrahubRepository(BaseModel):
             if not is_valid:
                 continue
 
-            commit_before = self.get_commit_value(branch_name=branch_name, remote=False)
-            await self.pull(branch_name=branch_name)
-            commit_after = self.get_commit_value(branch_name=branch_name, remote=False)
-            if str(commit_before) != str(commit_after):
-                await self.create_commit_worktree(commit=commit)
-                await self.update_commit_value(branch_name=branch_name, commit=commit)
-            else:
+            commit_after = await self.pull(branch_name=branch_name)
+            if commit_after is True:
                 LOGGER.warning(
-                    f"{self.name} | An update was detected on {branch_name} but the commit remained the same after pull() ({commit_before}) ."
+                    f"{self.name} | An update was detected on {branch_name} but the commit remained the same after pull() ({commit_after}) ."
                 )
 
         return True
@@ -727,7 +722,7 @@ class InfrahubRepository(BaseModel):
             raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
 
         try:
-            commit_before = repo.head.commit
+            commit_before = str(repo.head.commit)
             repo.remotes.origin.pull(branch_name)
         except GitCommandError as exc:
             if "Need to specify how to reconcile" in exc.stderr:
@@ -737,14 +732,15 @@ class InfrahubRepository(BaseModel):
                 )
             raise RepositoryError(identifier=self.name, message=exc.stderr)
 
-        commit_after = repo.head.commit
+        commit_after = str(repo.head.commit)
 
-        if str(commit_after) == str(commit_before):
+        if commit_after == commit_before:
             return True
 
-        await self.create_commit_worktree(str(commit_after))
+        await self.create_commit_worktree(commit=commit_after)
+        await self.update_commit_value(branch_name=branch_name, commit=commit_after)
 
-        return str(commit_after)
+        return commit_after
 
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
         """Merge the current branch into main.
@@ -755,25 +751,21 @@ class InfrahubRepository(BaseModel):
         if not repo:
             raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
 
-        commit_before = repo.head.commit
+        commit_before = str(repo.head.commit)
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
 
         try:
             repo.git.merge(commit)
         except GitCommandError as exc:
-            # if "Need to specify how to reconcile" in exc.stderr:
-            #     raise RepositoryError(
-            #         identifier=self.name,
-            #         message=f"Unable to pull the branch {branch_name} for repository {self.name}, there is a conflict that must be resolved.",
-            #     )
             raise RepositoryError(identifier=self.name, message=exc.stderr)
 
-        commit_after = repo.head.commit
+        commit_after = str(repo.head.commit)
 
-        if str(commit_after) == str(commit_before):
+        if commit_after == commit_before:
             return False
 
-        await self.create_commit_worktree(str(commit_after))
+        await self.create_commit_worktree(commit_after)
+        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
 
         if self.has_origin and push_remote:
             await self.push(branch_name=dest_branch)
@@ -795,65 +787,8 @@ class InfrahubRepository(BaseModel):
 
         return response
 
-    async def fetch_latest_from_remote(self):
-
-        # Fetch the latest updates from the remote repository
-        # Check all the branches to see of the commit are matching or not,
-        #   - if a new commit is present on a remote branch
-        #     - Create a new worktree in the temp directory for validation
-        #     - If the branch is valid:
-        #        - delete the temp worktree
-        #        - create a new worktree in the proper directory
-        #        - update the graph
-        #     - If the branch is not valid:
-        #        - ??? TODO we need to track that somewhere.
-
-        git_repo = self.get_git_repo_main()
-        git_repo.remotes.origin.fetch()
-
-    #             # Pull the latest update from the remote repo
-    #             git_repo.remotes.origin.fetch()
-    #             git_repo.remotes.origin.pull()
-    #             if str(git_repo.head.commit) != str(repo.commit.value):
-    #                 log.info(
-    #                     f"{repo.name.value}: Commit on branch {repo._branch.name} ({repo.commit.value}) do not match the local value ({git_repo.head.commit})"
-    #                 )
-
-    #                 repo.commit.value = str(git_repo.head.commit)
-    #                 repo.save()
-
-    #             # Remove stale branches from the remote repo
-    #             for stale_branch in git_repo.remotes.origin.stale_refs:
-    #                 if not isinstance(stale_branch, git.refs.remote.RemoteReference):
-    #                     continue
-
-    #                 log.debug(f"{repo.name.value}: Cleaning branch {stale_branch.name} no longer present on remote.")
-    #                 type(stale_branch).delete(git_repo, stale_branch)
-
-    #             # Got over all branches in the remote and check if they already exist locally
-    #             # If not, create a new branch locally in the database and in Git and track the remote branch
-    #             for remote_branch in git_repo.remotes.origin.refs:
-    #                 if not isinstance(remote_branch, git.refs.remote.RemoteReference):
-    #                     continue
-    #                 short_name = remote_branch.name.replace("origin/", "")
-
-    #                 if short_name == "HEAD" or short_name in db_branche_names:
-    #                     continue
-
-    #                 log.info(f"{repo.name.value}: Found new branch {short_name}")
-
-    #                 # Create the new branch in the database
-    #                 # Don't do more for now because we'll process all other repos in the next section
-    #                 new_branch = Branch(name=short_name, description=f"Created from Repository: {repo.name.value}")
-    #                 new_branch.save()
-
-    #                 # Create the new Branch locally in Git too
-    #                 local_branch_names = [br.name for br in git_repo.refs if not br.is_remote()]
-    #                 if short_name not in local_branch_names:
-    #                     git_repo.git.branch(short_name)
-
-    def find_files(self, extension: str, recursive: bool = True):
-        return glob.glob(f"{self.get_active_directory()}/**/*.{extension}", recursive=recursive)
+    # def find_files(self, extension: str, recursive: bool = True):
+    #     return glob.glob(f"{self.get_active_directory()}/**/*.{extension}", recursive=recursive)
 
     # def run_checks(self, rebase: bool = True) -> set(bool, List[str]):
     #     """Execute the checks for this repository using the infrahub cli.

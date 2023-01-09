@@ -154,7 +154,7 @@ async def git_repo_03_w_client(git_repo_03, client) -> InfrahubRepository:
 
 
 @pytest.fixture
-async def git_repo_04(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRepository:
+async def git_repo_04(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote
     The repo has 2 local branches : main and branch01
     The content of the branch branch01 has been  updated after the repo has been initialized
@@ -163,18 +163,18 @@ async def git_repo_04(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
 
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
-        name=git_upstream_repo_01["name"],
-        location=f"file:/{git_upstream_repo_01['path']}",
+        name=git_upstream_repo_03["name"],
+        location=f"file:/{git_upstream_repo_03['path']}",
     )
     await repo.create_branch_in_git(branch_name="branch01")
 
     # Checkout branch01 in the upstream repo after the repo has been cloned
     # Update the first file at the top level and commit the change in the branch
-    upstream = Repo(git_upstream_repo_01["path"])
+    upstream = Repo(git_upstream_repo_03["path"])
     upstream.git.checkout("branch01")
 
-    top_level_files = os.listdir(git_upstream_repo_01["path"])
-    first_file = os.path.join(git_upstream_repo_01["path"], top_level_files[0])
+    top_level_files = os.listdir(git_upstream_repo_03["path"])
+    first_file = os.path.join(git_upstream_repo_03["path"], top_level_files[0])
     with open(first_file, "a") as file:
         file.write("new line\n")
     upstream.index.add([top_level_files[0]])

@@ -313,7 +313,7 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
     assert True
 
 
-async def test_sync_new_branches(client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
+async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
 
     repo = git_repo_03
 
@@ -332,3 +332,15 @@ async def test_sync_new_branches(client, git_repo_03: InfrahubRepository, httpx_
 
     assert repo.get_commit_value(branch_name="branch01") == "92700512b5b16c0144f7fd2869669273577f1bd8"
     assert len(worktrees) == 4
+
+
+async def test_sync_updated_branch(client, git_repo_04: InfrahubRepository):
+
+    repo = git_repo_04
+
+    # Mock update_commit_value query
+    commit = repo.get_commit_value(branch_name="branch01", remote=True)
+
+    await repo.sync()
+
+    assert repo.get_commit_value(branch_name="branch01") == str(commit)
