@@ -6,7 +6,7 @@ import os
 import asyncio
 import shutil
 import logging
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set, Union, Optional
 
 from uuid import UUID
 from pydantic import BaseModel, validator
@@ -611,7 +611,7 @@ class InfrahubRepository(BaseModel):
         LOGGER.debug(f"{self.name} | Pushing the latest update to the remote origin for the branch '{branch_name}'")
 
         # TODO Catch potential exceptions coming from origin.push
-        repo = self.get_git_repo_main()
+        repo = self.get_git_repo_worktree(identifier=branch_name)
         repo.remotes.origin.push(branch_name)
 
         return True
@@ -659,9 +659,16 @@ class InfrahubRepository(BaseModel):
             if not is_valid:
                 continue
 
+            commit_before = self.get_commit_value(branch_name=branch_name, remote=False)
             await self.pull(branch_name=branch_name)
-            commit = self.get_commit_value(branch_name=branch_name, remote=False)
-            await self.update_commit_value(branch_name=branch_name, commit=commit)
+            commit_after = self.get_commit_value(branch_name=branch_name, remote=False)
+            if str(commit_before) != str(commit_after):
+                await self.create_commit_worktree(commit=commit)
+                await self.update_commit_value(branch_name=branch_name, commit=commit)
+            else:
+                LOGGER.warning(
+                    f"{self.name} | An update was detected on {branch_name} but the commit remained the same after pull() ({commit_before}) ."
+                )
 
         return True
 
@@ -709,35 +716,69 @@ class InfrahubRepository(BaseModel):
 
         return True
 
-    async def pull(self, branch_name: str) -> bool:
+    async def pull(self, branch_name: str) -> Union[bool, str]:
         """Pull the latest update from the remote repository on a given branch."""
 
         if not self.has_origin:
             return False
 
-        # TODO To do error and exception properly
-        repo = self.get_git_repo_main()
-        repo.remotes.origin.pull(branch_name)
+        repo = self.get_git_repo_worktree(identifier=branch_name)
+        if not repo:
+            raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
 
-        # Ideally we should return the value of the new commit in the branch and False/None if nothing changed
-        return True
+        try:
+            commit_before = repo.head.commit
+            repo.remotes.origin.pull(branch_name)
+        except GitCommandError as exc:
+            if "Need to specify how to reconcile" in exc.stderr:
+                raise RepositoryError(
+                    identifier=self.name,
+                    message=f"Unable to pull the branch {branch_name} for repository {self.name}, there is a conflict that must be resolved.",
+                )
+            raise RepositoryError(identifier=self.name, message=exc.stderr)
+
+        commit_after = repo.head.commit
+
+        if str(commit_after) == str(commit_before):
+            return True
+
+        await self.create_commit_worktree(str(commit_after))
+
+        return str(commit_after)
 
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
         """Merge the current branch into main.
 
         After the rebase we need to resync the data
         """
+        repo = self.get_git_repo_worktree(identifier=dest_branch)
+        if not repo:
+            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
 
-        if source_branch == config.SETTINGS.main.default_branch:
-            raise Exception("Unable to merge the default branch into itself.")
+        commit_before = repo.head.commit
+        commit = self.get_commit_value(branch_name=source_branch, remote=False)
 
-        repo = self.get_git_repo_main()
+        try:
+            repo.git.merge(commit)
+        except GitCommandError as exc:
+            # if "Need to specify how to reconcile" in exc.stderr:
+            #     raise RepositoryError(
+            #         identifier=self.name,
+            #         message=f"Unable to pull the branch {branch_name} for repository {self.name}, there is a conflict that must be resolved.",
+            #     )
+            raise RepositoryError(identifier=self.name, message=exc.stderr)
 
-        # FIXME need to redesign this part to account for the new architecture
+        commit_after = repo.head.commit
 
-        # git_repo.git.merge(self.commit)
+        if str(commit_after) == str(commit_before):
+            return False
 
-        return True
+        await self.create_commit_worktree(str(commit_after))
+
+        if self.has_origin and push_remote:
+            await self.push(branch_name=dest_branch)
+
+        return str(commit_after)
 
     async def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
         """Rebase the current branch with main.
@@ -750,13 +791,9 @@ class InfrahubRepository(BaseModel):
         After the rebase we need to resync the data
         """
 
-        if source_branch == config.SETTINGS.main.default_branch:
-            raise Exception("Unable to rebase the default branch into itself.")
+        response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
 
-        git_repo = self.get_git_repo_main()
-        # FIXME need to redesign this part to account for the new architecture
-
-        return True
+        return response
 
     async def fetch_latest_from_remote(self):
 

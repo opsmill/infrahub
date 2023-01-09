@@ -10,9 +10,9 @@ from infrahub.git import (
     COMMITS_DIRECTORY_NAME,
     BRANCHES_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
-    MUTATION_COMMIT_UPDATE,
 )
 from infrahub.exceptions import RepositoryError
+from infrahub_client import MUTATION_COMMIT_UPDATE
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
@@ -209,6 +209,100 @@ async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepositor
 
     assert repo.get_commit_value(branch_name="branch99") == "0b341c0c64122bb2a7b208f7a9452146685bc7dd"
     assert len(worktrees) == 3
+
+
+async def test_pull_branch(git_repo_04: InfrahubRepository):
+
+    repo = git_repo_04
+    await repo.fetch()
+
+    branch_name = "branch01"
+
+    commit1 = repo.get_commit_value(branch_name=branch_name, remote=False)
+    commit2 = repo.get_commit_value(branch_name=branch_name, remote=True)
+    assert str(commit1) != str(commit2)
+
+    response = await repo.pull(branch_name=branch_name)
+    commit11 = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert str(commit11) == str(commit2)
+    assert response == str(commit2)
+
+    response = await repo.pull(branch_name=branch_name)
+    assert response is True
+
+
+async def test_pull_branch_conflict(git_repo_06: InfrahubRepository):
+
+    repo = git_repo_06
+    await repo.fetch()
+
+    branch_name = "branch01"
+
+    commit1 = repo.get_commit_value(branch_name=branch_name, remote=False)
+    commit2 = repo.get_commit_value(branch_name=branch_name, remote=True)
+    assert str(commit1) != str(commit2)
+
+    with pytest.raises(RepositoryError) as exc:
+        await repo.pull(branch_name=branch_name)
+
+    assert "there is a conflict that must be resolved" in str(exc.value)
+
+
+async def test_pull_main(git_repo_05: InfrahubRepository):
+
+    repo = git_repo_05
+    await repo.fetch()
+
+    branch_name = "main"
+
+    commit1 = repo.get_commit_value(branch_name=branch_name, remote=False)
+    commit2 = repo.get_commit_value(branch_name=branch_name, remote=True)
+    assert str(commit1) != str(commit2)
+
+    response = await repo.pull(branch_name=branch_name)
+    commit11 = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert str(commit11) == str(commit2)
+    assert response == str(commit2)
+
+
+async def test_merge_branch01_into_main(git_repo_01: InfrahubRepository):
+
+    repo = git_repo_01
+    await repo.fetch()
+    await repo.create_branch_in_git(branch_name="branch01")
+
+    commit_before = repo.get_commit_value(branch_name="main", remote=False)
+
+    response = await repo.merge(source_branch="branch01", dest_branch="main")
+
+    commit_after = repo.get_commit_value(branch_name="main", remote=False)
+    assert str(commit_before) != str(commit_after)
+    assert response == str(commit_after)
+
+
+async def test_rebase(git_repo_01: InfrahubRepository):
+
+    repo = git_repo_01
+    await repo.fetch()
+
+    await repo.create_branch_in_git(branch_name="branch01")
+
+    # Add a new commit in the main branch to have something to rebase.
+    git_repo = repo.get_git_repo_main()
+    top_level_files = os.listdir(repo.directory_default)
+    first_file = os.path.join(repo.directory_default, top_level_files[0])
+    with open(first_file, "a") as file:
+        file.write("new line\n")
+    git_repo.index.add([top_level_files[0]])
+    git_repo.index.commit("Change first file")
+
+    commit_before = repo.get_commit_value(branch_name="branch01", remote=False)
+    response = await repo.rebase(branch_name="branch01", source_branch="main")
+
+    commit_after = repo.get_commit_value(branch_name="branch01", remote=False)
+
+    assert str(commit_before) != str(commit_after)
+    assert str(response) == str(commit_after)
 
 
 async def test_sync_no_update(git_repo_02: InfrahubRepository):
