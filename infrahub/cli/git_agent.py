@@ -6,7 +6,6 @@ from asyncio import run as aiorun
 from typing import List, Dict
 
 import typer
-from pydantic import BaseModel
 from aio_pika import IncomingMessage
 from rich.logging import RichHandler
 
@@ -32,7 +31,7 @@ from infrahub.lock import registry as lock_registry
 
 app = typer.Typer()
 
-logging.getLogger("httpx").setLevel(logging.ERROR)
+# logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("aio_pika").setLevel(logging.ERROR)
 logging.getLogger("aiormq").setLevel(logging.ERROR)
 logging.getLogger("git").setLevel(logging.ERROR)
@@ -85,18 +84,24 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                 async with message.process(requeue=False):
                     assert message.reply_to is not None
 
-                    rpc = InfrahubMessage.convert(message)
+                    try:
+                        rpc = InfrahubMessage.convert(message)
+                        log.debug(f"Received RPC message {rpc.type}")
 
-                    if rpc.type == MessageType.GIT:
-                        response = await handle_git_rpc_message(message=rpc, client=client)
+                        if rpc.type == MessageType.GIT:
+                            response = await handle_git_rpc_message(message=rpc, client=client)
 
-                    else:
-                        response = InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+                        else:
+                            response = InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
 
-                    await response.send(
-                        channel=channel, correlation_id=message.correlation_id, reply_to=message.reply_to
-                    )
-                    log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
+                        log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
+                    except Exception as exc:
+                        response = InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[str(exc)])
+
+                    finally:
+                        await response.send(
+                            channel=channel, correlation_id=message.correlation_id, reply_to=message.reply_to
+                        )
 
             except Exception:
                 log.exception("Processing error for message %r", message)
@@ -254,7 +259,7 @@ async def _start(listen: str, port: int, debug: bool, interval: int, config_file
     # Wait for messages
     log_level = "DEBUG" if debug else "INFO"
 
-    FORMAT = "%(message)s"
+    FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahub.worker")
 

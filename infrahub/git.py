@@ -80,6 +80,8 @@ mutation ($branch_name: String!) {
 
 async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
 
+    LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
+
     if message.action == GitMessageAction.REPO_ADD.value:
 
         try:
@@ -337,7 +339,7 @@ class InfrahubRepository(BaseModel):
 
         return True
 
-    def create_locally(self) -> bool:
+    async def create_locally(self) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
         Returns
@@ -391,6 +393,7 @@ class InfrahubRepository(BaseModel):
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
+        await self.update_commit_value(branch_name=self.default_branch_name, commit=commit)
 
         return True
 
@@ -398,8 +401,8 @@ class InfrahubRepository(BaseModel):
     async def new(cls, **kwargs):
 
         self = cls(**kwargs)
-        self.create_locally()
-
+        await self.create_locally()
+        LOGGER.info(f"{self.name} | Created the new project locally.")
         return self
 
     @classmethod
@@ -407,7 +410,7 @@ class InfrahubRepository(BaseModel):
 
         self = cls(**kwargs)
         self.validate_local_directories()
-
+        LOGGER.info(f"{self.name} | Initiated the object on an existing directory.")
         return self
 
     def has_worktree(self, identifier: str) -> bool:
@@ -532,6 +535,7 @@ class InfrahubRepository(BaseModel):
             False if they already had the same value
         """
 
+        LOGGER.debug(f"{self.name} | Updating commit value to {commit} for branch {branch_name}")
         await self.client.repository_update_commit(branch_name=branch_name, repository_id=self.id, commit=commit)
 
         return True
@@ -554,6 +558,7 @@ class InfrahubRepository(BaseModel):
         #  Since the branch is a match for the main branch we don't need to create a commit worktree
         # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
         if not self.has_origin:
+            LOGGER.debug(f"{self.name} | Branch {branch_name} created in Git without tracking a remote branch.")
             return True
 
         remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
@@ -563,6 +568,11 @@ class InfrahubRepository(BaseModel):
             br_repo.head.reference.set_tracking_branch(remote_branch[0])
             br_repo.remotes.origin.pull(branch_name)
             await self.create_commit_worktree(str(br_repo.head.reference.commit))
+            LOGGER.debug(
+                f"{self.name} | Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}."
+            )
+        else:
+            LOGGER.debug(f"{self.name} | Branch {branch_name} created in Git without tracking a remote branch.")
 
         if push_origin:
             await self.push(branch_name)
@@ -576,8 +586,10 @@ class InfrahubRepository(BaseModel):
         since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
         """
 
-        await self.client.create_branch(branch_name=branch_name)
+        # TODO need to handle the exception properly
+        await self.client.create_branch(branch_name=branch_name, background_execution=True)
 
+        LOGGER.debug(f"{self.name} | Branch {branch_name} created in the Graph")
         return True
 
     async def create_commit_worktree(self, commit: str) -> bool:
@@ -590,6 +602,7 @@ class InfrahubRepository(BaseModel):
         repo = self.get_git_repo_main()
         repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
 
+        LOGGER.debug(f"{self.name} | Commit worktree created {commit}")
         return True
 
     async def create_branch_worktree(self, branch_name: str) -> bool:
@@ -602,6 +615,7 @@ class InfrahubRepository(BaseModel):
         repo = self.get_git_repo_main()
         repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
 
+        LOGGER.debug(f"{self.name} | Branch worktree created {branch_name}")
         return True
 
     async def calculate_diff_between_commits(self, first_commit: str, second_commit: str) -> List[str]:
@@ -633,6 +647,8 @@ class InfrahubRepository(BaseModel):
         if not self.has_origin:
             return False
 
+        LOGGER.debug(f"{self.name} | Pushing the latest update to the remote origin for the branch '{branch_name}'")
+
         # TODO Catch potential exceptions coming from origin.push
         repo = self.get_git_repo_main()
         repo.remotes.origin.push(branch_name)
@@ -644,6 +660,8 @@ class InfrahubRepository(BaseModel):
         if not self.has_origin:
             return False
 
+        LOGGER.debug(f"{self.name} | Fetching the lastest updates from remote origin.")
+
         repo = self.get_git_repo_main()
         repo.remotes.origin.fetch()
 
@@ -651,9 +669,16 @@ class InfrahubRepository(BaseModel):
 
     async def sync(self):
 
+        LOGGER.info(f"{self.name} | Starting the synchronization.")
+
         await self.fetch()
 
         new_branches, updated_branches = await self.compare_local_remote()
+
+        if not new_branches and not updated_branches:
+            return True
+
+        LOGGER.debug(f"{self.name} | New Branches {new_branches}, Updated Branches {updated_branches} ")
 
         # TODO need to handle properly the situation when a branch is not valid.
         for branch_name in new_branches:
@@ -676,6 +701,8 @@ class InfrahubRepository(BaseModel):
             self.pull()
             commit = self.get_commit_value(branch_name=branch_name, remote=False)
             await self.update_commit_value(branch_name=branch_name, commit=commit)
+
+        return True
 
     async def compare_local_remote(self) -> Set[List[str], List[str]]:
         """
