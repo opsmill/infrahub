@@ -48,8 +48,8 @@ mutation ($repository_id: String!, $commit: String!) {
 """
 
 MUTATION_BRANCH_CREATE = """
-mutation ($branch_name: String!) {
-    branch_create(data: { name: $branch_name, is_data_only: false }) {
+mutation ($branch_name: String!, $background_execution: Boolean!) {
+    branch_create(background_execution: $background_execution, data: { name: $branch_name, is_data_only: false }) {
         ok
         object {
             id
@@ -58,6 +58,15 @@ mutation ($branch_name: String!) {
     }
 }
 """
+
+
+class GraphQLError(Exception):
+    def __init__(self, errors: List[str], query: str = None, variables: dict = None):
+        self.query = query
+        self.variables = variables
+        self.errors = errors
+        self.message = f"An error occured while executing the GraphQL Query {self.query}, {self.errors}"
+        super().__init__(self.message)
 
 
 class BranchData(BaseModel):
@@ -76,36 +85,62 @@ class RepositoryData(BaseModel):
 class InfrahubClient:
     """GraphQL Client to interact with Infrahub."""
 
-    def __init__(self, address="http://localhost:8000"):
+    def __init__(self, address="http://localhost:8000", default_timeout=5):
 
         self.address = address
         self.client = None
+        self.default_timeout = default_timeout
 
     @classmethod
     async def init(cls, *args, **kwargs):
 
         return cls(*args, **kwargs)
 
-    async def create_branch(self, branch_name: str) -> bool:
+    async def execute_graphql(
+        self, query, variables: dict = None, branch_name: str = None, timeout: int = None, raise_for_error: bool = True
+    ):
 
-        variables = {"branch_name": branch_name}
+        url = f"{self.address}/graphql"
+        if branch_name:
+            url += f"/{branch_name}"
+
+        payload = {"query": query}
+        if variables:
+            payload["variables"] = variables
+
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                f"{self.address}/graphql",
-                json={"query": MUTATION_BRANCH_CREATE, "variables": variables},
+                url=url,
+                json=payload,
+                timeout=timeout or self.default_timeout,
             )
-            resp.raise_for_status()
+            if raise_for_error:
+                resp.raise_for_status()
+
+        response = resp.json()
+
+        if "errors" in response:
+            raise GraphQLError(errors=response["errors"], query=query, variables=variables)
+
+        return response["data"]
+
+        # TODO add a special method to execute mutation that will check if the method returned OK
+
+    async def create_branch(self, branch_name: str, background_execution: bool = False) -> bool:
+
+        variables = {"branch_name": branch_name, "background_execution": background_execution}
+
+        response = await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
 
         return True
 
     async def get_list_branches(self) -> Dict[str, BranchData]:
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(f"{self.address}/graphql", json={"query": QUERY_ALL_BRANCHES})
+        data = await self.execute_graphql(query=QUERY_ALL_BRANCHES)
 
         branches = {
             branch["name"]: BranchData(id=branch["id"], name=branch["name"], is_data_only=branch["is_data_only"])
-            for branch in resp.json()["data"]["branch"]
+            for branch in data["branch"]
         }
 
         return branches
@@ -117,25 +152,17 @@ class InfrahubClient:
 
         branch_names = sorted(branches.keys())
 
-        async with httpx.AsyncClient() as client:
-
-            tasks = []
-            for branch_name in branch_names:
-                tasks.append(
-                    client.post(
-                        f"{self.address}/graphql/{branch_name}",
-                        json={"query": QUERY_ALL_REPOSITORIES},
-                    )
-                )
-
+        tasks = []
+        for branch_name in branch_names:
+            tasks.append(self.execute_graphql(query=QUERY_ALL_REPOSITORIES, branch_name=branch_name))
             # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
-            responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+        responses = await asyncio.gather(*tasks)
 
         repositories = {}
 
         for branch_name, response in zip(branch_names, responses):
-            data = response.json()
-            repos = data["data"]["repository"]
+            repos = response["repository"]
             for repository in repos:
                 repo_name = repository["name"]["value"]
                 if repo_name not in repositories:
@@ -150,11 +177,6 @@ class InfrahubClient:
     async def repository_update_commit(self, branch_name, repository_id: str, commit: str) -> bool:
 
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{self.address}/graphql/{branch_name}",
-                json={"query": MUTATION_COMMIT_UPDATE, "variables": variables},
-            )
-            resp.raise_for_status()
+        await self.execute_graphql(query=MUTATION_COMMIT_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
