@@ -203,12 +203,13 @@ class BranchCreateInput(InputObjectType):
 class BranchCreate(Mutation):
     class Arguments:
         data = BranchCreateInput(required=True)
+        background_execution = Boolean(required=False)
 
     ok = Boolean()
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root, info, data):
+    async def mutate(cls, root, info, data, background_execution=False):
 
         session: AsyncSession = info.context.get("infrahub_session")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
@@ -229,9 +230,10 @@ class BranchCreate(Mutation):
 
             for repo in repositories:
                 resp = await rpc_client.call(
-                    InfrahubGitRPC(
+                    message=InfrahubGitRPC(
                         action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
-                    )
+                    ),
+                    wait_for_response=not background_execution,
                 )
                 # TODO need to validate that everything go as expected
                 # TODO need to run all repos in //

@@ -48,14 +48,21 @@ class InfrahubRpcClient:
 
         future: asyncio.Future = self.futures.pop(message.correlation_id)
 
-        future.set_result(InfrahubMessage.convert(message))
+        if future:
+            future.set_result(InfrahubMessage.convert(message))
 
-    async def call(self, message: InfrahubRPC) -> Any:
+    async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
         correlation_id = str(uuid.uuid4())
-        future = self.loop.create_future()
 
-        self.futures[correlation_id] = future
+        if wait_for_response:
+            future = self.loop.create_future()
+            self.futures[correlation_id] = future
+        else:
+            self.futures[correlation_id] = None
 
         await message.send(channel=self.channel, correlation_id=correlation_id, reply_to=self.callback_queue.name)
 
-        return await future
+        if wait_for_response:
+            return await future
+        else:
+            return
