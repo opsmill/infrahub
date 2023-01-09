@@ -18,6 +18,7 @@ from infrahub.message_bus.events import (
     InfrahubGitRPC,
     GitMessageAction,
 )
+from infrahub_client import MUTATION_BRANCH_CREATE
 
 
 @pytest.fixture
@@ -101,36 +102,55 @@ async def git_repo_01(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
         id=uuid.uuid4(),
         name=git_upstream_repo_01["name"],
         location=f"file:/{git_upstream_repo_01['path']}",
-        client=client,
     )
 
     return repo
 
 
 @pytest.fixture
-async def git_repo_02(client, git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
+async def git_repo_01_w_client(git_repo_01, client) -> InfrahubRepository:
+    """Git Repository with  as remote"""
+
+    git_repo_01.client = client
+    return git_repo_01
+
+
+@pytest.fixture
+async def git_repo_02(git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
 
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
         name=git_upstream_repo_02["name"],
         location=f"file:/{git_upstream_repo_02['path']}",
-        client=client,
     )
 
     return repo
+
+
+@pytest.fixture
+async def git_repo_02_w_client(git_repo_02, client) -> InfrahubRepository:
+    """Git Repository with  as remote"""
+
+    git_repo_02.client = client
+    return git_repo_02
 
 
 @pytest.fixture
 async def git_repo_03(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
-        name=git_upstream_repo_03["name"],
-        location=f"file:/{git_upstream_repo_03['path']}",
-        client=client,
+        id=uuid.uuid4(), name=git_upstream_repo_03["name"], location=f"file:/{git_upstream_repo_03['path']}"
     )
 
     return repo
+
+
+@pytest.fixture
+async def git_repo_03_w_client(git_repo_03, client) -> InfrahubRepository:
+    """Git Repository with  as remote"""
+
+    git_repo_03.client = client
+    return git_repo_03
 
 
 @pytest.fixture
@@ -199,7 +219,9 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
             "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
         }
     }
-    request_content = json.dumps({"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01"}}).encode()
+    request_content = json.dumps(
+        {"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01", "background_execution": True}}
+    ).encode()
 
     httpx_mock.add_response(method="POST", json=response, match_content=request_content)
     return httpx_mock

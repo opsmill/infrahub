@@ -16,6 +16,7 @@ from git.exc import InvalidGitRepositoryError, GitCommandError
 from infrahub_client import InfrahubClient
 
 import infrahub.config as config
+from infrahub.lock import registry as lock_registry
 from infrahub.exceptions import RepositoryError
 from infrahub.message_bus.events import InfrahubGitRPC, InfrahubRPCResponse, GitMessageAction, RPCStatusCode
 
@@ -25,58 +26,6 @@ COMMITS_DIRECTORY_NAME = "commits"
 BRANCHES_DIRECTORY_NAME = "branches"
 TEMPORARY_DIRECTORY_NAME = "temp"
 
-QUERY_BRANCHES = """
-query {
-    branch {
-        id
-        name
-        is_data_only
-    }
-}
-"""
-
-QUERY_REPOSITORY = """
-query ($repository_name: String) {
-    repository(name__value: $repository_name) {
-        id
-        name {
-            value
-        }
-        location {
-            value
-        }
-        commit {
-            value
-        }
-    }
-}
-"""
-
-MUTATION_COMMIT_UPDATE = """
-mutation ($repository_id: String!, $commit: String!) {
-    repository_update(data: { id: $repository_id, commit: { value: $commit } }) {
-        ok
-        object {
-            commit {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_BRANCH_CREATE = """
-mutation ($branch_name: String!) {
-    branch_create(data: { name: $branch_name, is_data_only: false }) {
-        ok
-        object {
-            id
-            name
-        }
-    }
-}
-"""
-
 
 async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
 
@@ -84,26 +33,29 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
 
     if message.action == GitMessageAction.REPO_ADD.value:
 
-        try:
-            repo = await InfrahubRepository.new(
-                id=message.repository_id, name=message.repository_name, location=message.location, client=client
-            )
-            await repo.sync()
+        async with lock_registry.get(message.repository_name):
+            try:
+                repo = await InfrahubRepository.new(
+                    id=message.repository_id, name=message.repository_name, location=message.location, client=client
+                )
+                await repo.sync()
 
-        except RepositoryError as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
+            except RepositoryError as exc:
+                return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
 
-        return InfrahubRPCResponse(status=RPCStatusCode.CREATED.value)
+            return InfrahubRPCResponse(status=RPCStatusCode.CREATED.value)
 
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
     if message.action == GitMessageAction.BRANCH_ADD.value:
-        try:
-            ok = await repo.create_branch_in_git(branch_name=message.params["branch_name"])
-        except RepositoryError as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+        async with lock_registry.get(message.repository_name):
+            try:
+                ok = await repo.create_branch_in_git(branch_name=message.params["branch_name"])
+            except RepositoryError as exc:
+                return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
+
+            return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
 
     elif message.action == GitMessageAction.DIFF.value:
 
@@ -114,16 +66,20 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
         return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": files_changed})
 
     elif message.action == GitMessageAction.MERGE.value:
-        ok = repo.merge(source_branch=message.params["branch_name"])
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+        async with lock_registry.get(message.repository_name):
+            ok = repo.merge(source_branch=message.params["branch_name"])
+            return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
 
     elif message.action == GitMessageAction.REBASE.value:
+        # async with lock_registry.get(message.repository_name):
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
 
     elif message.action == GitMessageAction.PUSH.value:
+        # async with lock_registry.get(message.repository_name):
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
 
     elif message.action == GitMessageAction.PULL.value:
+        # async with lock_registry.get(message.repository_name):
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
 
     return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
@@ -393,6 +349,7 @@ class InfrahubRepository(BaseModel):
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
+
         await self.update_commit_value(branch_name=self.default_branch_name, commit=commit)
 
         return True
@@ -534,6 +491,10 @@ class InfrahubRepository(BaseModel):
             True if the commit has been updated
             False if they already had the same value
         """
+
+        if not self.client:
+            LOGGER.warning("Unable to update the value of the commit because a valid client hasn't been provided.")
+            return
 
         LOGGER.debug(f"{self.name} | Updating commit value to {commit} for branch {branch_name}")
         await self.client.repository_update_commit(branch_name=branch_name, repository_id=self.id, commit=commit)
@@ -698,7 +659,7 @@ class InfrahubRepository(BaseModel):
             if not is_valid:
                 continue
 
-            self.pull()
+            await self.pull(branch_name=branch_name)
             commit = self.get_commit_value(branch_name=branch_name, remote=False)
             await self.update_commit_value(branch_name=branch_name, commit=commit)
 
@@ -751,9 +712,14 @@ class InfrahubRepository(BaseModel):
     async def pull(self, branch_name: str) -> bool:
         """Pull the latest update from the remote repository on a given branch."""
 
+        if not self.has_origin:
+            return False
+
+        # TODO To do error and exception properly
         repo = self.get_git_repo_main()
         repo.remotes.origin.pull(branch_name)
 
+        # Ideally we should return the value of the new commit in the branch and False/None if nothing changed
         return True
 
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:

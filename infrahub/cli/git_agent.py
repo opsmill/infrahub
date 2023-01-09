@@ -120,29 +120,29 @@ async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
         async with lock_registry.get(repo_name):
             try:
                 repo = await InfrahubRepository.init(
-                    id=repository.id, name=repository.name, location=repository.location
+                    id=repository.id, name=repository.name, location=repository.location, client=client
                 )
             except RepositoryError as exc:
                 repo = await InfrahubRepository.new(
-                    id=repository.id, name=repository.name, location=repository.location
+                    id=repository.id, name=repository.name, location=repository.location, client=client
                 )
 
             await repo.sync()
-
-            # # Identify the branches that are missing locally and add them
-            # local_branches = repo.get_branches_from_local()
-            # missing_branches_locally = set(repository.branches.keys()) - set(local_branches.keys())
-
-            # # TODO we need to check if the commit are matching between the database and the value we have on disk
-            # for branch_name in missing_branches_locally:
-            #     if branch_name in branches and not branches[branch_name].is_data_only:
-            #         repo.create_branch_in_git(push_origin=True)
 
 
 async def monitor_remote_activity(client: InfrahubClient, interval: int, log: logging.Logger):
     log.info("Monitoring remote repository for updates .. ")
 
     while True:
+        branches = await client.get_list_branches()
+        repositories = await client.get_list_repositories(branches=branches)
+
+        for repo_name, repository in repositories.items():
+            async with lock_registry.get(repo_name):
+                repo = await InfrahubRepository.init(
+                    id=repository.id, name=repository.name, location=repository.location, client=client
+                )
+                await repo.sync()
 
         # # ----------------------------------------------------------------------
         # # Check all repos on the main branch

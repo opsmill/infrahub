@@ -152,9 +152,9 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
 
 
 async def test_get_branches_from_graph(
-    git_repo_01: InfrahubRepository, mock_branches_list_query, mock_repositories_query
+    git_repo_01_w_client: InfrahubRepository, mock_branches_list_query, mock_repositories_query
 ):
-    repo = git_repo_01
+    repo = git_repo_01_w_client
 
     branches = await repo.get_branches_from_graph()
     assert isinstance(branches, dict)
@@ -219,21 +219,22 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
     assert True
 
 
-async def test_sync_new_branches(git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
+async def test_sync_new_branches(client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
 
-    await git_repo_03.fetch()
+    repo = git_repo_03
+
+    await repo.fetch()
     # Mock update_commit_value query
-    commit = git_repo_03.get_commit_value(branch_name="branch01", remote=True)
+    commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
     response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
-
-    variables = {"repository_id": str(git_repo_03.id), "commit": str(commit)}
+    variables = {"repository_id": str(repo.id), "commit": str(commit)}
     request_content = json.dumps({"query": MUTATION_COMMIT_UPDATE, "variables": variables}).encode()
     httpx_mock.add_response(method="POST", json=response, match_content=request_content)
 
-    repo = git_repo_03
+    repo.client = client
     await repo.sync()
     worktrees = repo.get_worktrees()
 
-    assert git_repo_03.get_commit_value(branch_name="branch01") == "92700512b5b16c0144f7fd2869669273577f1bd8"
+    assert repo.get_commit_value(branch_name="branch01") == "92700512b5b16c0144f7fd2869669273577f1bd8"
     assert len(worktrees) == 4
