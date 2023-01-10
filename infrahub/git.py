@@ -3,6 +3,7 @@ from __future__ import annotations
 import git
 import glob
 import os
+import yaml
 import asyncio
 import shutil
 import logging
@@ -39,6 +40,7 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
                 repo = await InfrahubRepository.new(
                     id=message.repository_id, name=message.repository_name, location=message.location, client=client
                 )
+                await repo.import_objects_from_files(branch_name=repo.default_branch_name)
                 await repo.sync()
 
             except RepositoryError as exc:
@@ -622,7 +624,7 @@ class InfrahubRepository(BaseModel):
         if not self.has_origin:
             return False
 
-        LOGGER.debug(f"{self.name} | Fetching the lastest updates from remote origin.")
+        LOGGER.debug(f"{self.name} | Fetching the latest updates from remote origin.")
 
         repo = self.get_git_repo_main()
         repo.remotes.origin.fetch()
@@ -630,6 +632,10 @@ class InfrahubRepository(BaseModel):
         return True
 
     async def sync(self):
+        """Synchronize the repository with its remote origin and with the database.
+
+        By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
+        """
 
         LOGGER.info(f"{self.name} | Starting the synchronization.")
 
@@ -795,9 +801,60 @@ class InfrahubRepository(BaseModel):
     async def import_objects_from_files(self, branch_name: str):
 
         await self.import_all_graphql_query(branch_name=branch_name)
+        await self.import_all_yaml_files(branch_name=branch_name)
+
+    async def import_objects_rfiles(self, branch_name: str, data: dict):
+
+        LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ")
+
+        # For now we query all repositories and we filter down to this one
+        # We'll need to revisit that once we have a better client library
+        rfiles_in_graph = await self.client.get_list_rfiles(branch_name=branch_name)
+        rfiles_in_repo = {key: value for key, value in rfiles_in_graph.items() if value["repository"] == str(self.id)}
+
+        for rfile_name, rfile in data.items():
+
+            ## Insert the UUID of the repository in case they are referencing the local repo
+            for key in rfile.keys():
+                if "repository" in key:
+                    if rfile[key] == "self":
+                        rfile[key] = self.id
+
+            if rfile_name not in rfiles_in_repo:
+                LOGGER.info(f"{self.name}: New RFile '{rfile_name}' found on branch {branch_name}, creating")
+                await self.client.create_rfile(
+                    branch_name=branch_name,
+                    name=rfile_name,
+                    description=rfile["description"],
+                    template_path=rfile["template_path"],
+                    template_repository=rfile["template_repository"],
+                )
+                continue
+
+            rfile_in_repo = rfiles_in_repo[rfile_name]
+
+            need_to_update = False
+            for field_name in ["template_path", "description"]:
+                attr = getattr(rfile_in_repo, field_name)
+                if field_name in rfile and rfile[field_name] != attr:
+                    need_to_update = True
+
+                if need_to_update:
+                    LOGGER.info(
+                        f"{self.name}: New version of the RFile '{rfile_name}' found on branch {branch_name}, updating"
+                    )
+                    await self.client.update_rfile(
+                        branch_name=branch_name,
+                        id=str(rfile_in_repo.id),
+                        name=rfile_name,
+                        description=rfile["description"],
+                        template_path=rfile["template_path"],
+                    )
 
     async def import_all_graphql_query(self, branch_name: str):
         """Search for all .gql file and import them as GraphQL query."""
+
+        LOGGER.debug(f"{self.name} | Importing all GraphQL Queries in branch {branch_name} ")
 
         query_files = await self.find_files(extension=["gql"], branch_name=branch_name)
 
@@ -829,6 +886,40 @@ class InfrahubRepository(BaseModel):
         # TODO need to add traceabillity to identify where a query is coming from
         # TODO need to identify Query that are not present anymore (once lineage is available)
 
+    async def import_all_yaml_files(self, branch_name: str):
+
+        yaml_files = await self.find_files(extension=["yml", "yaml"], branch_name=branch_name)
+
+        for yaml_file in yaml_files:
+
+            LOGGER.debug(f"{self.name} | Checking {yaml_file}")
+
+            # ------------------------------------------------------
+            # Import Yaml
+            # ------------------------------------------------------
+            with open(yaml_file, "r") as file_data:
+                yaml_data = file_data.read()
+
+            try:
+                data = yaml.safe_load(yaml_data)
+            except yaml.YAMLError as exc:
+                LOGGER.warning(f"{self.name} | Unable to load YAML file {yaml_file} : {exc.message}")
+                continue
+
+            if not isinstance(data, dict):
+                LOGGER.debug(f"{self.name} | {yaml_file} : payload is not a dictionnary .. SKIPPING")
+                continue
+
+            # ------------------------------------------------------
+            # Search for Valid object types
+            # ------------------------------------------------------
+            for key, data in data.items():
+                if not hasattr(self, f"import_objects_{key}"):
+                    continue
+
+                method = getattr(self, f"import_objects_{key}")
+                await method(branch_name=branch_name, data=data)
+
     async def find_files(self, extension: Union[str, List[str]], branch_name: str, recursive: bool = True):
 
         branch_wt = self.get_worktree(identifier=branch_name)
@@ -837,10 +928,11 @@ class InfrahubRepository(BaseModel):
 
         if isinstance(extension, str):
             files.extend(glob.glob(f"{branch_wt.directory}/**/*.{extension}", recursive=recursive))
+            files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{extension}", recursive=recursive))
         elif isinstance(extension, list):
             for ext in extension:
                 files.extend(glob.glob(f"{branch_wt.directory}/**/*.{ext}", recursive=recursive))
-
+                files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{ext}", recursive=recursive))
         return files
 
     # def run_checks(self, rebase: bool = True) -> set(bool, List[str]):

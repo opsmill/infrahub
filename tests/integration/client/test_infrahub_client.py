@@ -28,9 +28,25 @@ class TestInfrahubClient:
             }
         }
         """
-        obj = await Node.init(schema="GraphQLQuery", session=session)
-        await obj.new(session=session, name="test_query2", description="test query", query=query_string)
-        await obj.save(session=session)
+        obj1 = await Node.init(schema="GraphQLQuery", session=session)
+        await obj1.new(session=session, name="test_query2", description="test query", query=query_string)
+        await obj1.save(session=session)
+
+        obj2 = await Node.init(schema="Repository", session=session)
+        await obj2.new(
+            session=session, name="repository1", description="test repository", location="git@github.com:mock/test.git"
+        )
+        await obj2.save(session=session)
+
+        obj3 = await Node.init(schema="RFile", session=session)
+        await obj3.new(
+            session=session,
+            name="rfile1",
+            description="test rfile",
+            template_path="mytemplate.j2",
+            template_repository=obj2,
+        )
+        await obj3.save(session=session)
 
     async def test_query_branches(self, client, init_db_base, base_dataset):
 
@@ -39,6 +55,13 @@ class TestInfrahubClient:
 
         assert "main" in branches
         assert "branch01" in branches
+
+    async def test_query_graphql_queries(self, client, init_db_base, base_dataset):
+
+        ifc = await InfrahubClient.init(test_client=client)
+        queries = await ifc.get_list_graphql_queries(branch_name="main")
+
+        assert "test_query2" in queries
 
     async def test_create_graphql_query_main(self, client, session, init_db_base, base_dataset):
 
@@ -62,3 +85,31 @@ class TestInfrahubClient:
 
         queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
         assert len(queries) == 2
+
+    async def test_query_rfiles(self, client, init_db_base, base_dataset):
+
+        ifc = await InfrahubClient.init(test_client=client)
+        rfiles = await ifc.get_list_rfiles(branch_name="main")
+
+        assert "rfile1" in rfiles
+
+    async def test_create_rfile_main(self, client, session, init_db_base, base_dataset):
+
+        branch_name = "main"
+
+        rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
+        repositories = await NodeManager.query("Repository", branch=branch_name, session=session)
+
+        assert len(rfiles) == 1
+
+        ifc = await InfrahubClient.init(test_client=client)
+        query = await ifc.create_rfile(
+            branch_name=branch_name,
+            name="rfile1",
+            description="test rfile2",
+            template_path="mytemplate.j2",
+            template_repository=str(repositories[0].id),
+        )
+
+        rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
+        assert len(rfiles) == 2

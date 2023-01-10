@@ -41,6 +41,29 @@ query {
 }
 """
 
+QUERY_ALL_RFILES = """
+query {
+    rfile {
+        id
+        name {
+            value
+        }
+        description {
+            value
+        }
+        template_path {
+            value
+        }
+        template_repository {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
 QUERY_ALL_BRANCHES = """
 query {
     branch {
@@ -111,6 +134,42 @@ mutation($id: String!, $name: String!, $description: String!, $query: String!) {
 }
 """
 
+MUTATION_RFILE_CREATE = """
+mutation($name: String!, $description: String!, $template_path: String!, $template_repository: String!) {
+  rfile_create(data: {
+    name: { value: $name },
+    description: { value: $description },
+    template_path: { value: $template_path }
+    template_repository: { id: $template_repository }}){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+MUTATION_RFILE_UPDATE = """
+mutation($id: String!, $name: String!, $description: String!, $template_path: String!) {
+  rfile_update(data: {
+    id: $id
+    name: { value: $name },
+    description { value: $description },
+    template_path: { value: $template_path }}){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
 
 class GraphQLError(Exception):
     def __init__(self, errors: List[str], query: str = None, variables: dict = None):
@@ -146,6 +205,7 @@ class RFileData(BaseModel):
     name: str
     description: Optional[str]
     template_path: str
+    template_repository: str
     output_path: Optional[str]
 
 
@@ -186,11 +246,13 @@ class InfrahubClient:
                     json=payload,
                     timeout=timeout or self.default_timeout,
                 )
-                if raise_for_error:
-                    resp.raise_for_status()
+
         else:
             with self.test_client as client:
                 resp = client.post(url=url, json=payload)
+
+        if raise_for_error:
+            resp.raise_for_status()
 
         response = resp.json()
 
@@ -254,8 +316,11 @@ class InfrahubClient:
         data = await self.execute_graphql(query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name)
 
         queries = {
-            query["name"]: GraphQLQueryData(
-                id=query["id"], name=query["name"], description=query["description"], query=query["query"]
+            query["name"]["value"]: GraphQLQueryData(
+                id=query["id"],
+                name=query["name"]["value"],
+                description=query["description"]["value"],
+                query=query["query"]["value"],
             )
             for query in data["graphql_query"]
         }
@@ -279,6 +344,51 @@ class InfrahubClient:
         data = await self.execute_graphql(
             query=MUTATION_GRAPHQL_QUERY_UPDATE, variables=variables, branch_name=branch_name
         )
+
+        return True
+
+    async def get_list_rfiles(self, branch_name: str) -> Dict[str, RFileData]:
+
+        data = await self.execute_graphql(query=QUERY_ALL_RFILES, branch_name=branch_name)
+
+        items = {
+            item["name"]["value"]: RFileData(
+                id=item["id"],
+                name=item["name"]["value"],
+                description=item["description"]["value"],
+                template_path=item["template_path"]["value"],
+                template_repository=item["template_repository"]["id"],
+            )
+            for item in data["rfile"]
+        }
+
+        return items
+
+    async def create_rfile(
+        self,
+        branch_name: str,
+        name: str,
+        template_path: str,
+        template_repository: str,
+        description: str = "",
+    ) -> bool:
+
+        variables = {
+            "name": name,
+            "description": description,
+            "template_path": template_path,
+            "template_repository": template_repository,
+        }
+        data = await self.execute_graphql(query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name)
+
+        return True
+
+    async def update_rfile(
+        self, branch_name: str, id: str, name: str, template_path: str, description: str = ""
+    ) -> bool:
+
+        variables = {"id": id, "name": name, "description": description, "template_path": template_path}
+        data = await self.execute_graphql(query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
 

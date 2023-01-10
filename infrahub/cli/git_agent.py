@@ -14,7 +14,6 @@ from infrahub_client import InfrahubClient
 import infrahub.config as config
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import (
-    get_event_exchange,
     MessageType,
     InfrahubMessage,
     InfrahubRPCResponse,
@@ -96,6 +95,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
 
                         log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
                     except Exception as exc:
+                        log.critical(exc, exc_info=True)
                         response = InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[str(exc)])
 
                     finally:
@@ -126,6 +126,7 @@ async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
                 repo = await InfrahubRepository.new(
                     id=repository.id, name=repository.name, location=repository.location, client=client
                 )
+                await repo.import_objects_from_files(branch_name=repo.default_branch_name)
 
             await repo.sync()
 
@@ -143,111 +144,6 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int, log: lo
                     id=repository.id, name=repository.name, location=repository.location, client=client
                 )
                 await repo.sync()
-
-        # # ----------------------------------------------------------------------
-        # # Check all repos on the main branch
-        # # -----------------------------------------------------------------------
-        # main_branch = Branch.get_by_name(config.SETTINGS.main.default_branch)
-        # branches = Branch.get_list()
-        # db_branche_names = [item.name for item in branches]
-
-        # for repo in NodeManager.query("Repository", branch=main_branch):
-
-        #     log.debug(f"{repo.name.value} in branch {main_branch.name}")
-
-        #     repo.ensure_exists_locally()
-
-        #     git_repo = repo.get_git_repo_main()
-
-        #     # Pull the latest update from the remote repo
-        #     git_repo.remotes.origin.fetch()
-        #     git_repo.remotes.origin.pull()
-        #     if str(git_repo.head.commit) != str(repo.commit.value):
-        #         log.info(
-        #             f"{repo.name.value}: Commit on branch {repo._branch.name} ({repo.commit.value}) do not match the local value ({git_repo.head.commit})"
-        #         )
-
-        #         repo.commit.value = str(git_repo.head.commit)
-        #         repo.save()
-
-        #     # Remove stale branches from the remote repo
-        #     for stale_branch in git_repo.remotes.origin.stale_refs:
-        #         if not isinstance(stale_branch, git.refs.remote.RemoteReference):
-        #             continue
-
-        #         log.debug(f"{repo.name.value}: Cleaning branch {stale_branch.name} no longer present on remote.")
-        #         type(stale_branch).delete(git_repo, stale_branch)
-
-        #     # Got over all branches in the remote and check if they already exist locally
-        #     # If not, create a new branch locally in the database and in Git and track the remote branch
-        #     for remote_branch in git_repo.remotes.origin.refs:
-        #         if not isinstance(remote_branch, git.refs.remote.RemoteReference):
-        #             continue
-        #         short_name = remote_branch.name.replace("origin/", "")
-
-        #         if short_name == "HEAD" or short_name in db_branche_names:
-        #             continue
-
-        #         log.info(f"{repo.name.value}: Found new branch {short_name}")
-
-        #         # Create the new branch in the database
-        #         # Don't do more for now because we'll process all other repos in the next section
-        #         new_branch = Branch(name=short_name, description=f"Created from Repository: {repo.name.value}")
-        #         new_branch.save()
-
-        #         # Create the new Branch locally in Git too
-        #         local_branch_names = [br.name for br in git_repo.refs if not br.is_remote()]
-        #         if short_name not in local_branch_names:
-        #             git_repo.git.branch(short_name)
-
-        #     # IMPORT DATA FROM REPOSITORY / BRANCH
-        #     import_all_graphql_query(log=log, repo=repo, branch=main_branch, search_directory=repo.directory_default)
-
-        #     import_all_yaml_files(log=log, repo=repo, branch=main_branch, search_directory=repo.directory_default)
-
-        #     # TODO - CLEANUP
-        #     #  * CHECK if all worktree match with existing branches
-        #     #  * Find a way to match worktree based on commit to clean them as well
-
-        # for branch in Branch.get_list():
-        #     if branch.name == config.SETTINGS.main.default_branch:
-        #         continue
-
-        #     if branch.is_data_only:
-        #         continue
-
-        #     for repo in NodeManager.query("Repository", branch=branch):
-
-        #         # Check if the repository for the branch exist locally
-        #         log.debug(f"{repo.name.value} in branch {branch.name}")
-
-        #         if not os.path.isdir(repo.directory_branch):
-        #             main_repo = Repo(repo.directory_default)
-
-        #             local_branch_names = [br.name for br in main_repo.refs if not br.is_remote()]
-        #             if branch.name not in local_branch_names:
-        #                 main_repo.git.branch(branch.name)
-
-        #             # TODO we probably need to check the worktree too at some point
-        #             main_repo.git.worktree("add", repo.directory_branch, branch.name)
-
-        #         git_repo = Repo(repo.directory_branch)
-
-        #         # Check if the worktree has been configure to track a specific branch
-        #         if not git_repo.active_branch.tracking_branch():
-        #             remote_branch = [br for br in git_repo.remotes.origin.refs if br.name == f"origin/{branch.name}"]
-        #             if remote_branch:
-        #                 git_repo.head.reference.set_tracking_branch(remote_branch[0])
-        #                 git_repo.remotes.origin.pull()
-        #         else:
-        #             git_repo.remotes.origin.pull()
-
-        #         if str(git_repo.head.commit) != str(repo.commit.value):
-        #             log.info(
-        #                 f"{repo.name.value}: Commit on branch {repo._branch.name} has been updated ({git_repo.head.commit})"
-        #             )
-        #             repo.commit.value = str(git_repo.head.commit)
-        #             repo.save()
 
         await asyncio.sleep(interval)
 
