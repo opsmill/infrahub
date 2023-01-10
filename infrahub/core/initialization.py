@@ -81,7 +81,7 @@ async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
     return branch
 
 
-async def first_time_initialization(session: AsyncSession):
+async def first_time_initialization(session: AsyncSession, load_infrastructure_models: bool = True):
 
     from infrahub.core.node import Node
 
@@ -105,10 +105,11 @@ async def first_time_initialization(session: AsyncSession):
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the core models in the database")
 
-    schema = SchemaRoot(**infrastructure_models)
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
-    LOGGER.info("Created the infrastructure models in the database")
+    if load_infrastructure_models:
+        schema = SchemaRoot(**infrastructure_models)
+        await SchemaManager.register_schema_to_registry(schema)
+        await SchemaManager.load_schema_to_db(schema, session=session)
+        LOGGER.info("Created the infrastructure models in the database")
 
     # --------------------------------------------------
     # Create Default Users and Groups
