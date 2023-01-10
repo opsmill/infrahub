@@ -6,6 +6,7 @@ import os
 import asyncio
 import shutil
 import logging
+from pathlib import Path
 from typing import List, Dict, Set, Union, Optional
 
 from uuid import UUID
@@ -654,12 +655,16 @@ class InfrahubRepository(BaseModel):
             await self.create_commit_worktree(commit=commit)
             await self.update_commit_value(branch_name=branch_name, commit=commit)
 
+            await self.import_objects_from_files(branch_name=branch_name)
+
         for branch_name in updated_branches:
             is_valid = await self.validate_remote_branch(branch_name=branch_name)
             if not is_valid:
                 continue
 
             commit_after = await self.pull(branch_name=branch_name)
+            await self.import_objects_from_files(branch_name=branch_name)
+
             if commit_after is True:
                 LOGGER.warning(
                     f"{self.name} | An update was detected on {branch_name} but the commit remained the same after pull() ({commit_after}) ."
@@ -787,8 +792,56 @@ class InfrahubRepository(BaseModel):
 
         return response
 
-    # def find_files(self, extension: str, recursive: bool = True):
-    #     return glob.glob(f"{self.get_active_directory()}/**/*.{extension}", recursive=recursive)
+    async def import_objects_from_files(self, branch_name: str):
+
+        await self.import_all_graphql_query(branch_name=branch_name)
+
+    async def import_all_graphql_query(self, branch_name: str):
+        """Search for all .gql file and import them as GraphQL query."""
+
+        query_files = await self.find_files(extension=["gql"], branch_name=branch_name)
+
+        queries_in_graph = await self.client.get_list_graphql_queries(branch_name=branch_name)
+
+        for query_file in query_files:
+
+            filename = os.path.basename(query_file)
+            query_name = os.path.splitext(filename)[0]
+            query_string = Path(query_file).read_text()
+
+            if query_name not in queries_in_graph.keys():
+                LOGGER.info(f"{self.name} | New Graphql Query '{query_name}' found on branch {branch_name}, creating")
+                await self.client.create_graphql_query(branch_name=branch_name, name=query_name, query=query_string)
+
+            elif query_string != queries_in_graph[query_name].query:
+                query = queries_in_graph[query_name]
+                LOGGER.info(
+                    f"{self.name} | New version of the Graphql Query '{query_name}' found on branch {branch_name}, updating"
+                )
+                await self.client.update_graphql_query(
+                    branch_name=branch_name,
+                    id=query.id,
+                    name=query_name,
+                    query=query_string,
+                    description=query.description,
+                )
+
+        # TODO need to add traceabillity to identify where a query is coming from
+        # TODO need to identify Query that are not present anymore (once lineage is available)
+
+    async def find_files(self, extension: Union[str, List[str]], branch_name: str, recursive: bool = True):
+
+        branch_wt = self.get_worktree(identifier=branch_name)
+
+        files = []
+
+        if isinstance(extension, str):
+            files.extend(glob.glob(f"{branch_wt.directory}/**/*.{extension}", recursive=recursive))
+        elif isinstance(extension, list):
+            for ext in extension:
+                files.extend(glob.glob(f"{branch_wt.directory}/**/*.{ext}", recursive=recursive))
+
+        return files
 
     # def run_checks(self, rebase: bool = True) -> set(bool, List[str]):
     #     """Execute the checks for this repository using the infrahub cli.
