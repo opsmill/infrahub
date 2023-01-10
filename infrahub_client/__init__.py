@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import typer
 from pydantic import BaseModel
@@ -18,6 +18,23 @@ query {
             value
         }
         commit {
+            value
+        }
+    }
+}
+"""
+
+QUERY_ALL_GRAPHQL_QUERIES = """
+query {
+    graphql_query {
+        id
+        name {
+            value
+        }
+        description {
+            value
+        }
+        query {
             value
         }
     }
@@ -59,6 +76,41 @@ mutation ($branch_name: String!, $background_execution: Boolean!) {
 }
 """
 
+MUTATION_GRAPHQL_QUERY_CREATE = """
+mutation($name: String!, $description: String!, $query: String!) {
+  graphql_query_create(data: {
+    name: { value: $name },
+    description: { value: $description },
+    query: { value: $query }}){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+MUTATION_GRAPHQL_QUERY_UPDATE = """
+mutation($id: String!, $name: String!, $description: String!, $query: String!) {
+  graphql_query_update(data: {
+    id: $id
+    name: { value: $name },
+    description { value: $description },
+    query: { value: $query }}){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
 
 class GraphQLError(Exception):
     def __init__(self, errors: List[str], query: str = None, variables: dict = None):
@@ -82,14 +134,33 @@ class RepositoryData(BaseModel):
     branches: Dict[str, str]
 
 
+class GraphQLQueryData(BaseModel):
+    id: Optional[str]
+    name: str
+    description: Optional[str]
+    query: str
+
+
+class RFileData(BaseModel):
+    id: Optional[str]
+    name: str
+    description: Optional[str]
+    template_path: str
+    output_path: Optional[str]
+
+
 class InfrahubClient:
     """GraphQL Client to interact with Infrahub."""
 
-    def __init__(self, address="http://localhost:8000", default_timeout=5):
+    def __init__(self, address="http://localhost:8000", default_timeout=5, test_client=None):
 
         self.address = address
         self.client = None
         self.default_timeout = default_timeout
+        self.test_client = test_client
+
+        if test_client:
+            self.address = ""
 
     @classmethod
     async def init(cls, *args, **kwargs):
@@ -108,14 +179,18 @@ class InfrahubClient:
         if variables:
             payload["variables"] = variables
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                url=url,
-                json=payload,
-                timeout=timeout or self.default_timeout,
-            )
-            if raise_for_error:
-                resp.raise_for_status()
+        if not self.test_client:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    url=url,
+                    json=payload,
+                    timeout=timeout or self.default_timeout,
+                )
+                if raise_for_error:
+                    resp.raise_for_status()
+        else:
+            with self.test_client as client:
+                resp = client.post(url=url, json=payload)
 
         response = resp.json()
 
@@ -173,6 +248,39 @@ class InfrahubClient:
                 repositories[repo_name].branches[branch_name] = repository["commit"]["value"]
 
         return repositories
+
+    async def get_list_graphql_queries(self, branch_name: str) -> Dict[str, GraphQLQueryData]:
+
+        data = await self.execute_graphql(query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name)
+
+        queries = {
+            query["name"]: GraphQLQueryData(
+                id=query["id"], name=query["name"], description=query["description"], query=query["query"]
+            )
+            for query in data["graphql_query"]
+        }
+
+        return queries
+
+    async def create_graphql_query(self, branch_name: str, name: str, query: str, description: str = "") -> bool:
+
+        variables = {"name": name, "description": description, "query": query}
+        data = await self.execute_graphql(
+            query=MUTATION_GRAPHQL_QUERY_CREATE, variables=variables, branch_name=branch_name
+        )
+
+        return True
+
+    async def update_graphql_query(
+        self, branch_name: str, id: str, name: str, query: str, description: str = ""
+    ) -> bool:
+
+        variables = {"id": id, "name": name, "description": description, "query": query}
+        data = await self.execute_graphql(
+            query=MUTATION_GRAPHQL_QUERY_UPDATE, variables=variables, branch_name=branch_name
+        )
+
+        return True
 
     async def repository_update_commit(self, branch_name, repository_id: str, commit: str) -> bool:
 
