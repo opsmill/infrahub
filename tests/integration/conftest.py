@@ -2,13 +2,10 @@ import os
 import asyncio
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 
 from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
-
-from infrahub.main import app
 
 from infrahub.core.node import Node
 from infrahub.core.initialization import first_time_initialization, initialization, create_branch
@@ -44,11 +41,6 @@ async def db():
 
 
 @pytest.fixture(scope="module")
-async def client():
-    return TestClient(app)
-
-
-@pytest.fixture(scope="module")
 async def session(db):
 
     session = db.session(database=config.SETTINGS.database.database)
@@ -70,31 +62,3 @@ async def init_db_base(session):
     await delete_all_nodes(session=session)
     await first_time_initialization(session=session, load_infrastructure_models=False)
     await initialization(session=session)
-
-
-@pytest.fixture(scope="module")
-async def client():
-    return TestClient(app)
-
-
-@pytest.fixture(scope="module")
-async def base_dataset(session):
-
-    branch1 = await create_branch(branch_name="branch01", session=session)
-
-    query_string = """
-    query {
-        branch {
-            id
-            name
-        }
-    }
-    """
-    obj = await Node.init(schema="GraphQLQuery", session=session)
-    await obj.new(session=session, name="test_query2", description="test query", query=query_string)
-    await obj.save(session=session)
-
-
-@pytest_asyncio.fixture(scope="module")
-async def dataset01(session, init_db_infra):
-    await ds01.load_data(session=session)

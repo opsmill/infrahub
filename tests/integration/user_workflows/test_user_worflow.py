@@ -1,15 +1,12 @@
-import os
 import pytest
 import pendulum
-
-from fastapi.testclient import TestClient
-
-from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
 
 from infrahub.main import app
+from fastapi.testclient import TestClient
 
+from infrahub.test_data import dataset01 as ds01
 
 headers = {"Authorization": "Token nelly"}
 
@@ -17,10 +14,6 @@ main_branch = "main"
 branch1 = "branch1"
 branch2 = "branch2"
 
-state = {
-    "spine1_lo0_id": None,
-    "time_start": None,
-}
 
 QUERY_GET_ALL_DEVICES = """
     query {
@@ -146,14 +139,27 @@ INTERFACE_CREATE = """
 
 
 class TestUserWorkflow01:
-    def test_query_all_devices(self, init_db_infra, dataset01):
+    @pytest.fixture(scope="class")
+    async def client(self):
+        return TestClient(app)
+
+    @pytest.fixture(scope="class")
+    async def dataset01(self, session, init_db_infra):
+        await ds01.load_data(session=session)
+
+    def test_initialize_state(self):
+        pytest.state = {
+            "spine1_lo0_id": None,
+            "time_start": None,
+        }
+
+    def test_query_all_devices(self, client, init_db_infra, dataset01):
         """
         Query all devices to ensure that we have some data in the database
         and overall that everything is working correctly
         """
-        global state
 
-        with TestClient(app) as client:
+        with client:
             response = client.post("/graphql", json={"query": QUERY_GET_ALL_DEVICES}, headers=headers)
 
         assert response.status_code == 200
@@ -165,17 +171,16 @@ class TestUserWorkflow01:
         assert len(result["device"]) == 8
 
         # Initialize the start time
-        state["time_start"] = pendulum.now(tz="UTC")
+        pytest.state["time_start"] = pendulum.now(tz="UTC")
 
-    def test_query_spine1_loobpack0(self, init_db_infra, dataset01):
+    def test_query_spine1_loobpack0(self, client, init_db_infra, dataset01):
         """
         Query Loopback0 interface on spine one to ensure that the filters are working properly and to store:
             - the ID of the interface to reuse later
             - The initial value of the description on this interface
         """
-        global state
 
-        with TestClient(app) as client:
+        with client:
             response = client.post(
                 "/graphql",
                 json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Loopback0"}},
@@ -189,16 +194,15 @@ class TestUserWorkflow01:
 
         assert result["device"][0]["interfaces"][0]["name"]["value"] == "Loopback0"
 
-        state["spine1_lo0_id"] = result["device"][0]["interfaces"][0]["id"]
-        state["spine1_lo0_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
+        pytest.state["spine1_lo0_id"] = result["device"][0]["interfaces"][0]["id"]
+        pytest.state["spine1_lo0_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
 
-    def test_query_spine1_ethernet1(self, init_db_infra, dataset01):
+    def test_query_spine1_ethernet1(self, client, init_db_infra, dataset01):
         """
         Query Ethernet1 to gather its ID
         """
-        global state
 
-        with TestClient(app) as client:
+        with client:
             response = client.post(
                 "/graphql",
                 json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": "Ethernet1"}},
@@ -212,15 +216,14 @@ class TestUserWorkflow01:
 
         assert result["device"][0]["interfaces"][0]["name"]["value"] == "Ethernet1"
 
-        state["spine1_eth1_id"] = result["device"][0]["interfaces"][0]["id"]
-        state["spine1_eth1_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
+        pytest.state["spine1_eth1_id"] = result["device"][0]["interfaces"][0]["id"]
+        pytest.state["spine1_eth1_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
 
     def test_create_first_branch(self, client, init_db_infra, dataset01):
         """
         Create a first Branch from Main
         """
-        global state
-        with TestClient(app) as client:
+        with client:
             response = client.post(
                 "/graphql", json={"query": BRANCH_CREATE, "variables": {"branch": branch1}}, headers=headers
             )
@@ -235,15 +238,14 @@ class TestUserWorkflow01:
         """
         Update the description of the interface in the new branch and validate that its being properly updated
         """
-        global state
 
         new_description = f"New description in {branch1}"
 
-        assert state["spine1_lo0_id"]
+        assert pytest.state["spine1_lo0_id"]
 
-        with TestClient(app) as client:
+        with client:
             # Update the description in BRANCH1
-            variables = {"interface_id": state["spine1_lo0_id"], "description": new_description}
+            variables = {"interface_id": pytest.state["spine1_lo0_id"], "description": new_description}
             response = client.post(
                 f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
             )
@@ -271,15 +273,14 @@ class TestUserWorkflow01:
         """
         Update the description of the interface Ethernet1 in the main branch and validate that its being properly updated
         """
-        global state
 
         new_description = f"New description in {main_branch}"
 
-        assert state["spine1_eth1_id"]
+        assert pytest.state["spine1_eth1_id"]
 
-        with TestClient(app) as client:
+        with client:
             # Update the description in MAIN
-            variables = {"interface_id": state["spine1_eth1_id"], "description": new_description}
+            variables = {"interface_id": pytest.state["spine1_eth1_id"], "description": new_description}
             response = client.post(
                 "/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
             )
@@ -306,15 +307,14 @@ class TestUserWorkflow01:
         """
         Update the description of the interface in the new branch again and validate that its being properly updated
         """
-        global state
 
         new_description = f"New New description in {branch1}"
 
-        assert state["spine1_lo0_id"]
+        assert pytest.state["spine1_lo0_id"]
 
-        with TestClient(app) as client:
+        with client:
             # Update the description in BRANCH1
-            variables = {"interface_id": state["spine1_lo0_id"], "description": new_description}
+            variables = {"interface_id": pytest.state["spine1_lo0_id"], "description": new_description}
             response = client.post(
                 f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
             )
@@ -338,9 +338,8 @@ class TestUserWorkflow01:
         assert result["device"][0]["interfaces"][0]["description"]["value"] == new_description
 
     def test_create_second_branch(self, client, init_db_infra, dataset01):
-        global state
 
-        with TestClient(app) as client:
+        with client:
             response = client.post(
                 "/graphql", json={"query": BRANCH_CREATE, "variables": {"branch": branch2}}, headers=headers
             )
@@ -352,12 +351,11 @@ class TestUserWorkflow01:
         assert result["branch_create"]["ok"]
 
     def test_update_intf_description_main_after_branch2(self, client, dataset01):
-        global state
 
-        assert state["spine1_eth1_id"]
+        assert pytest.state["spine1_eth1_id"]
         new_description = f"New description in {main_branch} after creating {branch2}"
 
-        with TestClient(app) as client:
+        with client:
             # Query the description in main_branch to get its value
             response = client.post(
                 "/graphql",
@@ -372,7 +370,11 @@ class TestUserWorkflow01:
             old_description = result["device"][0]["interfaces"][0]["description"]["value"]
 
             # Update the description in MAIN
-            variables = {"branch": main_branch, "interface_id": state["spine1_eth1_id"], "description": new_description}
+            variables = {
+                "branch": main_branch,
+                "interface_id": pytest.state["spine1_eth1_id"],
+                "description": new_description,
+            }
             response = client.post(
                 "/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
             )
@@ -411,9 +413,8 @@ class TestUserWorkflow01:
         """
         Rebase Branch 2
         """
-        global state
 
-        with TestClient(app) as client:
+        with client:
             response = client.post(
                 "/graphql", json={"query": BRANCH_REBASE, "variables": {"branch": branch2}}, headers=headers
             )
@@ -447,9 +448,8 @@ class TestUserWorkflow01:
             assert result["device"][0]["interfaces"][0]["description"]["value"] == main_description
 
     def test_query_spine1_lo0_at_start_time(self, client, dataset01):
-        global state
 
-        with TestClient(app) as client:
+        with client:
             response = client.post(
                 "/graphql",
                 json={
@@ -458,7 +458,7 @@ class TestUserWorkflow01:
                         "intf_name": "Loopback0",
                     },
                 },
-                params={"at": state["time_start"].to_iso8601_string()},
+                params={"at": pytest.state["time_start"].to_iso8601_string()},
                 headers=headers,
             )
             assert response.status_code == 200
@@ -467,12 +467,11 @@ class TestUserWorkflow01:
             result = response.json()["data"]
             assert result["device"][0]["interfaces"][0]["name"]["value"] == "Loopback0"
 
-            state["spine1_lo0_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
+            pytest.state["spine1_lo0_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
 
     def test_add_new_interface_in_first_branch(self, client, dataset01):
-        global state
 
-        with TestClient(app) as client:
+        with client:
             response = client.post(
                 f"/graphql/{branch1}",
                 json={
@@ -497,12 +496,11 @@ class TestUserWorkflow01:
             assert result["interface_create"]["object"]["name"]["value"] == "Ethernet8"
 
     def test_merge_first_branch_into_main(self, client, dataset01):
-        global state
 
         # Expected description for Loopback0 after the merge
         expected_description = f"New New description in {branch1}"
 
-        with TestClient(app) as client:
+        with client:
             # Merge branch1 into main
             response = client.post(
                 "/graphql",
