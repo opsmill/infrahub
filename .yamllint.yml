@@ -3,6 +3,7 @@ extends: default
 
 ignore: |
   /examples
+  /repositories
 
 rules:
   new-lines: disable

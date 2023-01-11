@@ -30,4 +30,3 @@ jobs:
         run: "poetry run infrahub test integration tests/integration/client/"
       - name: "Integration Tests : User Workflows"
         run: "poetry run infrahub test integration tests/integration/user_workflows/"
-
