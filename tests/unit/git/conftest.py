@@ -25,9 +25,9 @@ async def client() -> InfrahubClient:
 
 
 @pytest.fixture
-def git_sources_dir(tmpdir) -> str:
+def git_sources_dir(tmp_path) -> str:
 
-    source_dir = os.path.join(str(tmpdir), "sources")
+    source_dir = os.path.join(str(tmp_path), "sources")
 
     os.mkdir(source_dir)
 
@@ -35,9 +35,9 @@ def git_sources_dir(tmpdir) -> str:
 
 
 @pytest.fixture
-def git_repos_dir(tmpdir) -> str:
+def git_repos_dir(tmp_path) -> str:
 
-    repos_dir = os.path.join(str(tmpdir), "repositories")
+    repos_dir = os.path.join(str(tmp_path), "repositories")
 
     os.mkdir(repos_dir)
 

@@ -74,15 +74,15 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     assert os.path.isdir(repo.directory_temp)
 
 
-async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmpdir):
+async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path):
 
     with pytest.raises(RepositoryError) as exc:
-        await InfrahubRepository.new(id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=f"file:/{tmpdir}")
+        await InfrahubRepository.new(id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=f"file:/{tmp_path}")
 
     assert "Unable to clone" in str(exc.value)
 
 
-async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmpdir):
+async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
 
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(

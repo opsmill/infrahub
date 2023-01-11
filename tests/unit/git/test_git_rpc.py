@@ -43,9 +43,9 @@ async def test_git_rpc_create_successful(git_rpc_repo_add_02):
     assert response.status == RPCStatusCode.CREATED.value
 
 
-async def test_git_rpc_create_error(git_rpc_repo_add_01, tmpdir):
+async def test_git_rpc_create_error(git_rpc_repo_add_01, tmp_path):
 
-    git_rpc_repo_add_01.location = f"file:/{tmpdir}"
+    git_rpc_repo_add_01.location = f"file:/{tmp_path}"
 
     response = await handle_git_rpc_message(message=git_rpc_repo_add_01, client=None)
 
