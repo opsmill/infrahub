@@ -45,6 +45,7 @@ class TestInfrahubClient:
             description="test rfile",
             template_path="mytemplate.j2",
             template_repository=obj2,
+            query=obj1,
         )
         await obj3.save(session=session)
 
@@ -99,6 +100,7 @@ class TestInfrahubClient:
 
         rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
         repositories = await NodeManager.query("Repository", branch=branch_name, session=session)
+        queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
 
         assert len(rfiles) == 1
 
@@ -109,6 +111,7 @@ class TestInfrahubClient:
             description="test rfile2",
             template_path="mytemplate.j2",
             template_repository=str(repositories[0].id),
+            query=str(queries[0].name.value),
         )
 
         rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)

@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import json
 from typing import Optional
 
 import graphene
@@ -8,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, Response, Depends
 from fastapi.logger import logger
 from graphql import graphql
 from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, JSONResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from neo4j import AsyncSession
@@ -17,6 +18,8 @@ import infrahub.config as config
 from infrahub.auth import BaseTokenAuth
 from infrahub.message_bus import connect_to_broker, close_broker_connection
 from infrahub.message_bus.rpc import InfrahubRpcClient
+from infrahub.message_bus.events import InfrahubTransformRPC, TransformMessageAction, InfrahubRPCResponse, RPCStatusCode
+
 from infrahub.core import get_branch, registry
 from infrahub.database import get_db
 from infrahub.core.initialization import initialization
@@ -24,7 +27,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import get_gql_mutation, get_gql_query
 from infrahub.graphql.app import InfrahubGraphQLApp
-from infrahub.core.rfile import RFile
 
 
 app = FastAPI()
@@ -83,7 +85,6 @@ async def generate_rfile(
     request: Request,
     rfile_id: str,
     session: AsyncSession = Depends(get_session),
-    save_on_disk: bool = False,
     branch: Optional[str] = None,
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
@@ -95,7 +96,7 @@ async def generate_rfile(
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
-    rfile: RFile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch, at=at)
+    rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch, at=at)
 
     if not rfile:
         rfile_schema = await registry.get_schema(session=session, name="RFile")
@@ -108,7 +109,8 @@ async def generate_rfile(
     if not rfile:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    query = await rfile.get_query(session=session)
+    query = await rfile.query.get_peer(session=session)
+    repository = await rfile.template_repository.get_peer(session=session)
 
     result = await graphql(
         graphene.Schema(
@@ -116,7 +118,7 @@ async def generate_rfile(
             mutation=await get_gql_mutation(session=session, branch=branch),
             auto_camelcase=False,
         ).graphql_schema,
-        source=query,
+        source=query.query.value,
         context_value={
             "infrahub_branch": branch,
             "infrahub_at": at,
@@ -127,22 +129,34 @@ async def generate_rfile(
         variable_values=params,
     )
 
-    rendered_template = rfile.get_rendered_template(at=at, params={"data": result.data, "params": params})
+    if result.errors:
+        errors = []
+        for error in result.errors:
+            errors.append(
+                {
+                    "message": f"GraphQLQuery {query.name.value}: {error.message}",
+                    "path": error.path,
+                    "locations": [{"line": location.line, "column": location.column} for location in error.locations],
+                }
+            )
 
-    if save_on_disk and rfile.has_output_defined:
+        return JSONResponse(status_code=500, content={"errors": errors})
 
-        # Write to File
-        with open(rfile.output_filelocation, "w") as filehandle:
-            filehandle.write(rendered_template)
+    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
-        # Push to Git
-        repo = rfile.output_repository.get()
-        git_repo = repo.get_git_repo_branch()
-        git_repo.index.add([rfile.output_path.value])
-        git_repo.index.commit(f"Add {rfile.output_path.value} by infrahub")
-        git_repo.remotes.origin.push()
+    response: InfrahubRPCResponse = await rpc_client.call(
+        message=InfrahubTransformRPC(
+            action=TransformMessageAction.JINJA2,
+            repository=repository,
+            data=result.data,
+            transform_location=rfile.template_path.value,
+        )
+    )
 
-    return rendered_template
+    if response.status == RPCStatusCode.OK.value:
+        return response.response["rendered_template"]
+
+    return JSONResponse(status_code=response.status, content={"errors": response.errors})
 
 
 @app.get("/query/{query_id}")

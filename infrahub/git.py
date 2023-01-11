@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Set, Union, Optional
 
+import jinja2
+
 from uuid import UUID
 from pydantic import BaseModel, validator
 from git import Repo
@@ -19,8 +21,15 @@ from infrahub_client import InfrahubClient
 
 import infrahub.config as config
 from infrahub.lock import registry as lock_registry
-from infrahub.exceptions import RepositoryError
-from infrahub.message_bus.events import InfrahubGitRPC, InfrahubRPCResponse, GitMessageAction, RPCStatusCode
+from infrahub.exceptions import RepositoryError, TransformError, TransformNotFoundError
+from infrahub.message_bus.events import (
+    InfrahubGitRPC,
+    InfrahubRPCResponse,
+    GitMessageAction,
+    InfrahubTransformRPC,
+    TransformMessageAction,
+    RPCStatusCode,
+)
 
 LOGGER = logging.getLogger("infrahub.git")
 
@@ -86,6 +95,22 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
 
     return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+
+
+async def handle_git_transform_message(message: InfrahubTransformRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+
+    LOGGER.debug(
+        f"Will process Transform RPC message : {message.action}, {message.repository_name} : {message.transform_location}"
+    )
+
+    if message.action == TransformMessageAction.JINJA2.value:
+
+        repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+        rendered_template = await repo.render_jinja2_template(
+            commit=message.commit, location=message.transform_location, data=message.data or {}
+        )
+
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
 
 
 def get_repositories_directory() -> str:
@@ -473,7 +498,7 @@ class InfrahubRepository(BaseModel):
 
         return branches
 
-    def get_commit_value(self, branch_name, remote: bool = False):
+    def get_commit_value(self, branch_name, remote: bool = False) -> str:
 
         branches = None
         if remote:
@@ -484,7 +509,7 @@ class InfrahubRepository(BaseModel):
         if not branch_name in branches:
             raise ValueError(f"Branch {branch_name} not found.")
 
-        return branches[branch_name].commit
+        return str(branches[branch_name].commit)
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
@@ -800,6 +825,10 @@ class InfrahubRepository(BaseModel):
 
     async def import_objects_from_files(self, branch_name: str):
 
+        if not self.client:
+            LOGGER.warning("Unable to import the objects from the files because a valid client hasn't been provided.")
+            return
+
         await self.import_all_graphql_query(branch_name=branch_name)
         await self.import_all_yaml_files(branch_name=branch_name)
 
@@ -810,7 +839,9 @@ class InfrahubRepository(BaseModel):
         # For now we query all repositories and we filter down to this one
         # We'll need to revisit that once we have a better client library
         rfiles_in_graph = await self.client.get_list_rfiles(branch_name=branch_name)
-        rfiles_in_repo = {key: value for key, value in rfiles_in_graph.items() if value["repository"] == str(self.id)}
+        rfiles_in_repo = {
+            key: value for key, value in rfiles_in_graph.items() if value.template_repository == str(self.id)
+        }
 
         for rfile_name, rfile in data.items():
 
@@ -825,9 +856,10 @@ class InfrahubRepository(BaseModel):
                 await self.client.create_rfile(
                     branch_name=branch_name,
                     name=rfile_name,
-                    description=rfile["description"],
-                    template_path=rfile["template_path"],
-                    template_repository=rfile["template_repository"],
+                    description=rfile.get("description", ""),
+                    query=rfile.get("query"),
+                    template_path=rfile.get("template_path"),
+                    template_repository=str(rfile.get("template_repository")),
                 )
                 continue
 
@@ -934,6 +966,22 @@ class InfrahubRepository(BaseModel):
                 files.extend(glob.glob(f"{branch_wt.directory}/**/*.{ext}", recursive=recursive))
                 files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{ext}", recursive=recursive))
         return files
+
+    async def render_jinja2_template(self, commit: str, location: str, data: dict):
+
+        commit_worktree = self.get_worktree(identifier=commit)
+
+        if not os.path.exists(os.path.join(commit_worktree.directory, location)):
+            raise TransformNotFoundError(repository_name=self.name, commit=commit, location=location)
+
+        try:
+            templateLoader = jinja2.FileSystemLoader(searchpath=commit_worktree.directory)
+            templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
+            template = templateEnv.get_template(location)
+            return template.render(**data)
+        except Exception as exc:
+            LOGGER.critical(exc, exc_info=True)
+            raise TransformError(repository_name=self.name, commit=commit, location=location, message=exc.message)
 
     # def run_checks(self, rebase: bool = True) -> set(bool, List[str]):
     #     """Execute the checks for this repository using the infrahub cli.

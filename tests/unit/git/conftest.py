@@ -18,7 +18,7 @@ from infrahub.message_bus.events import (
     InfrahubGitRPC,
     GitMessageAction,
 )
-from infrahub_client import MUTATION_BRANCH_CREATE, QUERY_ALL_BRANCHES
+from infrahub_client import MUTATION_BRANCH_CREATE, QUERY_ALL_BRANCHES, QUERY_ALL_GRAPHQL_QUERIES
 
 
 @pytest.fixture
@@ -260,6 +260,76 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
 
 
 @pytest.fixture
+async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
+    """Git Repository with git_upstream_repo_02 as remote
+    The repo has 2 local branches : main and branch01
+    The main branch contains 2 jinja templates, 1 valid and 1 not valid.
+    The content of the first (valid) template, has been modified in the branch branch01
+
+    TODO At some point if would be good to include all these changes in the base repository
+    """
+
+    upstream = Repo(git_upstream_repo_02["path"])
+
+    top_level_files = os.listdir(git_upstream_repo_02["path"])
+
+    files_to_add = [
+        {
+            "name": "template01.tpl.j2",
+            "content": """
+{% for item in items %}
+{{ item }}
+{% endfor %}
+""",
+        },
+        {
+            "name": "template02.tpl.j2",
+            "content": """
+{% for item in items %}
+{{ item }}
+{% end %}
+""",
+        },
+    ]
+
+    for file_to_add in files_to_add:
+        file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
+        with open(file_path, "w") as file:
+            file.write(file_to_add["content"])
+
+        upstream.index.add(file_to_add["name"])
+    upstream.index.commit("Add 2 Jinja templates")
+
+    # Create a new branch branch01
+    #  Update the first jinja template in the branch
+    upstream.git.branch("branch01")
+    upstream.git.checkout("branch01")
+
+    file_to_add = files_to_add[0]
+    file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
+    new_content = """
+{% for item in items %}
+ - {{ item }} -
+{% endfor %}
+"""
+    with open(file_path, "w") as file:
+        file.write(new_content)
+    upstream.index.add(file_to_add["name"])
+    upstream.index.commit("Update the first jinja template in the branch")
+    upstream.git.checkout("main")
+
+    # Clone the repo and create a local branch for branch01
+    repo = await InfrahubRepository.new(
+        id=uuid.uuid4(),
+        name=git_upstream_repo_02["name"],
+        location=f"file:/{git_upstream_repo_02['path']}",
+    )
+    await repo.create_branch_in_git(branch_name="branch01")
+
+    return repo
+
+
+@pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     response = {
@@ -328,6 +398,16 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     request_content = json.dumps(
         {"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01", "background_execution": True}}
     ).encode()
+
+    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_list_graphql_query_empty(httpx_mock: HTTPXMock) -> HTTPXMock:
+
+    response = {"data": {"graphql_query": []}}
+    request_content = json.dumps({"query": QUERY_ALL_GRAPHQL_QUERIES}).encode()
 
     httpx_mock.add_response(method="POST", json=response, match_content=request_content)
     return httpx_mock

@@ -11,7 +11,7 @@ from infrahub.git import (
     BRANCHES_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
 )
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import RepositoryError, TransformError, TransformNotFoundError
 from infrahub_client import MUTATION_COMMIT_UPDATE
 
 
@@ -313,7 +313,9 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
     assert True
 
 
-async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
+async def test_sync_new_branch(
+    client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query, mock_list_graphql_query_empty
+):
 
     repo = git_repo_03
 
@@ -344,3 +346,50 @@ async def test_sync_updated_branch(client, git_repo_04: InfrahubRepository):
     await repo.sync()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
+
+
+async def test_render_jinja2_template_success(client, git_repo_jinja: InfrahubRepository):
+
+    repo = git_repo_jinja
+
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+    commit_branch = repo.get_commit_value(branch_name="branch01", remote=False)
+    assert commit_main != commit_branch
+
+    data = {"items": ["consilium", "potum", "album", "magnum"]}
+    expected_response = """
+consilium
+potum
+album
+magnum
+"""
+    # Render in both branches based on the commit and validate that we are getting different results
+    rendered_tpl_main = await repo.render_jinja2_template(commit=commit_main, location="template01.tpl.j2", data=data)
+    assert rendered_tpl_main == expected_response
+
+    rendered_tpl_branch = await repo.render_jinja2_template(
+        commit=commit_branch, location="template01.tpl.j2", data=data
+    )
+    assert rendered_tpl_main != rendered_tpl_branch
+
+
+async def test_render_jinja2_template_error(client, git_repo_jinja: InfrahubRepository):
+
+    repo = git_repo_jinja
+
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    with pytest.raises(TransformError) as exc:
+        rendered_tpl_main = await repo.render_jinja2_template(commit=commit_main, location="template02.tpl.j2", data={})
+
+    assert "The innermost block that needs to be closed" in str(exc.value)
+
+
+async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRepository):
+
+    repo = git_repo_jinja
+
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    with pytest.raises(TransformNotFoundError) as exc:
+        rendered_tpl_main = await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})

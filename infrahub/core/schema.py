@@ -597,7 +597,6 @@ core_models = {
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
                 {"name": "template_path", "kind": "String"},
-                {"name": "output_path", "kind": "String", "optional": True},
             ],
             "relationships": [
                 {
@@ -605,14 +604,9 @@ core_models = {
                     "peer": "Repository",
                     "identifier": "rfile_template_repository",
                     "cardinality": "one",
+                    "optional": False,
                 },
-                {
-                    "name": "output_repository",
-                    "peer": "Repository",
-                    "identifier": "rfile_output_repository",
-                    "cardinality": "one",
-                },
-                {"name": "query", "peer": "GraphQLQuery", "cardinality": "one"},
+                {"name": "query", "peer": "GraphQLQuery", "cardinality": "one", "optional": False},
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
             ],
         },

@@ -135,10 +135,11 @@ mutation($id: String!, $name: String!, $description: String!, $query: String!) {
 """
 
 MUTATION_RFILE_CREATE = """
-mutation($name: String!, $description: String!, $template_path: String!, $template_repository: String!) {
+mutation($name: String!, $description: String!, $template_path: String!, $template_repository: String!, $query: String!) {
   rfile_create(data: {
     name: { value: $name },
     description: { value: $description },
+    query: { id: $query }
     template_path: { value: $template_path }
     template_repository: { id: $template_repository }}){
         ok
@@ -368,6 +369,7 @@ class InfrahubClient:
         self,
         branch_name: str,
         name: str,
+        query: str,
         template_path: str,
         template_repository: str,
         description: str = "",
@@ -378,6 +380,7 @@ class InfrahubClient:
             "description": description,
             "template_path": template_path,
             "template_repository": template_repository,
+            "query": query,
         }
         data = await self.execute_graphql(query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name)
 

@@ -34,10 +34,9 @@ class MessageType(str, BaseEnum):
     <type>.<branch_name>.<action>
     """
     GIT = "git"  # ACTIONS: pull, push, rebase, merge
-    """
-    <type>.<repository_id>.<action>
-    """
     RPC_RESPONSE = "rpc-response"
+    TRANSFORMATION = "transformation"  # jinja, python
+
     # INTERNAL = "internal"   # cache
 
 
@@ -46,6 +45,7 @@ MESSAGE_MAPPING = {
     MessageType.SCHEMA: "InfrahubSchemaMessage",
     MessageType.BRANCH: "InfrahubBranchMessage",
     MessageType.GIT: "InfrahubGitRPC",
+    MessageType.TRANSFORMATION: "InfrahubTransformRPC",
     MessageType.RPC_RESPONSE: "InfrahubRPCResponse",
 }
 
@@ -78,6 +78,11 @@ class GitMessageAction(str, BaseEnum):
     DIFF = "diff"
     REPO_ADD = "repo-add"
     BRANCH_ADD = "branch-add"
+
+
+class TransformMessageAction(str, BaseEnum):
+    JINJA2 = "jinja2"
+    PYTHON = "python"
 
 
 class RPCStatusCode(int, BaseEnum):
@@ -337,6 +342,65 @@ class InfrahubGitRPC(InfrahubRPC):
         body["repository_id"] = self.repository_id
         body["repository_name"] = self.repository_name
         body["location"] = self.location
+        body["params"] = self.params
+
+        return body
+
+
+class InfrahubTransformRPC(InfrahubRPC):
+
+    type = MessageType.TRANSFORMATION
+    actions = TransformMessageAction
+
+    def __init__(
+        self,
+        transform_location: str,
+        data: dict,
+        repository: Node = None,
+        repository_name: str = None,
+        repository_id: str = None,
+        commit: str = None,
+        params: dict = None,
+        *args,
+        **kwargs,
+    ):
+
+        if not repository and not repository_id:
+            raise ValueError("Either Repository or repository_id must be provided for InfrahubTransformRPC.")
+
+        if not repository and not repository_name:
+            raise ValueError("Either Repository or repository_name must be provided for InfrahubTransformRPC.")
+
+        if not repository and not commit:
+            raise ValueError("Either Repository or commit must be provided for InfrahubTransformRPC.")
+
+        super().__init__(*args, **kwargs)
+
+        self.repository = repository
+        self.repository_id = repository_id
+        self.repository_name = repository_name
+        self.commit = commit
+
+        if repository and not repository_id:
+            self.repository_id = repository.id
+        if repository and not repository_name:
+            self.repository_name = repository.name.value
+        if repository and not commit:
+            self.commit = repository.commit.value
+
+        self.params = params or {}
+        self.data = data
+        self.transform_location = transform_location
+
+    def generate_message_body(self) -> dict:
+        """Generate the body of the message as a dict."""
+
+        body = super().generate_message_body()
+        body["repository_id"] = self.repository_id
+        body["repository_name"] = self.repository_name
+        body["commit"] = self.commit
+        body["transform_location"] = self.transform_location
+        body["data"] = self.data
         body["params"] = self.params
 
         return body
