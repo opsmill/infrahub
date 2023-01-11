@@ -1,5 +1,3 @@
-import pytest
-
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager

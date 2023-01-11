@@ -1,5 +1,4 @@
 import graphene
-import pytest
 from graphql import graphql
 from infrahub.core.manager import NodeManager
 

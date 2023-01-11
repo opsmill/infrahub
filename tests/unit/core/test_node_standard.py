@@ -1,5 +1,3 @@
-import pytest
-
 from infrahub.core.branch import Branch
 
 

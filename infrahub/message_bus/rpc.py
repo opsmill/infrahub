@@ -4,16 +4,12 @@ import asyncio
 import uuid
 from typing import MutableMapping, Any
 
-from aio_pika import Message, connect
 from aio_pika.abc import (
     AbstractChannel,
-    AbstractConnection,
     AbstractIncomingMessage,
     AbstractQueue,
     AbstractRobustConnection,
 )
-
-import infrahub.config as config
 
 from . import get_broker
 from .events import InfrahubRPC, InfrahubMessage

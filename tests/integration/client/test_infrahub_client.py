@@ -1,4 +1,3 @@
-import os
 import pytest
 
 from infrahub.main import app
@@ -18,7 +17,7 @@ class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):
 
-        branch1 = await create_branch(branch_name="branch01", session=session)
+        await create_branch(branch_name="branch01", session=session)
 
         query_string = """
         query {
@@ -82,7 +81,7 @@ class TestInfrahubClient:
         assert len(queries) == 1
 
         ifc = await InfrahubClient.init(test_client=client)
-        query = await ifc.create_graphql_query(branch_name=branch_name, name="test_query", query=query_string)
+        await ifc.create_graphql_query(branch_name=branch_name, name="test_query", query=query_string)
 
         queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
         assert len(queries) == 2
@@ -105,7 +104,7 @@ class TestInfrahubClient:
         assert len(rfiles) == 1
 
         ifc = await InfrahubClient.init(test_client=client)
-        query = await ifc.create_rfile(
+        await ifc.create_rfile(
             branch_name=branch_name,
             name="rfile1",
             description="test rfile2",

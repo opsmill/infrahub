@@ -1,5 +1,3 @@
-import pytest
-
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.manager import NodeManager

@@ -1,5 +1,6 @@
 import sys
 from typing import Optional
+import logging
 
 import typer
 
@@ -17,6 +18,9 @@ def unit(
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all unit tests."""
+
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+
     if not path:
         path = "./tests/unit"
 
@@ -39,6 +43,7 @@ def integration(
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all integration tests."""
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
 
     if not path:
         path = "./tests/integration"
@@ -61,6 +66,8 @@ def client(
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all tests for the infrahub client."""
+
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
 
     if not path:
         path = "./tests/client"

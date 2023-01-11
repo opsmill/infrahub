@@ -154,7 +154,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         # Create the new repository in the filesystem.
-        resp = await rpc_client.call(InfrahubGitRPC(action=GitMessageAction.REPO_ADD, repository=obj))
+        await rpc_client.call(InfrahubGitRPC(action=GitMessageAction.REPO_ADD, repository=obj))
 
         # TODO Validate that the creation of the repository went as expected
         ok = True
@@ -229,7 +229,7 @@ class BranchCreate(Mutation):
             repositories = await NodeManager.query(session=session, schema="Repository")
 
             for repo in repositories:
-                resp = await rpc_client.call(
+                await rpc_client.call(
                     message=InfrahubGitRPC(
                         action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
                     ),

@@ -3,7 +3,6 @@ import logging
 import signal
 import asyncio
 from asyncio import run as aiorun
-from typing import List, Dict
 
 import typer
 from aio_pika import IncomingMessage
@@ -25,20 +24,14 @@ from infrahub.git import (
     handle_git_rpc_message,
     handle_git_transform_message,
     initialize_repositories_directory,
-    get_repositories_directory,
 )
 from infrahub.lock import registry as lock_registry
 
 app = typer.Typer()
 
-# logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("aio_pika").setLevel(logging.ERROR)
-logging.getLogger("aiormq").setLevel(logging.ERROR)
-logging.getLogger("git").setLevel(logging.ERROR)
-
 
 def signal_handler(signal, frame):
-    print("\Git Agent terminated by user.")
+    print("Git Agent terminated by user.")
     sys.exit(0)
 
 
@@ -113,7 +106,6 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
 
 async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
 
-    repos_dir = get_repositories_directory()
     initialize_repositories_directory()
 
     # TODO Validate access to the GraphQL API with the proper credentials
@@ -126,7 +118,7 @@ async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
                 repo = await InfrahubRepository.init(
                     id=repository.id, name=repository.name, location=repository.location, client=client
                 )
-            except RepositoryError as exc:
+            except RepositoryError:
                 repo = await InfrahubRepository.new(
                     id=repository.id, name=repository.name, location=repository.location, client=client
                 )
@@ -167,8 +159,6 @@ async def _start(listen: str, port: int, debug: bool, interval: int, config_file
 
     config.load_and_exit(config_file)
 
-    loop = asyncio.get_event_loop()
-
     client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address)
 
     await initialize_git_agent(client=client, log=log)
@@ -189,4 +179,10 @@ def start(
     debug: bool = False,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
+    # logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("aio_pika").setLevel(logging.ERROR)
+    logging.getLogger("aiormq").setLevel(logging.ERROR)
+    logging.getLogger("git").setLevel(logging.ERROR)
+
     aiorun(_start(listen=listen, port=port, interval=interval, debug=debug, config_file=config_file))

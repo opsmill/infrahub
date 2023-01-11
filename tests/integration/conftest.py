@@ -1,16 +1,13 @@
 import os
 import asyncio
 import pytest
-import pytest_asyncio
 
 from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
 
-from infrahub.core.node import Node
-from infrahub.core.initialization import first_time_initialization, initialization, create_branch
+from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.utils import delete_all_nodes
-from infrahub.test_data import dataset01 as ds01
 
 NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
 NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")

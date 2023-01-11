@@ -1,5 +1,3 @@
-import pytest
-
 from infrahub.core import registry
 from infrahub.core.account import validate_token
 from infrahub.core.node import Node

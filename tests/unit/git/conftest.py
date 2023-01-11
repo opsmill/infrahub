@@ -268,8 +268,6 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> Infrahu
 
     upstream = Repo(git_upstream_repo_02["path"])
 
-    top_level_files = os.listdir(git_upstream_repo_02["path"])
-
     files_to_add = [
         {
             "name": "template01.tpl.j2",

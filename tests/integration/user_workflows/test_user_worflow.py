@@ -1,8 +1,6 @@
 import pytest
 import pendulum
 
-import infrahub.config as config
-
 from infrahub.main import app
 from fastapi.testclient import TestClient
 

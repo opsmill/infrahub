@@ -1,5 +1,3 @@
-import dataclasses
-
 from graphene import Boolean, Field, Int, List, ObjectType, String, DateTime
 from graphene.types.objecttype import ObjectTypeOptions
 from graphene.types.generic import GenericScalar

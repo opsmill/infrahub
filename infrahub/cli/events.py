@@ -10,16 +10,8 @@ from infrahub.database import get_db
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.message_bus import get_broker
-from infrahub.message_bus.events import (
-    get_event_exchange,
-    MessageType,
-    InfrahubMessage,
-    InfrahubDataMessage,
-    InfrahubGitRPC,
-)
-from infrahub.message_bus.rpc import InfrahubRpcClient
+from infrahub.message_bus.events import get_event_exchange, MessageType, InfrahubMessage, InfrahubDataMessage
 from rich import print as rprint
-from rich import inspect
 
 app = typer.Typer()
 

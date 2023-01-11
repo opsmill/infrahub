@@ -1,5 +1,3 @@
-import pytest
-
 from infrahub.core import get_branch
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeListGetLocalAttributeValueQuery, NodeListGetAttributeQuery

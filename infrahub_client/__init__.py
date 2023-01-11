@@ -1,9 +1,7 @@
 import asyncio
 from typing import List, Dict, Optional
 
-import typer
 from pydantic import BaseModel
-from rich.logging import RichHandler
 
 import httpx
 
@@ -268,7 +266,7 @@ class InfrahubClient:
 
         variables = {"branch_name": branch_name, "background_execution": background_execution}
 
-        response = await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
+        await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
 
         return True
 
@@ -331,9 +329,7 @@ class InfrahubClient:
     async def create_graphql_query(self, branch_name: str, name: str, query: str, description: str = "") -> bool:
 
         variables = {"name": name, "description": description, "query": query}
-        data = await self.execute_graphql(
-            query=MUTATION_GRAPHQL_QUERY_CREATE, variables=variables, branch_name=branch_name
-        )
+        await self.execute_graphql(query=MUTATION_GRAPHQL_QUERY_CREATE, variables=variables, branch_name=branch_name)
 
         return True
 
@@ -342,9 +338,7 @@ class InfrahubClient:
     ) -> bool:
 
         variables = {"id": id, "name": name, "description": description, "query": query}
-        data = await self.execute_graphql(
-            query=MUTATION_GRAPHQL_QUERY_UPDATE, variables=variables, branch_name=branch_name
-        )
+        await self.execute_graphql(query=MUTATION_GRAPHQL_QUERY_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
 
@@ -382,7 +376,7 @@ class InfrahubClient:
             "template_repository": template_repository,
             "query": query,
         }
-        data = await self.execute_graphql(query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name)
 
         return True
 
@@ -391,7 +385,7 @@ class InfrahubClient:
     ) -> bool:
 
         variables = {"id": id, "name": name, "description": description, "template_path": template_path}
-        data = await self.execute_graphql(query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
 

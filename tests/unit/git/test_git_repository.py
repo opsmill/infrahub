@@ -76,9 +76,7 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
 async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmpdir):
 
     with pytest.raises(RepositoryError) as exc:
-        repo = await InfrahubRepository.new(
-            id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=f"file:/{tmpdir}"
-        )
+        await InfrahubRepository.new(id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=f"file:/{tmpdir}")
 
     assert "Unable to clone" in str(exc.value)
 
@@ -86,7 +84,7 @@ async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmpdir):
 async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmpdir):
 
     with pytest.raises(RepositoryError) as exc:
-        repo = await InfrahubRepository.new(
+        await InfrahubRepository.new(
             id=uuid.uuid4(),
             name=git_upstream_repo_01["name"],
             location=f"file:/{git_upstream_repo_01['path']}",
@@ -169,7 +167,7 @@ async def test_get_commit_value(git_repo_01: InfrahubRepository):
     assert repo.get_commit_value(branch_name="branch01", remote=True) == "92700512b5b16c0144f7fd2869669273577f1bd8"
     assert repo.get_commit_value(branch_name="branch02", remote=True) == "49ac5e2a0f00b5eab6aedfdb19a1ef8127507f72"
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ValueError):
         repo.get_commit_value(branch_name="branch01", remote=False)
 
 
@@ -380,7 +378,7 @@ async def test_render_jinja2_template_error(client, git_repo_jinja: InfrahubRepo
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
     with pytest.raises(TransformError) as exc:
-        rendered_tpl_main = await repo.render_jinja2_template(commit=commit_main, location="template02.tpl.j2", data={})
+        await repo.render_jinja2_template(commit=commit_main, location="template02.tpl.j2", data={})
 
     assert "The innermost block that needs to be closed" in str(exc.value)
 
@@ -391,5 +389,5 @@ async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRe
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(TransformNotFoundError) as exc:
-        rendered_tpl_main = await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
+    with pytest.raises(TransformNotFoundError):
+        await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})

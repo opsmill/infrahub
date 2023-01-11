@@ -1,5 +1,3 @@
-import pytest
-
 from neo4j import AsyncSession
 
 from infrahub.core.query import Query

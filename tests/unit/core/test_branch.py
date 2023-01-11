@@ -1,5 +1,3 @@
-import pytest
-
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch, Diff
 from infrahub.core.node import Node

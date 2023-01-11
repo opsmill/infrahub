@@ -1,5 +1,3 @@
-import pytest
-
 from deepdiff import DeepDiff
 
 from infrahub.core import registry

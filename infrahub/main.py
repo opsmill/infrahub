@@ -1,7 +1,6 @@
 import os
 import time
 import logging
-import json
 from typing import Optional
 
 import graphene

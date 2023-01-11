@@ -1,26 +1,16 @@
 import pytest
 
 import time
-import json
-from copy import copy
 from datetime import datetime
-
 import uuid
-
 import pickle
 
-from infrahub.message_bus.events import InfrahubMessage
+from aio_pika import DeliveryMode, Message
+
 from infrahub.message_bus.events import (
-    get_event_exchange,
     MessageType,
-    InfrahubMessage,
-    InfrahubDataMessage,
-    InfrahubGitRPC,
     DataMessageAction,
 )
-
-
-from aio_pika import DeliveryMode, Message
 
 
 @pytest.fixture

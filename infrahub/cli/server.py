@@ -1,6 +1,6 @@
 import typer
 import uvicorn
-
+import logging
 
 app = typer.Typer()
 
@@ -11,6 +11,8 @@ def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
 
     # it's not possible to pass the location of the config file directly to uvicorn.run
     # so we must rely on the environment variable
+
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
 
     if debug:
         uvicorn.run(

@@ -3,7 +3,7 @@ from infrahub_client import InfrahubClient, BranchData, RepositoryData
 
 async def test_init_client():
 
-    client = await InfrahubClient.init()
+    await InfrahubClient.init()
 
     assert True
 

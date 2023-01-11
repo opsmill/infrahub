@@ -5,7 +5,6 @@ import importlib
 from typing import TypeVar, Generator, Any, TYPE_CHECKING
 
 import pickle
-import json
 from aio_pika import DeliveryMode, ExchangeType, Message, IncomingMessage
 from aio_pika.patterns.base import Base as PickleSerializer
 

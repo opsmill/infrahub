@@ -4,7 +4,6 @@ import git
 import glob
 import os
 import yaml
-import asyncio
 import shutil
 import logging
 from pathlib import Path
@@ -63,7 +62,7 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
 
         async with lock_registry.get(message.repository_name):
             try:
-                ok = await repo.create_branch_in_git(branch_name=message.params["branch_name"])
+                await repo.create_branch_in_git(branch_name=message.params["branch_name"])
             except RepositoryError as exc:
                 return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
@@ -79,7 +78,7 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
 
     elif message.action == GitMessageAction.MERGE.value:
         async with lock_registry.get(message.repository_name):
-            ok = repo.merge(source_branch=message.params["branch_name"])
+            repo.merge(source_branch=message.params["branch_name"])
             return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
 
     elif message.action == GitMessageAction.REBASE.value:
@@ -515,7 +514,7 @@ class InfrahubRepository(BaseModel):
         else:
             branches = self.get_branches_from_local(include_worktree=False)
 
-        if not branch_name in branches:
+        if branch_name not in branches:
             raise ValueError(f"Branch {branch_name} not found.")
 
         return str(branches[branch_name].commit)
@@ -854,7 +853,7 @@ class InfrahubRepository(BaseModel):
 
         for rfile_name, rfile in data.items():
 
-            ## Insert the UUID of the repository in case they are referencing the local repo
+            # Insert the UUID of the repository in case they are referencing the local repo
             for key in rfile.keys():
                 if "repository" in key:
                     if rfile[key] == "self":
