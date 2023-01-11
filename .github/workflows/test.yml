@@ -18,8 +18,10 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
-      - name: "Setup environment"
+      - name: "Setup Python environment"
         run: "pip install poetry==1.1.15 toml invoke"
+      - name: "Setup Git"
+        run: "git config --global --add safe.directory /tmp/pytest-of-runner"
       - name: "Start database"
         run: "invoke dev-start"
       - name: "Install project"
