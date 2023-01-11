@@ -38,14 +38,13 @@ from graphql import (
 )
 from graphql.language.ast import DocumentNode, OperationDefinitionNode
 from graphql.utilities import get_operation_ast
+from neo4j import AsyncSession
 from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
-
-from neo4j import AsyncSession
 
 try:
     # graphql-core==3.2.*
@@ -63,7 +62,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
-
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"

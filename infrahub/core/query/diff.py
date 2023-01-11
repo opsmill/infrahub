@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Generator, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator, List
 
-
-from infrahub.core.query import Query, QueryType, QueryResult
+from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:

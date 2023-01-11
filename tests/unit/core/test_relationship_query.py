@@ -1,16 +1,15 @@
 import pytest
-
 from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.node import Node
-from infrahub.core.relationship import Relationship
 from infrahub.core.query.relationship import (
-    RelationshipQuery,
-    RelationshipGetPeerQuery,
     RelationshipCreateQuery,
     RelationshipDeleteQuery,
+    RelationshipGetPeerQuery,
+    RelationshipQuery,
 )
+from infrahub.core.relationship import Relationship
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 

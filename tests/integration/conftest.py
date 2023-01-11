@@ -1,11 +1,10 @@
-import os
 import asyncio
-import pytest
+import os
 
+import pytest
 from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
-
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.utils import delete_all_nodes
 

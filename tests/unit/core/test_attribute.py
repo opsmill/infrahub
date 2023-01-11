@@ -1,8 +1,8 @@
 import pytest
 
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.attribute import String
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 
 
 @pytest.mark.skip(reason="Currently not working need to refactor attribute property for Async")

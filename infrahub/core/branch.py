@@ -1,29 +1,32 @@
 from __future__ import annotations
-from collections import defaultdict
 
-from uuid import UUID
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Any, Union, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from uuid import UUID
 
 from pydantic import validator
 
-
 import infrahub.config as config
-from infrahub.core.utils import element_id_to_id
-from infrahub.core.constants import RelationshipStatus, DiffAction
+from infrahub.core.constants import DiffAction, RelationshipStatus
+from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
-    DiffNodeQuery,
     DiffAttributeQuery,
-    DiffRelationshipQuery,
+    DiffNodeQuery,
     DiffRelationshipPropertyQuery,
+    DiffRelationshipQuery,
 )
-from infrahub.core.query.node import NodeListGetAttributeQuery, NodeDeleteQuery, NodeListGetInfoQuery
+from infrahub.core.query.node import (
+    NodeDeleteQuery,
+    NodeListGetAttributeQuery,
+    NodeListGetInfoQuery,
+)
 from infrahub.core.query.relationship import RelationshipListGetPropertiesQuery
-from infrahub.core.node.standard import StandardNode
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
+    element_id_to_id,
     update_relationships_to,
 )
 from infrahub.database import execute_read_query_async

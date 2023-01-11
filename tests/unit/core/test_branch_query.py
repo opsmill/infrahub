@@ -1,6 +1,9 @@
 from infrahub.core import get_branch
+from infrahub.core.query.diff import (
+    DiffRelationshipPropertyQuery,
+    DiffRelationshipQuery,
+)
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.query.diff import DiffRelationshipQuery, DiffRelationshipPropertyQuery
 
 
 async def test_DiffRelationshipQuery(session, base_dataset_02):

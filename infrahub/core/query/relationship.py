@@ -1,23 +1,23 @@
 from __future__ import annotations
-from collections import defaultdict
 
 import inspect
+from collections import defaultdict
 from dataclasses import dataclass
-
+from typing import TYPE_CHECKING, Dict, Generator, List, Type, Union
 from uuid import UUID, uuid4
-from typing import Union, Type, List, Dict, Generator, TYPE_CHECKING
 
 from neo4j.graph import Relationship as Neo4jRelationship
+
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
-    from infrahub.core.relationship import Relationship
-    from infrahub.core.node import Node
-    from infrahub.core.schema import RelationshipSchema
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
+    from infrahub.core.relationship import Relationship
+    from infrahub.core.schema import RelationshipSchema
 
 
 @dataclass

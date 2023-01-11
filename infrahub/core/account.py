@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from infrahub.core import get_branch
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
 
 

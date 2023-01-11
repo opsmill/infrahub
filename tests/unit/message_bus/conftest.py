@@ -1,16 +1,12 @@
-import pytest
-
-import time
-from datetime import datetime
-import uuid
 import pickle
+import time
+import uuid
+from datetime import datetime
 
+import pytest
 from aio_pika import DeliveryMode, Message
 
-from infrahub.message_bus.events import (
-    MessageType,
-    DataMessageAction,
-)
+from infrahub.message_bus.events import DataMessageAction, MessageType
 
 
 @pytest.fixture

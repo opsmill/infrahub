@@ -1,17 +1,22 @@
-import typer
-
 import asyncio
 from asyncio import run as aiorun
 
+import pytest
+import typer
 from aio_pika import IncomingMessage
+from rich import print as rprint
 
 import infrahub.config as config
-from infrahub.database import get_db
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
+from infrahub.database import get_db
 from infrahub.message_bus import get_broker
-from infrahub.message_bus.events import get_event_exchange, MessageType, InfrahubMessage, InfrahubDataMessage
-from rich import print as rprint
+from infrahub.message_bus.events import (
+    InfrahubDataMessage,
+    InfrahubMessage,
+    MessageType,
+    get_event_exchange,
+)
 
 app = typer.Typer()
 

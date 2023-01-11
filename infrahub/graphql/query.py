@@ -1,6 +1,6 @@
-from graphene import Boolean, Field, Int, List, ObjectType, String, DateTime
-from graphene.types.objecttype import ObjectTypeOptions
+from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
+from graphene.types.objecttype import ObjectTypeOptions
 
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch

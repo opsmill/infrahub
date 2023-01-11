@@ -1,4 +1,4 @@
-from infrahub_client import InfrahubClient, BranchData, RepositoryData
+from infrahub_client import BranchData, InfrahubClient, RepositoryData
 
 
 async def test_init_client():

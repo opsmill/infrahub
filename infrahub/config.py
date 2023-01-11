@@ -7,7 +7,6 @@ from pathlib import Path
 import toml
 from pydantic import BaseSettings, Field, ValidationError
 
-
 SETTINGS = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"

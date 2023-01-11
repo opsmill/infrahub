@@ -1,8 +1,10 @@
-from uuid import UUID
-from typing import Any
-from itertools import groupby
 
+import os
+from distutils.dir_util import copy_tree
 from enum import Enum, EnumMeta
+from itertools import groupby
+from typing import Any
+from uuid import UUID
 
 
 def is_valid_uuid(value: Any) -> bool:
@@ -29,6 +31,18 @@ def duplicates(input_list: list) -> list:
 def intersection(list1, list2) -> list:
     """Calculate the intersection between 2 lists."""
     return list(set(list1) & set(list2))
+
+def get_fixtures_dir():
+    """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
+    here = os.path.abspath(os.path.dirname(__file__))
+    fixtures_dir = os.path.join(here, "..", "..", "tests", "fixtures")
+    return fixtures_dir
+
+
+def copy_project_to_tmp_dir(project_name):
+    """Function used to copy data to isolated file system."""
+    fixtures_dir = get_fixtures_dir()
+    copy_tree(os.path.join(fixtures_dir, project_name), "./")
 
 
 class MetaEnum(EnumMeta):

@@ -1,13 +1,11 @@
-import pendulum
-
 import asyncio
+
+import pendulum
 import pytest
 import pytest_asyncio
 
 import infrahub.config as config
-
 from infrahub.core import registry
-from infrahub.database import get_db
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
@@ -15,12 +13,11 @@ from infrahub.core.initialization import (
     initialization,
 )
 from infrahub.core.manager import SchemaManager
-from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.node import Node
+from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import execute_write_query_async
+from infrahub.database import execute_write_query_async, get_db
 from infrahub.test_data import dataset01 as ds01
-
 
 # NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
 # NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")

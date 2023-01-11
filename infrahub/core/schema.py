@@ -12,6 +12,7 @@ from infrahub.utils import duplicates
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
 
 ATTRIBUTES_MAPPING = {

@@ -1,6 +1,6 @@
+import logging
 import sys
 from typing import Optional
-import logging
 
 import typer
 
@@ -10,6 +10,7 @@ app = typer.Typer()
 
 TEST_DATABASE = "infrahub.testing"
 
+# pytest: disable=import-outside-toplevel
 
 @app.command()
 def unit(

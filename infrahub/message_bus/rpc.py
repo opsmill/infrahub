@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import MutableMapping, Any
+from typing import Any, MutableMapping
 
 from aio_pika.abc import (
     AbstractChannel,
@@ -12,7 +12,7 @@ from aio_pika.abc import (
 )
 
 from . import get_broker
-from .events import InfrahubRPC, InfrahubMessage
+from .events import InfrahubMessage, InfrahubRPC
 
 
 class InfrahubRpcClient:

@@ -1,8 +1,8 @@
 import logging
 
-from infrahub.core.node import Node
-
 from neo4j import AsyncSession
+
+from infrahub.core.node import Node
 
 # from infrahub.core.account import Account, AccountToken, Group
 
@@ -81,8 +81,6 @@ async def load_data(session: AsyncSession):
     # Create User Accounts and Groups
     # ------------------------------------------
     groups_dict = {}
-    accounts_dict = {}
-    perms_dict = {}
     tags_dict = {}
 
     # for perm in PERMS:
@@ -128,7 +126,6 @@ async def load_data(session: AsyncSession):
     # ------------------------------------------
     statuses_dict = {}
     roles_dict = {}
-    device_profiles_dict = {}
 
     LOGGER.info("Creating Site")
     site_hq = await Node.init(session=session, schema="Location")
@@ -167,7 +164,6 @@ async def load_data(session: AsyncSession):
 
         status = statuses_dict[device[1]]
 
-        profile_id = None
         # if device[3]:
         #     # profile = device_profiles_dict[device[3]]
         #     profile_id = device_profiles_dict[device[3]].id

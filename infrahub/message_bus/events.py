@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import importlib
-
-from typing import TypeVar, Generator, Any, TYPE_CHECKING
-
 import pickle
-from aio_pika import DeliveryMode, ExchangeType, Message, IncomingMessage
+from typing import TYPE_CHECKING, Any, Generator, TypeVar
+
+from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
 from aio_pika.patterns.base import Base as PickleSerializer
 
 import infrahub.config as config
 from infrahub.exceptions import ValidationError
 from infrahub.utils import BaseEnum
-
 
 from . import get_broker
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, Tuple
+from typing import TYPE_CHECKING, Tuple, Union
+
 import graphene
 from graphene.types.generic import GenericScalar
 
 import infrahub.config as config
-
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
@@ -30,6 +30,7 @@ from .utils import extract_fields
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
 
 TYPES_MAPPING_INFRAHUB_GRAPHQL = {

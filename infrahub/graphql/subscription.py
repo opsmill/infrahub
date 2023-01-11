@@ -3,7 +3,7 @@ from graphene.types.generic import GenericScalar
 
 import infrahub.config as config
 from infrahub.message_bus import get_broker
-from infrahub.message_bus.events import get_event_exchange, InfrahubMessage
+from infrahub.message_bus.events import InfrahubMessage, get_event_exchange
 
 
 class EventType(ObjectType):

@@ -1,4 +1,5 @@
 import uuid
+
 from infrahub.utils import duplicates, is_valid_uuid
 
 

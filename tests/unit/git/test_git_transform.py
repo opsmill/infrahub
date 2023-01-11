@@ -1,7 +1,12 @@
 import uuid
 
-from infrahub.message_bus.events import InfrahubRPCResponse, RPCStatusCode, InfrahubTransformRPC, TransformMessageAction
-from infrahub.git import handle_git_transform_message, InfrahubRepository
+from infrahub.git import InfrahubRepository, handle_git_transform_message
+from infrahub.message_bus.events import (
+    InfrahubRPCResponse,
+    InfrahubTransformRPC,
+    RPCStatusCode,
+    TransformMessageAction,
+)
 
 
 async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository):

@@ -1,23 +1,14 @@
-import sys
+import asyncio
 import logging
 import signal
-import asyncio
+import sys
 from asyncio import run as aiorun
 
 import typer
 from aio_pika import IncomingMessage
 from rich.logging import RichHandler
 
-from infrahub_client import InfrahubClient
-
 import infrahub.config as config
-from infrahub.message_bus import get_broker
-from infrahub.message_bus.events import (
-    MessageType,
-    InfrahubMessage,
-    InfrahubRPCResponse,
-    RPCStatusCode,
-)
 from infrahub.exceptions import RepositoryError
 from infrahub.git import (
     InfrahubRepository,
@@ -26,6 +17,14 @@ from infrahub.git import (
     initialize_repositories_directory,
 )
 from infrahub.lock import registry as lock_registry
+from infrahub.message_bus import get_broker
+from infrahub.message_bus.events import (
+    InfrahubMessage,
+    InfrahubRPCResponse,
+    MessageType,
+    RPCStatusCode,
+)
+from infrahub_client import InfrahubClient
 
 app = typer.Typer()
 

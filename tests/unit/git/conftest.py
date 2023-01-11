@@ -1,21 +1,21 @@
+import json
 import os
 import tarfile
-
-from typing import Dict
-import json
 import uuid
+from typing import Dict
+
 import pytest
-
 from git import Repo
-
 from pytest_httpx import HTTPXMock
+
 import infrahub.config as config
-
-from infrahub_client import InfrahubClient
-
 from infrahub.git import InfrahubRepository
-
-from infrahub_client import MUTATION_BRANCH_CREATE, QUERY_ALL_BRANCHES, QUERY_ALL_GRAPHQL_QUERIES
+from infrahub_client import (
+    MUTATION_BRANCH_CREATE,
+    QUERY_ALL_BRANCHES,
+    QUERY_ALL_GRAPHQL_QUERIES,
+    InfrahubClient,
+)
 
 
 @pytest.fixture

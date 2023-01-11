@@ -1,4 +1,4 @@
-from neo4j import AsyncSession, AsyncGraphDatabase
+from neo4j import AsyncGraphDatabase, AsyncSession
 
 # from contextlib import asynccontextmanager
 from neo4j.exceptions import ClientError
@@ -6,7 +6,6 @@ from neo4j.exceptions import ClientError
 import infrahub.config as config
 
 from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
-
 
 # NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
 # NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")

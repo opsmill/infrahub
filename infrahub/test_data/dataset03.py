@@ -129,9 +129,7 @@ async def load_data(session: AsyncSession):
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
-    groups_dict = {}
     accounts_dict = {}
-    perms_dict = {}
     tags_dict = {}
     orgs_dict = {}
     asn_dict = {}
@@ -188,7 +186,6 @@ async def load_data(session: AsyncSession):
     # ------------------------------------------
     statuses_dict = {}
     roles_dict = {}
-    device_profiles_dict = {}
 
     LOGGER.info("Creating Roles, Status & Tag")
     for role in DEVICE_ROLES + INTF_ROLES:
@@ -213,7 +210,7 @@ async def load_data(session: AsyncSession):
         LOGGER.info(f" Created Tag: {tag}")
 
     active_status = statuses_dict["active"]
-    pop_builder_account = accounts_dict["pop-builder"]
+    accounts_dict["pop-builder"]
     internal_as = asn_dict["Duff"]
 
     LOGGER.info("Creating Site & Device")

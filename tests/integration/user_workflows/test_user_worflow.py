@@ -1,9 +1,8 @@
-import pytest
 import pendulum
-
-from infrahub.main import app
+import pytest
 from fastapi.testclient import TestClient
 
+from infrahub.main import app
 from infrahub.test_data import dataset01 as ds01
 
 headers = {"Authorization": "Token nelly"}

@@ -1,10 +1,9 @@
 import uuid
-from uuid import UUID
 from typing import List, Optional, TypeVar
-
-from pydantic import BaseModel
+from uuid import UUID
 
 from neo4j import AsyncSession
+from pydantic import BaseModel
 
 from infrahub.database import execute_read_query_async, execute_write_query_async
 

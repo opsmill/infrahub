@@ -1,9 +1,16 @@
-import pytest
 import uuid
 
-from infrahub.message_bus.events import InfrahubRPCResponse, RPCStatusCode, InfrahubGitRPC, GitMessageAction
-from infrahub.git import handle_git_rpc_message
+import pytest
 
+from infrahub.git import handle_git_rpc_message
+from infrahub.message_bus.events import (
+    GitMessageAction,
+    InfrahubGitRPC,
+    InfrahubRPCResponse,
+    RPCStatusCode,
+)
+
+# pylint: disable=W0621
 
 @pytest.fixture
 def git_rpc_repo_add_01(git_upstream_repo_01):

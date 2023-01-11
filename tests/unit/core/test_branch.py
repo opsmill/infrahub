@@ -1,10 +1,10 @@
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch, Diff
-from infrahub.core.node import Node
-from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 
 
 async def test_get_query_filter_relationships_main(session, base_dataset_02):

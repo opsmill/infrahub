@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Optional, TypeVar, Union
 from uuid import UUID
-from typing import Union, TypeVar, Optional, TYPE_CHECKING
-
 
 from infrahub.core import get_branch, registry
+from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
@@ -13,10 +13,10 @@ from ..attribute import Any, BaseAttribute, Boolean, Integer, String
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
-from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
 """
 Type of Nodes

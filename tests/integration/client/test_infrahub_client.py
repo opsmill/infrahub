@@ -1,12 +1,11 @@
 import pytest
-
-from infrahub.main import app
 from fastapi.testclient import TestClient
 
-from infrahub_client import InfrahubClient
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.initialization import create_branch
+from infrahub.main import app
+from infrahub_client import InfrahubClient
 
 
 class TestInfrahubClient:

@@ -1,4 +1,4 @@
-from locust import task, HttpUser
+from locust import HttpUser, task
 
 
 class InfrahubUser(HttpUser):

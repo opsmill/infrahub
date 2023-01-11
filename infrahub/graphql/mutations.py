@@ -1,15 +1,6 @@
-from graphene import (
-    Boolean,
-    Field,
-    InputObjectType,
-    Int,
-    List,
-    Mutation,
-    String,
-)
+from graphene import Boolean, Field, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
 from graphene.types.mutation import MutationOptions
-
 from neo4j import AsyncSession
 
 import infrahub.config as config
@@ -19,19 +10,20 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import BranchNotFound, NodeNotFound
 from infrahub.message_bus.events import (
-    send_event,
-    InfrahubDataMessage,
-    DataMessageAction,
-    InfrahubBranchMessage,
     BranchMessageAction,
-    InfrahubGitRPC,
+    DataMessageAction,
     GitMessageAction,
+    InfrahubBranchMessage,
+    InfrahubDataMessage,
+    InfrahubGitRPC,
+    send_event,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
 
 from .query import BranchType
 from .utils import extract_fields
 
+# pylint: disable=unused-argument
 
 # ------------------------------------------
 # Infrahub GraphQLType

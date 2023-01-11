@@ -1,32 +1,34 @@
+import logging
 import os
 import time
-import logging
 from typing import Optional
 
 import graphene
-from fastapi import FastAPI, HTTPException, Request, Response, Depends
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.logger import logger
 from graphql import graphql
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.responses import PlainTextResponse, JSONResponse
-from starlette_exporter import PrometheusMiddleware, handle_metrics
-
 from neo4j import AsyncSession
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.responses import JSONResponse, PlainTextResponse
+from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub.auth import BaseTokenAuth
-from infrahub.message_bus import connect_to_broker, close_broker_connection
-from infrahub.message_bus.rpc import InfrahubRpcClient
-from infrahub.message_bus.events import InfrahubTransformRPC, TransformMessageAction, InfrahubRPCResponse, RPCStatusCode
-
 from infrahub.core import get_branch, registry
-from infrahub.database import get_db
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import get_db
 from infrahub.graphql import get_gql_mutation, get_gql_query
 from infrahub.graphql.app import InfrahubGraphQLApp
-
+from infrahub.message_bus import close_broker_connection, connect_to_broker
+from infrahub.message_bus.events import (
+    InfrahubRPCResponse,
+    InfrahubTransformRPC,
+    RPCStatusCode,
+    TransformMessageAction,
+)
+from infrahub.message_bus.rpc import InfrahubRpcClient
 
 app = FastAPI()
 

@@ -1,4 +1,8 @@
-from infrahub.core.utils import delete_all_nodes, get_paths_between_nodes, element_id_to_id
+from infrahub.core.utils import (
+    delete_all_nodes,
+    element_id_to_id,
+    get_paths_between_nodes,
+)
 from infrahub.database import execute_write_query_async
 
 

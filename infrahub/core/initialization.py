@@ -9,7 +9,6 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.models import infrastructure_models
 
-
 LOGGER = logging.getLogger("infrahub")
 
 

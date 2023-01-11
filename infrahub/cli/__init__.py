@@ -2,10 +2,8 @@ import glob
 import logging
 import os
 import sys
-from typing import List, Optional
-
 from asyncio import run as aiorun
-
+from typing import List, Optional
 
 import httpx
 import jinja2
@@ -15,14 +13,14 @@ from git import Repo
 from rich.logging import RichHandler
 
 import infrahub.config as config
-from infrahub.database import get_db
 from infrahub.cli.check import app as check_app
 from infrahub.cli.db import app as db_app
-from infrahub.cli.server import app as server_app
-from infrahub.cli.test import app as test_app
 from infrahub.cli.events import app as events_app
 from infrahub.cli.git_agent import app as git_app
+from infrahub.cli.server import app as server_app
+from infrahub.cli.test import app as test_app
 from infrahub.core.initialization import initialization
+from infrahub.database import get_db
 
 app = typer.Typer()
 

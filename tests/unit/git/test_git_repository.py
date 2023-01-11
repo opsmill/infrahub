@@ -1,17 +1,18 @@
+import json
 import os
 import uuid
-import pytest
-import json
 
+import pytest
 from git import Repo
+
+from infrahub.exceptions import RepositoryError, TransformError, TransformNotFoundError
 from infrahub.git import (
+    BRANCHES_DIRECTORY_NAME,
+    COMMITS_DIRECTORY_NAME,
+    TEMPORARY_DIRECTORY_NAME,
     InfrahubRepository,
     Worktree,
-    COMMITS_DIRECTORY_NAME,
-    BRANCHES_DIRECTORY_NAME,
-    TEMPORARY_DIRECTORY_NAME,
 )
-from infrahub.exceptions import RepositoryError, TransformError, TransformNotFoundError
 from infrahub_client import MUTATION_COMMIT_UPDATE
 
 

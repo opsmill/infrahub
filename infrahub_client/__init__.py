@@ -1,9 +1,8 @@
 import asyncio
-from typing import List, Dict, Optional
-
-from pydantic import BaseModel
+from typing import Dict, List, Optional
 
 import httpx
+from pydantic import BaseModel
 
 QUERY_ALL_REPOSITORIES = """
 query {

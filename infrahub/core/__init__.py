@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Union, Optional, Dict
+from typing import TYPE_CHECKING, Dict, Optional, Union
 
 import infrahub.config as config
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
-    from infrahub.graphql.query import InfrahubObject
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import NodeSchema
+    from infrahub.graphql.query import InfrahubObject
 
 
 async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[AsyncSession] = None) -> Branch:

@@ -1,34 +1,32 @@
 from __future__ import annotations
 
-import git
 import glob
-import os
-import yaml
-import shutil
 import logging
+import os
+import shutil
 from pathlib import Path
-from typing import List, Dict, Set, Union, Optional
-
-import jinja2
-
+from typing import Dict, List, Optional, Set, Union
 from uuid import UUID
-from pydantic import BaseModel, validator
-from git import Repo
-from git.exc import InvalidGitRepositoryError, GitCommandError
 
-from infrahub_client import InfrahubClient
+import git
+import jinja2
+import yaml
+from git import Repo
+from git.exc import GitCommandError, InvalidGitRepositoryError
+from pydantic import BaseModel, validator
 
 import infrahub.config as config
-from infrahub.lock import registry as lock_registry
 from infrahub.exceptions import RepositoryError, TransformError, TransformNotFoundError
+from infrahub.lock import registry as lock_registry
 from infrahub.message_bus.events import (
+    GitMessageAction,
     InfrahubGitRPC,
     InfrahubRPCResponse,
-    GitMessageAction,
     InfrahubTransformRPC,
-    TransformMessageAction,
     RPCStatusCode,
+    TransformMessageAction,
 )
+from infrahub_client import InfrahubClient
 
 LOGGER = logging.getLogger("infrahub.git")
 
