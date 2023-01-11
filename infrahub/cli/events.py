@@ -1,7 +1,6 @@
 import asyncio
 from asyncio import run as aiorun
 
-import pytest
 import typer
 from aio_pika import IncomingMessage
 from rich import print as rprint

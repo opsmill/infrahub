@@ -25,6 +25,7 @@ from .utils import extract_fields
 
 # pylint: disable=unused-argument
 
+
 # ------------------------------------------
 # Infrahub GraphQLType
 # ------------------------------------------

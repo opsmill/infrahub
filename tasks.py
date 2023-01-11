@@ -157,7 +157,7 @@ def format_autoflake(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL
     """
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = 'find . -name "*.py" -not -path "*/examples/*" -not -path "*/repositories/*" | xargs autoflake --in-place --remove-unused-variables'
+    exec_cmd = 'autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables .'
     run_cmd(context, exec_cmd, name, image_ver, local)
 
 
@@ -188,6 +188,7 @@ def format(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
         local (bool): Define as `True` to execute locally
     """
     format_isort(context, name, image_ver, local)
+    format_autoflake(context, name, image_ver, local)
     format_black(context, name, image_ver, local)
 
     print("All formatters have been executed!")
