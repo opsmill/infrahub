@@ -44,6 +44,7 @@ autoflake = "*"
 pytest-clarity = "^1.0.1"
 locust = "^2.13.1"
 pytest-httpx = "^0.21.2"
+types-toml = "^0.10.8"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
@@ -85,6 +86,11 @@ no-docstring-rgx="^(_|test_)"
 disable = """,
     line-too-long,
     bad-continuation,
+    missing-module-docstring,
+    missing-function-docstring,
+    missing-class-docstring,
+    consider-using-from-import,
+    invalid-name,
     """
 
 [tool.pylint.miscellaneous]
