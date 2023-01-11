@@ -20,7 +20,6 @@ from infrahub.cli.check import app as check_app
 from infrahub.cli.db import app as db_app
 from infrahub.cli.server import app as server_app
 from infrahub.cli.test import app as test_app
-from infrahub.cli.worker import app as worker_app
 from infrahub.cli.events import app as events_app
 from infrahub.cli.git_agent import app as git_app
 from infrahub.core.initialization import initialization
@@ -28,7 +27,6 @@ from infrahub.core.initialization import initialization
 app = typer.Typer()
 
 app.add_typer(server_app, name="server", help="Control the API Server.")
-app.add_typer(worker_app, name="worker", help="Control the GIT Agent/worker.")
 app.add_typer(git_app, name="git-agent", help="Control the GIT Repositories.")
 app.add_typer(db_app, name="db", help="Manage the database.")
 app.add_typer(test_app, name="test", help="Execute unit and integration tests.")
@@ -46,7 +44,7 @@ def execute_query(
     timeout: int = 10,
     params: dict = None,
 ):
-    """Execute a GraphQL Query via the GRaphQL API endpoint."""
+    """Execute a GraphQL Query via the GraphQL API endpoint."""
     payload = {"query": query, "variables": variables}
     params = params if params else {}
 
