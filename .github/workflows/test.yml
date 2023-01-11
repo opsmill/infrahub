@@ -26,5 +26,8 @@ jobs:
         run: "poetry install"
       - name: "Unit Tests"
         run: "poetry run infrahub test unit"
-      - name: "Integration Tests"
-        run: "poetry run infrahub test integration"
+      - name: "Integration Tests : Client"
+        run: "poetry run infrahub test integration tests/integration/client/"
+      - name: "Integration Tests : User Workflows"
+        run: "poetry run infrahub test integration tests/integration/user_workflows/"
+
