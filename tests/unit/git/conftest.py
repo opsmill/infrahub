@@ -60,7 +60,7 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
     file.extractall(git_sources_dir)
     file.close()
 
-    return dict(name=name, path=os.path.join(git_sources_dir, "infrahub-test-fixture-01"))
+    return dict(name=name, path=str(os.path.join(git_sources_dir, "infrahub-test-fixture-01")))
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ async def git_repo_01(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
         name=git_upstream_repo_01["name"],
-        location=f"file:/{git_upstream_repo_01['path']}",
+        location=git_upstream_repo_01['path'],
     )
 
     return repo
@@ -118,7 +118,7 @@ async def git_repo_02(git_upstream_repo_02, git_repos_dir) -> InfrahubRepository
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
         name=git_upstream_repo_02["name"],
-        location=f"file:/{git_upstream_repo_02['path']}",
+        location=git_upstream_repo_02['path'],
     )
 
     return repo
@@ -136,7 +136,7 @@ async def git_repo_02_w_client(git_repo_02, client) -> InfrahubRepository:
 async def git_repo_03(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_03 as remote"""
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_03["name"], location=f"file:/{git_upstream_repo_03['path']}"
+        id=uuid.uuid4(), name=git_upstream_repo_03["name"], location=git_upstream_repo_03['path']
     )
 
     return repo
@@ -161,7 +161,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRe
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
         name=git_upstream_repo_03["name"],
-        location=f"file:/{git_upstream_repo_03['path']}",
+        location=git_upstream_repo_03['path'],
     )
     await repo.create_branch_in_git(branch_name="branch01")
 
@@ -195,7 +195,7 @@ async def git_repo_05(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
         name=git_upstream_repo_01["name"],
-        location=f"file:/{git_upstream_repo_01['path']}",
+        location=git_upstream_repo_01['path'],
     )
 
     # Update the first file at the top level and commit the change in the branch
@@ -223,7 +223,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
         name=git_upstream_repo_01["name"],
-        location=f"file:/{git_upstream_repo_01['path']}",
+        location=git_upstream_repo_01['path'],
     )
     await repo.create_branch_in_git(branch_name="branch01")
 
@@ -317,7 +317,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> Infrahu
     repo = await InfrahubRepository.new(
         id=uuid.uuid4(),
         name=git_upstream_repo_02["name"],
-        location=f"file:/{git_upstream_repo_02['path']}",
+        location=git_upstream_repo_02['path'],
     )
     await repo.create_branch_in_git(branch_name="branch01")
 
