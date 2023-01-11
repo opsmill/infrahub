@@ -14,10 +14,7 @@ import infrahub.config as config
 from infrahub_client import InfrahubClient
 
 from infrahub.git import InfrahubRepository
-from infrahub.message_bus.events import (
-    InfrahubGitRPC,
-    GitMessageAction,
-)
+
 from infrahub_client import MUTATION_BRANCH_CREATE, QUERY_ALL_BRANCHES, QUERY_ALL_GRAPHQL_QUERIES
 
 
@@ -425,25 +422,3 @@ async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(method="POST", json=response, match_content=request_content)
     return httpx_mock
-
-
-@pytest.fixture
-def git_rpc_repo_add_01(git_upstream_repo_01):
-
-    return InfrahubGitRPC(
-        action=GitMessageAction.REPO_ADD.value,
-        repository_id=uuid.uuid4(),
-        repository_name=git_upstream_repo_01["name"],
-        location=f"file:/{git_upstream_repo_01['path']}",
-    )
-
-
-@pytest.fixture
-def git_rpc_repo_add_02(git_upstream_repo_02):
-
-    return InfrahubGitRPC(
-        action=GitMessageAction.REPO_ADD.value,
-        repository_id=uuid.uuid4(),
-        repository_name=git_upstream_repo_02["name"],
-        location=f"file:/{git_upstream_repo_02['path']}",
-    )

@@ -94,7 +94,7 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
         # async with lock_registry.get(message.repository_name):
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
 
-    return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
 
 
 async def handle_git_transform_message(message: InfrahubTransformRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -106,11 +106,20 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
     if message.action == TransformMessageAction.JINJA2.value:
 
         repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-        rendered_template = await repo.render_jinja2_template(
-            commit=message.commit, location=message.transform_location, data=message.data or {}
-        )
 
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
+        try:
+            rendered_template = await repo.render_jinja2_template(
+                commit=message.commit, location=message.transform_location, data=message.data or {}
+            )
+            return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
+
+        except TransformError as exc:
+            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
+
+    elif message.action == TransformMessageAction.PYTHON.value:
+        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+
+    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
 
 
 def get_repositories_directory() -> str:
