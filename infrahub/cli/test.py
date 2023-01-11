@@ -12,6 +12,7 @@ TEST_DATABASE = "infrahub.testing"
 
 # pytest: disable=import-outside-toplevel
 
+
 @app.command()
 def unit(
     path: Optional[str] = typer.Argument(None),

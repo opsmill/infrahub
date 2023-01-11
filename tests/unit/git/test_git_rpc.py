@@ -12,6 +12,7 @@ from infrahub.message_bus.events import (
 
 # pylint: disable=W0621
 
+
 @pytest.fixture
 def git_rpc_repo_add_01(git_upstream_repo_01):
 

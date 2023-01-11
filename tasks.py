@@ -128,6 +128,7 @@ def run_cmd(context, exec_cmd, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCA
 #     clean_image(context, name, image_ver)
 #     build(context, name, python_ver, image_ver)
 
+
 @task
 def format_black(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """This will run black to format all Python files.
@@ -143,6 +144,7 @@ def format_black(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     exec_cmd = "black --exclude=examples --exclude=repositories ."
     run_cmd(context, exec_cmd, name, image_ver, local)
 
+
 @task
 def format_autoflake(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """This will run autoflack to format all Python files.
@@ -157,6 +159,38 @@ def format_autoflake(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
     exec_cmd = 'find . -name "*.py" -not -path "*/examples/*" -not -path "*/repositories/*" | xargs autoflake --in-place --remove-unused-variables'
     run_cmd(context, exec_cmd, name, image_ver, local)
+
+
+@task
+def format_isort(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
+    """This will run isort to format all Python files.
+
+    Args:
+        context (obj): Used to run specific commands
+        name (str): Used to name the docker image
+        image_ver (str): Define image version
+        local (bool): Define as `True` to execute locally
+    """
+    # pty is set to true to properly run the docker commands due to the invocation process of docker
+    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
+    exec_cmd = "isort --skip=examples --skip=repositories ."
+    run_cmd(context, exec_cmd, name, image_ver, local)
+
+
+@task
+def format(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
+    """This will run all formatter.
+
+    Args:
+        context (obj): Used to run specific commands
+        name (str): Used to name the docker image
+        image_ver (str): Define image version
+        local (bool): Define as `True` to execute locally
+    """
+    format_isort(context, name, image_ver, local)
+    format_black(context, name, image_ver, local)
+
+    print("All formatters have been executed!")
 
 
 @task
@@ -317,27 +351,6 @@ def performance_test(context, directory="utilities", dataset="dataset03"):
         result_file_name = f"{local_dir}/{directory}/summary_{dataset}_{branch_name}_{hash}_{date_format}.txt"
         with open(result_file_name, "w") as f:
             print(result.stdout, file=f)
-
-
-@task
-def format(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
-    """This will run all formatter.
-
-    Args:
-        context (obj): Used to run specific commands
-        name (str): Used to name the docker image
-        image_ver (str): Define image version
-        local (bool): Define as `True` to execute locally
-    """
-    black(context, name, image_ver, local)
-    flake8(context, name, image_ver, local)
-    pylint(context, name, image_ver, local)
-    yamllint(context, name, image_ver, local)
-    pydocstyle(context, name, image_ver, local)
-    mypy(context, name, image_ver, local)
-    pytest(context, name, image_ver, local)
-
-    print("All tests have passed!")
 
 
 @task

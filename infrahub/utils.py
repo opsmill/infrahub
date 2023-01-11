@@ -1,4 +1,3 @@
-
 import os
 from distutils.dir_util import copy_tree
 from enum import Enum, EnumMeta
@@ -31,6 +30,7 @@ def duplicates(input_list: list) -> list:
 def intersection(list1, list2) -> list:
     """Calculate the intersection between 2 lists."""
     return list(set(list1) & set(list2))
+
 
 def get_fixtures_dir():
     """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
