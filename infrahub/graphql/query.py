@@ -2,6 +2,7 @@ from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 from graphene.types.objecttype import ObjectTypeOptions
 
+import infrahub.config as config
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
@@ -45,26 +46,30 @@ class InfrahubObjectType(ObjectType):
     @classmethod
     async def get_list(cls, fields, context, *args, **kwargs):
 
-        session = context.get("infrahub_session")
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
+        db = context.get("infrahub_database")
 
-        filters = {key: value for key, value in kwargs.items() if "__" in key and value}
+        async with db.session(database=config.SETTINGS.database.database) as session:
 
-        if filters:
-            objs = await cls._meta.model.get_list(
-                filters=filters, at=at, branch=branch, account=account, include_source=True, session=session
-            )
-        else:
-            objs = await cls._meta.model.get_list(
-                at=at, branch=branch, account=account, include_source=True, session=session
-            )
+            context["infrahub_session"] = session
 
-        if not objs:
-            return []
+            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
-        return [obj.to_graphql(fields=fields) for obj in objs]
+            if filters:
+                objs = await cls._meta.model.get_list(
+                    filters=filters, at=at, branch=branch, account=account, include_source=True, session=session
+                )
+            else:
+                objs = await cls._meta.model.get_list(
+                    at=at, branch=branch, account=account, include_source=True, session=session
+                )
+
+            if not objs:
+                return []
+
+            return [obj.to_graphql(fields=fields) for obj in objs]
 
 
 # ------------------------------------------
@@ -91,39 +96,43 @@ class InfrahubObject(ObjectType):
     @classmethod
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
 
-        session = context.get("infrahub_session")
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
+        db = context.get("infrahub_database")
 
-        filters = {key: value for key, value in kwargs.items() if "__" in key and value}
+        async with db.session(database=config.SETTINGS.database.database) as session:
 
-        if filters:
-            objs = await NodeManager.query(
-                session=session,
-                schema=cls._meta.schema,
-                filters=filters,
-                fields=fields,
-                at=at,
-                branch=branch,
-                account=account,
-                include_source=True,
-            )
-        else:
-            objs = await NodeManager.query(
-                session=session,
-                schema=cls._meta.schema,
-                fields=fields,
-                at=at,
-                branch=branch,
-                account=account,
-                include_source=True,
-            )
+            context["infrahub_session"] = session
 
-        if not objs:
-            return []
+            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
-        return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
+            if filters:
+                objs = await NodeManager.query(
+                    session=session,
+                    schema=cls._meta.schema,
+                    filters=filters,
+                    fields=fields,
+                    at=at,
+                    branch=branch,
+                    account=account,
+                    include_source=True,
+                )
+            else:
+                objs = await NodeManager.query(
+                    session=session,
+                    schema=cls._meta.schema,
+                    fields=fields,
+                    at=at,
+                    branch=branch,
+                    account=account,
+                    include_source=True,
+                )
+
+            if not objs:
+                return []
+
+            return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
 
 
 # ------------------------------------------
@@ -196,14 +205,19 @@ class BranchType(InfrahubObjectType):
     @classmethod
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
 
-        session = context.get("infrahub_session")
-        # at, branch = extract_global_kwargs(kwargs)
-        objs = await Branch.get_list(session=session)
+        db = context.get("infrahub_database")
 
-        if not objs:
-            return []
+        async with db.session(database=config.SETTINGS.database.database) as session:
 
-        return [obj.to_graphql(fields=fields) for obj in objs]
+            context["infrahub_session"] = session
+
+            # at, branch = extract_global_kwargs(kwargs)
+            objs = await Branch.get_list(session=session)
+
+            if not objs:
+                return []
+
+            return [obj.to_graphql(fields=fields) for obj in objs]
 
 
 class BranchDiffNodeAttributeType(ObjectType):
