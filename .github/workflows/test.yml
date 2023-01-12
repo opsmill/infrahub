@@ -23,8 +23,8 @@ jobs:
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
-          git config --global infrahub.testing "infrahub@example.com"
-          git config --global infrahub.testing "Infrahub"
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
       - name: "Start database"
         run: "invoke dev-start"
       - name: "Install project"
