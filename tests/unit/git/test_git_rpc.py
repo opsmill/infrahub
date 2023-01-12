@@ -20,7 +20,7 @@ def git_rpc_repo_add_01(git_upstream_repo_01):
         action=GitMessageAction.REPO_ADD.value,
         repository_id=uuid.uuid4(),
         repository_name=git_upstream_repo_01["name"],
-        location=git_upstream_repo_01['path'],
+        location=git_upstream_repo_01["path"],
     )
 
 
@@ -31,7 +31,7 @@ def git_rpc_repo_add_02(git_upstream_repo_02):
         action=GitMessageAction.REPO_ADD.value,
         repository_id=uuid.uuid4(),
         repository_name=git_upstream_repo_02["name"],
-        location=git_upstream_repo_02['path'],
+        location=git_upstream_repo_02["path"],
     )
 
 
