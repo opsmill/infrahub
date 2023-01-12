@@ -21,7 +21,10 @@ jobs:
       - name: "Setup Python environment"
         run: "pip install poetry==1.1.15 toml invoke"
       - name: "Setup Git"
-        run: "git config --global --add safe.directory /tmp/pytest-of-runner"
+        run: |
+          git config --global --add safe.directory '*''
+          git config --global infrahub.testing "infrahub@example.com"
+          git config --global infrahub.testing "Infrahub"
       - name: "Start database"
         run: "invoke dev-start"
       - name: "Install project"
