@@ -3,7 +3,7 @@ import re
 from collections import defaultdict
 
 from infrahub.core.account import Account, Group
-from infrahub.models import Device, IPAddress, Interface, Role, Status, Tag
+from infrahub.models import Device, Interface, IPAddress, Role, Status, Tag
 
 # flake8: noqa
 
@@ -82,7 +82,6 @@ def load_data():
     # ------------------------------------------
     groups_dict = {}
     accounts_dict = {}
-    perms_dict = {}
     tags_dict = {}
 
     # for perm in PERMS:
@@ -128,7 +127,6 @@ def load_data():
     # ------------------------------------------
     statuses_dict = {}
     roles_dict = {}
-    device_profiles_dict = {}
 
     LOGGER.info("Creating Roles & Status")
     for role in ROLES:

@@ -1,23 +1,23 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 from uuid import UUID
-from typing import Dict, List, Union, Optional, TYPE_CHECKING
-
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
-from infrahub.core.relationship import Relationship
-from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.query.node import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
 )
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
+from infrahub.core.relationship import Relationship
 from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
 
 

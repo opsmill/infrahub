@@ -6,6 +6,32 @@ class DatabaseError(Error):
     pass
 
 
+class RepositoryError(Error):
+    def __init__(self, identifier, message=None):
+        self.identifier = identifier
+        self.message = message or f"An error occured with GitRepository '{identifier}'."
+        super().__init__(self.message)
+
+
+class TransformError(Error):
+    def __init__(self, repository_name, location, commit, message=None):
+        self.repository_name = repository_name
+        self.location = location
+        self.commit = commit
+        self.message = (
+            message or f"An error occured with the transform function at '{repository_name}::{commit}::{location}'."
+        )
+        super().__init__(self.message)
+
+
+class TransformNotFoundError(TransformError):
+    def __init__(self, repository_name, location, commit, message=None):
+        self.message = (
+            message or f"Unable to locate the transform function at '{repository_name}::{commit}::{location}'."
+        )
+        super().__init__(repository_name, location, commit, self.message)
+
+
 class BranchNotFound(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier

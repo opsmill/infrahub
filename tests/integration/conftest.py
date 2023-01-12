@@ -1,17 +1,12 @@
-import os
 import asyncio
-import pytest
-import pytest_asyncio
-from fastapi.testclient import TestClient
+import os
 
+import pytest
 from neo4j import AsyncGraphDatabase
 
 import infrahub.config as config
-
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.utils import delete_all_nodes
-from infrahub.main import app
-from infrahub.test_data import dataset01 as ds01
 
 NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
 NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
@@ -32,7 +27,7 @@ def event_loop():
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest.fixture(scope="module")
 async def db():
     db = AsyncGraphDatabase.driver(URL, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
 
@@ -41,7 +36,7 @@ async def db():
     await db.close()
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest.fixture(scope="module")
 async def session(db):
 
     session = db.session(database=config.SETTINGS.database.database)
@@ -51,19 +46,15 @@ async def session(db):
     await session.close()
 
 
-@pytest_asyncio.fixture(scope="module")
-async def init_db(session):
+@pytest.fixture(scope="module")
+async def init_db_infra(session):
     await delete_all_nodes(session=session)
-    await first_time_initialization(session=session)
+    await first_time_initialization(session=session, load_infrastructure_models=True)
     await initialization(session=session)
 
 
-@pytest_asyncio.fixture(scope="module")
-async def client(init_db):
-    # api_client = TestClient(app)
-    return TestClient(app)
-
-
-@pytest_asyncio.fixture(scope="module")
-async def dataset01(session, init_db):
-    await ds01.load_data(session=session)
+@pytest.fixture(scope="module")
+async def init_db_base(session):
+    await delete_all_nodes(session=session)
+    await first_time_initialization(session=session, load_infrastructure_models=False)
+    await initialization(session=session)

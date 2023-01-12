@@ -1,13 +1,12 @@
 """Replacement for Makefile."""
+import glob
 import os
 import sys
-import glob
-from distutils.util import strtobool
 from datetime import datetime
-
+from distutils.util import strtobool
 from typing import Tuple
 
-from invoke import task, Context  # type: ignore
+from invoke import Context, task  # type: ignore
 
 try:
     import toml
@@ -131,6 +130,71 @@ def run_cmd(context, exec_cmd, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCA
 
 
 @task
+def format_black(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
+    """This will run black to format all Python files.
+
+    Args:
+        context (obj): Used to run specific commands
+        name (str): Used to name the docker image
+        image_ver (str): Define image version
+        local (bool): Define as `True` to execute locally
+    """
+    # pty is set to true to properly run the docker commands due to the invocation process of docker
+    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
+    exec_cmd = "black --exclude=examples --exclude=repositories ."
+    run_cmd(context, exec_cmd, name, image_ver, local)
+
+
+@task
+def format_autoflake(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
+    """This will run autoflack to format all Python files.
+
+    Args:
+        context (obj): Used to run specific commands
+        name (str): Used to name the docker image
+        image_ver (str): Define image version
+        local (bool): Define as `True` to execute locally
+    """
+    # pty is set to true to properly run the docker commands due to the invocation process of docker
+    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
+    exec_cmd = "autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables ."
+    run_cmd(context, exec_cmd, name, image_ver, local)
+
+
+@task
+def format_isort(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
+    """This will run isort to format all Python files.
+
+    Args:
+        context (obj): Used to run specific commands
+        name (str): Used to name the docker image
+        image_ver (str): Define image version
+        local (bool): Define as `True` to execute locally
+    """
+    # pty is set to true to properly run the docker commands due to the invocation process of docker
+    # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
+    exec_cmd = "isort --skip=examples --skip=repositories ."
+    run_cmd(context, exec_cmd, name, image_ver, local)
+
+
+@task
+def format(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
+    """This will run all formatter.
+
+    Args:
+        context (obj): Used to run specific commands
+        name (str): Used to name the docker image
+        image_ver (str): Define image version
+        local (bool): Define as `True` to execute locally
+    """
+    format_isort(context, name, image_ver, local)
+    format_autoflake(context, name, image_ver, local)
+    format_black(context, name, image_ver, local)
+
+    print("All formatters have been executed!")
+
+
+@task
 def pytest(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """This will run pytest for the specified name and Python version.
 
@@ -175,7 +239,7 @@ def flake8(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = "flake8 --ignore=E203,E501,W503,W504,E701,E251,E231 --exclude=examples ."
+    exec_cmd = "flake8 --ignore=E203,E501,W503,W504,E701,E251,E231 --exclude=examples,repositories ."
     run_cmd(context, exec_cmd, name, image_ver, local)
 
 
@@ -191,7 +255,7 @@ def mypy(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = 'find . -name "*.py" -not -path "*/examples/*" -not -path "*/docs/*" | xargs mypy --show-error-codes'
+    exec_cmd = 'find . -name "*.py" -not -path "*/examples/*" -not -path "*/repositories/*" -not -path "*/tests/*" | xargs mypy --show-error-codes'
     run_cmd(context, exec_cmd, name, image_ver, local)
 
 
@@ -207,7 +271,7 @@ def pylint(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """
     # pty is set to true to properly run the docker commands due to the invocation process of docker
     # https://docs.pyinvoke.org/en/latest/api/runners.html - Search for pty for more information
-    exec_cmd = 'find . -name "*.py" | xargs pylint'
+    exec_cmd = 'find . -name "*.py" -not -path "*/tests/*" -not -path "*/repositories/*" -not -path "*/examples/*" | xargs pylint'
     run_cmd(context, exec_cmd, name, image_ver, local)
 
 

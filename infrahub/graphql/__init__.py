@@ -2,19 +2,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
+import graphene
 from graphql import graphql
 from graphql.execution import ExecutionResult
-import graphene
 
 from infrahub.core import get_branch
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.manager import NodeManager
+from infrahub.core.timestamp import Timestamp
+
 from .generator import generate_mutation_mixin, generate_query_mixin
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
 
 

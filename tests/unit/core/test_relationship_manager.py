@@ -7,7 +7,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 
 
-@pytest.mark.asyncio
 async def test_one_init_no_input_no_rel(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -28,7 +27,6 @@ async def test_one_init_no_input_no_rel(session, default_branch, person_tag_sche
     assert not await relm.get_peer(session=session)
 
 
-@pytest.mark.asyncio
 async def test_one_init_no_input_existing_rel(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -48,7 +46,6 @@ async def test_one_init_no_input_existing_rel(session, default_branch, person_ta
     assert peer.id == t1.id
 
 
-@pytest.mark.asyncio
 async def test_many_init_no_input_no_rel(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -69,7 +66,6 @@ async def test_many_init_no_input_no_rel(session, default_branch, person_tag_sch
     assert not len(relm.get())
 
 
-@pytest.mark.asyncio
 async def test_many_init_no_input_existing_rel(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -92,7 +88,6 @@ async def test_many_init_no_input_existing_rel(session, default_branch, person_t
     assert len(relm.get()) == 2
 
 
-@pytest.mark.asyncio
 async def test_one_init_input_obj(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -112,7 +107,6 @@ async def test_one_init_input_obj(session, default_branch, person_tag_schema):
     assert peer.id == t1.id
 
 
-@pytest.mark.asyncio
 async def test_one_save_input_obj(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -140,7 +134,6 @@ async def test_one_save_input_obj(session, default_branch, person_tag_schema):
     assert len(paths) == 2
 
 
-@pytest.mark.asyncio
 async def test_many_init_input_obj(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -163,7 +156,6 @@ async def test_many_init_input_obj(session, default_branch, person_tag_schema):
     assert len(list(relm)) == 2
 
 
-@pytest.mark.asyncio
 async def test_many_save_input_obj(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")
@@ -197,7 +189,6 @@ async def test_many_save_input_obj(session, default_branch, person_tag_schema):
     assert len(paths) == 2
 
 
-@pytest.mark.asyncio
 async def test_many_update(session, default_branch, person_tag_schema):
 
     person_schema = await registry.get_schema(session=session, name="Person")

@@ -1,15 +1,12 @@
-import pytest
-
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch, Diff
-from infrahub.core.node import Node
-from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 
 
-@pytest.mark.asyncio
 async def test_get_query_filter_relationships_main(session, base_dataset_02):
 
     default_branch = await get_branch(branch="main", session=session)
@@ -30,7 +27,6 @@ async def test_get_query_filter_relationships_main(session, base_dataset_02):
     assert sorted(params.keys()) == ["branch0", "time0"]
 
 
-@pytest.mark.asyncio
 async def test_get_query_filter_relationships_branch1(session, base_dataset_02):
 
     branch1 = await get_branch(branch="branch1", session=session)
@@ -45,7 +41,6 @@ async def test_get_query_filter_relationships_branch1(session, base_dataset_02):
     assert sorted(params.keys()) == ["branch0", "branch1", "time0", "time1"]
 
 
-@pytest.mark.asyncio
 async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
 
     now = Timestamp("1s")
@@ -60,7 +55,6 @@ async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
     assert results["main"] == t1.to_string()
 
 
-@pytest.mark.asyncio
 async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02):
 
     now = Timestamp("1s")
@@ -82,7 +76,6 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
     assert results["main"] == results["branch1"]
 
 
-@pytest.mark.asyncio
 async def test_diff_has_changes(session, base_dataset_02):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -106,7 +99,6 @@ async def test_diff_has_changes(session, base_dataset_02):
     assert not await diff.has_changes(session=session)
 
 
-@pytest.mark.asyncio
 async def test_diff_has_conflict(session, base_dataset_02):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -127,7 +119,6 @@ async def test_diff_has_conflict(session, base_dataset_02):
     assert not await diff.has_conflict(session=session)
 
 
-@pytest.mark.asyncio
 async def test_diff_get_modified_paths(session, base_dataset_02):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -186,7 +177,6 @@ async def test_diff_get_modified_paths(session, base_dataset_02):
     assert paths["branch1"] == expected_paths_branch1
 
 
-@pytest.mark.asyncio
 async def test_diff_get_nodes(session, base_dataset_02):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -225,7 +215,6 @@ async def test_diff_get_nodes(session, base_dataset_02):
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED.value
 
 
-@pytest.mark.asyncio
 async def test_diff_get_relationships(session, base_dataset_02):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -244,7 +233,6 @@ async def test_diff_get_relationships(session, base_dataset_02):
     assert rels["main"]["car_person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED.value
 
 
-@pytest.mark.asyncio
 async def test_validate(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -263,7 +251,6 @@ async def test_validate(session, base_dataset_02, register_core_models_schema):
     assert messages == ["Conflict detected at node/c1/name/HAS_VALUE"]
 
 
-@pytest.mark.asyncio
 async def test_validate_empty_branch(session, base_dataset_02, register_core_models_schema):
 
     branch2 = await create_branch(branch_name="branch2", session=session)
@@ -274,7 +261,6 @@ async def test_validate_empty_branch(session, base_dataset_02, register_core_mod
     assert messages == []
 
 
-@pytest.mark.asyncio
 async def test_merge(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -314,7 +300,6 @@ async def test_merge(session, base_dataset_02, register_core_models_schema):
     assert cars[0].nbr_seats.value == 4
 
 
-@pytest.mark.asyncio
 async def test_merge_delete(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
@@ -332,7 +317,6 @@ async def test_merge_delete(session, base_dataset_02, register_core_models_schem
     assert len(persons) == 2
 
 
-@pytest.mark.asyncio
 async def test_rebase_flag(session, base_dataset_02):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)

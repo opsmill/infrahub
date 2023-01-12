@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Union, Set
+from typing import TYPE_CHECKING, Set, Union
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
+
     from . import BaseAttribute
 
 # flake8: noqa: F723
@@ -304,35 +307,6 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         self.add_to_query(query)
         self.return_labels = ["a", "np", "r"]
-
-
-# class AttributeDeleteQuery(AttributeQuery):
-
-#     name = "attribute_delete"
-#     type: QueryType = QueryType.WRITE
-
-#     raise_error_if_empty: bool = True
-
-#     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
-#         self.params["attr_id"] = self.attr_id
-#         self.params["node_id"] = self.attr.node.db_id
-#         self.params["branch"] = self.attr.branch.name
-#         self.params["at"] = self.at.to_string()
-#         self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
-#         self.params["attribute_type"] = self.attr.get_kind()
-
-#         query = (
-#             """
-#         MATCH (a) WHERE ID(a) = $attr_id
-#         MATCH (n) WHERE ID(n) = $node_id
-#         CREATE (n)-[:HAS_ATTRIBUTE { branch: $branch, status: "deleted", from: $at, to: null }]->(a)
-#         """
-#             % self.attr._rel_to_value_label
-#         )
-
-#         self.add_to_query(query)
-#         self.return_labels = ["n", "a"]
 
 
 class AttributeGetQuery(AttributeQuery):

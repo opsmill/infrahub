@@ -9,7 +9,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import get_gql_query
 
 
-@pytest.mark.asyncio
 async def test_simple_query(db, session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -40,7 +39,6 @@ async def test_simple_query(db, session, default_branch, criticality_schema):
     assert len(result.data["criticality"]) == 2
 
 
-@pytest.mark.asyncio
 async def test_nested_query(db, session, default_branch, car_person_schema):
 
     car = await registry.get_schema(session=session, name="Car")
@@ -93,7 +91,6 @@ async def test_nested_query(db, session, default_branch, car_person_schema):
     assert len(result_per_name["Jane"]["cars"]) == 1
 
 
-@pytest.mark.asyncio
 async def test_query_filter_local_attrs(db, session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -124,7 +121,6 @@ async def test_query_filter_local_attrs(db, session, default_branch, criticality
     assert len(result.data["criticality"]) == 1
 
 
-@pytest.mark.asyncio
 async def test_query_filter_relationships(db, session, default_branch, car_person_schema):
 
     car = await registry.get_schema(session=session, name="Car")
@@ -176,7 +172,6 @@ async def test_query_filter_relationships(db, session, default_branch, car_perso
     assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
 
 
-@pytest.mark.asyncio
 async def test_query_oneway_relationship(db, session, default_branch, person_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -213,7 +208,6 @@ async def test_query_oneway_relationship(db, session, default_branch, person_tag
     assert len(result.data["person"][0]["tags"]) == 2
 
 
-@pytest.mark.asyncio
 async def test_query_at_specific_time(db, session, default_branch, person_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -275,7 +269,6 @@ async def test_query_at_specific_time(db, session, default_branch, person_tag_sc
     assert names == ["Blue", "Red"]
 
 
-@pytest.mark.asyncio
 async def test_query_attribute_updated_at(db, session, default_branch, person_tag_schema):
 
     p11 = await Node.init(session=session, schema="Person")
@@ -326,7 +319,6 @@ async def test_query_attribute_updated_at(db, session, default_branch, person_ta
     assert result2.data["person"][0]["firstname"]["updated_at"] != result2.data["person"][0]["lastname"]["updated_at"]
 
 
-@pytest.mark.asyncio
 async def test_query_node_updated_at(db, session, default_branch, person_tag_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -371,7 +363,6 @@ async def test_query_node_updated_at(db, session, default_branch, person_tag_sch
     assert result2.data["person"][0]["_updated_at"] != result2.data["person"][1]["_updated_at"]
 
 
-@pytest.mark.asyncio
 async def test_query_relationship_updated_at(db, session, default_branch, person_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -431,7 +422,6 @@ async def test_query_relationship_updated_at(db, session, default_branch, person
 
 
 @pytest.mark.skip(reason="Currently not working need to refactor attribute property for Async")
-@pytest.mark.asyncio
 async def test_query_attribute_source(
     db, session, default_branch, register_core_models_schema, person_tag_schema, first_account
 ):
@@ -468,7 +458,6 @@ async def test_query_attribute_source(
     assert result1.data["person"][0]["firstname"]["source"]["name"]["value"] == first_account.name.value
 
 
-@pytest.mark.asyncio
 async def test_query_attribute_flag_property(
     db, session, default_branch, register_core_models_schema, person_tag_schema, first_account
 ):
@@ -508,3 +497,27 @@ async def test_query_attribute_flag_property(
     assert result1.errors is None
     assert result1.data["person"][0]["firstname"]["is_protected"] is True
     assert result1.data["person"][0]["lastname"]["is_visible"] is False
+
+
+async def test_query_branches(db, session, default_branch, register_core_models_schema):
+
+    query = """
+    query {
+        branch {
+            id
+            name
+            branched_from
+            is_data_only
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["branch"][0]["name"] == "main"

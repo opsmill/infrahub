@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Callable, Awaitable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Callable, List, Optional
 
 from starlette import authentication as auth
 from starlette.authentication import AuthenticationError

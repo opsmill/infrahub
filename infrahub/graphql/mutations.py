@@ -1,15 +1,7 @@
-from graphene import (
-    Boolean,
-    Field,
-    InputObjectType,
-    Int,
-    List,
-    Mutation,
-    String,
-)
+from graphene import Boolean, Field, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
-
 from graphene.types.mutation import MutationOptions
+from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.core.branch import Branch
@@ -17,10 +9,21 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import BranchNotFound, NodeNotFound
-from infrahub.message_bus.events import send_event, DataEvent, DataEventAction, BranchEvent, BranchEventAction
+from infrahub.message_bus.events import (
+    BranchMessageAction,
+    DataMessageAction,
+    GitMessageAction,
+    InfrahubBranchMessage,
+    InfrahubDataMessage,
+    InfrahubGitRPC,
+    send_event,
+)
+from infrahub.message_bus.rpc import InfrahubRpcClient
 
 from .query import BranchType
 from .utils import extract_fields
+
+# pylint: disable=unused-argument
 
 
 # ------------------------------------------
@@ -30,21 +33,7 @@ class InfrahubMutationOptions(MutationOptions):
     schema = None
 
 
-class InfrahubMutation(Mutation):
-    @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
-
-        # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, NodeSchema):
-            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
-
-        if not _meta:
-            _meta = InfrahubMutationOptions(cls)
-
-        _meta.schema = schema
-
-        super().__init_subclass_with_meta__(_meta=_meta, **options)
-
+class InfrahubMutationMixin:
     @classmethod
     async def mutate(cls, root, info, *args, **kwargs):
 
@@ -55,23 +44,23 @@ class InfrahubMutation(Mutation):
         action = None
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(root, info, branch=branch, at=at, *args, **kwargs)
-            action = DataEventAction.CREATE
+            action = DataMessageAction.CREATE
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(root, info, branch=branch, at=at, *args, **kwargs)
-            action = DataEventAction.UPDATE
+            action = DataMessageAction.UPDATE
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(root, info, branch=branch, at=at, *args, **kwargs)
-            action = DataEventAction.DELETE
+            action = DataMessageAction.DELETE
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(send_event, DataEvent(action=action, node=obj))
+            info.context.get("background").add_task(send_event, InfrahubDataMessage(action=action, node=obj))
 
         return mutation
 
     @classmethod
     async def mutate_create(cls, root, info, data, branch=None, at=None):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
         await obj.new(session=session, **data)
@@ -85,7 +74,7 @@ class InfrahubMutation(Mutation):
     @classmethod
     async def mutate_update(cls, root, info, data, branch=None, at=None):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
@@ -102,7 +91,7 @@ class InfrahubMutation(Mutation):
     @classmethod
     async def mutate_delete(cls, root, info, data, branch=None, at=None):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
@@ -111,6 +100,59 @@ class InfrahubMutation(Mutation):
         ok = True
 
         return obj, cls(ok=ok)
+
+
+class InfrahubMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
+
+        # Make sure schema is a valid NodeSchema Node Class
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+
+class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
+
+        # Make sure schema is a valid NodeSchema Node Class
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+    @classmethod
+    async def mutate_create(cls, root, info, data, branch=None, at=None):
+
+        session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+
+        # Create the new repository in the database.
+        obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
+        await obj.new(session=session, **data)
+        await obj.save(session=session)
+
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+
+        # Create the new repository in the filesystem.
+        await rpc_client.call(InfrahubGitRPC(action=GitMessageAction.REPO_ADD, repository=obj))
+
+        # TODO Validate that the creation of the repository went as expected
+        ok = True
+
+        return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
 
 
 # --------------------------------------------------------------------------------
@@ -154,14 +196,16 @@ class BranchCreateInput(InputObjectType):
 class BranchCreate(Mutation):
     class Arguments:
         data = BranchCreateInput(required=True)
+        background_execution = Boolean(required=False)
 
     ok = Boolean()
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root, info, data):
+    async def mutate(cls, root, info, data, background_execution=False):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         # Check if the branch already exist
         try:
@@ -176,16 +220,25 @@ class BranchCreate(Mutation):
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
             repositories = await NodeManager.query(session=session, schema="Repository")
+
             for repo in repositories:
-                repo.add_branch(obj.name)
+                await rpc_client.call(
+                    message=InfrahubGitRPC(
+                        action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
+                    ),
+                    wait_for_response=not background_execution,
+                )
+                # TODO need to validate that everything go as expected
+                # TODO need to run all repos in //
 
         ok = True
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
+        # Generate Event in message bus
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(
-                send_event, BranchEvent(action=BranchEventAction.CREATE, branch=obj.name)
+                send_event, InfrahubBranchMessage(action=BranchMessageAction.CREATE, branch=obj.name)
             )
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
@@ -205,7 +258,7 @@ class BranchRebase(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
         await obj.rebase(session=session)
@@ -216,7 +269,7 @@ class BranchRebase(Mutation):
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(
-                send_event, BranchEvent(action=BranchEventAction.REBASE, branch=obj.name)
+                send_event, InfrahubBranchMessage(action=BranchMessageAction.REBASE, branch=obj.name)
             )
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
@@ -233,7 +286,7 @@ class BranchValidate(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
         ok, messages = await obj.validate(session=session)
@@ -253,7 +306,7 @@ class BranchMerge(Mutation):
     @classmethod
     async def mutate(cls, root, info, data):
 
-        session = info.context.get("infrahub_session")
+        session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
         await obj.merge(session=session)
@@ -264,7 +317,7 @@ class BranchMerge(Mutation):
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(
-                send_event, BranchEvent(action=BranchEventAction.MERGE, branch=obj.name)
+                send_event, InfrahubBranchMessage(action=BranchMessageAction.MERGE, branch=obj.name)
             )
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)

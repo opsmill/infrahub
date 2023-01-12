@@ -1,31 +1,30 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union, Dict, Any, TypeVar, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeVar, Union
 from uuid import UUID
 
 from infrahub.core import registry
+from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
+from infrahub.core.query.relationship import (
+    RelationshipCreateQuery,
+    RelationshipDataDeleteQuery,
+    RelationshipDeleteQuery,
+    RelationshipGetPeerQuery,
+    RelationshipGetQuery,
+    RelationshipPeerData,
+    RelationshipUpdatePropertyQuery,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.utils import intersection
-
-from infrahub.core.query.relationship import (
-    RelationshipCreateQuery,
-    RelationshipUpdatePropertyQuery,
-    RelationshipDeleteQuery,
-    RelationshipDataDeleteQuery,
-    RelationshipGetPeerQuery,
-    RelationshipGetQuery,
-    RelationshipPeerData,
-)
-from infrahub.core.property import NodePropertyMixin, FlagPropertyMixin
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import RelationshipSchema, NodeSchema
+    from infrahub.core.schema import NodeSchema, RelationshipSchema
 
 # RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 

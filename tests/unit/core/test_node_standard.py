@@ -1,9 +1,6 @@
-import pytest
-
 from infrahub.core.branch import Branch
 
 
-@pytest.mark.asyncio
 async def test_node_standard_create(session):
 
     branch1 = Branch(name="branch1", status="OPEN", description="Second Branch", is_default=False, is_data_only=True)

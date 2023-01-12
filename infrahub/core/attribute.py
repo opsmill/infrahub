@@ -1,24 +1,21 @@
 from __future__ import annotations
 
-from typing import Set, List, Dict, Any, Union, Optional, TYPE_CHECKING
-
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 from uuid import UUID
 
-
-from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import update_relationships_to, add_relationship
-from infrahub.exceptions import ValidationError
-
-from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.constants import RelationshipStatus
+from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.query.attribute import (
-    AttributeGetQuery,
-    AttributeUpdateValueQuery,
     AttributeCreateQuery,
+    AttributeGetQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
+    AttributeUpdateValueQuery,
 )
-from infrahub.core.constants import RelationshipStatus
-from infrahub.core.property import NodePropertyMixin, FlagPropertyMixin
+from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.timestamp import Timestamp
+from infrahub.core.utils import add_relationship, update_relationships_to
+from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession

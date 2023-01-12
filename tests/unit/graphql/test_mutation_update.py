@@ -7,7 +7,6 @@ from infrahub.core.node import Node
 from infrahub.graphql import get_gql_mutation, get_gql_query
 
 
-@pytest.mark.asyncio
 async def test_update_simple_object(db, session, default_branch, car_person_schema):
 
     obj = await Node.init(session=session, schema="Person")
@@ -50,7 +49,6 @@ async def test_update_simple_object(db, session, default_branch, car_person_sche
     assert obj1.height.value == 180
 
 
-@pytest.mark.asyncio
 async def test_update_object_with_flag_property(db, session, default_branch, car_person_schema):
 
     obj = await Node.init(session=session, schema="Person")
@@ -97,7 +95,6 @@ async def test_update_object_with_flag_property(db, session, default_branch, car
     assert obj1.height.is_visible is False
 
 
-@pytest.mark.asyncio
 async def test_update_object_with_node_property(
     db, session, default_branch, car_person_schema, first_account, second_account
 ):
@@ -139,7 +136,6 @@ async def test_update_object_with_node_property(
     assert obj1.height.source_id == first_account.id
 
 
-@pytest.mark.asyncio
 async def test_update_invalid_object(db, session, default_branch, car_person_schema):
 
     query = """
@@ -172,7 +168,6 @@ async def test_update_invalid_object(db, session, default_branch, car_person_sch
     assert "Unable to find the node in the database." in result.errors[0].message
 
 
-@pytest.mark.asyncio
 async def test_update_invalid_input(db, session, default_branch, car_person_schema):
 
     obj = await Node.init(session=session, schema="Person")
@@ -211,7 +206,6 @@ async def test_update_invalid_input(db, session, default_branch, car_person_sche
     assert "String cannot represent a non string value" in result.errors[0].message
 
 
-@pytest.mark.asyncio
 async def test_update_single_relationship(db, session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -265,7 +259,6 @@ async def test_update_single_relationship(db, session, default_branch, car_perso
     assert car_peer.id == p2.id
 
 
-@pytest.mark.asyncio
 async def test_update_new_single_relationship_flag_property(db, session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -320,7 +313,6 @@ async def test_update_new_single_relationship_flag_property(db, session, default
     assert car.owner.get().is_protected is True
 
 
-@pytest.mark.asyncio
 async def test_update_existing_single_relationship_flag_property(db, session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -371,7 +363,6 @@ async def test_update_existing_single_relationship_flag_property(db, session, de
     assert car.owner.get().is_protected is True
 
 
-@pytest.mark.asyncio
 async def test_update_relationship_many(db, session, default_branch, person_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -508,7 +499,6 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
     assert sorted([peer.name.value for peer in peers]) == ["Black", "Blue"]
 
 
-@pytest.mark.asyncio
 async def test_update_relationship_many2(db, session, default_branch, person_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -605,7 +595,6 @@ async def test_update_relationship_many2(db, session, default_branch, person_tag
 
 
 @pytest.mark.skip(reason="Currently not working need to investigate")
-@pytest.mark.asyncio
 async def test_update_relationship_previously_deleted(db, session, default_branch, person_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")

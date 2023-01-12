@@ -1,11 +1,8 @@
-import pytest
-
 from infrahub.core import registry
 from infrahub.core.account import validate_token
 from infrahub.core.node import Node
 
 
-@pytest.mark.asyncio
 async def test_validate_user_create(session, default_branch, register_core_models_schema):
 
     account_schema = await registry.get_schema(session=session, name="Account")
@@ -19,7 +16,6 @@ async def test_validate_user_create(session, default_branch, register_core_model
     await token1.save(session=session)
 
 
-@pytest.mark.asyncio
 async def test_validate_token(session, default_branch, register_core_models_schema):
 
     account_schema = await registry.get_schema(session=session, name="Account")

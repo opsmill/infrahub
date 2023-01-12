@@ -2,7 +2,12 @@
 name = "infrahub"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Damien Garros <dgarros@gmail.com>"]
+
+packages = [
+    { include = "infrahub" },
+    { include = "infrahub_client" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -10,7 +15,7 @@ fastapi = "~0.81"
 neo4j = "~5.3"
 pendulum = "~2.1"
 uvicorn = {version = "~0.18", extras = ["standard"]}
-graphene = "~3.1"
+graphene = "~3.2"
 rich = "^12.0.0"
 starlette-exporter = "^0.12.0"
 typer = "^0.6"
@@ -28,7 +33,7 @@ black = "*"
 pytest = "*"
 yamllint = "*"
 pylint = "*"
-flake8 = "*"
+flake8 = "^5.0"
 mypy = "*"
 ipython = "*"
 pytest-asyncio = "*"
@@ -38,6 +43,8 @@ isort = "*"
 autoflake = "*"
 pytest-clarity = "^1.0.1"
 locust = "^2.13.1"
+pytest-httpx = "^0.21.2"
+types-toml = "^0.10.8"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
@@ -79,6 +86,11 @@ no-docstring-rgx="^(_|test_)"
 disable = """,
     line-too-long,
     bad-continuation,
+    missing-module-docstring,
+    missing-function-docstring,
+    missing-class-docstring,
+    consider-using-from-import,
+    invalid-name,
     """
 
 [tool.pylint.miscellaneous]

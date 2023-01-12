@@ -1,13 +1,11 @@
 import graphene
-import pytest
 from graphql import graphql
-from infrahub.core.manager import NodeManager
 
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql import get_gql_mutation, get_gql_query
 
 
-@pytest.mark.asyncio
 async def test_create_simple_object(db, session, default_branch, car_person_schema):
 
     query = """
@@ -37,7 +35,6 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 
-@pytest.mark.asyncio
 async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
 
     graphql_schema = graphene.Schema(
@@ -96,7 +93,6 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     assert result1.data["person"][0]["height"]["is_visible"] is False
 
 
-@pytest.mark.asyncio
 async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -136,7 +132,6 @@ async def test_create_object_with_single_relationship(db, session, default_branc
     assert len(result.data["car_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 
-@pytest.mark.asyncio
 async def test_create_object_with_single_relationship_flap_property(db, session, default_branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
@@ -179,7 +174,6 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
     assert car.owner.get().is_protected is True
 
 
-@pytest.mark.asyncio
 async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -226,7 +220,6 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
     assert len(fruit.tags.get()) == 3
 
 
-@pytest.mark.asyncio
 async def test_create_object_with_multiple_relationships_flag_property(db, session, default_branch, fruit_tag_schema):
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -281,7 +274,6 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
     assert rels[2].is_protected is True
 
 
-@pytest.mark.asyncio
 async def test_create_person_not_valid(db, session, default_branch, car_person_schema):
 
     query = """

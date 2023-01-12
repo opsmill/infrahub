@@ -1,3 +1,4 @@
+import logging
 import sys
 from typing import Optional
 
@@ -9,6 +10,8 @@ app = typer.Typer()
 
 TEST_DATABASE = "infrahub.testing"
 
+# pytest: disable=import-outside-toplevel
+
 
 @app.command()
 def unit(
@@ -17,12 +20,16 @@ def unit(
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all unit tests."""
+
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+
     if not path:
         path = "./tests/unit"
 
     config.load_and_exit(config_file_name=config_file)
     config.SETTINGS.database.database = TEST_DATABASE
     config.SETTINGS.broker.enable = False
+    config.SETTINGS.main.internal_address = "http://mock"
 
     verbose_str = "-" + "v" * verbose if verbose else "-v"
 
@@ -38,6 +45,7 @@ def integration(
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all integration tests."""
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
 
     if not path:
         path = "./tests/integration"
@@ -45,6 +53,26 @@ def integration(
     config.load_and_exit(config_file_name=config_file)
     config.SETTINGS.database.database = TEST_DATABASE
     config.SETTINGS.broker.enable = False
+    config.SETTINGS.main.internal_address = "http://mock"
+
+    verbose_str = "-" + "v" * verbose if verbose else "-v"
+
+    import pytest
+
+    sys.exit(pytest.main(["-x", path, verbose_str]))
+
+
+@app.command()
+def client(
+    path: Optional[str] = typer.Argument(None),
+    verbose: int = typer.Option(0, "--verbose", "-v", count=True),
+):
+    """Execute all tests for the infrahub client."""
+
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+
+    if not path:
+        path = "./tests/client"
 
     verbose_str = "-" + "v" * verbose if verbose else "-v"
 

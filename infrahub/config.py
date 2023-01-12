@@ -7,7 +7,6 @@ from pathlib import Path
 import toml
 from pydantic import BaseSettings, Field, ValidationError
 
-
 SETTINGS = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
@@ -18,6 +17,8 @@ class MainSettings(BaseSettings):
     default_branch: str = "main"
     default_account: str = "default"
     default_account_perm: str = "CAN_READ"
+
+    internal_address: str = "http://localhost:8000"
 
     print_query_details: bool = False
 
@@ -56,7 +57,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class BrokerSettings(BaseSettings):
-    enable: bool = False
+    enable: bool = True
     username: str = "guest"
     password: str = "guest"
     address: str = "localhost"

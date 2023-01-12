@@ -3,16 +3,18 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Union, Generator, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
 
 from infrahub.core import registry
-from infrahub.core.query import Query, QueryType, QueryResult
+from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
-    from infrahub.core.schema import NodeSchema
+
     from infrahub.core.branch import Branch
+    from infrahub.core.schema import NodeSchema
+
     from . import Node
 
 

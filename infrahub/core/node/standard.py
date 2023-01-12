@@ -1,12 +1,13 @@
 import uuid
+from typing import List, Optional, TypeVar
 from uuid import UUID
-from typing import List, Optional
-
-from pydantic import BaseModel
 
 from neo4j import AsyncSession
+from pydantic import BaseModel
 
 from infrahub.database import execute_read_query_async, execute_write_query_async
+
+SelfNode = TypeVar("SelfNode", bound="StandardNode")
 
 
 class StandardNode(BaseModel):
@@ -30,7 +31,7 @@ class StandardNode(BaseModel):
             if field_name in ["id"]:
                 continue
             field = getattr(self, field_name)
-            if not field:
+            if field is None:
                 response[field_name] = None
                 continue
             response[field_name] = field
@@ -160,7 +161,7 @@ class StandardNode(BaseModel):
         return cls(**attrs)
 
     @classmethod
-    async def get_list(cls, session: AsyncSession, limit=1000):
+    async def get_list(cls, session: AsyncSession, limit: int = 1000) -> List[SelfNode]:
 
         query = (
             """

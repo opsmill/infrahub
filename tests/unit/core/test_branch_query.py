@@ -1,10 +1,11 @@
-import pytest
 from infrahub.core import get_branch
+from infrahub.core.query.diff import (
+    DiffRelationshipPropertyQuery,
+    DiffRelationshipQuery,
+)
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.query.diff import DiffRelationshipQuery, DiffRelationshipPropertyQuery
 
 
-@pytest.mark.asyncio
 async def test_DiffRelationshipQuery(session, base_dataset_02):
 
     branch1 = await get_branch("branch1", session=session)
@@ -30,7 +31,6 @@ async def test_DiffRelationshipQuery(session, base_dataset_02):
     assert len(results) == 0
 
 
-@pytest.mark.asyncio
 async def test_DiffRelationshipPropertyQuery(session, base_dataset_02):
 
     branch1 = await get_branch("branch1", session=session)

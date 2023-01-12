@@ -1,5 +1,3 @@
-import pytest
-
 from neo4j import AsyncSession
 
 from infrahub.core.query import Query
@@ -18,7 +16,6 @@ class Query01(Query):
         self.add_to_query(query)
 
 
-@pytest.mark.asyncio
 async def test_query_base(session):
 
     query = await Query01.init(session=session)
@@ -27,7 +24,6 @@ async def test_query_base(session):
     assert query.get_query() == expected_query
 
 
-@pytest.mark.asyncio
 async def test_query_results(session, simple_dataset_01):
 
     query = await Query01.init(session=session)
@@ -41,7 +37,6 @@ async def test_query_results(session, simple_dataset_01):
     assert query.results[0].get("at") is not None
 
 
-@pytest.mark.asyncio
 async def test_query_async(session, simple_dataset_01):
 
     query = await Query01.init(session=session)

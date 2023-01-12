@@ -1,5 +1,4 @@
 import graphene
-import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
@@ -7,7 +6,6 @@ from infrahub.core.initialization import create_branch
 from infrahub.graphql import get_gql_mutation, get_gql_query
 
 
-@pytest.mark.asyncio
 async def test_branch_create(db, session, default_branch, car_person_schema):
 
     query = """
@@ -55,7 +53,6 @@ async def test_branch_create(db, session, default_branch, car_person_schema):
     assert "The branch branch2, already exist" in result.errors[0].message
 
 
-@pytest.mark.asyncio
 async def test_branch_rebase(db, session, default_branch, car_person_schema):
 
     branch2 = await create_branch(session=session, branch_name="branch2")
@@ -90,7 +87,6 @@ async def test_branch_rebase(db, session, default_branch, car_person_schema):
     assert new_branch2.branched_from != branch2.branched_from
 
 
-@pytest.mark.asyncio
 async def test_branch_validate(db, session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(session=session, name="branch1")
@@ -122,7 +118,6 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     assert result.data["branch_validate"]["object"]["id"] == str(branch1.uuid)
 
 
-@pytest.mark.asyncio
 async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(session=session, name="branch1")

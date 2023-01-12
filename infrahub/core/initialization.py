@@ -9,7 +9,6 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.models import infrastructure_models
 
-
 LOGGER = logging.getLogger("infrahub")
 
 
@@ -35,12 +34,8 @@ async def initialization(session: AsyncSession):
     # Load internal models into the registry
     # ---------------------------------------------------
     from infrahub.core.node import Node
-    from infrahub.core.repository import Repository
-    from infrahub.core.rfile import RFile
 
-    registry.node["RFile"] = RFile
     registry.node["Node"] = Node
-    registry.node["Repository"] = Repository
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry
@@ -58,7 +53,11 @@ async def initialization(session: AsyncSession):
 async def create_default_branch(session: AsyncSession) -> Branch:
 
     default_branch = Branch(
-        name=config.SETTINGS.main.default_branch, status="OPEN", description="Default Branch", is_default=True
+        name=config.SETTINGS.main.default_branch,
+        status="OPEN",
+        description="Default Branch",
+        is_default=True,
+        is_data_only=False,
     )
     await default_branch.save(session=session)
     registry.branch[default_branch.name] = default_branch
@@ -79,7 +78,7 @@ async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
     return branch
 
 
-async def first_time_initialization(session: AsyncSession):
+async def first_time_initialization(session: AsyncSession, load_infrastructure_models: bool = True):
 
     from infrahub.core.node import Node
 
@@ -87,7 +86,6 @@ async def first_time_initialization(session: AsyncSession):
     # Create the default Branch
     # --------------------------------------------------
     await create_default_branch(session=session)
-
     # --------------------------------------------------
     # Load the internal schema in the database
     # --------------------------------------------------
@@ -104,10 +102,11 @@ async def first_time_initialization(session: AsyncSession):
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the core models in the database")
 
-    schema = SchemaRoot(**infrastructure_models)
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
-    LOGGER.info("Created the infrastructure models in the database")
+    if load_infrastructure_models:
+        schema = SchemaRoot(**infrastructure_models)
+        await SchemaManager.register_schema_to_registry(schema)
+        await SchemaManager.load_schema_to_db(schema, session=session)
+        LOGGER.info("Created the infrastructure models in the database")
 
     # --------------------------------------------------
     # Create Default Users and Groups

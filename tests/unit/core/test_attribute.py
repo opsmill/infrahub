@@ -1,12 +1,11 @@
 import pytest
 
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.attribute import String
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 
 
 @pytest.mark.skip(reason="Currently not working need to refactor attribute property for Async")
-@pytest.mark.asyncio
 async def test_init(session, default_branch, criticality_schema, first_account, second_account):
 
     schema = criticality_schema.get_attribute("name")
@@ -31,7 +30,6 @@ async def test_init(session, default_branch, criticality_schema, first_account, 
     assert attr.source_id == second_account.id
 
 
-@pytest.mark.asyncio
 async def test_node_property_getter(session, default_branch, criticality_schema):
 
     schema = criticality_schema.get_attribute("name")
@@ -58,7 +56,6 @@ async def test_node_property_getter(session, default_branch, criticality_schema)
     assert attr.owner_id == "yetotheruuid"
 
 
-@pytest.mark.asyncio
 async def test_string_attr_query_filter(session, default_branch):
 
     filters, params, nbr_rels = String.get_query_filter(name="description")

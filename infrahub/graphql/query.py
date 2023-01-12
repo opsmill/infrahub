@@ -1,8 +1,6 @@
-import dataclasses
-
-from graphene import Boolean, Field, Int, List, ObjectType, String, DateTime
-from graphene.types.objecttype import ObjectTypeOptions
+from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
+from graphene.types.objecttype import ObjectTypeOptions
 
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
@@ -47,6 +45,7 @@ class InfrahubObjectType(ObjectType):
     @classmethod
     async def get_list(cls, fields, context, *args, **kwargs):
 
+        session = context.get("infrahub_session")
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
@@ -54,9 +53,13 @@ class InfrahubObjectType(ObjectType):
         filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
         if filters:
-            objs = cls._meta.model.get_list(filters=filters, at=at, branch=branch, account=account, include_source=True)
+            objs = await cls._meta.model.get_list(
+                filters=filters, at=at, branch=branch, account=account, include_source=True, session=session
+            )
         else:
-            objs = cls._meta.model.get_list(at=at, branch=branch, account=account, include_source=True)
+            objs = await cls._meta.model.get_list(
+                at=at, branch=branch, account=account, include_source=True, session=session
+            )
 
         if not objs:
             return []
@@ -183,6 +186,7 @@ class BranchType(InfrahubObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     is_data_only = Boolean(required=False)
+    is_default = Boolean(required=False)
 
     class Meta:
         description = "Branch"
@@ -190,10 +194,11 @@ class BranchType(InfrahubObjectType):
         model = Branch
 
     @classmethod
-    async def get_list(cls, fields, *args, **kwargs):
+    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
 
+        session = context.get("infrahub_session")
         # at, branch = extract_global_kwargs(kwargs)
-        objs = Branch.get_list()
+        objs = await Branch.get_list(session=session)
 
         if not objs:
             return []
@@ -253,18 +258,21 @@ class BranchDiffType(ObjectType):
     relationships = List(BranchDiffRelationshipType)
 
     @classmethod
-    async def get_diff(cls, branch, fields, *args, **kwargs):
+    async def get_diff(cls, branch, fields: dict, context: dict, *args, **kwargs):
 
-        branch = await get_branch(branch=branch)
-        diff = branch.diff()
+        session = context.get("infrahub_session")
+        branch = await get_branch(branch=branch, session=session)
+        # diff = await branch.diff()
 
-        return {
-            "nodes": [dataclasses.asdict(item) for item in diff.get_nodes()] if "nodes" in fields else None,
-            "files": diff.get_files() if "files" in fields else None,
-            "attributes": [dataclasses.asdict(item) for item in diff.get_attributes()]
-            if "attributes" in fields
-            else None,
-            "relationships": [dataclasses.asdict(item) for item in diff.get_relationships()]
-            if "relationships" in fields
-            else None,
-        }
+        # FIXME need to refactor this method to account to the new diff format
+        return {}
+        # return {
+        #     "nodes": [dataclasses.asdict(item) for item in diff.get_nodes()] if "nodes" in fields else None,
+        #     "files": diff.get_files() if "files" in fields else None,
+        #     "attributes": [dataclasses.asdict(item) for item in diff.get_attributes()]
+        #     if "attributes" in fields
+        #     else None,
+        #     "relationships": [dataclasses.asdict(item) for item in diff.get_relationships()]
+        #     if "relationships" in fields
+        #     else None,
+        # }
