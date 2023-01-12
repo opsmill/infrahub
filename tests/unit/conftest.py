@@ -2,7 +2,6 @@ import asyncio
 
 import pendulum
 import pytest
-import pytest_asyncio
 
 import infrahub.config as config
 from infrahub.core import registry
@@ -38,7 +37,7 @@ def event_loop():
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest.fixture(scope="module")
 async def db():
     db = await get_db()
 
@@ -47,7 +46,7 @@ async def db():
     await db.close()
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def session(db):
 
     session = db.session(database=config.SETTINGS.database.database)
@@ -57,7 +56,7 @@ async def session(db):
     await session.close()
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def simple_dataset_01(session, empty_database):
 
     await create_default_branch(session)
@@ -91,7 +90,7 @@ async def simple_dataset_01(session, empty_database):
     await execute_write_query_async(session=session, query=query, params=params)
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def base_dataset_02(session, default_branch, car_person_schema):
     """This Dataset includes:
     - 4 timestamps
@@ -298,7 +297,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     return params
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def car_person_schema(session):
 
     SCHEMA = {
@@ -339,7 +338,7 @@ async def car_person_schema(session):
     return True
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def person_tag_schema(session):
 
     SCHEMA = {
@@ -378,7 +377,7 @@ async def person_tag_schema(session):
     return True
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def criticality_schema(session):
 
     SCHEMA = {
@@ -400,7 +399,7 @@ async def criticality_schema(session):
     return node
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def fruit_tag_schema(session):
 
     SCHEMA = {
@@ -437,23 +436,23 @@ async def fruit_tag_schema(session):
     return True
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def empty_database(session):
     await delete_all_nodes(session=session)
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def init_db(empty_database, session):
     await first_time_initialization(session=session)
     await initialization(session=session)
 
 
-@pytest_asyncio.fixture
-async def default_branch(empty_database, session):
+@pytest.fixture
+async def default_branch(empty_database, session) -> Branch:
     return await create_default_branch(session=session)
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def register_core_models_schema():
 
     schema = SchemaRoot(**internal_schema)
@@ -463,7 +462,7 @@ async def register_core_models_schema():
     await SchemaManager.register_schema_to_registry(schema=schema)
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def register_account_schema(session):
 
     SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
@@ -475,7 +474,7 @@ async def register_account_schema(session):
     return True
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def first_account(session, register_account_schema):
 
     obj = await Node.init(session=session, schema="Account")
@@ -484,7 +483,7 @@ async def first_account(session, register_account_schema):
     return obj
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def second_account(session, register_account_schema):
 
     obj = await Node.init(session=session, schema="Account")
