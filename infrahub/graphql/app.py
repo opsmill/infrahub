@@ -177,7 +177,7 @@ class InfrahubGraphQLApp:
             "background": BackgroundTasks(),
             "infrahub_database": request.app.state.db,
             "infrahub_rpc_client": request.app.state.rpc_client,
-            "infrahub_session": None,
+            "infrahub_session": session,
         }
 
         return context_value
