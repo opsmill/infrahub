@@ -11,7 +11,9 @@ from infrahub.git import (
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
     InfrahubRepository,
+    RepoFileInformation,
     Worktree,
+    extract_repo_file_information,
 )
 from infrahub_client import MUTATION_COMMIT_UPDATE
 
@@ -335,7 +337,7 @@ async def test_sync_new_branch(
     assert len(worktrees) == 4
 
 
-async def test_sync_updated_branch(client, git_repo_04: InfrahubRepository):
+async def test_sync_updated_branch(git_repo_04: InfrahubRepository):
 
     repo = git_repo_04
 
@@ -347,7 +349,7 @@ async def test_sync_updated_branch(client, git_repo_04: InfrahubRepository):
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
 
-async def test_render_jinja2_template_success(client, git_repo_jinja: InfrahubRepository):
+async def test_render_jinja2_template_success(git_repo_jinja: InfrahubRepository):
 
     repo = git_repo_jinja
 
@@ -372,7 +374,7 @@ magnum
     assert rendered_tpl_main != rendered_tpl_branch
 
 
-async def test_render_jinja2_template_error(client, git_repo_jinja: InfrahubRepository):
+async def test_render_jinja2_template_error(git_repo_jinja: InfrahubRepository):
 
     repo = git_repo_jinja
 
@@ -392,3 +394,50 @@ async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRe
 
     with pytest.raises(TransformNotFoundError):
         await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
+
+
+async def test_find_files(git_repo_jinja: InfrahubRepository):
+
+    repo = git_repo_jinja
+
+    yaml_files = await repo.find_files(extension="yml", branch_name="main")
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension=["yml"], branch_name="main")
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
+    assert len(yaml_files) == 4
+
+
+def test_extract_repo_file_information():
+
+    file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py", base_directory="/tmp/dir1")
+
+    assert isinstance(file_info, RepoFileInformation)
+    assert file_info.filename == "myfile.py"
+    assert file_info.extension == ".py"
+    assert file_info.filename_wo_ext == "myfile"
+    assert file_info.relative_path == "dir2/dir3"
+    assert file_info.absolute_path == "/tmp/dir1/dir2/dir3"
+    assert file_info.file_path == "dir2/dir3/myfile.py"
+
+    file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py")
+
+    assert isinstance(file_info, RepoFileInformation)
+    assert file_info.filename == "myfile.py"
+    assert file_info.extension == ".py"
+    assert file_info.filename_wo_ext == "myfile"
+    assert file_info.relative_path == "/tmp/dir1/dir2/dir3"
+    assert file_info.absolute_path == "/tmp/dir1/dir2/dir3"
+    assert file_info.file_path == "/tmp/dir1/dir2/dir3/myfile.py"
+
+
+# async def test_import_objects_rfiles():
+#     pass
+
+# async def test_import_objects_rfiles():
+#     pass
+
+# async def import_python_checks_from_module():
+#     pass

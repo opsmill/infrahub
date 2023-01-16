@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
@@ -31,6 +32,14 @@ from infrahub.core.utils import (
 )
 from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound
+from infrahub.message_bus.events import (
+    CheckMessageAction,
+    GitMessageAction,
+    InfrahubCheckRPC,
+    InfrahubGitRPC,
+    RPCStatusCode,
+)
+from infrahub.message_bus.rpc import InfrahubRpcClient
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -222,7 +231,9 @@ class Branch(StandardNode):
 
         registry.branch[self.name] = self
 
-    async def validate(self, session: Optional[AsyncSession] = None) -> set(bool, List[str]):
+    async def validate(
+        self, rpc_client: InfrahubRpcClient, session: Optional[AsyncSession] = None
+    ) -> set(bool, List[str]):
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -235,6 +246,7 @@ class Branch(StandardNode):
 
         passed = True
         messages = []
+        tasks = []
 
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await self.diff(session=session)
@@ -247,11 +259,36 @@ class Branch(StandardNode):
 
         # For all repositories in this branch, run all checks
         repos = await NodeManager.query(schema="Repository", branch=self, session=session)
+
+        # Collecting all the checks from all the repopository
         for repo in repos:
-            result, errors = repo.run_checks()
-            if not result:
-                messages.extend(errors)
+            for rel_check in repo.checks.get():
+                check = await rel_check.get_peer(session=session)
+
+                tasks.append(
+                    rpc_client.call(
+                        message=InfrahubCheckRPC(
+                            action=CheckMessageAction.PYTHON,
+                            repository=repo,
+                            branch_name=self.name,
+                            check_location=check.file_path.value,
+                            check_name=check.class_name.value,
+                            name=check.name,
+                            commit=repo.commit.value,
+                        )
+                    )
+                )
+
+        responses = await asyncio.gather(*tasks)
+
+        # Collecting all the responses and the logs from all tasks
+        for response in responses:
+            if response.status != RPCStatusCode.OK.value:
+                continue
+
+            if not response.response["passed"]:
                 passed = False
+                messages.extend([error["message"] for error in response.response["errors"]])
 
         return passed, messages
 
@@ -263,10 +300,12 @@ class Branch(StandardNode):
     ) -> Diff:
         return await Diff.init(branch=self, diff_from=diff_from, diff_to=diff_to, session=session)
 
-    async def merge(self, at: Union[str, Timestamp] = None, session: Optional[AsyncSession] = None):
+    async def merge(
+        self, rpc_client: InfrahubRpcClient, at: Union[str, Timestamp] = None, session: Optional[AsyncSession] = None
+    ):
         """Merge the current branch into main."""
 
-        passed, _ = await self.validate(session=session)
+        passed, _ = await self.validate(rpc_client=rpc_client, session=session)
         if not passed:
             raise Exception(f"Unable to merge the branch '{self.name}', validation failed")
 
@@ -274,6 +313,7 @@ class Branch(StandardNode):
             raise Exception(f"Unable to merge the branch '{self.name}' into itself")
 
         from infrahub.core import registry
+        from infrahub.core.manager import NodeManager
 
         rel_ids_to_update = []
 
@@ -421,23 +461,33 @@ class Branch(StandardNode):
         # FILES
         # ---------------------------------------------
 
-        # FIXME Need to redefine with new repository model
-        # # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        # repos_in_main = {repo.uuid: repo for repo in Repository.get_list()}
+        # Collect all Repositories in Main because we'll need the commit in Main for each one.
+        repos_in_main_list = await NodeManager.query(schema="Repository", session=session)
+        repos_in_main = {repo.id: repo for repo in repos_in_main_list}
+        tasks = []
 
-        # for repo in Repository.get_list(branch=self):
+        repos_in_branch_list = await NodeManager.query(schema="Repository", session=session, branch=self)
+        for repo in repos_in_branch_list:
 
-        #     # Check if the repo, exist in main, if not ignore this repo
-        #     if repo.uuid not in repos_in_main:
-        #         continue
+            # Check if the repo, exist in main, if not ignore this repo
+            if repo.id not in repos_in_main:
+                continue
 
-        #     repo_in_main = repos_in_main[repo.uuid]
-        #     changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
+            repos_in_main[repo.id]
+            # changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
 
-        #     if not changed_files:
-        #         continue
+            # if not changed_files:
+            #     continue
 
-        #     repo.merge()
+            tasks.append(
+                rpc_client.call(
+                    message=InfrahubGitRPC(
+                        action=GitMessageAction.MERGE, repository=repo, params={"branch_name": self.name}
+                    )
+                )
+            )
+
+        await asyncio.gather(*tasks)
 
         await self.rebase(session=session)
 

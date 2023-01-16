@@ -1,19 +1,24 @@
+import asyncio
 import json
 import os
-import sys
 from abc import abstractmethod
+from typing import Optional
 
-import httpx
 from git import Repo
+
+from infrahub_client import InfrahubClient
 
 VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 
 class InfrahubCheck:
 
-    query = None
+    name: Optional[str] = None
+    query: str = None
+    timeout: int = 10
+    rebase: bool = True
 
-    def __init__(self, branch=None, root_directory=None, output=None, server_url=None, rebase=True):
+    def __init__(self, branch=None, root_directory=None, output=None, server_url=None):
 
         self.data = None
         self.git = None
@@ -24,12 +29,33 @@ class InfrahubCheck:
         self.output = output
 
         self.branch = branch
-        self.rebase = rebase
 
         self.server_url = server_url or os.environ.get("INFRAHUB_URL", "http://127.0.0.1:8000")
         self.root_directory = root_directory or os.getcwd()
 
-        # TODO VALIDATE That QUERY is defined
+        self.client: InfrahubClient = None
+
+        if not self.name:
+            self.name = self.__class__.__name__
+
+        if not self.query:
+            raise ValueError("A query must be provided")
+
+    @classmethod
+    async def init(cls, client=None, test_client=None, *args, **kwargs):
+
+        item = cls(*args, **kwargs)
+
+        if client:
+            item.client = client
+        else:
+            item.client = await InfrahubClient.init(address=item.server_url, test_client=test_client)
+
+        return item
+
+    @property
+    def errors(self):
+        return [log for log in self.logs if log["level"] == "ERROR"]
 
     def log_error(self, message, object_id=None, object_type=None):
 
@@ -73,24 +99,24 @@ class InfrahubCheck:
     def validate(self):
         pass
 
-    def collect_data(self):
-        params = {"branch": self.branch_name, "rebase": self.rebase}
-        resp = httpx.get(f"{self.server_url}/query/{self.query}", params=params)
-        resp.raise_for_status()
-        data = resp.json()
+    async def collect_data(self):
+
+        data = await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, rebase=self.rebase)
         self.data = data
 
-    def run(self):
-        self.collect_data()
-        self.validate()
+    async def run(self):
+        await self.collect_data()
+
+        if asyncio.iscoroutinefunction(self.validate):
+            await self.validate()
+        else:
+            self.validate()
 
         nbr_errors = len([log for log in self.logs if log["level"] == "ERROR"])
 
         self.passed = True if nbr_errors == 0 else False
 
-        if not self.passed and self.output == "stdout":
-            sys.exit(1)
-        elif self.passed:
+        if self.passed:
             self.log_info("check succesfully completed")
 
         return self.passed
