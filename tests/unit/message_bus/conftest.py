@@ -7,6 +7,12 @@ import pytest
 from aio_pika import DeliveryMode, Message
 
 from infrahub.message_bus.events import DataMessageAction, MessageType
+from infrahub.message_bus.rpc import InfrahubRpcClientTesting
+
+
+@pytest.fixture
+async def rpc_client():
+    return InfrahubRpcClientTesting()
 
 
 @pytest.fixture
