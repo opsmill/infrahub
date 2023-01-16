@@ -1,3 +1,5 @@
+import asyncio
+
 from graphene import Boolean, Field, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
 from graphene.types.mutation import MutationOptions
@@ -221,15 +223,20 @@ class BranchCreate(Mutation):
             # Query all repositories and add a branch on each one of them too
             repositories = await NodeManager.query(session=session, schema="Repository")
 
+            tasks = []
+
             for repo in repositories:
-                await rpc_client.call(
-                    message=InfrahubGitRPC(
-                        action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
-                    ),
-                    wait_for_response=not background_execution,
+                tasks.append(
+                    rpc_client.call(
+                        message=InfrahubGitRPC(
+                            action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
+                        ),
+                        wait_for_response=not background_execution,
+                    )
                 )
-                # TODO need to validate that everything go as expected
-                # TODO need to run all repos in //
+
+            await asyncio.gather(*tasks)
+            # TODO need to validate that everything goes as expected
 
         ok = True
 

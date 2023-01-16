@@ -16,6 +16,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
+from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
 
 # NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
@@ -54,6 +55,11 @@ async def session(db):
     yield session
 
     await session.close()
+
+
+@pytest.fixture
+async def rpc_client():
+    return InfrahubRpcClientTesting()
 
 
 @pytest.fixture

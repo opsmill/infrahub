@@ -37,7 +37,6 @@ from infrahub.message_bus.events import (
     GitMessageAction,
     InfrahubCheckRPC,
     InfrahubGitRPC,
-    RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
 
@@ -332,6 +331,7 @@ class Branch(StandardNode):
         # TODO need to find a way to properly communicate back to the user any issue that coule come up during the merge
         # From the Graph or From the repositories
         await self.merge_graph(session=session, at=at)
+
         await self.merge_repositories(rpc_client=rpc_client, session=session)
 
     async def merge_graph(self, session: AsyncSession, at: Union[str, Timestamp] = None):
@@ -492,6 +492,7 @@ class Branch(StandardNode):
         tasks = []
 
         repos_in_branch_list = await NodeManager.query(schema="Repository", session=session, branch=self)
+
         for repo in repos_in_branch_list:
 
             # Check if the repo, exist in main, if not ignore this repo

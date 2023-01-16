@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections import defaultdict
 from typing import Any, MutableMapping
 
 from aio_pika.abc import (
@@ -71,7 +72,7 @@ class InfrahubRpcClientTesting(InfrahubRpcClient):
 
         super().__init__(*args, **kwargs)
 
-        self.responses = {}
+        self.responses = defaultdict(list)
 
     async def connect(self) -> InfrahubRpcClient:
         return self
@@ -79,10 +80,21 @@ class InfrahubRpcClientTesting(InfrahubRpcClient):
     async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
 
         if (message.type, message.action) in self.responses:
-            return self.responses[(message.type, message.action)]
+            return self.responses[(message.type, message.action)].pop(0)
+        elif len(self.responses[(message.type, message.action)]) == 0:
+            raise IndexError(f"No more RPC message in store for '{message.type}::{message.action}'")
 
         raise NotImplementedError(f"Unable to find an RPC message for '{message.type}::{message.action}'")
 
     async def add_response(self, response: InfrahubRPCResponse, message_type: MessageType, action: Any):
         """Register a predefined response for a given message_type and action."""
-        self.responses[(message_type.value, action.value)] = response
+
+        self.responses[(message_type.value, action.value)].append(response)
+
+    async def ensure_all_responses_have_been_delivered(self) -> bool:
+
+        for key, messages in self.responses.items():
+            if len(messages) != 0:
+                raise Exception(f"Some responses for {key}, haven't been delivered.")
+
+        return True
