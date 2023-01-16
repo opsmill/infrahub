@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tarfile
 import uuid
 from typing import Dict
@@ -10,6 +11,7 @@ from pytest_httpx import HTTPXMock
 
 import infrahub.config as config
 from infrahub.git import InfrahubRepository
+from infrahub.utils import get_fixtures_dir
 from infrahub_client import (
     MUTATION_BRANCH_CREATE,
     QUERY_ALL_BRANCHES,
@@ -325,6 +327,36 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> Infrahu
 
 
 @pytest.fixture
+async def git_repo_checks(client, git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
+    """Git Repository with git_upstream_repo_02 as remote
+    The repo has 1 local branch : main
+    The main branch contains 2 checks: check01 and check02.
+    Check01 always return False and check02 is not valid.
+    """
+
+    checks_fixture_dir = os.path.join(get_fixtures_dir(), "checks")
+    upstream = Repo(git_upstream_repo_02["path"])
+
+    files_to_copy = ["check01.py", "check02.py"]
+
+    for file_to_copy in files_to_copy:
+
+        shutil.copyfile(
+            os.path.join(checks_fixture_dir, file_to_copy), os.path.join(git_upstream_repo_02["path"], file_to_copy)
+        )
+        upstream.index.add(file_to_copy)
+
+    upstream.index.commit("Add 2 checks files")
+
+    repo = await InfrahubRepository.new(
+        id=uuid.uuid4(),
+        name=git_upstream_repo_02["name"],
+        location=git_upstream_repo_02["path"],
+    )
+    return repo
+
+
+@pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     response = {
@@ -419,4 +451,13 @@ async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     request_content = json.dumps({"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01"}}).encode()
 
     httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
+
+    response = {"data": {"mock": []}}
+
+    httpx_mock.add_response(method="GET", json=response, url="http://mock/query/my_query?branch=main&rebase=true")
     return httpx_mock

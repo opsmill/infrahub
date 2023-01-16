@@ -1178,8 +1178,19 @@ class InfrahubRepository(BaseModel):
         except ModuleNotFoundError:
             error_msg = f"Unable to load the check file {location} ({commit})"
             LOGGER.error(f"{self.name} | {error_msg}")
-            raise CheckError(repository_name=self.name, commit=commit, location=location, message=error_msg)
+            raise CheckError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
+            )
+
+        except AttributeError:
+            error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
+            LOGGER.error(f"{self.name} | {error_msg}")
+            raise CheckError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
+            )
 
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
-            raise CheckError(repository_name=self.name, commit=commit, location=location, message=exc.message)
+            raise CheckError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
+            )

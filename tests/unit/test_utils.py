@@ -1,6 +1,7 @@
+import os
 import uuid
 
-from infrahub.utils import duplicates, is_valid_uuid
+from infrahub.utils import duplicates, get_fixtures_dir, is_valid_uuid
 
 
 def test_duplicates():
@@ -21,3 +22,8 @@ def test_is_valid_uuid():
     assert is_valid_uuid(False) is False
     assert is_valid_uuid("Not a valid UUID") is False
     assert is_valid_uuid(uuid.UUID) is False
+
+
+def test_get_fixtures_dir():
+
+    assert os.path.exists(get_fixtures_dir())

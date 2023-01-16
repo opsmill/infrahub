@@ -5,7 +5,12 @@ import uuid
 import pytest
 from git import Repo
 
-from infrahub.exceptions import FileNotFound, RepositoryError, TransformError
+from infrahub.exceptions import (
+    CheckError,
+    FileNotFound,
+    RepositoryError,
+    TransformError,
+)
 from infrahub.git import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
@@ -396,6 +401,40 @@ async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRe
         await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
 
 
+async def test_execute_python_check_valid(client, git_repo_checks: InfrahubRepository, mock_gql_query_my_query):
+
+    repo = git_repo_checks
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    check = await repo.execute_python_check(
+        branch_name="main", commit=commit_main, location="check01.py", class_name="Check01", client=client
+    )
+
+    assert check.passed is False
+
+
+async def test_execute_python_check_file_missing(client, git_repo_checks: InfrahubRepository):
+
+    repo = git_repo_checks
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    with pytest.raises(FileNotFound):
+        check = await repo.execute_python_check(
+            branch_name="main", commit=commit_main, location="notthere.py", class_name="Check01", client=client
+        )
+
+
+async def test_execute_python_check_class_missing(client, git_repo_checks: InfrahubRepository):
+
+    repo = git_repo_checks
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    with pytest.raises(CheckError):
+        check = await repo.execute_python_check(
+            branch_name="main", commit=commit_main, location="check01.py", class_name="Check99", client=client
+        )
+
+
 async def test_find_files(git_repo_jinja: InfrahubRepository):
 
     repo = git_repo_jinja
@@ -431,13 +470,3 @@ def test_extract_repo_file_information():
     assert file_info.relative_path == "/tmp/dir1/dir2/dir3"
     assert file_info.absolute_path == "/tmp/dir1/dir2/dir3"
     assert file_info.file_path == "/tmp/dir1/dir2/dir3/myfile.py"
-
-
-# async def test_import_objects_rfiles():
-#     pass
-
-# async def test_import_objects_rfiles():
-#     pass
-
-# async def import_python_checks_from_module():
-#     pass
