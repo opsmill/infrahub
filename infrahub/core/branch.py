@@ -329,8 +329,9 @@ class Branch(StandardNode):
         if self.name == config.SETTINGS.main.default_branch:
             raise Exception(f"Unable to merge the branch '{self.name}' into itself")
 
+        # TODO need to find a way to properly communicate back to the user any issue that coule come up during the merge
+        # From the Graph or From the repositories
         await self.merge_graph(session=session, at=at)
-
         await self.merge_repositories(rpc_client=rpc_client, session=session)
 
     async def merge_graph(self, session: AsyncSession, at: Union[str, Timestamp] = None):
