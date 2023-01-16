@@ -89,4 +89,4 @@ async def test_rpc_client_ensure_response_delivered(rpc_client: InfrahubRpcClien
     with pytest.raises(Exception) as exc:
         await rpc_client.ensure_all_responses_have_been_delivered()
 
-    assert "Some responses for git" in str(exc.value)
+    assert "Some responses for" in str(exc.value)
