@@ -5,11 +5,7 @@ import uuid
 import pytest
 from git import Repo
 
-from infrahub.exceptions import (
-    FileNotFound,
-    RepositoryError,
-    TransformError,
-)
+from infrahub.exceptions import FileNotFound, RepositoryError, TransformError
 from infrahub.git import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,

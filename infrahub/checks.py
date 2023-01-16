@@ -43,6 +43,7 @@ class InfrahubCheck:
 
     @classmethod
     async def init(cls, client=None, test_client=None, *args, **kwargs):
+        """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
         item = cls(*args, **kwargs)
 
@@ -83,7 +84,7 @@ class InfrahubCheck:
             print(json.dumps(log_message))
 
     @property
-    def branch_name(self):
+    def branch_name(self) -> str:
         """Return the name of the current git branch."""
 
         if self.branch:
@@ -100,11 +101,15 @@ class InfrahubCheck:
         pass
 
     async def collect_data(self):
+        """Query the result of the GraphQL Query defined in sef.query and store the result in self.data"""
 
         data = await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, rebase=self.rebase)
         self.data = data
 
-    async def run(self):
+    async def run(self) -> bool:
+        """Execute the check after collecting the data from the GraphQL query.
+        The result of the check is determined based on the presence or not of ERROR log messages."""
+
         await self.collect_data()
 
         if asyncio.iscoroutinefunction(self.validate):
@@ -117,6 +122,6 @@ class InfrahubCheck:
         self.passed = True if nbr_errors == 0 else False
 
         if self.passed:
-            self.log_info("check succesfully completed")
+            self.log_info("Check succesfully completed")
 
         return self.passed

@@ -1101,12 +1101,6 @@ class InfrahubRepository(BaseModel):
             LOGGER.debug(f"{self.name} | Checking {python_file}")
 
             file_info = extract_repo_file_information(full_filename=python_file, base_directory=branch_wt.directory)
-            # directory_name = os.path.dirname(python_file)
-            # filename = os.path.basename(python_file)
-            # module_name = os.path.splitext(filename)[0]
-
-            # path_in_repo = directory_name.replace(branch_wt.directory, "")
-            # file_path = os.path.join(path_in_repo, python_file)
 
             if file_info.absolute_path not in sys.path:
                 sys.path.append(file_info.absolute_path)

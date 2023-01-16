@@ -395,7 +395,7 @@ class InfrahubClient:
         if rebase:
             url_params["rebase"] = "true"
         if url_params:
-            url += f"?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
+            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         if not self.test_client:
             async with httpx.AsyncClient() as client:
@@ -443,7 +443,7 @@ class InfrahubClient:
             url_params["rebase"] = "true"
 
         if url_params:
-            url += f"?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
+            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         if not self.test_client:
             async with httpx.AsyncClient() as client:
