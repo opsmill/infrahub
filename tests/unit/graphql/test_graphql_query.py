@@ -91,6 +91,64 @@ async def test_nested_query(db, session, default_branch, car_person_schema):
     assert len(result_per_name["Jane"]["cars"]) == 1
 
 
+async def test_double_nested_query(db, session, default_branch, car_person_schema):
+
+    car = await registry.get_schema(session=session, name="Car")
+    person = await registry.get_schema(session=session, name="Person")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=car)
+    await c2.new(session=session, name="bolt", nbr_seats=4, is_electric=True, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=car)
+    await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
+    await c3.save(session=session)
+
+    query = """
+    query {
+        person {
+            name {
+                value
+            }
+            cars {
+                name {
+                    value
+                }
+                owner {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["cars"]) == 2
+    assert len(result_per_name["Jane"]["cars"]) == 1
+    assert result_per_name["John"]["cars"][0]["owner"]["name"]["value"] == "John"
+
+
 async def test_query_filter_local_attrs(db, session, default_branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -521,3 +579,73 @@ async def test_query_branches(db, session, default_branch, register_core_models_
 
     assert result1.errors is None
     assert result1.data["branch"][0]["name"] == "main"
+
+
+async def test_query_multiple_branches(db, session, default_branch, register_core_models_schema):
+
+    query = """
+    query {
+        branch1: branch {
+            id
+            name
+            branched_from
+            is_data_only
+        }
+        branch2: branch {
+            id
+            name
+            branched_from
+            is_data_only
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["branch1"][0]["name"] == "main"
+    assert result1.data["branch2"][0]["name"] == "main"
+
+
+async def test_multiple_queries(db, session, default_branch, person_tag_schema):
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
+
+    p2 = await Node.init(session=session, schema="Person")
+    await p2.new(session=session, firstname="Jane", lastname="Doe")
+    await p2.save(session=session)
+
+    query = """
+    query {
+        firstperson: person(firstname__value: "John") {
+            id
+            firstname {
+                value
+            }
+        }
+        secondperson: person(firstname__value: "Jane") {
+            id
+            firstname {
+                value
+            }
+        }
+    }
+    """
+    result1 = await graphql(
+        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["firstperson"][0]["firstname"]["value"] == "John"
+    assert result1.data["secondperson"][0]["firstname"]["value"] == "Jane"

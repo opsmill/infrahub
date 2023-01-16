@@ -1,4 +1,5 @@
 import asyncio
+import copy
 from typing import Dict, List, Optional
 
 import httpx
@@ -52,6 +53,82 @@ query {
             value
         }
         template_repository {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+QUERY_ALL_CHECKS = """
+query {
+    check {
+        id
+        name {
+            value
+        }
+        description {
+            value
+        }
+        file_path {
+            value
+        }
+        class_name {
+            value
+        }
+        rebase {
+            value
+        }
+        timeout {
+            value
+        }
+        query {
+            id
+            name {
+                value
+            }
+        }
+        repository {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+QUERY_ALL_TRANSFORM_PYTHON = """
+query {
+    transform_python {
+        id
+        name {
+            value
+        }
+        description {
+            value
+        }
+        file_path {
+            value
+        }
+        class_name {
+            value
+        }
+        rebase {
+            value
+        }
+        timeout {
+            value
+        }
+        query {
+            id
+            name {
+                value
+            }
+        }
+        repository {
             id
             name {
                 value
@@ -118,7 +195,7 @@ mutation($id: String!, $name: String!, $description: String!, $query: String!) {
   graphql_query_update(data: {
     id: $id
     name: { value: $name },
-    description { value: $description },
+    description: { value: $description },
     query: { value: $query }}){
         ok
         object {
@@ -155,8 +232,54 @@ mutation($id: String!, $name: String!, $description: String!, $template_path: St
   rfile_update(data: {
     id: $id
     name: { value: $name },
-    description { value: $description },
+    description: { value: $description },
     template_path: { value: $template_path }}){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+MUTATION_CHECK_CREATE = """
+mutation($name: String!, $description: String!, $file_path: String!, $class_name: String!, $repository: String!, $query: String!, $timeout: Int!, $rebase: Boolean!) {
+  check_create(data: {
+    name: { value: $name }
+    description: { value: $description }
+    query: { id: $query }
+    file_path: { value: $file_path }
+    class_name: { value: $class_name }
+    repository: { id: $repository }
+    timeout: { value: $timeout }
+    rebase: { value: $rebase }
+  }){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+MUTATION_CHECK_UPDATE = """
+mutation($id: String!, $name: String!, $description: String!, $file_path: String!, $class_name: String!, $query: String!, $timeout: Int!, $rebase: Boolean!) {
+  check_update(data: {
+    id: $id
+    name: { value: $name },
+    description: { value: $description },
+    file_path: { value: $file_path },
+    class_name: { value: $class_name },
+    query: { id: $query },
+    timeout: { value: $timeout },
+    rebase: { value: $rebase },
+  }){
         ok
         object {
             id
@@ -207,6 +330,28 @@ class RFileData(BaseModel):
     output_path: Optional[str]
 
 
+class CheckData(BaseModel):
+    id: Optional[str]
+    name: str
+    description: Optional[str]
+    repository: str
+    file_path: str
+    class_name: str
+    timeout: Optional[int]
+    rebase: Optional[bool]
+
+
+class TransformPythonData(BaseModel):
+    id: Optional[str]
+    name: str
+    description: Optional[str]
+    repository: str
+    file_path: str
+    class_name: str
+    timeout: Optional[int]
+    rebase: Optional[bool]
+
+
 class InfrahubClient:
     """GraphQL Client to interact with Infrahub."""
 
@@ -226,7 +371,14 @@ class InfrahubClient:
         return cls(*args, **kwargs)
 
     async def execute_graphql(
-        self, query, variables: dict = None, branch_name: str = None, timeout: int = None, raise_for_error: bool = True
+        self,
+        query,
+        variables: dict = None,
+        branch_name: str = None,
+        at: str = None,
+        rebase: bool = False,
+        timeout: int = None,
+        raise_for_error: bool = True,
     ):
 
         url = f"{self.address}/graphql"
@@ -236,6 +388,14 @@ class InfrahubClient:
         payload = {"query": query}
         if variables:
             payload["variables"] = variables
+
+        url_params = {}
+        if at:
+            url_params["at"] = at
+        if rebase:
+            url_params["rebase"] = "true"
+        if url_params:
+            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         if not self.test_client:
             async with httpx.AsyncClient() as client:
@@ -260,6 +420,46 @@ class InfrahubClient:
         return response["data"]
 
         # TODO add a special method to execute mutation that will check if the method returned OK
+
+    async def query_gql_query(
+        self,
+        name: str,
+        params: dict = None,
+        branch_name: str = None,
+        at: str = None,
+        rebase: bool = False,
+        timeout: int = None,
+        raise_for_error: bool = True,
+    ):
+
+        url = f"{self.address}/query/{name}"
+        url_params = copy.deepcopy(params or {})
+
+        if branch_name:
+            url_params["branch"] = branch_name
+        if at:
+            url_params["at"] = at
+        if rebase:
+            url_params["rebase"] = "true"
+
+        if url_params:
+            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
+
+        if not self.test_client:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    url=url,
+                    timeout=timeout or self.default_timeout,
+                )
+
+        else:
+            with self.test_client as client:
+                resp = client.post(url=url)
+
+        if raise_for_error:
+            resp.raise_for_status()
+
+        return resp.json()
 
     async def create_branch(self, branch_name: str, background_execution: bool = False) -> bool:
 
@@ -313,17 +513,59 @@ class InfrahubClient:
 
         data = await self.execute_graphql(query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name)
 
-        queries = {
-            query["name"]["value"]: GraphQLQueryData(
-                id=query["id"],
-                name=query["name"]["value"],
-                description=query["description"]["value"],
-                query=query["query"]["value"],
+        items = {
+            item["name"]["value"]: GraphQLQueryData(
+                id=item["id"],
+                name=item["name"]["value"],
+                description=item["description"]["value"],
+                query=item["query"]["value"],
             )
-            for query in data["graphql_query"]
+            for item in data["graphql_query"]
         }
 
-        return queries
+        return items
+
+    async def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
+
+        data = await self.execute_graphql(query=QUERY_ALL_CHECKS, branch_name=branch_name)
+
+        items = {
+            item["name"]["value"]: CheckData(
+                id=item["id"],
+                name=item["name"]["value"],
+                description=item["description"]["value"],
+                file_path=item["file_path"]["value"],
+                class_name=item["class_name"]["value"],
+                query=item["query"]["name"]["value"],
+                repository=item["repository"]["id"],
+                timeout=item["timeout"]["value"],
+                rebase=item["rebase"]["value"],
+            )
+            for item in data["check"]
+        }
+
+        return items
+
+    async def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
+
+        data = await self.execute_graphql(query=QUERY_ALL_TRANSFORM_PYTHON, branch_name=branch_name)
+
+        items = {
+            item["name"]["value"]: TransformPythonData(
+                id=item["id"],
+                name=item["name"]["value"],
+                description=item["description"]["value"],
+                file_path=item["file_path"]["value"],
+                class_name=item["class_name"]["value"],
+                query=item["query"]["name"]["value"],
+                repository=item["repository"]["id"],
+                timeout=item["timeout"]["value"],
+                rebase=item["rebase"]["value"],
+            )
+            for item in data["transform_python"]
+        }
+
+        return items
 
     async def create_graphql_query(self, branch_name: str, name: str, query: str, description: str = "") -> bool:
 
@@ -385,6 +627,60 @@ class InfrahubClient:
 
         variables = {"id": id, "name": name, "description": description, "template_path": template_path}
         await self.execute_graphql(query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name)
+
+        return True
+
+    async def create_check(
+        self,
+        branch_name: str,
+        name: str,
+        query: str,
+        file_path: str,
+        class_name: str,
+        repository: str,
+        description: str = "",
+        timeout: int = 10,
+        rebase: bool = False,
+    ) -> bool:
+
+        variables = {
+            "name": name,
+            "description": description,
+            "file_path": file_path,
+            "class_name": class_name,
+            "repository": repository,
+            "query": query,
+            "timeout": timeout,
+            "rebase": rebase,
+        }
+        await self.execute_graphql(query=MUTATION_CHECK_CREATE, variables=variables, branch_name=branch_name)
+
+        return True
+
+    async def update_check(
+        self,
+        branch_name: str,
+        id: str,
+        name: str,
+        query: str,
+        file_path: str,
+        class_name: str,
+        description: str = "",
+        timeout: int = 10,
+        rebase: bool = False,
+    ):
+
+        variables = {
+            "id": id,
+            "name": name,
+            "description": description,
+            "file_path": file_path,
+            "class_name": class_name,
+            "query": query,
+            "timeout": timeout,
+            "rebase": rebase,
+        }
+        await self.execute_graphql(query=MUTATION_CHECK_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
 

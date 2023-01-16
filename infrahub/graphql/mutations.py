@@ -1,3 +1,5 @@
+import asyncio
+
 from graphene import Boolean, Field, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
 from graphene.types.mutation import MutationOptions
@@ -221,15 +223,20 @@ class BranchCreate(Mutation):
             # Query all repositories and add a branch on each one of them too
             repositories = await NodeManager.query(session=session, schema="Repository")
 
+            tasks = []
+
             for repo in repositories:
-                await rpc_client.call(
-                    message=InfrahubGitRPC(
-                        action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
-                    ),
-                    wait_for_response=not background_execution,
+                tasks.append(
+                    rpc_client.call(
+                        message=InfrahubGitRPC(
+                            action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
+                        ),
+                        wait_for_response=not background_execution,
+                    )
                 )
-                # TODO need to validate that everything go as expected
-                # TODO need to run all repos in //
+
+            await asyncio.gather(*tasks)
+            # TODO need to validate that everything goes as expected
 
         ok = True
 
@@ -287,9 +294,10 @@ class BranchValidate(Mutation):
     async def mutate(cls, root, info, data):
 
         session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
-        ok, messages = await obj.validate(session=session)
+        ok, messages = await obj.validate(rpc_client=rpc_client, session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
@@ -307,9 +315,10 @@ class BranchMerge(Mutation):
     async def mutate(cls, root, info, data):
 
         session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
-        await obj.merge(session=session)
+        await obj.merge(rpc_client=rpc_client, session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 

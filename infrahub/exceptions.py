@@ -13,6 +13,15 @@ class RepositoryError(Error):
         super().__init__(self.message)
 
 
+class FileNotFound(Error):
+    def __init__(self, repository_name, location, commit, message=None):
+        self.repository_name = repository_name
+        self.location = location
+        self.commit = commit
+        self.message = message or f"Unable to find the file at '{repository_name}::{commit}::{location}'."
+        super().__init__(self.message)
+
+
 class TransformError(Error):
     def __init__(self, repository_name, location, commit, message=None):
         self.repository_name = repository_name
@@ -20,6 +29,19 @@ class TransformError(Error):
         self.commit = commit
         self.message = (
             message or f"An error occured with the transform function at '{repository_name}::{commit}::{location}'."
+        )
+        super().__init__(self.message)
+
+
+class CheckError(Error):
+    def __init__(self, repository_name, location, class_name, commit, message=None):
+        self.repository_name = repository_name
+        self.location = location
+        self.commit = commit
+        self.class_name = class_name
+        self.message = (
+            message
+            or f"An error occured with the check function at '{repository_name}::{commit}::{location}::{class_name}'."
         )
         super().__init__(self.message)
 

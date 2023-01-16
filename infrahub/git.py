@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import glob
+import importlib
 import logging
 import os
 import shutil
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
 from uuid import UUID
@@ -16,17 +18,24 @@ from git.exc import GitCommandError, InvalidGitRepositoryError
 from pydantic import BaseModel, validator
 
 import infrahub.config as config
-from infrahub.exceptions import RepositoryError, TransformError, TransformNotFoundError
+from infrahub.checks import VARIABLE_TO_IMPORT, InfrahubCheck
+from infrahub.exceptions import (
+    CheckError,
+    FileNotFound,
+    RepositoryError,
+    TransformError,
+)
 from infrahub.lock import registry as lock_registry
 from infrahub.message_bus.events import (
     GitMessageAction,
+    InfrahubCheckRPC,
     InfrahubGitRPC,
     InfrahubRPCResponse,
     InfrahubTransformRPC,
     RPCStatusCode,
     TransformMessageAction,
 )
-from infrahub_client import InfrahubClient
+from infrahub_client import GraphQLError, InfrahubClient
 
 LOGGER = logging.getLogger("infrahub.git")
 
@@ -76,7 +85,9 @@ async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient
 
     elif message.action == GitMessageAction.MERGE.value:
         async with lock_registry.get(message.repository_name):
-            repo.merge(source_branch=message.params["branch_name"])
+            await repo.merge(
+                source_branch=message.params["branch_name"], dest_branch=config.SETTINGS.main.default_branch
+            )
             return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
 
     elif message.action == GitMessageAction.REBASE.value:
@@ -106,15 +117,45 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
 
         try:
             rendered_template = await repo.render_jinja2_template(
-                commit=message.commit, location=message.transform_location, data=message.data or {}
+                commit=message.commit, location=message.transform_location, data={"data": message.data} or {}
             )
             return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
 
-        except TransformError as exc:
+        except (TransformError, FileNotFound) as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
     elif message.action == TransformMessageAction.PYTHON.value:
         return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+
+    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
+
+
+async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+
+    LOGGER.debug(
+        f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
+    )
+
+    if message.action == TransformMessageAction.PYTHON.value:
+
+        repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+
+        try:
+            check = await repo.execute_python_check(
+                branch_name=message.branch_name,
+                commit=message.commit,
+                location=message.check_location,
+                class_name=message.check_name,
+                client=client,
+            )
+
+            return InfrahubRPCResponse(
+                status=RPCStatusCode.OK.value,
+                response={"passed": check.passed, "logs": check.logs, "errors": check.errors},
+            )
+
+        except (CheckError, FileNotFound) as exc:
+            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
     return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
 
@@ -139,6 +180,40 @@ def initialize_repositories_directory() -> bool:
         return True
 
     return False
+
+
+class RepoFileInformation(BaseModel):
+    filename: str
+    relative_path: str
+    absolute_path: str
+    file_path: str
+    extension: str
+    filename_wo_ext: str
+
+
+def extract_repo_file_information(full_filename: str, base_directory: str = None):
+
+    directory_name = os.path.dirname(full_filename)
+    filename = os.path.basename(full_filename)
+    filename_wo_ext, extension = os.path.splitext(filename)
+
+    if base_directory and base_directory in directory_name:
+        path_in_repo = directory_name.replace(base_directory, "")
+        if path_in_repo.startswith("/"):
+            path_in_repo = path_in_repo[1:]
+    else:
+        path_in_repo = directory_name
+
+    file_path = os.path.join(path_in_repo, filename)
+
+    return RepoFileInformation(
+        filename=filename,
+        absolute_path=directory_name,
+        relative_path=path_in_repo,
+        extension=extension,
+        filename_wo_ext=filename_wo_ext,
+        file_path=file_path,
+    )
 
 
 class Worktree(BaseModel):
@@ -401,7 +476,7 @@ class InfrahubRepository(BaseModel):
 
         self = cls(**kwargs)
         self.validate_local_directories()
-        LOGGER.info(f"{self.name} | Initiated the object on an existing directory.")
+        LOGGER.debug(f"{self.name} | Initiated the object on an existing directory.")
         return self
 
     def has_worktree(self, identifier: str) -> bool:
@@ -685,7 +760,12 @@ class InfrahubRepository(BaseModel):
             if not is_valid:
                 continue
 
-            await self.create_branch_in_graph(branch_name=branch_name)
+            try:
+                await self.create_branch_in_graph(branch_name=branch_name)
+            except GraphQLError as exc:
+                if "already exist" not in exc.errors[0]["message"]:
+                    raise
+
             await self.create_branch_in_git(branch_name=branch_name)
 
             commit = self.get_commit_value(branch_name=branch_name, remote=False)
@@ -837,6 +917,7 @@ class InfrahubRepository(BaseModel):
 
         await self.import_all_graphql_query(branch_name=branch_name)
         await self.import_all_yaml_files(branch_name=branch_name)
+        await self.import_all_python_files(branch_name=branch_name)
 
     async def import_objects_rfiles(self, branch_name: str, data: dict):
 
@@ -924,6 +1005,58 @@ class InfrahubRepository(BaseModel):
         # TODO need to add traceabillity to identify where a query is coming from
         # TODO need to identify Query that are not present anymore (once lineage is available)
 
+    async def import_python_checks_from_module(self, branch_name: str, module, file_path: str):
+
+        # TODO add function to validate if a check is valid
+
+        if VARIABLE_TO_IMPORT not in dir(module):
+            return False
+
+        checks_in_graph = await self.client.get_list_checks(branch_name=branch_name)
+        checks_in_repo = {key: value for key, value in checks_in_graph.items() if value.repository == str(self.id)}
+
+        for check_class in getattr(module, VARIABLE_TO_IMPORT):
+
+            check_name = check_class.__name__
+
+            if check_name not in checks_in_repo:
+                LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
+                await self.client.create_check(
+                    branch_name=branch_name,
+                    name=check_name,
+                    repository=str(self.id),
+                    query=check_class.query,
+                    file_path=file_path,
+                    class_name=check_name,
+                    rebase=check_class.rebase,
+                    timeout=check_class.timeout,
+                )
+                continue
+
+            check_in_repo = checks_in_repo[check_name]
+
+            if (
+                check_in_repo.repository != self.id
+                or check_in_repo.class_name != check_name
+                or check_in_repo.query != file_path
+                or check_in_repo.file_path != check_class.query
+                or check_in_repo.timeout != check_class.timeout
+                or check_in_repo.rebase != check_class.rebase
+            ):
+                LOGGER.info(
+                    f"{self.name}: New version of the Check '{check_name}' found on branch {branch_name}, updating"
+                )
+                await self.client.update_check(
+                    branch_name=branch_name,
+                    id=str(checks_in_repo[check_name].id),
+                    name=check_name,
+                    query=check_class.query,
+                    file_path=file_path,
+                    class_name=check_name,
+                    rebase=check_class.rebase,
+                    timeout=check_class.timeout,
+                )
+
     async def import_all_yaml_files(self, branch_name: str):
 
         yaml_files = await self.find_files(extension=["yml", "yaml"], branch_name=branch_name)
@@ -958,6 +1091,30 @@ class InfrahubRepository(BaseModel):
                 method = getattr(self, f"import_objects_{key}")
                 await method(branch_name=branch_name, data=data)
 
+    async def import_all_python_files(self, branch_name: str):
+
+        branch_wt = self.get_worktree(identifier=branch_name)
+        python_files = await self.find_files(extension=["py"], branch_name=branch_name)
+
+        for python_file in python_files:
+
+            LOGGER.debug(f"{self.name} | Checking {python_file}")
+
+            file_info = extract_repo_file_information(full_filename=python_file, base_directory=branch_wt.directory)
+
+            if file_info.absolute_path not in sys.path:
+                sys.path.append(file_info.absolute_path)
+
+            try:
+                module = importlib.import_module(file_info.filename_wo_ext)
+            except ModuleNotFoundError:
+                LOGGER.warning(f"{self.name} | Unable to load python file {python_file}")
+                continue
+
+            await self.import_python_checks_from_module(
+                branch_name=branch_name, module=module, file_path=file_info.file_path
+            )
+
     async def find_files(self, extension: Union[str, List[str]], branch_name: str, recursive: bool = True):
 
         branch_wt = self.get_worktree(identifier=branch_name)
@@ -978,7 +1135,7 @@ class InfrahubRepository(BaseModel):
         commit_worktree = self.get_worktree(identifier=commit)
 
         if not os.path.exists(os.path.join(commit_worktree.directory, location)):
-            raise TransformNotFoundError(repository_name=self.name, commit=commit, location=location)
+            raise FileNotFound(repository_name=self.name, commit=commit, location=location)
 
         try:
             templateLoader = jinja2.FileSystemLoader(searchpath=commit_worktree.directory)
@@ -989,33 +1146,51 @@ class InfrahubRepository(BaseModel):
             LOGGER.critical(exc, exc_info=True)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=exc.message)
 
-    # def run_checks(self, rebase: bool = True) -> set(bool, List[str]):
-    #     """Execute the checks for this repository using the infrahub cli.
+    async def execute_python_check(
+        self, branch_name: str, commit: str, location: str, class_name: str, client: InfrahubClient
+    ) -> InfrahubCheck:
+        """Execute A Python Check stored in the repository."""
 
-    #     The execution is done using the CLI to decouple the checks from the server, mainly for security reasons.
+        commit_worktree = self.get_worktree(identifier=commit)
 
-    #     The interface is very simple for now, this is something that need to be revisited.
-    #     """
+        # Ensure the file is present in the repository
+        if not os.path.exists(os.path.join(commit_worktree.directory, location)):
+            raise FileNotFound(repository_name=self.name, commit=commit, location=location)
 
-    #     # CHeck will fail if there is any log message with the severity ERROR
-    #     result = True
-    #     messages = []
+        try:
+            file_info = extract_repo_file_information(
+                full_filename=os.path.join(commit_worktree.directory, location),
+                base_directory=commit_worktree.directory,
+            )
 
-    #     command = f"infrahub check run {self.get_active_directory()} --branch {self._branch.name} --format-json"
-    #     if rebase:
-    #         command += " --rebase"
+            if file_info.absolute_path not in sys.path:
+                sys.path.append(file_info.absolute_path)
 
-    #     stream = os.popen(command)
-    #     output = stream.read()
-    #     output_lines = output.split("\n")
+            module = importlib.import_module(file_info.filename_wo_ext)
 
-    #     for line in output_lines:
-    #         if not line:
-    #             continue
+            check_class = getattr(module, class_name)
 
-    #         log_message = json.loads(line)
-    #         if log_message.get("level") == "ERROR":
-    #             result = False
-    #             messages.append(log_message.get("message"))
+            check = await check_class.init(root_directory=commit_worktree.directory, branch=branch_name, client=client)
+            await check.run()
 
-    #     return result, messages
+            return check
+
+        except ModuleNotFoundError:
+            error_msg = f"Unable to load the check file {location} ({commit})"
+            LOGGER.error(f"{self.name} | {error_msg}")
+            raise CheckError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
+            )
+
+        except AttributeError:
+            error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
+            LOGGER.error(f"{self.name} | {error_msg}")
+            raise CheckError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
+            )
+
+        except Exception as exc:
+            LOGGER.critical(exc, exc_info=True)
+            raise CheckError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
+            )

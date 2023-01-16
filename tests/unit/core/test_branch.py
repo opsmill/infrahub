@@ -233,10 +233,10 @@ async def test_diff_get_relationships(session, base_dataset_02):
     assert rels["main"]["car_person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED.value
 
 
-async def test_validate(session, base_dataset_02, register_core_models_schema):
+async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
-    passed, messages = await branch1.validate(session=session)
+    passed, messages = await branch1.validate_graph(session=session)
 
     assert passed is True
     assert messages == []
@@ -246,7 +246,7 @@ async def test_validate(session, base_dataset_02, register_core_models_schema):
     c1.name.value = "new name"
     await c1.save(session=session)
 
-    passed, messages = await branch1.validate(session=session)
+    passed, messages = await branch1.validate_graph(session=session)
     assert passed is False
     assert messages == ["Conflict detected at node/c1/name/HAS_VALUE"]
 
@@ -255,16 +255,16 @@ async def test_validate_empty_branch(session, base_dataset_02, register_core_mod
 
     branch2 = await create_branch(branch_name="branch2", session=session)
 
-    passed, messages = await branch2.validate(session=session)
+    passed, messages = await branch2.validate_graph(session=session)
 
     assert passed is True
     assert messages == []
 
 
-async def test_merge(session, base_dataset_02, register_core_models_schema):
+async def test_merge_graph(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
-    await branch1.merge(session=session)
+    await branch1.merge_graph(session=session)
 
     # Query all cars in MAIN, AFTER the merge
     cars = sorted(await NodeManager.query(schema="Car", session=session), key=lambda c: c.id)
@@ -300,7 +300,7 @@ async def test_merge(session, base_dataset_02, register_core_models_schema):
     assert cars[0].nbr_seats.value == 4
 
 
-async def test_merge_delete(session, base_dataset_02, register_core_models_schema):
+async def test_merge_graph_delete(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
@@ -310,7 +310,7 @@ async def test_merge_delete(session, base_dataset_02, register_core_models_schem
     p3 = await NodeManager.get_one(id="p3", branch=branch1, session=session)
     await p3.delete(session=session)
 
-    await branch1.merge(session=session)
+    await branch1.merge_graph(session=session)
 
     # Query all cars in MAIN, AFTER the merge
     persons = sorted(await NodeManager.query(schema="Person", session=session), key=lambda p: p.id)

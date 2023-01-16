@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, Union
+from typing import TYPE_CHECKING, Tuple, Type, Union
 
 import graphene
 from graphene.types.generic import GenericScalar
 
 import infrahub.config as config
-from infrahub.core import registry
+from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 
@@ -143,20 +143,23 @@ async def default_resolver(*args, **kwargs):
 async def generate_object_types(session: AsyncSession, branch: Union[Branch, str] = None):
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
+    branch = await get_branch(session=session, branch=branch)
+
     full_schema = await registry.get_full_schema(session=session, branch=branch)
 
     # Generate all Graphql ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
         node_type = generate_graphql_object(schema=node_schema)
         related_node_type = generate_related_graphql_object(schema=node_schema)
-        await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch)
+        await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
         await registry.set_graphql_type(
-            name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch
+            name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name
         )
 
-    # Extend all type with relationships
+    # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
         node_type = await registry.get_graphql_type(session=session, name=node_name, branch=branch)
+        related_node_type = await registry.get_graphql_type(session=session, name=f"Related{node_name}", branch=branch)
 
         for rel in node_schema.relationships:
 
@@ -168,12 +171,16 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
             if rel.cardinality == "one":
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
+                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
 
             elif rel.cardinality == "many":
                 node_type._meta.fields[rel.name] = graphene.Field.mounted(graphene.List(peer_type, **peer_filters))
+                related_node_type._meta.fields[rel.name] = graphene.Field.mounted(
+                    graphene.List(peer_type, **peer_filters)
+                )
 
 
-async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> object:
+async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
 
     class_attrs = {}
 
@@ -196,7 +203,7 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
     return type("QueryMixin", (object,), class_attrs)
 
 
-async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> object:
+async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
 
     class_attrs = {}
 
@@ -217,7 +224,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
     return type("MutationMixin", (object,), class_attrs)
 
 
-def generate_graphql_object(schema: NodeSchema) -> InfrahubObject:
+def generate_graphql_object(schema: NodeSchema) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
     meta_attrs = {
@@ -240,7 +247,7 @@ def generate_graphql_object(schema: NodeSchema) -> InfrahubObject:
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
 
-def generate_related_graphql_object(schema: NodeSchema) -> InfrahubObject:
+def generate_related_graphql_object(schema: NodeSchema) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema for a Related Node."""
 
     meta_attrs = {
@@ -270,7 +277,7 @@ def generate_related_graphql_object(schema: NodeSchema) -> InfrahubObject:
 
 def generate_graphql_mutations(
     schema: NodeSchema, base_class: type[InfrahubMutation]
-) -> Tuple[InfrahubMutation, InfrahubMutation, InfrahubMutation]:
+) -> Tuple[Type[InfrahubMutation], Type[InfrahubMutation], Type[InfrahubMutation]]:
 
     create = generate_graphql_mutation_create(schema=schema, base_class=base_class)
     update = generate_graphql_mutation_update(schema=schema, base_class=base_class)
@@ -343,7 +350,7 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.Input
 
 def generate_graphql_mutation_create(
     schema: NodeSchema, base_class: type[InfrahubMutation] = InfrahubMutation
-) -> InfrahubMutation:
+) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to CREATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Create"
 
@@ -365,7 +372,7 @@ def generate_graphql_mutation_create(
 
 def generate_graphql_mutation_update(
     schema: NodeSchema, base_class: type[InfrahubMutation] = InfrahubMutation
-) -> InfrahubMutation:
+) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to UPDATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Update"
 
@@ -387,7 +394,7 @@ def generate_graphql_mutation_update(
 
 def generate_graphql_mutation_delete(
     schema: NodeSchema, base_class: type[InfrahubMutation] = InfrahubMutation
-) -> InfrahubMutation:
+) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Delete"
 

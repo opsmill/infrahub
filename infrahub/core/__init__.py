@@ -100,7 +100,7 @@ class Registry:
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
 
-    async def set_item(self, kind: str, name: str, item, branch=None) -> bool:
+    async def set_item(self, kind: str, name: str, item, branch: str = None) -> bool:
         branch = branch or config.SETTINGS.main.default_branch
         getattr(self, kind)[branch][name] = item
         return True
@@ -140,7 +140,7 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    async def set_schema(self, name: str, schema: NodeSchema, branch: Optional[Union[Branch, str]] = None) -> bool:
+    async def set_schema(self, name: str, schema: NodeSchema, branch: Optional[str] = None) -> bool:
         return await self.set_item(kind="schema", name=name, item=schema, branch=branch)
 
     async def has_schema(self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
@@ -159,9 +159,7 @@ class Registry:
         The current implementation is a bit simplistic, will need to re-evaluate."""
         return await self.get_all_item(session=session, kind="schema", branch=branch)
 
-    async def set_graphql_type(
-        self, name: str, graphql_type: InfrahubObject, branch: Optional[Union[Branch, str]] = None
-    ) -> bool:
+    async def set_graphql_type(self, name: str, graphql_type: InfrahubObject, branch: Optional[str] = None) -> bool:
         return await self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
 
     async def has_graphql_type(

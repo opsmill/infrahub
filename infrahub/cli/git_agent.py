@@ -12,6 +12,7 @@ import infrahub.config as config
 from infrahub.exceptions import RepositoryError
 from infrahub.git import (
     InfrahubRepository,
+    handle_git_check_message,
     handle_git_rpc_message,
     handle_git_transform_message,
     initialize_repositories_directory,
@@ -83,8 +84,11 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                         if rpc.type == MessageType.GIT:
                             response = await handle_git_rpc_message(message=rpc, client=client)
 
-                        if rpc.type == MessageType.TRANSFORMATION:
+                        elif rpc.type == MessageType.TRANSFORMATION:
                             response = await handle_git_transform_message(message=rpc, client=client)
+
+                        elif rpc.type == MessageType.CHECK:
+                            response = await handle_git_check_message(message=rpc, client=client)
 
                         else:
                             response = InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
