@@ -37,6 +37,7 @@ from infrahub.message_bus.events import (
     GitMessageAction,
     InfrahubCheckRPC,
     InfrahubGitRPC,
+    RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
 

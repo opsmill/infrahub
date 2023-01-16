@@ -63,7 +63,7 @@ async def test_rpc_client_testing_multiple_messages(rpc_client: InfrahubRpcClien
 
     assert response.status == RPCStatusCode.TOO_EARLY.value
 
-    with pytest.raises(IndexError) as exc:
+    with pytest.raises(IndexError):
         response = await rpc_client.call(message=message)
 
 
@@ -84,7 +84,7 @@ async def test_rpc_client_ensure_response_delivered(rpc_client: InfrahubRpcClien
         location="/tmp",
     )
 
-    response = await rpc_client.call(message=message)
+    await rpc_client.call(message=message)
 
     with pytest.raises(Exception) as exc:
         await rpc_client.ensure_all_responses_have_been_delivered()
