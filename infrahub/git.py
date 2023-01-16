@@ -154,7 +154,7 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
                 response={"passed": check.passed, "logs": check.logs, "errors": check.errors},
             )
 
-        except TransformError as exc:
+        except (CheckError, FileNotFound) as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
     return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
