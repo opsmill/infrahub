@@ -419,7 +419,7 @@ async def test_execute_python_check_file_missing(client, git_repo_checks: Infrah
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
     with pytest.raises(FileNotFound):
-        check = await repo.execute_python_check(
+        await repo.execute_python_check(
             branch_name="main", commit=commit_main, location="notthere.py", class_name="Check01", client=client
         )
 
@@ -430,7 +430,7 @@ async def test_execute_python_check_class_missing(client, git_repo_checks: Infra
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
     with pytest.raises(CheckError):
-        check = await repo.execute_python_check(
+        await repo.execute_python_check(
             branch_name="main", commit=commit_main, location="check01.py", class_name="Check99", client=client
         )
 
