@@ -5,7 +5,11 @@ import uuid
 import pytest
 from git import Repo
 
-from infrahub.exceptions import RepositoryError, TransformError, TransformNotFoundError
+from infrahub.exceptions import (
+    FileNotFound,
+    RepositoryError,
+    TransformError,
+)
 from infrahub.git import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
@@ -392,7 +396,7 @@ async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRe
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(TransformNotFoundError):
+    with pytest.raises(FileNotFound):
         await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
 
 

@@ -121,7 +121,7 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
             )
             return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
 
-        except TransformError as exc:
+        except (TransformError, FileNotFound) as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
     elif message.action == TransformMessageAction.PYTHON.value:

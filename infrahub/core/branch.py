@@ -244,9 +244,18 @@ class Branch(StandardNode):
         Need to return a list of violations, must be multiple
         """
 
+        graph_passed, graph_messages = await self.validate_graph(session=session)
+        repo_passed, repo_messages = await self.validate_repositories(rpc_client=rpc_client, session=session)
+
+        messages = graph_messages + repo_messages
+        passed = graph_passed & repo_passed
+
+        return passed, messages
+
+    async def validate_graph(self, session: AsyncSession) -> set(bool, List[str]):
+
         passed = True
         messages = []
-        tasks = []
 
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await self.diff(session=session)
@@ -254,6 +263,14 @@ class Branch(StandardNode):
             passed = False
             for conflict in conflicts:
                 messages.append(f"Conflict detected at {'/'.join(conflict)}")
+
+        return passed, messages
+
+    async def validate_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession) -> set(bool, List[str]):
+
+        passed = True
+        messages = []
+        tasks = []
 
         from infrahub.core.manager import NodeManager
 
@@ -312,8 +329,13 @@ class Branch(StandardNode):
         if self.name == config.SETTINGS.main.default_branch:
             raise Exception(f"Unable to merge the branch '{self.name}' into itself")
 
+        await self.merge_graph(session=session, at=at)
+
+        await self.merge_repositories(rpc_client=rpc_client, session=session)
+
+    async def merge_graph(self, session: AsyncSession, at: Union[str, Timestamp] = None):
+
         from infrahub.core import registry
-        from infrahub.core.manager import NodeManager
 
         rel_ids_to_update = []
 
@@ -457,9 +479,11 @@ class Branch(StandardNode):
 
         await update_relationships_to(ids=rel_ids_to_update, to=at, session=session)
 
-        # ---------------------------------------------
-        # FILES
-        # ---------------------------------------------
+        await self.rebase(session=session)
+
+    async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
+
+        from infrahub.core.manager import NodeManager
 
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema="Repository", session=session)
@@ -488,8 +512,6 @@ class Branch(StandardNode):
             )
 
         await asyncio.gather(*tasks)
-
-        await self.rebase(session=session)
 
 
 @dataclass
