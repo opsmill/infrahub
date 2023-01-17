@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
 
+# pylint: disable=protected-access,too-many-locals
+
 TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "String": StrAttributeType,
     "Integer": IntAttributeType,

@@ -1,7 +1,9 @@
 import time
 
 import infrahub.config as config
-from infrahub.database import execute_read_query
+from infrahub.database import execute_read_query_async
+
+# pylint: skip-file
 
 config.load_and_exit()
 
@@ -53,33 +55,32 @@ ORDER BY a.name, a.branch
 """
 PARAMS2 = {"node_id": "3314b9e7-fcd8-4b89-91d7-04483d384fa5"}
 
-response_time1 = []
-response_time2 = []
 
-print("-- Execute Query 1 --- ")
-for i in range(0, NBR_EXECUTION):
-    time_start = time.time()
-    response1 = execute_read_query(QUERY1, PARAMS1)
-    response_time1.append(time.time() - time_start)
+async def compare_query():
+    response_time1 = []
+    response_time2 = []
 
+    print("-- Execute Query 1 --- ")
+    for i in range(0, NBR_EXECUTION):
+        time_start = time.time()
+        await execute_read_query_async(query=QUERY1, params=PARAMS1)
+        response_time1.append(time.time() - time_start)
 
-print("-- Execute Query 2 --- ")
-for i in range(0, NBR_EXECUTION):
-    time_start = time.time()
-    response2 = execute_read_query(QUERY2, PARAMS2)
-    response_time2.append(time.time() - time_start)
+    print("-- Execute Query 2 --- ")
+    for i in range(0, NBR_EXECUTION):
+        time_start = time.time()
+        await execute_read_query_async(query=QUERY2, params=PARAMS2)
+        response_time2.append(time.time() - time_start)
 
+    def time_to_ms(input):
+        return f"{int(input*1000)}ms"
 
-def time_to_ms(input):
-    return f"{int(input*1000)}ms"
-
-
-print("-----------------------------------------")
-avg1 = sum(response_time1) / len(response_time1)
-avg2 = sum(response_time1) / len(response_time1)
-print(f" Query 1 {time_to_ms(avg1)} | {[time_to_ms(x) for x in response_time1]}")
-print(f" Query 2 {time_to_ms(avg2)} | {[time_to_ms(x) for x in response_time2]}")
-if avg1 < avg2:
-    print(f"  Query 1 is faster by {time_to_ms(avg2-avg1)} {int((avg1/avg2)*100)}%")
-else:
-    print(f"  Query 2 is faster by {time_to_ms(avg1-avg2)} {int((avg2/avg1)*100)}%")
+    print("-----------------------------------------")
+    avg1 = sum(response_time1) / len(response_time1)
+    avg2 = sum(response_time1) / len(response_time1)
+    print(f" Query 1 {time_to_ms(avg1)} | {[time_to_ms(x) for x in response_time1]}")
+    print(f" Query 2 {time_to_ms(avg2)} | {[time_to_ms(x) for x in response_time2]}")
+    if avg1 < avg2:
+        print(f"  Query 1 is faster by {time_to_ms(avg2-avg1)} {int((avg1/avg2)*100)}%")
+    else:
+        print(f"  Query 2 is faster by {time_to_ms(avg1-avg2)} {int((avg2/avg1)*100)}%")

@@ -95,11 +95,11 @@ def print_selection_set(selection_set, level: int = 1) -> int:
             # max_depth = max(max_depth, self._get_query_depth(selection_set, level + 1))
             print_selection_set(selection_set, level + 1)
 
-    """
-    MATCH (d:Device)
-    WHERE (d)-[]-(:Attribute {name: "name"})-[]-(:AttributeValue {value: "spine1"})
-    MAT36CH (d)-[:IS_RELATED]-(r1:Relationship{type: "device_interface"})-[:IS_RELATED]-(n1)
-    WHERE (n1)-[]-(:Attribute {name: "enabled"})-[]-(:AttributeValue {value: false})
-    OPTIONAL MATCH (d)-[:IS_RELATED]-(r1)-[:IS_RELATED]-(n1)-[:IS_RELATED]-(r2:Relationship {type: "interface_ip"})-[:IS_RELATED]-(n2)
-    RETURN d,n1,r1,n2,r2
-    """
+    # """
+    # MATCH (d:Device)
+    # WHERE (d)-[]-(:Attribute {name: "name"})-[]-(:AttributeValue {value: "spine1"})
+    # MAT36CH (d)-[:IS_RELATED]-(r1:Relationship{type: "device_interface"})-[:IS_RELATED]-(n1)
+    # WHERE (n1)-[]-(:Attribute {name: "enabled"})-[]-(:AttributeValue {value: false})
+    # OPTIONAL MATCH (d)-[:IS_RELATED]-(r1)-[:IS_RELATED]-(n1)-[:IS_RELATED]-(r2:Relationship {type: "interface_ip"})-[:IS_RELATED]-(n2)
+    # RETURN d,n1,r1,n2,r2
+    # """

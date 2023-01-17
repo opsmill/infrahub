@@ -46,6 +46,9 @@ from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
+# pylint: disable=no-name-in-module,unused-argument
+
+
 try:
     # graphql-core==3.2.*
     from graphql import GraphQLFormattedError
@@ -159,8 +162,8 @@ class InfrahubGraphQLApp:
         response = handler(request)
         if isawaitable(response):
             return await cast(Awaitable[Response], response)
-        else:
-            return cast(Response, response)
+
+        return cast(Response, response)
 
     async def _get_context_value(self, session: AsyncSession, request: HTTPConnection) -> Dict:
 
@@ -190,9 +193,8 @@ class InfrahubGraphQLApp:
 
         if isinstance(operations, list):
             return JSONResponse({"errors": ["This server does not support batching"]}, status_code=400)
-        else:
-            operation = operations
 
+        operation = operations
         query = operation["query"]
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")

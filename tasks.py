@@ -6,7 +6,7 @@ from datetime import datetime
 from distutils.util import strtobool
 from typing import Tuple
 
-from invoke import Context, task  # type: ignore
+from invoke import Context, task  # type: ignore  # pylint: disable=import-error
 
 try:
     import toml
@@ -25,8 +25,8 @@ def project_ver() -> str:
 def git_info(context: Context) -> Tuple[str, str]:
     """Return the name of the current branch and hash of the current commit."""
     branch_name = context.run("git rev-parse --abbrev-ref HEAD", hide=True, pty=False)
-    hash = context.run("git rev-parse --short HEAD", hide=True, pty=False)
-    return branch_name.stdout.strip(), hash.stdout.strip()
+    hash_value = context.run("git rev-parse --short HEAD", hide=True, pty=False)
+    return branch_name.stdout.strip(), hash_value.stdout.strip()
 
 
 def is_truthy(arg):
@@ -177,8 +177,8 @@ def format_isort(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     run_cmd(context, exec_cmd, name, image_ver, local)
 
 
-@task
-def format(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
+@task(name="format")
+def format_all(context, name=NAME, image_ver=IMAGE_VER, local=INVOKE_LOCAL):
     """This will run all formatter.
 
     Args:
@@ -350,7 +350,7 @@ def performance_test(context, directory="utilities", dataset="dataset03"):
         result = context.run(cmd, pty=True)
 
         result_file_name = f"{local_dir}/{directory}/summary_{dataset}_{branch_name}_{hash}_{date_format}.txt"
-        with open(result_file_name, "w") as f:
+        with open(result_file_name, "w", encoding="UTF-8") as f:
             print(result.stdout, file=f)
 
 

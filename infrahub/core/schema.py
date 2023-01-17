@@ -649,6 +649,7 @@ core_models = {
                 {"name": "description", "kind": "String", "optional": True},
                 {"name": "file_path", "kind": "String"},
                 {"name": "class_name", "kind": "String"},
+                {"name": "url", "kind": "String"},
                 {"name": "timeout", "kind": "Integer", "default_value": 10},
                 {"name": "rebase", "kind": "Boolean", "default_value": False},
             ],

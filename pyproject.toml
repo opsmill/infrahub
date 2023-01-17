@@ -76,6 +76,9 @@ extension-pkg-whitelist = [
     "pydantic"
 ]
 
+[tool.pylint.format]
+disable = "logging-fstring-interpolation"
+
 [tool.pylint.basic]
 # No docstrings required for private methods (Pylint default), or for test_ functions.
 no-docstring-rgx="^(_|test_)"
@@ -85,12 +88,14 @@ no-docstring-rgx="^(_|test_)"
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
 disable = """,
     line-too-long,
-    bad-continuation,
     missing-module-docstring,
     missing-function-docstring,
     missing-class-docstring,
     consider-using-from-import,
     invalid-name,
+    too-many-arguments,
+    keyword-arg-before-vararg,
+    too-few-public-methods,
     """
 
 [tool.pylint.miscellaneous]

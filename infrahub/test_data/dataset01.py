@@ -159,7 +159,7 @@ async def load_data(session: AsyncSession):
     active_status = statuses_dict["active"]
     role_loopback = roles_dict["loopback"]
 
-    LOGGER.info(f"Creating Device")
+    LOGGER.info("Creating Device")
     for idx, device in enumerate(DEVICES):
 
         status = statuses_dict[device[1]]

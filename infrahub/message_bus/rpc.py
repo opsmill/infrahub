@@ -16,7 +16,7 @@ from . import get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
 
 
-class InfrahubRpcClient:
+class InfrahubRpcClientBase:
     connection: AbstractRobustConnection
     channel: AbstractChannel
     callback_queue: AbstractQueue
@@ -61,11 +61,13 @@ class InfrahubRpcClient:
 
         if wait_for_response:
             return await future
-        else:
-            return
 
 
-class InfrahubRpcClientTesting(InfrahubRpcClient):
+class InfrahubRpcClient(InfrahubRpcClientBase):
+    pass
+
+
+class InfrahubRpcClientTesting(InfrahubRpcClientBase):
     """InfrahubRPCClient instrumented for testing and mocking."""
 
     def __init__(self, *args, **kwargs):
@@ -81,7 +83,7 @@ class InfrahubRpcClientTesting(InfrahubRpcClient):
 
         if (message.type, message.action) in self.responses:
             return self.responses[(message.type, message.action)].pop(0)
-        elif len(self.responses[(message.type, message.action)]) == 0:
+        if len(self.responses[(message.type, message.action)]) == 0:
             raise IndexError(f"No more RPC message in store for '{message.type}::{message.action}'")
 
         raise NotImplementedError(f"Unable to find an RPC message for '{message.type}::{message.action}'")

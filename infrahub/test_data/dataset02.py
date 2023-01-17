@@ -2,10 +2,8 @@ import logging
 import re
 from collections import defaultdict
 
-from infrahub.core.account import Account, Group
-from infrahub.models import Device, Interface, IPAddress, Role, Status, Tag
-
 # flake8: noqa
+# pylint: skip-file
 
 ROLES = ["spine", "leaf", "firewall", "server", "uplink"]
 

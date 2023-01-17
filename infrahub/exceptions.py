@@ -94,23 +94,23 @@ class QueryError(Error):
 
 
 class ValidationError(Error):
-    def __init__(self, input):
+    def __init__(self, input_value):
 
         self.message = None
         self.location = None
         self.messages = {}
 
-        if isinstance(input, str):
-            self.message = input
-        elif isinstance(input, dict) and len(input) == 1:
-            self.message = list(input.values())[0]
-            self.location = list(input.keys())[0]
-        elif isinstance(input, dict) and len(input) > 1:
-            for key, value in input.items():
+        if isinstance(input_value, str):
+            self.message = input_value
+        elif isinstance(input_value, dict) and len(input_value) == 1:
+            self.message = list(input_value.values())[0]
+            self.location = list(input_value.keys())[0]
+        elif isinstance(input_value, dict) and len(input_value) > 1:
+            for key, value in input_value.items():
                 self.messages[key] = value
 
-        elif isinstance(input, list):
-            for item in input:
+        elif isinstance(input_value, list):
+            for item in input_value:
                 if isinstance(item, self.__class__):
                     self.messages[item.location] = item.message
                 elif isinstance(item, dict):

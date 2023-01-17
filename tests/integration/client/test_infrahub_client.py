@@ -4,13 +4,14 @@ from fastapi.testclient import TestClient
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.main import app
 from infrahub_client import InfrahubClient
 
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def client(self):
+        from infrahub.main import app
+
         return TestClient(app)
 
     @pytest.fixture(scope="class")
@@ -46,6 +47,20 @@ class TestInfrahubClient:
             query=obj1,
         )
         await obj3.save(session=session)
+
+        obj4 = await Node.init(schema="TransformPython", session=session)
+        await obj4.new(
+            session=session,
+            name="transform01",
+            description="test transform01",
+            file_path="mytransformation.py",
+            class_name="Transform01",
+            query=obj1,
+            url="tf01",
+            repository=obj2,
+            rebase=False,
+        )
+        await obj4.save(session=session)
 
     async def test_query_branches(self, client, init_db_base, base_dataset):
 
@@ -114,3 +129,35 @@ class TestInfrahubClient:
 
         rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
         assert len(rfiles) == 2
+
+    async def test_query_transform_python(self, client, init_db_base, base_dataset):
+
+        ifc = await InfrahubClient.init(test_client=client)
+        transforms = await ifc.get_list_transform_python(branch_name="main")
+
+        assert "transform01" in transforms
+
+    async def test_create_transform_python_main(self, client, session, init_db_base, base_dataset):
+
+        branch_name = "main"
+
+        transforms = await NodeManager.query("TransformPython", branch=branch_name, session=session)
+        repositories = await NodeManager.query("Repository", branch=branch_name, session=session)
+        queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
+
+        assert len(transforms) == 1
+
+        ifc = await InfrahubClient.init(test_client=client)
+        await ifc.create_transform_python(
+            branch_name=branch_name,
+            name="transform02",
+            description="test fransform02",
+            file_path="mytransformation02.py",
+            class_name="Transform02",
+            url="transform02",
+            query=str(queries[0].name.value),
+            repository=str(repositories[0].id),
+        )
+
+        transforms = await NodeManager.query("TransformPython", branch=branch_name, session=session)
+        assert len(transforms) == 2

@@ -8,6 +8,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 
+# pylint: disable=too-few-public-methods
+
 DEFAULT_BRANCH = "main"
 
 
@@ -44,7 +46,7 @@ class InfrahubObjectType(ObjectType):
         super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
 
     @classmethod
-    async def get_list(cls, fields, context, *args, **kwargs):
+    async def get_list(cls, fields, context, **kwargs):
 
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")

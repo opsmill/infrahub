@@ -25,7 +25,7 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 from .query import BranchType
 from .utils import extract_fields
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-few-public-methods
 
 
 # ------------------------------------------
