@@ -123,7 +123,7 @@ def render(
         log.error("unable to locate the file '{INFRAHUB_CONFIG_FILE}'")
         sys.exit(1)
 
-    with open(INFRAHUB_CONFIG_FILE, "r") as file_data:
+    with open(INFRAHUB_CONFIG_FILE, "r", encoding="UTF-8") as file_data:
         yaml_data = file_data.read()
 
     try:

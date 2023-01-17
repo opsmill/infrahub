@@ -8,6 +8,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 
+# pylint: disable=too-few-public-methods
+
 DEFAULT_BRANCH = "main"
 
 

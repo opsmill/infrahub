@@ -350,7 +350,7 @@ def performance_test(context, directory="utilities", dataset="dataset03"):
         result = context.run(cmd, pty=True)
 
         result_file_name = f"{local_dir}/{directory}/summary_{dataset}_{branch_name}_{hash}_{date_format}.txt"
-        with open(result_file_name, "w") as f:
+        with open(result_file_name, "w", encoding="UTF-8") as f:
             print(result.stdout, file=f)
 
 

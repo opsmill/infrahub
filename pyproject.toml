@@ -91,6 +91,7 @@ disable = """,
     missing-class-docstring,
     consider-using-from-import,
     invalid-name,
+    too-many-arguments,
     """
 
 [tool.pylint.miscellaneous]

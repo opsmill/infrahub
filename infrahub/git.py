@@ -38,6 +38,8 @@ from infrahub.message_bus.events import (
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_client import GraphQLError, InfrahubClient
 
+# pylint: disable=too-few-public-methods
+
 LOGGER = logging.getLogger("infrahub.git")
 
 COMMITS_DIRECTORY_NAME = "commits"
@@ -45,7 +47,9 @@ BRANCHES_DIRECTORY_NAME = "branches"
 TEMPORARY_DIRECTORY_NAME = "temp"
 
 
-async def handle_git_rpc_message(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+async def handle_git_rpc_message(
+    message: InfrahubGitRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:  # pylint: disable=too-many-return-statements
 
     LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
 
@@ -131,7 +135,7 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
         try:
             data = None
             if message.data:
-                data = {"data": message.data}
+                data = message.data
 
             transformed_data = await repo.execute_python_transform(
                 branch_name=message.branch_name,
@@ -635,7 +639,7 @@ class InfrahubRepository(BaseModel):
 
         # Check if the branch already exist locally, if it does do nothing
         local_branches = self.get_branches_from_local(include_worktree=False)
-        if branch_name in local_branches.keys():
+        if branch_name in local_branches:
             return False
 
         # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
@@ -646,7 +650,7 @@ class InfrahubRepository(BaseModel):
         #  Since the branch is a match for the main branch we don't need to create a commit worktree
         # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
         if not self.has_origin:
-            LOGGER.debug(f"{self.name} | Branch {branch_name} created in Git without tracking a remote branch.")
+            LOGGER.debug("%s | Branch %s created in Git without tracking a remote branch.", self.name, branch_name)
             return True
 
         remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
@@ -657,7 +661,7 @@ class InfrahubRepository(BaseModel):
             br_repo.remotes.origin.pull(branch_name)
             await self.create_commit_worktree(str(br_repo.head.reference.commit))
             LOGGER.debug(
-                f"{self.name} | Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}."
+                "%s | Branch %s  created in Git, tracking remote branch %s.", self.name, branch_name, remote_branch[0]
             )
         else:
             LOGGER.debug(f"{self.name} | Branch {branch_name} created in Git without tracking a remote branch.")
@@ -1001,7 +1005,7 @@ class InfrahubRepository(BaseModel):
 
             filename = os.path.basename(query_file)
             query_name = os.path.splitext(filename)[0]
-            query_string = Path(query_file).read_text()
+            query_string = Path(query_file).read_text(encoding="UTF-8")
 
             if query_name not in queries_in_graph.keys():
                 LOGGER.info(f"{self.name} | New Graphql Query '{query_name}' found on branch {branch_name}, creating")
@@ -1089,44 +1093,50 @@ class InfrahubRepository(BaseModel):
 
         for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
 
-            check_name = transform_class.__name__
+            transform = transform_class()
+            transform_class_name = transform_class.__name__
 
-            if check_name not in transforms_in_repo:
-                LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
-                await self.client.create_tra(
+            if transform.name not in transforms_in_repo:
+                LOGGER.info(
+                    f"{self.name}: New Python Transform '{transform.name}' found on branch {branch_name}, creating"
+                )
+                await self.client.create_transform_python(
                     branch_name=branch_name,
-                    name=check_name,
+                    name=transform.name,
                     repository=str(self.id),
-                    query=transform_class.query,
+                    query=transform.query,
                     file_path=file_path,
-                    class_name=check_name,
-                    rebase=transform_class.rebase,
-                    timeout=transform_class.timeout,
+                    url=transform.url,
+                    class_name=transform_class_name,
+                    rebase=transform.rebase,
+                    timeout=transform.timeout,
                 )
                 continue
 
-            check_in_repo = transforms_in_repo[check_name]
+            transform_in_repo = transforms_in_repo[transform.name]
 
             if (
-                check_in_repo.repository != self.id
-                or check_in_repo.class_name != check_name
-                or check_in_repo.query != file_path
-                or check_in_repo.file_path != transform_class.query
-                or check_in_repo.timeout != transform_class.timeout
-                or check_in_repo.rebase != transform_class.rebase
+                transform_in_repo.repository != self.id
+                or transform_in_repo.class_name != transform.name
+                or transform_in_repo.query != file_path
+                or transform_in_repo.file_path != transform.query
+                or transform_in_repo.timeout != transform.timeout
+                or transform_in_repo.url != transform.url
+                or transform_in_repo.rebase != transform.rebase
             ):
                 LOGGER.info(
-                    f"{self.name}: New version of the Check '{check_name}' found on branch {branch_name}, updating"
+                    f"{self.name}: New version of the Python Transform '{transform.name}' found on branch {branch_name}, updating"
                 )
-                await self.client.update_check(
+                await self.client.update_transform_python(
                     branch_name=branch_name,
-                    id=str(transforms_in_repo[check_name].id),
-                    name=check_name,
-                    query=transform_class.query,
+                    id=str(transforms_in_repo[transform.name].id),
+                    name=transform.name,
+                    query=transform.query,
                     file_path=file_path,
-                    class_name=check_name,
-                    rebase=transform_class.rebase,
-                    timeout=transform_class.timeout,
+                    url=transform.url,
+                    class_name=transform_class_name,
+                    rebase=transform.rebase,
+                    timeout=transform.timeout,
                 )
 
     async def import_all_yaml_files(self, branch_name: str):
@@ -1140,7 +1150,7 @@ class InfrahubRepository(BaseModel):
             # ------------------------------------------------------
             # Import Yaml
             # ------------------------------------------------------
-            with open(yaml_file, "r") as file_data:
+            with open(yaml_file, "r", encoding="UTF-8") as file_data:
                 yaml_data = file_data.read()
 
             try:
@@ -1306,19 +1316,13 @@ class InfrahubRepository(BaseModel):
         except ModuleNotFoundError:
             error_msg = f"Unable to load the transform file {location} ({commit})"
             LOGGER.error(f"{self.name} | {error_msg}")
-            raise TransformError(
-                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
-            )
+            raise TransformError(repository_name=self.name, commit=commit, location=location, message=error_msg)
 
         except AttributeError:
             error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
             LOGGER.error(f"{self.name} | {error_msg}")
-            raise TransformError(
-                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
-            )
+            raise TransformError(repository_name=self.name, commit=commit, location=location, message=error_msg)
 
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
-            raise TransformError(
-                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
-            )
+            raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc))

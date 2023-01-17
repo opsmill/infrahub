@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Union
 
 import graphene
 from graphql import graphql
-from graphql.execution import ExecutionResult
 
 from infrahub.core import get_branch
 from infrahub.core.manager import NodeManager
@@ -15,6 +14,7 @@ from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 
 if TYPE_CHECKING:
+    from graphql.execution import ExecutionResult
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
@@ -34,7 +34,7 @@ async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = N
 
     MutationMixin = await generate_mutation_mixin(session=session, branch=branch)
 
-    class Mutation(InfrahubBaseMutation, MutationMixin):
+    class Mutation(InfrahubBaseMutation, MutationMixin):  # pylint: disable=too-few-public-methods
         pass
 
     return Mutation
