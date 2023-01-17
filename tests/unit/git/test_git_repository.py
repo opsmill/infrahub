@@ -476,7 +476,7 @@ async def test_execute_python_transform_file_missing(client, git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
     with pytest.raises(FileNotFound):
-        result = await repo.execute_python_transform(
+        await repo.execute_python_transform(
             branch_name="main", commit=commit_main, location="transform99.py::Transform01", client=client
         )
 
