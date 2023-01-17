@@ -32,6 +32,8 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 
 app = FastAPI()
 
+# pylint: disable=too-many-locals
+
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 

@@ -87,5 +87,5 @@ class InfrahubBaseSubscription(ObjectType):
                 # Cancel consuming after __aexit__
                 async for message in queue_iter:
                     async with message.process():
-                        event = InfrahubMessage.init(message=message)
+                        event = InfrahubMessage.convert(message=message)
                         yield {"type": event.type.value, "action": event.action, "body": event.generate_message_body()}

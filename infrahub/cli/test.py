@@ -10,7 +10,7 @@ app = typer.Typer()
 
 TEST_DATABASE = "infrahub.testing"
 
-# pytest: disable=import-outside-toplevel
+# pylint: disable=import-outside-toplevel
 
 
 @app.command()

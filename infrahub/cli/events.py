@@ -49,7 +49,7 @@ async def _listen(topic: str, config_file: str):
         await asyncio.Future()
 
 
-async def _generate(type: MessageType, config_file: str):
+async def _generate(msg_type: MessageType, config_file: str):
 
     config.load_and_exit(config_file)
 
@@ -71,5 +71,5 @@ def listen(topic: str = "#", config_file: str = typer.Argument("infrahub.toml", 
 
 
 @app.command()
-def generate(type: MessageType, config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
-    aiorun(_generate(type, config_file=config_file))
+def generate(msg_type: MessageType, config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+    aiorun(_generate(msg_type=msg_type, config_file=config_file))

@@ -3,7 +3,8 @@ import time
 import infrahub.config as config
 from infrahub.database import execute_read_query_async
 
-# pylint: disable
+# pylint: skip-file
+
 config.load_and_exit()
 
 NBR_EXECUTION = 5

@@ -94,7 +94,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                             response = InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
 
                         log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
-                    except Exception as exc:
+                    except Exception as exc:  # pylint: disable=broad-except
                         log.critical(exc, exc_info=True)
                         response = InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[str(exc)])
 
@@ -103,7 +103,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                             channel=channel, correlation_id=message.correlation_id, reply_to=message.reply_to
                         )
 
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 log.exception("Processing error for message %r", message)
 
 

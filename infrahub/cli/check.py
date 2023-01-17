@@ -74,7 +74,7 @@ def run(
                         for log_message in check.logs:
                             log.error(f"  {log_message['message']}")
 
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-except
                 log.warning(f"{module_name}: An error occured during execution ({exc})")
 
     if nbr_checks_found == 0:

@@ -22,6 +22,8 @@ from infrahub.cli.test import app as test_app
 from infrahub.core.initialization import initialization
 from infrahub.database import get_db
 
+# pylint: disable=import-outside-toplevel
+
 app = typer.Typer()
 
 app.add_typer(server_app, name="server", help="Control the API Server.")
@@ -129,12 +131,12 @@ def render(
     try:
         data = yaml.safe_load(yaml_data)
     except yaml.YAMLError as exc:
-        log.error(f"Unable to load YAML file {INFRAHUB_CONFIG_FILE} : {exc.message}")
+        log.error(f"Unable to load YAML file {INFRAHUB_CONFIG_FILE} : {exc}")
         sys.exit(1)
 
     if "rfiles" not in data or rfile not in data.get("rfiles", {}):
         log.error(f"Unable to find {rfile} in {INFRAHUB_CONFIG_FILE}")
-        exit(1)
+        sys.exit(1)
 
     rfile_data = data["rfiles"][rfile]
 
