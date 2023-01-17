@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import infrahub.message_bus.rpc
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.message_bus.events import (
@@ -23,6 +22,7 @@ def client():
 
 @pytest.fixture
 def patch_rpc_client():
+    import infrahub.message_bus.rpc
 
     infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
@@ -71,42 +71,6 @@ async def car_person_data(session, car_person_schema, register_core_models_schem
 
 
 headers = {"Authorization": "Token XXXX"}
-
-
-async def test_graphql_endpoint(session, client, default_branch, car_person_data):
-
-    query = """
-    query {
-        person {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
-                }
-            }
-        }
-    }
-    """
-
-    # Must execute in a with block to execute the startup/shutdown events
-    with client:
-        response = client.post(
-            "/graphql",
-            json={"query": query},
-            headers=headers,
-        )
-
-    assert response.status_code == 200
-    assert "errors" not in response.json()
-    assert response.json()["data"] is not None
-    result = response.json()["data"]
-
-    result_per_name = {result["name"]["value"]: result for result in result["person"]}
-    assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
 
 
 async def test_transform_endpoint(session, patch_rpc_client, default_branch, car_person_data):
@@ -193,3 +157,39 @@ async def test_transform_endpoint_path(session, patch_rpc_client, default_branch
     result = response.json()
 
     assert result == {"KEY1": "value1", "KEY2": "value2"}
+
+
+async def test_graphql_endpoint(session, client, default_branch, car_person_data):
+
+    query = """
+    query {
+        person {
+            name {
+                value
+            }
+            cars {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post(
+            "/graphql",
+            json={"query": query},
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+    assert "errors" not in response.json()
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
+
+    result_per_name = {result["name"]["value"]: result for result in result["person"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["cars"]) == 2
+    assert len(result_per_name["Jane"]["cars"]) == 1

@@ -4,13 +4,14 @@ from fastapi.testclient import TestClient
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.main import app
 from infrahub_client import InfrahubClient
 
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def client(self):
+        from infrahub.main import app
+
         return TestClient(app)
 
     @pytest.fixture(scope="class")
