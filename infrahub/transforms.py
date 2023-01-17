@@ -109,5 +109,5 @@ class InfrahubTransform:
 
         if asyncio.iscoroutinefunction(self.transform):
             return await self.transform(data=data)
-        else:
-            return self.transform(data=data)
+
+        return self.transform(data=data)

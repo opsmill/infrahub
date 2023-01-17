@@ -178,9 +178,9 @@ async def graphql_query(
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
-    graphql_query = await NodeManager.get_one(session=session, id=query_id, branch=branch, at=at)
+    gql_query = await NodeManager.get_one(session=session, id=query_id, branch=branch, at=at)
 
-    if not graphql_query:
+    if not gql_query:
         gqlquery_schema = await registry.get_schema(session=session, name="GraphQLQuery")
         items = await NodeManager.query(
             session=session,
@@ -190,9 +190,9 @@ async def graphql_query(
             at=at,
         )
         if items:
-            graphql_query = items[0]
+            gql_query = items[0]
 
-    if not graphql_query:
+    if not gql_query:
         raise HTTPException(status_code=404, detail="Item not found")
 
     result = await graphql(
@@ -201,7 +201,7 @@ async def graphql_query(
             mutation=await get_gql_mutation(session=session, branch=branch),
             auto_camelcase=False,
         ).graphql_schema,
-        source=graphql_query.query.value,
+        source=gql_query.query.value,
         context_value={
             "infrahub_branch": branch,
             "infrahub_at": at,

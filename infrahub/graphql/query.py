@@ -46,7 +46,7 @@ class InfrahubObjectType(ObjectType):
         super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
 
     @classmethod
-    async def get_list(cls, fields, context, *args, **kwargs):
+    async def get_list(cls, fields, context, **kwargs):
 
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
