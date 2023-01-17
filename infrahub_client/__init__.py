@@ -58,6 +58,12 @@ query {
                 value
             }
         }
+        query {
+            id
+            name {
+                value
+            }
+        }
     }
 }
 """
@@ -120,6 +126,9 @@ query {
             value
         }
         timeout {
+            value
+        }
+        url {
             value
         }
         query {
@@ -292,6 +301,55 @@ mutation($id: String!, $name: String!, $description: String!, $file_path: String
 """
 
 
+MUTATION_TRANSFORM_PYTHON_CREATE = """
+mutation($name: String!, $description: String!, $file_path: String!, $class_name: String!, $repository: String!, $query: String!, $url: String!, $timeout: Int!, $rebase: Boolean!) {
+  transform_python_create(data: {
+    name: { value: $name }
+    description: { value: $description }
+    query: { id: $query }
+    file_path: { value: $file_path }
+    url: { value: $url }
+    class_name: { value: $class_name }
+    repository: { id: $repository }
+    timeout: { value: $timeout }
+    rebase: { value: $rebase }
+  }){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+MUTATION_TRANSFORM_PYTHON_UPDATE = """
+mutation($id: String!, $name: String!, $description: String!, $file_path: String!, $class_name: String!, $query: String!, $url: String!, $timeout: Int!, $rebase: Boolean!) {
+  transform_python_update(data: {
+    id: $id
+    name: { value: $name },
+    description: { value: $description },
+    file_path: { value: $file_path },
+    class_name: { value: $class_name },
+    url: { value: $url },
+    query: { id: $query },
+    timeout: { value: $timeout },
+    rebase: { value: $rebase },
+  }){
+        ok
+        object {
+            id
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+
+
 class GraphQLError(Exception):
     def __init__(self, errors: List[str], query: str = None, variables: dict = None):
         self.query = query
@@ -328,6 +386,7 @@ class RFileData(BaseModel):
     template_path: str
     template_repository: str
     output_path: Optional[str]
+    query: str
 
 
 class CheckData(BaseModel):
@@ -337,6 +396,7 @@ class CheckData(BaseModel):
     repository: str
     file_path: str
     class_name: str
+    query: str
     timeout: Optional[int]
     rebase: Optional[bool]
 
@@ -348,6 +408,8 @@ class TransformPythonData(BaseModel):
     repository: str
     file_path: str
     class_name: str
+    query: str
+    url: str
     timeout: Optional[int]
     rebase: Optional[bool]
 
@@ -556,6 +618,7 @@ class InfrahubClient:
                 name=item["name"]["value"],
                 description=item["description"]["value"],
                 file_path=item["file_path"]["value"],
+                url=item["url"]["value"],
                 class_name=item["class_name"]["value"],
                 query=item["query"]["name"]["value"],
                 repository=item["repository"]["id"],
@@ -594,6 +657,7 @@ class InfrahubClient:
                 description=item["description"]["value"],
                 template_path=item["template_path"]["value"],
                 template_repository=item["template_repository"]["id"],
+                query=item["query"]["name"]["value"],
             )
             for item in data["rfile"]
         }
@@ -681,6 +745,64 @@ class InfrahubClient:
             "rebase": rebase,
         }
         await self.execute_graphql(query=MUTATION_CHECK_UPDATE, variables=variables, branch_name=branch_name)
+
+        return True
+
+    async def create_transform_python(
+        self,
+        branch_name: str,
+        name: str,
+        query: str,
+        file_path: str,
+        class_name: str,
+        repository: str,
+        url: str,
+        description: str = "",
+        timeout: int = 10,
+        rebase: bool = False,
+    ) -> bool:
+
+        variables = {
+            "name": name,
+            "description": description,
+            "file_path": file_path,
+            "class_name": class_name,
+            "repository": repository,
+            "url": url,
+            "query": query,
+            "timeout": timeout,
+            "rebase": rebase,
+        }
+        await self.execute_graphql(query=MUTATION_TRANSFORM_PYTHON_CREATE, variables=variables, branch_name=branch_name)
+
+        return True
+
+    async def update_transform_python(
+        self,
+        branch_name: str,
+        id: str,
+        name: str,
+        url: str,
+        query: str,
+        file_path: str,
+        class_name: str,
+        description: str = "",
+        timeout: int = 10,
+        rebase: bool = False,
+    ):
+
+        variables = {
+            "id": id,
+            "name": name,
+            "description": description,
+            "file_path": file_path,
+            "class_name": class_name,
+            "url": url,
+            "query": query,
+            "timeout": timeout,
+            "rebase": rebase,
+        }
+        await self.execute_graphql(query=MUTATION_TRANSFORM_PYTHON_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
 

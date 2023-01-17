@@ -18,6 +18,7 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository):
         repository_id=uuid.uuid4(),
         repository_name=git_repo_jinja.name,
         commit=commit,
+        branch_name="main",
         transform_location="template01.tpl.j2",
         data={"items": ["consilium", "potum", "album", "magnum"]},
     )
@@ -37,6 +38,7 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository):
         repository_id=uuid.uuid4(),
         repository_name=git_repo_jinja.name,
         commit=commit,
+        branch_name="main",
         transform_location="template03.tpl.j2",
         data={"items": ["consilium", "potum", "album", "magnum"]},
     )
@@ -56,6 +58,7 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository):
         repository_id=uuid.uuid4(),
         repository_name=git_repo_jinja.name,
         commit=commit,
+        branch_name="main",
         transform_location="template02.tpl.j2",
         data={"items": ["consilium", "potum", "album", "magnum"]},
     )

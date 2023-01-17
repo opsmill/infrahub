@@ -435,6 +435,52 @@ async def test_execute_python_check_class_missing(client, git_repo_checks: Infra
         )
 
 
+async def test_execute_python_transform_w_data(client, git_repo_transforms: InfrahubRepository):
+
+    repo = git_repo_transforms
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    data = {"key1": "value1", "key2": "value2"}
+    expected_data = {"KEY1": "value1", "KEY2": "value2"}
+
+    result = await repo.execute_python_transform(
+        branch_name="main",
+        data=data,
+        commit=commit_main,
+        location="transform01.py::Transform01",
+        client=client,
+    )
+
+    assert result == expected_data
+
+
+async def test_execute_python_transform_w_query(
+    client, git_repo_transforms: InfrahubRepository, mock_gql_query_my_query
+):
+
+    repo = git_repo_transforms
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    expected_data = {"DATA": {"mock": []}}
+
+    result = await repo.execute_python_transform(
+        branch_name="main", commit=commit_main, location="transform01.py::Transform01", client=client
+    )
+
+    assert result == expected_data
+
+
+async def test_execute_python_transform_file_missing(client, git_repo_transforms: InfrahubRepository):
+
+    repo = git_repo_transforms
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    with pytest.raises(FileNotFound):
+        result = await repo.execute_python_transform(
+            branch_name="main", commit=commit_main, location="transform99.py::Transform01", client=client
+        )
+
+
 async def test_find_files(git_repo_jinja: InfrahubRepository):
 
     repo = git_repo_jinja

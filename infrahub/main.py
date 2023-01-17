@@ -150,6 +150,7 @@ async def generate_rfile(
             action=TransformMessageAction.JINJA2,
             repository=repository,
             data=result.data,
+            branch_name=branch.name,
             transform_location=rfile.template_path.value,
         )
     )
@@ -228,211 +229,81 @@ async def graphql_query(
     return response_payload
 
 
-# -------------------------------------------------------------------
-# OpenConfig Experiment
-# -------------------------------------------------------------------
-
-QUERY_INTERFACES = """
-query($device: String!) {
-    device(name__value: $device) {
-        id
-        interfaces {
-            name {
-                value
-            }
-            description {
-                value
-            }
-            enabled {
-                value
-            }
-            ip_addresses {
-                address {
-                    value
-                }
-            }
-        }
-    }
-}
-"""
-
-
-@app.get("/openconfig/interfaces")
-async def openconfig_interfaces(
+@app.get("/transform/{transform_url:path}")
+async def transform_python(
     request: Request,
-    response: Response,
-    device: str,
+    transform_url: str,
+    session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
 ):
+
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    branch = await get_branch(branch)
+    branch = await get_branch(session=session, branch=branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
+    transform_schema = await registry.get_schema(session=session, name="TransformPython")
+    transforms = await NodeManager.query(
+        session=session, schema=transform_schema, filters={"url__value": transform_url}, branch=branch, at=at
+    )
+
+    if not transforms:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    transform = transforms[0]
+
+    query = await transform.query.get_peer(session=session)
+    repository = await transform.repository.get_peer(session=session)
+
     result = await graphql(
         graphene.Schema(
-            query=get_gql_query(branch=branch), mutation=get_gql_mutation(branch=branch), auto_camelcase=False
+            query=await get_gql_query(session=session, branch=branch),
+            mutation=await get_gql_mutation(session=session, branch=branch),
+            auto_camelcase=False,
         ).graphql_schema,
-        source=QUERY_INTERFACES,
+        source=query.query.value,
         context_value={
             "infrahub_branch": branch,
             "infrahub_at": at,
+            "infrahub_database": request.app.state.db,
+            "infrahub_session": session,
         },
         root_value=None,
         variable_values=params,
     )
 
-    response_payload = {}
-
     if result.errors:
-        response_payload["errors"] = []
+        errors = []
         for error in result.errors:
-            response_payload["errors"].append(
+            errors.append(
                 {
-                    "message": error.message,
+                    "message": f"GraphQLQuery {query.name.value}: {error.message}",
                     "path": error.path,
                     "locations": [{"line": location.line, "column": location.column} for location in error.locations],
                 }
             )
-        response.status_code = 500
-        return response_payload
 
-    response_payload["openconfig-interfaces:interface"] = []
+        return JSONResponse(status_code=500, content={"errors": errors})
 
-    for intf in result.data.get("device")[0].get("interfaces"):
+    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
-        intf_name = intf["name"]["value"]
-
-        intf_config = {
-            "name": intf_name,
-            "config": {"enabled": intf["enabled"]["value"]},
-        }
-
-        if intf["description"] and intf["description"]["value"]:
-            intf_config["config"]["description"] = intf["description"]["value"]
-
-        if intf["ip_addresses"]:
-            intf_config["subinterfaces"] = {"subinterface": []}
-
-        for idx, ip in enumerate(intf["ip_addresses"]):
-
-            address, mask = ip["address"]["value"].split("/")
-            intf_config["subinterfaces"]["subinterface"].append(
-                {
-                    "index": idx,
-                    "openconfig-if-ip:ipv4": {
-                        "addresses": {"address": [{"ip": address, "config": {"ip": address, "prefix-length": mask}}]},
-                        "config": {"enabled": True},
-                    },
-                }
-            )
-
-        response_payload["openconfig-interfaces:interface"].append(intf_config)
-
-    return response_payload
-
-
-QUERY_BGP_NEIGHBORS = """
-query($device: String!) {
-  bgp_session(device__name__value: $device) {
-    id
-    peer_group {
-      name {
-        value
-      }
-    }
-    local_ip {
-      address {
-        value
-      }
-    }
-    remote_ip {
-      address {
-        value
-      }
-    }
-    local_as {
-      asn {
-        value
-      }
-    }
-    remote_as {
-      asn {
-        value
-      }
-    }
-    description {
-      value
-    }
-  }
-}
-"""
-
-
-@app.get("/openconfig/network-instances/network-instance/protocols/protocol/bgp/neighbors")
-async def openconfig_bgp(
-    request: Request,
-    response: Response,
-    device: str,
-    branch: Optional[str] = None,
-    at: Optional[str] = None,
-    rebase: Optional[bool] = False,
-):
-    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
-
-    branch = await get_branch(branch)
-    branch.ephemeral_rebase = rebase
-    at = Timestamp(at)
-
-    result = await graphql(
-        graphene.Schema(
-            query=get_gql_query(branch=branch), mutation=get_gql_mutation(branch=branch), auto_camelcase=False
-        ).graphql_schema,
-        source=QUERY_BGP_NEIGHBORS,
-        context_value={
-            "infrahub_branch": branch,
-            "infrahub_at": at,
-        },
-        root_value=None,
-        variable_values=params,
+    response: InfrahubRPCResponse = await rpc_client.call(
+        message=InfrahubTransformRPC(
+            action=TransformMessageAction.PYTHON,
+            repository=repository,
+            data=result.data,
+            branch_name=branch.name,
+            transform_location=f"{transform.file_path.value}::{transform.class_name.value}",
+        )
     )
 
-    response_payload = {}
+    if response.status == RPCStatusCode.OK.value:
+        return response.response["transformed_data"]
 
-    if result.errors:
-        response_payload["errors"] = []
-        for error in result.errors:
-            response_payload["errors"].append(
-                {
-                    "message": error.message,
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error.locations],
-                }
-            )
-        response.status_code = 500
-
-    response_payload["openconfig-bgp:neighbors"] = {"neighbor": []}
-
-    for session in result.data.get("bgp_session"):
-
-        neighbor_address = session["remote_ip"]["address"]["value"].split("/")[0]
-        session_data = {"neighbor-address": neighbor_address, "config": {"neighbor-address": neighbor_address}}
-
-        if session["peer_group"]:
-            session_data["config"]["peer-group"] = session["peer_group"]["name"]["value"]
-
-        if session["remote_as"]:
-            session_data["config"]["peer-as"] = session["remote_as"]["asn"]["value"]
-
-        if session["local_as"]:
-            session_data["config"]["local-as"] = session["local_as"]["asn"]["value"]
-
-        response_payload["openconfig-bgp:neighbors"]["neighbor"].append(session_data)
-
-    return response_payload
+    return JSONResponse(status_code=response.status, content={"errors": response.errors})
 
 
 app.add_middleware(

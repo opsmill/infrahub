@@ -18,7 +18,7 @@ from git.exc import GitCommandError, InvalidGitRepositoryError
 from pydantic import BaseModel, validator
 
 import infrahub.config as config
-from infrahub.checks import VARIABLE_TO_IMPORT, InfrahubCheck
+from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
 from infrahub.exceptions import (
     CheckError,
     FileNotFound,
@@ -35,6 +35,7 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
     TransformMessageAction,
 )
+from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_client import GraphQLError, InfrahubClient
 
 LOGGER = logging.getLogger("infrahub.git")
@@ -125,7 +126,24 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
             return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
     elif message.action == TransformMessageAction.PYTHON.value:
-        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+        repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+
+        try:
+            data = None
+            if message.data:
+                data = {"data": message.data}
+
+            transformed_data = await repo.execute_python_transform(
+                branch_name=message.branch_name,
+                commit=message.commit,
+                location=message.transform_location,
+                data=data,
+                client=client,
+            )
+            return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"transformed_data": transformed_data})
+
+        except (TransformError, FileNotFound) as exc:
+            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
     return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
 
@@ -1009,13 +1027,13 @@ class InfrahubRepository(BaseModel):
 
         # TODO add function to validate if a check is valid
 
-        if VARIABLE_TO_IMPORT not in dir(module):
+        if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
         checks_in_graph = await self.client.get_list_checks(branch_name=branch_name)
         checks_in_repo = {key: value for key, value in checks_in_graph.items() if value.repository == str(self.id)}
 
-        for check_class in getattr(module, VARIABLE_TO_IMPORT):
+        for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
 
             check_name = check_class.__name__
 
@@ -1055,6 +1073,60 @@ class InfrahubRepository(BaseModel):
                     class_name=check_name,
                     rebase=check_class.rebase,
                     timeout=check_class.timeout,
+                )
+
+    async def import_python_transforms_from_module(self, branch_name: str, module, file_path: str):
+
+        # TODO add function to validate if a check is valid
+
+        if INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT not in dir(module):
+            return False
+
+        transforms_in_graph = await self.client.get_list_transform_python(branch_name=branch_name)
+        transforms_in_repo = {
+            key: value for key, value in transforms_in_graph.items() if value.repository == str(self.id)
+        }
+
+        for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
+
+            check_name = transform_class.__name__
+
+            if check_name not in transforms_in_repo:
+                LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
+                await self.client.create_tra(
+                    branch_name=branch_name,
+                    name=check_name,
+                    repository=str(self.id),
+                    query=transform_class.query,
+                    file_path=file_path,
+                    class_name=check_name,
+                    rebase=transform_class.rebase,
+                    timeout=transform_class.timeout,
+                )
+                continue
+
+            check_in_repo = transforms_in_repo[check_name]
+
+            if (
+                check_in_repo.repository != self.id
+                or check_in_repo.class_name != check_name
+                or check_in_repo.query != file_path
+                or check_in_repo.file_path != transform_class.query
+                or check_in_repo.timeout != transform_class.timeout
+                or check_in_repo.rebase != transform_class.rebase
+            ):
+                LOGGER.info(
+                    f"{self.name}: New version of the Check '{check_name}' found on branch {branch_name}, updating"
+                )
+                await self.client.update_check(
+                    branch_name=branch_name,
+                    id=str(transforms_in_repo[check_name].id),
+                    name=check_name,
+                    query=transform_class.query,
+                    file_path=file_path,
+                    class_name=check_name,
+                    rebase=transform_class.rebase,
+                    timeout=transform_class.timeout,
                 )
 
     async def import_all_yaml_files(self, branch_name: str):
@@ -1112,6 +1184,9 @@ class InfrahubRepository(BaseModel):
                 continue
 
             await self.import_python_checks_from_module(
+                branch_name=branch_name, module=module, file_path=file_info.file_path
+            )
+            await self.import_python_transforms_from_module(
                 branch_name=branch_name, module=module, file_path=file_info.file_path
             )
 
@@ -1192,5 +1267,58 @@ class InfrahubRepository(BaseModel):
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
             raise CheckError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
+            )
+
+    async def execute_python_transform(
+        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: dict = None
+    ) -> InfrahubCheck:
+        """Execute A Python Transform stored in the repository."""
+
+        if "::" not in location:
+            raise ValueError("Transformation location not valid, it must contains a double colons (::)")
+
+        file_path, class_name = location.split("::")
+        commit_worktree = self.get_worktree(identifier=commit)
+
+        # Ensure the file is present in the repository
+        if not os.path.exists(os.path.join(commit_worktree.directory, file_path)):
+            raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)
+
+        try:
+            file_info = extract_repo_file_information(
+                full_filename=os.path.join(commit_worktree.directory, file_path),
+                base_directory=commit_worktree.directory,
+            )
+
+            if file_info.absolute_path not in sys.path:
+                sys.path.append(file_info.absolute_path)
+
+            module = importlib.import_module(file_info.filename_wo_ext)
+
+            transform_class = getattr(module, class_name)
+
+            transform = await transform_class.init(
+                root_directory=commit_worktree.directory, branch=branch_name, client=client
+            )
+            return await transform.run(data=data)
+
+        except ModuleNotFoundError:
+            error_msg = f"Unable to load the transform file {location} ({commit})"
+            LOGGER.error(f"{self.name} | {error_msg}")
+            raise TransformError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
+            )
+
+        except AttributeError:
+            error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
+            LOGGER.error(f"{self.name} | {error_msg}")
+            raise TransformError(
+                repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
+            )
+
+        except Exception as exc:
+            LOGGER.critical(exc, exc_info=True)
+            raise TransformError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
             )

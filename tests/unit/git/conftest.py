@@ -357,6 +357,36 @@ async def git_repo_checks(client, git_upstream_repo_02, git_repos_dir) -> Infrah
 
 
 @pytest.fixture
+async def git_repo_transforms(client, git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
+    """Git Repository with git_upstream_repo_02 as remote
+    The repo has 1 local branch : main
+    The main branch contains 2 transforms: transform01 and transform02.
+    Transform01 will change to uppercase the keys in the data dict always and Transform02 is not valid.
+    """
+
+    checks_fixture_dir = os.path.join(get_fixtures_dir(), "transforms")
+    upstream = Repo(git_upstream_repo_02["path"])
+
+    files_to_copy = ["transform01.py", "transform02.py"]
+
+    for file_to_copy in files_to_copy:
+
+        shutil.copyfile(
+            os.path.join(checks_fixture_dir, file_to_copy), os.path.join(git_upstream_repo_02["path"], file_to_copy)
+        )
+        upstream.index.add(file_to_copy)
+
+    upstream.index.commit("Add 2 Transforms files")
+
+    repo = await InfrahubRepository.new(
+        id=uuid.uuid4(),
+        name=git_upstream_repo_02["name"],
+        location=git_upstream_repo_02["path"],
+    )
+    return repo
+
+
+@pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     response = {

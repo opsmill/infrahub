@@ -360,6 +360,7 @@ class InfrahubTransformRPC(InfrahubRPC):
         self,
         transform_location: str,
         data: dict,
+        branch_name: str,
         repository: Node = None,
         repository_name: str = None,
         repository_id: str = None,
@@ -394,6 +395,7 @@ class InfrahubTransformRPC(InfrahubRPC):
 
         self.params = params or {}
         self.data = data
+        self.branch_name = branch_name
         self.transform_location = transform_location
 
     def generate_message_body(self) -> dict:
@@ -402,6 +404,7 @@ class InfrahubTransformRPC(InfrahubRPC):
         body = super().generate_message_body()
         body["repository_id"] = self.repository_id
         body["repository_name"] = self.repository_name
+        body["branch_name"] = self.branch_name
         body["commit"] = self.commit
         body["transform_location"] = self.transform_location
         body["data"] = self.data

@@ -8,7 +8,7 @@ from git import Repo
 
 from infrahub_client import InfrahubClient
 
-VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
+INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 
 class InfrahubCheck:

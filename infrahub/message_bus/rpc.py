@@ -16,7 +16,7 @@ from . import get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
 
 
-class InfrahubRpcClient:
+class InfrahubRpcClientBase:
     connection: AbstractRobustConnection
     channel: AbstractChannel
     callback_queue: AbstractQueue
@@ -65,7 +65,11 @@ class InfrahubRpcClient:
             return
 
 
-class InfrahubRpcClientTesting(InfrahubRpcClient):
+class InfrahubRpcClient(InfrahubRpcClientBase):
+    pass
+
+
+class InfrahubRpcClientTesting(InfrahubRpcClientBase):
     """InfrahubRPCClient instrumented for testing and mocking."""
 
     def __init__(self, *args, **kwargs):

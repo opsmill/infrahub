@@ -8,7 +8,7 @@ from typing import Optional
 import typer
 from rich.logging import RichHandler
 
-from infrahub.checks import VARIABLE_TO_IMPORT
+from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT
 
 app = typer.Typer()
 
@@ -52,10 +52,10 @@ def run(
         except ModuleNotFoundError:
             continue
 
-        if VARIABLE_TO_IMPORT not in dir(module):
+        if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             continue
 
-        for check_class in getattr(module, VARIABLE_TO_IMPORT):
+        for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
             nbr_checks_found += 1
             try:
                 output = "stdout" if format_json else None
