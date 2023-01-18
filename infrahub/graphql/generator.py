@@ -16,6 +16,7 @@ from .mutations import (
     InfrahubMutation,
     InfrahubRepositoryMutation,
     IntAttributeInput,
+    ListAttributeInput,
     StringAttributeInput,
 )
 from .query import (
@@ -23,6 +24,7 @@ from .query import (
     BoolAttributeType,
     InfrahubObject,
     IntAttributeType,
+    ListAttributeType,
     StrAttributeType,
 )
 from .schema import default_list_resolver
@@ -39,6 +41,7 @@ TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "String": StrAttributeType,
     "Integer": IntAttributeType,
     "Boolean": BoolAttributeType,
+    "List": ListAttributeType,
     "Any": AnyAttributeType,
 }
 
@@ -46,6 +49,7 @@ INPUT_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "String": StringAttributeInput,
     "Integer": IntAttributeInput,
     "Boolean": BoolAttributeInput,
+    "List": ListAttributeInput,
     "Any": AnyAttributeInput,
 }
 
@@ -53,6 +57,7 @@ FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "String": graphene.String,
     "Integer": graphene.Int,
     "Boolean": graphene.Boolean,
+    "List": GenericScalar,
     "Any": GenericScalar,
 }
 

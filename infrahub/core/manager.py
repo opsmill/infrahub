@@ -244,15 +244,11 @@ class NodeManager:
                 # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
 
-                    # replace NULL with None
-                    value = attr.value
-                    value = None if value == "NULL" else value
-
                     attrs[attr_name] = dict(
                         db_id=attr.attr_id,
                         id=attr.attr_uuid,
                         name=attr_name,
-                        value=value,
+                        value=attr.value,
                         updated_at=attr.updated_at,
                     )
 

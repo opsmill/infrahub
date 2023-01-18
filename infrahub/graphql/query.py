@@ -173,6 +173,14 @@ class BoolAttributeType(BaseAttribute):
         name = "BoolAttribute"
 
 
+class ListAttributeType(BaseAttribute):
+    value = Field(GenericScalar)
+
+    class Meta:
+        description = "Attribute of type List"
+        name = "ListAttribute"
+
+
 class AnyAttributeType(BaseAttribute):
     value = Field(GenericScalar)
 

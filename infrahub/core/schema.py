@@ -5,8 +5,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field, root_validator, validator
 
 from infrahub.core import registry
-from infrahub.core.attribute import Any as AnyAttr
-from infrahub.core.attribute import Boolean, Integer, String
+from infrahub.core.attribute import (
+    AnyAttribute,
+    Boolean,
+    Integer,
+    ListAttribute,
+    String,
+)
 from infrahub.core.relationship import Relationship
 from infrahub.utils import duplicates
 
@@ -16,10 +21,11 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
 
 ATTRIBUTES_MAPPING = {
-    "Any": AnyAttr,
+    "Any": AnyAttribute,
     "String": String,
     "Integer": Integer,
     "Boolean": Boolean,
+    "List": ListAttribute,
 }
 
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
@@ -44,7 +50,15 @@ class AttributeSchema(BaseModel):
     unique: bool = False
     branch: bool = True
     optional: bool = False
-    # spec: Optional[dict]
+
+    @validator("kind")
+    def kind_options(
+        cls,
+        v,
+    ):
+        if v not in ATTRIBUTES_MAPPING.keys():
+            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTES_MAPPING.keys()} ")
+        return v
 
     def get_class(self):
         return ATTRIBUTES_MAPPING.get(self.kind, None)
@@ -71,8 +85,8 @@ class RelationshipSchema(BaseModel):
         v,
     ):
         VALID_OPTIONS = ["one", "many"]
-        if v not in ["one", "many"]:
-            raise ValueError(f"Only valid valid for cardinality are : {VALID_OPTIONS} ")
+        if v not in VALID_OPTIONS:
+            raise ValueError(f"Only valid value for cardinality are : {VALID_OPTIONS} ")
         return v
 
     def get_class(self):

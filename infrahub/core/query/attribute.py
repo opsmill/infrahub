@@ -98,7 +98,7 @@ class AttributeCreateQuery(AttributeQuery):
         )
         self.add_to_query(query)
 
-        self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
+        self.params["value"] = self.attr.to_db()
         self.params["is_protected"] = self.attr.is_protected
         self.params["is_visible"] = self.attr.is_visible
         self.params["attribute_type"] = self.attr.get_kind()
@@ -203,7 +203,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
         self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.attr.branch.name
         self.params["at"] = at.to_string()
-        self.params["value"] = self.attr.value if self.attr.value is not None else "NULL"
+        self.params["value"] = self.attr.to_db()
         self.params["attribute_type"] = self.attr.get_kind()
 
         query = (
