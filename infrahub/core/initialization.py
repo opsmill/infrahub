@@ -86,6 +86,7 @@ async def first_time_initialization(session: AsyncSession, load_infrastructure_m
     # Create the default Branch
     # --------------------------------------------------
     await create_default_branch(session=session)
+
     # --------------------------------------------------
     # Load the internal schema in the database
     # --------------------------------------------------

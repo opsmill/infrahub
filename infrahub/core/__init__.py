@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.graphql.query import InfrahubObject
 
 
@@ -140,7 +140,9 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    async def set_schema(self, name: str, schema: NodeSchema, branch: Optional[str] = None) -> bool:
+    async def set_schema(
+        self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None
+    ) -> bool:
         return await self.set_item(kind="schema", name=name, item=schema, branch=branch)
 
     async def has_schema(self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
@@ -148,12 +150,12 @@ class Registry:
 
     async def get_schema(
         self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None
-    ) -> NodeSchema:
+    ) -> Union[NodeSchema, GenericSchema]:
         return await self.get_item(session=session, kind="schema", name=name, branch=branch)
 
     async def get_full_schema(
         self, session: AsyncSession, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, NodeSchema]:
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         """Return all the nodes in the schema for a given branch.
 
         The current implementation is a bit simplistic, will need to re-evaluate."""

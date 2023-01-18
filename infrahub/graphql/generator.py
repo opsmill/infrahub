@@ -8,7 +8,7 @@ from graphene.types.generic import GenericScalar
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import GenericSchema, NodeSchema
 
 from .mutations import (
     AnyAttributeInput,
@@ -149,8 +149,17 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
     full_schema = await registry.get_full_schema(session=session, branch=branch)
 
+    # Generate all Graphql Interface and Union first and store them in the registry
+    for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, GenericSchema) or not node_schema.is_interface:
+            continue
+        node_type = generate_generic_object(schema=node_schema)
+        await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
+
     # Generate all Graphql ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, NodeSchema):
+            continue
         node_type = generate_graphql_object(schema=node_schema)
         related_node_type = generate_related_graphql_object(schema=node_schema)
         await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
@@ -160,6 +169,8 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, NodeSchema):
+            continue
         node_type = await registry.get_graphql_type(session=session, name=node_name, branch=branch)
         related_node_type = await registry.get_graphql_type(session=session, name=f"Related{node_name}", branch=branch)
 
@@ -247,6 +258,37 @@ def generate_graphql_object(schema: NodeSchema) -> Type[InfrahubObject]:
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(schema.kind, (InfrahubObject,), main_attrs)
+
+
+def generate_generic_object(schema: GenericSchema) -> Type[Union[graphene.Union, graphene.Interface]]:
+
+    if schema.is_interface:
+        return generate_interface_object(schema=schema)
+
+    raise NotImplementedError
+
+
+def generate_interface_object(schema: GenericSchema) -> Type[graphene.Interface]:
+
+    meta_attrs = {
+        # "schema": schema,
+        "name": schema.kind,
+        "description": schema.description,
+    }
+
+    main_attrs = {
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    for attr in schema.attributes:
+        attr_type = TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+
+    return type(schema.kind, (graphene.Interface,), main_attrs)
+
+
+# def generate_union_object(schema: GenericSchema) -> Type[graphene.Union]:
+#     pass
 
 
 def generate_related_graphql_object(schema: NodeSchema) -> Type[InfrahubObject]:

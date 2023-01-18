@@ -76,7 +76,7 @@ class RelationshipSchema(BaseModel):
         return v
 
     def get_class(self):
-        return RELATIONSHIPS_MAPPING.get(self.inherit_from, None)
+        return Relationship  # RELATIONSHIPS_MAPPING.get(self.inherit_from, None)
 
     async def get_peer_schema(self, session: AsyncSession):
         return await registry.get_schema(session=session, name=self.peer)
@@ -184,12 +184,34 @@ class RelationshipSchema(BaseModel):
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
+class GenericSchema(BaseModel):
+    """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
+
+    name: str
+    kind: str
+    label: Optional[str]
+    description: Optional[str]
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    @property
+    def is_union(self) -> bool:
+        if len(self.attributes) == 0 and len(self.relationships) == 0:
+            return True
+
+        return False
+
+    @property
+    def is_interface(self) -> bool:
+        return not self.is_union
+
+
 class NodeSchema(BaseModel):
     name: str
     kind: str
     label: Optional[str]
     description: Optional[str]
-    inherit_from: str = "Node"
+    inherit_from: str = "Node"  # List[str] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)
@@ -293,7 +315,8 @@ class NodeSchema(BaseModel):
 
 
 class SchemaRoot(BaseModel):
-    nodes: List[NodeSchema]
+    generics: List[GenericSchema] = Field(default_factory=list)
+    nodes: List[NodeSchema] = Field(default_factory=list)
 
 
 internal_schema = {
@@ -457,10 +480,107 @@ internal_schema = {
                 },
             ],
         },
+        {
+            "name": "generic_schema",
+            "kind": "GenericSchema",
+            "branch": True,
+            "default_filter": "name__value",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": True,
+                },
+                {
+                    "name": "kind",
+                    "kind": "String",
+                },
+                {
+                    "name": "label",
+                    "kind": "String",
+                    "optional": True,
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": True,
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "attributes",
+                    "peer": "AttributeSchema",
+                    "identifier": "schema__generic__attributes",
+                    "cardinality": "many",
+                    "branch": True,
+                    "optional": True,
+                },
+                {
+                    "name": "relationships",
+                    "peer": "RelationshipSchema",
+                    "identifier": "schema__generic__relationships",
+                    "cardinality": "many",
+                    "branch": True,
+                    "optional": True,
+                },
+            ],
+        },
     ]
 }
 
 core_models = {
+    "generics": [
+        # {
+        #     "name": "location",
+        #     "kind": "Location",
+        #     "branch": True,
+        #     "attributes": [
+        #         {"name": "name", "kind": "String", "unique": True},
+        #         {"name": "description", "kind": "String", "optional": True},
+        #     ],
+        #     # "relationships": [
+        #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+        #     # ],
+        # },
+        # {
+        #     "name": "primary",
+        #     "kind": "Primary",
+        #     "branch": True,
+        #     "attributes": [
+        #         {"name": "name", "kind": "String", "unique": True},
+        #         {"name": "description", "kind": "String", "optional": True},
+        #     ],
+        #     "relationships": [
+        #         {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+        #     ],
+        # },
+        # {
+        #     "name": "component",
+        #     "kind": "Component",
+        #     "branch": True,
+        #     "attributes": [
+        #         {"name": "name", "kind": "String", "unique": True},
+        #         {"name": "description", "kind": "String", "optional": True},
+        #     ],
+        #     # "relationships": [
+        #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+        #     # ],
+        # },
+        # {
+        #     "name": "data_owner",
+        #     "kind": "DataOwner",  # Account, Group, Script ?
+        #     "branch": True,
+        #     "attributes": [],
+        # },
+        # {
+        #     "name": "data_source",
+        #     "description": "Any Entities that stores or produces data.",
+        #     "kind": "DataSource",  # Repository, Account ...
+        #     "branch": True,
+        #     # "attributes": [
+        #     # ],
+        # },
+    ],
     "nodes": [
         {
             "name": "criticality",
@@ -678,5 +798,5 @@ core_models = {
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
             ],
         },
-    ]
+    ],
 }

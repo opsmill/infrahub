@@ -2,7 +2,26 @@ import pytest
 from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import registry
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
+
+
+def test_schema_root_no_generic():
+
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "criticality",
+                "kind": "Criticality",
+                "default_filter": "name__value",
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "String", "unique": True},
+                ],
+            }
+        ]
+    }
+
+    assert SchemaRoot(**FULL_SCHEMA)
 
 
 def test_node_schema_unique_names():
@@ -107,3 +126,13 @@ async def test_rel_schema_query_filter(session, car_person_schema):
     assert filters == expected_response
     assert params == {"peer_node_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
     assert nbr_rels == 2
+
+
+def test_core_models():
+
+    assert SchemaRoot(**core_models)
+
+
+def test_internal_schema():
+
+    assert SchemaRoot(**internal_schema)

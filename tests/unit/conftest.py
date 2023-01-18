@@ -4,7 +4,8 @@ import pendulum
 import pytest
 
 import infrahub.config as config
-from infrahub.core import registry
+import infrahub.core
+from infrahub.core import Registry, registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
@@ -13,7 +14,13 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.manager import SchemaManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import (
+    GenericSchema,
+    NodeSchema,
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
@@ -406,6 +413,24 @@ async def criticality_schema(session):
 
 
 @pytest.fixture
+async def generic_animal_family_schema(session):
+
+    SCHEMA = {
+        "name": "animal_family",
+        "kind": "AnimalFamily",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+        ],
+    }
+
+    node = GenericSchema(**SCHEMA)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
 async def fruit_tag_schema(session):
 
     SCHEMA = {
@@ -440,6 +465,12 @@ async def fruit_tag_schema(session):
         await registry.set_schema(name=node.kind, schema=node)
 
     return True
+
+
+@pytest.fixture
+async def reset_registry(session):
+
+    infrahub.core.registry = Registry()
 
 
 @pytest.fixture

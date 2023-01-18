@@ -34,7 +34,7 @@ async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = N
 
     MutationMixin = await generate_mutation_mixin(session=session, branch=branch)
 
-    class Mutation(InfrahubBaseMutation, MutationMixin):  # pylint: disable=too-few-public-methods
+    class Mutation(InfrahubBaseMutation, MutationMixin):
         pass
 
     return Mutation
