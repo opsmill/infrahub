@@ -349,7 +349,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             else:
                 field = getattr(self, field_name)
 
-            if isinstance(field, (str, int, bool, dict)):
+            if isinstance(field, (str, int, bool, dict, list)):
                 response[field_name] = field
 
         return response
@@ -382,10 +382,6 @@ class Boolean(BaseAttribute):
 class ListAttribute(BaseAttribute):
 
     type = list
-
-    # @classmethod
-    # def validate(cls, value):
-    #     return True
 
     @classmethod
     def serialize(self, value: Any) -> Any:

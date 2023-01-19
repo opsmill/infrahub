@@ -39,6 +39,51 @@ async def test_simple_query(db, session, default_branch, criticality_schema):
     assert len(result.data["criticality"]) == 2
 
 
+async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
+
+    obj1 = await Node.init(session=session, schema="AllAttributeTypes")
+    await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
+    await obj1.save(session=session)
+
+    obj2 = await Node.init(session=session, schema="AllAttributeTypes")
+    await obj2.new(session=session, name="obj2")
+    await obj2.save(session=session)
+
+    query = """
+    query {
+        all_attribute_types {
+            name { value }
+            mystring { value }
+            mybool { value }
+            myint { value }
+            mylist { value }
+        }
+    }
+    """
+    result = await graphql(
+        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["all_attribute_types"]) == 2
+
+    results = {item["name"]["value"]: item for item in result.data["all_attribute_types"]}
+
+    assert results["obj1"]["mystring"]["value"] == obj1.mystring.value
+    assert results["obj1"]["mybool"]["value"] == obj1.mybool.value
+    assert results["obj1"]["myint"]["value"] == obj1.myint.value
+    assert results["obj1"]["mylist"]["value"] == obj1.mylist.value
+
+    assert results["obj2"]["mystring"]["value"] == obj2.mystring.value
+    assert results["obj2"]["mybool"]["value"] == obj2.mybool.value
+    assert results["obj2"]["myint"]["value"] == obj2.myint.value
+    assert results["obj2"]["mylist"]["value"] == obj2.mylist.value
+
+
 async def test_nested_query(db, session, default_branch, car_person_schema):
 
     car = await registry.get_schema(session=session, name="Car")

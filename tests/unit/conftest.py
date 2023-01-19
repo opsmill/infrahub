@@ -391,6 +391,26 @@ async def person_tag_schema(session):
 
 
 @pytest.fixture
+async def all_attribute_types_schema(session):
+
+    SCHEMA = {
+        "name": "all_attribute_types",
+        "kind": "AllAttributeTypes",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "optional": True},
+            {"name": "mystring", "kind": "String", "optional": True},
+            {"name": "mybool", "kind": "Boolean", "optional": True},
+            {"name": "myint", "kind": "Integer", "optional": True},
+            {"name": "mylist", "kind": "List", "optional": True},
+        ],
+    }
+
+    node_schema = NodeSchema(**SCHEMA)
+    await registry.set_schema(name=node_schema.kind, schema=node_schema)
+
+
+@pytest.fixture
 async def criticality_schema(session):
 
     SCHEMA = {

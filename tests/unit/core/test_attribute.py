@@ -1,10 +1,8 @@
 import pytest
 
-from infrahub.core import registry
 from infrahub.core.attribute import String
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 
 
@@ -93,29 +91,13 @@ async def test_string_attr_query_filter(session, default_branch):
     assert nbr_rels == 2
 
 
-async def test_base_serialization(session, default_branch):
+async def test_base_serialization(session, default_branch, all_attribute_types_schema):
 
-    SCHEMA = {
-        "name": "test_serializer",
-        "kind": "SerializerTest",
-        "branch": True,
-        "attributes": [
-            {"name": "name", "kind": "String", "optional": True},
-            {"name": "mystring", "kind": "String", "optional": True},
-            {"name": "mybool", "kind": "Boolean", "optional": True},
-            {"name": "myint", "kind": "Integer", "optional": True},
-            {"name": "mylist", "kind": "List", "optional": True},
-        ],
-    }
-
-    node_schema = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node_schema.kind, schema=node_schema)
-
-    obj1 = await Node.init(session=session, schema=node_schema)
+    obj1 = await Node.init(session=session, schema="AllAttributeTypes")
     await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
     await obj1.save(session=session)
 
-    obj2 = await Node.init(session=session, schema=node_schema)
+    obj2 = await Node.init(session=session, schema="AllAttributeTypes")
     await obj2.new(session=session, name="obj2")
     await obj2.save(session=session)
 
