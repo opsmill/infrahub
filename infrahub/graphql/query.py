@@ -1,4 +1,4 @@
-from graphene import Boolean, DateTime, Field, Int, Interface, List, ObjectType, String
+from graphene import Boolean, DateTime, Field, Int, Interface, List, ObjectType, String, Union
 from graphene.types.generic import GenericScalar
 from graphene.types.objecttype import ObjectTypeOptions
 
@@ -137,20 +137,31 @@ class InfrahubObject(ObjectType):
             return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
 
 
-class InfrahubInterface(Interface):
+class ResolveTypeMixin:
+    """MixinIn used for InfrahubInterface and Union object to resolve the type of the object."""
+
     @classmethod
     def resolve_type(cls, instance, info):
 
         branch = info.context["infrahub_branch"]
 
-        # FIXME since currently the registry requires Async and this function is not async
-        # we had to bypass the getter for the registry to access the variable directly.
-        # Once the registry doesn't require async anymore, we'll be able to refactor this code
-        # to access the registry with the getter.
         if "Related" in cls.__name__ and "type" in instance:
-            return registry.graphql_type[branch.name][f"Related{instance['type']}"]
+            return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
         elif "type" in instance:
-            return registry.graphql_type[branch.name][instance["type"]]
+            return registry.get_graphql_type(name=instance['type'], branch=branch)
+
+
+class InfrahubInterface(Interface):
+
+    @classmethod
+    def resolve_type(cls, instance, info):
+
+        branch = info.context["infrahub_branch"]
+
+        if "Related" in cls.__name__ and "type" in instance:
+            return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
+        elif "type" in instance:
+            return registry.get_graphql_type(name=instance['type'], branch=branch)
 
 
 # ------------------------------------------

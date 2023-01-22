@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, Type, Union
+from typing import TYPE_CHECKING, Tuple, Type, List, Union
+
+from collections import defaultdict
 
 import graphene
 from graphene.types.generic import GenericScalar
@@ -8,7 +10,7 @@ from graphene.types.generic import GenericScalar
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.schema import GenericSchema, NodeSchema, GroupSchema
 
 from .mutations import (
     AnyAttributeInput,
@@ -24,6 +26,7 @@ from .query import (
     BoolAttributeType,
     InfrahubInterface,
     InfrahubObject,
+    ResolveTypeMixin,
     IntAttributeType,
     ListAttributeType,
     StrAttributeType,
@@ -163,9 +166,11 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
     full_schema = registry.get_full_schema(branch=branch)
 
+    group_memberships = defaultdict(list)
+
     # Generate all GraphQL Interface & RelatedInterface Object first and store them in the registry
     for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, GenericSchema) or not node_schema.is_interface:
+        if not isinstance(node_schema, GenericSchema):
             continue
         interface = generate_interface_object(schema=node_schema)
         related_interface = generate_related_interface_object(schema=node_schema)
@@ -176,10 +181,20 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, NodeSchema):
             continue
-        node_type = await generate_graphql_object(schema=node_schema, session=session, branch=branch)
+        node_type = await generate_graphql_object(schema=node_schema, branch=branch)
         related_node_type = await generate_related_graphql_object(schema=node_schema, session=session, branch=branch)
         registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
         registry.set_graphql_type(name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name)
+
+        # Register this model to all the groups it belongs to.
+        for group_name in node_schema.groups:
+            group_memberships[group_name].append(node_schema.kind)
+
+    for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, GroupSchema) or node_name not in group_memberships or not group_memberships[node_name] :
+            continue
+        group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []))
+        registry.set_graphql_type(name=group._meta.name, graphql_type=group, branch=branch.name)
 
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
@@ -217,6 +232,9 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
 
     for node_name, node_schema in full_schema.items():
 
+        if not isinstance(node_schema, NodeSchema):
+            continue
+
         node_type = registry.get_graphql_type(name=node_name, branch=branch)
         node_filters = await generate_filters(session=session, schema=node_schema)
 
@@ -236,7 +254,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
     full_schema = registry.get_full_schema(branch=branch)
 
     for node_schema in full_schema.values():
-        if isinstance(node_schema, GenericSchema):
+        if not isinstance(node_schema, NodeSchema):
             continue
 
         base_class = InfrahubMutation
@@ -255,7 +273,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
 
 async def generate_graphql_object(
-    session: AsyncSession, schema: NodeSchema, branch: Union[Branch, str] = None
+    schema: NodeSchema, branch: Union[Branch, str] = None
 ) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
@@ -286,6 +304,27 @@ async def generate_graphql_object(
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(schema.kind, (InfrahubObject,), main_attrs)
+
+
+def generate_union_object(schema: GroupSchema, members: List, branch: Union[Branch, str] = None) -> Type[graphene.Union]:
+
+    types = [ registry.get_graphql_type(name=member, branch=branch) for member in members ]
+
+    if not types:
+        return None
+
+    meta_attrs = {
+        "name": schema.kind,
+        "description": schema.description,
+        "types": types,
+    }
+
+    main_attrs = {
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    return type(schema.kind, (graphene.Union, ResolveTypeMixin), main_attrs)
+
 
 
 def generate_interface_object(schema: GenericSchema) -> Type[graphene.Interface]:
@@ -322,10 +361,6 @@ def generate_related_interface_object(schema: GenericSchema) -> Type[graphene.In
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(f"Related{schema.kind}", (InfrahubInterface,), main_attrs)
-
-
-# def generate_union_object(schema: GenericSchema) -> Type[graphene.Union]:
-#     pass
 
 
 async def generate_related_graphql_object(
@@ -450,7 +485,7 @@ async def generate_graphql_mutation_create(
     """Generate a GraphQL Mutation to CREATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Create"
 
-    object_type = await generate_graphql_object(schema=schema, session=session)
+    object_type = await generate_graphql_object(schema=schema)
     input_type = generate_graphql_mutation_create_input(schema=schema)
 
     main_attrs = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
@@ -475,7 +510,7 @@ async def generate_graphql_mutation_update(
     """Generate a GraphQL Mutation to UPDATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Update"
 
-    object_type = await generate_graphql_object(session=session, schema=schema, branch=branch)
+    object_type = await generate_graphql_object(schema=schema, branch=branch)
     input_type = generate_graphql_mutation_update_input(schema=schema)
 
     main_attrs = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}

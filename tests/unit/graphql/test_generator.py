@@ -8,6 +8,7 @@ from infrahub.graphql.generator import (
     generate_graphql_mutation_update,
     generate_graphql_object,
     generate_interface_object,
+    generate_union_object,
     generate_object_types,
 )
 from infrahub.graphql.query import InfrahubObject
@@ -15,16 +16,31 @@ from infrahub.graphql.query import InfrahubObject
 
 async def test_generate_interface_object(session, default_branch, generic_vehicule_schema):
 
-    result = generate_interface_object(generic_vehicule_schema)
+    result = generate_interface_object(schema=generic_vehicule_schema)
     assert inspect.isclass(result)
     assert issubclass(result, graphene.Interface)
     assert result._meta.name == "Vehicule"
     assert sorted(list(result._meta.fields.keys())) == ["description", "name"]
 
 
+async def test_generate_union_object(session, default_branch,  generic_vehicule_schema, car_schema, group_on_road_vehicule_schema):
+
+    node_type = generate_interface_object(generic_vehicule_schema)
+    registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
+
+    node_type = await generate_graphql_object(schema=car_schema)
+    registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
+
+    result = generate_union_object(schema=group_on_road_vehicule_schema, members=[])
+    assert result is None
+
+    result = generate_union_object(schema=group_on_road_vehicule_schema, members=[car_schema.kind])
+    assert issubclass(result, graphene.Union)
+    assert result._meta.name == "OnRoad"
+
 async def test_generate_graphql_object(session, default_branch, criticality_schema):
 
-    result = await generate_graphql_object(schema=criticality_schema, session=session)
+    result = await generate_graphql_object(schema=criticality_schema)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "Criticality"
@@ -36,7 +52,7 @@ async def test_generate_graphql_object_with_interface(session, default_branch, g
     node_type = generate_interface_object(generic_vehicule_schema)
     registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
 
-    result = await generate_graphql_object(schema=car_schema, session=session)
+    result = await generate_graphql_object(schema=car_schema)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "Car"

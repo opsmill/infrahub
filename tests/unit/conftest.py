@@ -18,6 +18,7 @@ from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
     SchemaRoot,
+    GroupSchema,
     core_models,
     internal_schema,
 )
@@ -25,15 +26,6 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-
-# NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
-# NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
-# NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
-# NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
-# NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
-# NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
-
-# URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
 
 
 @pytest.fixture(scope="session")
@@ -449,9 +441,25 @@ async def generic_vehicule_schema(session):
 
     return node
 
+@pytest.fixture
+async def group_on_road_vehicule_schema(session):
+
+    SCHEMA = {
+        "name": "on_road",
+        "kind": "OnRoad",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+        ],
+    }
+
+    node = GroupSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
+
+    return node
 
 @pytest.fixture
-async def car_schema(session, generic_vehicule_schema):
+async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
 
     SCHEMA = {
         "name": "car",
@@ -460,6 +468,26 @@ async def car_schema(session, generic_vehicule_schema):
         "attributes": [
             {"name": "nbr_doors", "kind": "Integer"},
         ],
+        "groups": ["OnRoad"]
+    }
+
+    node = NodeSchema(**SCHEMA)
+    node.extend_with_interface(interface=generic_vehicule_schema)
+    registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+@pytest.fixture
+async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+
+    SCHEMA = {
+        "name": "motorcycle",
+        "kind": "Motorcycle",
+        "inherit_from": ["Vehicule"],
+        "attributes": [
+            {"name": "nbr_seats", "kind": "Integer"},
+        ],
+        "groups": ["OnRoad"]
     }
 
     node = NodeSchema(**SCHEMA)
@@ -492,7 +520,7 @@ async def boat_schema(session, generic_vehicule_schema):
 
 
 @pytest.fixture
-async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema):
+async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema):
 
     SCHEMA = {
         "name": "person",

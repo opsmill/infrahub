@@ -277,21 +277,11 @@ class GenericSchema(BaseNodeSchema):
 
     label: Optional[str]
 
-    @property
-    def is_union(self) -> bool:
-        if len(self.attributes) == 0 and len(self.relationships) == 0:
-            return True
-
-        return False
-
-    @property
-    def is_interface(self) -> bool:
-        return not self.is_union
-
 
 class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: List[str] = Field(default_factory=list)
+    groups: List[str] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
 
@@ -417,6 +407,10 @@ internal_schema = {
                 },
                 {
                     "name": "inherit_from",
+                    "kind": "List",
+                },
+                {
+                    "name": "groups",
                     "kind": "List",
                 },
             ],
