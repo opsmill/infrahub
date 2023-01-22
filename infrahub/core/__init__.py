@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
     from infrahub.graphql.query import InfrahubObject
 
 
@@ -64,6 +64,9 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
     """
 
     from .branch import Branch
+
+    if not branch or not isinstance(branch, str):
+        branch = config.SETTINGS.main.default_branch
 
     try:
         return get_branch_from_registry(branch=branch)
@@ -180,18 +183,22 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    def set_schema(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> bool:
+    def set_schema(
+        self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema], branch: Optional[str] = None
+    ) -> bool:
         return self.set_item(kind="schema", name=name, item=schema, branch=branch)
 
     def has_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         return self.has_item(kind="schema", name=name, branch=branch)
 
-    def get_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
+    def get_schema(
+        self, name: str, branch: Optional[Union[Branch, str]] = None
+    ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
         return self.get_item(kind="schema", name=name, branch=branch)
 
     def get_full_schema(
         self, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
+    ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
         """Return all the nodes in the schema for a given branch.
 
         The current implementation is a bit simplistic, will need to re-evaluate."""

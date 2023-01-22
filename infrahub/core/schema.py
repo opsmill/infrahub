@@ -344,7 +344,6 @@ class GroupSchema(BaseModel):
     name: str
     kind: str
     description: Optional[str]
-    branch: bool = True
 
 
 class SchemaRoot(BaseModel):
@@ -583,6 +582,28 @@ internal_schema = {
                 },
             ],
         },
+        {
+            "name": "group_schema",
+            "kind": "GroupSchema",
+            "branch": True,
+            "default_filter": "name__value",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": True,
+                },
+                {
+                    "name": "kind",
+                    "kind": "String",
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": True,
+                },
+            ],
+        },
     ]
 }
 
@@ -591,13 +612,11 @@ core_models = {
         {
             "name": "data_owner",
             "kind": "DataOwner",  # Account, Group, Script ?
-            "branch": True,
         },
         {
             "name": "data_source",
             "description": "Any Entities that stores or produces data.",
             "kind": "DataSource",  # Repository, Account ...
-            "branch": True,
         },
     ],
     "generics": [

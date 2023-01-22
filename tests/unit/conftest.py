@@ -573,10 +573,14 @@ async def default_branch(empty_database, session) -> Branch:
 
 
 @pytest.fixture
-async def register_core_models_schema():
+async def register_internal_models_schema():
 
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema)
+
+
+@pytest.fixture
+async def register_core_models_schema(register_internal_models_schema):
 
     schema = SchemaRoot(**core_models)
     await SchemaManager.register_schema_to_registry(schema=schema)
