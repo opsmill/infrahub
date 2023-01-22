@@ -76,7 +76,7 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
     obj1 = objs[0]
 
     assert obj1.mystring.value == "abc"
-    assert obj1.mybool.value == False
+    assert obj1.mybool.value is False
     assert obj1.myint.value == 123
     assert obj1.mylist.value == ["1", 2, False]
 

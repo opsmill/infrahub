@@ -114,10 +114,10 @@ async def test_base_serialization(session, default_branch, all_attribute_types_s
     assert isinstance(obj11.mylist.value, list)
 
     obj12 = await NodeManager.get_one(obj2.id, session=session)
-    assert obj12.mystring.value == None
-    assert obj12.mybool.value == None
-    assert obj12.myint.value == None
-    assert obj12.mylist.value == None
+    assert obj12.mystring.value is None
+    assert obj12.mybool.value is None
+    assert obj12.myint.value is None
+    assert obj12.mylist.value is None
 
     # ------------ update ------------
     obj11.mystring.value = "def"

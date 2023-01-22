@@ -54,7 +54,7 @@ async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
         sub_selection_set = getattr(node, "selection_set", None)
         if isinstance(node, FieldNode):
             value = await extract_fields(sub_selection_set)
-            if not node.name.value in fields:
+            if node.name.value not in fields:
                 fields[node.name.value] = value
             elif isinstance(fields[node.name.value], dict) and isinstance(value, dict):
                 fields[node.name.value].update(value)
@@ -63,7 +63,7 @@ async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
             for sub_node in node.selection_set.selections:
                 sub_sub_selection_set = getattr(sub_node, "selection_set", None)
                 value = await extract_fields(sub_sub_selection_set)
-                if not sub_node.name.value in fields:
+                if sub_node.name.value not in fields:
                     fields[sub_node.name.value] = await extract_fields(sub_sub_selection_set)
                 elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
                     fields[sub_node.name.value].update(value)
