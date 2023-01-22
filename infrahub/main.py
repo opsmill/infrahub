@@ -102,7 +102,7 @@ async def generate_rfile(
     rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch, at=at)
 
     if not rfile:
-        rfile_schema = await registry.get_schema(session=session, name="RFile")
+        rfile_schema = registry.get_schema(name="RFile", branch=branch)
         items = await NodeManager.query(
             session=session, schema=rfile_schema, filters={rfile_schema.default_filter: rfile_id}, branch=branch, at=at
         )
@@ -183,7 +183,7 @@ async def graphql_query(
     gql_query = await NodeManager.get_one(session=session, id=query_id, branch=branch, at=at)
 
     if not gql_query:
-        gqlquery_schema = await registry.get_schema(session=session, name="GraphQLQuery")
+        gqlquery_schema = registry.get_schema(name="GraphQLQuery", branch=branch)
         items = await NodeManager.query(
             session=session,
             schema=gqlquery_schema,
@@ -247,7 +247,7 @@ async def transform_python(
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
-    transform_schema = await registry.get_schema(session=session, name="TransformPython")
+    transform_schema = registry.get_schema(name="TransformPython", branch=branch)
     transforms = await NodeManager.query(
         session=session, schema=transform_schema, filters={"url__value": transform_url}, branch=branch, at=at
     )

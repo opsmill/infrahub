@@ -88,7 +88,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         elif isinstance(schema, str):
 
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
-            attrs["schema"] = await registry.get_schema(session=session, name=schema, branch=branch)
+            attrs["schema"] = registry.get_schema(name=schema, branch=branch)
         else:
             raise ValueError(f"Invalid schema provided {schema}")
 

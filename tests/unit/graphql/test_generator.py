@@ -34,7 +34,7 @@ async def test_generate_graphql_object(session, default_branch, criticality_sche
 async def test_generate_graphql_object_with_interface(session, default_branch, generic_vehicule_schema, car_schema):
 
     node_type = generate_interface_object(generic_vehicule_schema)
-    await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
+    registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
 
     result = await generate_graphql_object(schema=car_schema, session=session)
     assert inspect.isclass(result)
@@ -61,10 +61,10 @@ async def test_generate_object_types(session, default_branch, car_person_schema)
 
     await generate_object_types(session=session, branch=default_branch)
 
-    car = await registry.get_graphql_type(session=session, name="Car")
-    related_car = await registry.get_graphql_type(session=session, name="RelatedCar")
-    person = await registry.get_graphql_type(session=session, name="Person")
-    related_person = await registry.get_graphql_type(session=session, name="RelatedPerson")
+    car = registry.get_graphql_type(name="Car")
+    related_car = registry.get_graphql_type(name="RelatedCar")
+    person = registry.get_graphql_type(name="Person")
+    related_person = registry.get_graphql_type(name="RelatedPerson")
 
     assert issubclass(car, InfrahubObject)
     assert issubclass(related_car, InfrahubObject)

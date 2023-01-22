@@ -217,7 +217,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.peer_id = self._peer.id
 
     async def get_peer_schema(self, session: AsyncSession) -> NodeSchema:
-        return await registry.get_schema(session=session, name=self.schema.peer)
+        return registry.get_schema(name=self.schema.peer, branch=self.branch)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
 

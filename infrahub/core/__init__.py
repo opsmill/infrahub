@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
 import infrahub.config as config
+from infrahub.exceptions import BranchNotFound
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -14,7 +15,18 @@ if TYPE_CHECKING:
     from infrahub.graphql.query import InfrahubObject
 
 
-async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[AsyncSession] = None) -> Branch:
+def get_branch_from_registry(branch: Optional[Union[Branch, str]] = None) -> Branch:
+    """Return a branch object from the registry based on its name.
+
+    Args:
+        branch (Optional[Union[Branch, str]]): Branch object or name of a branch
+
+    Raises:
+        BranchNotFound:
+
+    Returns:
+        Branch: A Branch Object
+    """
 
     from .branch import Branch
 
@@ -26,10 +38,38 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
         branch = config.SETTINGS.main.default_branch
 
     # Try to get it from the registry
-    #   if not present in the registry, get it from the database directly
+    #   if not present in the registry and if a session has been provided get it from the database directly
     #   and update the registry
     if branch in registry.branch:
         return registry.branch[branch]
+
+    raise BranchNotFound(identifier=branch)
+
+
+async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[AsyncSession] = None) -> Branch:
+    """Return a branch object based on its name.
+
+    First the function will chec in the registry and if the Branch is not present,
+     and if a session object has been provided it will attempt to retrieve the branch from the database.
+
+    Args:
+        branch (Optional[Union[Branch, str]]): Branch object or name of a branch
+        session (Optional[AsyncSession], optional): AsyncSession to connect to the database. Defaults to None.
+
+    Raises:
+        BranchNotFound:
+
+    Returns:
+        Branch: A Branch Object
+    """
+
+    from .branch import Branch
+
+    try:
+        return get_branch_from_registry(branch=branch)
+    except BranchNotFound:
+        if not session:
+            raise
 
     obj = await Branch.get_by_name(branch, session=session)
     registry.branch[branch] = obj
@@ -59,7 +99,7 @@ async def get_account(
 
     from infrahub.core.manager import NodeManager
 
-    account_schema = await registry.get_schema(session=session, name="Account")
+    account_schema = registry.get_schema(name="Account")
 
     obj = await NodeManager.query(
         account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, session=session
@@ -100,21 +140,21 @@ class Registry:
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
 
-    async def set_item(self, kind: str, name: str, item, branch: str = None) -> bool:
+    def set_item(self, kind: str, name: str, item, branch: str = None) -> bool:
         branch = branch or config.SETTINGS.main.default_branch
         getattr(self, kind)[branch][name] = item
         return True
 
-    async def has_item(self, session: AsyncSession, kind: str, name: str, branch=None) -> bool:
+    def has_item(self, kind: str, name: str, branch=None) -> bool:
         try:
-            await self.get_item(session=session, kind=kind, name=name, branch=branch)
+            self.get_item(kind=kind, name=name, branch=branch)
             return True
         except ValueError:
             return False
 
-    async def get_item(self, session: AsyncSession, kind: str, name: str, branch: Optional[Union[Branch, str]] = None):
+    def get_item(self, kind: str, name: str, branch: Optional[Union[Branch, str]] = None):
 
-        branch = await get_branch(session=session, branch=branch)
+        branch = get_branch_from_registry(branch=branch)
 
         attr = getattr(self, kind)
 
@@ -127,10 +167,10 @@ class Registry:
 
         raise ValueError(f"Unable to find the {kind} {name} for the branch {branch.name} in the registry")
 
-    async def get_all_item(self, session: AsyncSession, kind: str, branch: Optional[Union[Branch, str]] = None) -> dict:
+    def get_all_item(self, kind: str, branch: Optional[Union[Branch, str]] = None) -> dict:
         """Return all the nodes in the schema for a given branch.
         The current implementation is a bit simplistic, will need to re-evaluate."""
-        branch = await get_branch(session=session, branch=branch)
+        branch = get_branch_from_registry(branch=branch)
 
         attr = getattr(self, kind)
 
@@ -140,45 +180,35 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    async def set_schema(
-        self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None
-    ) -> bool:
-        return await self.set_item(kind="schema", name=name, item=schema, branch=branch)
+    def set_schema(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> bool:
+        return self.set_item(kind="schema", name=name, item=schema, branch=branch)
 
-    async def has_schema(self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
-        return await self.has_item(session=session, kind="schema", name=name, branch=branch)
+    def has_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
+        return self.has_item(kind="schema", name=name, branch=branch)
 
-    async def get_schema(
-        self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None
-    ) -> Union[NodeSchema, GenericSchema]:
-        return await self.get_item(session=session, kind="schema", name=name, branch=branch)
+    def get_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
+        return self.get_item(kind="schema", name=name, branch=branch)
 
-    async def get_full_schema(
-        self, session: AsyncSession, branch: Optional[Union[Branch, str]] = None
+    def get_full_schema(
+        self, branch: Optional[Union[Branch, str]] = None
     ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         """Return all the nodes in the schema for a given branch.
 
         The current implementation is a bit simplistic, will need to re-evaluate."""
-        return await self.get_all_item(session=session, kind="schema", branch=branch)
+        return self.get_all_item(kind="schema", branch=branch)
 
-    async def set_graphql_type(self, name: str, graphql_type: InfrahubObject, branch: Optional[str] = None) -> bool:
-        return await self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
+    def set_graphql_type(self, name: str, graphql_type: InfrahubObject, branch: Optional[str] = None) -> bool:
+        return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
 
-    async def has_graphql_type(
-        self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None
-    ) -> bool:
-        return await self.has_item(session=session, kind="graphql_type", name=name, branch=branch)
+    def has_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
+        return self.has_item(kind="graphql_type", name=name, branch=branch)
 
-    async def get_graphql_type(
-        self, session: AsyncSession, name: str, branch: Optional[Union[Branch, str]] = None
-    ) -> InfrahubObject:
-        return await self.get_item(session=session, kind="graphql_type", name=name, branch=branch)
+    def get_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None) -> InfrahubObject:
+        return self.get_item(kind="graphql_type", name=name, branch=branch)
 
-    async def get_all_graphql_type(
-        self, session: AsyncSession, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, InfrahubObject]:
+    def get_all_graphql_type(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, InfrahubObject]:
         """Return all the graphql_type for a given branch."""
-        return await self.get_all_item(session=session, kind="graphql_type", branch=branch)
+        return self.get_all_item(kind="graphql_type", branch=branch)
 
 
 registry = Registry()

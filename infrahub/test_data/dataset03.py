@@ -6,7 +6,6 @@ from ipaddress import IPv4Network
 
 from neo4j import AsyncSession
 
-from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 
@@ -138,8 +137,6 @@ async def load_data(session: AsyncSession):
 
     loopback_ip_dict = {}
     device_dict = {}
-
-    await registry.get_schema(session=session, name="Account")
 
     for account in ACCOUNTS:
         obj = await Node.init(session=session, schema="Account")

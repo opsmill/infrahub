@@ -85,8 +85,8 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
 
 async def test_nested_query(db, session, default_branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -137,8 +137,8 @@ async def test_nested_query(db, session, default_branch, car_person_schema):
 
 async def test_double_nested_query(db, session, default_branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -225,8 +225,8 @@ async def test_query_filter_local_attrs(db, session, default_branch, criticality
 
 async def test_query_filter_relationships(db, session, default_branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)

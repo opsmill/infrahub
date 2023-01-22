@@ -83,8 +83,8 @@ class RelationshipSchema(BaseModel):
     def get_class(self):
         return Relationship
 
-    async def get_peer_schema(self, session: AsyncSession):
-        return await registry.get_schema(session=session, name=self.peer)
+    async def get_peer_schema(self):
+        return registry.get_schema(name=self.peer)
 
     async def get_query_filter(
         self,
@@ -106,7 +106,7 @@ class RelationshipSchema(BaseModel):
         if not filters:
             return query_filters, query_params, nbr_rels
 
-        peer_schema = await self.get_peer_schema(session=session)
+        peer_schema = await self.get_peer_schema()
 
         query_params[f"{prefix}_rel_name"] = self.identifier
 
@@ -340,9 +340,17 @@ class NodeSchema(BaseNodeSchema):
                 self.relationships.append(new_item)
 
 
+class GroupSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+    branch: bool = True
+
+
 class SchemaRoot(BaseModel):
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
+    groups: List[GroupSchema] = Field(default_factory=list)
 
     def extend_nodes_with_interfaces(self) -> SchemaRoot:
         """Extend all the nodes with the attributes and relationships
@@ -579,6 +587,19 @@ internal_schema = {
 }
 
 core_models = {
+    "groups": [
+        {
+            "name": "data_owner",
+            "kind": "DataOwner",  # Account, Group, Script ?
+            "branch": True,
+        },
+        {
+            "name": "data_source",
+            "description": "Any Entities that stores or produces data.",
+            "kind": "DataSource",  # Repository, Account ...
+            "branch": True,
+        },
+    ],
     "generics": [
         # {
         #     "name": "location",
@@ -614,20 +635,6 @@ core_models = {
         #     ],
         #     # "relationships": [
         #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
-        #     # ],
-        # },
-        # {
-        #     "name": "data_owner",
-        #     "kind": "DataOwner",  # Account, Group, Script ?
-        #     "branch": True,
-        #     "attributes": [],
-        # },
-        # {
-        #     "name": "data_source",
-        #     "description": "Any Entities that stores or produces data.",
-        #     "kind": "DataSource",  # Repository, Account ...
-        #     "branch": True,
-        #     # "attributes": [
         #     # ],
         # },
     ],

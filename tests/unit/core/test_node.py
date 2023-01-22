@@ -40,7 +40,7 @@ async def test_node_init(session, default_branch, criticality_schema, first_acco
 
 async def test_node_init_schema_name(session, default_branch, criticality_schema):
 
-    await registry.set_schema(name="Criticality", schema=criticality_schema)
+    registry.set_schema(name="Criticality", schema=criticality_schema)
     obj = await Node.init(session=session, schema="Criticality")
     await obj.new(session=session, name="low", level=4)
 
@@ -104,7 +104,7 @@ async def test_node_default_value(session, default_branch):
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node_schema.kind, schema=node_schema)
+    registry.set_schema(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(session=session, schema=node_schema)
     await obj.new(session=session, name="test01", myint=100, mybool=False, mystr="test02")
@@ -120,8 +120,8 @@ async def test_node_default_value(session, default_branch):
 
 async def test_node_init_with_single_relationship(session, default_branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -238,8 +238,8 @@ async def test_node_create_local_attrs_with_different_sources(
 
 async def test_node_create_with_single_relationship(session, default_branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -309,8 +309,8 @@ async def test_node_create_with_single_relationship(session, default_branch, car
 
 async def test_node_create_with_multiple_relationship(session, default_branch, fruit_tag_schema):
 
-    fruit = await registry.get_schema(session=session, name="Fruit")
-    tag = await registry.get_schema(session=session, name="Tag")
+    fruit = registry.get_schema(name="Fruit")
+    tag = registry.get_schema(name="Tag")
 
     t1 = await Node.init(session=session, schema=tag)
     await t1.new(session=session, name="tag1")

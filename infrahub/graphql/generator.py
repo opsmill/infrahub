@@ -161,7 +161,7 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
     branch = await get_branch(session=session, branch=branch)
 
-    full_schema = await registry.get_full_schema(session=session, branch=branch)
+    full_schema = registry.get_full_schema(branch=branch)
 
     # Generate all GraphQL Interface & RelatedInterface Object first and store them in the registry
     for node_name, node_schema in full_schema.items():
@@ -169,10 +169,8 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
             continue
         interface = generate_interface_object(schema=node_schema)
         related_interface = generate_related_interface_object(schema=node_schema)
-        await registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
-        await registry.set_graphql_type(
-            name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name
-        )
+        registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
+        registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
 
     # Generate all GraphQL ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
@@ -180,26 +178,22 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
             continue
         node_type = await generate_graphql_object(schema=node_schema, session=session, branch=branch)
         related_node_type = await generate_related_graphql_object(schema=node_schema, session=session, branch=branch)
-        await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
-        await registry.set_graphql_type(
-            name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name
-        )
+        registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
+        registry.set_graphql_type(name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name)
 
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, NodeSchema):
             continue
-        node_type = await registry.get_graphql_type(session=session, name=node_name, branch=branch)
-        related_node_type = await registry.get_graphql_type(session=session, name=f"Related{node_name}", branch=branch)
+        node_type = registry.get_graphql_type(name=node_name, branch=branch)
+        related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch)
 
         for rel in node_schema.relationships:
 
-            peer_schema = await rel.get_peer_schema(session=session)
+            peer_schema = await rel.get_peer_schema()
             peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
 
-            peer_type = await registry.get_graphql_type(
-                session=session, name=f"Related{peer_schema.kind}", branch=branch
-            )
+            peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch)
 
             if rel.cardinality == "one":
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
@@ -216,14 +210,14 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
 
     class_attrs = {}
 
-    full_schema = await registry.get_full_schema(session=session, branch=branch)
+    full_schema = registry.get_full_schema(branch=branch)
 
     # Generate all Graphql objectType and store them in the registry
     await generate_object_types(session=session)
 
     for node_name, node_schema in full_schema.items():
 
-        node_type = await registry.get_graphql_type(session=session, name=node_name, branch=branch)
+        node_type = registry.get_graphql_type(name=node_name, branch=branch)
         node_filters = await generate_filters(session=session, schema=node_schema)
 
         class_attrs[node_schema.name] = graphene.List(
@@ -239,7 +233,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
     class_attrs = {}
 
-    full_schema = await registry.get_full_schema(session=session, branch=branch)
+    full_schema = registry.get_full_schema(branch=branch)
 
     for node_schema in full_schema.values():
         if isinstance(node_schema, GenericSchema):
@@ -275,7 +269,7 @@ async def generate_graphql_object(
 
     for generic in schema.inherit_from:
         try:
-            generic = await registry.get_graphql_type(session=session, name=generic, branch=branch)
+            generic = registry.get_graphql_type(name=generic, branch=branch)
             meta_attrs["interfaces"].add(generic)
         except ValueError:
             # If the object is not present it might be because the generic is a group, will need to carefully test that.
@@ -349,7 +343,7 @@ async def generate_related_graphql_object(
 
     for generic in schema.inherit_from:
         try:
-            generic = await registry.get_graphql_type(session=session, name=f"Related{generic}", branch=branch)
+            generic = registry.get_graphql_type(name=f"Related{generic}", branch=branch)
             meta_attrs["interfaces"].add(generic)
         except ValueError:
             # If the object is not present it might be because the generic is a group, will need to carefully test that.
@@ -530,7 +524,7 @@ async def generate_filters(session: AsyncSession, schema: NodeSchema, attribute_
         return filters
 
     for rel in schema.relationships:
-        peer_schema = await rel.get_peer_schema(session=session)
+        peer_schema = await rel.get_peer_schema()
         peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
 
         for key, value in peer_filters.items():

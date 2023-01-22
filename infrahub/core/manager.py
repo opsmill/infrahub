@@ -62,7 +62,7 @@ class NodeManager:
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = await registry.get_schema(session=session, name=schema, branch=branch.name)
+            schema = registry.get_schema(name=schema, branch=branch.name)
         elif not isinstance(schema, NodeSchema):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -279,7 +279,7 @@ class SchemaManager(NodeManager):
     async def register_schema_to_registry(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
         """Register all nodes & generics from a SchemaRoot object into the registry."""
         for item in schema.generics + schema.nodes:
-            await registry.set_schema(item.kind, item, branch=branch)
+            registry.set_schema(name=item.kind, schema=item, branch=branch)
 
         return True
 
@@ -309,9 +309,9 @@ class SchemaManager(NodeManager):
         if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
             raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported")
 
-        node_schema = await registry.get_schema(session=session, name=node_type, branch=branch)
-        attribute_schema = await registry.get_schema(session=session, name="AttributeSchema", branch=branch)
-        relationship_schema = await registry.get_schema(session=session, name="RelationshipSchema", branch=branch)
+        node_schema = registry.get_schema(name=node_type, branch=branch)
+        attribute_schema = registry.get_schema(name="AttributeSchema", branch=branch)
+        relationship_schema = registry.get_schema(name="RelationshipSchema", branch=branch)
 
         attrs = []
         rels = []
@@ -353,11 +353,11 @@ class SchemaManager(NodeManager):
 
         schema = SchemaRoot()
 
-        generic_schema = await registry.get_schema(session=session, name="GenericSchema", branch=branch)
+        generic_schema = registry.get_schema(name="GenericSchema", branch=branch)
         for schema_node in await cls.query(generic_schema, branch=branch, session=session):
             schema.generics.append(await cls.convert_generic_schema_to_schema(schema_node=schema_node, session=session))
 
-        node_schema = await registry.get_schema(session=session, name="NodeSchema", branch=branch)
+        node_schema = registry.get_schema(name="NodeSchema", branch=branch)
         for schema_node in await cls.query(node_schema, branch=branch, session=session):
             schema.nodes.append(await cls.convert_node_schema_to_schema(schema_node=schema_node, session=session))
 

@@ -40,9 +40,9 @@ async def test_register_schema_to_registry(session, default_branch):
     schema = SchemaRoot(**FULL_SCHEMA)
     await SchemaManager.register_schema_to_registry(schema=schema)
 
-    assert isinstance(await registry.get_schema(session=session, name="Criticality"), NodeSchema)
-    # assert isinstance(await registry.get_schema(session=session, name="GenericGroup"), GenericSchema)
-    assert isinstance(await registry.get_schema(session=session, name="GenericInterface"), GenericSchema)
+    assert isinstance(registry.get_schema(name="Criticality"), NodeSchema)
+    # assert isinstance(registry.get_schema(name="GenericGroup"), GenericSchema)
+    assert isinstance(registry.get_schema(name="GenericInterface"), GenericSchema)
 
 
 async def test_load_node_to_db_node_schema(session, default_branch):
@@ -94,7 +94,7 @@ async def test_load_schema_to_db(session, default_branch):
 
     await SchemaManager.load_schema_to_db(schema=schema, session=session)
 
-    node_schema = await registry.get_schema(name="NodeSchema", session=session)
+    node_schema = registry.get_schema(name="NodeSchema")
     results = await SchemaManager.query(schema=node_schema, session=session)
     assert len(results) > 1
 

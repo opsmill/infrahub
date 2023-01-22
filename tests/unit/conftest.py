@@ -346,7 +346,7 @@ async def car_person_schema(session):
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        await registry.set_schema(name=node.kind, schema=node)
+        registry.set_schema(name=node.kind, schema=node)
 
     return True
 
@@ -385,7 +385,7 @@ async def person_tag_schema(session):
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        await registry.set_schema(name=node.kind, schema=node)
+        registry.set_schema(name=node.kind, schema=node)
 
     return True
 
@@ -407,7 +407,7 @@ async def all_attribute_types_schema(session):
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node_schema.kind, schema=node_schema)
+    registry.set_schema(name=node_schema.kind, schema=node_schema)
 
 
 @pytest.fixture
@@ -427,7 +427,7 @@ async def criticality_schema(session):
     }
 
     node = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -445,7 +445,7 @@ async def generic_vehicule_schema(session):
     }
 
     node = GenericSchema(**SCHEMA)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -464,7 +464,7 @@ async def car_schema(session, generic_vehicule_schema):
 
     node = NodeSchema(**SCHEMA)
     node.extend_with_interface(interface=generic_vehicule_schema)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -486,7 +486,7 @@ async def boat_schema(session, generic_vehicule_schema):
 
     node = NodeSchema(**SCHEMA)
     node.extend_with_interface(interface=generic_vehicule_schema)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -508,7 +508,7 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
     }
 
     node = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -545,7 +545,7 @@ async def fruit_tag_schema(session):
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        await registry.set_schema(name=node.kind, schema=node)
+        registry.set_schema(name=node.kind, schema=node)
 
     return True
 
@@ -589,7 +589,7 @@ async def register_account_schema(session):
 
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
     for schema in account_schemas:
-        await registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
+        registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
 
     return True
 

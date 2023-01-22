@@ -65,8 +65,8 @@ class AttrToProcess:
 async def find_node_schema(node, branch: Union[Branch, str], session: AsyncSession) -> NodeSchema:
 
     for label in node.labels:
-        if await registry.has_schema(name=label, branch=branch, session=session):
-            return await registry.get_schema(name=label, branch=branch, session=session)
+        if registry.has_schema(name=label, branch=branch):
+            return registry.get_schema(name=label, branch=branch)
 
     return None
 
