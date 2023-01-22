@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, root_validator, validator
 
 from infrahub.core import registry
-from infrahub.core.attribute import Any as AnyAttr
-from infrahub.core.attribute import Boolean, Integer, String
+from infrahub.core.attribute import (
+    AnyAttribute,
+    Boolean,
+    Integer,
+    ListAttribute,
+    String,
+)
 from infrahub.core.relationship import Relationship
 from infrahub.utils import duplicates
 
@@ -16,35 +22,35 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
 
 ATTRIBUTES_MAPPING = {
-    "Any": AnyAttr,
+    "Any": AnyAttribute,
     "String": String,
     "Integer": Integer,
     "Boolean": Boolean,
+    "List": ListAttribute,
 }
 
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 
-class RemoteAttributeSpec(BaseModel):
-    remote_node: str
-
-
-class SingleRelationshipSpec(BaseModel):
-    name: str
-    peer_class: str
-
-
 class AttributeSchema(BaseModel):
     name: str
     kind: str
-    inherit_from: Optional[str]
     label: Optional[str]
     description: Optional[str]
     default_value: Optional[Any]
+    inherited: bool = False
     unique: bool = False
     branch: bool = True
     optional: bool = False
-    # spec: Optional[dict]
+
+    @validator("kind")
+    def kind_options(
+        cls,
+        v,
+    ):
+        if v not in ATTRIBUTES_MAPPING.keys():
+            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTES_MAPPING.keys()} ")
+        return v
 
     def get_class(self):
         return ATTRIBUTES_MAPPING.get(self.kind, None)
@@ -59,11 +65,10 @@ class RelationshipSchema(BaseModel):
     label: Optional[str]
     description: Optional[str]
     identifier: Optional[str]
-    inherit_from: str = "Relationship"
+    inherited: bool = False
     cardinality: str = "many"
     branch: bool = True
     optional: bool = True
-    # spec: Optional[dict]
 
     @validator("cardinality")
     def cardinality_options(
@@ -71,12 +76,12 @@ class RelationshipSchema(BaseModel):
         v,
     ):
         VALID_OPTIONS = ["one", "many"]
-        if v not in ["one", "many"]:
-            raise ValueError(f"Only valid valid for cardinality are : {VALID_OPTIONS} ")
+        if v not in VALID_OPTIONS:
+            raise ValueError(f"Only valid value for cardinality are : {VALID_OPTIONS} ")
         return v
 
     def get_class(self):
-        return RELATIONSHIPS_MAPPING.get(self.inherit_from, None)
+        return Relationship
 
     async def get_peer_schema(self, session: AsyncSession):
         return await registry.get_schema(session=session, name=self.peer)
@@ -184,45 +189,12 @@ class RelationshipSchema(BaseModel):
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class NodeSchema(BaseModel):
+class BaseNodeSchema(BaseModel):
     name: str
     kind: str
-    label: Optional[str]
     description: Optional[str]
-    inherit_from: str = "Node"
-    branch: bool = True
-    default_filter: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
-
-    # TODO add validation to ensure that 2 attributes can't have the same name
-
-    @root_validator
-    def unique_names(cls, values):
-        attr_names = [attr.name for attr in values.get("attributes", [])]
-        rel_names = [rel.name for rel in values.get("relationships", [])]
-
-        if names_dup := duplicates(attr_names + rel_names):
-            raise ValueError(f"Names of attributes and relationships must be unique : {names_dup}")
-        return values
-
-    @root_validator
-    def generate_identifier(
-        cls,
-        values,
-    ):
-        identifiers = []
-
-        for rel in values.get("relationships", []):
-            if not rel.identifier:
-                identifier = "__".join(sorted([values.get("kind"), rel.peer]))
-                rel.identifier = identifier.lower()
-
-            identifiers.append(rel.identifier)
-
-        if identifier_dup := duplicates(identifiers):
-            raise ValueError(f"Identifier of relationships must be unique : {identifier_dup}")
-        return values
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
 
@@ -291,17 +263,119 @@ class NodeSchema(BaseModel):
     def mandatory_relationship_names(self) -> List[str]:
         return [item.name for item in self.relationships if not item.optional]
 
+    @property
+    def local_attributes(self) -> List[AttributeSchema]:
+        return [item for item in self.attributes if not item.inherited]
+
+    @property
+    def local_relationships(self) -> List[RelationshipSchema]:
+        return [item for item in self.relationships if not item.inherited]
+
+
+class GenericSchema(BaseNodeSchema):
+    """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
+
+    label: Optional[str]
+
+    @property
+    def is_union(self) -> bool:
+        if len(self.attributes) == 0 and len(self.relationships) == 0:
+            return True
+
+        return False
+
+    @property
+    def is_interface(self) -> bool:
+        return not self.is_union
+
+
+class NodeSchema(BaseNodeSchema):
+    label: Optional[str]
+    inherit_from: List[str] = Field(default_factory=list)
+    branch: bool = True
+    default_filter: Optional[str]
+
+    # TODO add validation to ensure that 2 attributes can't have the same name
+
+    @root_validator
+    def unique_names(cls, values):
+        attr_names = [attr.name for attr in values.get("attributes", [])]
+        rel_names = [rel.name for rel in values.get("relationships", [])]
+
+        if names_dup := duplicates(attr_names + rel_names):
+            raise ValueError(f"Names of attributes and relationships must be unique : {names_dup}")
+        return values
+
+    @root_validator
+    def generate_identifier(
+        cls,
+        values,
+    ):
+        identifiers = []
+
+        for rel in values.get("relationships", []):
+            if not rel.identifier:
+                identifier = "__".join(sorted([values.get("kind"), rel.peer]))
+                rel.identifier = identifier.lower()
+
+            identifiers.append(rel.identifier)
+
+        if identifier_dup := duplicates(identifiers):
+            raise ValueError(f"Identifier of relationships must be unique : {identifier_dup}")
+        return values
+
+    def extend_with_interface(self, interface: GenericSchema) -> NodeSchema:
+        existing_node_names = self.valid_input_names
+
+        for item in interface.attributes + interface.relationships:
+            if item.name in existing_node_names:
+                continue
+
+            new_item = copy.deepcopy(item)
+            new_item.inherited = True
+
+            if isinstance(item, AttributeSchema):
+                self.attributes.append(new_item)
+            elif isinstance(item, RelationshipSchema):
+                self.relationships.append(new_item)
+
 
 class SchemaRoot(BaseModel):
-    nodes: List[NodeSchema]
+    generics: List[GenericSchema] = Field(default_factory=list)
+    nodes: List[NodeSchema] = Field(default_factory=list)
+
+    def extend_nodes_with_interfaces(self) -> SchemaRoot:
+        """Extend all the nodes with the attributes and relationships
+        from the Interface objects defined in inherited_from.
+
+        In the current implementation, we are only looking for Generic/interface in the local object.
+        Pretty soon, we will mostlikely need to extend that to the registry/db to allow a model to use a generic he hasn't defined
+        """
+
+        generics = {item.kind: item for item in self.generics}
+
+        # For all node_schema, add the attributes & relationships from the generic / interface
+        for node in self.nodes:
+            for generic_kind in node.inherit_from:
+                if generic_kind not in generics:
+                    # TODO add a proper exception for all schema related issue
+                    raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
+
+                if generics[generic_kind].is_union:
+                    continue
+
+                node.extend_with_interface(interface=generics[generic_kind])
+
+        return self
 
 
+# TODO need to investigate how we could generate the internal schema
+# directly from the Pydantic Models to avoid the duplication of effort
 internal_schema = {
     "nodes": [
         {
             "name": "node_schema",
             "kind": "NodeSchema",
-            "inherit_from": "Node",
             "branch": True,
             "default_filter": "name__value",
             "attributes": [
@@ -336,7 +410,7 @@ internal_schema = {
                 },
                 {
                     "name": "inherit_from",
-                    "kind": "String",
+                    "kind": "List",
                 },
             ],
             "relationships": [
@@ -361,7 +435,6 @@ internal_schema = {
         {
             "name": "attribute_schema",
             "kind": "AttributeSchema",
-            "inherit_from": "Node",
             "branch": True,
             "default_filter": None,
             "attributes": [
@@ -384,11 +457,6 @@ internal_schema = {
                     "optional": True,
                 },
                 {
-                    "name": "inherit_from",
-                    "kind": "String",
-                    "optional": True,
-                },
-                {
                     "name": "unique",
                     "kind": "Boolean",
                 },
@@ -406,12 +474,16 @@ internal_schema = {
                     "kind": "Any",
                     "optional": True,
                 },
+                {
+                    "name": "inherited",
+                    "kind": "Boolean",
+                    "default": False,
+                },
             ],
         },
         {
             "name": "relationship_schema",
             "kind": "RelationshipSchema",
-            "inherit_from": "Node",
             "branch": True,
             "default_filter": None,
             "attributes": [
@@ -438,10 +510,6 @@ internal_schema = {
                     "kind": "String",
                 },
                 {
-                    "name": "inherit_from",
-                    "kind": "String",
-                },
-                {
                     "name": "cardinality",
                     "kind": "String",
                 },
@@ -455,12 +523,114 @@ internal_schema = {
                     "kind": "Boolean",
                     "default": True,
                 },
+                {
+                    "name": "inherited",
+                    "kind": "Boolean",
+                    "default": False,
+                },
+            ],
+        },
+        {
+            "name": "generic_schema",
+            "kind": "GenericSchema",
+            "branch": True,
+            "default_filter": "name__value",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": True,
+                },
+                {
+                    "name": "kind",
+                    "kind": "String",
+                },
+                {
+                    "name": "label",
+                    "kind": "String",
+                    "optional": True,
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": True,
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "attributes",
+                    "peer": "AttributeSchema",
+                    "identifier": "schema__generic__attributes",
+                    "cardinality": "many",
+                    "branch": True,
+                    "optional": True,
+                },
+                {
+                    "name": "relationships",
+                    "peer": "RelationshipSchema",
+                    "identifier": "schema__generic__relationships",
+                    "cardinality": "many",
+                    "branch": True,
+                    "optional": True,
+                },
             ],
         },
     ]
 }
 
 core_models = {
+    "generics": [
+        # {
+        #     "name": "location",
+        #     "kind": "Location",
+        #     "branch": True,
+        #     "attributes": [
+        #         {"name": "name", "kind": "String", "unique": True},
+        #         {"name": "description", "kind": "String", "optional": True},
+        #     ],
+        #     # "relationships": [
+        #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+        #     # ],
+        # },
+        # {
+        #     "name": "primary",
+        #     "kind": "Primary",
+        #     "branch": True,
+        #     "attributes": [
+        #         {"name": "name", "kind": "String", "unique": True},
+        #         {"name": "description", "kind": "String", "optional": True},
+        #     ],
+        #     "relationships": [
+        #         {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+        #     ],
+        # },
+        # {
+        #     "name": "component",
+        #     "kind": "Component",
+        #     "branch": True,
+        #     "attributes": [
+        #         {"name": "name", "kind": "String", "unique": True},
+        #         {"name": "description", "kind": "String", "optional": True},
+        #     ],
+        #     # "relationships": [
+        #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+        #     # ],
+        # },
+        # {
+        #     "name": "data_owner",
+        #     "kind": "DataOwner",  # Account, Group, Script ?
+        #     "branch": True,
+        #     "attributes": [],
+        # },
+        # {
+        #     "name": "data_source",
+        #     "description": "Any Entities that stores or produces data.",
+        #     "kind": "DataSource",  # Repository, Account ...
+        #     "branch": True,
+        #     # "attributes": [
+        #     # ],
+        # },
+    ],
     "nodes": [
         {
             "name": "criticality",
@@ -499,7 +669,6 @@ core_models = {
         {
             "name": "account",
             "kind": "Account",
-            "inherit_from": "Node",
             "default_filter": "name__value",
             "branch": True,
             "attributes": [
@@ -678,5 +847,5 @@ core_models = {
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
             ],
         },
-    ]
+    ],
 }

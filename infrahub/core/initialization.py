@@ -86,10 +86,12 @@ async def first_time_initialization(session: AsyncSession, load_infrastructure_m
     # Create the default Branch
     # --------------------------------------------------
     await create_default_branch(session=session)
+
     # --------------------------------------------------
     # Load the internal schema in the database
     # --------------------------------------------------
     schema = SchemaRoot(**internal_schema)
+    schema.extend_nodes_with_interfaces()
     await SchemaManager.register_schema_to_registry(schema)
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the internal Schema in the database")
@@ -98,12 +100,14 @@ async def first_time_initialization(session: AsyncSession, load_infrastructure_m
     # Load the schema for the common models in the database
     # --------------------------------------------------
     schema = SchemaRoot(**core_models)
+    schema.extend_nodes_with_interfaces()
     await SchemaManager.register_schema_to_registry(schema)
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the core models in the database")
 
     if load_infrastructure_models:
         schema = SchemaRoot(**infrastructure_models)
+        schema.extend_nodes_with_interfaces()
         await SchemaManager.register_schema_to_registry(schema)
         await SchemaManager.load_schema_to_db(schema, session=session)
         LOGGER.info("Created the infrastructure models in the database")

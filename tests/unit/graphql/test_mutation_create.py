@@ -35,6 +35,52 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 
+async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
+
+    query = """
+    mutation {
+        all_attribute_types_create(
+            data: {
+                name: { value: "obj1" }
+                mystring: { value: "abc" }
+                mybool: { value: false }
+                myint: { value: 123 }
+                mylist: { value: [ "1", 2, false ] }
+            }
+        ){
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        graphene.Schema(
+            query=await get_gql_query(session=session),
+            mutation=await get_gql_mutation(session=session),
+            auto_camelcase=False,
+        ).graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["all_attribute_types_create"]["ok"] is True
+    assert len(result.data["all_attribute_types_create"]["object"]["id"]) == 36  # lenght of an UUID
+
+    objs = await NodeManager.query(session=session, schema="AllAttributeTypes")
+    obj1 = objs[0]
+
+    assert obj1.mystring.value == "abc"
+    assert obj1.mybool.value is False
+    assert obj1.myint.value == 123
+    assert obj1.mylist.value == ["1", 2, False]
+
+
 async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
 
     graphql_schema = graphene.Schema(

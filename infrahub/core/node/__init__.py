@@ -5,11 +5,11 @@ from uuid import UUID
 
 from infrahub.core import get_branch, registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import ATTRIBUTES_MAPPING, NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 
-from ..attribute import Any, BaseAttribute, Boolean, Integer, String
+from ..attribute import BaseAttribute
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
@@ -26,14 +26,6 @@ Type of Nodes
  - Select Node : Status, Role, Manufacturer etc ..
  -
 """
-
-# TODO Move this mapping into the registry with auto-registration
-ATTRIBUTES_MAPPING = {
-    "Any": Any,
-    "String": String,
-    "Integer": Integer,
-    "Boolean": Boolean,
-}
 
 SelfNode = TypeVar("SelfNode", bound="Node")
 
@@ -311,7 +303,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             (dict): Return GraphQL Payload
         """
 
-        response = {"id": self.id}
+        response = {"id": self.id, "type": self.get_kind()}
 
         for field_name in fields.keys():
 
@@ -325,7 +317,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
-            field = getattr(self, field_name)
+            field = getattr(self, field_name, None)
 
             if not field:
                 response[field_name] = None

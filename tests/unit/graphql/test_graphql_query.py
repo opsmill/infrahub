@@ -1,4 +1,3 @@
-import graphene
 import pytest
 from graphql import graphql
 
@@ -6,7 +5,7 @@ from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import get_gql_query
+from infrahub.graphql import generate_graphql_schema
 
 
 async def test_simple_query(db, session, default_branch, criticality_schema):
@@ -28,7 +27,7 @@ async def test_simple_query(db, session, default_branch, criticality_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -37,6 +36,51 @@ async def test_simple_query(db, session, default_branch, criticality_schema):
 
     assert result.errors is None
     assert len(result.data["criticality"]) == 2
+
+
+async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
+
+    obj1 = await Node.init(session=session, schema="AllAttributeTypes")
+    await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
+    await obj1.save(session=session)
+
+    obj2 = await Node.init(session=session, schema="AllAttributeTypes")
+    await obj2.new(session=session, name="obj2")
+    await obj2.save(session=session)
+
+    query = """
+    query {
+        all_attribute_types {
+            name { value }
+            mystring { value }
+            mybool { value }
+            myint { value }
+            mylist { value }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["all_attribute_types"]) == 2
+
+    results = {item["name"]["value"]: item for item in result.data["all_attribute_types"]}
+
+    assert results["obj1"]["mystring"]["value"] == obj1.mystring.value
+    assert results["obj1"]["mybool"]["value"] == obj1.mybool.value
+    assert results["obj1"]["myint"]["value"] == obj1.myint.value
+    assert results["obj1"]["mylist"]["value"] == obj1.mylist.value
+
+    assert results["obj2"]["mystring"]["value"] == obj2.mystring.value
+    assert results["obj2"]["mybool"]["value"] == obj2.mybool.value
+    assert results["obj2"]["myint"]["value"] == obj2.myint.value
+    assert results["obj2"]["mylist"]["value"] == obj2.mylist.value
 
 
 async def test_nested_query(db, session, default_branch, car_person_schema):
@@ -76,7 +120,7 @@ async def test_nested_query(db, session, default_branch, car_person_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -133,7 +177,7 @@ async def test_double_nested_query(db, session, default_branch, car_person_schem
     }
     """
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -168,7 +212,7 @@ async def test_query_filter_local_attrs(db, session, default_branch, criticality
     }
     """
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -216,7 +260,7 @@ async def test_query_filter_relationships(db, session, default_branch, car_perso
     }
     """
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -255,7 +299,7 @@ async def test_query_oneway_relationship(db, session, default_branch, person_tag
     }
     """
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -290,7 +334,7 @@ async def test_query_at_specific_time(db, session, default_branch, person_tag_sc
     }
     """
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -314,7 +358,7 @@ async def test_query_at_specific_time(db, session, default_branch, person_tag_sc
     """
 
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_at": time1},
         root_value=None,
@@ -349,7 +393,7 @@ async def test_query_attribute_updated_at(db, session, default_branch, person_ta
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -365,7 +409,7 @@ async def test_query_attribute_updated_at(db, session, default_branch, person_ta
     await p12.save(session=session)
 
     result2 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -392,7 +436,7 @@ async def test_query_node_updated_at(db, session, default_branch, person_tag_sch
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -407,7 +451,7 @@ async def test_query_node_updated_at(db, session, default_branch, person_tag_sch
     await p2.save(session=session)
 
     result2 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -445,7 +489,7 @@ async def test_query_relationship_updated_at(db, session, default_branch, person
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -460,7 +504,7 @@ async def test_query_relationship_updated_at(db, session, default_branch, person
     await p1.save(session=session)
 
     result2 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -504,7 +548,7 @@ async def test_query_attribute_source(
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -545,7 +589,7 @@ async def test_query_attribute_flag_property(
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -570,7 +614,7 @@ async def test_query_branches(db, session, default_branch, register_core_models_
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -600,7 +644,7 @@ async def test_query_multiple_branches(db, session, default_branch, register_cor
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -639,7 +683,7 @@ async def test_multiple_queries(db, session, default_branch, person_tag_schema):
     }
     """
     result1 = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session), auto_camelcase=False).graphql_schema,
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -649,3 +693,141 @@ async def test_multiple_queries(db, session, default_branch, person_tag_schema):
     assert result1.errors is None
     assert result1.data["firstperson"][0]["firstname"]["value"] == "John"
     assert result1.data["secondperson"][0]["firstname"]["value"] == "Jane"
+
+
+async def test_model_node_interface(db, session, default_branch, car_schema):
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    d2 = await Node.init(session=session, schema="Car")
+    await d2.new(session=session, name="Renaud Clio", nbr_doors=4)
+    await d2.save(session=session)
+
+    query = """
+    query {
+        car {
+            name {
+                value
+            }
+            description {
+                value
+            }
+            nbr_doors {
+                value
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert sorted([car["name"]["value"] for car in result.data["car"]]) == ["Porsche 911", "Renaud Clio"]
+    assert sorted([car["nbr_doors"]["value"] for car in result.data["car"]]) == [2, 4]
+
+
+async def test_model_rel_interface(db, session, default_branch, vehicule_person_schema):
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    b1 = await Node.init(session=session, schema="Boat")
+    await b1.new(session=session, name="Laser", has_sails=True)
+    await b1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", vehicules=[d1, b1])
+    await p1.save(session=session)
+
+    query = """
+    query {
+        person {
+            name {
+                value
+            }
+            vehicules {
+                name {
+                    value
+                }
+                ... on RelatedCar {
+                    nbr_doors {
+                        value
+                    }
+                }
+                ... on RelatedBoat {
+                    has_sails {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["person"][0]["vehicules"]) == 2
+
+    assert result.data["person"][0] == {
+        "name": {"value": "John Doe"},
+        "vehicules": [
+            {"name": {"value": "Porsche 911"}, "nbr_doors": {"value": 2}},
+            {"has_sails": {"value": True}, "name": {"value": "Laser"}},
+        ],
+    }
+
+
+async def test_model_rel_interface_reverse(db, session, default_branch, vehicule_person_schema):
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    b1 = await Node.init(session=session, schema="Boat")
+    await b1.new(session=session, name="Laser", has_sails=True)
+    await b1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", vehicules=[d1, b1])
+    await p1.save(session=session)
+
+    query = """
+    query {
+        boat {
+            name {
+                value
+            }
+            owners {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["boat"][0]["owners"]) == 1

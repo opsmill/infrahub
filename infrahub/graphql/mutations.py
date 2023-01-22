@@ -179,6 +179,10 @@ class BoolAttributeInput(BaseAttributeInput):
     value = Boolean(required=False)
 
 
+class ListAttributeInput(BaseAttributeInput):
+    value = GenericScalar(required=False)
+
+
 class AnyAttributeInput(BaseAttributeInput):
     value = GenericScalar(required=False)
 

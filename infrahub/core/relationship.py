@@ -172,7 +172,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     async def set_peer(self, value: Union[Node, str]):
         if hasattr(value, "_schema"):
-            if value.get_kind() != self.schema.peer:
+            if value.get_kind() != self.schema.peer and self.schema.peer not in value._schema.inherit_from:
                 raise ValidationError(
                     {self.name: f"Got an object of type {value.get_kind()} instead of {self.schema.peer}"}
                 )

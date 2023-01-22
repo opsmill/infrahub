@@ -4,7 +4,8 @@ import pendulum
 import pytest
 
 import infrahub.config as config
-from infrahub.core import registry
+import infrahub.core
+from infrahub.core import Registry, registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
@@ -13,7 +14,13 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.manager import SchemaManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import (
+    GenericSchema,
+    NodeSchema,
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
@@ -384,6 +391,26 @@ async def person_tag_schema(session):
 
 
 @pytest.fixture
+async def all_attribute_types_schema(session):
+
+    SCHEMA = {
+        "name": "all_attribute_types",
+        "kind": "AllAttributeTypes",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "optional": True},
+            {"name": "mystring", "kind": "String", "optional": True},
+            {"name": "mybool", "kind": "Boolean", "optional": True},
+            {"name": "myint", "kind": "Integer", "optional": True},
+            {"name": "mylist", "kind": "List", "optional": True},
+        ],
+    }
+
+    node_schema = NodeSchema(**SCHEMA)
+    await registry.set_schema(name=node_schema.kind, schema=node_schema)
+
+
+@pytest.fixture
 async def criticality_schema(session):
 
     SCHEMA = {
@@ -396,6 +423,87 @@ async def criticality_schema(session):
             {"name": "level", "kind": "Integer"},
             {"name": "color", "kind": "String", "default_value": "#444444"},
             {"name": "description", "kind": "String", "optional": True},
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def generic_vehicule_schema(session):
+
+    SCHEMA = {
+        "name": "vehicule",
+        "kind": "Vehicule",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+        ],
+    }
+
+    node = GenericSchema(**SCHEMA)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def car_schema(session, generic_vehicule_schema):
+
+    SCHEMA = {
+        "name": "car",
+        "kind": "Car",
+        "inherit_from": ["Vehicule"],
+        "attributes": [
+            {"name": "nbr_doors", "kind": "Integer"},
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    node.extend_with_interface(interface=generic_vehicule_schema)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def boat_schema(session, generic_vehicule_schema):
+
+    SCHEMA = {
+        "name": "boat",
+        "kind": "Boat",
+        "inherit_from": ["Vehicule"],
+        "attributes": [
+            {"name": "has_sails", "kind": "Boolean"},
+        ],
+        "relationships": [
+            {"name": "owners", "peer": "Person", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    node.extend_with_interface(interface=generic_vehicule_schema)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema):
+
+    SCHEMA = {
+        "name": "person",
+        "kind": "Person",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+        ],
+        "relationships": [
+            {"name": "vehicules", "peer": "Vehicule", "cardinality": "many", "identifier": "person__vehicule"}
         ],
     }
 
@@ -440,6 +548,12 @@ async def fruit_tag_schema(session):
         await registry.set_schema(name=node.kind, schema=node)
 
     return True
+
+
+@pytest.fixture
+async def reset_registry(session):
+
+    infrahub.core.registry = Registry()
 
 
 @pytest.fixture

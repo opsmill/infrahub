@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 from uuid import UUID
 
+import ujson
+
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.query.attribute import (
@@ -63,7 +65,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.value = None
 
         if data is not None and isinstance(data, dict):
-            self.value = data.get("value", None)
+            self.from_db(data.get("value", None))
 
             fields_to_extract_from_data = ["id", "db_id"] + self._flag_properties + self._node_properties
             for field_name in fields_to_extract_from_data:
@@ -73,7 +75,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 self.updated_at = Timestamp(data.get("updated_at"))
 
         elif data is not None:
-            self.value = data
+            self.from_db(data)
 
         if self.value is not None and not self.validate(self.value):
             raise ValidationError({self.name: f"{self.name} is not of type {self.get_kind()}"})
@@ -94,6 +96,28 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     @classmethod
     def validate(cls, value) -> bool:
         return True if isinstance(value, cls.type) else False
+
+    def to_db(self):
+        if self.value is None:
+            return "NULL"
+
+        return self.serialize(self.value)
+
+    def from_db(self, value: Any):
+        if value == "NULL":
+            self.value = None
+        else:
+            self.value = self.deserialize(value)
+
+    @classmethod
+    def serialize(self, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+        return value
+
+    @classmethod
+    def deserialize(self, value: Any) -> Any:
+        """Deserialize the value coming from the database."""
+        return value
 
     async def save(self, session: AsyncSession, at: Optional[Timestamp] = None):
         """Create or Update the Attribute in the database."""
@@ -325,13 +349,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             else:
                 field = getattr(self, field_name)
 
-            if isinstance(field, (str, int, bool, dict)):
+            if isinstance(field, (str, int, bool, dict, list)):
                 response[field_name] = field
 
         return response
 
 
-class Any(BaseAttribute):
+class AnyAttribute(BaseAttribute):
 
     type = Any
 
@@ -353,3 +377,21 @@ class Integer(BaseAttribute):
 class Boolean(BaseAttribute):
 
     type = bool
+
+
+class ListAttribute(BaseAttribute):
+
+    type = list
+
+    @classmethod
+    def serialize(self, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ujson.dumps(value)
+
+    @classmethod
+    def deserialize(self, value: Any) -> Any:
+        """Deserialize the value (potentially) coming from the database."""
+        if isinstance(value, (str, bytes)):
+            return ujson.loads(value)
+        return value

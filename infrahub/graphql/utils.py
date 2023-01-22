@@ -1,8 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+import abc
+from typing import TYPE_CHECKING, Dict, Tuple, Union
 
-import graphql
+from graphql import (
+    ExecutionContext,
+    FieldNode,
+    FragmentSpreadNode,
+    GraphQLObjectType,
+    GraphQLResolveInfo,
+    InlineFragmentNode,
+    SelectionSetNode,
+)
 
 from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
@@ -12,7 +21,7 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
 
 
-def extract_global_kwargs(kwargs) -> Tuple[Timestamp, Branch, Node]:
+def extract_global_kwargs(kwargs: dict) -> Tuple[Timestamp, Branch, Node]:
     """Extract the timestamp, the branch and the account from the kwargs from GraphQL"""
     at = Timestamp(kwargs.get("at", None))
 
@@ -25,7 +34,71 @@ def extract_global_kwargs(kwargs) -> Tuple[Timestamp, Branch, Node]:
     return at, branch, account
 
 
-def selected_field_names_naive(selection_set: graphql.SelectionSetNode):
+async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
+    """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
+
+    The goal of this function is to limit the fields that we need to query from the backend.
+
+    Currently the function support Fields and InlineFragments but in a combined tree where the fragments are merged together
+    This implementation may seam counter intuitive but in the current implementation
+    it's better to have slightly more information at time passed to the query manager.
+
+    In the future we'll probably need to redesign how we read GraphQL queries to generate better Database query.
+    """
+
+    if not selection_set:
+        return None
+
+    fields = {}
+    for node in getattr(selection_set, "selections", []):
+        sub_selection_set = getattr(node, "selection_set", None)
+        if isinstance(node, FieldNode):
+            value = await extract_fields(sub_selection_set)
+            if node.name.value not in fields:
+                fields[node.name.value] = value
+            elif isinstance(fields[node.name.value], dict) and isinstance(value, dict):
+                fields[node.name.value].update(value)
+
+        elif isinstance(node, InlineFragmentNode):
+            for sub_node in node.selection_set.selections:
+                sub_sub_selection_set = getattr(sub_node, "selection_set", None)
+                value = await extract_fields(sub_sub_selection_set)
+                if sub_node.name.value not in fields:
+                    fields[sub_node.name.value] = await extract_fields(sub_sub_selection_set)
+                elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
+                    fields[sub_node.name.value].update(value)
+
+    return fields
+
+
+# --------------------------------------------------------------
+# The functions below :
+#   - selected_field_names_fast
+#   - selected_field_names_naive
+#   - selected_field_names
+#   - selected_field_names_from_context
+# Are not currently used and they have been copied from internet as a reference
+#  >>  https://github.com/graphql-python/graphene/issues/57#issuecomment-774227086
+#
+# --------------------------------------------------------------
+def selected_field_names_fast(
+    selection_set: SelectionSetNode, context: GraphQLResolveInfo, runtime_type: Union[str, GraphQLObjectType] = None
+) -> abc.Iterator[str]:
+    """Use the fastest available function to provide the list of selected field names
+
+    Note that this function may give false positives because in the absence of fragments it ignores directives.
+    """
+    # Any fragments?
+    no_fragments = all(isinstance(node, FieldNode) for node in selection_set.selections)
+
+    # Choose the function to execute
+    if no_fragments:
+        return selected_field_names_naive(selection_set)
+    else:
+        return selected_field_names(selection_set, context, runtime_type)
+
+
+def selected_field_names_naive(selection_set: SelectionSetNode):
     """Get the list of field names that are selected at the current level. Does not include nested names.
 
     Limitations:
@@ -46,16 +119,16 @@ def selected_field_names_naive(selection_set: graphql.SelectionSetNode):
     Code copied from https://github.com/graphql-python/graphene/issues/57#issuecomment-774227086
         This link also includes a more powerful and complexe alternative.
     """
-    assert isinstance(selection_set, graphql.SelectionSetNode)
+    assert isinstance(selection_set, SelectionSetNode)
 
     field_names = []
 
     for node in selection_set.selections:
         # Field
-        if isinstance(node, graphql.FieldNode):
+        if isinstance(node, FieldNode):
             field_names.append(node.name.value)
         # Fragment spread (`... fragmentName`)
-        elif isinstance(node, (graphql.FragmentSpreadNode, graphql.InlineFragmentNode)):
+        elif isinstance(node, (FragmentSpreadNode, InlineFragmentNode)):
             raise NotImplementedError("Fragments are not supported by this simplistic function")
         # Something new
         else:
@@ -64,26 +137,82 @@ def selected_field_names_naive(selection_set: graphql.SelectionSetNode):
     return field_names
 
 
-async def extract_fields(selection_set):  # -> dict[str, Selection_Set]
+def selected_field_names(
+    selection_set: SelectionSetNode, info: GraphQLResolveInfo, runtime_type: Union[str, GraphQLObjectType] = None
+) -> abc.Iterator[str]:
+    """Get the list of field names that are selected at the current level. Does not include nested names.
 
-    if not selection_set:
-        return None
+    This function re-evaluates the AST, but gives a complete list of included fields.
+    It is 25x slower than `selected_field_names_naive()`, but still, it completes in 7ns or so. Not bad.
 
-    fields = {}
-    for field in getattr(selection_set, "selections", []):
-        sub_selection_set = getattr(field, "selection_set", None)
-        fields[field.name.value] = await extract_fields(sub_selection_set)
+    Args:
+        selection_set: the selected fields
+        info: GraphQL resolve info
+        runtime_type: The type of the object you resolve to. Either its string name, or its ObjectType.
+            If none is provided, this function will fail with a RuntimeError() when resolving fragments
+    """
+    # Create a temporary execution context. This operation is quite cheap, actually.
+    execution_context = ExecutionContext(
+        schema=info.schema,
+        fragments=info.fragments,
+        root_value=info.root_value,
+        operation=info.operation,
+        variable_values=info.variable_values,
+        # The only purpose of this context is to be able to run the collect_fields() method.
+        # Therefore, many parameters are actually irrelevant
+        context_value=None,
+        field_resolver=None,
+        type_resolver=None,
+        errors=[],
+        middleware_manager=None,
+    )
 
-    return fields
+    # Use it
+    return selected_field_names_from_context(selection_set, execution_context, runtime_type)
 
 
-def print_query(info):
+def selected_field_names_from_context(
+    selection_set: SelectionSetNode, context: ExecutionContext, runtime_type: Union[str, GraphQLObjectType] = None
+) -> abc.Iterator[str]:
+    """Get the list of field names that are selected at the current level.
+
+    This function is useless because `graphql.ExecutionContext` is not available at all inside resolvers.
+    Therefore, `selected_field_names()` wraps it and provides one.
+    """
+    assert isinstance(selection_set, SelectionSetNode)
+
+    # Resolve `runtime_type`
+    if isinstance(runtime_type, str):
+        runtime_type = context.schema.type_map[runtime_type]  # raises: KeyError
+
+    # Resolve all fields
+    fields_map = context.collect_fields(
+        # Use the provided Object type, or use a dummy object that fails all tests
+        runtime_type=runtime_type or None,
+        # runtime_type=runtime_type or graphql.GraphQLObjectType('<temp>', []),
+        selection_set=selection_set,
+        fields={},  # out
+        visited_fragment_names=(visited_fragment_names := set()),  # out
+    )
+
+    # Test fragment resolution
+    if visited_fragment_names and not runtime_type:
+        raise RuntimeError(
+            "The query contains fragments which cannot be resolved "
+            "because `runtime_type` is not provided by the lazy developer"
+        )
+
+    # Results!
+    return (field.name.value for fields_list in fields_map.values() for field in fields_list)
+
+
+def print_query(info: GraphQLResolveInfo):
     """Traverse the query"""
     initial_selection_set = info.field_nodes[0].selection_set
     print_selection_set(initial_selection_set, 1)
 
 
-def print_selection_set(selection_set, level: int = 1) -> int:
+def print_selection_set(selection_set: SelectionSetNode, level: int = 1) -> int:
     # max_depth = level
     tab = "  "
     for field in getattr(selection_set, "selections", []):
