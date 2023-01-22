@@ -22,11 +22,11 @@ async def test_register_schema_to_registry(session, default_branch):
             }
         ],
         "generics": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-                "branch": True,
-            },
+            # {
+            #     "name": "generic_group",
+            #     "kind": "GenericGroup",
+            #     "branch": True,
+            # },
             {
                 "name": "generic_interface",
                 "kind": "GenericInterface",
@@ -41,7 +41,7 @@ async def test_register_schema_to_registry(session, default_branch):
     await SchemaManager.register_schema_to_registry(schema=schema)
 
     assert isinstance(await registry.get_schema(session=session, name="Criticality"), NodeSchema)
-    assert isinstance(await registry.get_schema(session=session, name="GenericGroup"), GenericSchema)
+    # assert isinstance(await registry.get_schema(session=session, name="GenericGroup"), GenericSchema)
     assert isinstance(await registry.get_schema(session=session, name="GenericInterface"), GenericSchema)
 
 

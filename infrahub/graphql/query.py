@@ -156,13 +156,18 @@ class InfrahubInterface(Interface):
 # ------------------------------------------
 #
 # ------------------------------------------
-class BaseAttribute(ObjectType):
-    id = Field(String)
+
+
+class AttributeInterface(InfrahubInterface):
     is_inherited = Field(Boolean)
     is_protected = Field(Boolean)
     is_visible = Field(Boolean)
     updated_at = Field(DateTime)
     source = Field("infrahub.graphql.query.AccountType")
+
+
+class BaseAttribute(ObjectType):
+    id = Field(String)
 
 
 class StrAttributeType(BaseAttribute):
@@ -171,6 +176,7 @@ class StrAttributeType(BaseAttribute):
     class Meta:
         description = "Attribute of type String"
         name = "StrAttribute"
+        interfaces = {AttributeInterface}
 
 
 class IntAttributeType(BaseAttribute):
@@ -179,6 +185,7 @@ class IntAttributeType(BaseAttribute):
     class Meta:
         description = "Attribute of type Integer"
         name = "IntAttribute"
+        interfaces = {AttributeInterface}
 
 
 class BoolAttributeType(BaseAttribute):
@@ -187,6 +194,7 @@ class BoolAttributeType(BaseAttribute):
     class Meta:
         description = "Attribute of type Boolean"
         name = "BoolAttribute"
+        interfaces = {AttributeInterface}
 
 
 class ListAttributeType(BaseAttribute):
@@ -195,6 +203,7 @@ class ListAttributeType(BaseAttribute):
     class Meta:
         description = "Attribute of type List"
         name = "ListAttribute"
+        interfaces = {AttributeInterface}
 
 
 class AnyAttributeType(BaseAttribute):

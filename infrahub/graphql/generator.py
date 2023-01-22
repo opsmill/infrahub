@@ -75,6 +75,14 @@ class RelatedNodeInput(graphene.InputObjectType):
     _relation__source = graphene.String(required=False)
 
 
+class RelatedNodeInterface(InfrahubInterface):
+    _relation__updated_at = graphene.DateTime(required=False)
+    _relation__is_visible = graphene.Boolean(required=False)
+    _relation__is_protected = graphene.Boolean(required=False)
+    _relation__owner = graphene.Field("infrahub.graphql.query.AccountType", required=False)
+    _relation__source = graphene.Field("infrahub.graphql.query.AccountType", required=False)
+
+
 async def default_resolver(*args, **kwargs):
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
@@ -336,7 +344,7 @@ async def generate_related_graphql_object(
         "name": f"Related{schema.kind}",
         "description": schema.description,
         "default_resolver": default_resolver,
-        "interfaces": set(),
+        "interfaces": {RelatedNodeInterface},
     }
 
     for generic in schema.inherit_from:
@@ -350,11 +358,6 @@ async def generate_related_graphql_object(
     main_attrs = {
         "id": graphene.String(required=True),
         "_updated_at": graphene.DateTime(required=False),
-        "_relation__updated_at": graphene.DateTime(required=False),
-        "_relation__is_visible": graphene.Boolean(required=False),
-        "_relation__is_protected": graphene.Boolean(required=False),
-        "_relation__owner": graphene.Field("infrahub.graphql.query.AccountType", required=False),
-        "_relation__source": graphene.Field("infrahub.graphql.query.AccountType", required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
     for attr in schema.attributes:
