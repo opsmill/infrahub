@@ -16,9 +16,9 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
+    GroupSchema,
     NodeSchema,
     SchemaRoot,
-    GroupSchema,
     core_models,
     internal_schema,
 )
@@ -441,6 +441,7 @@ async def generic_vehicule_schema(session):
 
     return node
 
+
 @pytest.fixture
 async def group_on_road_vehicule_schema(session):
 
@@ -458,6 +459,7 @@ async def group_on_road_vehicule_schema(session):
 
     return node
 
+
 @pytest.fixture
 async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
 
@@ -468,7 +470,7 @@ async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_sc
         "attributes": [
             {"name": "nbr_doors", "kind": "Integer"},
         ],
-        "groups": ["OnRoad"]
+        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
@@ -476,6 +478,7 @@ async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_sc
     registry.set_schema(name=node.kind, schema=node)
 
     return node
+
 
 @pytest.fixture
 async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
@@ -487,7 +490,7 @@ async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehi
         "attributes": [
             {"name": "nbr_seats", "kind": "Integer"},
         ],
-        "groups": ["OnRoad"]
+        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)

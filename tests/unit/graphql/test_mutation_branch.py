@@ -1,4 +1,3 @@
-import graphene
 import pytest
 from graphql import graphql
 

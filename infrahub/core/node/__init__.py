@@ -83,6 +83,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         attrs = {}
 
+        branch = await get_branch(branch=branch, session=session)
+
         if isinstance(schema, NodeSchema):
             attrs["schema"] = schema
         elif isinstance(schema, str):
@@ -95,7 +97,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not attrs["schema"].branch:
             attrs["branch"] = None
         else:
-            attrs["branch"] = await get_branch(session=session, branch=branch)
+            attrs["branch"] = branch
 
         attrs["at"] = Timestamp(at)
 

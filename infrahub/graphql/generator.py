@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, Type, List, Union
-
 from collections import defaultdict
+from typing import TYPE_CHECKING, List, Tuple, Type, Union
 
 import graphene
 from graphene.types.generic import GenericScalar
@@ -10,7 +9,7 @@ from graphene.types.generic import GenericScalar
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import GenericSchema, NodeSchema, GroupSchema
+from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 
 from .mutations import (
     AnyAttributeInput,
@@ -26,9 +25,9 @@ from .query import (
     BoolAttributeType,
     InfrahubInterface,
     InfrahubObject,
-    ResolveTypeMixin,
     IntAttributeType,
     ListAttributeType,
+    ResolveTypeMixin,
     StrAttributeType,
 )
 from .schema import default_list_resolver
@@ -191,7 +190,11 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
             group_memberships[group_name].append(node_schema.kind)
 
     for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, GroupSchema) or node_name not in group_memberships or not group_memberships[node_name] :
+        if (
+            not isinstance(node_schema, GroupSchema)
+            or node_name not in group_memberships
+            or not group_memberships[node_name]
+        ):
             continue
         group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []))
         registry.set_graphql_type(name=group._meta.name, graphql_type=group, branch=branch.name)
@@ -272,9 +275,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
     return type("MutationMixin", (object,), class_attrs)
 
 
-async def generate_graphql_object(
-    schema: NodeSchema, branch: Union[Branch, str] = None
-) -> Type[InfrahubObject]:
+async def generate_graphql_object(schema: NodeSchema, branch: Union[Branch, str] = None) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
     meta_attrs = {
@@ -306,9 +307,11 @@ async def generate_graphql_object(
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
 
-def generate_union_object(schema: GroupSchema, members: List, branch: Union[Branch, str] = None) -> Type[graphene.Union]:
+def generate_union_object(
+    schema: GroupSchema, members: List, branch: Union[Branch, str] = None
+) -> Type[graphene.Union]:
 
-    types = [ registry.get_graphql_type(name=member, branch=branch) for member in members ]
+    types = [registry.get_graphql_type(name=member, branch=branch) for member in members]
 
     if not types:
         return None
@@ -324,7 +327,6 @@ def generate_union_object(schema: GroupSchema, members: List, branch: Union[Bran
     }
 
     return type(schema.kind, (graphene.Union, ResolveTypeMixin), main_attrs)
-
 
 
 def generate_interface_object(schema: GenericSchema) -> Type[graphene.Interface]:

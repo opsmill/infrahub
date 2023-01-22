@@ -8,8 +8,8 @@ from infrahub.graphql.generator import (
     generate_graphql_mutation_update,
     generate_graphql_object,
     generate_interface_object,
-    generate_union_object,
     generate_object_types,
+    generate_union_object,
 )
 from infrahub.graphql.query import InfrahubObject
 
@@ -23,7 +23,9 @@ async def test_generate_interface_object(session, default_branch, generic_vehicu
     assert sorted(list(result._meta.fields.keys())) == ["description", "name"]
 
 
-async def test_generate_union_object(session, default_branch,  generic_vehicule_schema, car_schema, group_on_road_vehicule_schema):
+async def test_generate_union_object(
+    session, default_branch, generic_vehicule_schema, car_schema, group_on_road_vehicule_schema
+):
 
     node_type = generate_interface_object(generic_vehicule_schema)
     registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
@@ -37,6 +39,7 @@ async def test_generate_union_object(session, default_branch,  generic_vehicule_
     result = generate_union_object(schema=group_on_road_vehicule_schema, members=[car_schema.kind])
     assert issubclass(result, graphene.Union)
     assert result._meta.name == "OnRoad"
+
 
 async def test_generate_graphql_object(session, default_branch, criticality_schema):
 

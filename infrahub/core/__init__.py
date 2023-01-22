@@ -46,7 +46,7 @@ def get_branch_from_registry(branch: Optional[Union[Branch, str]] = None) -> Bra
     raise BranchNotFound(identifier=branch)
 
 
-async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[AsyncSession] = None) -> Branch:
+async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[AsyncSession]) -> Branch:
     """Return a branch object based on its name.
 
     First the function will chec in the registry and if the Branch is not present,
@@ -64,6 +64,9 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
     """
 
     from .branch import Branch
+
+    if isinstance(branch, Branch):
+        return branch
 
     if not branch or not isinstance(branch, str):
         branch = config.SETTINGS.main.default_branch

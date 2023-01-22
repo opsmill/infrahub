@@ -1,4 +1,13 @@
-from graphene import Boolean, DateTime, Field, Int, Interface, List, ObjectType, String, Union
+from graphene import (
+    Boolean,
+    DateTime,
+    Field,
+    Int,
+    Interface,
+    List,
+    ObjectType,
+    String,
+)
 from graphene.types.generic import GenericScalar
 from graphene.types.objecttype import ObjectTypeOptions
 
@@ -148,11 +157,10 @@ class ResolveTypeMixin:
         if "Related" in cls.__name__ and "type" in instance:
             return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
         elif "type" in instance:
-            return registry.get_graphql_type(name=instance['type'], branch=branch)
+            return registry.get_graphql_type(name=instance["type"], branch=branch)
 
 
 class InfrahubInterface(Interface):
-
     @classmethod
     def resolve_type(cls, instance, info):
 
@@ -161,7 +169,7 @@ class InfrahubInterface(Interface):
         if "Related" in cls.__name__ and "type" in instance:
             return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
         elif "type" in instance:
-            return registry.get_graphql_type(name=instance['type'], branch=branch)
+            return registry.get_graphql_type(name=instance["type"], branch=branch)
 
 
 # ------------------------------------------

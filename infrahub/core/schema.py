@@ -358,9 +358,6 @@ class SchemaRoot(BaseModel):
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
-                if generics[generic_kind].is_union:
-                    continue
-
                 node.extend_with_interface(interface=generics[generic_kind])
 
         return self
