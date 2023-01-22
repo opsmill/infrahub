@@ -303,7 +303,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             (dict): Return GraphQL Payload
         """
 
-        response = {"id": self.id}
+        response = {"id": self.id, "type": self.get_kind()}
 
         for field_name in fields.keys():
 
@@ -317,7 +317,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
-            field = getattr(self, field_name)
+            field = getattr(self, field_name, None)
 
             if not field:
                 response[field_name] = None

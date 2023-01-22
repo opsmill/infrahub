@@ -3,13 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 import graphene
-from graphql import graphql
+from graphql import GraphQLSchema, graphql
 
-from infrahub.core import get_branch
+from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 
-from .generator import generate_mutation_mixin, generate_query_mixin
+from .generator import (
+    generate_mutation_mixin,
+    generate_object_types,
+    generate_query_mixin,
+)
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 
@@ -18,6 +22,32 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
+
+
+async def generate_graphql_schema(
+    session: AsyncSession,
+    include_query: bool = True,
+    include_mutation: bool = True,
+    include_subscription: bool = True,
+    include_types: bool = True,
+    branch: Union[Branch, str] = None,
+) -> GraphQLSchema:
+
+    if include_types:
+        await generate_object_types(session=session, branch=branch)
+        types_dict = await registry.get_all_graphql_type(session=session, branch=branch)
+        types = list(types_dict.values())
+    else:
+        types = []
+
+    query = await get_gql_query(session=session, branch=branch) if include_query else None
+    mutation = await get_gql_mutation(session=session, branch=branch) if include_mutation else None
+    subscription = await get_gql_subscription(session=session, branch=branch) if include_subscription else None
+
+    graphene_schema = graphene.Schema(
+        query=query, mutation=mutation, subscription=subscription, types=types, auto_camelcase=False
+    )
+    return graphene_schema.graphql_schema
 
 
 async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None):

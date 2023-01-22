@@ -1,4 +1,3 @@
-import pytest
 from deepdiff import DeepDiff
 
 from infrahub.core import registry
@@ -6,7 +5,6 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, internal_schema
 
 
-@pytest.mark.skip(reason="WIP: Not fully working yet")
 async def test_register_schema_to_registry(session, default_branch):
     FULL_SCHEMA = {
         "nodes": [

@@ -1,7 +1,6 @@
 import inspect
 
 import graphene
-import pytest
 
 from infrahub.core import registry
 from infrahub.graphql.generator import (
@@ -14,35 +13,46 @@ from infrahub.graphql.generator import (
 from infrahub.graphql.query import InfrahubObject
 
 
-def test_generate_graphql_object(default_branch, criticality_schema):
+async def test_generate_interface_object(session, default_branch, generic_vehicule_schema):
 
-    result = generate_graphql_object(criticality_schema)
+    result = generate_interface_object(generic_vehicule_schema)
+    assert inspect.isclass(result)
+    assert issubclass(result, graphene.Interface)
+    assert result._meta.name == "Vehicule"
+    assert sorted(list(result._meta.fields.keys())) == ["description", "name"]
+
+
+async def test_generate_graphql_object(session, default_branch, criticality_schema):
+
+    result = await generate_graphql_object(schema=criticality_schema, session=session)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "Criticality"
     assert sorted(list(result._meta.fields.keys())) == ["_updated_at", "color", "description", "id", "level", "name"]
 
 
-@pytest.mark.skip(reason="WIP: Not fully working yet")
-async def test_generate_interface_object(session, default_branch, generic_animal_family_schema):
+async def test_generate_graphql_object_with_interface(session, default_branch, generic_vehicule_schema, car_schema):
 
-    result = generate_interface_object(generic_animal_family_schema)
+    node_type = generate_interface_object(generic_vehicule_schema)
+    await registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
+
+    result = await generate_graphql_object(schema=car_schema, session=session)
     assert inspect.isclass(result)
-    assert issubclass(result, graphene.Interface)
-    assert result._meta.name == "AnimalFamily"
-    assert sorted(list(result._meta.fields.keys())) == ["description", "name"]
+    assert issubclass(result, InfrahubObject)
+    assert result._meta.name == "Car"
+    assert sorted(list(result._meta.fields.keys())) == ["_updated_at", "description", "id", "name", "nbr_doors"]
 
 
-def test_generate_graphql_mutation_create(default_branch, criticality_schema):
+async def test_generate_graphql_mutation_create(session, default_branch, criticality_schema):
 
-    result = generate_graphql_mutation_create(criticality_schema)
+    result = await generate_graphql_mutation_create(schema=criticality_schema, session=session)
     assert result._meta.name == "CriticalityCreate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
-def test_generate_graphql_mutation_update(default_branch, criticality_schema):
+async def test_generate_graphql_mutation_update(session, default_branch, criticality_schema):
 
-    result = generate_graphql_mutation_update(criticality_schema)
+    result = await generate_graphql_mutation_update(schema=criticality_schema, session=session)
     assert result._meta.name == "CriticalityUpdate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 

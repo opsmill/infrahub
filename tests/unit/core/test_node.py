@@ -540,3 +540,27 @@ async def test_node_update_in_branch(session, default_branch, criticality_schema
     obj21 = await NodeManager.get_one(id=obj1.id, branch=branch1, session=session)
     assert obj21.name.value == "High"
     assert obj21.level.value == 5
+
+
+# ---------------------------------------   -----------------------------------
+# With Interface
+# --------------------------------------------------------------------------
+
+
+async def test_node_relationship_interface(session, default_branch, vehicule_person_schema):
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    b1 = await Node.init(session=session, schema="Boat")
+    await b1.new(session=session, name="Laser", has_sails=True)
+    await b1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", vehicules=[d1, b1])
+    await p1.save(session=session)
+
+    obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, session=session)
+    vehicules = obj1.vehicules.get()
+    assert len(vehicules) == 2

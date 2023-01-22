@@ -1,9 +1,9 @@
-from graphene import Boolean, DateTime, Field, Int, List, ObjectType, String
+from graphene import Boolean, DateTime, Field, Int, Interface, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 from graphene.types.objecttype import ObjectTypeOptions
 
 import infrahub.config as config
-from infrahub.core import get_branch
+from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
@@ -135,6 +135,22 @@ class InfrahubObject(ObjectType):
                 return []
 
             return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
+
+
+class InfrahubInterface(Interface):
+    @classmethod
+    def resolve_type(cls, instance, info):
+
+        branch = info.context["infrahub_branch"]
+
+        # FIXME since currently the registry requires Async and this function is not async
+        # we had to bypass the getter for the registry to access the variable directly.
+        # Once the registry doesn't require async anymore, we'll be able to refactor this code
+        # to access the registry with the getter.
+        if "Related" in cls.__name__ and "type" in instance:
+            return registry.graphql_type[branch.name][f"Related{instance['type']}"]
+        elif "type" in instance:
+            return registry.graphql_type[branch.name][instance["type"]]
 
 
 # ------------------------------------------

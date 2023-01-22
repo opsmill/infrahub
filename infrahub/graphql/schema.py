@@ -1,11 +1,12 @@
 from graphene import Field, List, ObjectType, String
+from graphql import GraphQLResolveInfo
 
 from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate
 from .query import BranchDiffType, BranchType
 from .utils import extract_fields
 
 
-async def default_list_resolver(root, info, **kwargs):
+async def default_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
 
     fields = await extract_fields(info.field_nodes[0].selection_set)
     return await info.return_type.of_type.graphene_type.get_list(**kwargs, fields=fields, context=info.context)

@@ -433,11 +433,11 @@ async def criticality_schema(session):
 
 
 @pytest.fixture
-async def generic_animal_family_schema(session):
+async def generic_vehicule_schema(session):
 
     SCHEMA = {
-        "name": "animal_family",
-        "kind": "AnimalFamily",
+        "name": "vehicule",
+        "kind": "Vehicule",
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
             {"name": "description", "kind": "String", "optional": True},
@@ -445,6 +445,65 @@ async def generic_animal_family_schema(session):
     }
 
     node = GenericSchema(**SCHEMA)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def car_schema(session, generic_vehicule_schema):
+
+    SCHEMA = {
+        "name": "car",
+        "kind": "Car",
+        "inherit_from": ["Vehicule"],
+        "attributes": [
+            {"name": "nbr_doors", "kind": "Integer"},
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    node.extend_with_interface(interface=generic_vehicule_schema)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def boat_schema(session, generic_vehicule_schema):
+
+    SCHEMA = {
+        "name": "boat",
+        "kind": "Boat",
+        "inherit_from": ["Vehicule"],
+        "attributes": [
+            {"name": "has_sails", "kind": "Boolean"},
+        ],
+        "relationships": [{"name": "owners", "peer": "Person", "cardinality": "many"}],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    node.extend_with_interface(interface=generic_vehicule_schema)
+    await registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema):
+
+    SCHEMA = {
+        "name": "person",
+        "kind": "Person",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+        ],
+        "relationships": [{"name": "vehicules", "peer": "Vehicule", "cardinality": "many"}],
+    }
+
+    node = NodeSchema(**SCHEMA)
     await registry.set_schema(name=node.kind, schema=node)
 
     return node
