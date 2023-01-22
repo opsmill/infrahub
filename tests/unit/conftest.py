@@ -479,7 +479,9 @@ async def boat_schema(session, generic_vehicule_schema):
         "attributes": [
             {"name": "has_sails", "kind": "Boolean"},
         ],
-        "relationships": [{"name": "owners", "peer": "Person", "cardinality": "many"}],
+        "relationships": [
+            {"name": "owners", "peer": "Person", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
     }
 
     node = NodeSchema(**SCHEMA)
@@ -500,7 +502,9 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
         ],
-        "relationships": [{"name": "vehicules", "peer": "Vehicule", "cardinality": "many"}],
+        "relationships": [
+            {"name": "vehicules", "peer": "Vehicule", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
     }
 
     node = NodeSchema(**SCHEMA)

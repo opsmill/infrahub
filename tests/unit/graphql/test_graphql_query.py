@@ -790,3 +790,44 @@ async def test_model_rel_interface(db, session, default_branch, vehicule_person_
             {"has_sails": {"value": True}, "name": {"value": "Laser"}},
         ],
     }
+
+
+async def test_model_rel_interface_reverse(db, session, default_branch, vehicule_person_schema):
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    b1 = await Node.init(session=session, schema="Boat")
+    await b1.new(session=session, name="Laser", has_sails=True)
+    await b1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", vehicules=[d1, b1])
+    await p1.save(session=session)
+
+    query = """
+    query {
+        boat {
+            name {
+                value
+            }
+            owners {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["boat"][0]["owners"]) == 1
