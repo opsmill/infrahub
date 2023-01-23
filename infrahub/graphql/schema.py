@@ -2,7 +2,7 @@ from graphene import Field, List, ObjectType, String
 from graphql import GraphQLResolveInfo
 
 from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate
-from .query import BranchDiffType, BranchType
+from .types import BranchDiffType, BranchType
 from .utils import extract_fields
 
 

@@ -11,7 +11,7 @@ from infrahub.graphql.generator import (
     generate_object_types,
     generate_union_object,
 )
-from infrahub.graphql.query import InfrahubObject
+from infrahub.graphql.types import InfrahubObject
 
 
 async def test_generate_interface_object(session, default_branch, generic_vehicule_schema):

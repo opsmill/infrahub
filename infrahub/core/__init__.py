@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
-    from infrahub.graphql.query import InfrahubObject
+    from infrahub.graphql.types import InfrahubObject
 
 
 def get_branch_from_registry(branch: Optional[Union[Branch, str]] = None) -> Branch:

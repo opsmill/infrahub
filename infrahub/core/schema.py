@@ -599,17 +599,7 @@ internal_schema = {
 }
 
 core_models = {
-    "groups": [
-        {
-            "name": "data_owner",
-            "kind": "DataOwner",  # Account, Group, Script ?
-        },
-        {
-            "name": "data_source",
-            "description": "Any Entities that stores or produces data.",
-            "kind": "DataSource",  # Repository, Account ...
-        },
-    ],
+    "groups": [],
     "generics": [
         # {
         #     "name": "location",
@@ -647,6 +637,23 @@ core_models = {
         #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
         #     # ],
         # },
+        {
+            "name": "data_owner",
+            "kind": "DataOwner",  # Account, Group, Script ?
+            "attributes": [
+                {"name": "name", "kind": "String", "unique": True},
+                {"name": "description", "kind": "String", "optional": True},
+            ],
+        },
+        {
+            "name": "data_source",
+            "description": "Any Entities that stores or produces data.",
+            "kind": "DataSource",  # Repository, Account ...
+            "attributes": [
+                {"name": "name", "kind": "String", "unique": True},
+                {"name": "description", "kind": "String", "optional": True},
+            ],
+        },
     ],
     "nodes": [
         {
@@ -762,6 +769,7 @@ core_models = {
             "kind": "Repository",
             "default_filter": "name__value",
             "branch": True,
+            "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},

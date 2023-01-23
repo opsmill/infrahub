@@ -543,7 +543,7 @@ async def test_node_update_in_branch(session, default_branch: Branch, criticalit
     assert obj21.level.value == 5
 
 
-# ---------------------------------------   -----------------------------------
+# --------------------------------------------------------------------------
 # With Interface
 # --------------------------------------------------------------------------
 
@@ -565,3 +565,50 @@ async def test_node_relationship_interface(session, default_branch: Branch, vehi
     obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, session=session)
     vehicules = obj1.vehicules.get()
     assert len(vehicules) == 2
+
+
+# --------------------------------------------------------------------------
+# With Union
+# --------------------------------------------------------------------------
+
+
+async def test_union(db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema):
+
+    SCHEMA = {
+        "name": "person",
+        "kind": "Person",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+        ],
+        "relationships": [
+            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    t1 = await Node.init(session=session, schema="Truck")
+    await t1.new(session=session, name="Silverado", nbr_axles=4)
+    await t1.save(session=session)
+
+    m1 = await Node.init(session=session, schema="Motorcycle")
+    await m1.new(session=session, name="Monster", nbr_seats=1)
+    await m1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", road_vehicules=[d1, t1, m1])
+    await p1.save(session=session)
+
+    obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, session=session)
+    peers = [await peer_rel.get_peer(session=session) for peer_rel in obj1.road_vehicules.get()]
+    assert len(peers) == 3
+
+    kinds = sorted([peer.get_kind() for peer in peers])
+    assert kinds == ["Car", "Motorcycle", "Truck"]

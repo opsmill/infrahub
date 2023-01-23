@@ -486,15 +486,35 @@ async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehi
     SCHEMA = {
         "name": "motorcycle",
         "kind": "Motorcycle",
-        "inherit_from": ["Vehicule"],
         "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
             {"name": "nbr_seats", "kind": "Integer"},
         ],
         "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
-    node.extend_with_interface(interface=generic_vehicule_schema)
+    registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def truck_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+
+    SCHEMA = {
+        "name": "truck",
+        "kind": "Truck",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+            {"name": "nbr_axles", "kind": "Integer"},
+        ],
+        "groups": ["OnRoad"],
+    }
+
+    node = NodeSchema(**SCHEMA)
     registry.set_schema(name=node.kind, schema=node)
 
     return node

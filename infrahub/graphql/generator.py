@@ -20,7 +20,8 @@ from .mutations import (
     ListAttributeInput,
     StringAttributeInput,
 )
-from .query import (
+from .schema import default_list_resolver
+from .types import (
     AnyAttributeType,
     BoolAttributeType,
     InfrahubInterface,
@@ -30,7 +31,6 @@ from .query import (
     ResolveTypeMixin,
     StrAttributeType,
 )
-from .schema import default_list_resolver
 from .utils import extract_fields
 
 if TYPE_CHECKING:
@@ -81,8 +81,8 @@ class RelatedNodeInterface(InfrahubInterface):
     _relation__updated_at = graphene.DateTime(required=False)
     _relation__is_visible = graphene.Boolean(required=False)
     _relation__is_protected = graphene.Boolean(required=False)
-    _relation__owner = graphene.Field("infrahub.graphql.query.AccountType", required=False)
-    _relation__source = graphene.Field("infrahub.graphql.query.AccountType", required=False)
+    _relation__owner = graphene.Field("infrahub.graphql.types.AccountType", required=False)
+    _relation__source = graphene.Field("infrahub.graphql.types.AccountType", required=False)
 
 
 async def default_resolver(*args, **kwargs):
@@ -187,7 +187,7 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
         # Register this model to all the groups it belongs to.
         for group_name in node_schema.groups:
-            group_memberships[group_name].append(node_schema.kind)
+            group_memberships[group_name].append(f"Related{node_schema.kind}")
 
     for node_name, node_schema in full_schema.items():
         if (
@@ -209,6 +209,10 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
         for rel in node_schema.relationships:
 
             peer_schema = await rel.get_peer_schema()
+
+            if not isinstance(peer_schema, NodeSchema):
+                continue
+
             peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
 
             peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch)
@@ -235,17 +239,21 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
 
     for node_name, node_schema in full_schema.items():
 
-        if not isinstance(node_schema, NodeSchema):
-            continue
+        if isinstance(node_schema, (NodeSchema, GenericSchema)):
+            node_type = registry.get_graphql_type(name=node_name, branch=branch)
+            node_filters = await generate_filters(session=session, schema=node_schema)
 
-        node_type = registry.get_graphql_type(name=node_name, branch=branch)
-        node_filters = await generate_filters(session=session, schema=node_schema)
-
-        class_attrs[node_schema.name] = graphene.List(
-            node_type,
-            resolver=default_list_resolver,
-            **node_filters,
-        )
+            class_attrs[node_schema.name] = graphene.List(
+                node_type,
+                resolver=default_list_resolver,
+                **node_filters,
+            )
+        # elif isinstance(node_schema, GroupSchema):
+        #     node_type = registry.get_graphql_type(name=node_name, branch=branch)
+        #     class_attrs[node_schema.name] = graphene.List(
+        #         node_type,
+        #         resolver=default_list_resolver,
+        #     )
 
     return type("QueryMixin", (object,), class_attrs)
 
@@ -287,12 +295,8 @@ async def generate_graphql_object(schema: NodeSchema, branch: Union[Branch, str]
     }
 
     for generic in schema.inherit_from:
-        try:
-            generic = registry.get_graphql_type(name=generic, branch=branch)
-            meta_attrs["interfaces"].add(generic)
-        except ValueError:
-            # If the object is not present it might be because the generic is a group, will need to carefully test that.
-            pass
+        generic = registry.get_graphql_type(name=generic, branch=branch)
+        meta_attrs["interfaces"].add(generic)
 
     main_attrs = {
         "id": graphene.String(required=True),
@@ -562,6 +566,10 @@ async def generate_filters(session: AsyncSession, schema: NodeSchema, attribute_
 
     for rel in schema.relationships:
         peer_schema = await rel.get_peer_schema()
+
+        if not isinstance(peer_schema, NodeSchema):
+            continue
+
         peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
 
         for key, value in peer_filters.items():

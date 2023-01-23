@@ -4,6 +4,7 @@ from graphql import graphql
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import generate_graphql_schema
 
@@ -831,3 +832,83 @@ async def test_model_rel_interface_reverse(db, session, default_branch, vehicule
 
     assert result.errors is None
     assert len(result.data["boat"][0]["owners"]) == 1
+
+@pytest.mark.skip(reason="Union are not fully working yet, need to investigate further")
+async def test_union(db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema):
+
+    SCHEMA = {
+        "name": "person",
+        "kind": "Person",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+        ],
+        "relationships": [
+            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    t1 = await Node.init(session=session, schema="Truck")
+    await t1.new(session=session, name="Silverado", nbr_axles=4)
+    await t1.save(session=session)
+
+    m1 = await Node.init(session=session, schema="Motorcycle")
+    await m1.new(session=session, name="Monster", nbr_seats=1)
+    await m1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", road_vehicules=[d1, t1, m1])
+    await p1.save(session=session)
+
+    query = """
+    query {
+        person {
+            name {
+                value
+            }
+            road_vehicules {
+                name {
+                    value
+                }
+                ... on RelatedTruck {
+                    nbr_axles {
+                        value
+                    }
+                }
+                ... on RelatedMotorcycle {
+                    nbr_seats {
+                        value
+                    }
+                }
+                ... on RelatedCar {
+                    nbr_doors {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
+
+    assert schema.validation_errors is None
+
+    result = await graphql(
+        schema=schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["person"][0]["road_vehicules"]) == 3
