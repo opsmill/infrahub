@@ -774,7 +774,7 @@ async def test_model_rel_interface(db, session, default_branch, vehicule_person_
     """
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        schema=await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -834,7 +834,6 @@ async def test_model_rel_interface_reverse(db, session, default_branch, vehicule
     assert len(result.data["boat"][0]["owners"]) == 1
 
 
-@pytest.mark.skip(reason="Union are not fully working yet, need to investigate further")
 async def test_union(db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema):
 
     SCHEMA = {
@@ -876,9 +875,6 @@ async def test_union(db, session, default_branch, generic_vehicule_schema, car_s
                 value
             }
             road_vehicules {
-                name {
-                    value
-                }
                 ... on RelatedTruck {
                     nbr_axles {
                         value
@@ -901,8 +897,6 @@ async def test_union(db, session, default_branch, generic_vehicule_schema, car_s
 
     schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
 
-    assert schema.validation_errors is None
-
     result = await graphql(
         schema=schema,
         source=query,
@@ -913,3 +907,11 @@ async def test_union(db, session, default_branch, generic_vehicule_schema, car_s
 
     assert result.errors is None
     assert len(result.data["person"][0]["road_vehicules"]) == 3
+    assert result.data["person"][0] == {
+        "name": {"value": "John Doe"},
+        "road_vehicules": [
+            {"nbr_doors": {"value": 2}},
+            {"nbr_axles": {"value": 4}},
+            {"nbr_seats": {"value": 1}},
+        ],
+    }

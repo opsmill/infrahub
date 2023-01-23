@@ -39,6 +39,7 @@ async def test_generate_union_object(
     result = generate_union_object(schema=group_on_road_vehicule_schema, members=[car_schema.kind])
     assert issubclass(result, graphene.Union)
     assert result._meta.name == "OnRoad"
+    assert result._meta.schema == group_on_road_vehicule_schema
 
 
 async def test_generate_graphql_object(session, default_branch, criticality_schema):

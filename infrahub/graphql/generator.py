@@ -26,9 +26,9 @@ from .types import (
     BoolAttributeType,
     InfrahubInterface,
     InfrahubObject,
+    InfrahubUnion,
     IntAttributeType,
     ListAttributeType,
-    ResolveTypeMixin,
     StrAttributeType,
 )
 from .utils import extract_fields
@@ -189,6 +189,7 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
         for group_name in node_schema.groups:
             group_memberships[group_name].append(f"Related{node_schema.kind}")
 
+    # Generate all the Groups with associated ObjectType / RelatedObjectType
     for node_name, node_schema in full_schema.items():
         if (
             not isinstance(node_schema, GroupSchema)
@@ -210,12 +211,11 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
             peer_schema = await rel.get_peer_schema()
 
-            if not isinstance(peer_schema, NodeSchema):
-                continue
-
             peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
-
-            peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch)
+            if isinstance(peer_schema, GroupSchema):
+                peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch)
+            else:
+                peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch)
 
             if rel.cardinality == "one":
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
@@ -321,6 +321,7 @@ def generate_union_object(
         return None
 
     meta_attrs = {
+        "schema": schema,
         "name": schema.kind,
         "description": schema.description,
         "types": types,
@@ -330,7 +331,7 @@ def generate_union_object(
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
-    return type(schema.kind, (graphene.Union, ResolveTypeMixin), main_attrs)
+    return type(schema.kind, (InfrahubUnion,), main_attrs)
 
 
 def generate_interface_object(schema: GenericSchema) -> Type[graphene.Interface]:
@@ -554,9 +555,16 @@ async def generate_graphql_mutation_delete(
     return type(name, (base_class,), main_attrs)
 
 
-async def generate_filters(session: AsyncSession, schema: NodeSchema, attribute_only: bool = False) -> dict:
+async def generate_filters(
+    session: AsyncSession, schema: Union[NodeSchema, GenericSchema, GroupSchema], attribute_only: bool = False
+) -> dict:
     """Generate the GraphQL filters for a given NodeSchema object."""
+
     filters = {"id": graphene.UUID()}
+
+    if isinstance(schema, GroupSchema):
+        return filters
+
     for attr in schema.attributes:
         attr_type = FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
         filters[f"{attr.name}__value"] = attr_type()

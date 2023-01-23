@@ -1,31 +1,30 @@
-from graphene import Boolean, DateTime, Field, Int, Interface, List, ObjectType, String
+from __future__ import annotations
+
+from graphene import (
+    Boolean,
+    DateTime,
+    Field,
+    Int,
+    Interface,
+    List,
+    ObjectType,
+    String,
+    Union,
+)
 from graphene.types.generic import GenericScalar
 from graphene.types.interface import InterfaceOptions
 from graphene.types.objecttype import ObjectTypeOptions
+from graphene.types.union import UnionOptions
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import GroupSchema, NodeSchema
 
 # -------------------------------------------------------
 # Various Mixins
 # -------------------------------------------------------
-
-
-class ResolveTypeMixin:
-    """MixinIn used for InfrahubInterface and Union object to resolve the type of the object."""
-
-    @classmethod
-    def resolve_type(cls, instance, info):
-
-        branch = info.context["infrahub_branch"]
-
-        if "Related" in cls.__name__ and "type" in instance:
-            return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
-        elif "type" in instance:
-            return registry.get_graphql_type(name=instance["type"], branch=branch)
 
 
 class GetListMixin:
@@ -71,6 +70,43 @@ class GetListMixin:
                 return []
 
             return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
+
+
+# -------------------------------------------------------
+# GraphQL Union Type Object
+# -------------------------------------------------------
+class InfrahubUnionOptions(UnionOptions):
+    schema = None
+
+
+class InfrahubUnion(Union):
+    class Meta:
+        """We must provide a placeholder types because __init_subclass__ is defined at the parent level
+        and it will automatically check if there is at least one type defined when the class is loaded."""
+
+        types = ("PlaceHolder",)
+
+    @classmethod
+    def __init_subclass_with_meta__(cls, schema: GroupSchema = None, types=(), _meta=None, **options):
+
+        if not isinstance(schema, GroupSchema):
+            raise ValueError(f"You need to pass a valid GroupSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubUnionOptions(cls)
+
+        _meta.schema = schema
+        _meta.types = types
+
+        super(Union, cls).__init_subclass_with_meta__(_meta=_meta, **options)
+
+    @classmethod
+    def resolve_type(cls, instance, info):
+
+        branch = info.context["infrahub_branch"]
+
+        if "type" in instance:
+            return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
 
 
 # -------------------------------------------------------
