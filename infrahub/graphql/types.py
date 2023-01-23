@@ -1,99 +1,34 @@
-from graphene import Boolean, DateTime, Field, Int, Interface, List, ObjectType, String
+from __future__ import annotations
+
+from graphene import (
+    Boolean,
+    DateTime,
+    Field,
+    Int,
+    Interface,
+    List,
+    ObjectType,
+    String,
+    Union,
+)
 from graphene.types.generic import GenericScalar
+from graphene.types.interface import InterfaceOptions
 from graphene.types.objecttype import ObjectTypeOptions
+from graphene.types.union import UnionOptions
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import GroupSchema, NodeSchema
 
-# pylint: disable=too-few-public-methods
-
-DEFAULT_BRANCH = "main"
-
-
-# ------------------------------------------
-# Old Infrahub GraphQLType
-# ------------------------------------------
-class InfrahubObjectTypeOptions(ObjectTypeOptions):
-    model = None
+# -------------------------------------------------------
+# Various Mixins
+# -------------------------------------------------------
 
 
-class InfrahubObjectType(ObjectType):
-    @classmethod
-    def __init_subclass_with_meta__(
-        cls,
-        model=None,
-        interfaces=(),
-        # possible_types=(),
-        # default_resolver=None,
-        _meta=None,
-        **options,
-    ):
-
-        # Make sure model is a valid Infrahub Node Class
-        # if not is_mapped_class(model):
-        #     raise ValueError(
-        #         "You need to pass a valid SQLAlchemy Model in " '{}.Meta, received "{}".'.format(cls.__name__, model)
-        #     )
-
-        if not _meta:
-            _meta = InfrahubObjectTypeOptions(cls)
-
-        _meta.model = model
-
-        super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
-
-    @classmethod
-    async def get_list(cls, fields, context, **kwargs):
-
-        at = context.get("infrahub_at")
-        branch = context.get("infrahub_branch")
-        account = context.get("infrahub_account", None)
-        db = context.get("infrahub_database")
-
-        async with db.session(database=config.SETTINGS.database.database) as session:
-
-            context["infrahub_session"] = session
-
-            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
-
-            if filters:
-                objs = await cls._meta.model.get_list(
-                    filters=filters, at=at, branch=branch, account=account, include_source=True, session=session
-                )
-            else:
-                objs = await cls._meta.model.get_list(
-                    at=at, branch=branch, account=account, include_source=True, session=session
-                )
-
-            if not objs:
-                return []
-
-            return [obj.to_graphql(fields=fields) for obj in objs]
-
-
-# ------------------------------------------
-# New Infrahub GraphQLType
-# ------------------------------------------
-class InfrahubObjectOptions(ObjectTypeOptions):
-    schema = None
-
-
-class InfrahubObject(ObjectType):
-    @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options):
-
-        if not isinstance(schema, NodeSchema):
-            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
-
-        if not _meta:
-            _meta = InfrahubObjectOptions(cls)
-
-        _meta.schema = schema
-
-        super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
+class GetListMixin:
+    """Mixins to Query the list of nodes using the NodeManager."""
 
     @classmethod
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
@@ -137,24 +72,146 @@ class InfrahubObject(ObjectType):
             return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
 
 
-class InfrahubInterface(Interface):
+# -------------------------------------------------------
+# GraphQL Union Type Object
+# -------------------------------------------------------
+class InfrahubUnionOptions(UnionOptions):
+    schema = None
+
+
+class InfrahubUnion(Union):
+    class Meta:
+        """We must provide a placeholder types because __init_subclass__ is defined at the parent level
+        and it will automatically check if there is at least one type defined when the class is loaded."""
+
+        types = ("PlaceHolder",)
+
+    @classmethod
+    def __init_subclass_with_meta__(cls, schema: GroupSchema = None, types=(), _meta=None, **options):
+
+        if not isinstance(schema, GroupSchema):
+            raise ValueError(f"You need to pass a valid GroupSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubUnionOptions(cls)
+
+        _meta.schema = schema
+        _meta.types = types
+
+        super(Union, cls).__init_subclass_with_meta__(_meta=_meta, **options)
+
     @classmethod
     def resolve_type(cls, instance, info):
 
         branch = info.context["infrahub_branch"]
 
-        # FIXME since currently the registry requires Async and this function is not async
-        # we had to bypass the getter for the registry to access the variable directly.
-        # Once the registry doesn't require async anymore, we'll be able to refactor this code
-        # to access the registry with the getter.
+        if "type" in instance:
+            return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
+
+
+# -------------------------------------------------------
+# GraphQL Interface Type Object
+# -------------------------------------------------------
+
+
+class InfrahubInterfaceOptions(InterfaceOptions):
+    schema = None
+
+
+class InfrahubInterface(Interface, GetListMixin):
+    @classmethod
+    def resolve_type(cls, instance, info):
+
+        branch = info.context["infrahub_branch"]
+
         if "Related" in cls.__name__ and "type" in instance:
-            return registry.graphql_type[branch.name][f"Related{instance['type']}"]
+            return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
         elif "type" in instance:
-            return registry.graphql_type[branch.name][instance["type"]]
+            return registry.get_graphql_type(name=instance["type"], branch=branch)
+
+
+# -------------------------------------------------------
+# GraphQL Object Types for the default Node object,
+#   uses the NodeManager to query all members
+# -------------------------------------------------------
+
+
+class InfrahubObjectOptions(ObjectTypeOptions):
+    schema = None
+
+
+class InfrahubObject(ObjectType, GetListMixin):
+    @classmethod
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options):
+
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubObjectOptions(cls)
+
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
+
+
+# -------------------------------------------------------
+# GraphQL Object Types for the StandardNode object like Branch
+# -------------------------------------------------------
+class InfrahubObjectTypeOptions(ObjectTypeOptions):
+    model = None
+
+
+class InfrahubObjectType(ObjectType):
+    @classmethod
+    def __init_subclass_with_meta__(
+        cls,
+        model=None,
+        interfaces=(),
+        # possible_types=(),
+        # default_resolver=None,
+        _meta=None,
+        **options,
+    ):
+
+        if not _meta:
+            _meta = InfrahubObjectTypeOptions(cls)
+
+        _meta.model = model
+
+        super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
+
+    @classmethod
+    async def get_list(cls, fields, context, **kwargs):
+
+        at = context.get("infrahub_at")
+        branch = context.get("infrahub_branch")
+        account = context.get("infrahub_account", None)
+        db = context.get("infrahub_database")
+
+        async with db.session(database=config.SETTINGS.database.database) as session:
+
+            context["infrahub_session"] = session
+
+            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
+
+            if filters:
+                objs = await cls._meta.model.get_list(
+                    filters=filters, at=at, branch=branch, account=account, include_source=True, session=session
+                )
+            else:
+                objs = await cls._meta.model.get_list(
+                    at=at, branch=branch, account=account, include_source=True, session=session
+                )
+
+            if not objs:
+                return []
+
+            return [obj.to_graphql(fields=fields) for obj in objs]
 
 
 # ------------------------------------------
-#
+# Attributes related Types
 # ------------------------------------------
 
 
@@ -163,7 +220,7 @@ class AttributeInterface(InfrahubInterface):
     is_protected = Field(Boolean)
     is_visible = Field(Boolean)
     updated_at = Field(DateTime)
-    source = Field("infrahub.graphql.query.AccountType")
+    source = Field("infrahub.graphql.types.AccountType")
 
 
 class BaseAttribute(ObjectType):
@@ -214,6 +271,11 @@ class AnyAttributeType(BaseAttribute):
         name = "AnyAttribute"
 
 
+# ------------------------------------------
+# Miscellaneous Types
+# ------------------------------------------
+
+
 class AccountType(InfrahubObjectType):
     id = String(required=True)
     name = Field(StrAttributeType, required=True)
@@ -221,7 +283,7 @@ class AccountType(InfrahubObjectType):
 
 
 # ------------------------------------------
-#
+# GraphQL Types related to the management of the Branch
 # ------------------------------------------
 class BranchType(InfrahubObjectType):
     id = String(required=True)

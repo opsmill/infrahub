@@ -83,8 +83,8 @@ class RelationshipSchema(BaseModel):
     def get_class(self):
         return Relationship
 
-    async def get_peer_schema(self, session: AsyncSession):
-        return await registry.get_schema(session=session, name=self.peer)
+    async def get_peer_schema(self):
+        return registry.get_schema(name=self.peer)
 
     async def get_query_filter(
         self,
@@ -106,7 +106,7 @@ class RelationshipSchema(BaseModel):
         if not filters:
             return query_filters, query_params, nbr_rels
 
-        peer_schema = await self.get_peer_schema(session=session)
+        peer_schema = await self.get_peer_schema()
 
         query_params[f"{prefix}_rel_name"] = self.identifier
 
@@ -277,21 +277,11 @@ class GenericSchema(BaseNodeSchema):
 
     label: Optional[str]
 
-    @property
-    def is_union(self) -> bool:
-        if len(self.attributes) == 0 and len(self.relationships) == 0:
-            return True
-
-        return False
-
-    @property
-    def is_interface(self) -> bool:
-        return not self.is_union
-
 
 class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: List[str] = Field(default_factory=list)
+    groups: List[str] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
 
@@ -340,9 +330,16 @@ class NodeSchema(BaseNodeSchema):
                 self.relationships.append(new_item)
 
 
+class GroupSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+
+
 class SchemaRoot(BaseModel):
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
+    groups: List[GroupSchema] = Field(default_factory=list)
 
     def extend_nodes_with_interfaces(self) -> SchemaRoot:
         """Extend all the nodes with the attributes and relationships
@@ -360,9 +357,6 @@ class SchemaRoot(BaseModel):
                 if generic_kind not in generics:
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
-
-                if generics[generic_kind].is_union:
-                    continue
 
                 node.extend_with_interface(interface=generics[generic_kind])
 
@@ -410,6 +404,10 @@ internal_schema = {
                 },
                 {
                     "name": "inherit_from",
+                    "kind": "List",
+                },
+                {
+                    "name": "groups",
                     "kind": "List",
                 },
             ],
@@ -575,10 +573,33 @@ internal_schema = {
                 },
             ],
         },
+        {
+            "name": "group_schema",
+            "kind": "GroupSchema",
+            "branch": True,
+            "default_filter": "name__value",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": True,
+                },
+                {
+                    "name": "kind",
+                    "kind": "String",
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": True,
+                },
+            ],
+        },
     ]
 }
 
 core_models = {
+    "groups": [],
     "generics": [
         # {
         #     "name": "location",
@@ -616,20 +637,23 @@ core_models = {
         #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
         #     # ],
         # },
-        # {
-        #     "name": "data_owner",
-        #     "kind": "DataOwner",  # Account, Group, Script ?
-        #     "branch": True,
-        #     "attributes": [],
-        # },
-        # {
-        #     "name": "data_source",
-        #     "description": "Any Entities that stores or produces data.",
-        #     "kind": "DataSource",  # Repository, Account ...
-        #     "branch": True,
-        #     # "attributes": [
-        #     # ],
-        # },
+        {
+            "name": "data_owner",
+            "kind": "DataOwner",  # Account, Group, Script ?
+            "attributes": [
+                {"name": "name", "kind": "String", "unique": True},
+                {"name": "description", "kind": "String", "optional": True},
+            ],
+        },
+        {
+            "name": "data_source",
+            "description": "Any Entities that stores or produces data.",
+            "kind": "DataSource",  # Repository, Account ...
+            "attributes": [
+                {"name": "name", "kind": "String", "unique": True},
+                {"name": "description", "kind": "String", "optional": True},
+            ],
+        },
     ],
     "nodes": [
         {
@@ -745,6 +769,7 @@ core_models = {
             "kind": "Repository",
             "default_filter": "name__value",
             "branch": True,
+            "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},

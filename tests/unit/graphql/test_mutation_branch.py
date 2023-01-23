@@ -1,11 +1,10 @@
-import graphene
 import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.graphql import get_gql_mutation, get_gql_query
+from infrahub.graphql import generate_graphql_schema
 from infrahub.message_bus.events import (
     CheckMessageAction,
     GitMessageAction,
@@ -69,11 +68,7 @@ async def test_branch_create(db, session, default_branch, car_person_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -88,11 +83,7 @@ async def test_branch_create(db, session, default_branch, car_person_schema):
 
     # Validate that we can't create a branch with a name that already exist
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -123,11 +114,7 @@ async def test_branch_create_with_repositories(
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
@@ -156,11 +143,7 @@ async def test_branch_rebase(db, session, default_branch, car_person_schema):
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -190,11 +173,7 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -231,11 +210,7 @@ async def test_branch_validate_with_repositories_success(
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
@@ -277,11 +252,7 @@ async def test_branch_validate_with_repositories_failed(
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
@@ -310,11 +281,7 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -357,11 +324,7 @@ async def test_branch_merge_with_repositories(db, session, rpc_client, base_data
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        await generate_graphql_schema(session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,

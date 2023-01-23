@@ -16,6 +16,7 @@ from infrahub.core.manager import SchemaManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
+    GroupSchema,
     NodeSchema,
     SchemaRoot,
     core_models,
@@ -25,15 +26,6 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-
-# NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
-# NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
-# NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
-# NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
-# NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
-# NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
-
-# URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
 
 
 @pytest.fixture(scope="session")
@@ -346,7 +338,7 @@ async def car_person_schema(session):
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        await registry.set_schema(name=node.kind, schema=node)
+        registry.set_schema(name=node.kind, schema=node)
 
     return True
 
@@ -385,7 +377,7 @@ async def person_tag_schema(session):
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        await registry.set_schema(name=node.kind, schema=node)
+        registry.set_schema(name=node.kind, schema=node)
 
     return True
 
@@ -407,7 +399,7 @@ async def all_attribute_types_schema(session):
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node_schema.kind, schema=node_schema)
+    registry.set_schema(name=node_schema.kind, schema=node_schema)
 
 
 @pytest.fixture
@@ -427,7 +419,7 @@ async def criticality_schema(session):
     }
 
     node = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -445,13 +437,31 @@ async def generic_vehicule_schema(session):
     }
 
     node = GenericSchema(**SCHEMA)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
 
 @pytest.fixture
-async def car_schema(session, generic_vehicule_schema):
+async def group_on_road_vehicule_schema(session):
+
+    SCHEMA = {
+        "name": "on_road",
+        "kind": "OnRoad",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+        ],
+    }
+
+    node = GroupSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
 
     SCHEMA = {
         "name": "car",
@@ -460,11 +470,52 @@ async def car_schema(session, generic_vehicule_schema):
         "attributes": [
             {"name": "nbr_doors", "kind": "Integer"},
         ],
+        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
     node.extend_with_interface(interface=generic_vehicule_schema)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+
+    SCHEMA = {
+        "name": "motorcycle",
+        "kind": "Motorcycle",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+            {"name": "nbr_seats", "kind": "Integer"},
+        ],
+        "groups": ["OnRoad"],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
+
+    return node
+
+
+@pytest.fixture
+async def truck_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+
+    SCHEMA = {
+        "name": "truck",
+        "kind": "Truck",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+            {"name": "nbr_axles", "kind": "Integer"},
+        ],
+        "groups": ["OnRoad"],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -486,13 +537,13 @@ async def boat_schema(session, generic_vehicule_schema):
 
     node = NodeSchema(**SCHEMA)
     node.extend_with_interface(interface=generic_vehicule_schema)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
 
 @pytest.fixture
-async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema):
+async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema):
 
     SCHEMA = {
         "name": "person",
@@ -508,7 +559,7 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
     }
 
     node = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node.kind, schema=node)
+    registry.set_schema(name=node.kind, schema=node)
 
     return node
 
@@ -545,7 +596,7 @@ async def fruit_tag_schema(session):
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
-        await registry.set_schema(name=node.kind, schema=node)
+        registry.set_schema(name=node.kind, schema=node)
 
     return True
 
@@ -573,10 +624,14 @@ async def default_branch(empty_database, session) -> Branch:
 
 
 @pytest.fixture
-async def register_core_models_schema():
+async def register_internal_models_schema():
 
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema)
+
+
+@pytest.fixture
+async def register_core_models_schema(register_internal_models_schema):
 
     schema = SchemaRoot(**core_models)
     await SchemaManager.register_schema_to_registry(schema=schema)
@@ -589,7 +644,7 @@ async def register_account_schema(session):
 
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
     for schema in account_schemas:
-        await registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
+        registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
 
     return True
 

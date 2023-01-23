@@ -108,8 +108,8 @@ async def test_get_one_attribute_with_flag_property(
 
 async def test_get_one_relationship(session, default_branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -245,8 +245,8 @@ async def test_query_with_filter_string_int(session, default_branch, criticality
 
 async def test_query_with_filter_bool_rel(session, default_branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)

@@ -103,7 +103,7 @@ def test_node_schema_unique_identifiers():
 
 async def test_rel_schema_query_filter(session, car_person_schema):
 
-    person = await registry.get_schema(session=session, name="Person")
+    person = registry.get_schema(name="Person")
     rel = person.relationships[0]
 
     filters, params, nbr_rels = await rel.get_query_filter(session=session)

@@ -83,19 +83,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         attrs = {}
 
+        branch = await get_branch(branch=branch, session=session)
+
         if isinstance(schema, NodeSchema):
             attrs["schema"] = schema
         elif isinstance(schema, str):
 
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
-            attrs["schema"] = await registry.get_schema(session=session, name=schema, branch=branch)
+            attrs["schema"] = registry.get_schema(name=schema, branch=branch)
         else:
             raise ValueError(f"Invalid schema provided {schema}")
 
         if not attrs["schema"].branch:
             attrs["branch"] = None
         else:
-            attrs["branch"] = await get_branch(session=session, branch=branch)
+            attrs["branch"] = branch
 
         attrs["at"] = Timestamp(at)
 

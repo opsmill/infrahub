@@ -11,7 +11,7 @@ from infrahub.core.utils import get_paths_between_nodes
 from infrahub.exceptions import ValidationError
 
 
-async def test_node_init(session, default_branch, criticality_schema, first_account):
+async def test_node_init(session, default_branch: Branch, criticality_schema, first_account):
 
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(session=session, name="low", level=4)
@@ -38,9 +38,9 @@ async def test_node_init(session, default_branch, criticality_schema, first_acco
     assert obj._source == first_account
 
 
-async def test_node_init_schema_name(session, default_branch, criticality_schema):
+async def test_node_init_schema_name(session, default_branch: Branch, criticality_schema):
 
-    await registry.set_schema(name="Criticality", schema=criticality_schema)
+    registry.set_schema(name="Criticality", schema=criticality_schema)
     obj = await Node.init(session=session, schema="Criticality")
     await obj.new(session=session, name="low", level=4)
 
@@ -50,7 +50,7 @@ async def test_node_init_schema_name(session, default_branch, criticality_schema
     assert obj.color.value == "#444444"
 
 
-async def test_node_init_mandatory_missing(session, default_branch, criticality_schema):
+async def test_node_init_mandatory_missing(session, default_branch: Branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
 
@@ -60,7 +60,7 @@ async def test_node_init_mandatory_missing(session, default_branch, criticality_
     assert "mandatory" in str(exc.value)
 
 
-async def test_node_init_invalid_attribute(session, default_branch, criticality_schema):
+async def test_node_init_invalid_attribute(session, default_branch: Branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
 
@@ -70,7 +70,7 @@ async def test_node_init_invalid_attribute(session, default_branch, criticality_
     assert "not a valid input" in str(exc.value)
 
 
-async def test_node_init_invalid_value(session, default_branch, criticality_schema):
+async def test_node_init_invalid_value(session, default_branch: Branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
     with pytest.raises(ValidationError) as exc:
@@ -104,7 +104,7 @@ async def test_node_default_value(session, default_branch):
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    await registry.set_schema(name=node_schema.kind, schema=node_schema)
+    registry.set_schema(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(session=session, schema=node_schema)
     await obj.new(session=session, name="test01", myint=100, mybool=False, mystr="test02")
@@ -118,10 +118,10 @@ async def test_node_default_value(session, default_branch):
     assert obj.mybool_default.value is True
 
 
-async def test_node_init_with_single_relationship(session, default_branch, car_person_schema):
+async def test_node_init_with_single_relationship(session, default_branch: Branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -155,7 +155,7 @@ async def test_node_init_with_single_relationship(session, default_branch, car_p
 # --------------------------------------------------------------------------
 
 
-async def test_node_create_local_attrs(session, default_branch, criticality_schema):
+async def test_node_create_local_attrs(session, default_branch: Branch, criticality_schema):
 
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(session=session, name="low", level=4)
@@ -188,7 +188,7 @@ async def test_node_create_local_attrs(session, default_branch, criticality_sche
     assert obj.color.id
 
 
-async def test_node_create_local_attrs_with_source(session, default_branch, criticality_schema, first_account):
+async def test_node_create_local_attrs_with_source(session, default_branch: Branch, criticality_schema, first_account):
 
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(session=session, name="low", level=4, _source=first_account)
@@ -212,7 +212,7 @@ async def test_node_create_local_attrs_with_source(session, default_branch, crit
 
 
 async def test_node_create_local_attrs_with_different_sources(
-    session, default_branch, criticality_schema, first_account, second_account
+    session, default_branch: Branch, criticality_schema, first_account, second_account
 ):
 
     obj = await Node.init(session=session, schema=criticality_schema)
@@ -236,10 +236,10 @@ async def test_node_create_local_attrs_with_different_sources(
     assert obj.color.source_id == first_account.id
 
 
-async def test_node_create_with_single_relationship(session, default_branch, car_person_schema):
+async def test_node_create_with_single_relationship(session, default_branch: Branch, car_person_schema):
 
-    car = await registry.get_schema(session=session, name="Car")
-    person = await registry.get_schema(session=session, name="Person")
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -307,10 +307,10 @@ async def test_node_create_with_single_relationship(session, default_branch, car
     assert len(paths) == 1
 
 
-async def test_node_create_with_multiple_relationship(session, default_branch, fruit_tag_schema):
+async def test_node_create_with_multiple_relationship(session, default_branch: Branch, fruit_tag_schema):
 
-    fruit = await registry.get_schema(session=session, name="Fruit")
-    tag = await registry.get_schema(session=session, name="Tag")
+    fruit = registry.get_schema(name="Fruit")
+    tag = registry.get_schema(name="Tag")
 
     t1 = await Node.init(session=session, schema=tag)
     await t1.new(session=session, name="tag1")
@@ -345,7 +345,7 @@ async def test_node_create_with_multiple_relationship(session, default_branch, f
 # --------------------------------------------------------------------------
 
 
-async def test_node_update_local_attrs(session, default_branch, criticality_schema):
+async def test_node_update_local_attrs(session, default_branch: Branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -361,7 +361,7 @@ async def test_node_update_local_attrs(session, default_branch, criticality_sche
     assert obj3.level.value == 1
 
 
-async def test_node_update_local_attrs_with_flags(session, default_branch, criticality_schema):
+async def test_node_update_local_attrs_with_flags(session, default_branch: Branch, criticality_schema):
 
     fields_to_query = {"name": True, "level": True}
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -379,7 +379,7 @@ async def test_node_update_local_attrs_with_flags(session, default_branch, criti
 
 
 async def test_node_update_local_attrs_with_source(
-    session, default_branch, criticality_schema, first_account, second_account
+    session, default_branch: Branch, criticality_schema, first_account, second_account
 ):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
@@ -399,7 +399,7 @@ async def test_node_update_local_attrs_with_source(
 # --------------------------------------------------------------------------
 
 
-async def test_node_delete_local_attrs(session, default_branch, criticality_schema):
+async def test_node_delete_local_attrs(session, default_branch: Branch, criticality_schema):
 
     obj2 = await Node.init(session=session, schema=criticality_schema)
     await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
@@ -420,7 +420,7 @@ async def test_node_delete_local_attrs(session, default_branch, criticality_sche
     assert not await NodeManager.get_one(id=obj2.id, session=session)
 
 
-async def test_node_delete_query_past(session, default_branch, criticality_schema):
+async def test_node_delete_query_past(session, default_branch: Branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -442,7 +442,7 @@ async def test_node_delete_query_past(session, default_branch, criticality_schem
     assert await NodeManager.get_one(id=obj2.id, at=time1, session=session)
 
 
-async def test_node_delete_local_attrs_in_branch(session, default_branch, criticality_schema):
+async def test_node_delete_local_attrs_in_branch(session, default_branch: Branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -471,7 +471,7 @@ async def test_node_delete_local_attrs_in_branch(session, default_branch, critic
     assert len(resp) == 1
 
 
-async def test_node_delete_with_relationship_bidir(session, default_branch, car_person_schema):
+async def test_node_delete_with_relationship_bidir(session, default_branch: Branch, car_person_schema):
 
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
@@ -506,21 +506,22 @@ async def test_node_delete_with_relationship_bidir(session, default_branch, car_
 # --------------------------------------------------------------------------
 
 
-async def test_node_create_in_branch(session, default_branch, criticality_schema):
+async def test_node_create_in_branch(session, default_branch: Branch, criticality_schema):
 
-    branch1 = Branch(name="branch1", status="OPEN")
-    await branch1.save(session=session)
+    branch1 = await create_branch(branch_name="branch1", session=session)
+    # branch1 = Branch(name="branch1", status="OPEN")
+    # await branch1.save(session=session)
 
     obj = await Node.init(session=session, schema=criticality_schema, branch=branch1)
     await obj.new(session=session, name="low", level=4)
     await obj.save(session=session)
 
-    assert await NodeManager.get_one(id=obj.id, session=session) is None
+    assert await NodeManager.get_one(id=obj.id, branch=default_branch, session=session) is None
     obj2 = await NodeManager.get_one(id=obj.id, branch=branch1, session=session)
     assert obj2.id == obj.id
 
 
-async def test_node_update_in_branch(session, default_branch, criticality_schema):
+async def test_node_update_in_branch(session, default_branch: Branch, criticality_schema):
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -542,12 +543,12 @@ async def test_node_update_in_branch(session, default_branch, criticality_schema
     assert obj21.level.value == 5
 
 
-# ---------------------------------------   -----------------------------------
+# --------------------------------------------------------------------------
 # With Interface
 # --------------------------------------------------------------------------
 
 
-async def test_node_relationship_interface(session, default_branch, vehicule_person_schema):
+async def test_node_relationship_interface(session, default_branch: Branch, vehicule_person_schema):
 
     d1 = await Node.init(session=session, schema="Car")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
@@ -564,3 +565,50 @@ async def test_node_relationship_interface(session, default_branch, vehicule_per
     obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, session=session)
     vehicules = obj1.vehicules.get()
     assert len(vehicules) == 2
+
+
+# --------------------------------------------------------------------------
+# With Union
+# --------------------------------------------------------------------------
+
+
+async def test_union(db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema):
+
+    SCHEMA = {
+        "name": "person",
+        "kind": "Person",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+        ],
+        "relationships": [
+            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    t1 = await Node.init(session=session, schema="Truck")
+    await t1.new(session=session, name="Silverado", nbr_axles=4)
+    await t1.save(session=session)
+
+    m1 = await Node.init(session=session, schema="Motorcycle")
+    await m1.new(session=session, name="Monster", nbr_seats=1)
+    await m1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", road_vehicules=[d1, t1, m1])
+    await p1.save(session=session)
+
+    obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, session=session)
+    peers = [await peer_rel.get_peer(session=session) for peer_rel in obj1.road_vehicules.get()]
+    assert len(peers) == 3
+
+    kinds = sorted([peer.get_kind() for peer in peers])
+    assert kinds == ["Car", "Motorcycle", "Truck"]

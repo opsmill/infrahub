@@ -35,7 +35,7 @@ async def generate_graphql_schema(
 
     if include_types:
         await generate_object_types(session=session, branch=branch)
-        types_dict = await registry.get_all_graphql_type(session=session, branch=branch)
+        types_dict = registry.get_all_graphql_type(branch=branch)
         types = list(types_dict.values())
     else:
         types = []

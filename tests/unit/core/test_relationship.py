@@ -8,7 +8,7 @@ from infrahub.core.timestamp import Timestamp
 
 async def test_relationship_init(session, default_branch, person_tag_schema):
 
-    person_schema = await registry.get_schema(session=session, name="Person")
+    person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -42,7 +42,7 @@ async def test_relationship_init_w_node_property(
     session, default_branch, person_tag_schema, first_account, second_account
 ):
 
-    person_schema = await registry.get_schema(session=session, name="Person")
+    person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -66,7 +66,7 @@ async def test_relationship_init_w_node_property(
 
 async def test_relationship_load_existing(session, default_branch, car_person_schema):
 
-    car_schema = await registry.get_schema(session=session, name="Car")
+    car_schema = registry.get_schema(name="Car")
     rel_schema = car_schema.get_relationship("owner")
 
     p1 = await Node.init(session=session, schema="Person")
@@ -108,7 +108,7 @@ async def test_relationship_load_existing(session, default_branch, car_person_sc
 
 async def test_relationship_peer(session, default_branch, person_tag_schema, first_account, second_account):
 
-    person_schema = await registry.get_schema(session=session, name="Person")
+    person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
     t1 = await Node.init(session=session, schema="Tag")
@@ -133,7 +133,7 @@ async def test_relationship_peer(session, default_branch, person_tag_schema, fir
 
 async def test_relationship_save(session, default_branch, person_tag_schema):
 
-    person_schema = await registry.get_schema(session=session, name="Person")
+    person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
     t1 = await Node.init(session=session, schema="Tag")

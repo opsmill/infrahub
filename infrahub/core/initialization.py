@@ -125,15 +125,15 @@ async def first_time_initialization(session: AsyncSession, load_infrastructure_m
         # ("very critical", 7),
     )
 
-    criticality_schema = await registry.get_schema(session=session, name="Criticality")
+    criticality_schema = registry.get_schema(name="Criticality")
     for level in CRITICALITY_LEVELS:
         obj = await Node.init(session=session, schema=criticality_schema)
         await obj.new(session=session, name=level[0], level=level[1])
         await obj.save(session=session)
 
     # ----
-    group_schema = await registry.get_schema(session=session, name="Group")
-    account_schema = await registry.get_schema(session=session, name="Account")
+    group_schema = registry.get_schema(name="Group")
+    account_schema = registry.get_schema(name="Account")
     admin_grp = await Node.init(session=session, schema=group_schema)
     await admin_grp.new(session=session, name="admin")
     await admin_grp.save(session=session)
