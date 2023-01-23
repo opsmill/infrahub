@@ -834,7 +834,9 @@ async def test_model_rel_interface_reverse(db, session, default_branch, vehicule
     assert len(result.data["boat"][0]["owners"]) == 1
 
 
-async def test_union(db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema):
+async def test_union_relationship(
+    db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
+):
 
     SCHEMA = {
         "name": "person",
@@ -915,3 +917,85 @@ async def test_union(db, session, default_branch, generic_vehicule_schema, car_s
             {"nbr_seats": {"value": 1}},
         ],
     }
+
+
+@pytest.mark.skip(reason="Union is not supported at the root of the GRaphQL Schema")
+async def test_union_root(
+    db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
+):
+
+    SCHEMA = {
+        "name": "person",
+        "kind": "Person",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+        ],
+        "relationships": [
+            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
+    }
+
+    node = NodeSchema(**SCHEMA)
+    registry.set_schema(name=node.kind, schema=node)
+
+    d1 = await Node.init(session=session, schema="Car")
+    await d1.new(session=session, name="Porsche 911", nbr_doors=2)
+    await d1.save(session=session)
+
+    t1 = await Node.init(session=session, schema="Truck")
+    await t1.new(session=session, name="Silverado", nbr_axles=4)
+    await t1.save(session=session)
+
+    m1 = await Node.init(session=session, schema="Motorcycle")
+    await m1.new(session=session, name="Monster", nbr_seats=1)
+    await m1.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John Doe", road_vehicules=[d1, t1, m1])
+    await p1.save(session=session)
+
+    query = """
+    query {
+        on_road {
+            ... on RelatedTruck {
+                name {
+                    value
+                }
+                nbr_axles {
+                    value
+                }
+            }
+            ... on RelatedMotorcycle {
+                name {
+                    value
+                }
+                nbr_seats {
+                    value
+                }
+            }
+            ... on RelatedCar {
+                name {
+                    value
+                }
+                nbr_doors {
+                    value
+                }
+            }
+        }
+    }
+    """
+
+    schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
+
+    result = await graphql(
+        schema=schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["on_road"]) == 3

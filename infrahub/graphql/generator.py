@@ -239,21 +239,17 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
 
     for node_name, node_schema in full_schema.items():
 
-        if isinstance(node_schema, (NodeSchema, GenericSchema)):
-            node_type = registry.get_graphql_type(name=node_name, branch=branch)
-            node_filters = await generate_filters(session=session, schema=node_schema)
+        if not isinstance(node_schema, NodeSchema):
+            continue
 
-            class_attrs[node_schema.name] = graphene.List(
-                node_type,
-                resolver=default_list_resolver,
-                **node_filters,
-            )
-        # elif isinstance(node_schema, GroupSchema):
-        #     node_type = registry.get_graphql_type(name=node_name, branch=branch)
-        #     class_attrs[node_schema.name] = graphene.List(
-        #         node_type,
-        #         resolver=default_list_resolver,
-        #     )
+        node_type = registry.get_graphql_type(name=node_name, branch=branch)
+        node_filters = await generate_filters(session=session, schema=node_schema)
+
+        class_attrs[node_schema.name] = graphene.List(
+            node_type,
+            resolver=default_list_resolver,
+            **node_filters,
+        )
 
     return type("QueryMixin", (object,), class_attrs)
 
