@@ -833,6 +833,7 @@ async def test_model_rel_interface_reverse(db, session, default_branch, vehicule
     assert result.errors is None
     assert len(result.data["boat"][0]["owners"]) == 1
 
+
 @pytest.mark.skip(reason="Union are not fully working yet, need to investigate further")
 async def test_union(db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema):
 
