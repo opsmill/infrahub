@@ -303,7 +303,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
 
 
 @pytest.fixture
-async def car_person_schema(session):
+async def car_person_schema(session, data_schema):
 
     SCHEMA = {
         "nodes": [
@@ -344,7 +344,7 @@ async def car_person_schema(session):
 
 
 @pytest.fixture
-async def person_tag_schema(session):
+async def person_tag_schema(session, data_schema):
 
     SCHEMA = {
         "nodes": [
@@ -403,7 +403,7 @@ async def all_attribute_types_schema(session):
 
 
 @pytest.fixture
-async def criticality_schema(session):
+async def criticality_schema(session, data_schema):
 
     SCHEMA = {
         "name": "criticality",
