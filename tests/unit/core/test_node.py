@@ -217,7 +217,7 @@ async def test_node_create_local_attrs_with_different_sources(
 
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(session=session, name={"value": "low", "source": second_account.id}, level=4, _source=first_account)
-    await obj.save(session=session)
+    await obj.save(session=session) 
 
     assert obj.id
     assert obj.db_id
@@ -387,6 +387,8 @@ async def test_node_update_local_attrs_with_source(
     await obj1.save(session=session)
 
     obj2 = await NodeManager.get_one(id=obj1.id, include_source=True, session=session)
+    # import pdb
+    # pdb.set_trace()
     obj2.name.source = second_account
     await obj2.save(session=session)
 
@@ -501,7 +503,7 @@ async def test_node_delete_with_relationship_bidir(session, default_branch: Bran
     assert len(list(p12.cars)) == 2
 
 
-# ---------------------------------------   -----------------------------------
+# --------------------------------------------------------------------------
 # With Branch
 # --------------------------------------------------------------------------
 
