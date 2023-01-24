@@ -4,6 +4,7 @@ from graphene import (
     Boolean,
     DateTime,
     Field,
+    InputObjectType,
     Int,
     Interface,
     List,
@@ -211,8 +212,26 @@ class InfrahubObjectType(ObjectType):
 
 
 # ------------------------------------------
-# Attributes related Types
+# Attributes and Related Object related Types
 # ------------------------------------------
+
+
+class RelatedNodeInput(InputObjectType):
+    id = String(required=True)
+    _relation__is_visible = Boolean(required=False)
+    _relation__is_protected = Boolean(required=False)
+    _relation__owner = String(required=False)
+    _relation__source = String(required=False)
+
+
+class RelatedNodeInterface(InfrahubInterface):
+    _relation__updated_at = DateTime(required=False)
+    _relation__is_visible = Boolean(required=False)
+    _relation__is_protected = Boolean(required=False)
+    # Since _relation__owner and _relation__source are using a Type that is generated dynamically
+    # these 2 fields will be dynamically inserted when we generate the GraphQL Schema
+    # _relation__owner = Field("DataOwner", required=False)
+    # _relation__source = Field("DataSource", required=False)
 
 
 class AttributeInterface(InfrahubInterface):
@@ -220,7 +239,10 @@ class AttributeInterface(InfrahubInterface):
     is_protected = Field(Boolean)
     is_visible = Field(Boolean)
     updated_at = Field(DateTime)
-    source = Field("infrahub.graphql.types.AccountType")
+    # Since source and owner are using a Type that is generated dynamically
+    # these 2 fields will be dynamically inserted when we generate the GraphQL Schema
+    # source = Field("DataSource")
+    # owner = Field("DataOwner")
 
 
 class BaseAttribute(ObjectType):
@@ -269,6 +291,7 @@ class AnyAttributeType(BaseAttribute):
     class Meta:
         description = "Attribute of type GenericScalar"
         name = "AnyAttribute"
+        interfaces = {AttributeInterface}
 
 
 # ------------------------------------------
@@ -276,10 +299,10 @@ class AnyAttributeType(BaseAttribute):
 # ------------------------------------------
 
 
-class AccountType(InfrahubObjectType):
-    id = String(required=True)
-    name = Field(StrAttributeType, required=True)
-    description = Field(StrAttributeType, required=False)
+# class AccountType(InfrahubObjectType):
+#     id = String(required=True)
+#     name = Field(StrAttributeType, required=True)
+#     description = Field(StrAttributeType, required=False)
 
 
 # ------------------------------------------

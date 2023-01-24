@@ -602,6 +602,38 @@ async def fruit_tag_schema(session):
 
 
 @pytest.fixture
+async def data_schema(session):
+
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "data_owner",
+                "kind": "DataOwner",
+                "attributes": [
+                    {"name": "name", "kind": "String", "unique": True},
+                    {"name": "description", "kind": "String", "optional": True},
+                ],
+            },
+            {
+                "name": "data_source",
+                "description": "Any Entities that stores or produces data.",
+                "kind": "DataSource",
+                "attributes": [
+                    {"name": "name", "kind": "String", "unique": True},
+                    {"name": "description", "kind": "String", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    for node in schema.generics:
+        registry.set_schema(name=node.kind, schema=node)
+
+    return True
+
+
+@pytest.fixture
 async def reset_registry(session):
 
     infrahub.core.registry = Registry()
