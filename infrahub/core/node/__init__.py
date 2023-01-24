@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Optional, TypeVar, Union, List
 from uuid import UUID
 
 from infrahub.core import get_branch, registry
@@ -63,14 +63,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         self._updated_at: Optional[Timestamp] = None
         self.id: str = None
-        self.db_id: int = None
+        self.db_id: str = None
 
         self._source: Node = None
         self._owner: Node = None
         self._is_protected: bool = None
 
-        self._attributes = []
-        self._relationships = []
+        self._attributes: List[BaseAttribute] = []
+        self._relationships: List[RelationshipManager] = []
 
     @classmethod
     async def init(
@@ -327,7 +327,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             response[field_name] = await field.to_graphql(session=session, fields=fields[field_name])
 
-        return response
+        return response 
 
     async def from_graphql(self, session: AsyncSession, data: dict) -> bool:
         """Update object from a GraphQL payload."""
