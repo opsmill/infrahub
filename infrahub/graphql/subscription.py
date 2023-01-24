@@ -7,6 +7,7 @@ from infrahub.message_bus.events import InfrahubMessage, get_event_exchange
 
 # pylint: disable=
 
+
 class EventType(ObjectType):
     type = String()
     action = String()
