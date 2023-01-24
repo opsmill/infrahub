@@ -18,14 +18,16 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
-"""
-Type of Nodes
- - Core node, wo/ branch : Branch, MergeRequest, Comment
- - Core node, w/ branch : Repository, RFile, GQLQuery, Permission, Account, Groups, Schema
- - Location Node : Location,
- - Select Node : Status, Role, Manufacturer etc ..
- -
-"""
+
+# ---------------------------------------------------------------------------------------
+# Type of Nodes
+#  - Core node, wo/ branch : Branch, MergeRequest, Comment
+#  - Core node, w/ branch : Repository, RFile, GQLQuery, Permission, Account, Groups, Schema
+#  - Location Node : Location,
+#  - Select Node : Status, Role, Manufacturer etc ..
+#  -
+# ---------------------------------------------------------------------------------------
+
 
 SelfNode = TypeVar("SelfNode", bound="Node")
 

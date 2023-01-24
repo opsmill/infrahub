@@ -45,7 +45,7 @@ class NodeManager:
         account=None,
         *args,
         **kwargs,
-    ) -> List[Node]:
+    ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -346,7 +346,7 @@ class SchemaManager(NodeManager):
 
         group_schema = registry.get_schema(name="GroupSchema", branch=branch)
         for schema_node in await cls.query(group_schema, branch=branch, session=session):
-            schema.groups.append(await cls.convert_group_schema_to_schema(schema_node=schema_node, session=session))
+            schema.groups.append(await cls.convert_group_schema_to_schema(schema_node=schema_node))
 
         generic_schema = registry.get_schema(name="GenericSchema", branch=branch)
         for schema_node in await cls.query(generic_schema, branch=branch, session=session):
@@ -412,7 +412,7 @@ class SchemaManager(NodeManager):
         return GenericSchema(**node_data)
 
     @staticmethod
-    async def convert_group_schema_to_schema(schema_node: Node, session: AsyncSession) -> GroupSchema:
+    async def convert_group_schema_to_schema(schema_node: Node) -> GroupSchema:
         """Convert a schema_node object loaded from the database into GroupSchema object."""
 
         node_data = {}

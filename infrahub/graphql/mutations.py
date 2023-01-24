@@ -106,7 +106,9 @@ class InfrahubMutationMixin:
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema = None, _meta=None, **options
+    ):  # pylint: disable=arguments-differ
 
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
@@ -122,7 +124,9 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
 
 class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema = None, _meta=None, **options
+    ):  # pylint: disable=arguments-differ
 
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):

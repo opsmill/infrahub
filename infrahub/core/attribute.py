@@ -95,7 +95,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     @classmethod
     def validate(cls, value) -> bool:
-        return True if isinstance(value, cls.type) else False
+        return isinstance(value, cls.type)
 
     def to_db(self):
         if self.value is None:
@@ -110,12 +110,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             self.value = self.deserialize(value)
 
     @classmethod
-    def serialize(self, value: Any) -> Any:
+    def serialize(cls, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
         return value
 
     @classmethod
-    def deserialize(self, value: Any) -> Any:
+    def deserialize(cls, value: Any) -> Any:
         """Deserialize the value coming from the database."""
         return value
 

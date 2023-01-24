@@ -154,11 +154,13 @@ async def default_resolver(*args, **kwargs):
 
 
 def load_attribute_types_in_registry(branch: Branch):
-    for type_name, attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.items():
+    for attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.values():
         registry.set_graphql_type(name=attr_class.__name__, graphql_type=attr_class, branch=branch.name)
 
 
-async def generate_object_types(session: AsyncSession, branch: Union[Branch, str] = None):
+async def generate_object_types(
+    session: AsyncSession, branch: Union[Branch, str] = None
+):  # pylint: disable=too-many-branches
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
     branch = await get_branch(session=session, branch=branch)
@@ -181,9 +183,8 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
     # Define DataOwner and DataOwner
     data_source = registry.get_graphql_type(name="DataSource", branch=branch)
     data_owner = registry.get_graphql_type(name="DataOwner", branch=branch)
-    for type_name, attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.items():
+    for attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.values():
         gql_type = registry.get_graphql_type(name=attr_class.__name__, branch=branch)
-
         gql_type._meta.fields["source"] = graphene.Field(data_source)
         gql_type._meta.fields["owner"] = graphene.Field(data_owner)
 
@@ -544,7 +545,7 @@ def generate_graphql_mutation_delete(
     schema: NodeSchema,
     base_class: type[InfrahubMutation] = InfrahubMutation,
     branch: Union[Branch, str] = None,
-) -> Type[InfrahubMutation]:
+) -> Type[InfrahubMutation]:  # pylint: disable=unused-argument
     """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Delete"
 

@@ -95,8 +95,13 @@ disable = """,
     consider-using-from-import,
     invalid-name,
     too-many-arguments,
+    too-many-locals,
     keyword-arg-before-vararg,
     too-few-public-methods,
+    too-many-instance-attributes,
+    fixme,
+    consider-using-f-string,
+    protected-access,
     """
 
 [tool.pylint.miscellaneous]

@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
     from . import Node
 
+# pylint: disable=consider-using-f-string
+
 
 @dataclass
 class NodeToProcess:

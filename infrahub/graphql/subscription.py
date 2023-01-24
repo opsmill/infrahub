@@ -5,6 +5,7 @@ import infrahub.config as config
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import InfrahubMessage, get_event_exchange
 
+# pylint: disable=
 
 class EventType(ObjectType):
     type = String()
@@ -62,7 +63,7 @@ class InfrahubBaseSubscription(ObjectType):
                         result = await execute_query(session=session, name=name, params=params, branch=branch, at=at)
                         yield result.data
 
-    async def subscribe_event(root, info, topics: List = None):
+    async def subscribe_event(root, info, topics: List = None):  # pylint: disable=unused-argument
 
         connection = await get_broker()
 

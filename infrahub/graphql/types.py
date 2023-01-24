@@ -32,7 +32,7 @@ class GetListMixin:
     """Mixins to Query the list of nodes using the NodeManager."""
 
     @classmethod
-    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
+    async def get_list(cls, fields: dict, context: dict, **kwargs):
 
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
@@ -90,7 +90,9 @@ class InfrahubUnion(Union):
         types = ("PlaceHolder",)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: GroupSchema = None, types=(), _meta=None, **options):
+    def __init_subclass_with_meta__(
+        cls, schema: GroupSchema = None, types=(), _meta=None, **options
+    ):  # pylint: disable=arguments-renamed
 
         if not isinstance(schema, GroupSchema):
             raise ValueError(f"You need to pass a valid GroupSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -111,6 +113,8 @@ class InfrahubUnion(Union):
         if "type" in instance:
             return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
 
+        raise ValueError("Unable to identify the type of the instance.")
+
 
 # -------------------------------------------------------
 # GraphQL Interface Type Object
@@ -129,8 +133,11 @@ class InfrahubInterface(Interface, GetListMixin):
 
         if "Related" in cls.__name__ and "type" in instance:
             return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
-        elif "type" in instance:
+
+        if "type" in instance:
             return registry.get_graphql_type(name=instance["type"], branch=branch)
+
+        raise ValueError("Unable to identify the type of the instance.")
 
 
 # -------------------------------------------------------
@@ -314,7 +321,7 @@ class BranchType(InfrahubObjectType):
         model = Branch
 
     @classmethod
-    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
+    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
 
         db = context.get("infrahub_database")
 
@@ -383,7 +390,7 @@ class BranchDiffType(ObjectType):
     relationships = List(BranchDiffRelationshipType)
 
     @classmethod
-    async def get_diff(cls, branch, fields: dict, context: dict, *args, **kwargs):
+    async def get_diff(cls, branch, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
 
         session = context.get("infrahub_session")
         branch = await get_branch(branch=branch, session=session)
