@@ -360,8 +360,15 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
     }
 
     for attr in schema.attributes:
-        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
-        main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+        if attr.name == "id":
+            main_attrs[attr.name] = graphene.Field(
+                graphene.String, required=not attr.optional, description=attr.description
+            )
+        else:
+            attr_type = registry.get_graphql_type(
+                name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name
+            )
+            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(schema.kind, (InfrahubInterface,), main_attrs)
 
@@ -378,8 +385,15 @@ def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> 
     }
 
     for attr in schema.attributes:
-        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
-        main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+        if attr.name == "id":
+            main_attrs[attr.name] = graphene.Field(
+                graphene.String, required=not attr.optional, description=attr.description
+            )
+        else:
+            attr_type = registry.get_graphql_type(
+                name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name
+            )
+            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(f"Related{schema.kind}", (InfrahubInterface,), main_attrs)
 

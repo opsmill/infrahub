@@ -204,29 +204,6 @@ class NodeManager:
         await query.execute(session=session)
         node_attributes = query.get_attributes_group_by_node()
 
-        # -----------------------------------------------
-        # Query Source object
-        # -----------------------------------------------
-        # NOTE For now we assume that all source object are account objects but we'll need
-        # to revisit that quickly
-        # source_accounts = {}
-
-        # if include_source:
-        #     source_uuids = list(set([item.source_uuid for item in attrs_to_process.values() if item.source_uuid]))
-        #     source_accounts = {id: get_account_by_id(id=id) for id in source_uuids}
-
-        # -----------------------------------------------
-        # Extract the ID from all LocalAttribute from all Nodes
-        # -----------------------------------------------
-        # local_attrs_ids = []
-        # for attrs in node_attributes.values():
-        #     for attr in attrs.get("attrs").values():
-        #         if "AttributeLocal" in attr.attr_labels:
-        #             local_attrs_ids.append(attr.attr_id)
-
-        # query = NodeListGetLocalAttributeValueQuery(ids=local_attrs_ids, branch=branch, at=at).execute()
-        # local_attributes = query.get_results_by_id()
-
         nodes = {}
 
         async for node in nodes_info:
@@ -242,7 +219,6 @@ class NodeManager:
             # --------------------------------------------------------
             for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
 
-                # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
 
                     attrs[attr_name] = dict(

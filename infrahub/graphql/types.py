@@ -295,17 +295,6 @@ class AnyAttributeType(BaseAttribute):
 
 
 # ------------------------------------------
-# Miscellaneous Types
-# ------------------------------------------
-
-
-# class AccountType(InfrahubObjectType):
-#     id = String(required=True)
-#     name = Field(StrAttributeType, required=True)
-#     description = Field(StrAttributeType, required=False)
-
-
-# ------------------------------------------
 # GraphQL Types related to the management of the Branch
 # ------------------------------------------
 class BranchType(InfrahubObjectType):

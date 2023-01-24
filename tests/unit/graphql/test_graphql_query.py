@@ -2,11 +2,11 @@ import pytest
 from graphql import graphql
 
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.branch import Branch
 from infrahub.graphql import generate_graphql_schema
 
 
@@ -31,7 +31,7 @@ async def test_simple_query(db, session, default_branch: Branch, criticality_sch
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -64,7 +64,7 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -124,7 +124,7 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -181,7 +181,7 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -216,7 +216,7 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -264,7 +264,7 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -303,7 +303,7 @@ async def test_query_oneway_relationship(db, session, default_branch: Branch, pe
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -338,7 +338,7 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -362,7 +362,12 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_at": time1},
+        context_value={
+            "infrahub_session": session,
+            "infrahub_database": db,
+            "infrahub_at": time1,
+            "infrahub_branch": default_branch,
+        },
         root_value=None,
         variable_values={},
     )
@@ -397,7 +402,7 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -413,7 +418,7 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     result2 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -440,7 +445,7 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -455,7 +460,7 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     result2 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -493,7 +498,7 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -508,7 +513,7 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     result2 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -551,7 +556,7 @@ async def test_query_attribute_source(
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -592,7 +597,7 @@ async def test_query_attribute_flag_property(
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -617,7 +622,7 @@ async def test_query_branches(db, session, default_branch: Branch, register_core
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -647,7 +652,7 @@ async def test_query_multiple_branches(db, session, default_branch: Branch, regi
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -686,7 +691,7 @@ async def test_multiple_queries(db, session, default_branch: Branch, person_tag_
     result1 = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -724,7 +729,7 @@ async def test_model_node_interface(db, session, default_branch: Branch, car_sch
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )

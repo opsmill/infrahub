@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, TypeVar, Union, List
+from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
 from uuid import UUID
 
 from infrahub.core import get_branch, registry
@@ -69,8 +69,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._owner: Node = None
         self._is_protected: bool = None
 
-        self._attributes: List[BaseAttribute] = []
-        self._relationships: List[RelationshipManager] = []
+        # Lists of attributes and relationships names
+        self._attributes: List[str] = []
+        self._relationships: List[str] = []
 
     @classmethod
     async def init(
@@ -223,7 +224,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of relationships and create them one by one
         for name in self._relationships:
 
-            rel = getattr(self, name)
+            rel: RelationshipManager = getattr(self, name)
             await rel.save(at=create_at, session=session)
 
         return True
@@ -239,12 +240,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
-            attr = getattr(self, name)
+            attr: BaseAttribute = getattr(self, name)
             await attr.save(at=update_at, session=session)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
-            rel = getattr(self, name)
+            rel: RelationshipManager = getattr(self, name)
             await rel.save(at=update_at, session=session)
 
     async def save(
@@ -327,7 +328,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             response[field_name] = await field.to_graphql(session=session, fields=fields[field_name])
 
-        return response 
+        return response
 
     async def from_graphql(self, session: AsyncSession, data: dict) -> bool:
         """Update object from a GraphQL payload."""
