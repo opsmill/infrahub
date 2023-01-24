@@ -605,7 +605,6 @@ core_models = {
             "name": "data_owner",
             "kind": "DataOwner",  # Account, Group, Script ?
             "attributes": [
-                {"name": "id", "kind": "String"},
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
             ],
@@ -615,7 +614,6 @@ core_models = {
             "description": "Any Entities that stores or produces data.",
             "kind": "DataSource",  # Repository, Account ...
             "attributes": [
-                {"name": "id", "kind": "String"},
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
             ],
