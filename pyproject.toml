@@ -95,8 +95,13 @@ disable = """,
     consider-using-from-import,
     invalid-name,
     too-many-arguments,
+    too-many-locals,
     keyword-arg-before-vararg,
     too-few-public-methods,
+    too-many-instance-attributes,
+    fixme,
+    consider-using-f-string,
+    protected-access,
     """
 
 [tool.pylint.miscellaneous]
@@ -112,6 +117,9 @@ min-similarity-lines = 20
 asyncio_mode = "auto"
 testpaths = [
     "tests"
+]
+filterwarnings = [
+    "ignore:Module already imported so cannot be rewritten",
 ]
 
 [tool.mypy]

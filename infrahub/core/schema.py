@@ -601,42 +601,6 @@ internal_schema = {
 core_models = {
     "groups": [],
     "generics": [
-        # {
-        #     "name": "location",
-        #     "kind": "Location",
-        #     "branch": True,
-        #     "attributes": [
-        #         {"name": "name", "kind": "String", "unique": True},
-        #         {"name": "description", "kind": "String", "optional": True},
-        #     ],
-        #     # "relationships": [
-        #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
-        #     # ],
-        # },
-        # {
-        #     "name": "primary",
-        #     "kind": "Primary",
-        #     "branch": True,
-        #     "attributes": [
-        #         {"name": "name", "kind": "String", "unique": True},
-        #         {"name": "description", "kind": "String", "optional": True},
-        #     ],
-        #     "relationships": [
-        #         {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
-        #     ],
-        # },
-        # {
-        #     "name": "component",
-        #     "kind": "Component",
-        #     "branch": True,
-        #     "attributes": [
-        #         {"name": "name", "kind": "String", "unique": True},
-        #         {"name": "description", "kind": "String", "optional": True},
-        #     ],
-        #     # "relationships": [
-        #     #     {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
-        #     # ],
-        # },
         {
             "name": "data_owner",
             "kind": "DataOwner",  # Account, Group, Script ?
@@ -695,6 +659,7 @@ core_models = {
             "kind": "Account",
             "default_filter": "name__value",
             "branch": True,
+            "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
@@ -722,6 +687,7 @@ core_models = {
             "name": "group",
             "kind": "Group",
             "default_filter": "name__value",
+            "inherit_from": ["DataOwner"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},

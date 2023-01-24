@@ -1,10 +1,9 @@
-import graphene
 import pytest
 from graphql import graphql
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graphql import get_gql_mutation, get_gql_query
+from infrahub.graphql import generate_graphql_schema
 
 
 async def test_update_simple_object(db, session, default_branch, car_person_schema):
@@ -30,11 +29,7 @@ async def test_update_simple_object(db, session, default_branch, car_person_sche
         % obj.id
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -75,11 +70,7 @@ async def test_update_object_with_flag_property(db, session, default_branch, car
         % obj.id
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -117,11 +108,7 @@ async def test_update_object_with_node_property(
         second_account.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -153,11 +140,7 @@ async def test_update_invalid_object(db, session, default_branch, car_person_sch
     """
 
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -191,11 +174,7 @@ async def test_update_invalid_input(db, session, default_branch, car_person_sche
         % obj.id
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -239,11 +218,7 @@ async def test_update_single_relationship(db, session, default_branch, car_perso
         p2.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -292,11 +267,7 @@ async def test_update_new_single_relationship_flag_property(db, session, default
         p2.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -342,11 +313,7 @@ async def test_update_existing_single_relationship_flag_property(db, session, de
         p1.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -398,11 +365,7 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
         t1.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -437,11 +400,7 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -478,11 +437,7 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -534,11 +489,7 @@ async def test_update_relationship_many2(db, session, default_branch, person_tag
         t1.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -573,11 +524,7 @@ async def test_update_relationship_many2(db, session, default_branch, person_tag
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -630,11 +577,7 @@ async def test_update_relationship_previously_deleted(db, session, default_branc
         t1.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -669,11 +612,7 @@ async def test_update_relationship_previously_deleted(db, session, default_branc
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -709,11 +648,7 @@ async def test_update_relationship_previously_deleted(db, session, default_branc
         t3.id,
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,

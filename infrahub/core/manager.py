@@ -40,11 +40,12 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
         *args,
         **kwargs,
-    ) -> List[Node]:
+    ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -81,6 +82,7 @@ class NodeManager:
             account=account,
             at=at,
             include_source=include_source,
+            include_owner=include_owner,
             session=session,
         )
 
@@ -98,6 +100,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         account=None,
         *args,
         **kwargs,
@@ -119,7 +122,13 @@ class NodeManager:
             return []
 
         peers = await cls.get_many(
-            ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source, session=session
+            ids=peer_ids,
+            branch=branch,
+            account=account,
+            at=at,
+            include_source=include_source,
+            include_owner=include_owner,
+            session=session,
         )
 
         return [
@@ -204,29 +213,6 @@ class NodeManager:
         await query.execute(session=session)
         node_attributes = query.get_attributes_group_by_node()
 
-        # -----------------------------------------------
-        # Query Source object
-        # -----------------------------------------------
-        # NOTE For now we assume that all source object are account objects but we'll need
-        # to revisit that quickly
-        # source_accounts = {}
-
-        # if include_source:
-        #     source_uuids = list(set([item.source_uuid for item in attrs_to_process.values() if item.source_uuid]))
-        #     source_accounts = {id: get_account_by_id(id=id) for id in source_uuids}
-
-        # -----------------------------------------------
-        # Extract the ID from all LocalAttribute from all Nodes
-        # -----------------------------------------------
-        # local_attrs_ids = []
-        # for attrs in node_attributes.values():
-        #     for attr in attrs.get("attrs").values():
-        #         if "AttributeLocal" in attr.attr_labels:
-        #             local_attrs_ids.append(attr.attr_id)
-
-        # query = NodeListGetLocalAttributeValueQuery(ids=local_attrs_ids, branch=branch, at=at).execute()
-        # local_attributes = query.get_results_by_id()
-
         nodes = {}
 
         async for node in nodes_info:
@@ -242,7 +228,6 @@ class NodeManager:
             # --------------------------------------------------------
             for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
 
-                # LOCAL ATTRIBUTE
                 if "AttributeLocal" in attr.attr_labels:
 
                     attrs[attr_name] = dict(
@@ -261,6 +246,9 @@ class NodeManager:
 
                     if attr.source_uuid:
                         attrs[attr_name]["source"] = attr.source_uuid
+
+                    if attr.owner_uuid:
+                        attrs[attr_name]["owner"] = attr.owner_uuid
 
             # Identify the proper Class to use for this Node
             node_class = Node
@@ -358,7 +346,7 @@ class SchemaManager(NodeManager):
 
         group_schema = registry.get_schema(name="GroupSchema", branch=branch)
         for schema_node in await cls.query(group_schema, branch=branch, session=session):
-            schema.groups.append(await cls.convert_group_schema_to_schema(schema_node=schema_node, session=session))
+            schema.groups.append(await cls.convert_group_schema_to_schema(schema_node=schema_node))
 
         generic_schema = registry.get_schema(name="GenericSchema", branch=branch)
         for schema_node in await cls.query(generic_schema, branch=branch, session=session):
@@ -424,7 +412,7 @@ class SchemaManager(NodeManager):
         return GenericSchema(**node_data)
 
     @staticmethod
-    async def convert_group_schema_to_schema(schema_node: Node, session: AsyncSession) -> GroupSchema:
+    async def convert_group_schema_to_schema(schema_node: Node) -> GroupSchema:
         """Convert a schema_node object loaded from the database into GroupSchema object."""
 
         node_data = {}

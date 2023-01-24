@@ -303,7 +303,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
 
 
 @pytest.fixture
-async def car_person_schema(session):
+async def car_person_schema(session, data_schema):
 
     SCHEMA = {
         "nodes": [
@@ -344,7 +344,7 @@ async def car_person_schema(session):
 
 
 @pytest.fixture
-async def person_tag_schema(session):
+async def person_tag_schema(session, data_schema):
 
     SCHEMA = {
         "nodes": [
@@ -403,7 +403,7 @@ async def all_attribute_types_schema(session):
 
 
 @pytest.fixture
-async def criticality_schema(session):
+async def criticality_schema(session, data_schema):
 
     SCHEMA = {
         "name": "criticality",
@@ -596,6 +596,38 @@ async def fruit_tag_schema(session):
 
     schema = SchemaRoot(**SCHEMA)
     for node in schema.nodes:
+        registry.set_schema(name=node.kind, schema=node)
+
+    return True
+
+
+@pytest.fixture
+async def data_schema(session):
+
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "data_owner",
+                "kind": "DataOwner",
+                "attributes": [
+                    {"name": "name", "kind": "String", "unique": True},
+                    {"name": "description", "kind": "String", "optional": True},
+                ],
+            },
+            {
+                "name": "data_source",
+                "description": "Any Entities that stores or produces data.",
+                "kind": "DataSource",
+                "attributes": [
+                    {"name": "name", "kind": "String", "unique": True},
+                    {"name": "description", "kind": "String", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    for node in schema.generics:
         registry.set_schema(name=node.kind, schema=node)
 
     return True

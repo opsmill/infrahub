@@ -288,6 +288,8 @@ class Query(ABC):
 
     def print_table(self):
 
+        # pylint: disable=import-outside-toplevel
+
         from rich.console import Console
         from rich.table import Table
 
@@ -311,6 +313,6 @@ class Query(ABC):
         from rich import print as rprint
 
         print("-------------------------------------------------------")
-        print(self.get_query(include_var=include_var))
+        print(self.get_query(var=include_var))
         if self.params:
             rprint(self.params)

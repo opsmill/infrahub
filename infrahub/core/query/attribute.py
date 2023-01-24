@@ -53,19 +53,19 @@ class AttributeCreateQuery(AttributeQuery):
 
         self.query_add_match()
 
-        # if self.attr.node.use_permission:
-        #     self.query_add_match_permission()
-
         if self.attr.source_id:
             self.query_add_match_source()
 
-        self.query_add_create()
+        if self.attr.owner_id:
+            self.query_add_match_owner()
 
-        # if self.attr.node.use_permission:
-        #     self.query_add_create_permission()
+        self.query_add_create()
 
         if self.attr.source_id:
             self.query_add_create_source()
+
+        if self.attr.owner_id:
+            self.query_add_create_owner()
 
         self.params["at"] = self.at.to_string()
         self.params["uuid"] = str(uuid.uuid4())
@@ -122,6 +122,20 @@ class AttributeCreateQuery(AttributeQuery):
 
         query = """
         CREATE (a)-[:HAS_SOURCE { branch: $branch, status: "active", from: $at, to: null }]->(src)
+        """
+
+        self.add_to_query(query)
+
+    def query_add_match_owner(self):
+
+        self.add_to_query("MATCH (owner { uuid: $owner_id })")
+
+        self.params["owner_id"] = self.attr.owner_id
+
+    def query_add_create_owner(self):
+
+        query = """
+        CREATE (a)-[:HAS_OWNER { branch: $branch, status: "active", from: $at, to: null }]->(owner)
         """
 
         self.add_to_query(query)

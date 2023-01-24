@@ -500,7 +500,7 @@ class Branch(StandardNode):
             if repo.id not in repos_in_main:
                 continue
 
-            repos_in_main[repo.id]
+            # repos_in_main[repo.id]
             # changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
 
             # if not changed_files:
@@ -703,7 +703,7 @@ class Diff:
 
             for node_id, node in data.items():
                 for attr_name, attr in node.attributes.items():
-                    for prop_type, prop in attr.properties.items():
+                    for prop_type in attr.properties.keys():
                         paths[branch_name].add(("node", node_id, attr_name, prop_type))
 
         rels = await self.get_relationships(session=session)
@@ -713,7 +713,7 @@ class Diff:
 
             for rel_name, rels in data.items():
                 for rel_id, rel in rels.items():
-                    for prop_type, prop in rel.properties.items():
+                    for prop_type in rel.properties.keys():
                         paths[branch_name].add(("relationships", rel_name, rel_id, prop_type))
 
         # TODO Files

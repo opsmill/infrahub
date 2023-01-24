@@ -29,6 +29,8 @@ from .types import (
     InfrahubUnion,
     IntAttributeType,
     ListAttributeType,
+    RelatedNodeInput,
+    RelatedNodeInterface,
     StrAttributeType,
 )
 from .utils import extract_fields
@@ -46,6 +48,14 @@ TYPES_MAPPING_INFRAHUB_GRAPHQL = {
     "Boolean": BoolAttributeType,
     "List": ListAttributeType,
     "Any": AnyAttributeType,
+}
+
+TYPES_MAPPING_INFRAHUB_GRAPHQL_STR = {
+    "String": "StrAttributeType",
+    "Integer": "IntAttributeType",
+    "Boolean": "BoolAttributeType",
+    "List": "ListAttributeType",
+    "Any": "AnyAttributeType",
 }
 
 INPUT_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
@@ -67,22 +77,6 @@ FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
 
 class DeleteInput(graphene.InputObjectType):
     id = graphene.String(required=True)
-
-
-class RelatedNodeInput(graphene.InputObjectType):
-    id = graphene.String(required=True)
-    _relation__is_visible = graphene.Boolean(required=False)
-    _relation__is_protected = graphene.Boolean(required=False)
-    _relation__owner = graphene.String(required=False)
-    _relation__source = graphene.String(required=False)
-
-
-class RelatedNodeInterface(InfrahubInterface):
-    _relation__updated_at = graphene.DateTime(required=False)
-    _relation__is_visible = graphene.Boolean(required=False)
-    _relation__is_protected = graphene.Boolean(required=False)
-    _relation__owner = graphene.Field("infrahub.graphql.types.AccountType", required=False)
-    _relation__source = graphene.Field("infrahub.graphql.types.AccountType", required=False)
 
 
 async def default_resolver(*args, **kwargs):
@@ -146,6 +140,7 @@ async def default_resolver(*args, **kwargs):
             branch=branch,
             account=account,
             include_source=True,
+            include_owner=True,
         )
 
     if node_rel.cardinality == "many":
@@ -158,7 +153,14 @@ async def default_resolver(*args, **kwargs):
     return await objs[0].to_graphql(session=session, fields=fields)
 
 
-async def generate_object_types(session: AsyncSession, branch: Union[Branch, str] = None):
+def load_attribute_types_in_registry(branch: Branch):
+    for attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.values():
+        registry.set_graphql_type(name=attr_class.__name__, graphql_type=attr_class, branch=branch.name)
+
+
+async def generate_object_types(
+    session: AsyncSession, branch: Union[Branch, str] = None
+):  # pylint: disable=too-many-branches
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
     branch = await get_branch(session=session, branch=branch)
@@ -167,21 +169,35 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
     group_memberships = defaultdict(list)
 
+    load_attribute_types_in_registry(branch=branch)
+
     # Generate all GraphQL Interface & RelatedInterface Object first and store them in the registry
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, GenericSchema):
             continue
-        interface = generate_interface_object(schema=node_schema)
-        related_interface = generate_related_interface_object(schema=node_schema)
+        interface = generate_interface_object(schema=node_schema, branch=branch)
+        related_interface = generate_related_interface_object(schema=node_schema, branch=branch)
         registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
         registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
+
+    # Define DataOwner and DataOwner
+    data_source = registry.get_graphql_type(name="DataSource", branch=branch)
+    data_owner = registry.get_graphql_type(name="DataOwner", branch=branch)
+    for attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.values():
+        gql_type = registry.get_graphql_type(name=attr_class.__name__, branch=branch)
+        gql_type._meta.fields["source"] = graphene.Field(data_source)
+        gql_type._meta.fields["owner"] = graphene.Field(data_owner)
 
     # Generate all GraphQL ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, NodeSchema):
             continue
-        node_type = await generate_graphql_object(schema=node_schema, branch=branch)
-        related_node_type = await generate_related_graphql_object(schema=node_schema, session=session, branch=branch)
+        node_type = generate_graphql_object(schema=node_schema, branch=branch)
+        related_node_type = generate_related_graphql_object(schema=node_schema, branch=branch)
+
+        related_node_type._meta.fields["_relation__source"] = graphene.Field(data_source)
+        related_node_type._meta.fields["_relation__owner"] = graphene.Field(data_owner)
+
         registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
         registry.set_graphql_type(name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name)
 
@@ -197,15 +213,15 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
             or not group_memberships[node_name]
         ):
             continue
-        group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []))
+        group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []), branch=branch)
         registry.set_graphql_type(name=group._meta.name, graphql_type=group, branch=branch.name)
 
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, NodeSchema):
             continue
-        node_type = registry.get_graphql_type(name=node_name, branch=branch)
-        related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch)
+        node_type = registry.get_graphql_type(name=node_name, branch=branch.name)
+        related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch.name)
 
         for rel in node_schema.relationships:
 
@@ -213,9 +229,9 @@ async def generate_object_types(session: AsyncSession, branch: Union[Branch, str
 
             peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
             if isinstance(peer_schema, GroupSchema):
-                peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch)
+                peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
             else:
-                peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch)
+                peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch.name)
 
             if rel.cardinality == "one":
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
@@ -258,6 +274,8 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
     class_attrs = {}
 
+    branch = await get_branch(branch=branch, session=session)
+
     full_schema = registry.get_full_schema(branch=branch)
 
     for node_schema in full_schema.values():
@@ -268,9 +286,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
         if node_schema.name == "repository":
             base_class = InfrahubRepositoryMutation
 
-        create, update, delete = await generate_graphql_mutations(
-            session=session, branch=branch, schema=node_schema, base_class=base_class
-        )
+        create, update, delete = generate_graphql_mutations(branch=branch, schema=node_schema, base_class=base_class)
 
         class_attrs[f"{node_schema.name}_create"] = create.Field()
         class_attrs[f"{node_schema.name}_update"] = update.Field()
@@ -279,7 +295,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
     return type("MutationMixin", (object,), class_attrs)
 
 
-async def generate_graphql_object(schema: NodeSchema, branch: Union[Branch, str] = None) -> Type[InfrahubObject]:
+def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
     meta_attrs = {
@@ -291,7 +307,7 @@ async def generate_graphql_object(schema: NodeSchema, branch: Union[Branch, str]
     }
 
     for generic in schema.inherit_from:
-        generic = registry.get_graphql_type(name=generic, branch=branch)
+        generic = registry.get_graphql_type(name=generic, branch=branch.name)
         meta_attrs["interfaces"].add(generic)
 
     main_attrs = {
@@ -301,17 +317,19 @@ async def generate_graphql_object(schema: NodeSchema, branch: Union[Branch, str]
     }
 
     for attr in schema.local_attributes:
-        attr_type = TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
 
 def generate_union_object(
-    schema: GroupSchema, members: List, branch: Union[Branch, str] = None
+    schema: GroupSchema,
+    members: List,
+    branch: Branch,
 ) -> Type[graphene.Union]:
 
-    types = [registry.get_graphql_type(name=member, branch=branch) for member in members]
+    types = [registry.get_graphql_type(name=member, branch=branch.name) for member in members]
 
     if not types:
         return None
@@ -330,7 +348,7 @@ def generate_union_object(
     return type(schema.kind, (InfrahubUnion,), main_attrs)
 
 
-def generate_interface_object(schema: GenericSchema) -> Type[graphene.Interface]:
+def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[graphene.Interface]:
 
     meta_attrs = {
         "name": schema.kind,
@@ -342,13 +360,15 @@ def generate_interface_object(schema: GenericSchema) -> Type[graphene.Interface]
     }
 
     for attr in schema.attributes:
-        attr_type = TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+
+    main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
     return type(schema.kind, (InfrahubInterface,), main_attrs)
 
 
-def generate_related_interface_object(schema: GenericSchema) -> Type[graphene.Interface]:
+def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> Type[graphene.Interface]:
 
     meta_attrs = {
         "name": f"Related{schema.kind}",
@@ -360,15 +380,15 @@ def generate_related_interface_object(schema: GenericSchema) -> Type[graphene.In
     }
 
     for attr in schema.attributes:
-        attr_type = TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+
+    main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
     return type(f"Related{schema.kind}", (InfrahubInterface,), main_attrs)
 
 
-async def generate_related_graphql_object(
-    session: AsyncSession, schema: NodeSchema, branch: Union[Branch, str] = None
-) -> Type[InfrahubObject]:
+def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema for a Related Node."""
 
     meta_attrs = {
@@ -381,7 +401,7 @@ async def generate_related_graphql_object(
 
     for generic in schema.inherit_from:
         try:
-            generic = registry.get_graphql_type(name=f"Related{generic}", branch=branch)
+            generic = registry.get_graphql_type(name=f"Related{generic}", branch=branch.name)
             meta_attrs["interfaces"].add(generic)
         except ValueError:
             # If the object is not present it might be because the generic is a group, will need to carefully test that.
@@ -394,25 +414,19 @@ async def generate_related_graphql_object(
     }
     for attr in schema.attributes:
 
-        attr_type = TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(f"Related{schema.kind}", (InfrahubObject,), main_attrs)
 
 
-async def generate_graphql_mutations(
-    session: AsyncSession, schema: NodeSchema, base_class: type[InfrahubMutation], branch: Union[Branch, str] = None
+def generate_graphql_mutations(
+    schema: NodeSchema, base_class: type[InfrahubMutation], branch: Branch
 ) -> Tuple[Type[InfrahubMutation], Type[InfrahubMutation], Type[InfrahubMutation]]:
 
-    create = await generate_graphql_mutation_create(
-        session=session, branch=branch, schema=schema, base_class=base_class
-    )
-    update = await generate_graphql_mutation_update(
-        session=session, branch=branch, schema=schema, base_class=base_class
-    )
-    delete = await generate_graphql_mutation_delete(
-        session=session, branch=branch, schema=schema, base_class=base_class
-    )
+    create = generate_graphql_mutation_create(branch=branch, schema=schema, base_class=base_class)
+    update = generate_graphql_mutation_update(branch=branch, schema=schema, base_class=base_class)
+    delete = generate_graphql_mutation_delete(branch=branch, schema=schema, base_class=base_class)
 
     return create, update, delete
 
@@ -479,16 +493,15 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.Input
     return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)
 
 
-async def generate_graphql_mutation_create(
-    session: AsyncSession,
+def generate_graphql_mutation_create(
     schema: NodeSchema,
+    branch: Branch,
     base_class: type[InfrahubMutation] = InfrahubMutation,
-    branch: Union[Branch, str] = None,
 ) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to CREATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Create"
 
-    object_type = await generate_graphql_object(schema=schema)
+    object_type = generate_graphql_object(schema=schema, branch=branch)
     input_type = generate_graphql_mutation_create_input(schema=schema)
 
     main_attrs = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
@@ -504,16 +517,15 @@ async def generate_graphql_mutation_create(
     return type(name, (base_class,), main_attrs)
 
 
-async def generate_graphql_mutation_update(
-    session: AsyncSession,
+def generate_graphql_mutation_update(
     schema: NodeSchema,
+    branch: Branch,
     base_class: type[InfrahubMutation] = InfrahubMutation,
-    branch: Union[Branch, str] = None,
 ) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to UPDATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Update"
 
-    object_type = await generate_graphql_object(schema=schema, branch=branch)
+    object_type = generate_graphql_object(schema=schema, branch=branch)
     input_type = generate_graphql_mutation_update_input(schema=schema)
 
     main_attrs = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
@@ -529,12 +541,11 @@ async def generate_graphql_mutation_update(
     return type(name, (base_class,), main_attrs)
 
 
-async def generate_graphql_mutation_delete(
-    session: AsyncSession,
+def generate_graphql_mutation_delete(
     schema: NodeSchema,
     base_class: type[InfrahubMutation] = InfrahubMutation,
     branch: Union[Branch, str] = None,
-) -> Type[InfrahubMutation]:
+) -> Type[InfrahubMutation]:  # pylint: disable=unused-argument
     """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Delete"
 

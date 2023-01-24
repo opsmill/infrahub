@@ -4,6 +4,7 @@ from graphene import (
     Boolean,
     DateTime,
     Field,
+    InputObjectType,
     Int,
     Interface,
     List,
@@ -31,7 +32,7 @@ class GetListMixin:
     """Mixins to Query the list of nodes using the NodeManager."""
 
     @classmethod
-    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
+    async def get_list(cls, fields: dict, context: dict, **kwargs):
 
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
@@ -54,6 +55,7 @@ class GetListMixin:
                     branch=branch,
                     account=account,
                     include_source=True,
+                    include_owner=True,
                 )
             else:
                 objs = await NodeManager.query(
@@ -64,6 +66,7 @@ class GetListMixin:
                     branch=branch,
                     account=account,
                     include_source=True,
+                    include_owner=True,
                 )
 
             if not objs:
@@ -87,7 +90,9 @@ class InfrahubUnion(Union):
         types = ("PlaceHolder",)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: GroupSchema = None, types=(), _meta=None, **options):
+    def __init_subclass_with_meta__(
+        cls, schema: GroupSchema = None, types=(), _meta=None, **options
+    ):  # pylint: disable=arguments-renamed
 
         if not isinstance(schema, GroupSchema):
             raise ValueError(f"You need to pass a valid GroupSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -108,6 +113,8 @@ class InfrahubUnion(Union):
         if "type" in instance:
             return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
 
+        raise ValueError("Unable to identify the type of the instance.")
+
 
 # -------------------------------------------------------
 # GraphQL Interface Type Object
@@ -126,8 +133,11 @@ class InfrahubInterface(Interface, GetListMixin):
 
         if "Related" in cls.__name__ and "type" in instance:
             return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
-        elif "type" in instance:
+
+        if "type" in instance:
             return registry.get_graphql_type(name=instance["type"], branch=branch)
+
+        raise ValueError("Unable to identify the type of the instance.")
 
 
 # -------------------------------------------------------
@@ -211,8 +221,26 @@ class InfrahubObjectType(ObjectType):
 
 
 # ------------------------------------------
-# Attributes related Types
+# Attributes and Related Object related Types
 # ------------------------------------------
+
+
+class RelatedNodeInput(InputObjectType):
+    id = String(required=True)
+    _relation__is_visible = Boolean(required=False)
+    _relation__is_protected = Boolean(required=False)
+    _relation__owner = String(required=False)
+    _relation__source = String(required=False)
+
+
+class RelatedNodeInterface(InfrahubInterface):
+    _relation__updated_at = DateTime(required=False)
+    _relation__is_visible = Boolean(required=False)
+    _relation__is_protected = Boolean(required=False)
+    # Since _relation__owner and _relation__source are using a Type that is generated dynamically
+    # these 2 fields will be dynamically inserted when we generate the GraphQL Schema
+    # _relation__owner = Field("DataOwner", required=False)
+    # _relation__source = Field("DataSource", required=False)
 
 
 class AttributeInterface(InfrahubInterface):
@@ -220,7 +248,10 @@ class AttributeInterface(InfrahubInterface):
     is_protected = Field(Boolean)
     is_visible = Field(Boolean)
     updated_at = Field(DateTime)
-    source = Field("infrahub.graphql.types.AccountType")
+    # Since source and owner are using a Type that is generated dynamically
+    # these 2 fields will be dynamically inserted when we generate the GraphQL Schema
+    # source = Field("DataSource")
+    # owner = Field("DataOwner")
 
 
 class BaseAttribute(ObjectType):
@@ -269,17 +300,7 @@ class AnyAttributeType(BaseAttribute):
     class Meta:
         description = "Attribute of type GenericScalar"
         name = "AnyAttribute"
-
-
-# ------------------------------------------
-# Miscellaneous Types
-# ------------------------------------------
-
-
-class AccountType(InfrahubObjectType):
-    id = String(required=True)
-    name = Field(StrAttributeType, required=True)
-    description = Field(StrAttributeType, required=False)
+        interfaces = {AttributeInterface}
 
 
 # ------------------------------------------
@@ -300,7 +321,7 @@ class BranchType(InfrahubObjectType):
         model = Branch
 
     @classmethod
-    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):
+    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
 
         db = context.get("infrahub_database")
 
@@ -369,7 +390,7 @@ class BranchDiffType(ObjectType):
     relationships = List(BranchDiffRelationshipType)
 
     @classmethod
-    async def get_diff(cls, branch, fields: dict, context: dict, *args, **kwargs):
+    async def get_diff(cls, branch, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
 
         session = context.get("infrahub_session")
         branch = await get_branch(branch=branch, session=session)

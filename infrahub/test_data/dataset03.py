@@ -207,7 +207,6 @@ async def load_data(session: AsyncSession):
         LOGGER.info(f" Created Tag: {tag}")
 
     active_status = statuses_dict["active"]
-    accounts_dict["pop-builder"]
     internal_as = asn_dict["Duff"]
 
     LOGGER.info("Creating Site & Device")

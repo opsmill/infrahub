@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
     from . import Node
 
+# pylint: disable=consider-using-f-string
+
 
 @dataclass
 class NodeToProcess:
@@ -50,13 +52,15 @@ class AttrToProcess:
 
     # permission: PermissionLevel
 
-    # source: Optional[str]
-
     # time_from: Optional[str]
     # time_to: Optional[str]
 
     source_uuid: Optional[str]
     source_labels: Optional[List[str]]
+
+    owner_uuid: Optional[str]
+    owner_labels: Optional[List[str]]
+
     is_inherited: Optional[bool]
     is_protected: Optional[bool]
     is_visible: Optional[bool]
@@ -272,6 +276,17 @@ class NodeListGetAttributeQuery(Query):
             self.add_to_query(query)
             self.return_labels.extend(["source", "rel_source"])
 
+        if self.include_owner:
+            query = (
+                """
+            OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
+            WHERE all(r IN [rel_owner] WHERE ( %s))
+            """
+                % rels_filter
+            )
+            self.add_to_query(query)
+            self.return_labels.extend(["owner", "rel_owner"])
+
     # def query_add_permission(self):
 
     #     rels_filter_perms, rels_params = self.branch.get_query_filter_relationships(
@@ -320,11 +335,17 @@ class NodeListGetAttributeQuery(Query):
                 is_visible=result.get("isv").get("value"),
                 source_uuid=None,
                 source_labels=None,
+                owner_uuid=None,
+                owner_labels=None,
             )
 
             if self.include_source and result.get("source"):
                 attr.source_uuid = result.get("source").get("uuid")
                 attr.source_labels = result.get("source").labels
+
+            if self.include_owner and result.get("owner"):
+                attr.owner_uuid = result.get("owner").get("uuid")
+                attr.owner_labels = result.get("owner").labels
 
             if node_id not in attrs_by_node:
                 attrs_by_node[node_id]["node"] = result.get("n")

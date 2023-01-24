@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
 from uuid import UUID
 
 from infrahub.core import get_branch, registry
@@ -18,14 +18,16 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
-"""
-Type of Nodes
- - Core node, wo/ branch : Branch, MergeRequest, Comment
- - Core node, w/ branch : Repository, RFile, GQLQuery, Permission, Account, Groups, Schema
- - Location Node : Location,
- - Select Node : Status, Role, Manufacturer etc ..
- -
-"""
+
+# ---------------------------------------------------------------------------------------
+# Type of Nodes
+#  - Core node, wo/ branch : Branch, MergeRequest, Comment
+#  - Core node, w/ branch : Repository, RFile, GQLQuery, Permission, Account, Groups, Schema
+#  - Location Node : Location,
+#  - Select Node : Status, Role, Manufacturer etc ..
+#  -
+# ---------------------------------------------------------------------------------------
+
 
 SelfNode = TypeVar("SelfNode", bound="Node")
 
@@ -63,14 +65,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         self._updated_at: Optional[Timestamp] = None
         self.id: str = None
-        self.db_id: int = None
+        self.db_id: str = None
 
         self._source: Node = None
         self._owner: Node = None
         self._is_protected: bool = None
 
-        self._attributes = []
-        self._relationships = []
+        # Lists of attributes and relationships names
+        self._attributes: List[str] = []
+        self._relationships: List[str] = []
 
     @classmethod
     async def init(
@@ -109,6 +112,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if "_source" in fields.keys():
             self._source = fields["_source"]
+        if "_owner" in fields.keys():
+            self._owner = fields["_owner"]
 
         # Validate input
         for field_name in fields.keys():
@@ -150,6 +155,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         at=self._at,
                         node=self,
                         source=self._source,
+                        owner=self._owner,
                     ),
                 )
             except ValidationError as exc:
@@ -223,7 +229,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of relationships and create them one by one
         for name in self._relationships:
 
-            rel = getattr(self, name)
+            rel: RelationshipManager = getattr(self, name)
             await rel.save(at=create_at, session=session)
 
         return True
@@ -239,12 +245,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
-            attr = getattr(self, name)
+            attr: BaseAttribute = getattr(self, name)
             await attr.save(at=update_at, session=session)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
-            rel = getattr(self, name)
+            rel: RelationshipManager = getattr(self, name)
             await rel.save(at=update_at, session=session)
 
     async def save(

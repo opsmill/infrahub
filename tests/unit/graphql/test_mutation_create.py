@@ -1,9 +1,8 @@
-import graphene
 from graphql import graphql
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graphql import get_gql_mutation, get_gql_query
+from infrahub.graphql import generate_graphql_schema
 
 
 async def test_create_simple_object(db, session, default_branch, car_person_schema):
@@ -19,13 +18,9 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -57,13 +52,9 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
     """
 
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -83,12 +74,6 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
 
 async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
 
-    graphql_schema = graphene.Schema(
-        query=await get_gql_query(session=session),
-        mutation=await get_gql_mutation(session=session),
-        auto_camelcase=False,
-    ).graphql_schema
-
     query = """
     mutation {
         person_create(data: {name: { value: "John", is_protected: true}, height: {value: 182, is_visible: false}}) {
@@ -100,9 +85,9 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     }
     """
     result = await graphql(
-        graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -127,9 +112,9 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
         }
     """
     result1 = await graphql(
-        graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -137,6 +122,75 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     assert result1.errors is None
     assert result1.data["person"][0]["name"]["is_protected"] is True
     assert result1.data["person"][0]["height"]["is_visible"] is False
+
+
+async def test_create_object_with_node_property(
+    db, session, default_branch, car_person_schema, first_account, second_account
+):
+
+    graphql_schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+
+    query = """
+    mutation {
+        person_create(data: {name: { value: "John", source: "%s" }, height: {value: 182, owner: "%s" }}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """ % (
+        first_account.id,
+        second_account.id,
+    )
+
+    result = await graphql(
+        graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person_create"]["ok"] is True
+    assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
+
+    # Query the newly created Node to ensure everything is as expected
+    query = """
+        query {
+            person {
+                id
+                name {
+                    value
+                    source {
+                        name {
+                            value
+                        }
+                    }
+                }
+                height {
+                    id
+                    owner {
+                        name {
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    """
+    result1 = await graphql(
+        graphql_schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["name"]["source"]["name"]["value"] == "First Account"
+    assert result1.data["person"][0]["height"]["owner"]["name"]["value"] == "Second Account"
 
 
 async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
@@ -162,13 +216,9 @@ async def test_create_object_with_single_relationship(db, session, default_branc
     """
 
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -201,13 +251,9 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
     """
 
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -247,13 +293,9 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
     """
 
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -297,13 +339,9 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
     """
 
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -333,13 +371,9 @@ async def test_create_person_not_valid(db, session, default_branch, car_person_s
     }
     """
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )

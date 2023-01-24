@@ -24,7 +24,7 @@ from typing import (
 )
 
 import graphene
-from graphql import (
+from graphql import (  # pylint: disable=no-name-in-module
     ExecutionContext,
     ExecutionResult,
     GraphQLError,
@@ -36,8 +36,13 @@ from graphql import (
     subscribe,
     validate,
 )
-from graphql.language.ast import DocumentNode, OperationDefinitionNode
-from graphql.utilities import get_operation_ast
+from graphql.language.ast import (  # pylint: disable=no-name-in-module,import-error
+    DocumentNode,
+    OperationDefinitionNode,
+)
+from graphql.utilities import (
+    get_operation_ast,  # pylint: disable=no-name-in-module,import-error
+)
 from neo4j import AsyncSession
 from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
@@ -46,7 +51,7 @@ from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-# pylint: disable=no-name-in-module,unused-argument
+# pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 
 
 try:
@@ -237,17 +242,14 @@ class InfrahubGraphQLApp:
         subscriptions: Dict[str, AsyncGenerator[Any, None]] = {}
         await websocket.accept("graphql-ws")
         try:
-            while (
-                websocket.client_state != WebSocketState.DISCONNECTED
-                and websocket.application_state != WebSocketState.DISCONNECTED
-            ):
+            while WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
                 message = await websocket.receive_json()
                 await self._handle_websocket_message(message, websocket, subscriptions)
         except WebSocketDisconnect:
             pass
         finally:
             if subscriptions:
-                await asyncio.gather(*(subscriptions[operation_id].aclose() for operation_id in subscriptions))
+                await asyncio.gather(*(subscription.aclose() for _, subscription in subscriptions.items()))
 
     async def _handle_websocket_message(
         self,
@@ -414,10 +416,7 @@ class InfrahubGraphQLApp:
                 }
             )
 
-        if (
-            websocket.client_state != WebSocketState.DISCONNECTED
-            and websocket.application_state != WebSocketState.DISCONNECTED
-        ):
+        if WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
 

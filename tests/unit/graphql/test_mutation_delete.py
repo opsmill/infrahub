@@ -1,9 +1,8 @@
-import graphene
 from graphql import graphql
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graphql import get_gql_mutation, get_gql_query
+from infrahub.graphql import generate_graphql_schema
 
 
 async def test_delete_object(db, session, default_branch, car_person_schema):
@@ -29,11 +28,7 @@ async def test_delete_object(db, session, default_branch, car_person_schema):
         % obj1.id
     )
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session),
-            mutation=await get_gql_mutation(session=session),
-            auto_camelcase=False,
-        ).graphql_schema,
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,

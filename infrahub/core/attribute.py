@@ -95,7 +95,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     @classmethod
     def validate(cls, value) -> bool:
-        return True if isinstance(value, cls.type) else False
+        return isinstance(value, cls.type)
 
     def to_db(self):
         if self.value is None:
@@ -110,12 +110,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             self.value = self.deserialize(value)
 
     @classmethod
-    def serialize(self, value: Any) -> Any:
+    def serialize(cls, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
         return value
 
     @classmethod
-    def deserialize(self, value: Any) -> Any:
+    def deserialize(cls, value: Any) -> Any:
         """Deserialize the value coming from the database."""
         return value
 
@@ -213,6 +213,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch=self.branch,
             at=update_at,
             include_source=True,
+            include_owner=True,
         )
         await query.execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
@@ -256,7 +257,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 and current_attr.get(
                     prop,
                 )
-                and current_attr.get(prop).element_id != getattr(self, f"{prop}_id")
+                and current_attr.get(prop).get("uuid") != getattr(self, f"{prop}_id")
             ):
                 query = await AttributeUpdateNodePropertyQuery.init(
                     session=session, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
@@ -341,7 +342,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 continue
 
             if field_name in ["source", "owner"]:
-                response[field_name] = getattr(self, field_name).to_graphql(session=session, fields=fields[field_name])
+                node_attr_getter = getattr(self, f"get_{field_name}")
+                node_attr = await node_attr_getter(session=session)
+                if not node_attr:
+                    response[field_name] = None
+                else:
+                    response[field_name] = await node_attr.to_graphql(session=session, fields=fields[field_name])
                 continue
 
             if field_name.startswith("_"):

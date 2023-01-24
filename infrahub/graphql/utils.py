@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Dict, Tuple, Union
+from typing import Dict, Union
 
-from graphql import (
+from graphql import (  # pylint: disable=no-name-in-module
     ExecutionContext,
     FieldNode,
     FragmentSpreadNode,
@@ -13,25 +13,17 @@ from graphql import (
     SelectionSetNode,
 )
 
-from infrahub.core import get_branch
-from infrahub.core.timestamp import Timestamp
+# async def extract_global_kwargs(kwargs: dict) -> Tuple[Timestamp, Branch, Node]:
+#     """Extract the timestamp, the branch and the account from the kwargs from GraphQL"""
+#     at = Timestamp(kwargs.get("at", None))
 
-if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
-    from infrahub.core.node import Node
+#     branch = get_branch(branch=kwargs.get("branch"))
+#     rebase = kwargs.get("rebase", False)s
+#     branch.ephemeral_rebase = rebase
 
+#     account = kwargs.get("account", None)
 
-def extract_global_kwargs(kwargs: dict) -> Tuple[Timestamp, Branch, Node]:
-    """Extract the timestamp, the branch and the account from the kwargs from GraphQL"""
-    at = Timestamp(kwargs.get("at", None))
-
-    branch = get_branch(kwargs.get("branch"))
-    rebase = kwargs.get("rebase", False)
-    branch.ephemeral_rebase = rebase
-
-    account = kwargs.get("account", None)
-
-    return at, branch, account
+#     return at, branch, account
 
 
 async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
@@ -94,8 +86,8 @@ def selected_field_names_fast(
     # Choose the function to execute
     if no_fragments:
         return selected_field_names_naive(selection_set)
-    else:
-        return selected_field_names(selection_set, context, runtime_type)
+
+    return selected_field_names(selection_set, context, runtime_type)
 
 
 def selected_field_names_naive(selection_set: SelectionSetNode):

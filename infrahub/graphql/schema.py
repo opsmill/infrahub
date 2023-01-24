@@ -1,5 +1,5 @@
 from graphene import Field, List, ObjectType, String
-from graphql import GraphQLResolveInfo
+from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
 
 from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate
 from .types import BranchDiffType, BranchType
