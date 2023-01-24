@@ -256,7 +256,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 and current_attr.get(
                     prop,
                 )
-                and current_attr.get(prop).element_id != getattr(self, f"{prop}_id")
+                and current_attr.get(prop).get("uuid") != getattr(self, f"{prop}_id")
             ):
                 query = await AttributeUpdateNodePropertyQuery.init(
                     session=session, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
@@ -341,7 +341,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 continue
 
             if field_name in ["source", "owner"]:
-                response[field_name] = getattr(self, field_name).to_graphql(session=session, fields=fields[field_name])
+                node_attr_getter = getattr(self, f"get_{field_name}")
+                node_attr = await node_attr_getter(session=session)
+                if not node_attr:
+                    response[field_name] = None
+                else:
+                    response[field_name] = await node_attr.to_graphql(session=session, fields=fields[field_name])
                 continue
 
             if field_name.startswith("_"):

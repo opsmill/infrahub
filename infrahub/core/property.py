@@ -45,19 +45,43 @@ class NodePropertyMixin:
 
     @property
     def source(self):
-        return self._get_node_property("source")
+        return self._get_node_property_from_cache(name="source")
 
     @source.setter
     def source(self, value):
-        self._set_node_property("source", value)
+        self._set_node_property(name="source", value=value)
 
     @property
     def owner(self):
-        return self._get_node_property("owner")
+        return self._get_node_property_from_cache(name="owner")
 
     @owner.setter
     def owner(self, value):
-        self._set_node_property("owner", value)
+        self._set_node_property(name="owner", value=value)
+
+    async def get_source(self, session: AsyncSession):
+        return await self._get_node_property(name="source", session=session)
+
+    def set_source(self, value):
+        self._set_node_property(name="source", value=value)
+
+    async def get_owner(self, session: AsyncSession):
+        return await self._get_node_property(name="owner", session=session)
+
+    def set_owner(self, value):
+        self._set_node_property(name="owner", value=value)
+
+    def _get_node_property_from_cache(self, name: str) -> Node:
+        """Return the node attribute if it's alraedy present locally,
+        Otherwise raise an exception
+        """
+        item = getattr(self, f"_{name}", None)
+        if not item:
+            raise LookupError(
+                f"The property {name} is not present locally, you must retrive it with get_{name}() instead."
+            )
+
+        return item
 
     async def _get_node_property(self, session: AsyncSession, name: str) -> Node:
         """Return the node attribute.
@@ -69,7 +93,7 @@ class NodePropertyMixin:
 
         return getattr(self, f"_{name}", None)
 
-    def _set_node_property(self, name: str, value: Union[Node, UUID]):
+    def _set_node_property(self, name: str, value: Union[str, Node, UUID]):
         """Set the value of the node_property.
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
