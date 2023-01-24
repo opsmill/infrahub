@@ -20,7 +20,7 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -54,7 +54,7 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -87,7 +87,7 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -114,7 +114,7 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     result1 = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -124,24 +124,30 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     assert result1.data["person"][0]["height"]["is_visible"] is False
 
 
-async def test_create_object_with_node_property(db, session, default_branch, car_person_schema):
+async def test_create_object_with_node_property(
+    db, session, default_branch, car_person_schema, first_account, second_account
+):
 
     graphql_schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
 
     query = """
     mutation {
-        person_create(data: {name: { value: "John", is_protected: true}, height: {value: 182, is_visible: false}}) {
+        person_create(data: {name: { value: "John", source: "%s" }, height: {value: 182, owner: "%s" }}) {
             ok
             object {
                 id
             }
         }
     }
-    """
+    """ % (
+        first_account.id,
+        second_account.id,
+    )
+
     result = await graphql(
         graphql_schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -157,10 +163,19 @@ async def test_create_object_with_node_property(db, session, default_branch, car
                 id
                 name {
                     value
-                    is_protected
+                    source {
+                        name {
+                            value
+                        }
+                    }
                 }
                 height {
-                    is_visible
+                    id
+                    owner {
+                        name {
+                            value
+                        }
+                    }
                 }
             }
         }
@@ -168,14 +183,14 @@ async def test_create_object_with_node_property(db, session, default_branch, car
     result1 = await graphql(
         graphql_schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["name"]["is_protected"] is True
-    assert result1.data["person"][0]["height"]["is_visible"] is False
+    assert result1.data["person"][0]["name"]["source"]["name"]["value"] == "First Account"
+    assert result1.data["person"][0]["height"]["owner"]["name"]["value"] == "Second Account"
 
 
 async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
@@ -203,7 +218,7 @@ async def test_create_object_with_single_relationship(db, session, default_branc
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -238,7 +253,7 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -280,7 +295,7 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -326,7 +341,7 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -358,7 +373,7 @@ async def test_create_person_not_valid(db, session, default_branch, car_person_s
     result = await graphql(
         schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )

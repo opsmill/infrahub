@@ -40,6 +40,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
         *args,
@@ -81,6 +82,7 @@ class NodeManager:
             account=account,
             at=at,
             include_source=include_source,
+            include_owner=include_owner,
             session=session,
         )
 
@@ -98,6 +100,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
+        include_owner: bool = False,
         account=None,
         *args,
         **kwargs,
@@ -119,7 +122,13 @@ class NodeManager:
             return []
 
         peers = await cls.get_many(
-            ids=peer_ids, branch=branch, account=account, at=at, include_source=include_source, session=session
+            ids=peer_ids,
+            branch=branch,
+            account=account,
+            at=at,
+            include_source=include_source,
+            include_owner=include_owner,
+            session=session,
         )
 
         return [
@@ -237,6 +246,9 @@ class NodeManager:
 
                     if attr.source_uuid:
                         attrs[attr_name]["source"] = attr.source_uuid
+
+                    if attr.owner_uuid:
+                        attrs[attr_name]["owner"] = attr.owner_uuid
 
             # Identify the proper Class to use for this Node
             node_class = Node

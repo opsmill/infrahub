@@ -110,6 +110,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if "_source" in fields.keys():
             self._source = fields["_source"]
+        if "_owner" in fields.keys():
+            self._owner = fields["_owner"]
 
         # Validate input
         for field_name in fields.keys():
@@ -151,6 +153,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         at=self._at,
                         node=self,
                         source=self._source,
+                        owner=self._owner,
                     ),
                 )
             except ValidationError as exc:

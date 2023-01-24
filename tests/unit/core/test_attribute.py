@@ -6,16 +6,17 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 
 
-@pytest.mark.skip(reason="Currently not working need to refactor attribute property for Async")
 async def test_init(session, default_branch, criticality_schema, first_account, second_account):
 
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
     assert attr.value == "mystring"
-    assert hasattr(attr, "source")
     assert attr.source_id is None
     assert attr._source is None
+
+    with pytest.raises(LookupError):
+        attr.source
 
     # initialize with a more complex data structure
     attr = String(

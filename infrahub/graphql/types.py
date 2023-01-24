@@ -55,6 +55,7 @@ class GetListMixin:
                     branch=branch,
                     account=account,
                     include_source=True,
+                    include_owner=True,
                 )
             else:
                 objs = await NodeManager.query(
@@ -65,6 +66,7 @@ class GetListMixin:
                     branch=branch,
                     account=account,
                     include_source=True,
+                    include_owner=True,
                 )
 
             if not objs:

@@ -140,6 +140,7 @@ async def default_resolver(*args, **kwargs):
             branch=branch,
             account=account,
             include_source=True,
+            include_owner=True,
         )
 
     if node_rel.cardinality == "many":

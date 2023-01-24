@@ -530,7 +530,7 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
 
-async def test_query_attribute_source(
+async def test_query_node_property_source(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
 
@@ -564,6 +564,42 @@ async def test_query_attribute_source(
     assert result1.errors is None
     assert result1.data["person"][0]["firstname"]["source"]
     assert result1.data["person"][0]["firstname"]["source"]["name"]["value"] == first_account.name.value
+
+
+async def test_query_node_property_owner(
+    db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
+):
+
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, firstname="John", lastname="Doe", _owner=first_account)
+    await p1.save(session=session)
+
+    query = """
+    query {
+        person {
+            id
+            firstname {
+                value
+                owner {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+    result1 = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result1.errors is None
+    assert result1.data["person"][0]["firstname"]["owner"]
+    assert result1.data["person"][0]["firstname"]["owner"]["name"]["value"] == first_account.name.value
 
 
 async def test_query_attribute_flag_property(

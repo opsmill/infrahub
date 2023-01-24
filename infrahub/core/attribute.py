@@ -213,6 +213,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch=self.branch,
             at=update_at,
             include_source=True,
+            include_owner=True,
         )
         await query.execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)

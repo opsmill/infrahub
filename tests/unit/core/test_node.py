@@ -188,7 +188,7 @@ async def test_node_create_local_attrs(session, default_branch: Branch, critical
     assert obj.color.id
 
 
-async def test_node_create_local_attrs_with_source(session, default_branch: Branch, criticality_schema, first_account):
+async def test_node_create_attribute_with_source(session, default_branch: Branch, criticality_schema, first_account):
 
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(session=session, name="low", level=4, _source=first_account)
@@ -211,7 +211,7 @@ async def test_node_create_local_attrs_with_source(session, default_branch: Bran
     assert obj.color.source_id == first_account.id
 
 
-async def test_node_create_local_attrs_with_different_sources(
+async def test_node_create_attribute_with_different_sources(
     session, default_branch: Branch, criticality_schema, first_account, second_account
 ):
 
@@ -234,6 +234,54 @@ async def test_node_create_local_attrs_with_different_sources(
     assert obj.color.value == "#444444"
     assert obj.color.id
     assert obj.color.source_id == first_account.id
+
+
+async def test_node_create_attribute_with_owner(session, default_branch: Branch, criticality_schema, first_account):
+
+    obj = await Node.init(session=session, schema=criticality_schema)
+    await obj.new(session=session, name="low", level=4, _owner=first_account)
+    await obj.save(session=session)
+
+    assert obj.id
+    assert obj.db_id
+    assert obj._owner == first_account
+    assert obj.name.value == "low"
+    assert obj.name.id
+    assert obj.name.owner_id == first_account.id
+    assert obj.level.value == 4
+    assert obj.level.id
+    assert obj.level.owner_id == first_account.id
+    assert obj.description.value is None
+    assert obj.description.id
+    assert obj.description.owner_id == first_account.id
+    assert obj.color.value == "#444444"
+    assert obj.color.id
+    assert obj.color.owner_id == first_account.id
+
+
+async def test_node_create_attribute_with_different_owner(
+    session, default_branch: Branch, criticality_schema, first_account, second_account
+):
+
+    obj = await Node.init(session=session, schema=criticality_schema)
+    await obj.new(session=session, name={"value": "low", "owner": second_account.id}, level=4, _owner=first_account)
+    await obj.save(session=session)
+
+    assert obj.id
+    assert obj.db_id
+    assert obj._owner == first_account
+    assert obj.name.value == "low"
+    assert obj.name.id
+    assert obj.name.owner_id == second_account.id
+    assert obj.level.value == 4
+    assert obj.level.id
+    assert obj.level.owner_id == first_account.id
+    assert obj.description.value is None
+    assert obj.description.id
+    assert obj.description.owner_id == first_account.id
+    assert obj.color.value == "#444444"
+    assert obj.color.id
+    assert obj.color.owner_id == first_account.id
 
 
 async def test_node_create_with_single_relationship(session, default_branch: Branch, car_person_schema):
