@@ -113,6 +113,9 @@ asyncio_mode = "auto"
 testpaths = [
     "tests"
 ]
+filterwarnings = [
+    "ignore:Module already imported so cannot be rewritten",
+]
 
 [tool.mypy]
 pretty = true
