@@ -60,10 +60,9 @@ async def test_many_init_no_input_no_rel(session, default_branch, person_tag_sch
 
     # shouldn't be able to query the peer since it's many type relationship
     with pytest.raises(TypeError):
-        await relm.get_peer()
+        await relm.get_peer(session=session)
 
-    assert not len(list(relm))
-    assert not len(relm.get())
+    assert not len(await relm.get(session=session))
 
 
 async def test_many_init_no_input_existing_rel(session, default_branch, person_tag_schema):
@@ -84,8 +83,7 @@ async def test_many_init_no_input_existing_rel(session, default_branch, person_t
         session=session, schema=rel_schema, branch=default_branch, at=Timestamp(), node=p1, name="tags"
     )
 
-    assert len(list(relm)) == 2
-    assert len(relm.get()) == 2
+    assert len(await relm.get(session=session)) == 2
 
 
 async def test_one_init_input_obj(session, default_branch, person_tag_schema):

@@ -263,7 +263,7 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
     assert len(result.data["car_create"]["object"]["id"]) == 36
 
     car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
-    assert car.owner.get().is_protected is True
+    assert await car.owner.get(session=session).is_protected is True
 
 
 async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
@@ -305,7 +305,7 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
     assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
 
     fruit = await NodeManager.get_one(session=session, id=result.data["fruit_create"]["object"]["id"])
-    assert len(fruit.tags.get()) == 3
+    assert len(await fruit.tags.get(session=session)) == 3
 
 
 async def test_create_object_with_multiple_relationships_flag_property(db, session, default_branch, fruit_tag_schema):
@@ -351,7 +351,7 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
     assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
 
     fruit = await NodeManager.get_one(session=session, id=result.data["fruit_create"]["object"]["id"])
-    rels = fruit.tags.get()
+    rels = await fruit.tags.get(session=session)
     assert len(rels) == 3
     assert rels[0].is_protected is True
     assert rels[1].is_protected is True

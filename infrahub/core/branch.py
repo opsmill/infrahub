@@ -279,7 +279,7 @@ class Branch(StandardNode):
 
         # Collecting all the checks from all the repopository
         for repo in repos:
-            for rel_check in repo.checks.get():
+            for rel_check in await repo.checks.get(session=session):
                 check = await rel_check.get_peer(session=session)
 
                 tasks.append(

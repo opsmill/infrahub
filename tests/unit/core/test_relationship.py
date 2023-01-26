@@ -73,7 +73,7 @@ async def test_relationship_load_existing(session, default_branch, car_person_sc
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
-    c3 = await Node.init(session=session, schema="Car")
+    c3: Node = await Node.init(session=session, schema="Car")
     await c3.new(
         session=session,
         name="smart",
@@ -148,6 +148,6 @@ async def test_relationship_save(session, default_branch, person_tag_schema):
     await rel.save(session=session)
 
     p11 = await NodeManager.get_one(id=p1.id, session=session)
-    tags = list(p11.tags)
+    tags = await p11.tags.get(session=session)
     assert len(tags) == 1
     assert tags[0].id == rel.id

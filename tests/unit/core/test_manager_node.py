@@ -133,7 +133,7 @@ async def test_get_one_relationship(session, default_branch, car_person_schema):
     p11 = await NodeManager.get_one(session=session, id=p1.id)
     assert p11.name.value == "John"
     assert p11.height.value == 180
-    assert len(list(p11.cars)) == 2
+    assert len(list(await p11.cars.get(session=session))) == 2
 
 
 async def test_get_one_relationship_with_flag_property(session, default_branch, car_person_schema):
@@ -169,7 +169,7 @@ async def test_get_one_relationship_with_flag_property(session, default_branch, 
     assert c11.is_electric.value is True
     c11_peer = await c11.owner.get_peer(session=session)
     assert c11_peer.id == p1.id
-    rel = c11.owner.get()
+    rel = await c11.owner.get(session=session)
     assert rel.is_visible is False
     assert rel.is_protected is True
 
@@ -177,7 +177,7 @@ async def test_get_one_relationship_with_flag_property(session, default_branch, 
     assert p11.name.value == "John"
     assert p11.height.value == 180
 
-    rels = p11.cars.get()
+    rels = await p11.cars.get(session=session)
     assert len(rels) == 2
     assert rels[0].is_visible is False
     assert rels[1].is_visible is False

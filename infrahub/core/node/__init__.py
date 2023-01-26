@@ -82,7 +82,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         schema: Union[NodeSchema, str],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> SelfNode:
+    ) -> Node:
 
         attrs = {}
 
