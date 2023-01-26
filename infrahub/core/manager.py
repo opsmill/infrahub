@@ -102,8 +102,6 @@ class NodeManager:
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
-        *args,
-        **kwargs,
     ) -> List[Relationship]:
         branch = await get_branch(branch=branch, session=session)
         at = Timestamp(at)
@@ -154,8 +152,6 @@ class NodeManager:
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
-        *args,
-        **kwargs,
     ) -> Node:
         """Return one node based on its ID."""
         result = await cls.get_many(
@@ -167,8 +163,6 @@ class NodeManager:
             include_owner=include_owner,
             account=account,
             session=session,
-            *args,
-            **kwargs,
         )
 
         if not result:
@@ -187,8 +181,6 @@ class NodeManager:
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
-        *args,
-        **kwargs,
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 

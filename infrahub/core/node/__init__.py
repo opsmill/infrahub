@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 #  -
 # ---------------------------------------------------------------------------------------
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,too-many-branches
 
 
 SelfNode = TypeVar("SelfNode", bound="Node")
@@ -36,7 +36,7 @@ SelfNode = TypeVar("SelfNode", bound="Node")
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
-    def __init_subclass_with_meta__(
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
         cls,
         _meta=None,
         default_filter=None,

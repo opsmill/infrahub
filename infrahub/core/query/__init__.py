@@ -120,7 +120,7 @@ class Query(ABC):
 
     order_by: Optional[List[str]] = None
 
-    def __init__(self, branch: Branch = None, at: Union[Timestamp, str] = None, limit: int = None, *args, **kwargs):
+    def __init__(self, branch: Branch = None, at: Union[Timestamp, str] = None, limit: int = None):
 
         if branch:
             self.branch = branch
@@ -240,7 +240,7 @@ class Query(ABC):
         for idx, result in enumerate(self.results):
             score_idx[idx] = result.branch_score
 
-        for idx, score in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
+        for idx in sorted(score_idx, key=lambda x: x[1], reverse=True):
             yield self.results[idx]
 
     def get_results_group_by(self, *args) -> Generator[QueryResult, None, None]:

@@ -17,7 +17,7 @@ class BaseOptions:
 
     def __setattr__(self, name, value):
         if not self._frozen:
-            super(BaseOptions, self).__setattr__(name, value)
+            super(BaseOptions, self).__setattr__(name, value)  # pylint: disable=super-with-arguments
         else:
             raise Exception(f"Can't modify frozen Options {self}")
 
