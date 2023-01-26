@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema import RelationshipSchema
 
+# pylint: disable=redefined-builtin
+
 
 @dataclass
 class RelData:

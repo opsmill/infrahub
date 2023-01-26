@@ -26,7 +26,8 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema import NodeSchema, RelationshipSchema
 
-# RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
+# pylint: disable=redefined-builtin
+
 
 SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
 SelfRelationshipManager = TypeVar("SelfRelationshipManager", bound="RelationshipManager")

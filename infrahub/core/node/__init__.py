@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 #  -
 # ---------------------------------------------------------------------------------------
 
+# pylint: disable=redefined-builtin
+
 
 SelfNode = TypeVar("SelfNode", bound="Node")
 

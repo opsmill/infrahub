@@ -44,6 +44,8 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
+# pylint: disable=redefined-builtin
+
 
 class AddNodeToBranch(Query):
 

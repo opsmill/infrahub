@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from . import Node
 
-# pylint: disable=consider-using-f-string
+# pylint: disable=consider-using-f-string,redefined-builtin
 
 
 @dataclass

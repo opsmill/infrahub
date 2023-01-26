@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
 
+# pylint: disable=redefined-builtin
+
 
 class NodeManager:
     @classmethod
@@ -43,8 +45,6 @@ class NodeManager:
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
-        *args,
-        **kwargs,
     ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 

@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
 
+
+# pylint: disable=no-self-argument,redefined-builtin
+
 ATTRIBUTES_MAPPING = {
     "Any": AnyAttribute,
     "String": String,
@@ -48,7 +51,7 @@ class AttributeSchema(BaseModel):
         cls,
         v,
     ):
-        if v not in ATTRIBUTES_MAPPING.keys():
+        if v not in ATTRIBUTES_MAPPING:
             raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTES_MAPPING.keys()} ")
         return v
 

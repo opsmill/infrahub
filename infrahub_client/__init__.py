@@ -5,6 +5,9 @@ from typing import Dict, List, Optional
 import httpx
 from pydantic import BaseModel
 
+# pylint: disable=redefined-builtin
+
+
 QUERY_ALL_REPOSITORIES = """
 query {
     repository {
