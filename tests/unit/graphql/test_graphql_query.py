@@ -960,7 +960,7 @@ async def test_union_relationship(
     }
 
 
-@pytest.mark.skip(reason="Union is not supported at the root of the GRaphQL Schema")
+@pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
 async def test_union_root(
     db, session, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
 ):
