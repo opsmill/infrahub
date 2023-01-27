@@ -240,7 +240,7 @@ class Query(ABC):
         for idx, result in enumerate(self.results):
             score_idx[idx] = result.branch_score
 
-        for idx in sorted(score_idx, key=lambda x: x[1], reverse=True):
+        for idx, _ in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
             yield self.results[idx]
 
     def get_results_group_by(self, *args) -> Generator[QueryResult, None, None]:
