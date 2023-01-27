@@ -75,29 +75,13 @@ INTERFACE_ROLES = {
 LOGGER = logging.getLogger("infrahub")
 
 
-async def load_data(session: AsyncSession):
+async def load_data(session: AsyncSession, nbr_devices: int = None):
 
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
     groups_dict = {}
-    tags_dict = {}
-
-    # for perm in PERMS:
-    #     obj = Permission.init(name=perm[0], type=perm[1])
-    #     obj.save(session=session)
-    #     perms_dict[perm[0]] = obj
-
-    #     # Associate the permissions with the right attr group
-    #     grp = registry.attr_group[perm[2]]
-    #     add_relationship(obj, grp, f"CAN_{obj.type.value}")
-
-    #     LOGGER.info(f"Permission Created: {obj.name.value}")
-
-    # # Import the existing groups into the dict
-    # groups = Group.get_list()
-    # for group in groups:
-    #     groups_dict[group.slug.value] = group
+    # tags_dict = {}
 
     for group in GROUPS:
         obj = await Node.init(session=session, schema="Group")
@@ -105,21 +89,6 @@ async def load_data(session: AsyncSession):
         await obj.save(session=session)
         groups_dict[group[1]] = obj
         LOGGER.info(f"Group Created: {obj.name.value}")
-
-        # for perm_name in group[2]:
-        #     perm = perms_dict[perm_name]
-
-        #     # Associate the permissions with the right attr group
-        #     add_relationship(obj, perm, f"HAS_PERM")
-
-    # for account in ACCOUNTS:
-    #     obj =  await Node.init(session=session, schema="Account").new(session=session, name=account[0], type=account[1]).save(session=session)
-    #     accounts_dict[account[0]] = obj
-
-    #     for group in account[2]:
-    #         groups_dict[group].add_account(obj)
-
-    #     LOGGER.info(f"Account Created: {obj.name.value}")
 
     # ------------------------------------------
     # Create Status, Role & DeviceProfile
@@ -148,13 +117,13 @@ async def load_data(session: AsyncSession):
         statuses_dict[status] = obj
         LOGGER.info(f"Created Status: {status}")
 
-    TAGS = ["blue", "green", "red"]
-    for tag in TAGS:
-        obj = await Node.init(session=session, schema="Tag")
-        await obj.new(session=session, name=tag)
-        await obj.save(session=session)
-        tags_dict[tag] = obj
-        LOGGER.info(f"Created Tag: {tag}")
+    # TAGS = ["blue", "green", "red"]
+    # for tag in TAGS:
+    #     obj = await Node.init(session=session, schema="Tag")
+    #     await obj.new(session=session, name=tag)
+    #     await obj.save(session=session)
+    #     tags_dict[tag] = obj
+    #     LOGGER.info(f"Created Tag: {tag}")
 
     active_status = statuses_dict["active"]
     role_loopback = roles_dict["loopback"]
@@ -162,22 +131,16 @@ async def load_data(session: AsyncSession):
     LOGGER.info("Creating Device")
     for idx, device in enumerate(DEVICES):
 
-        status = statuses_dict[device[1]]
+        if nbr_devices and nbr_devices <= idx:
+            continue
 
-        # if device[3]:
-        #     # profile = device_profiles_dict[device[3]]
-        #     profile_id = device_profiles_dict[device[3]].id
+        status = statuses_dict[device[1]]
 
         role_id = None
         if device[4]:
             role_id = roles_dict[device[4]].id
         obj = await Node.init(session=session, schema="Device")
         await obj.new(session=session, name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
-
-        # # Connect tags
-        # for tag_name in device[5]:
-        #     tag = tags_dict[tag_name]
-        #     obj.tags.add_peer(tag)
 
         await obj.save(session=session)
         LOGGER.info(f"- Created Device: {device[0]}")

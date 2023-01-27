@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema import RelationshipSchema
 
+# pylint: disable=redefined-builtin
+
 
 @dataclass
 class RelData:
@@ -498,7 +500,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                 updated_at=result.get("r1").get("from"),
                 rels=[RelData.from_db(result.get("r1")), RelData.from_db(result.get("r2"))],
                 branch=self.branch,
-                properties=dict(),
+                properties={},
             )
 
             if hasattr(self.rel, "_flag_properties"):

@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
 
+# pylint: disable=redefined-builtin
+
 
 class NodeManager:
     @classmethod
@@ -43,8 +45,6 @@ class NodeManager:
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
-        *args,
-        **kwargs,
     ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 
@@ -102,8 +102,6 @@ class NodeManager:
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
-        *args,
-        **kwargs,
     ) -> List[Relationship]:
         branch = await get_branch(branch=branch, session=session)
         at = Timestamp(at)
@@ -125,6 +123,7 @@ class NodeManager:
             ids=peer_ids,
             branch=branch,
             account=account,
+            fields=fields,
             at=at,
             include_source=include_source,
             include_owner=include_owner,
@@ -153,8 +152,6 @@ class NodeManager:
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
-        *args,
-        **kwargs,
     ) -> Node:
         """Return one node based on its ID."""
         result = await cls.get_many(
@@ -166,8 +163,6 @@ class NodeManager:
             include_owner=include_owner,
             account=account,
             session=session,
-            *args,
-            **kwargs,
         )
 
         if not result:
@@ -186,8 +181,6 @@ class NodeManager:
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
-        *args,
-        **kwargs,
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
@@ -375,7 +368,8 @@ class SchemaManager(NodeManager):
             if rel_name not in node_data:
                 node_data[rel_name] = []
 
-            for rel in getattr(schema_node, rel_name):
+            rm = getattr(schema_node, rel_name)
+            for rel in await rm.get(session=session):
                 item_data = {}
                 item = await rel.get_peer(session=session)
                 for item_name in item._attributes:
@@ -401,7 +395,8 @@ class SchemaManager(NodeManager):
             if rel_name not in node_data:
                 node_data[rel_name] = []
 
-            for rel in getattr(schema_node, rel_name):
+            rm = getattr(schema_node, rel_name)
+            for rel in await rm.get(session=session):
                 item_data = {}
                 item = await rel.get_peer(session=session)
                 for item_name in item._attributes:

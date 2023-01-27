@@ -142,7 +142,7 @@ class TestUserWorkflow01:
 
     @pytest.fixture(scope="class")
     async def dataset01(self, session, init_db_infra):
-        await ds01.load_data(session=session)
+        await ds01.load_data(session=session, nbr_devices=2)
 
     def test_initialize_state(self):
         pytest.state = {
@@ -165,7 +165,7 @@ class TestUserWorkflow01:
         result = response.json()["data"]
 
         assert "device" in result.keys()
-        assert len(result["device"]) == 8
+        assert len(result["device"]) == 2
 
         # Initialize the start time
         pytest.state["time_start"] = pendulum.now(tz="UTC")

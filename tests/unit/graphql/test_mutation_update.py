@@ -281,7 +281,8 @@ async def test_update_new_single_relationship_flag_property(db, session, default
     car = await NodeManager.get_one(session=session, id=c1.id)
     car_peer = await car.owner.get_peer(session=session)
     assert car_peer.id == p2.id
-    assert car.owner.get().is_protected is True
+    rm = await car.owner.get(session=session)
+    assert rm.is_protected is True
 
 
 async def test_update_existing_single_relationship_flag_property(db, session, default_branch, car_person_schema):
@@ -327,7 +328,8 @@ async def test_update_existing_single_relationship_flag_property(db, session, de
     car = await NodeManager.get_one(session=session, id=c1.id)
     car_peer = await car.owner.get_peer(session=session)
     assert car_peer.id == p1.id
-    assert car.owner.get().is_protected is True
+    rm = await car.owner.get(session=session)
+    assert rm.is_protected is True
 
 
 async def test_update_relationship_many(db, session, default_branch, person_tag_schema):
@@ -377,7 +379,7 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
     assert len(result.data["person_update"]["object"]["tags"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=p1.id)
-    assert len(list(p11.tags)) == 1
+    assert len(list(await p11.tags.get(session=session))) == 1
 
     # Replace the current value (t1) with t2 and t3
     query = """
@@ -412,7 +414,7 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=p1.id)
-    tags = p12.tags
+    tags = await p12.tags.get(session=session)
     peers = [await tag.get_peer(session=session) for tag in tags]
     assert sorted([peer.name.value for peer in peers]) == ["Black", "Red"]
 
@@ -449,7 +451,7 @@ async def test_update_relationship_many(db, session, default_branch, person_tag_
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
     p13 = await NodeManager.get_one(session=session, id=p1.id)
-    tags = p13.tags
+    tags = await p13.tags.get(session=session)
     peers = [await tag.get_peer(session=session) for tag in tags]
     assert sorted([peer.name.value for peer in peers]) == ["Black", "Blue"]
 
@@ -501,7 +503,7 @@ async def test_update_relationship_many2(db, session, default_branch, person_tag
     assert len(result.data["person_update"]["object"]["tags"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=p1.id)
-    assert len(list(p11.tags)) == 1
+    assert len(list(await p11.tags.get(session=session))) == 1
 
     # Replace the current value (t1) with t2 and t3
     query = """
@@ -536,7 +538,7 @@ async def test_update_relationship_many2(db, session, default_branch, person_tag
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=p1.id)
-    tags = p12.tags
+    tags = await p12.tags.get(session=session)
     peers = [await tag.get_peer(session=session) for tag in tags]
     assert sorted([peer.name.value for peer in peers]) == ["Black", "Red"]
 
@@ -589,7 +591,7 @@ async def test_update_relationship_previously_deleted(db, session, default_branc
     assert len(result.data["person_update"]["object"]["tags"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=p1.id)
-    assert len(list(p11.tags)) == 1
+    assert len(list(await p11.tags.get(session=session))) == 1
 
     # Replace the current value (t1) with t2 and t3
     query = """
@@ -624,7 +626,7 @@ async def test_update_relationship_previously_deleted(db, session, default_branc
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=p1.id)
-    tags = p12.tags
+    tags = await p12.tags.get(session=session)
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
 
     # Replace the current value (t2, t3) with t1 and t3
@@ -660,5 +662,5 @@ async def test_update_relationship_previously_deleted(db, session, default_branc
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
     p13 = await NodeManager.get_one(session=session, id=p1.id)
-    tags = p13.tags
+    tags = await p13.tags.get(session=session)
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]

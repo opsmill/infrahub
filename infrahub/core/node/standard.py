@@ -9,6 +9,8 @@ from infrahub.database import execute_read_query_async, execute_write_query_asyn
 
 SelfNode = TypeVar("SelfNode", bound="StandardNode")
 
+# pylint: disable=redefined-builtin
+
 
 class StandardNode(BaseModel):
 
@@ -63,7 +65,7 @@ class StandardNode(BaseModel):
         node_type = self.get_type()
 
         attrs = []
-        for attr_name in self.__fields__.keys():
+        for attr_name in self.__fields__:
             if attr_name in self._exclude_attrs:
                 continue
             attrs.append(f"{attr_name}: '{getattr(self, attr_name)}'")
@@ -93,7 +95,7 @@ class StandardNode(BaseModel):
         """Update the node in the database if needed."""
 
         attrs = []
-        for attr_name in self.__fields__.keys():
+        for attr_name in self.__fields__:
             if attr_name in self._exclude_attrs and attr_name != "uuid":
                 continue
             attrs.append(f"{attr_name}: '{getattr(self, attr_name)}'")

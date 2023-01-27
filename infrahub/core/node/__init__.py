@@ -28,13 +28,15 @@ if TYPE_CHECKING:
 #  -
 # ---------------------------------------------------------------------------------------
 
+# pylint: disable=redefined-builtin,too-many-branches
+
 
 SelfNode = TypeVar("SelfNode", bound="Node")
 
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
-    def __init_subclass_with_meta__(
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
         cls,
         _meta=None,
         default_filter=None,
@@ -82,7 +84,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         schema: Union[NodeSchema, str],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> SelfNode:
+    ) -> Node:
 
         attrs = {}
 

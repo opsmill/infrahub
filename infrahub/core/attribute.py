@@ -26,6 +26,8 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema
 
+# pylint: disable=redefined-builtin
+
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 

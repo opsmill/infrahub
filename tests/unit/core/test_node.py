@@ -5,7 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 from infrahub.exceptions import ValidationError
@@ -128,7 +128,7 @@ async def test_node_init_with_single_relationship(session, default_branch: Branc
 
     assert p1.name.value == "John"
     assert p1.height.value == 180
-    assert list(p1.cars) == []
+    assert list(await p1.cars.get(session=session)) == []
 
     await p1.save(session=session)
 
@@ -294,7 +294,7 @@ async def test_node_create_with_single_relationship(session, default_branch: Bra
 
     assert p1.name.value == "John"
     assert p1.height.value == 180
-    assert list(p1.cars) == []
+    assert list(await p1.cars.get(session=session)) == []
 
     await p1.save(session=session)
 
@@ -346,7 +346,7 @@ async def test_node_create_with_single_relationship(session, default_branch: Bra
     assert c3.is_electric.value is True
     c3_owner = await c3.owner.get_peer(session=session)
     assert c3_owner.id == p1.id
-    rel = c3.owner.get()
+    rel = await c3.owner.get(session=session)
     assert rel.is_protected is True
     assert rel.is_visible is False
     paths = await get_paths_between_nodes(
@@ -376,7 +376,7 @@ async def test_node_create_with_multiple_relationship(session, default_branch: B
     await f1.new(session=session, name="apple", tags=[t1, t2, t3])
     await f1.save(session=session)
     assert f1.name.value == "apple"
-    assert len(list(f1.tags)) == 3
+    assert len(list(await f1.tags.get(session=session))) == 3
 
     # We should have 2 paths between f1 and t1, t2 & t3
     # First for the relationship, second via the branch
@@ -440,6 +440,89 @@ async def test_node_update_local_attrs_with_source(
 
     obj3 = await NodeManager.get_one(id=obj1.id, include_source=True, session=session)
     assert obj3.name.source_id == second_account.id
+
+
+async def test_update_related_node(db, session, default_branch, data_schema):
+    """
+    This test has been written to troubleshoot a specific issue
+    where a relationship between 2 nodes was being deleted when one of the node was getting updated.
+    """
+    # ----------------------------------------------------------------
+    # Define specific schema
+    # ----------------------------------------------------------------
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "tag",
+                "kind": "Tag",
+                "default_filter": "name__value",
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "String", "unique": True},
+                    {"name": "description", "kind": "String", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "person", "peer": "Person", "cardinality": "one"},
+                ],
+            },
+            {
+                "name": "person",
+                "kind": "Person",
+                "default_filter": "name__value",
+                "branch": True,
+                "attributes": [
+                    {"name": "firstname", "kind": "String"},
+                    {"name": "lastname", "kind": "String"},
+                ],
+                "relationships": [
+                    {"name": "tags", "peer": "Tag", "cardinality": "many"},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    for node in schema.nodes:
+        registry.set_schema(name=node.kind, schema=node)
+
+    # ----------------------------------------------------------------
+    # Create objects
+    # ----------------------------------------------------------------
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, firstname="John", lastname="Doe")
+    await p1.save(session=session)
+
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="Blue", description="The Blue tag", person=p1)
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="Red", description="The Red tag", person=p1)
+    await t2.save(session=session)
+    t3 = await Node.init(session=session, schema="Tag")
+    await t3.new(session=session, name="Black", description="The Black tag", person=p1)
+    await t3.save(session=session)
+
+    # ----------------------------------------------------------------
+    # Query all tags attached to person
+    # ----------------------------------------------------------------
+    p11 = await NodeManager.get_one(session=session, id=p1.id)
+    tags = await p11.tags.get(session=session)
+    assert len(tags) == 3
+
+    # ----------------------------------------------------------------
+    # Update the description of Tag1 in the main branch
+    # ----------------------------------------------------------------
+    new_description = "New description in main"
+    t11 = await NodeManager.get_one(session=session, id=t1.id)
+    t11.description.value = new_description
+    await t11.save(session=session)
+
+    # ----------------------------------------------------------------
+    # Re-query the tag via the related objects to validate that everything is still connected
+    # ----------------------------------------------------------------
+    p12 = await NodeManager.get_one(session=session, id=p1.id)
+    tags = await p12.tags.get(session=session)
+    assert len(tags) == 3
 
 
 # --------------------------------------------------------------------------
@@ -543,10 +626,10 @@ async def test_node_delete_with_relationship_bidir(session, default_branch: Bran
     assert len(resp) == 2
 
     p11 = await NodeManager.get_one(id=p1.id, session=session)
-    assert len(list(p11.cars)) == 1
+    assert len(list(await p11.cars.get(session=session))) == 1
 
     p12 = await NodeManager.get_one(id=p1.id, at=time1, session=session)
-    assert len(list(p12.cars)) == 2
+    assert len(list(await p12.cars.get(session=session))) == 2
 
 
 # --------------------------------------------------------------------------
@@ -611,7 +694,7 @@ async def test_node_relationship_interface(session, default_branch: Branch, vehi
     await p1.save(session=session)
 
     obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, session=session)
-    vehicules = obj1.vehicules.get()
+    vehicules = await obj1.vehicules.get(session=session)
     assert len(vehicules) == 2
 
 
@@ -655,7 +738,7 @@ async def test_union(db, session, default_branch, generic_vehicule_schema, car_s
     await p1.save(session=session)
 
     obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, session=session)
-    peers = [await peer_rel.get_peer(session=session) for peer_rel in obj1.road_vehicules.get()]
+    peers = [await peer_rel.get_peer(session=session) for peer_rel in await obj1.road_vehicules.get(session=session)]
     assert len(peers) == 3
 
     kinds = sorted([peer.get_kind() for peer in peers])

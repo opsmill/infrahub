@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from . import Node
 
-# pylint: disable=consider-using-f-string
+# pylint: disable=consider-using-f-string,redefined-builtin
 
 
 @dataclass
@@ -66,7 +66,7 @@ class AttrToProcess:
     is_visible: Optional[bool]
 
 
-async def find_node_schema(node, branch: Union[Branch, str], session: AsyncSession) -> NodeSchema:
+def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
 
     for label in node.labels:
         if registry.has_schema(name=label, branch=branch):
@@ -403,7 +403,7 @@ class NodeListGetInfoQuery(Query):
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = await find_node_schema(node=result.get("n"), branch=self.branch, session=session)
+            schema = find_node_schema(node=result.get("n"), branch=self.branch)
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get("n").element_id,

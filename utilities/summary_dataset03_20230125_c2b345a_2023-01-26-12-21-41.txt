@@ -1,0 +1,24 @@
+[2023-01-26 12:21:41,402] damiens-macbook.lan/INFO/locust.main: Run time limit set to 20 seconds
+[2023-01-26 12:21:41,402] damiens-macbook.lan/INFO/locust.main: Starting Locust 2.14.2
+[2023-01-26 12:21:41,402] damiens-macbook.lan/INFO/locust.runners: Ramping to 2 users at a rate of 2.00 per second
+[2023-01-26 12:21:41,403] damiens-macbook.lan/INFO/locust.runners: All users spawned: {"InfrahubUser": 2} (2 total users)
+[2023-01-26 12:21:41,403] damiens-macbook.lan/INFO/locust.runners: Resetting stats
+
+[2023-01-26 12:22:01,266] damiens-macbook.lan/INFO/locust.main: --run-time limit reached, shutting down
+[2023-01-26 12:22:01,267] damiens-macbook.lan/INFO/locust.main: Shutting down (exit code 0)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+POST     query_device_names                                                                62     0(0.00%) |    232     194     537    220 |    3.12        0.00
+POST     query_one_device                                                                  55     0(0.00%) |    459     378     846    430 |    2.77        0.00
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                       117     0(0.00%) |    339     194     846    260 |    5.89        0.00
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+POST     query_device_names                                                                    220    230    240    240    250    260    400    540    540    540    540     62
+POST     query_one_device                                                                      430    450    460    470    500    770    840    850    850    850    850     55
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                            260    420    430    450    470    500    770    840    850    850    850    117
+
+

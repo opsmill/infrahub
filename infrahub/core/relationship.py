@@ -26,7 +26,8 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema import NodeSchema, RelationshipSchema
 
-# RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
+# pylint: disable=redefined-builtin
+
 
 SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
 SelfRelationshipManager = TypeVar("SelfRelationshipManager", bound="RelationshipManager")
@@ -359,7 +360,8 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        self.relationships: List[Relationship] = []
+        self._relationships: List[Relationship] = []
+        self.has_fetched_relationships: bool = False
 
     @classmethod
     async def init(
@@ -376,10 +378,9 @@ class RelationshipManager:
 
         rm = cls(schema=schema, branch=branch, at=at, node=node, *args, **kwargs)
 
-        # FIXME, we are prefetching all the relationship by default
-        # Ideally we should have a lazy implementation here to speed things up
+        # By default we are not loading the relationships
+        # These will be accessed on demand, if needed
         if data is None:
-            await rm._fetch_relationships(session=session)
             return rm
 
         # Data can be
@@ -397,7 +398,9 @@ class RelationshipManager:
             rel = rm.rel_class(schema=rm.schema, branch=rm.branch, at=rm.at, node=rm.node)
             await rel.new(session=session, data=item)
 
-            rm.relationships.append(rel)
+            rm._relationships.append(rel)
+
+        rm.has_fetched_relationships = True
 
         return rm
 
@@ -408,16 +411,20 @@ class RelationshipManager:
         if self.schema.cardinality == "one":
             raise TypeError("relationship with single cardinality are not iterable")
 
-        return iter(self.relationships)
+        if not self.has_fetched_relationships:
+            raise LookupError("you can't iterate over the relationships before the cache has been populated.")
+
+        return iter(self._relationships)
 
     async def get_peer(self, session: AsyncSession) -> Optional[Node]:
         if self.schema.cardinality == "many":
             raise TypeError("peer is not available for relationship with multiple cardinality")
 
-        if not self.relationships:
+        rels = await self.get_relationships(session=session)
+        if not rels:
             return None
 
-        return await self.relationships[0].get_peer(session=session)
+        return await rels[0].get_peer(session=session)
 
     async def _fetch_relationship_ids(
         self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None
@@ -427,8 +434,7 @@ class RelationshipManager:
         - the list of nodes present only locally
         - the list of nodes present only in the database
         """
-
-        current_peer_ids = [rel.peer_id for rel in self.relationships]
+        current_peer_ids = [rel.peer_id for rel in self._relationships]
 
         query = await RelationshipGetPeerQuery.init(
             session=session,
@@ -458,11 +464,8 @@ class RelationshipManager:
             peers_database,
         ) = await self._fetch_relationship_ids(at=at, session=session)
 
-        for peer_id in peer_ids_present_local_only:
-            await self.remove(peer_id)
-
         for peer_id in peer_ids_present_database_only:
-            self.relationships.append(
+            self._relationships.append(
                 await Relationship(
                     schema=self.schema,
                     branch=self.branch,
@@ -471,11 +474,26 @@ class RelationshipManager:
                 ).load(session=session, data=peers_database[peer_id])
             )
 
-    def get(self) -> Union[Relationship, List[Relationship]]:
-        if self.schema.cardinality == "one":
-            return self.relationships[0]
+        self.has_fetched_relationships = True
 
-        return self.relationships
+        for peer_id in peer_ids_present_local_only:
+            await self.remove(peer_id=peer_id, session=session)
+
+    async def get(self, session: AsyncSession) -> Union[Relationship, List[Relationship]]:
+
+        rels = await self.get_relationships(session=session)
+
+        if self.schema.cardinality == "one":
+            return rels[0]
+
+        return rels
+
+    async def get_relationships(self, session: AsyncSession) -> List[Relationship]:
+
+        if not self.has_fetched_relationships:
+            await self._fetch_relationships(session=session)
+
+        return self._relationships
 
     async def update(self, data: Union[List[str], List[Node], str, Node], session: AsyncSession) -> bool:
         """Replace and Update the list of relationships with this one."""
@@ -483,8 +501,8 @@ class RelationshipManager:
             data = [data]
 
         # Reset the list of relationship and save the previous one to see if we can reuse some
-        previous_relationships = {rel.peer_id: rel for rel in self.relationships}
-        self.relationships = []
+        previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(session=session)}
+        self._relationships = []
 
         changed = False
         for item in data:
@@ -492,11 +510,11 @@ class RelationshipManager:
                 raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
 
             if hasattr(item, "_schema") and item.id in previous_relationships:
-                self.relationships.append(previous_relationships[item.id])
+                self._relationships.append(previous_relationships[item.id])
                 continue
 
             if isinstance(item, str) and item in previous_relationships:
-                self.relationships.append(previous_relationships[item])
+                self._relationships.append(previous_relationships[item])
                 continue
 
             if isinstance(item, dict) and item.get("id", None) in previous_relationships:
@@ -504,11 +522,11 @@ class RelationshipManager:
                 await rel.load(data=item, session=session)
                 # TODO Add a check to identify if the relationship was changed or not
                 # changed = True
-                self.relationships.append(rel)
+                self._relationships.append(rel)
                 continue
 
             # If the item is not present in the previous list of relationship, we create a new one.
-            self.relationships.append(
+            self._relationships.append(
                 await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
                     session=session, data=item
                 )
@@ -516,23 +534,30 @@ class RelationshipManager:
             changed = True
 
         # Check if some relationship got removed by checking if the previous list of relationship is a subset of the current list of not
-        if set(list(previous_relationships.keys())) <= {rel.peer_id for rel in self.relationships}:
+        if set(list(previous_relationships.keys())) <= {
+            rel.peer_id for rel in await self.get_relationships(session=session)
+        }:
             changed = True
 
         return changed
 
-    async def remove(self, peer_id: UUID, update_db: bool = False, session: Optional[AsyncSession] = None):
+    async def remove(
+        self,
+        peer_id: UUID,
+        session: AsyncSession,
+        update_db: bool = False,
+    ):
         """Remote a peer id from the local relationships list,
         need to investigate if and when we should update the relationship in the database."""
 
-        for idx, rel in enumerate(self.relationships):
+        for idx, rel in enumerate(await self.get_relationships(session=session)):
             if rel.peer_id != peer_id:
                 continue
 
             if update_db:
                 await rel.delete(session=session)
 
-            self.relationships.pop(idx)
+            self._relationships.pop(idx)
             return True
 
         raise Exception("Relationship not found ... unexpected")
@@ -565,9 +590,7 @@ class RelationshipManager:
         )
         await query.execute(session=session)
 
-    async def save(
-        self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None
-    ) -> SelfRelationshipManager:
+    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> SelfRelationshipManager:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
@@ -578,13 +601,15 @@ class RelationshipManager:
             peers_database,
         ) = await self._fetch_relationship_ids(session=session)
 
-        # Update the relationships in the database that shouldn't be here.
-        for peer_id in peer_ids_present_database_only:
-            await self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at, session=session)
+        # If we have previously fetched the relationships from the database
+        # Update the one in the database that shouldn't be here.
+        if self.has_fetched_relationships:
+            for peer_id in peer_ids_present_database_only:
+                await self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at, session=session)
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
-        for rel in self.relationships:
+        for rel in await self.get_relationships(session=session):
             if rel.peer_id in peer_ids_present_local_only:
                 await rel.save(at=save_at, session=session)
 
@@ -599,14 +624,18 @@ class RelationshipManager:
 
         return self
 
-    async def delete(self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None):
+    async def delete(
+        self,
+        session: AsyncSession,
+        at: Optional[Timestamp] = None,
+    ):
         """Delete all the relationships."""
 
         delete_at = Timestamp(at)
 
         await self._fetch_relationships(at=delete_at, session=session)
 
-        for rel in self.relationships:
+        for rel in await self.get_relationships(session=session):
             await rel.delete(at=delete_at, session=session)
 
     async def to_graphql(
@@ -618,7 +647,8 @@ class RelationshipManager:
         if self.schema.cardinality == "many":
             raise TypeError("to_graphql is not available for relationship with multiple cardinality")
 
-        if not self.relationships:
+        relationships = await self.get_relationships(session=session)
+        if not relationships:
             return None
 
-        return await self.relationships[0].to_graphql(fields=fields, session=session)
+        return await relationships[0].to_graphql(fields=fields, session=session)

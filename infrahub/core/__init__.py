@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
     from infrahub.graphql.types import InfrahubObject
 
+# pylint: disable=redefined-builtin
+
 
 def get_branch_from_registry(branch: Optional[Union[Branch, str]] = None) -> Branch:
     """Return a branch object from the registry based on its name.

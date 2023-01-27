@@ -343,7 +343,7 @@ def performance_test(context, directory="utilities", dataset="dataset03"):
     local_dir = os.path.dirname(os.path.abspath(__file__))
     test_files = glob.glob(f"{local_dir}/{directory}/{PERFORMANCE_FILE_PREFIX}{dataset}*.py")
 
-    branch_name, hash = git_info(context)
+    branch_name, hash = git_info(context)  # pylint: disable=redefined-builtin
 
     for test_file in test_files:
         cmd = f"locust -f {test_file} --host=http://localhost:8000 --headless --reset-stats -u 2 -r 2 -t 20s --only-summary"

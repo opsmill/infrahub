@@ -44,6 +44,8 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
+# pylint: disable=redefined-builtin,too-many-statements,
+
 
 class AddNodeToBranch(Query):
 
@@ -279,7 +281,7 @@ class Branch(StandardNode):
 
         # Collecting all the checks from all the repopository
         for repo in repos:
-            for rel_check in repo.checks.get():
+            for rel_check in await repo.checks.get(session=session):
                 check = await rel_check.get_peer(session=session)
 
                 tasks.append(
@@ -634,7 +636,7 @@ class Diff:
             raise ValueError("diff_to must be later than diff_from")
 
         # Results organized by Branch
-        self._results: Dict[str, dict] = defaultdict(lambda: dict(nodes={}, rels=defaultdict(lambda: dict()), files={}))
+        self._results: Dict[str, dict] = defaultdict(lambda: dict(nodes={}, rels=defaultdict(lambda: {}), files={}))
 
         self._calculated_diff_nodes_at = None
         self._calculated_diff_rels_at = None
