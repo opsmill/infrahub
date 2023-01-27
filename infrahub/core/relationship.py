@@ -434,7 +434,6 @@ class RelationshipManager:
         - the list of nodes present only locally
         - the list of nodes present only in the database
         """
-
         current_peer_ids = [rel.peer_id for rel in self._relationships]
 
         query = await RelationshipGetPeerQuery.init(
@@ -602,9 +601,11 @@ class RelationshipManager:
             peers_database,
         ) = await self._fetch_relationship_ids(session=session)
 
-        # Update the relationships in the database that shouldn't be here.
-        for peer_id in peer_ids_present_database_only:
-            await self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at, session=session)
+        # If we have previously fetched the relationships from the database
+        # Update the one in the database that shouldn't be here.
+        if self.has_fetched_relationships:
+            for peer_id in peer_ids_present_database_only:
+                await self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at, session=session)
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
