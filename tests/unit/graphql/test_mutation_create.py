@@ -263,7 +263,8 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
     assert len(result.data["car_create"]["object"]["id"]) == 36
 
     car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
-    assert await car.owner.get(session=session).is_protected is True
+    rm = await car.owner.get(session=session)
+    assert rm.is_protected is True
 
 
 async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
