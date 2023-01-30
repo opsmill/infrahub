@@ -1,11 +1,12 @@
+---
 input: .
 output: .retype
-url: # Add your website address here
+url: infrahub.pages.dev
 branding:
-  title: Project Name
+  title: Infrahub
   label: Docs
 links:
-- text: Getting Started
-  link: https://retype.com/guides/getting-started/
+  - text: Getting Started
+    link: https://retype.com/guides/getting-started/
 footer:
   copyright: "&copy; Copyright {{ year }}. All rights reserved."
