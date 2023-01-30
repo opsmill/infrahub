@@ -2,3 +2,5 @@
 *.env
 script.py
 .vscode/settings.json
+.retype/*
+node_modules/*

@@ -1,0 +1,12 @@
+---
+input: .
+output: .retype
+url: infrahub.pages.dev
+branding:
+  title: Infrahub
+  label: Docs
+links:
+  - text: Getting Started
+    link: https://retype.com/guides/getting-started/
+footer:
+  copyright: "&copy; Copyright {{ year }}. All rights reserved."
