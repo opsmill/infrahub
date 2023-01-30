@@ -494,6 +494,7 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
     assert len(yaml_files) == 4
 
+
 async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
 
     repo = git_repo_01
@@ -501,36 +502,37 @@ async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
     await repo.create_branch_in_git(branch_name="branch01")
     await repo.create_branch_in_git(branch_name="branch02")
 
-    for branch in ["branch01", "branch02"]:
+    # TODO Need to move this code, it's useful to modify a file in the repo
+    # for branch in ["branch01", "branch02"]:
 
-        worktree = repo.get_worktree(identifier=branch)
-        git_repo = repo.get_git_repo_worktree(identifier=branch)
+    #     worktree = repo.get_worktree(identifier=branch)
+    #     git_repo = repo.get_git_repo_worktree(identifier=branch)
 
-        sports_file = os.path.join(worktree.directory, "test_files/sports.yml")
+    #     sports_file = os.path.join(worktree.directory, "test_files/sports.yml")
 
-        with open(sports_file, 'r') as file:
-            data = file.readlines()
+    #     with open(sports_file, 'r') as file:
+    #         data = file.readlines()
 
-        # now change the 2nd line, note that you have to add a newline
-        data[1] = f'sports_{branch}:\n'
+    #     # now change the 2nd line, note that you have to add a newline
+    #     data[1] = f'sports_{branch}:\n'
 
-        # and write everything back
-        with open(sports_file, 'w') as file:
-            file.writelines( data )
+    #     # and write everything back
+    #     with open(sports_file, 'w') as file:
+    #         file.writelines( data )
 
-        git_repo.index.add([sports_file])
-        git_repo.index.commit("Change sport file")
+    #     git_repo.index.add([sports_file])
+    #     git_repo.index.commit("Change sport file")
 
-    repo.merge(source_branch="branch01", dest_branch="main", push_remote=False)
+    # repo.merge(source_branch="branch01", dest_branch="main", push_remote=False)
 
-    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+    # commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
     commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=False)
     commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=False)
 
     result = await repo.calculate_diff_between_commits(first_commit=commit_branch01, second_commit=commit_branch02)
+    assert result == ["README.md", "test_files/sports.yml"]
 
-    # import pdb
-    # pdb.set_trace()
 
 def test_extract_repo_file_information():
 

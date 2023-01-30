@@ -83,7 +83,7 @@ async def handle_git_rpc_message(
     elif message.action == GitMessageAction.DIFF.value:
 
         # Calculate the diff between 2 timestamps / branches
-        files_changed = repo.calculate_diff_between_commits(
+        files_changed = await repo.calculate_diff_between_commits(
             first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
         )
         return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": files_changed})
