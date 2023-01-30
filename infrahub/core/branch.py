@@ -1094,6 +1094,13 @@ class Diff:
 
     async def get_files(self, session: AsyncSession):
 
+        if not self._calculated_diff_files_at:
+            await self._calculated_diff_files(session=session)
+
+        return {branch_name: data["rels"] for branch_name, data in self._results.items()}
+
+    async def _calculated_diff_files(self, session: AsyncSession):
+
         results = []
         from infrahub.core.manager import NodeManager
 

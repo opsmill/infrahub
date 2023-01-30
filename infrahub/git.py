@@ -724,7 +724,8 @@ class InfrahubRepository(BaseModel):
 
         changed_files = []
 
-        for x in commit_in_branch.diff(commit_to_compare):
+        for x in commit_in_branch.diff(commit_to_compare, create_patch=True):
+
             if x.a_blob and x.a_blob.path not in changed_files:
                 changed_files.append(x.a_blob.path)
 
@@ -887,7 +888,7 @@ class InfrahubRepository(BaseModel):
         return commit_after
 
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
-        """Merge the current branch into main.
+        """Merge the source branch into the destination branch.
 
         After the rebase we need to resync the data
         """
