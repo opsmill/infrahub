@@ -2,3 +2,4 @@
 *.env
 script.py
 .vscode/settings.json
+.retype/*
