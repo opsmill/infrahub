@@ -338,73 +338,95 @@ class BranchType(InfrahubObjectType):
             return [obj.to_graphql(fields=fields) for obj in objs]
 
 
-class BranchDiffNodeAttributeType(ObjectType):
-    attr_name = String()
-    attr_uuid = String()
+class BranchDiffPropertyType(ObjectType):
+    branch = String()
+    type = String()
     changed_at = String()
     action = String()
+
+
+class BranchDiffAttributeType(ObjectType):
+    name = String()
+    id = String()
+    changed_at = String()
+    action = String()
+    properties = List(BranchDiffPropertyType)
 
 
 class BranchDiffNodeType(ObjectType):
     branch = String()
-    node_labels = List(String)
-    node_uuid = String()
+    labels = List(String)
+    id = String()
     changed_at = String()
     action = String()
-    attributes = List(BranchDiffNodeAttributeType)
+    attributes = List(BranchDiffAttributeType)
 
 
-class BranchDiffAttributeType(ObjectType):
-    branch = String()
-    node_labels = List(String)
-    node_uuid = String()
-    attr_name = String()
-    attr_uuid = String()
-    changed_at = String()
-    action = String()
+class BranchDiffRelationshipEdgeNodeType(ObjectType):
+    id = String()
+    labels = List(String)
 
 
 class BranchDiffRelationshipType(ObjectType):
     branch = String()
-    source_node_labels = List(String)
-    source_node_uuid = String()
-    dest_node_labels = List(String)
-    dest_node_uuid = String()
-    rel_uuid = String()
-    rel_name = String()
+    id = String()
+    name = String()
+    nodes: List(BranchDiffRelationshipEdgeNodeType)
+    properties = List(BranchDiffPropertyType)
     changed_at = String()
     action = String()
 
 
 class BranchDiffFileType(ObjectType):
     branch = String()
-    repository_name = String()
-    repository_uuid = String()
-    files = List(String)
+    repository = String()
+    location = String
+    action = String()
 
 
 class BranchDiffType(ObjectType):
     nodes = List(BranchDiffNodeType)
     files = List(BranchDiffFileType)
-    attributes = List(BranchDiffAttributeType)
     relationships = List(BranchDiffRelationshipType)
 
     @classmethod
-    async def get_diff(cls, branch, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
+    async def get_diff(
+        cls, branch, diff_from: str, diff_to: str, branch_only: bool, fields: dict, context: dict, *args, **kwargs
+    ):  # pylint: disable=unused-argument
 
+        context.get("infrahub_at")
         session = context.get("infrahub_session")
-        branch = await get_branch(branch=branch, session=session)
-        # diff = await branch.diff()
+        rpc_client = context.get("infrahub_rpc_client")
 
-        # FIXME need to refactor this method to account to the new diff format
-        return {}
-        # return {
-        #     "nodes": [dataclasses.asdict(item) for item in diff.get_nodes()] if "nodes" in fields else None,
-        #     "files": diff.get_files() if "files" in fields else None,
-        #     "attributes": [dataclasses.asdict(item) for item in diff.get_attributes()]
-        #     if "attributes" in fields
-        #     else None,
-        #     "relationships": [dataclasses.asdict(item) for item in diff.get_relationships()]
-        #     if "relationships" in fields
-        #     else None,
-        # }
+        branch = await get_branch(branch=branch, session=session)
+
+        diff = await branch.diff(session=session, diff_from=diff_from, diff_to=diff_to, branch_only=branch_only)
+
+        response = {
+            "nodes": [],
+            "files": [],
+            "relationships": [],
+        }
+        if "nodes" in fields:
+            nodes = await diff.get_nodes(session=session)
+            for branch, items in nodes.items():
+                for item in items.values():
+                    response["nodes"].append(item.to_graphql())
+
+        if "relationships" in fields:
+            rels = await diff.get_relationships(session=session)
+
+            for branch, items in rels.items():
+                for item in items.values():
+                    for sub_item in item.values():
+                        # import pdb
+                        # pdb.set_trace()
+                        response["relationships"].append(sub_item.to_graphql())
+
+        if "files" in fields:
+            files = await diff.get_files(rpc_client=rpc_client, session=session)
+            for branch, items in files.items():
+                for item in items.values():
+                    response["files"].append(item.to_graphql())
+
+        return response

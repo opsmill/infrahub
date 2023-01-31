@@ -1040,3 +1040,153 @@ async def test_union_root(
 
     assert result.errors is None
     assert len(result.data["on_road"]) == 3
+
+
+async def test_query_diff_graphs(db, session, base_dataset_02):
+
+    query = """
+    query {
+        diff(branch: "branch1") {
+            nodes {
+                id
+                branch
+                labels
+                action
+                changed_at
+                attributes {
+                    name
+                    action
+                }
+            }
+            relationships {
+                id
+                branch
+                name
+                properties {
+                    branch
+                    type
+                    changed_at
+                    action
+                }
+                changed_at
+                action
+            }
+        }
+    }
+    """
+    main_branch = await Branch.get_by_name(name="main", session=session)
+
+    schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
+
+    result = await graphql(
+        schema=schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": main_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    expected_nodes = [
+        {
+            "action": "updated",
+            "branch": None,
+            "attributes": [{"action": "updated", "name": "name"}],
+            "changed_at": None,
+            "id": "c1",
+            "labels": ["Car"],
+        },
+        {
+            "action": "updated",
+            "branch": None,
+            "attributes": [{"action": "updated", "name": "nbr_seats"}],
+            "changed_at": None,
+            "id": "c1",
+            "labels": ["Car"],
+        },
+        {
+            "action": "added",
+            "branch": "main",
+            "attributes": [
+                {"action": "added", "name": "name"},
+                {"action": "added", "name": "nbr_seats"},
+                {"action": "added", "name": "is_electric"},
+                {"action": "added", "name": "color"},
+            ],
+            "changed_at": base_dataset_02["time_m20"],
+            "id": "c2",
+            "labels": ["Car"],
+        },
+        {
+            "action": "added",
+            "branch": "branch1",
+            "attributes": [
+                {"action": "added", "name": "name"},
+                {"action": "added", "name": "nbr_seats"},
+                {"action": "added", "name": "is_electric"},
+                {"action": "added", "name": "color"},
+            ],
+            "changed_at": base_dataset_02["time_m40"],
+            "id": "c3",
+            "labels": ["Car"],
+        },
+    ]
+
+    expected_rels = [
+        {
+            "action": "updated",
+            "branch": None,
+            "changed_at": None,
+            "id": "r1",
+            "name": "car_person",
+            "properties": [
+                {
+                    "action": "updated",
+                    "branch": "main",
+                    "changed_at": base_dataset_02["time_m30"],
+                    "type": "IS_PROTECTED",
+                },
+            ],
+        },
+        {
+            "action": "updated",
+            "branch": None,
+            "changed_at": None,
+            "id": "r1",
+            "name": "car_person",
+            "properties": [
+                {
+                    "action": "updated",
+                    "branch": "branch1",
+                    "changed_at": base_dataset_02["time_m20"],
+                    "type": "IS_VISIBLE",
+                },
+            ],
+        },
+        {
+            "action": "added",
+            "branch": "branch1",
+            "changed_at": base_dataset_02["time_m20"],
+            "id": "r2",
+            "name": "car_person",
+            "properties": [
+                {
+                    "action": "added",
+                    "branch": "branch1",
+                    "changed_at": base_dataset_02["time_m20"],
+                    "type": "IS_PROTECTED",
+                },
+                {
+                    "action": "added",
+                    "branch": "branch1",
+                    "changed_at": base_dataset_02["time_m20"],
+                    "type": "IS_VISIBLE",
+                },
+            ],
+        },
+    ]
+
+    assert len(result.data["diff"]["nodes"]) == 4
+    assert len(result.data["diff"]["relationships"]) == 3
+    assert sorted(result.data["diff"]["nodes"], key=lambda k: (k["id"].lower(), k["action"])) == expected_nodes
+    assert sorted(result.data["diff"]["relationships"], key=lambda k: (k["id"].lower(), k["action"])) == expected_rels
