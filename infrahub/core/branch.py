@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
@@ -544,7 +545,13 @@ class BaseDiffElement(BaseModel):
                 resp[key] = value.to_graphql()
             elif isinstance(value, dict):
                 resp[key] = [item.to_graphql() for item in value.values()]
-            elif not self.__fields__[key].field_info.exclude:
+            elif self.__fields__[key].field_info.exclude:
+                continue
+            elif isinstance(value, Enum):
+                resp[key] = value.value
+            elif isinstance(value, Timestamp):
+                resp[key] = value.to_string()
+            else:
                 resp[key] = value
 
         return resp
@@ -912,7 +919,7 @@ class Diff:
 
             item = {
                 "branch": result.get("b").get("name"),
-                "labels": list(result.get("n").labels),
+                "labels": sorted(list(result.get("n").labels)),
                 "id": node_id,
                 "db_id": result.get("n").element_id,
                 "attributes": {},
@@ -941,7 +948,7 @@ class Diff:
             if node_id not in self._results[branch_name]["nodes"].keys():
 
                 item = {
-                    "labels": list(result.get("n").labels),
+                    "labels": sorted(list(result.get("n").labels)),
                     "id": node_id,
                     "db_id": result.get("n").element_id,
                     "attributes": {},
@@ -1068,7 +1075,9 @@ class Diff:
 
         self._calculated_diff_nodes_at = Timestamp()
 
-    async def get_relationships(self, session: AsyncSession) -> Dict[str, Dict[str, RelationshipDiffElement]]:
+    async def get_relationships(
+        self, session: AsyncSession
+    ) -> Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]]:
 
         if not self._calculated_diff_rels_at:
             await self._calculated_diff_rels(session=session)
@@ -1102,7 +1111,7 @@ class Diff:
 
             branch_name = result.get("r1").get("branch")
             branch_status = result.get("r1").get("status")
-            rel_name = result.get("rel").get("type")
+            rel_name = result.get("rel").get("name")
             rel_id = result.get("rel").get("uuid")
 
             src_node_id = result.get("sn").get("uuid")
@@ -1121,13 +1130,13 @@ class Diff:
                         id=src_node_id,
                         db_id=result.get("sn").element_id,
                         rel_id=result.get("r1").element_id,
-                        labels=result.get("sn").labels,
+                        labels=sorted(result.get("sn").labels),
                     ),
                     dst_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("dn").element_id,
                         rel_id=result.get("r2").element_id,
-                        labels=result.get("dn").labels,
+                        labels=sorted(result.get("dn").labels),
                     ),
                 },
                 properties={},
@@ -1153,7 +1162,7 @@ class Diff:
 
             branch_name = result.get("r3").get("branch")
             branch_status = result.get("r3").get("status")
-            rel_name = result.get("rel").get("type")
+            rel_name = result.get("rel").get("name")
             rel_id = result.get("rel").get("uuid")
 
             # Check if the relationship already exist, if not we need to create it
@@ -1172,13 +1181,13 @@ class Diff:
                         id=src_node_id,
                         db_id=result.get("sn").element_id,
                         rel_id=result.get("r1").element_id,
-                        labels=result.get("sn").labels,
+                        labels=sorted(result.get("sn").labels),
                     ),
                     dst_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("dn").element_id,
                         rel_id=result.get("r2").element_id,
-                        labels=result.get("dn").labels,
+                        labels=sorted(result.get("dn").labels),
                     ),
                 },
                 properties={},
@@ -1203,7 +1212,7 @@ class Diff:
 
             branch_name = result.get("r3").get("branch")
             branch_status = result.get("r3").get("status")
-            rel_name = result.get("rel").get("type")
+            rel_name = result.get("rel").get("name")
             rel_id = result.get("rel").get("uuid")
 
             prop_type = result.get("r3").type

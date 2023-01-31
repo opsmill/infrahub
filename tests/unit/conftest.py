@@ -280,7 +280,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (r1:Relationship { uuid: "r1", type: "car_person"})
+    CREATE (r1:Relationship { uuid: "r1", name: "car__person"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
@@ -288,7 +288,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)
 
-    CREATE (r2:Relationship { uuid: "r2", type: "car_person"})
+    CREATE (r2:Relationship { uuid: "r2", name: "car__person"})
     CREATE (p1)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
     CREATE (r2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)

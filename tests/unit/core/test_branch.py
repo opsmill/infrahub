@@ -163,7 +163,7 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
         ("node", "c2", "color", "HAS_VALUE"),
         ("node", "c2", "color", "IS_PROTECTED"),
         ("node", "c2", "color", "IS_VISIBLE"),
-        ("relationships", "car_person", "r1", "IS_PROTECTED"),
+        ("relationships", "car__person", "r1", "IS_PROTECTED"),
     }
     expected_paths_branch1 = {
         ("node", "c1", "nbr_seats", "HAS_VALUE"),
@@ -180,9 +180,9 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
         ("node", "c3", "nbr_seats", "HAS_VALUE"),
         ("node", "c3", "nbr_seats", "IS_PROTECTED"),
         ("node", "c3", "nbr_seats", "IS_VISIBLE"),
-        ("relationships", "car_person", "r1", "IS_VISIBLE"),
-        ("relationships", "car_person", "r2", "IS_VISIBLE"),
-        ("relationships", "car_person", "r2", "IS_PROTECTED"),
+        ("relationships", "car__person", "r1", "IS_VISIBLE"),
+        ("relationships", "car__person", "r2", "IS_VISIBLE"),
+        ("relationships", "car__person", "r2", "IS_PROTECTED"),
     }
 
     diff = await Diff.init(branch=branch1, session=session)
@@ -358,13 +358,13 @@ async def test_diff_get_relationships(session, base_dataset_02):
 
     assert sorted(rels.keys()) == ["branch1", "main"]
 
-    assert sorted(rels["branch1"]["car_person"].keys()) == ["r1", "r2"]
-    assert rels["branch1"]["car_person"]["r1"].action == DiffAction.UPDATED
+    assert sorted(rels["branch1"]["car__person"].keys()) == ["r1", "r2"]
+    assert rels["branch1"]["car__person"]["r1"].action == DiffAction.UPDATED
 
-    assert rels["branch1"]["car_person"]["r2"].action == DiffAction.ADDED
+    assert rels["branch1"]["car__person"]["r2"].action == DiffAction.ADDED
 
-    assert rels["main"]["car_person"]["r1"].action == DiffAction.UPDATED
-    assert rels["main"]["car_person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED
+    assert rels["main"]["car__person"]["r1"].action == DiffAction.UPDATED
+    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED
 
 
 async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
@@ -480,18 +480,21 @@ async def test_base_diff_element():
         attrs: Dict[str, CL2]
         attr: CL3
         hideme: str = Field(exclude=True)
+        action: DiffAction
 
     data = {
         "name": "firstclass",
         "attrs": {"attr1": {"name": "first attr"}, "attr2": {"name": "second attr"}},
         "attr": {"name": "third attr"},
         "hideme": "should not export",
+        "action": "added",
     }
 
     expected_response = {
         "name": "firstclass",
         "attrs": [{"name": "first attr"}, {"name": "second attr"}],
         "attr": {"name": "third attr"},
+        "action": "added",
     }
 
     obj = CL1(**data)
