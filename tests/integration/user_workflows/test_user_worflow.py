@@ -134,6 +134,39 @@ INTERFACE_CREATE = """
     }
 """
 
+DIFF = """
+    query($branch_name: String!) {
+        diff(branch: $branch_name) {
+            nodes {
+                branch
+                labels
+                action
+                changed_at
+                attributes {
+                    name
+                    action
+                    properties {
+                        branch
+                        type
+                        action
+                    }
+                }
+            }
+            relationships {
+                branch
+                name
+                properties {
+                    branch
+                    type
+                    action
+                }
+                changed_at
+                action
+            }
+        }
+    }
+"""
+
 
 class TestUserWorkflow01:
     @pytest.fixture(scope="class")
@@ -299,6 +332,65 @@ class TestUserWorkflow01:
         assert response.json()["data"] is not None
         result = response.json()["data"]
         assert result["device"][0]["interfaces"][0]["description"]["value"] == new_description
+
+    def test_validate_diff(self, client, dataset01):
+
+        with client:
+            variables = {"branch_name": branch1}
+            response = client.post(f"/graphql", json={"query": DIFF, "variables": variables}, headers=headers)
+
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
+
+        assert result == {
+            "diff": {
+                "nodes": [
+                    {
+                        "action": "updated",
+                        "attributes": [
+                            {
+                                "action": "updated",
+                                "name": "description",
+                                "properties": [
+                                    {
+                                        "action": "updated",
+                                        "branch": "branch1",
+                                        # "changed_at": "2023-01-31T10:02:31.087842Z",
+                                        "type": "HAS_VALUE",
+                                    },
+                                ],
+                            },
+                        ],
+                        "branch": None,
+                        "changed_at": None,
+                        "labels": ["Interface", "Node"],
+                    },
+                    {
+                        "action": "updated",
+                        "attributes": [
+                            {
+                                "action": "updated",
+                                "name": "description",
+                                "properties": [
+                                    {
+                                        "action": "updated",
+                                        "branch": "main",
+                                        # "changed_at": "2023-01-31T10:02:33.661068Z",
+                                        "type": "HAS_VALUE",
+                                    },
+                                ],
+                            },
+                        ],
+                        "branch": None,
+                        "changed_at": None,
+                        "labels": ["Interface", "Node"],
+                    },
+                ],
+                "relationships": [],
+            },
+        }
 
     def test_update_intf_description_branch1_again(self, client, dataset01):
         """
