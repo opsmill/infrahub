@@ -7,7 +7,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 from uuid import UUID
 
 import git
@@ -83,10 +83,13 @@ async def handle_git_rpc_message(
     elif message.action == GitMessageAction.DIFF.value:
 
         # Calculate the diff between 2 timestamps / branches
-        files_changed = await repo.calculate_diff_between_commits(
+        files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
             first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
         )
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": files_changed})
+        return InfrahubRPCResponse(
+            status=RPCStatusCode.OK.value,
+            response={"files_changed": files_changed, "files_added": files_added, "files_removed": files_removed},
+        )
 
     elif message.action == GitMessageAction.MERGE.value:
         async with lock_registry.get(message.repository_name):
@@ -710,7 +713,9 @@ class InfrahubRepository(BaseModel):
         LOGGER.debug(f"{self.name} | Branch worktree created {branch_name}")
         return True
 
-    async def calculate_diff_between_commits(self, first_commit: str, second_commit: str) -> List[str]:
+    async def calculate_diff_between_commits(
+        self, first_commit: str, second_commit: str
+    ) -> Tuple[List[str], List[str], List[str]]:
         """TODO need to refactor this function to return more information.
         Like :
           - What has changed inside the files
@@ -723,16 +728,18 @@ class InfrahubRepository(BaseModel):
         commit_in_branch = git_repo.commit(first_commit)
 
         changed_files = []
+        removed_files = []
+        added_files = []
 
         for x in commit_in_branch.diff(commit_to_compare, create_patch=True):
-
-            if x.a_blob and x.a_blob.path not in changed_files:
+            if x.a_blob and not x.b_blob and x.a_blob.path not in added_files:
+                added_files.append(x.a_blob.path)
+            elif x.a_blob and x.b_blob and x.a_blob.path not in changed_files:
                 changed_files.append(x.a_blob.path)
+            elif not x.a_blob and x.b_blob and x.b_blob.path not in removed_files:
+                removed_files.append(x.b_blob.path)
 
-            if x.b_blob is not None and x.b_blob.path not in changed_files:
-                changed_files.append(x.b_blob.path)
-
-        return changed_files or None
+        return changed_files, added_files, removed_files
 
     async def push(self, branch_name: str) -> bool:
         """Push a given branch to the remote Origin repository"""

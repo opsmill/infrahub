@@ -502,6 +502,23 @@ async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
     await repo.create_branch_in_git(branch_name="branch01")
     await repo.create_branch_in_git(branch_name="branch02")
 
+    worktree = repo.get_worktree(identifier="branch01")
+    git_repo = repo.get_git_repo_worktree(identifier="branch01")
+
+    # Add a file
+    new_file = "mynewfile.txt"
+    with open(os.path.join(worktree.directory, new_file), "w") as file:
+        file.writelines(["this is a new file\n"])
+
+    # Remove a file
+    file_to_remove = "pyproject.toml"
+    os.remove(os.path.join(worktree.directory, file_to_remove))
+
+    git_repo.index.add([new_file])
+    git_repo.index.remove([file_to_remove])
+
+    git_repo.index.commit("Add 1, remove 1")
+
     # TODO Need to move this code, it's useful to modify a file in the repo
     # for branch in ["branch01", "branch02"]:
 
@@ -530,8 +547,12 @@ async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
     commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=False)
     commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=False)
 
-    result = await repo.calculate_diff_between_commits(first_commit=commit_branch01, second_commit=commit_branch02)
-    assert result == ["README.md", "test_files/sports.yml"]
+    changed, added, removed = await repo.calculate_diff_between_commits(
+        first_commit=commit_branch01, second_commit=commit_branch02
+    )
+    assert changed == ["README.md", "test_files/sports.yml"]
+    assert added == ["mynewfile.txt"]
+    assert removed == ["pyproject.toml"]
 
 
 def test_extract_repo_file_information():
