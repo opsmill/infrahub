@@ -3,10 +3,9 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
-from uuid import UUID
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
-from pydantic import validator
+from pydantic import BaseModel, Field, validator
 
 import infrahub.config as config
 from infrahub.core.constants import DiffAction, RelationshipStatus
@@ -37,6 +36,7 @@ from infrahub.message_bus.events import (
     GitMessageAction,
     InfrahubCheckRPC,
     InfrahubGitRPC,
+    InfrahubRPCResponse,
     RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -313,11 +313,14 @@ class Branch(StandardNode):
 
     async def diff(
         self,
+        branch_only: bool = False,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
         session: Optional[AsyncSession] = None,
     ) -> Diff:
-        return await Diff.init(branch=self, diff_from=diff_from, diff_to=diff_to, session=session)
+        return await Diff.init(
+            branch=self, diff_from=diff_from, diff_to=diff_to, branch_only=branch_only, session=session
+        )
 
     async def merge(
         self, rpc_client: InfrahubRpcClient, at: Union[str, Timestamp] = None, session: Optional[AsyncSession] = None
@@ -363,19 +366,19 @@ class Branch(StandardNode):
         # ---------------------------------------------
         for node_id, node in nodes[self.name].items():
 
-            if node.action == DiffAction.ADDED.value:
+            if node.action == DiffAction.ADDED:
                 query = await AddNodeToBranch.init(session=session, node_id=node.db_id, branch=default_branch)
                 await query.execute(session=session)
                 rel_ids_to_update.append(node.rel_id)
 
-            elif node.action == DiffAction.REMOVED.value:
+            elif node.action == DiffAction.REMOVED:
                 query = await NodeDeleteQuery.init(session=session, branch=default_branch, node_id=node_id, at=at)
                 await query.execute(session=session)
                 rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
             for _, attr in node.attributes.items():
 
-                if attr.action == DiffAction.ADDED.value:
+                if attr.action == DiffAction.ADDED:
                     await add_relationship(
                         src_node_id=node.db_id,
                         dst_node_id=attr.db_id,
@@ -386,7 +389,7 @@ class Branch(StandardNode):
                     )
                     rel_ids_to_update.append(attr.rel_id)
 
-                elif attr.action == DiffAction.REMOVED.value:
+                elif attr.action == DiffAction.REMOVED:
                     await add_relationship(
                         src_node_id=node.db_id,
                         dst_node_id=attr.db_id,
@@ -398,12 +401,12 @@ class Branch(StandardNode):
                     )
                     rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
 
-                elif attr.action == DiffAction.UPDATED.value:
+                elif attr.action == DiffAction.UPDATED:
                     pass
 
                 for prop_type, prop in attr.properties.items():
 
-                    if prop.action == DiffAction.ADDED.value:
+                    if prop.action == DiffAction.ADDED:
                         await add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
@@ -414,7 +417,7 @@ class Branch(StandardNode):
                         )
                         rel_ids_to_update.append(prop.rel_id)
 
-                    elif prop.action == DiffAction.UPDATED.value:
+                    elif prop.action == DiffAction.UPDATED:
 
                         await add_relationship(
                             src_node_id=attr.db_id,
@@ -426,7 +429,7 @@ class Branch(StandardNode):
                         )
                         rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
-                    elif prop.action == DiffAction.REMOVED.value:
+                    elif prop.action == DiffAction.REMOVED:
                         await add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
@@ -446,9 +449,9 @@ class Branch(StandardNode):
         for rel_name in rels[self.name].keys():
             for rel_id, rel in rels[self.name][rel_name].items():
                 for node in rel.nodes.values():
-                    if rel.action in [DiffAction.ADDED.value, DiffAction.REMOVED.value]:
+                    if rel.action in [DiffAction.ADDED, DiffAction.REMOVED]:
                         rel_status = RelationshipStatus.ACTIVE
-                        if rel.action == DiffAction.REMOVED.value:
+                        if rel.action == DiffAction.REMOVED:
                             rel_status = RelationshipStatus.DELETED
 
                         await add_relationship(
@@ -465,7 +468,7 @@ class Branch(StandardNode):
                 for prop_type, prop in rel.properties.items():
 
                     rel_status = RelationshipStatus.ACTIVE
-                    if prop.action == DiffAction.REMOVED.value:
+                    if prop.action == DiffAction.REMOVED:
                         rel_status = RelationshipStatus.DELETED
 
                     await add_relationship(
@@ -478,7 +481,7 @@ class Branch(StandardNode):
                     )
                     rel_ids_to_update.append(prop.rel_id)
 
-                    if rel.action in [DiffAction.UPDATED.value, DiffAction.REMOVED.value]:
+                    if rel.action in [DiffAction.UPDATED, DiffAction.REMOVED]:
                         rel_ids_to_update.append(prop.origin_rel_id)
 
         await update_relationships_to(ids=rel_ids_to_update, to=at, session=session)
@@ -525,88 +528,90 @@ class ValueElement:
     new: Any
 
 
-@dataclass
-class PropertyDiffElement:
+class BaseDiffElement(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
+    def to_graphql(self):
+        """Recursively Export the model to a dict for GraphQL.
+        The main rules of convertion are:
+            - Ignore the fields mark as exclude=True
+            - Convert the Dict in List
+        """
+        resp = {}
+        for key, value in self:
+            if isinstance(value, BaseModel):
+                resp[key] = value.to_graphql()
+            elif isinstance(value, dict):
+                resp[key] = [item.to_graphql() for item in value.values()]
+            elif not self.__fields__[key].field_info.exclude:
+                resp[key] = value
+
+        return resp
+
+
+class PropertyDiffElement(BaseDiffElement):
     branch: str
     type: str
     action: DiffAction
-    db_id: str
-    rel_id: str
-    origin_rel_id: Optional[str]
+    db_id: str = Field(exclude=False)
+    rel_id: str = Field(exclude=False)
+    origin_rel_id: Optional[str] = Field(exclude=False)
     # value: ValueElement
-    changed_at: Timestamp
+    changed_at: Optional[Timestamp]
 
 
-@dataclass
-class NodeAttributeDiffElement:
-    id: UUID
+class NodeAttributeDiffElement(BaseDiffElement):
+    id: str
     name: str
     action: DiffAction
-    db_id: str
-    rel_id: str
-    origin_rel_id: Optional[str]
-    changed_at: Timestamp
+    db_id: str = Field(exclude=False)
+    rel_id: str = Field(exclude=False)
+    origin_rel_id: Optional[str] = Field(exclude=False)
+    changed_at: Optional[Timestamp]
     properties: Dict[str, PropertyDiffElement]
 
 
-@dataclass
-class NodeDiffElement:
-    branch: str
+class NodeDiffElement(BaseDiffElement):
+    branch: Optional[str]
     labels: List[str]
-    id: UUID
+    id: str
     action: DiffAction
-    db_id: str
-    rel_id: str
-    changed_at: Timestamp
+    db_id: str = Field(exclude=False)
+    rel_id: Optional[str] = Field(exclude=False)
+    changed_at: Optional[Timestamp]
     attributes: Dict[str, NodeAttributeDiffElement]
 
 
-@dataclass
-class AttributeDiffElement:
-    branch: str
-    node_labels: List[str]
-    node_uuid: str
-    attr_uuid: str
-    attr_name: str
-    action: DiffAction
-    changed_at: str
-
-
-@dataclass
-class RelationshipEdgeNodeDiffElement:
-    id: UUID
-    db_id: int
-    rel_id: int
+class RelationshipEdgeNodeDiffElement(BaseDiffElement):
+    id: str
+    db_id: Optional[str] = Field(exclude=False)
+    rel_id: Optional[str] = Field(exclude=False)
     labels: List[str]
 
 
-@dataclass
-class RelationshipDiffElement:
-    branch: str
-    id: UUID
-    db_id: str
+class RelationshipDiffElement(BaseDiffElement):
+    branch: Optional[str]
+    id: str
+    db_id: str = Field(exclude=False)
     name: str
     action: DiffAction
     nodes: Dict[str, RelationshipEdgeNodeDiffElement]
     properties: Dict[str, PropertyDiffElement]
-    changed_at: str
+    changed_at: Optional[Timestamp]
 
 
-@dataclass
-class RelationshipDiffElementOld:
+class FileDiffElement(BaseDiffElement):
     branch: str
-    source_node_labels: List[str]
-    source_node_uuid: str
-    dest_node_labels: List[str]
-    dest_node_uuid: str
-    rel_uuid: str
-    rel_name: str
-    action: str
-    changed_at: str
+    location: str
+    repository: str
+    action: DiffAction
+
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))
 
 
 class Diff:
-
     diff_from: Timestamp
     diff_to: Timestamp
 
@@ -618,6 +623,19 @@ class Diff:
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
     ):
+        """_summary_
+
+        Args:
+            branch (Branch): Main branch this diff is caculated from
+            origin_branch (Branch): Storing the origin branch the main branch started from for convenience.
+            branch_only (bool, optional): When True, only consider the changes in the branch, ignore the changes in main. Defaults to False.
+            diff_from (Union[str, Timestamp], optional): Time from when the diff is calculated. Defaults to None.
+            diff_to (Union[str, Timestamp], optional): Time to when the diff is calculated. Defaults to None.
+
+        Raises:
+            ValueError: if diff_from and diff_to are not correct
+        """
+
         self.branch = branch
         self.branch_only = branch_only
         self.origin_branch = origin_branch
@@ -658,30 +676,60 @@ class Diff:
             branch=branch, origin_branch=origin_branch, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
         )
 
-    async def has_conflict(self, session: AsyncSession) -> bool:
+    async def has_conflict(self, session: AsyncSession, rpc_client) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        if await self.get_conflicts(session=session):
+        return await self.has_changes_graph(session=session)
+
+    async def has_conflict_graph(self, session: AsyncSession) -> bool:
+        """Return True if the same path has been modified on multiple branches. False otherwise"""
+
+        if await self.get_conflicts_graph(session=session):
             return True
 
         return False
 
-    async def has_changes(self, session: AsyncSession) -> bool:
+    async def has_changes(self, session: AsyncSession, rpc_client: InfrahubRpcClient) -> bool:
         """Return True if the diff has identified some changes, False otherwise."""
 
-        mpaths = await self.get_modified_paths(session=session)
+        has_changes_graph = await self.has_changes_graph(session=session)
+        has_changes_repositories = await self.has_changes_repositories(session=session)
+
+        return has_changes_graph | has_changes_repositories
+
+    async def has_changes_graph(self, session: AsyncSession) -> bool:
+        """Return True if the diff has identified some changes in the Graph, False otherwise."""
+
+        mpaths = await self.get_modified_paths_graph(session=session)
         for _, paths in mpaths.items():
             if paths:
                 return True
 
         return False
 
-    async def get_conflicts(self, session: AsyncSession):
+    async def has_changes_repositories(self, session: AsyncSession, rpc_client: InfrahubRpcClient) -> bool:
+        """Return True if the diff has identified some changes in the repositories, False otherwise."""
+
+        mpaths = await self.get_modified_paths_repositories(session=session, rpc_client=rpc_client)
+        for _, paths in mpaths.items():
+            if paths:
+                return True
+
+        return False
+
+    async def get_conflicts(self, session: AsyncSession) -> Set[Tuple]:
+        """Return the list of conflicts identified by the diff as Path (tuple).
+
+        For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
+        """
+        return await self.get_conflicts_graph(session=session)
+
+    async def get_conflicts_graph(self, session: AsyncSession) -> Set[Tuple]:
 
         if self.branch_only:
             return []
 
-        paths = await self.get_modified_paths(session=session)
+        paths = await self.get_modified_paths_graph(session=session)
 
         # For now we assume that we can only have 2 branches but in the future we might need to support more
         branches = list(paths.keys())
@@ -693,8 +741,15 @@ class Diff:
         # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
         return paths[branches[0]] & paths[branches[1]]
 
-    async def get_modified_paths(self, session: AsyncSession) -> Dict[str, set]:
-        """Return a list of all the modified paths per branch."""
+    async def get_modified_paths_graph(self, session: AsyncSession) -> Dict[str, Set[Tuple]]:
+        """Return a list of all the modified paths in the graph per branch.
+
+        Path for a node : ("node", node_id, attr_name, prop_type)
+        Path for a relationship : ("relationships", rel_name, rel_id, prop_type
+
+        Returns:
+            Dict[str, set]: Returns a dictionnary by branch with a set of paths
+        """
 
         paths = defaultdict(set)
 
@@ -718,11 +773,99 @@ class Diff:
                     for prop_type in rel.properties.keys():
                         paths[branch_name].add(("relationships", rel_name, rel_id, prop_type))
 
-        # TODO Files
+        return paths
+
+    async def get_modified_paths_repositories(
+        self, session: AsyncSession, rpc_client: InfrahubRpcClient
+    ) -> Dict[str, Set[Tuple]]:
+        """Return a list of all the modified paths in the repositories.
+
+        We need the commit values for each repository in the graph to calculate the difference.
+
+        For now we are still assuming that a Branch always start from main
+        """
+
+        paths = defaultdict(set)
+
+        for branch, items in await self.get_files_repositories_for_branch(
+            session=session, rpc_client=rpc_client, branch=self.branch
+        ):
+            for item in items:
+                paths[branch] = ("file", item.repository, item.location)
+
+        if not self.branch_only:
+            for branch, items in await self.get_modified_paths_repositories_for_branch(
+                session=session, rpc_client=rpc_client, branch=self.origin_branch
+            ):
+                for item in items:
+                    paths[branch] = ("file", item.repository, item.location)
 
         return paths
 
+    async def get_modified_paths_repositories_for_branch(
+        self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
+    ) -> Set[Tuple]:
+
+        from infrahub.core.manager import NodeManager
+
+        tasks = []
+        paths = set()
+
+        repos_to = {
+            repo.id: repo
+            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_to)
+        }
+        repos_from = {
+            repo.id: repo
+            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_from)
+        }
+
+        # For now we are ignoring the repos that are either not present at to time or at from time.
+        # These repos will be identified in the graph already
+        repo_ids_common = set(repos_to.keys()) & set(repos_from.keys())
+
+        for repo_id in repo_ids_common:
+
+            if repos_to[repo_id].commit.value == repos_from[repo_id].commit.value:
+                continue
+
+            tasks.append(
+                self.get_modified_paths_repository(
+                    session=session,
+                    rpc_client=rpc_client,
+                    repository=repos_to[repo_id],
+                    commit_from=repos_from[repo_id].commit.value,
+                    commit_to=repos_to[repo_id].commit.value,
+                )
+            )
+
+        responses = await asyncio.gather(*tasks)
+
+        for response in responses:
+            paths.update(response)
+
+        return paths
+
+    async def get_modified_paths_repository(
+        self, session: AsyncSession, rpc_client: InfrahubRpcClient, repository, commit_from: str, commit_to: str
+    ) -> Set[Tuple]:
+        """Return the path of all the files that have changed for a given repository between 2 commits.
+
+        Path format: ("file", repository.id, filename )
+        """
+
+        response: InfrahubRPCResponse = await rpc_client.call(
+            message=InfrahubGitRPC(
+                action=GitMessageAction.DIFF,
+                repository=repository,
+                params={"first_commit": commit_from, "second_commit": commit_to},
+            )
+        )
+
+        return {("file", repository.id, filename) for filename in response.response.get("files_changed", [])}
+
     async def get_nodes(self, session: AsyncSession) -> Dict[str, Dict[str, NodeDiffElement]]:
+        """Return all the nodes calculated by the diff, organized by branch."""
 
         if not self._calculated_diff_nodes_at:
             await self._calculate_diff_nodes(session=session)
@@ -778,9 +921,9 @@ class Diff:
             }
 
             if branch_status == RelationshipStatus.ACTIVE.value:
-                item["action"] = DiffAction.ADDED.value
+                item["action"] = DiffAction.ADDED
             elif branch_status == RelationshipStatus.DELETED.value:
-                item["action"] = DiffAction.REMOVED.value
+                item["action"] = DiffAction.REMOVED
 
             self._results[branch_name]["nodes"][node_id] = NodeDiffElement(**item)
 
@@ -803,7 +946,7 @@ class Diff:
                     "db_id": result.get("n").element_id,
                     "attributes": {},
                     "changed_at": None,
-                    "action": DiffAction.UPDATED.value,
+                    "action": DiffAction.UPDATED,
                     "rel_id": None,
                     "branch": None,
                 }
@@ -837,21 +980,21 @@ class Diff:
                     continue
 
                 if (
-                    node.action == DiffAction.ADDED.value
+                    node.action == DiffAction.ADDED
                     and attr_from >= self.diff_from
                     and branch_status == RelationshipStatus.ACTIVE.value
                 ):
-                    item["action"] = DiffAction.ADDED.value
+                    item["action"] = DiffAction.ADDED
                     item["changed_at"] = attr_from
 
                 elif attr_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:
-                    item["action"] = DiffAction.REMOVED.value
+                    item["action"] = DiffAction.REMOVED
                     item["changed_at"] = attr_from
 
                     attrs_to_query["nodes"].add(node_id)
                     attrs_to_query["fields"].add(attr_name)
                 else:
-                    item["action"] = DiffAction.UPDATED.value
+                    item["action"] = DiffAction.UPDATED
                     item["changed_at"] = None
 
                     attrs_to_query["nodes"].add(node_id)
@@ -907,13 +1050,13 @@ class Diff:
                 item["origin_rel_id"] = origin_attr.get(origin_rel_name).element_id
 
             if not origin_attr and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
-                item["action"] = DiffAction.ADDED.value
+                item["action"] = DiffAction.ADDED
                 item["changed_at"] = prop_from
             elif prop_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:
-                item["action"] = DiffAction.REMOVED.value
+                item["action"] = DiffAction.REMOVED
                 item["changed_at"] = prop_from
             else:
-                item["action"] = DiffAction.UPDATED.value
+                item["action"] = DiffAction.UPDATED
                 item["changed_at"] = prop_from
 
             self._results[branch_name]["nodes"][node_id].attributes[attr_name].origin_rel_id = result.get(
@@ -992,10 +1135,10 @@ class Diff:
 
             # FIXME Need to revisit changed_at, mostlikely not accurate. More of a placeholder at this point
             if branch_status == RelationshipStatus.ACTIVE.value:
-                item["action"] = DiffAction.ADDED.value
+                item["action"] = DiffAction.ADDED
                 item["changed_at"] = from_time
             elif branch_status == RelationshipStatus.DELETED.value:
-                item["action"] = DiffAction.REMOVED.value
+                item["action"] = DiffAction.REMOVED
                 item["changed_at"] = from_time
                 rel_ids_to_query.append(rel_id)
             else:
@@ -1039,7 +1182,7 @@ class Diff:
                     ),
                 },
                 properties={},
-                action=DiffAction.UPDATED.value,
+                action=DiffAction.UPDATED,
                 changed_at=None,
                 branch=None,
             )
@@ -1079,25 +1222,25 @@ class Diff:
                 prop["origin_rel_id"] = origin_prop.get("r").element_id
 
             if not origin_prop and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
-                prop["action"] = DiffAction.ADDED.value
+                prop["action"] = DiffAction.ADDED
                 prop["changed_at"] = prop_from
             elif prop_from >= self.diff_from and branch_status == RelationshipStatus.DELETED.value:
-                prop["action"] = DiffAction.REMOVED.value
+                prop["action"] = DiffAction.REMOVED
                 prop["changed_at"] = prop_from
             else:
-                prop["action"] = DiffAction.UPDATED.value
+                prop["action"] = DiffAction.UPDATED
                 prop["changed_at"] = prop_from
 
             self._results[branch_name]["rels"][rel_name][rel_id].properties[prop_type] = PropertyDiffElement(**prop)
 
         self._calculated_diff_rels_at = Timestamp()
 
-    async def get_files(self, session: AsyncSession):
+    async def get_files(self, session: AsyncSession) -> Dict[str, Dict[str, FileDiffElement]]:
 
         if not self._calculated_diff_files_at:
             await self._calculated_diff_files(session=session)
 
-        return {branch_name: data["rels"] for branch_name, data in self._results.items()}
+        return {branch_name: data["files"] for branch_name, data in self._results.items()}
 
     async def _calculated_diff_files(self, session: AsyncSession):
 
@@ -1129,3 +1272,93 @@ class Diff:
             )
 
         return results
+
+    async def get_files_repository(
+        self,
+        session: AsyncSession,
+        rpc_client: InfrahubRpcClient,
+        branch_name: str,
+        repository,
+        commit_from: str,
+        commit_to: str,
+    ) -> Dict[str, List[FileDiffElement]]:
+        """Return all the files that have added, changed or removed for a given repository between 2 commits."""
+
+        files = defaultdict(set)
+
+        response: InfrahubRPCResponse = await rpc_client.call(
+            message=InfrahubGitRPC(
+                action=GitMessageAction.DIFF,
+                repository=repository,
+                params={"first_commit": commit_from, "second_commit": commit_to},
+            )
+        )
+
+        for filename in response.response.get("files_changed", []):
+            files[branch_name].add(
+                FileDiffElement(
+                    branch=branch_name, location=filename, repository=repository.id, action=DiffAction.UPDATED
+                )
+            )
+
+        for filename in response.response.get("files_added", []):
+            files[branch_name].add(
+                FileDiffElement(
+                    branch=branch_name, location=filename, repository=repository.id, action=DiffAction.ADDED
+                )
+            )
+
+        for filename in response.response.get("files_removed", []):
+            files[branch_name].add(
+                FileDiffElement(
+                    branch=branch_name, location=filename, repository=repository.id, action=DiffAction.REMOVED
+                )
+            )
+
+        return files
+
+    async def get_files_repositories_for_branch(
+        self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
+    ) -> Dict[str, List[FileDiffElement]]:
+
+        from infrahub.core.manager import NodeManager
+
+        tasks = []
+        files = defaultdict(set)
+
+        repos_to = {
+            repo.id: repo
+            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_to)
+        }
+        repos_from = {
+            repo.id: repo
+            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_from)
+        }
+
+        # For now we are ignoring the repos that are either not present at to time or at from time.
+        # These repos will be identified in the graph already
+        repo_ids_common = set(repos_to.keys()) & set(repos_from.keys())
+
+        for repo_id in repo_ids_common:
+
+            if repos_to[repo_id].commit.value == repos_from[repo_id].commit.value:
+                continue
+
+            tasks.append(
+                self.get_files_repository(
+                    session=session,
+                    rpc_client=rpc_client,
+                    branch_name=branch.name,
+                    repository=repos_to[repo_id],
+                    commit_from=repos_from[repo_id].commit.value,
+                    commit_to=repos_to[repo_id].commit.value,
+                )
+            )
+
+        responses = await asyncio.gather(*tasks)
+
+        for response in responses:
+            for branch_name, items in response.items():
+                files[branch_name].update(items)
+
+        return files
