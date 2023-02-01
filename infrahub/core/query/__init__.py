@@ -21,19 +21,45 @@ if TYPE_CHECKING:
 SelfQuery = TypeVar("SelfQuery", bound="Query")
 
 
+def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[QueryResult]:
+    """Sort a list of QueryResult based on the to and from fields on given relationship.
+
+    To sort the results, we are generating an ID per item
+        The ID is derived from the timestamp of the last action and we multiply it by 1000
+        To differentiate two records that have been updated at the same time
+        We are adding more weight (500) to the record for which the last action was to set "from"
+         versus a record with "from" and "to" set.
+    """
+
+    results_dict = {}
+
+    for result in results:
+        from_time = result.get(rel_label).get("from")
+        to_time = result.get(rel_label).get("to")
+
+        if not to_time:
+            record_id = Timestamp(from_time).to_timestamp() * 1000 + 500
+        else:
+            record_id = Timestamp(to_time).to_timestamp() * 1000
+
+        results_dict[record_id] = result
+
+    return [value for _, value in sorted(results_dict.items(), reverse=False)]
+
+
 class QueryType(Enum):
     READ = "read"
     WRITE = "write"
 
 
 class QueryResult:
-    def __init__(self, data, labels):
+    def __init__(self, data: List[Union[Node, Relationship]], labels: List[str]):
         self.data = data
         self.labels = labels
-        self.branch_score = 0
-        self.time_score = 0
+        self.branch_score: int = 0
+        self.time_score: int = 0
         self.permission_score = PermissionLevel.DEFAULT
-        self.has_deleted_rels = False
+        self.has_deleted_rels: bool = False
 
         self.calculate_branch_score()
         self.calculate_time_score()

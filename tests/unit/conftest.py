@@ -2,6 +2,7 @@ import asyncio
 
 import pendulum
 import pytest
+from neo4j._codec.hydration.v1 import HydrationHandler
 
 import infrahub.config as config
 import infrahub.core
@@ -59,6 +60,19 @@ async def session(db):
 @pytest.fixture
 async def rpc_client():
     return InfrahubRpcClientTesting()
+
+
+@pytest.fixture(scope="session")
+def neo4j_factory():
+    """Return a Hydration Scope from Neo4j used to generate fake
+    Node and Relationship object.
+
+    Example:
+        fields = [123, {"Person"}, {"name": "Alice", "age": 33}, "123"]
+        alice = neo4j_factory.hydrate_node(*fields)
+    """
+    hydration_scope = HydrationHandler().new_hydration_scope()
+    return hydration_scope._graph_hydrator
 
 
 @pytest.fixture
