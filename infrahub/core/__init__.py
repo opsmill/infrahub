@@ -223,5 +223,15 @@ class Registry:
         """Return all the graphql_type for a given branch."""
         return self.get_all_item(kind="graphql_type", branch=branch)
 
+    def delete_all(self):
+
+        self.branch = {}
+        self.node = {}
+        self.schema = defaultdict(dict)
+        self.graphql_type = defaultdict(dict)
+        self.account = {}
+        self.account_id = {}
+        self.node_group = {}
+        self.attr_group = {}
 
 registry = Registry()

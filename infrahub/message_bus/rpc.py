@@ -81,10 +81,11 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
 
     async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
 
-        if (message.type, message.action) in self.responses:
-            return self.responses[(message.type, message.action)].pop(0)
         if len(self.responses[(message.type, message.action)]) == 0:
             raise IndexError(f"No more RPC message in store for '{message.type}::{message.action}'")
+
+        if (message.type, message.action) in self.responses:
+            return self.responses[(message.type, message.action)].pop(0)
 
         raise NotImplementedError(f"Unable to find an RPC message for '{message.type}::{message.action}'")
 

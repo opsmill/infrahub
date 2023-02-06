@@ -258,7 +258,7 @@ class NodeManager:
 
 class SchemaManager(NodeManager):
     @classmethod
-    async def register_schema_to_registry(cls, schema: SchemaRoot, branch: Union[str, Branch] = None):
+    async def register_schema_to_registry(cls, schema: SchemaRoot, branch: str = None):
         """Register all nodes & generics from a SchemaRoot object into the registry."""
         for item in schema.generics + schema.nodes + schema.groups:
             registry.set_schema(name=item.kind, schema=item, branch=branch)

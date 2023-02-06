@@ -1043,7 +1043,7 @@ async def test_union_root(
     assert len(result.data["on_road"]) == 3
 
 
-async def test_query_diff_graphs(db, session, reset_registry, default_branch, base_dataset_02):
+async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
 
     query = """
     query {

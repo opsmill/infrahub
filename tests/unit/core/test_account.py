@@ -5,8 +5,8 @@ from infrahub.core.node import Node
 
 async def test_validate_user_create(session, default_branch, register_core_models_schema):
 
-    account_schema = registry.get_schema(name="Account")
-    account_token_schema = registry.get_schema(name="AccountToken")
+    account_schema = registry.get_schema(name="Account", branch=default_branch)
+    account_token_schema = registry.get_schema(name="AccountToken", branch=default_branch)
 
     user1 = await Node.init(session=session, schema=account_schema)
     await user1.new(session=session, name="user1")
@@ -18,8 +18,8 @@ async def test_validate_user_create(session, default_branch, register_core_model
 
 async def test_validate_token(session, default_branch, register_core_models_schema):
 
-    account_schema = registry.get_schema(name="Account")
-    account_token_schema = registry.get_schema(name="AccountToken")
+    account_schema = registry.get_schema(name="Account", branch=default_branch)
+    account_token_schema = registry.get_schema(name="AccountToken", branch=default_branch)
 
     user1 = await Node.init(session=session, schema=account_schema)
     await user1.new(session=session, name="user1")

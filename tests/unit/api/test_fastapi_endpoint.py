@@ -73,7 +73,7 @@ async def car_person_data(session, car_person_schema, register_core_models_schem
 headers = {"Authorization": "Token XXXX"}
 
 
-async def test_transform_endpoint(session, patch_rpc_client, default_branch, car_person_data):
+async def test_transform_endpoint(session, default_branch, patch_rpc_client, register_core_models_schema, car_person_data):
 
     from infrahub.main import app
 

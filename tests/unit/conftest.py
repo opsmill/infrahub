@@ -397,7 +397,7 @@ async def person_tag_schema(session, data_schema):
 
 
 @pytest.fixture
-async def all_attribute_types_schema(session):
+async def all_attribute_types_schema(session, data_schema):
 
     SCHEMA = {
         "name": "all_attribute_types",
@@ -475,7 +475,7 @@ async def group_on_road_vehicule_schema(session):
 
 
 @pytest.fixture
-async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema):
 
     SCHEMA = {
         "name": "car",
@@ -579,7 +579,7 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
 
 
 @pytest.fixture
-async def fruit_tag_schema(session):
+async def fruit_tag_schema(session, data_schema):
 
     SCHEMA = {
         "nodes": [
@@ -649,8 +649,7 @@ async def data_schema(session):
 
 @pytest.fixture
 async def reset_registry(session):
-
-    infrahub.core.registry = Registry()
+    registry.delete_all()
 
 
 @pytest.fixture
@@ -665,22 +664,21 @@ async def init_db(empty_database, session):
 
 
 @pytest.fixture
-async def default_branch(empty_database, session) -> Branch:
+async def default_branch(reset_registry, empty_database, session) -> Branch:
     return await create_default_branch(session=session)
 
 
 @pytest.fixture
-async def register_internal_models_schema():
+async def register_internal_models_schema(default_branch):
 
     schema = SchemaRoot(**internal_schema)
-    await SchemaManager.register_schema_to_registry(schema=schema)
+    await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def register_core_models_schema(register_internal_models_schema):
-
+async def register_core_models_schema(default_branch, register_internal_models_schema):
     schema = SchemaRoot(**core_models)
-    await SchemaManager.register_schema_to_registry(schema=schema)
+    await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture

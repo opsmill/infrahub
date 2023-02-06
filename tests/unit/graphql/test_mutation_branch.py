@@ -94,10 +94,13 @@ async def test_branch_create(db, session, default_branch, car_person_schema):
 
 
 async def test_branch_create_with_repositories(
-    db, session, rpc_client, repos_and_checks_in_main, default_branch, register_core_models_schema
+    db, session, default_branch, rpc_client, repos_and_checks_in_main, register_core_models_schema, data_schema
 ):
 
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+    await rpc_client.add_response(
+        response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.BRANCH_ADD
+    )
     await rpc_client.add_response(
         response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.BRANCH_ADD
     )
