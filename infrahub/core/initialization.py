@@ -14,6 +14,8 @@ LOGGER = logging.getLogger("infrahub")
 
 async def initialization(session: AsyncSession):
 
+    # pylint: disable=import-outside-toplevel
+
     # ---------------------------------------------------
     # Load all existing branches into the registry
     # ---------------------------------------------------
@@ -80,6 +82,7 @@ async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
 
 async def first_time_initialization(session: AsyncSession, load_infrastructure_models: bool = True):
 
+    # pylint: disable=import-outside-toplevel
     from infrahub.core.node import Node
 
     # --------------------------------------------------

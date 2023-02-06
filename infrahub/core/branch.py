@@ -44,7 +44,7 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
-# pylint: disable=redefined-builtin,too-many-statements,
+# pylint: disable=redefined-builtin,too-many-statements,too-many-lines
 
 
 class AddNodeToBranch(Query):
@@ -91,7 +91,7 @@ class Branch(StandardNode):
     _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
 
     @validator("branched_from", pre=True, always=True)
-    def set_branched_from(cls, value):
+    def set_branched_from(cls, value):  # pylint: disable=no-self-argument
         return value or Timestamp().to_string()
 
     @classmethod
@@ -114,6 +114,7 @@ class Branch(StandardNode):
 
     async def get_origin_branch(self, session: AsyncSession) -> Branch:
 
+        # pylint: disable=import-outside-toplevel
         from infrahub.core import get_branch
 
         return await get_branch(self.origin_branch, session=session)
@@ -287,6 +288,7 @@ class Branch(StandardNode):
         await self.save(session=session)
 
         # Update the branch in the registry after the rebase
+        # pylint: disable=import-outside-toplevel
         from infrahub.core import registry
 
         registry.branch[self.name] = self
@@ -332,6 +334,7 @@ class Branch(StandardNode):
         messages = []
         tasks = []
 
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         # For all repositories in this branch, run all checks
@@ -399,7 +402,7 @@ class Branch(StandardNode):
         await self.merge_repositories(rpc_client=rpc_client, session=session)
 
     async def merge_graph(self, session: AsyncSession, at: Union[str, Timestamp] = None):
-
+        # pylint: disable=import-outside-toplevel
         from infrahub.core import registry
 
         rel_ids_to_update = []
@@ -548,6 +551,7 @@ class Branch(StandardNode):
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
 
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
@@ -868,7 +872,7 @@ class Diff:
     async def get_modified_paths_repositories_for_branch(
         self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> Set[Tuple]:
-
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         tasks = []
@@ -1321,6 +1325,7 @@ class Diff:
     async def _calculated_diff_files(self, session: AsyncSession):
 
         results = []
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
@@ -1396,7 +1401,7 @@ class Diff:
     async def get_files_repositories_for_branch(
         self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> Dict[str, List[FileDiffElement]]:
-
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         tasks = []

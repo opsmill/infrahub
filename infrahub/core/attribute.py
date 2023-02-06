@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,c-extension-no-member
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
@@ -47,7 +47,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         db_id: str = None,
         data: Union[dict, str] = None,
         updated_at: Union[Timestamp, str] = None,
-        *args,
         **kwargs,
     ):
 
@@ -97,7 +96,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     @classmethod
     def validate(cls, value) -> bool:
-        return isinstance(value, cls.type)
+        return isinstance(value, cls.type)  # pylint: disable=isinstance-second-argument-not-valid-type
 
     def to_db(self):
         if self.value is None:
@@ -273,7 +272,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return True
 
     @classmethod
-    def get_query_filter(
+    def get_query_filter(  # pylint: disable=unused-argument
         cls,
         name: str,
         filters: dict = None,
@@ -392,13 +391,13 @@ class ListAttribute(BaseAttribute):
     type = list
 
     @classmethod
-    def serialize(self, value: Any) -> Any:
+    def serialize(cls, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
 
         return ujson.dumps(value)
 
     @classmethod
-    def deserialize(self, value: Any) -> Any:
+    def deserialize(cls, value: Any) -> Any:
         """Deserialize the value (potentially) coming from the database."""
         if isinstance(value, (str, bytes)):
             return ujson.loads(value)

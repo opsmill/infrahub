@@ -29,7 +29,7 @@ def get_branch_from_registry(branch: Optional[Union[Branch, str]] = None) -> Bra
     Returns:
         Branch: A Branch Object
     """
-
+    # pylint: disable=import-outside-toplevel
     from .branch import Branch
 
     if isinstance(branch, Branch):
@@ -64,7 +64,7 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
     Returns:
         Branch: A Branch Object
     """
-
+    # pylint: disable=import-outside-toplevel
     from .branch import Branch
 
     if isinstance(branch, Branch):
@@ -105,6 +105,7 @@ async def get_account(
     if account in registry.account:
         return registry.account[account]
 
+    # pylint: disable=import-outside-toplevel
     from infrahub.core.manager import NodeManager
 
     account_schema = registry.get_schema(name="Account")

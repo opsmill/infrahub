@@ -27,6 +27,7 @@ class InfrahubBaseSubscription(ObjectType):
         params=None,
     ):
 
+        # pylint: disable=import-outside-toplevel
         from . import execute_query
 
         at = info.context.get("infrahub_at")

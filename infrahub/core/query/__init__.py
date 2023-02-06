@@ -335,7 +335,7 @@ class Query(ABC):
 
     def print(self, include_var=False):
 
-        # from rich import print
+        # pylint: disable=import-outside-toplevel
         from rich import print as rprint
 
         print("-------------------------------------------------------")

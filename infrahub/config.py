@@ -88,7 +88,7 @@ def load(config_file_name="infrahub.toml", config_data=None):
     Configuration is loaded from a config file in toml format that contains the settings,
     or from a dictionary of those settings passed in as "config_data"
     """
-    global SETTINGS
+    global SETTINGS  # pylint: disable=global-statement
 
     if config_data:
         SETTINGS = Settings(**config_data)

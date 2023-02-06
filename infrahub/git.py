@@ -14,7 +14,10 @@ import git
 import jinja2
 import yaml
 from git import Repo
-from git.exc import GitCommandError, InvalidGitRepositoryError
+from git.exc import (  # pylint: disable=import-error,no-name-in-module
+    GitCommandError,
+    InvalidGitRepositoryError,
+)
 from pydantic import BaseModel, validator
 
 import infrahub.config as config
@@ -38,7 +41,7 @@ from infrahub.message_bus.events import (
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_client import GraphQLError, InfrahubClient
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,too-many-lines
 
 LOGGER = logging.getLogger("infrahub.git")
 
@@ -47,9 +50,9 @@ BRANCHES_DIRECTORY_NAME = "branches"
 TEMPORARY_DIRECTORY_NAME = "temp"
 
 
-async def handle_git_rpc_message(
+async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
     message: InfrahubGitRPC, client: InfrahubClient
-) -> InfrahubRPCResponse:  # pylint: disable=too-many-return-statements
+) -> InfrahubRPCResponse:
 
     LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
 
@@ -299,7 +302,7 @@ class BranchInLocal(BaseModel):
     has_worktree: bool = False
 
 
-class InfrahubRepository(BaseModel):
+class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     """
     Local version of a Git repository organized to work with Infrahub.
     The idea is that all commits that are being tracked in the graph will be checkout out
@@ -326,6 +329,7 @@ class InfrahubRepository(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    # pylint: disable=no-self-argument
     @validator("default_branch_name", pre=True, always=True)
     def set_default_branch_name(cls, value):
         return value or config.SETTINGS.main.default_branch
@@ -415,10 +419,10 @@ class InfrahubRepository(BaseModel):
             if "origin" in repo.remotes:
                 self.has_origin = True
 
-        except InvalidGitRepositoryError:
+        except InvalidGitRepositoryError as exc:
             raise RepositoryError(
                 identifier=self.name, message=f"The data on disk is not a valid Git repository for {self.name}."
-            )
+            ) from exc
 
         # Validate that at least one worktree for the active commit in main has been created
         commit = str(repo.head.commit)
@@ -467,15 +471,15 @@ class InfrahubRepository(BaseModel):
                 raise RepositoryError(
                     identifier=self.name,
                     message=f"Unable to clone the repository {self.name}, please check the address and the credential",
-                )
+                ) from exc
 
             if "error: pathspec" in exc.stderr:
                 raise RepositoryError(
                     identifier=self.name,
                     message=f"The branch {self.default_branch_name} isn't a valid branch for the repository {self.name} at {self.location}.",
-                )
+                ) from exc
 
-            raise RepositoryError(identifier=self.name)
+            raise RepositoryError(identifier=self.name) from exc
 
         self.has_origin = True
 
@@ -564,7 +568,7 @@ class InfrahubRepository(BaseModel):
         branches = {}
 
         for remote_branch in git_repo.remotes.origin.refs:
-            if not isinstance(remote_branch, git.refs.remote.RemoteReference):
+            if not isinstance(remote_branch, git.refs.remote.RemoteReference):  # pylint: disable=no-member
                 continue
 
             short_name = remote_branch.name.replace("origin/", "")
@@ -849,7 +853,7 @@ class InfrahubRepository(BaseModel):
 
         return sorted(list(new_branches)), sorted(updated_branches)
 
-    async def validate_remote_branch(self, branch_name: str) -> bool:
+    async def validate_remote_branch(self, branch_name: str) -> bool:  # pylint: disable=unused-argument
         """Validate a branch present on the remote repository.
         To check a branch we need to first create a worktree in the temporary folder then apply some checks:
         - xxx
@@ -881,8 +885,8 @@ class InfrahubRepository(BaseModel):
                 raise RepositoryError(
                     identifier=self.name,
                     message=f"Unable to pull the branch {branch_name} for repository {self.name}, there is a conflict that must be resolved.",
-                )
-            raise RepositoryError(identifier=self.name, message=exc.stderr)
+                ) from exc
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
         commit_after = str(repo.head.commit)
 
@@ -909,7 +913,7 @@ class InfrahubRepository(BaseModel):
         try:
             repo.git.merge(commit)
         except GitCommandError as exc:
-            raise RepositoryError(identifier=self.name, message=exc.stderr)
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
         commit_after = str(repo.head.commit)
 
@@ -1065,6 +1069,7 @@ class InfrahubRepository(BaseModel):
 
             check_in_repo = checks_in_repo[check_name]
 
+            # pylint: disable=too-many-boolean-expressions
             if (
                 check_in_repo.repository != self.id
                 or check_in_repo.class_name != check_name
@@ -1122,7 +1127,7 @@ class InfrahubRepository(BaseModel):
                 continue
 
             transform_in_repo = transforms_in_repo[transform.name]
-
+            # pylint: disable=too-many-boolean-expressions
             if (
                 transform_in_repo.repository != self.id
                 or transform_in_repo.class_name != transform.name
@@ -1164,7 +1169,7 @@ class InfrahubRepository(BaseModel):
             try:
                 data = yaml.safe_load(yaml_data)
             except yaml.YAMLError as exc:
-                LOGGER.warning(f"{self.name} | Unable to load YAML file {yaml_file} : {exc.message}")
+                LOGGER.warning(f"{self.name} | Unable to load YAML file {yaml_file} : {exc}")
                 continue
 
             if not isinstance(data, dict):
@@ -1237,7 +1242,7 @@ class InfrahubRepository(BaseModel):
             return template.render(**data)
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
-            raise TransformError(repository_name=self.name, commit=commit, location=location, message=exc.message)
+            raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def execute_python_check(
         self, branch_name: str, commit: str, location: str, class_name: str, client: InfrahubClient
@@ -1268,25 +1273,25 @@ class InfrahubRepository(BaseModel):
 
             return check
 
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as exc:
             error_msg = f"Unable to load the check file {location} ({commit})"
             LOGGER.error(f"{self.name} | {error_msg}")
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
-            )
+            ) from exc
 
-        except AttributeError:
+        except AttributeError as exc:
             error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
             LOGGER.error(f"{self.name} | {error_msg}")
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
-            )
+            ) from exc
 
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
-            )
+            ) from exc
 
     async def execute_python_transform(
         self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: dict = None
@@ -1321,16 +1326,20 @@ class InfrahubRepository(BaseModel):
             )
             return await transform.run(data=data)
 
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as exc:
             error_msg = f"Unable to load the transform file {location} ({commit})"
             LOGGER.error(f"{self.name} | {error_msg}")
-            raise TransformError(repository_name=self.name, commit=commit, location=location, message=error_msg)
+            raise TransformError(
+                repository_name=self.name, commit=commit, location=location, message=error_msg
+            ) from exc
 
-        except AttributeError:
+        except AttributeError as exc:
             error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
             LOGGER.error(f"{self.name} | {error_msg}")
-            raise TransformError(repository_name=self.name, commit=commit, location=location, message=error_msg)
+            raise TransformError(
+                repository_name=self.name, commit=commit, location=location, message=error_msg
+            ) from exc
 
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
-            raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc))
+            raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc

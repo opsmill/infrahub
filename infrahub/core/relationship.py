@@ -44,7 +44,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         at: Optional[Timestamp] = None,
         node: Optional[Node] = None,
         node_id: Optional[str] = None,
-        *args,
         **kwargs,
     ):
 
@@ -66,11 +65,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         self._peer = None
         self.peer_id = None
+        self.data = None
 
         self._init_node_property_mixin(kwargs=kwargs)
         self._init_flag_property_mixin(kwargs=kwargs)
 
-    async def _process_data(self, session: AsyncSession, data: Union[Dict, RelationshipPeerData, str]):
+    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]):
 
         self.data = data
 
@@ -101,19 +101,18 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         else:
             await self.set_peer(value=data)
 
-    async def new(
+    async def new(  # pylint: disable=unused-argument
         self,
         session: AsyncSession,
         data: Union[dict, RelationshipPeerData, Any] = None,
-        *args,
         **kwargs,
     ) -> SelfRelationship:
 
-        await self._process_data(session=session, data=data)
+        await self._process_data(data=data)
 
         return self
 
-    async def load(
+    async def load(  # pylint: disable=unused-argument
         self,
         session: AsyncSession,
         id: str = None,
@@ -128,7 +127,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         if updated_at:
             self.updated_at = Timestamp(updated_at)
 
-        await self._process_data(session=session, data=data)
+        await self._process_data(data=data)
 
         return self
 
@@ -144,6 +143,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return self._node
 
     async def _get_node(self, session: AsyncSession) -> bool:
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         self._node = await NodeManager.get_one(session=session, id=self.node_id, branch=self.branch, at=self.at)
@@ -200,11 +200,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return self._peer if self._peer else None
 
     async def _get_peer(self, session: AsyncSession):
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         self._peer = await NodeManager.get_one(session=session, id=self.peer_id, branch=self.branch, at=self.at)
 
-        peer_schema = await self.get_peer_schema(session=session)
+        peer_schema = await self.get_peer_schema()
         results = None
         if not self._peer and peer_schema.default_filter:
             results = await NodeManager.query(
@@ -221,7 +222,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._peer = results[0]
         self.peer_id = self._peer.id
 
-    async def get_peer_schema(self, session: AsyncSession) -> NodeSchema:
+    async def get_peer_schema(self) -> NodeSchema:
         return registry.get_schema(name=self.schema.peer, branch=self.branch)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
@@ -340,14 +341,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
 
 class RelationshipManager:
-    def __init__(
+    def __init__(  # pylint: disable=unused-argument
         self,
         schema: RelationshipSchema,
         branch: Branch,
         at: Timestamp,
         node: Node,
         # data: Optional[Union[Dict, List, str]] = None,
-        *args,
         **kwargs,
     ):
 
@@ -562,7 +562,7 @@ class RelationshipManager:
 
         raise Exception("Relationship not found ... unexpected")
 
-    async def remove_in_db(
+    async def remove_in_db(  # pylint: disable=unused-argument
         self,
         peer_id: UUID,
         peer_data: RelationshipPeerData,
