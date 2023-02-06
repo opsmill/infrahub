@@ -296,8 +296,6 @@ class Branch(StandardNode):
         start_time = Timestamp(start_time)
         end_time = Timestamp(end_time)
 
-        branches_times = self.get_branches_and_times_to_query(at=start_time)
-
         params["branches"] = self.get_branches_in_scope()
         params["start_time"] = start_time.to_string()
         params["end_time"] = end_time.to_string()
