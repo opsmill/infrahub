@@ -281,6 +281,36 @@ class Branch(StandardNode):
 
         return filters, params
 
+    def get_query_filter_branch_range(
+        self,
+        branch_label: str,
+        rel_label: list,
+        start_time: Union[Timestamp, str],
+        end_time: Union[Timestamp, str],
+    ) -> Tuple[List, Dict]:
+        """Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
+
+        filters = []
+        params = {}
+
+        start_time = Timestamp(start_time)
+        end_time = Timestamp(end_time)
+
+        branches_times = self.get_branches_and_times_to_query(at=start_time)
+
+        params["branches"] = self.get_branches_in_scope()
+        params["start_time"] = start_time.to_string()
+        params["end_time"] = end_time.to_string()
+
+        filters_per_rel = [
+            f"({branch_label}.name in $branches AND {rel_label}.from >= $start_time AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)",
+            f"({branch_label}.name in $branches AND (({rel_label}.from >= $start_time AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time AND {rel_label}.to <= $end_time)))",
+        ]
+
+        filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
+
+        return filters, params
+
     async def rebase(self, session: Optional[AsyncSession] = None):
         """Rebase the current Branch with its origin branch"""
 

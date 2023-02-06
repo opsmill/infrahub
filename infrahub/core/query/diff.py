@@ -55,15 +55,24 @@ class DiffNodeQuery(DiffQuery):
 
         # TODO need to improve the query to capture an object that has been delete into the branch
         # TODO probably also need to consider a node what was merged already
+
+        br_filter, br_params = self.branch.get_query_filter_branch_range(
+            branch_label="b",
+            rel_label="r",
+            start_time=self.diff_from,
+            end_time=self.diff_to,
+        )
+
+        self.params.update(br_params)
+
         query = """
         MATCH (b:Branch)-[r:IS_PART_OF]-(n)
-        WHERE (b.name in $branch_names AND r.from >= $from ) OR (b.name in $branch_names AND r.to <= $from)
-        """
+        WHERE %s
+        """ % (
+            "\n AND ".join(br_filter),
+        )
 
         self.add_to_query(query)
-        self.params["branch_names"] = self.branch_names
-        self.params["from"] = self.diff_from.to_string()
-
         self.order_by = ["n.uuid"]
 
         self.return_labels = ["b", "n", "r"]

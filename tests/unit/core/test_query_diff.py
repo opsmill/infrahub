@@ -1,10 +1,53 @@
 from infrahub.core import get_branch
-from infrahub.core.query.diff import DiffRelationshipPropertiesByIDSRangeQuery
+from infrahub.core.query.diff import (
+    DiffNodeQuery,
+    DiffRelationshipPropertiesByIDSRangeQuery,
+)
+
+
+async def test_diff_node_query(session, default_branch, base_dataset_02):
+
+    branch1 = await get_branch(branch="branch1", session=session)
+
+    # Query all nodes from the creation of the first nodes (m60) to now
+    query = await DiffNodeQuery.init(
+        session=session,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+    )
+    await query.execute(session=session)
+
+    assert len(query.results) == 6
+
+    # Query all nodes from m30 to now
+    query = await DiffNodeQuery.init(
+        session=session,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m30"],
+        diff_to=base_dataset_02["time0"],
+    )
+    await query.execute(session=session)
+
+    assert len(query.results) == 1
+
+    # Query all nodes from m60 to m30
+    query = await DiffNodeQuery.init(
+        session=session,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time_m30"],
+    )
+    await query.execute(session=session)
+
+    assert len(query.results) == 5
 
 
 async def test_diff_relationship_properties_ids_range_query(session, default_branch, base_dataset_02):
 
     branch1 = await get_branch(branch="branch1", session=session)
+
+    # Query all Rels from the creation of the first nodes (m60) to now
     query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
         session=session,
         branch=branch1,
@@ -19,3 +62,27 @@ async def test_diff_relationship_properties_ids_range_query(session, default_bra
     r1_result = query.get_results_by_id_and_prop_type(branch_name="main", rel_id="r1", type="IS_PROTECTED")
 
     assert len(r1_result) == 2
+
+    # Query all nodes from m25 to now
+    query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
+        session=session,
+        branch=branch1,
+        ids=["r1", "r2"],
+        diff_from=base_dataset_02["time_m25"],
+        diff_to=base_dataset_02["time0"],
+    )
+    await query.execute(session=session)
+
+    assert len(query.results) == 3
+
+    # Query all nodes from m60 to m25
+    query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
+        session=session,
+        branch=branch1,
+        ids=["r1", "r2"],
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time_m25"],
+    )
+    await query.execute(session=session)
+
+    assert len(query.results) == 3
