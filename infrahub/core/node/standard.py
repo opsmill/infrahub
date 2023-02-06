@@ -48,11 +48,11 @@ class StandardNode(BaseModel):
 
         return await self._create(session=session)
 
-    async def refresh(self, session: AsyncSession, at=None, branch="main"):
+    async def refresh(self, session: AsyncSession, branch="main"):
         """Pull the latest state of the object from the database."""
 
         # Might need ot check how to manage the default value
-        raw_attrs = self._get_item_raw(self.id, at=at, branch=branch, session=session)
+        raw_attrs = self._get_item_raw(self.id, branch=branch, session=session)
         for item in raw_attrs:
             if item[1] != getattr(self, item[0]):
                 setattr(self, item[0], item[1])

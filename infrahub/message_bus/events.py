@@ -16,6 +16,8 @@ from . import get_broker
 if TYPE_CHECKING:
     from infrahub.core.node import Node
 
+# pylint: disable=arguments-differ
+
 
 class MessageType(str, BaseEnum):
     DATA = "data"  # ACTIONS: create, update , delete
@@ -119,7 +121,7 @@ class InfrahubMessage(PickleSerializer):
     SERIALIZER = pickle
     CONTENT_TYPE = "application/python-pickle"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
 
         self._message = None
 
@@ -180,11 +182,6 @@ class InfrahubMessage(PickleSerializer):
     def __repr__(self) -> str:
         return f"[{self.type.value.upper()}]"
 
-    async def send(self):
-        """Send the Message to the Exchange."""
-        exchange = await get_event_exchange()
-        return await exchange.publish(self.message, routing_key=self.topic)
-
 
 class InfrahubActionMessage(InfrahubMessage):
     """
@@ -222,6 +219,11 @@ class InfrahubActionMessage(InfrahubMessage):
 
     def __repr__(self) -> str:
         return f"[{self.type.value.upper()}] {self.action}"
+
+    async def send(self):
+        """Send the Message to the Exchange."""
+        exchange = await get_event_exchange()
+        return await exchange.publish(self.message, routing_key=self.topic)
 
 
 # --------------------------------------------------------

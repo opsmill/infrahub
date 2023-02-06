@@ -29,7 +29,7 @@ def get_branch_from_registry(branch: Optional[Union[Branch, str]] = None) -> Bra
     Returns:
         Branch: A Branch Object
     """
-
+    # pylint: disable=import-outside-toplevel
     from .branch import Branch
 
     if isinstance(branch, Branch):
@@ -64,7 +64,7 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
     Returns:
         Branch: A Branch Object
     """
-
+    # pylint: disable=import-outside-toplevel
     from .branch import Branch
 
     if isinstance(branch, Branch):
@@ -79,7 +79,7 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
         if not session:
             raise
 
-    obj = await Branch.get_by_name(branch, session=session)
+    obj = await Branch.get_by_name(name=branch, session=session)
     registry.branch[branch] = obj
 
     return obj
@@ -105,6 +105,7 @@ async def get_account(
     if account in registry.account:
         return registry.account[account]
 
+    # pylint: disable=import-outside-toplevel
     from infrahub.core.manager import NodeManager
 
     account_schema = registry.get_schema(name="Account")
@@ -221,6 +222,17 @@ class Registry:
     def get_all_graphql_type(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, InfrahubObject]:
         """Return all the graphql_type for a given branch."""
         return self.get_all_item(kind="graphql_type", branch=branch)
+
+    def delete_all(self):
+
+        self.branch = {}
+        self.node = {}
+        self.schema = defaultdict(dict)
+        self.graphql_type = defaultdict(dict)
+        self.account = {}
+        self.account_id = {}
+        self.node_group = {}
+        self.attr_group = {}
 
 
 registry = Registry()

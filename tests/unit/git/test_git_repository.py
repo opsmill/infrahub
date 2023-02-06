@@ -495,6 +495,66 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
     assert len(yaml_files) == 4
 
 
+async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
+
+    repo = git_repo_01
+
+    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name="branch02")
+
+    worktree = repo.get_worktree(identifier="branch01")
+    git_repo = repo.get_git_repo_worktree(identifier="branch01")
+
+    # Add a file
+    new_file = "mynewfile.txt"
+    with open(os.path.join(worktree.directory, new_file), "w") as file:
+        file.writelines(["this is a new file\n"])
+
+    # Remove a file
+    file_to_remove = "pyproject.toml"
+    os.remove(os.path.join(worktree.directory, file_to_remove))
+
+    git_repo.index.add([new_file])
+    git_repo.index.remove([file_to_remove])
+
+    git_repo.index.commit("Add 1, remove 1")
+
+    # TODO Need to move this code, it's useful to modify a file in the repo
+    # for branch in ["branch01", "branch02"]:
+
+    #     worktree = repo.get_worktree(identifier=branch)
+    #     git_repo = repo.get_git_repo_worktree(identifier=branch)
+
+    #     sports_file = os.path.join(worktree.directory, "test_files/sports.yml")
+
+    #     with open(sports_file, 'r') as file:
+    #         data = file.readlines()
+
+    #     # now change the 2nd line, note that you have to add a newline
+    #     data[1] = f'sports_{branch}:\n'
+
+    #     # and write everything back
+    #     with open(sports_file, 'w') as file:
+    #         file.writelines( data )
+
+    #     git_repo.index.add([sports_file])
+    #     git_repo.index.commit("Change sport file")
+
+    # repo.merge(source_branch="branch01", dest_branch="main", push_remote=False)
+
+    # commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=False)
+    commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=False)
+
+    changed, added, removed = await repo.calculate_diff_between_commits(
+        first_commit=commit_branch01, second_commit=commit_branch02
+    )
+    assert changed == ["README.md", "test_files/sports.yml"]
+    assert added == ["mynewfile.txt"]
+    assert removed == ["pyproject.toml"]
+
+
 def test_extract_repo_file_information():
 
     file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py", base_directory="/tmp/dir1")

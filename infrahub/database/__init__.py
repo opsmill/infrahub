@@ -7,22 +7,12 @@ import infrahub.config as config
 
 from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
 
-# NEO4J_PROTOCOL = os.environ.get("NEO4J_PROTOCOL", "neo4j")  # neo4j+s
-# NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
-# NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "admin")
-# NEO4J_ADDRESS = os.environ.get("NEO4J_ADDRESS", "localhost")
-# NEO4J_PORT = os.environ.get("NEO4J_PORT", 7687)  # 443
-# NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "infrahub")
-
-# URL = f"{NEO4J_PROTOCOL}://{NEO4J_ADDRESS}"
-
-# driver: Driver = GraphDatabase.driver(URL, auth=basic_auth(NEO4J_USERNAME, NEO4J_PASSWORD))
 validated_database = {}
 
 
 async def get_db():
 
-    global validated_database
+    global validated_database  # pylint: disable=global-variable-not-assigned
 
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
     driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))

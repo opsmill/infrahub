@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Generator, List
+from typing import TYPE_CHECKING, Generator, List, Union
 
-from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
+    from infrahub.core.branch import Branch
 
 
 class DiffQuery(Query):
@@ -16,7 +18,14 @@ class DiffQuery(Query):
     diff_from: Timestamp
     diff_to: Timestamp
 
-    def __init__(self, branch, diff_from=None, diff_to=None, *args, **kwargs):
+    def __init__(
+        self,
+        branch: Branch,
+        diff_from: Union[Timestamp, str] = None,
+        diff_to: Union[Timestamp, str] = None,
+        *args,
+        **kwargs,
+    ):
         """A diff is always in the context of a branch"""
 
         if diff_from:
@@ -24,7 +33,7 @@ class DiffQuery(Query):
         elif not diff_from and not branch.is_default:
             self.diff_from = Timestamp(branch.branched_from)
         else:
-            raise ValueError("diff_from is mandatory with the diff is on the main branch.")
+            raise ValueError("diff_from is mandatory when the diff is on the main branch.")
 
         # If Diff_to is not defined it will automatically select the current time.
         self.diff_to = Timestamp(diff_to)
@@ -32,10 +41,7 @@ class DiffQuery(Query):
         if self.diff_to < self.diff_from:
             raise ValueError("diff_to must be later than diff_from")
 
-        if branch.is_default:
-            self.branch_names = [branch.name]
-        else:
-            self.branch_names = [branch.name, branch.origin_branch]
+        self.branch_names = branch.get_branches_in_scope()
 
         super().__init__(branch, *args, **kwargs)
 
@@ -49,15 +55,24 @@ class DiffNodeQuery(DiffQuery):
 
         # TODO need to improve the query to capture an object that has been delete into the branch
         # TODO probably also need to consider a node what was merged already
+
+        br_filter, br_params = self.branch.get_query_filter_branch_range(
+            branch_label="b",
+            rel_label="r",
+            start_time=self.diff_from,
+            end_time=self.diff_to,
+        )
+
+        self.params.update(br_params)
+
         query = """
         MATCH (b:Branch)-[r:IS_PART_OF]-(n)
-        WHERE (b.name in $branch_names AND r.from >= $from ) OR (b.name in $branch_names AND r.to <= $from)
-        """
+        WHERE %s
+        """ % (
+            "\n AND ".join(br_filter),
+        )
 
         self.add_to_query(query)
-        self.params["branch_names"] = self.branch_names
-        self.params["from"] = self.diff_from.to_string()
-
         self.order_by = ["n.uuid"]
 
         self.return_labels = ["b", "n", "r"]
@@ -224,3 +239,67 @@ class DiffRelationshipPropertyQuery(DiffQuery):
             attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
 
             yield self.results[attr_info["idx"]]
+
+
+class DiffRelationshipPropertiesByIDSRangeQuery(Query):
+    name = "diff_relationship_properties_range_ids"
+
+    type: QueryType = QueryType.READ
+
+    def __init__(
+        self,
+        ids: List[str],
+        diff_from: str,
+        diff_to: str,
+        account=None,
+        *args,
+        **kwargs,
+    ):
+        self.account = account
+        self.ids = ids
+        self.time_from = Timestamp(diff_from)
+        self.time_to = Timestamp(diff_to)
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+
+        self.params["ids"] = self.ids
+
+        rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
+            rel_labels=["r"], start_time=self.time_from, end_time=self.time_to, include_outside_parentheses=True
+        )
+
+        self.params.update(rels_params)
+
+        # TODO Compute the list of potential relationship dynamically in the future based on the class
+        query = """
+        MATCH (rl) WHERE rl.uuid IN $ids
+        MATCH (rl)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
+        WHERE %s
+        """ % (
+            "\n AND ".join(rels_filter),
+        )
+
+        self.params["at"] = self.at.to_string()
+
+        self.add_to_query(query)
+        self.return_labels = ["rl", "rp", "r"]
+
+    def get_results_by_id_and_prop_type(self, branch_name: str, rel_id: str, type: str) -> List[QueryResult]:
+        """Return a list of all results matching a given branch / relationship id / property type.
+        The results are ordered chronologically
+        """
+        results = [
+            result
+            for result in self.results
+            if result.get("r").get("branch") in self.branch.get_branches_in_scope()
+            and result.get("rl").get("uuid") == rel_id
+            and result.get("r").type == type
+        ]
+
+        return sort_results_by_time(results, rel_label="r")
+
+
+# class DiffNodePropertiesByIDSRangeQuery(Query):
+#     name = "diff_node_properties_range_ids"

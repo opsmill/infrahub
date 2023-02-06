@@ -2,10 +2,10 @@ import asyncio
 
 import pendulum
 import pytest
+from neo4j._codec.hydration.v1 import HydrationHandler
 
 import infrahub.config as config
-import infrahub.core
-from infrahub.core import Registry, registry
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
@@ -61,6 +61,19 @@ async def rpc_client():
     return InfrahubRpcClientTesting()
 
 
+@pytest.fixture(scope="session")
+def neo4j_factory():
+    """Return a Hydration Scope from Neo4j used to generate fake
+    Node and Relationship object.
+
+    Example:
+        fields = [123, {"Person"}, {"name": "Alice", "age": 33}, "123"]
+        alice = neo4j_factory.hydrate_node(*fields)
+    """
+    hydration_scope = HydrationHandler().new_hydration_scope()
+    return hydration_scope._graph_hydrator
+
+
 @pytest.fixture
 async def simple_dataset_01(session, empty_database):
 
@@ -105,7 +118,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
       * time_m60 is now - 60s
 
     - 2 branches, main and branch1.
-        - branch1 was created at time_m40
+        - branch1 was created at time_m45
 
     - 2 Cars in Main and 1 in Branch1
         - Car1 was created at time_m60 in main
@@ -117,19 +130,6 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     """
 
     time0 = pendulum.now(tz="UTC")
-
-    # Create new Branch
-    branch1 = Branch(
-        name="branch1",
-        status="OPEN",
-        description="Second Branch",
-        is_default=False,
-        is_data_only=True,
-        branched_from=time0.subtract(seconds=40).to_iso8601_string(),
-    )
-    await branch1.save(session=session)
-    registry.branch[branch1.name] = branch1
-
     params = {
         "main_branch": "main",
         "branch1": "branch1",
@@ -140,9 +140,22 @@ async def base_dataset_02(session, default_branch, car_person_schema):
         "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
         "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
         "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
+        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
         "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
         "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
     }
+
+    # Create new Branch
+    branch1 = Branch(
+        name="branch1",
+        status="OPEN",
+        description="Second Branch",
+        is_default=False,
+        is_data_only=True,
+        branched_from=params["time_m45"],
+    )
+    await branch1.save(session=session)
+    registry.branch[branch1.name] = branch1
 
     query = """
     MATCH (b0:Branch { name: $main_branch })
@@ -280,7 +293,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (r1:Relationship { uuid: "r1", type: "car_person"})
+    CREATE (r1:Relationship { uuid: "r1", name: "car__person"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
@@ -288,7 +301,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)
 
-    CREATE (r2:Relationship { uuid: "r2", type: "car_person"})
+    CREATE (r2:Relationship { uuid: "r2", name: "car__person"})
     CREATE (p1)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
     CREATE (r2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)
@@ -383,7 +396,7 @@ async def person_tag_schema(session, data_schema):
 
 
 @pytest.fixture
-async def all_attribute_types_schema(session):
+async def all_attribute_types_schema(session, data_schema):
 
     SCHEMA = {
         "name": "all_attribute_types",
@@ -461,7 +474,7 @@ async def group_on_road_vehicule_schema(session):
 
 
 @pytest.fixture
-async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema):
 
     SCHEMA = {
         "name": "car",
@@ -565,7 +578,7 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
 
 
 @pytest.fixture
-async def fruit_tag_schema(session):
+async def fruit_tag_schema(session, data_schema):
 
     SCHEMA = {
         "nodes": [
@@ -635,8 +648,7 @@ async def data_schema(session):
 
 @pytest.fixture
 async def reset_registry(session):
-
-    infrahub.core.registry = Registry()
+    registry.delete_all()
 
 
 @pytest.fixture
@@ -651,22 +663,21 @@ async def init_db(empty_database, session):
 
 
 @pytest.fixture
-async def default_branch(empty_database, session) -> Branch:
+async def default_branch(reset_registry, empty_database, session) -> Branch:
     return await create_default_branch(session=session)
 
 
 @pytest.fixture
-async def register_internal_models_schema():
+async def register_internal_models_schema(default_branch):
 
     schema = SchemaRoot(**internal_schema)
-    await SchemaManager.register_schema_to_registry(schema=schema)
+    await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def register_core_models_schema(register_internal_models_schema):
-
+async def register_core_models_schema(default_branch, register_internal_models_schema):
     schema = SchemaRoot(**core_models)
-    await SchemaManager.register_schema_to_registry(schema=schema)
+    await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture

@@ -53,6 +53,9 @@ class Timestamp:
     def to_string(self):
         return self.obj.to_iso8601_string()
 
+    def to_timestamp(self):
+        return self.obj.int_timestamp
+
     async def to_graphql(self, session: Optional[AsyncSession] = None):  # pylint: disable=unused-argument
         return self.obj
 

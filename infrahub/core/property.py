@@ -116,6 +116,7 @@ class NodePropertyMixin:
 
     async def _retrieve_node_property(self, session: AsyncSession, name: str):
         """Query the node associated with this node_property from the database."""
+        # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         node = await NodeManager.get_one(

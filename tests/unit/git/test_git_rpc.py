@@ -8,7 +8,7 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 
-# pylint: disable=W0621
+# pylint: disable=redefined-outer-name
 
 
 async def test_git_rpc_create_successful(git_upstream_repo_02):
@@ -64,3 +64,45 @@ async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubReposito
     assert isinstance(response, InfrahubRPCResponse)
     assert response.status == RPCStatusCode.OK.value
     assert commit_main_before != commit_main_after
+
+
+async def test_git_rpc_diff(git_upstream_repo_01, git_repo_01: InfrahubRepository, tmp_path):
+
+    repo = git_repo_01
+
+    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name="branch02")
+
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+    commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=False)
+    commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=False)
+
+    # Diff Between Branch01 and Branch02
+    message = InfrahubGitRPC(
+        action=GitMessageAction.DIFF.value,
+        repository_id=uuid.uuid4(),
+        repository_name=repo.name,
+        location=git_upstream_repo_01["path"],
+        params={"first_commit": commit_branch01, "second_commit": commit_branch02},
+    )
+
+    response = await handle_git_rpc_message(message=message, client=None)
+
+    assert isinstance(response, InfrahubRPCResponse)
+    assert response.status == RPCStatusCode.OK.value
+    assert response.response.get("files_changed") == ["README.md", "test_files/sports.yml"]
+
+    # Diff Between Branch01 and Main
+    message = InfrahubGitRPC(
+        action=GitMessageAction.DIFF.value,
+        repository_id=uuid.uuid4(),
+        repository_name=repo.name,
+        location=git_upstream_repo_01["path"],
+        params={"first_commit": commit_branch01, "second_commit": commit_main},
+    )
+
+    response = await handle_git_rpc_message(message=message, client=None)
+
+    assert isinstance(response, InfrahubRPCResponse)
+    assert response.status == RPCStatusCode.OK.value
+    assert response.response.get("files_changed") == ["test_files/sports.yml"]

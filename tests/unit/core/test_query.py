@@ -1,6 +1,8 @@
+import pendulum
+import pytest
 from neo4j import AsyncSession
 
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryResult, sort_results_by_time
 
 
 class Query01(Query):
@@ -48,3 +50,97 @@ async def test_query_async(session, simple_dataset_01):
 
     assert query.num_of_results == 3
     assert query.results[0].get("at") is not None
+
+
+async def test_query_result_getters(neo4j_factory):
+
+    time0 = pendulum.now(tz="UTC")
+
+    n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
+    n2 = neo4j_factory.hydrate_node(222, {"AttributeValue"}, {"uuid": "n1a1", "name": "name"}, "222")
+    r1 = neo4j_factory.hydrate_relationship(
+        1112221,
+        111,
+        222,
+        "HAS_ATTRIBUTE",
+        {
+            "branch": "main",
+            "from": time0.subtract(seconds=60).to_iso8601_string(),
+            "to": time0.subtract(seconds=30).to_iso8601_string(),
+            "status": "active",
+        },
+    )
+    r2 = neo4j_factory.hydrate_relationship(
+        1112222,
+        111,
+        222,
+        "HAS_ATTRIBUTE",
+        {"branch": "main", "from": time0.subtract(seconds=30).to_iso8601_string(), "to": None, "status": "active"},
+    )
+
+    qr = QueryResult(
+        data=[n1, r1, r2, n2],
+        labels=[
+            "n1",
+            "r1",
+            "r2",
+            "n2",
+        ],
+    )
+    assert list(qr.get_rels()) == [r1, r2]
+    assert list(qr.get_nodes()) == [n1, n2]
+    assert qr.get("n1") == n1
+    assert qr.get("r1") == r1
+    assert qr.get("r2") == r2
+
+    with pytest.raises(ValueError):
+        qr.get("r3")
+
+
+async def test_sort_results_by_time(neo4j_factory):
+
+    time0 = pendulum.now(tz="UTC")
+
+    n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
+    n2 = neo4j_factory.hydrate_node(222, {"AttributeValue"}, {"uuid": "n1a1", "name": "name"}, "222")
+    r1 = neo4j_factory.hydrate_relationship(
+        1112221,
+        111,
+        222,
+        "HAS_ATTRIBUTE",
+        {
+            "branch": "main",
+            "from": time0.subtract(seconds=60).to_iso8601_string(),
+            "to": time0.subtract(seconds=30).to_iso8601_string(),
+            "status": "active",
+        },
+    )
+    r2 = neo4j_factory.hydrate_relationship(
+        1112222,
+        111,
+        222,
+        "HAS_ATTRIBUTE",
+        {"branch": "main", "from": time0.subtract(seconds=30).to_iso8601_string(), "to": None, "status": "active"},
+    )
+    r3 = neo4j_factory.hydrate_relationship(
+        1112223,
+        111,
+        222,
+        "HAS_ATTRIBUTE",
+        {
+            "branch": "main",
+            "from": time0.subtract(seconds=90).to_iso8601_string(),
+            "to": time0.subtract(seconds=60).to_iso8601_string(),
+            "status": "active",
+        },
+    )
+
+    qr1 = QueryResult(data=[n1, n2, r1], labels=["n1", "n2", "r"])
+    qr2 = QueryResult(data=[n1, n2, r2], labels=["n1", "n2", "r"])
+    qr3 = QueryResult(data=[n1, n2, r3], labels=["n1", "n2", "r"])
+
+    results = sort_results_by_time(results=[qr1, qr2, qr3], rel_label="r")
+    assert list(results) == [qr3, qr1, qr2]
+
+    results = sort_results_by_time(results=[qr3, qr2, qr1], rel_label="r")
+    assert list(results) == [qr3, qr1, qr2]
