@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -15,6 +14,7 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
     DiffNodeQuery,
+    DiffRelationshipPropertiesByIDSRangeQuery,
     DiffRelationshipPropertyQuery,
     DiffRelationshipQuery,
 )
@@ -23,7 +23,6 @@ from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
 )
-from infrahub.core.query.relationship import RelationshipListGetPropertiesQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
@@ -119,6 +118,16 @@ class Branch(StandardNode):
 
         return await get_branch(self.origin_branch, session=session)
 
+    def get_branches_in_scope(self) -> List[str]:
+        """Get the list of all the branches that are constituing this branch.
+
+        For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best."""
+        default_branch = config.SETTINGS.main.default_branch
+        if self.name == default_branch:
+            return [self.name]
+
+        return [default_branch, self.name]
+
     def get_branches_and_times_to_query(self, at: Union[Timestamp, str] = None) -> Dict[str, str]:
         """Get all the branches that are constituing this branch with the associated times."""
 
@@ -170,12 +179,13 @@ class Branch(StandardNode):
     def get_query_filter_relationships(
         self, rel_labels: list, at: Union[Timestamp, str] = None, include_outside_parentheses: bool = False
     ) -> Tuple[List, Dict]:
+        """Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch."""
 
         filters = []
         params = {}
 
-        # TODO add a check to ensure rel_labels is a list
-        #   automatically convert to a list of one if needed
+        if not isinstance(rel_labels, list):
+            raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
 
         at = Timestamp(at)
         branches_times = self.get_branches_and_times_to_query(at=at)
@@ -204,6 +214,15 @@ class Branch(StandardNode):
         return filters, params
 
     def get_query_filter_path(self, at: Union[Timestamp, str] = None) -> Tuple[str, Dict]:
+        """Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
+
+        Examples:
+            >>> rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+            >>> self.params.update(rels_params)
+            >>> query += "\n WHERE all(r IN relationships(p) WHERE %s)" % rels_filter
+
+            There is a currently an assuption that the relationship in the path will be named 'r'
+        """
 
         at = Timestamp(at)
         branches_times = self.get_branches_and_times_to_query(at=at.to_string())
@@ -222,6 +241,44 @@ class Branch(StandardNode):
         filter = "(" + "\n OR ".join(filters) + ")"
 
         return filter, params
+
+    def get_query_filter_relationships_range(
+        self,
+        rel_labels: list,
+        start_time: Union[Timestamp, str],
+        end_time: Union[Timestamp, str],
+        include_outside_parentheses: bool = False,
+    ) -> Tuple[List, Dict]:
+        """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph between start_time and end_time."""
+
+        filters = []
+        params = {}
+
+        if not isinstance(rel_labels, list):
+            raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
+
+        start_time = Timestamp(start_time)
+        end_time = Timestamp(end_time)
+
+        branches_times = self.get_branches_and_times_to_query(at=start_time)
+
+        params["branches"] = list(branches_times.keys())
+        params["start_time"] = start_time.to_string()
+        params["end_time"] = end_time.to_string()
+
+        for rel in rel_labels:
+
+            filters_per_rel = [
+                f"({rel}.branch in $branches AND {rel}.from >= $start_time AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
+                f"({rel}.branch in $branches AND (({rel}.from >= $start_time AND {rel}.from <= $end_time) OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
+            ]
+
+            if not include_outside_parentheses:
+                filters.append("\n OR ".join(filters_per_rel))
+
+            filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
+
+        return filters, params
 
     async def rebase(self, session: Optional[AsyncSession] = None):
         """Rebase the current Branch with its origin branch"""
@@ -523,12 +580,6 @@ class Branch(StandardNode):
         await asyncio.gather(*tasks)
 
 
-@dataclass
-class ValueElement:
-    previous: Any
-    new: Any
-
-
 class BaseDiffElement(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -557,14 +608,19 @@ class BaseDiffElement(BaseModel):
         return resp
 
 
+class ValueElement(BaseDiffElement):
+    previous: Optional[Any]
+    new: Optional[Any]
+
+
 class PropertyDiffElement(BaseDiffElement):
     branch: str
     type: str
     action: DiffAction
-    db_id: str = Field(exclude=False)
-    rel_id: str = Field(exclude=False)
-    origin_rel_id: Optional[str] = Field(exclude=False)
-    # value: ValueElement
+    db_id: str = Field(exclude=True)
+    rel_id: str = Field(exclude=True)
+    origin_rel_id: Optional[str] = Field(exclude=True)
+    value: Optional[ValueElement]
     changed_at: Optional[Timestamp]
 
 
@@ -572,9 +628,9 @@ class NodeAttributeDiffElement(BaseDiffElement):
     id: str
     name: str
     action: DiffAction
-    db_id: str = Field(exclude=False)
-    rel_id: str = Field(exclude=False)
-    origin_rel_id: Optional[str] = Field(exclude=False)
+    db_id: str = Field(exclude=True)
+    rel_id: str = Field(exclude=True)
+    origin_rel_id: Optional[str] = Field(exclude=True)
     changed_at: Optional[Timestamp]
     properties: Dict[str, PropertyDiffElement]
 
@@ -584,23 +640,23 @@ class NodeDiffElement(BaseDiffElement):
     labels: List[str]
     id: str
     action: DiffAction
-    db_id: str = Field(exclude=False)
-    rel_id: Optional[str] = Field(exclude=False)
+    db_id: str = Field(exclude=True)
+    rel_id: Optional[str] = Field(exclude=True)
     changed_at: Optional[Timestamp]
     attributes: Dict[str, NodeAttributeDiffElement]
 
 
 class RelationshipEdgeNodeDiffElement(BaseDiffElement):
     id: str
-    db_id: Optional[str] = Field(exclude=False)
-    rel_id: Optional[str] = Field(exclude=False)
+    db_id: Optional[str] = Field(exclude=True)
+    rel_id: Optional[str] = Field(exclude=True)
     labels: List[str]
 
 
 class RelationshipDiffElement(BaseDiffElement):
     branch: Optional[str]
     id: str
-    db_id: str = Field(exclude=False)
+    db_id: str = Field(exclude=True)
     name: str
     action: DiffAction
     nodes: Dict[str, RelationshipEdgeNodeDiffElement]
@@ -1089,24 +1145,18 @@ class Diff:
 
         The results will be stored in self._results organized by branch.
         """
-        # Query the diff on the main path
+
+        rel_ids_to_query = []
+
+        # ------------------------------------------------------------
+        # Process first the main path of the relationships
+        #   to identify the relationship that have been ADDED or DELETED
+        # ------------------------------------------------------------
         query_rels = await DiffRelationshipQuery.init(
             session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
         await query_rels.execute(session=session)
 
-        # Query the diff on the properties
-        query_props = await DiffRelationshipPropertyQuery.init(
-            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
-        )
-        await query_props.execute(session=session)
-
-        rel_ids_to_query = []
-
-        # ------------------------------------------------------------
-        # Process the main path of the relationships
-        # to identify the relationship that have been added or deleted
-        # ------------------------------------------------------------
         for result in query_rels.get_results():
 
             branch_name = result.get("r1").get("branch")
@@ -1156,8 +1206,15 @@ class Diff:
             self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
 
         # ------------------------------------------------------------
-        # Process the properties of the relationships that changed
+        # Then Query & Process the properties of the relationships
+        #  First we need to need to create the RelationshipDiffElement that haven't been created previously
+        #  Then we can process the properties themselves
         # ------------------------------------------------------------
+        query_props = await DiffRelationshipPropertyQuery.init(
+            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+        )
+        await query_props.execute(session=session)
+
         for result in query_props.get_results():
 
             branch_name = result.get("r3").get("branch")
@@ -1193,7 +1250,7 @@ class Diff:
                 properties={},
                 action=DiffAction.UPDATED,
                 changed_at=None,
-                branch=None,
+                branch=branch_name,
             )
 
             self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
@@ -1201,10 +1258,15 @@ class Diff:
             rel_ids_to_query.append(rel_id)
 
         # ------------------------------------------------------------
-        # Query the current value of the relationships that have been updated
+        # Query the current value of the relationships that have been flagged
+        #  Usually we need more information to determine if the rel has been updated, added or removed
         # ------------------------------------------------------------
-        origin_rel_properties_query = await RelationshipListGetPropertiesQuery.init(
-            session=session, ids=rel_ids_to_query, branch=self.origin_branch, at=self.diff_to
+        origin_rel_properties_query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
+            session=session,
+            ids=rel_ids_to_query,
+            branch=self.branch,
+            diff_from=self.diff_from,
+            diff_to=self.diff_to,
         )
         await origin_rel_properties_query.execute(session=session)
 
@@ -1218,17 +1280,22 @@ class Diff:
             prop_type = result.get("r3").type
             prop_from = Timestamp(result.get("r3").get("from"))
 
-            origin_prop = origin_rel_properties_query.get_by_id_and_prop_type(rel_id=rel_id, type=prop_type)
+            origin_prop = origin_rel_properties_query.get_results_by_id_and_prop_type(
+                branch_name=branch_name, rel_id=rel_id, type=prop_type
+            )
+
             prop = {
                 "type": prop_type,
                 "branch": branch_name,
                 "db_id": result.get("rp").element_id,
                 "rel_id": result.get("r3").element_id,
                 "origin_rel_id": None,
+                "value": {"new": result.get("rp").get("value"), "previous": None},
             }
 
             if origin_prop:
-                prop["origin_rel_id"] = origin_prop.get("r").element_id
+                prop["origin_rel_id"] = origin_prop[0].get("r").element_id
+                prop["value"]["previous"] = origin_prop[0].get("rp").get("value")
 
             if not origin_prop and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
                 prop["action"] = DiffAction.ADDED

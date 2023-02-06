@@ -360,13 +360,14 @@ async def test_diff_get_relationships(session, base_dataset_02):
 
     assert sorted(rels["branch1"]["car__person"].keys()) == ["r1", "r2"]
     assert rels["branch1"]["car__person"]["r1"].action == DiffAction.UPDATED
+    assert rels["branch1"]["car__person"]["r1"].properties["IS_VISIBLE"].action == DiffAction.UPDATED
 
     assert rels["branch1"]["car__person"]["r2"].action == DiffAction.ADDED
 
     assert rels["main"]["car__person"]["r1"].action == DiffAction.UPDATED
     assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED
-
-
+    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.previous is False
+    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.new is True
 async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)

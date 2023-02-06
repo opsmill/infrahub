@@ -1,4 +1,5 @@
 import pytest
+from deepdiff import DeepDiff
 from graphql import graphql
 
 from infrahub.core import registry
@@ -1135,10 +1136,10 @@ async def test_query_diff_graphs(db, session, base_dataset_02):
     expected_rels = [
         {
             "action": "updated",
-            "branch": None,
+            "branch": "main",
             "changed_at": None,
             "id": "r1",
-            "name": "car_person",
+            "name": "car__person",
             "properties": [
                 {
                     "action": "updated",
@@ -1150,10 +1151,10 @@ async def test_query_diff_graphs(db, session, base_dataset_02):
         },
         {
             "action": "updated",
-            "branch": None,
+            "branch": "branch1",
             "changed_at": None,
             "id": "r1",
-            "name": "car_person",
+            "name": "car__person",
             "properties": [
                 {
                     "action": "updated",
@@ -1168,7 +1169,7 @@ async def test_query_diff_graphs(db, session, base_dataset_02):
             "branch": "branch1",
             "changed_at": base_dataset_02["time_m20"],
             "id": "r2",
-            "name": "car_person",
+            "name": "car__person",
             "properties": [
                 {
                     "action": "added",
@@ -1188,5 +1189,6 @@ async def test_query_diff_graphs(db, session, base_dataset_02):
 
     assert len(result.data["diff"]["nodes"]) == 4
     assert len(result.data["diff"]["relationships"]) == 3
-    assert sorted(result.data["diff"]["nodes"], key=lambda k: (k["id"].lower(), k["action"])) == expected_nodes
-    assert sorted(result.data["diff"]["relationships"], key=lambda k: (k["id"].lower(), k["action"])) == expected_rels
+    assert DeepDiff(result.data["diff"]["nodes"], expected_nodes, ignore_order=True).to_dict() == {}
+    assert DeepDiff(result.data["diff"]["relationships"], expected_rels, ignore_order=True).to_dict() == {}
+    # assert sorted(result.data["diff"]["relationships"], key=lambda k: (k["id"].lower(), k["action"])) == expected_rels
