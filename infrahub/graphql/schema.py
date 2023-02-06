@@ -24,10 +24,12 @@ class InfrahubBaseQuery(ObjectType):
         branch_only=Boolean(required=False, default_value=False),
     )
 
-    async def resolve_branch(self, info, **kwargs):
+    @staticmethod
+    async def resolve_branch(root, info, **kwargs):
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return await BranchType.get_list(fields=fields, context=info.context, **kwargs)
 
+    @staticmethod
     async def resolve_diff(
         root, info, branch: str, branch_only: bool, time_from: str = None, time_to: str = None, **kwargs
     ):

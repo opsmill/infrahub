@@ -19,6 +19,7 @@ class InfrahubBaseSubscription(ObjectType):
     query = GenericScalar(name=String(), params=GenericScalar(required=False), min_interval=Int(required=False))
     event = GenericScalar(topics=List(String, required=False))
 
+    @staticmethod
     async def subscribe_query(
         root,
         info,
@@ -65,6 +66,7 @@ class InfrahubBaseSubscription(ObjectType):
                         result = await execute_query(session=session, name=name, params=params, branch=branch, at=at)
                         yield result.data
 
+    @staticmethod
     async def subscribe_event(root, info, topics: List = None):  # pylint: disable=unused-argument
 
         connection = await get_broker()
