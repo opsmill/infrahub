@@ -337,7 +337,7 @@ class TestUserWorkflow01:
 
         with client:
             variables = {"branch_name": branch1}
-            response = client.post(f"/graphql", json={"query": DIFF, "variables": variables}, headers=headers)
+            response = client.post("/graphql", json={"query": DIFF, "variables": variables}, headers=headers)
 
         assert response.status_code == 200
         assert "errors" not in response.json()

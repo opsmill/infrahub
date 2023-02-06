@@ -228,10 +228,10 @@ async def test_diff_get_files_repository(session, rpc_client, repos_in_main, bas
         commit_to="ccccccc",
     )
 
-    expected_response = {
-        ("file", repos_in_main["repo01"].id, "mydir/myfile.py"),
-        ("file", repos_in_main["repo01"].id, "readme.md"),
-    }
+    # expected_response = {
+    #     ("file", repos_in_main["repo01"].id, "mydir/myfile.py"),
+    #     ("file", repos_in_main["repo01"].id, "readme.md"),
+    # }
     assert len(resp) == 1
     assert "branch2" in resp
     assert isinstance(resp["branch2"], set)
@@ -368,6 +368,8 @@ async def test_diff_get_relationships(session, base_dataset_02):
     assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED
     assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.previous is False
     assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.new is True
+
+
 async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
 
     branch1 = await Branch.get_by_name(name="branch1", session=session)
