@@ -5,8 +5,7 @@ import pytest
 from neo4j._codec.hydration.v1 import HydrationHandler
 
 import infrahub.config as config
-import infrahub.core
-from infrahub.core import Registry, registry
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
