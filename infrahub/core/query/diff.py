@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Generator, List
+from typing import TYPE_CHECKING, Generator, List, Union
 
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
+    from infrahub.core.branch import Branch
 
 
 class DiffQuery(Query):
@@ -16,7 +18,14 @@ class DiffQuery(Query):
     diff_from: Timestamp
     diff_to: Timestamp
 
-    def __init__(self, branch, diff_from=None, diff_to=None, *args, **kwargs):
+    def __init__(
+        self,
+        branch: Branch,
+        diff_from: Union[Timestamp, str] = None,
+        diff_to: Union[Timestamp, str] = None,
+        *args,
+        **kwargs,
+    ):
         """A diff is always in the context of a branch"""
 
         if diff_from:
@@ -24,7 +33,7 @@ class DiffQuery(Query):
         elif not diff_from and not branch.is_default:
             self.diff_from = Timestamp(branch.branched_from)
         else:
-            raise ValueError("diff_from is mandatory with the diff is on the main branch.")
+            raise ValueError("diff_from is mandatory when the diff is on the main branch.")
 
         # If Diff_to is not defined it will automatically select the current time.
         self.diff_to = Timestamp(diff_to)
@@ -32,10 +41,7 @@ class DiffQuery(Query):
         if self.diff_to < self.diff_from:
             raise ValueError("diff_to must be later than diff_from")
 
-        if branch.is_default:
-            self.branch_names = [branch.name]
-        else:
-            self.branch_names = [branch.name, branch.origin_branch]
+        self.branch_names = branch.get_branches_in_scope()
 
         super().__init__(branch, *args, **kwargs)
 
@@ -284,3 +290,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         ]
 
         return sort_results_by_time(results, rel_label="r")
+
+
+# class DiffNodePropertiesByIDSRangeQuery(Query):
+#     name = "diff_node_properties_range_ids"

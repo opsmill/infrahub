@@ -119,7 +119,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
       * time_m60 is now - 60s
 
     - 2 branches, main and branch1.
-        - branch1 was created at time_m40
+        - branch1 was created at time_m45
 
     - 2 Cars in Main and 1 in Branch1
         - Car1 was created at time_m60 in main
@@ -131,19 +131,6 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     """
 
     time0 = pendulum.now(tz="UTC")
-
-    # Create new Branch
-    branch1 = Branch(
-        name="branch1",
-        status="OPEN",
-        description="Second Branch",
-        is_default=False,
-        is_data_only=True,
-        branched_from=time0.subtract(seconds=40).to_iso8601_string(),
-    )
-    await branch1.save(session=session)
-    registry.branch[branch1.name] = branch1
-
     params = {
         "main_branch": "main",
         "branch1": "branch1",
@@ -154,9 +141,22 @@ async def base_dataset_02(session, default_branch, car_person_schema):
         "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
         "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
         "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
+        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
         "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
         "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
     }
+
+    # Create new Branch
+    branch1 = Branch(
+        name="branch1",
+        status="OPEN",
+        description="Second Branch",
+        is_default=False,
+        is_data_only=True,
+        branched_from=params["time_m45"],
+    )
+    await branch1.save(session=session)
+    registry.branch[branch1.name] = branch1
 
     query = """
     MATCH (b0:Branch { name: $main_branch })

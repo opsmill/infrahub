@@ -950,12 +950,13 @@ class Diff:
             session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
         await query_nodes.execute(session=session)
+
         query_attrs = await DiffAttributeQuery.init(
             session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
         await query_attrs.execute(session=session)
 
-        attrs_to_query = {"nodes": set(), "fields": set()}
+        attrs_to_query = {"nodes": set(), "fields": set(), "attrs": set()}
 
         # ------------------------------------------------------------
         # Process nodes that have been Added or Removed first
@@ -1071,7 +1072,6 @@ class Diff:
 
         # ------------------------------------------------------------
         # Query the current value for all attributes that have been updated
-        #  Currently we are only using the result of this query to understand if a
         # ------------------------------------------------------------
         origin_attr_query = await NodeListGetAttributeQuery.init(
             session=session,
@@ -1079,6 +1079,7 @@ class Diff:
             branch=self.origin_branch,
             at=self.diff_to,
             include_source=True,
+            include_owner=True,
         )
         await origin_attr_query.execute(session=session)
 

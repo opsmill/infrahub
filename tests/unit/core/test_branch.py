@@ -1,6 +1,7 @@
 from typing import Dict
 
 import pytest
+from deepdiff import DeepDiff
 from pydantic import Field
 
 from infrahub.core import get_branch
@@ -89,12 +90,12 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
 
     results = branch1.get_branches_and_times_to_query()
     assert Timestamp(results["branch1"]) > now
-    assert results["main"] == base_dataset_02["time_m40"]
+    assert results["main"] == base_dataset_02["time_m45"]
 
     t1 = Timestamp("2s")
     results = branch1.get_branches_and_times_to_query(t1.to_string())
     assert results["branch1"] == t1.to_string()
-    assert results["main"] == base_dataset_02["time_m40"]
+    assert results["main"] == base_dataset_02["time_m45"]
 
     branch1.ephemeral_rebase = True
     results = branch1.get_branches_and_times_to_query()
@@ -318,9 +319,67 @@ async def test_diff_get_nodes(session, base_dataset_02):
     diff = await Diff.init(branch=branch1, session=session)
     nodes = await diff.get_nodes(session=session)
 
-    assert nodes["branch1"]["c1"].action == DiffAction.UPDATED
-    assert nodes["branch1"]["c1"].attributes["nbr_seats"].action == DiffAction.UPDATED
-    assert nodes["branch1"]["c1"].attributes["nbr_seats"].properties["HAS_VALUE"].action == DiffAction.UPDATED
+    expected_response_main_c1 = {
+        "branch": None,
+        "labels": ["Car"],
+        "id": "c1",
+        "action": "updated",
+        "changed_at": None,
+        "attributes": [
+            {
+                "id": "c1at1",
+                "name": "name",
+                "action": "updated",
+                "changed_at": None,
+                "properties": [
+                    {
+                        "branch": "main",
+                        "type": "HAS_VALUE",
+                        "action": "updated",
+                        "value": None,
+                        "changed_at": base_dataset_02["time_m20"],
+                    }
+                ],
+            }
+        ],
+    }
+    assert DeepDiff(nodes["main"]["c1"].to_graphql(), expected_response_main_c1, ignore_order=True).to_dict() == {}
+
+    expected_response_branch1_c1 = {
+        "branch": None,
+        "labels": ["Car"],
+        "id": "c1",
+        "action": "updated",
+        "changed_at": None,
+        "attributes": [
+            {
+                "id": "c1at2",
+                "name": "nbr_seats",
+                "action": "updated",
+                "changed_at": None,
+                "properties": [
+                    {
+                        "branch": "branch1",
+                        "type": "IS_PROTECTED",
+                        "action": "updated",
+                        "value": None,
+                        "changed_at": base_dataset_02["time_m20"],
+                    },
+                    {
+                        "branch": "branch1",
+                        "type": "HAS_VALUE",
+                        "action": "updated",
+                        "value": None,
+                        "changed_at": base_dataset_02["time_m20"],
+                    },
+                ],
+            }
+        ],
+    }
+
+    assert (
+        DeepDiff(nodes["branch1"]["c1"].to_graphql(), expected_response_branch1_c1, ignore_order=True).to_dict() == {}
+    )
 
     assert nodes["branch1"]["c3"].action == DiffAction.ADDED
     assert nodes["branch1"]["c3"].attributes["nbr_seats"].action == DiffAction.ADDED

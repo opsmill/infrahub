@@ -79,7 +79,7 @@ async def get_branch(branch: Optional[Union[Branch, str]], session: Optional[Asy
         if not session:
             raise
 
-    obj = await Branch.get_by_name(branch, session=session)
+    obj = await Branch.get_by_name(name=branch, session=session)
     registry.branch[branch] = obj
 
     return obj
