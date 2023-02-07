@@ -1,10 +1,9 @@
-import glob
 import logging
 import os
 import sys
+from asyncio import run as aiorun
 from typing import List, Optional
 
-import httpx
 import jinja2
 import typer
 import yaml
@@ -12,66 +11,35 @@ from git import Repo
 from rich.logging import RichHandler
 
 # pylint: disable=import-outside-toplevel
+import infrahub_ctl.config as config
+
 from .check import app as check_app
+from .schema import app as schema
+from .utils import execute_query, find_graphql_query
+from .validate import app as validate_app
 
 app = typer.Typer()
 
 app.add_typer(check_app, name="check", help="Execute Integration checks.")
-# app.add_typer(events_app, name="events", help="Interact with the events system.")
+app.add_typer(schema, name="schema", help="Manage the schema.")
+app.add_typer(validate_app, name="validate", help="Validate different components.")
 
 
-def execute_query(
-    query,
-    server: str = "http://localhost",
-    variables: dict = None,
-    branch: str = "main",
-    rebase: bool = False,
-    at=None,
-    timeout: int = 10,
-    params: dict = None,
-):
-    """Execute a GraphQL Query via the GraphQL API endpoint."""
-    payload = {"query": query, "variables": variables}
-    params = params if params else {}
-
-    if at and "at" not in params:
-        params["at"] = at
-    if "rebase" not in params:
-        params["rebase"] = str(rebase)
-
-    response = httpx.post(f"{server}/graphql/{branch}", json=payload, timeout=timeout, params=params)
-    response.raise_for_status()
-    return response.json()
-
-
-def find_graphql_query(name, directory="."):
-    for query_file in glob.glob(f"{directory}/**/*.gql", recursive=True):
-        filename = os.path.basename(query_file)
-        query_name = os.path.splitext(filename)[0]
-        if query_name != name:
-            continue
-        with open(query_file, "r") as file_data:
-            query_string = file_data.read()
-
-        return query_string
-
-    return None
-
-
-@app.command()
-def render(
+async def _render(
     rfile: str,
-    params: Optional[List[str]] = typer.Argument(None),
-    server: str = "http://localhost:8000",
-    branch: str = "main",
-    debug: bool = False,
+    params: Optional[List[str]],
+    config_file: str,
+    branch: str,
+    debug: bool,
 ):
     """Render a local Jinja Template (RFile) for debugging purpose."""
     log_level = "DEBUG" if debug else "INFO"
 
+    config.load_and_exit(config_file_name=config_file)
+
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub")
+    log = logging.getLogger("infrahubctl")
 
     if not branch:
         repo = Repo(".")
@@ -101,7 +69,7 @@ def render(
     query = find_graphql_query(rfile_data.get("query"))
 
     params = {item.split("=")[0]: item.split("=")[1] for item in params}
-    response = execute_query(server=server, query=query, variables=params, branch=branch)
+    response = execute_query(server=config.SETTINGS.server_address, query=query, variables=params, branch=branch)
 
     template_path = rfile_data.get("template_path")
     if not os.path.isfile(rfile_data.get("template_path")):
@@ -112,3 +80,15 @@ def render(
     template = templateEnv.get_template(template_path)
 
     print(template.render(**params, **response))
+
+
+@app.command()
+def render(
+    rfile: str,
+    params: Optional[List[str]] = typer.Argument(None),
+    config_file: str = typer.Argument("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    branch: str = "main",
+    debug: bool = False,
+):
+    """Render a local Jinja Template (RFile) for debugging purpose."""
+    aiorun(_render(rfile=rfile, params=params, config_file=config_file, branch=branch, debug=debug))

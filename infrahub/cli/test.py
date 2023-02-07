@@ -79,3 +79,21 @@ def client(
     import pytest
 
     sys.exit(pytest.main(["-x", path, verbose_str]))
+
+@app.command()
+def ctl(
+    path: Optional[str] = typer.Argument(None),
+    verbose: int = typer.Option(0, "--verbose", "-v", count=True),
+):
+    """Execute all tests for the infrahubcli tool."""
+
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+
+    if not path:
+        path = "./tests/ctl"
+
+    verbose_str = "-" + "v" * verbose if verbose else "-v"
+
+    import pytest
+
+    sys.exit(pytest.main(["-x", path, verbose_str]))
