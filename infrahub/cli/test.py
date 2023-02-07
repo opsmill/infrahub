@@ -80,6 +80,7 @@ def client(
 
     sys.exit(pytest.main(["-x", path, verbose_str]))
 
+
 @app.command()
 def ctl(
     path: Optional[str] = typer.Argument(None),
