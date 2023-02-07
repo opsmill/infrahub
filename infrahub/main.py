@@ -48,7 +48,6 @@ async def get_session(request: Request) -> AsyncSession:
 
 @app.on_event("startup")
 async def app_initialization():
-
     if not config.SETTINGS:
         config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
         config_file_path = os.path.abspath(config_file_name)
@@ -92,7 +91,6 @@ async def generate_rfile(
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
 ):
-
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     branch = await get_branch(session=session, branch=branch)
@@ -173,7 +171,6 @@ async def graphql_query(
     at: Optional[str] = None,
     rebase: bool = False,
 ):
-
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     branch = await get_branch(session=session, branch=branch)
@@ -240,7 +237,6 @@ async def transform_python(
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
 ):
-
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     branch = await get_branch(session=session, branch=branch)

@@ -53,11 +53,9 @@ TEMPORARY_DIRECTORY_NAME = "temp"
 async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
     message: InfrahubGitRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
-
     LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
 
     if message.action == GitMessageAction.REPO_ADD.value:
-
         async with lock_registry.get(message.repository_name):
             try:
                 repo = await InfrahubRepository.new(
@@ -74,7 +72,6 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
     if message.action == GitMessageAction.BRANCH_ADD.value:
-
         async with lock_registry.get(message.repository_name):
             try:
                 await repo.create_branch_in_git(branch_name=message.params["branch_name"])
@@ -84,7 +81,6 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
             return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
 
     elif message.action == GitMessageAction.DIFF.value:
-
         # Calculate the diff between 2 timestamps / branches
         files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
             first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
@@ -117,13 +113,11 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
 
 
 async def handle_git_transform_message(message: InfrahubTransformRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-
     LOGGER.debug(
         f"Will process Transform RPC message : {message.action}, {message.repository_name} : {message.transform_location}"
     )
 
     if message.action == TransformMessageAction.JINJA2.value:
-
         repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
         try:
@@ -159,13 +153,11 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
 
 
 async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-
     LOGGER.debug(
         f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
     )
 
     if message.action == TransformMessageAction.PYTHON.value:
-
         repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
         try:
@@ -220,7 +212,6 @@ class RepoFileInformation(BaseModel):
 
 
 def extract_repo_file_information(full_filename: str, base_directory: str = None):
-
     directory_name = os.path.dirname(full_filename)
     filename = os.path.basename(full_filename)
     filename_wo_ext, extension = os.path.splitext(filename)
@@ -494,7 +485,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     @classmethod
     async def new(cls, **kwargs):
-
         self = cls(**kwargs)
         await self.create_locally()
         LOGGER.info(f"{self.name} | Created the new project locally.")
@@ -502,7 +492,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     @classmethod
     async def init(cls, **kwargs):
-
         self = cls(**kwargs)
         self.validate_local_directories()
         LOGGER.debug(f"{self.name} | Initiated the object on an existing directory.")
@@ -609,7 +598,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return branches
 
     def get_commit_value(self, branch_name, remote: bool = False) -> str:
-
         branches = None
         if remote:
             branches = self.get_branches_from_remote()
@@ -944,7 +932,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return response
 
     async def import_objects_from_files(self, branch_name: str):
-
         if not self.client:
             LOGGER.warning("Unable to import the objects from the files because a valid client hasn't been provided.")
             return
@@ -954,7 +941,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         await self.import_all_python_files(branch_name=branch_name)
 
     async def import_objects_rfiles(self, branch_name: str, data: dict):
-
         LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ")
 
         # For now we query all repositories and we filter down to this one
@@ -965,7 +951,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         }
 
         for rfile_name, rfile in data.items():
-
             # Insert the UUID of the repository in case they are referencing the local repo
             for key in rfile.keys():
                 if "repository" in key:
@@ -1014,7 +999,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         queries_in_graph = await self.client.get_list_graphql_queries(branch_name=branch_name)
 
         for query_file in query_files:
-
             filename = os.path.basename(query_file)
             query_name = os.path.splitext(filename)[0]
             query_string = Path(query_file).read_text(encoding="UTF-8")
@@ -1040,7 +1024,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         # TODO need to identify Query that are not present anymore (once lineage is available)
 
     async def import_python_checks_from_module(self, branch_name: str, module, file_path: str):
-
         # TODO add function to validate if a check is valid
 
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
@@ -1050,7 +1033,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         checks_in_repo = {key: value for key, value in checks_in_graph.items() if value.repository == str(self.id)}
 
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
-
             check_name = check_class.__name__
 
             if check_name not in checks_in_repo:
@@ -1093,7 +1075,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 )
 
     async def import_python_transforms_from_module(self, branch_name: str, module, file_path: str):
-
         # TODO add function to validate if a check is valid
 
         if INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT not in dir(module):
@@ -1105,7 +1086,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         }
 
         for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
-
             transform = transform_class()
             transform_class_name = transform_class.__name__
 
@@ -1153,11 +1133,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 )
 
     async def import_all_yaml_files(self, branch_name: str):
-
         yaml_files = await self.find_files(extension=["yml", "yaml"], branch_name=branch_name)
 
         for yaml_file in yaml_files:
-
             LOGGER.debug(f"{self.name} | Checking {yaml_file}")
 
             # ------------------------------------------------------
@@ -1187,12 +1165,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 await method(branch_name=branch_name, data=data)
 
     async def import_all_python_files(self, branch_name: str):
-
         branch_wt = self.get_worktree(identifier=branch_name)
         python_files = await self.find_files(extension=["py"], branch_name=branch_name)
 
         for python_file in python_files:
-
             LOGGER.debug(f"{self.name} | Checking {python_file}")
 
             file_info = extract_repo_file_information(full_filename=python_file, base_directory=branch_wt.directory)
@@ -1214,7 +1190,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
 
     async def find_files(self, extension: Union[str, List[str]], branch_name: str, recursive: bool = True):
-
         branch_wt = self.get_worktree(identifier=branch_name)
 
         files = []
@@ -1229,7 +1204,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return files
 
     async def render_jinja2_template(self, commit: str, location: str, data: dict):
-
         commit_worktree = self.get_worktree(identifier=commit)
 
         if not os.path.exists(os.path.join(commit_worktree.directory, location)):

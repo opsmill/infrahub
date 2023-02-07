@@ -74,7 +74,6 @@ LOGGER = logging.getLogger("infrahub")
 
 
 def load_data():
-
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
@@ -152,7 +151,6 @@ def load_data():
 
     LOGGER.info("Creating Device")
     for idx, device in enumerate(DEVICES):
-
         status_id = statuses_dict[device[1]].id
         role_id = roles_dict[device[4]].id
         device_type = device[2]
@@ -176,7 +174,6 @@ def load_data():
         #     ip.save()
 
         for intf_idx, intf_name in enumerate(INTERFACE_NAMES[device_type]):
-
             device_id = str(re.search(r"\d+", device[0]).group())
 
             intf_role = INTERFACE_ROLES[device[4]][intf_idx]

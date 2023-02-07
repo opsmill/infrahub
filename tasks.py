@@ -335,7 +335,6 @@ def dev_stop(context):
 
 @task
 def performance_test(context, directory="utilities", dataset="dataset03"):
-
     PERFORMANCE_FILE_PREFIX = "locust_"
     NOW = datetime.now()
     date_format = NOW.strftime("%Y-%m-%d-%H-%M-%S")

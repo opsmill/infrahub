@@ -22,13 +22,11 @@ from infrahub_client import (
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-
     return await InfrahubClient.init(address="http://mock")
 
 
 @pytest.fixture
 def git_sources_dir(tmp_path) -> str:
-
     source_dir = os.path.join(str(tmp_path), "sources")
 
     os.mkdir(source_dir)
@@ -38,7 +36,6 @@ def git_sources_dir(tmp_path) -> str:
 
 @pytest.fixture
 def git_repos_dir(tmp_path) -> str:
-
     repos_dir = os.path.join(str(tmp_path), "repositories")
 
     os.mkdir(repos_dir)
@@ -340,7 +337,6 @@ async def git_repo_checks(client, git_upstream_repo_02, git_repos_dir) -> Infrah
     files_to_copy = ["check01.py", "check02.py"]
 
     for file_to_copy in files_to_copy:
-
         shutil.copyfile(
             os.path.join(checks_fixture_dir, file_to_copy), os.path.join(git_upstream_repo_02["path"], file_to_copy)
         )
@@ -370,7 +366,6 @@ async def git_repo_transforms(client, git_upstream_repo_02, git_repos_dir) -> In
     files_to_copy = ["transform01.py", "transform02.py"]
 
     for file_to_copy in files_to_copy:
-
         shutil.copyfile(
             os.path.join(checks_fixture_dir, file_to_copy), os.path.join(git_upstream_repo_02["path"], file_to_copy)
         )
@@ -388,7 +383,6 @@ async def git_repo_transforms(client, git_upstream_repo_02, git_repos_dir) -> In
 
 @pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response = {
         "data": {
             "branch": [
@@ -413,7 +407,6 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response1 = {
         "data": {
             "repository": [
@@ -446,7 +439,6 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response = {
         "data": {
             "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
@@ -462,7 +454,6 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_list_graphql_query_empty(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response = {"data": {"graphql_query": []}}
     request_content = json.dumps({"query": QUERY_ALL_GRAPHQL_QUERIES}).encode()
 
@@ -472,7 +463,6 @@ async def mock_list_graphql_query_empty(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response = {
         "data": {
             "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
@@ -486,7 +476,6 @@ async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response = {"data": {"mock": []}}
 
     httpx_mock.add_response(method="GET", json=response, url="http://mock/query/my_query?branch=main&rebase=true")

@@ -20,7 +20,6 @@ class DummyRelationshipQuery(RelationshipQuery):
 
 
 async def test_RelationshipQuery_init(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -68,7 +67,6 @@ async def test_RelationshipQuery_init(session, default_branch, person_tag_schema
 
 
 async def test_query_RelationshipCreateQuery(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -100,7 +98,6 @@ async def test_query_RelationshipCreateQuery(session, default_branch, person_tag
 
 
 async def test_query_RelationshipCreateQuery_w_node_property(session, default_branch, person_tag_schema, first_account):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -130,7 +127,6 @@ async def test_query_RelationshipCreateQuery_w_node_property(session, default_br
 
 
 async def test_query_RelationshipDeleteQuery(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -168,7 +164,6 @@ async def test_query_RelationshipDeleteQuery(session, default_branch, person_tag
 
 
 async def test_query_RelationshipGetPeerQuery(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
     t1 = await Node.init(session=session, schema="Tag")
@@ -201,7 +196,6 @@ async def test_query_RelationshipGetPeerQuery(session, default_branch, person_ta
 
 
 async def test_query_RelationshipGetPeerQuery_with_filter(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 

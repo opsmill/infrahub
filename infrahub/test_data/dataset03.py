@@ -124,7 +124,6 @@ LOGGER = logging.getLogger("infrahub")
 
 
 async def load_data(session: AsyncSession):
-
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
@@ -163,7 +162,6 @@ async def load_data(session: AsyncSession):
         LOGGER.info(f"Organization Created: {obj.name.value} | {asn.asn.value}")
 
     for peer_group in BGP_PEER_GROUPS:
-
         obj = await Node.init(session=session, schema="BGPPeerGroup")
         await obj.new(
             session=session,
@@ -212,7 +210,6 @@ async def load_data(session: AsyncSession):
     LOGGER.info("Creating Site & Device")
 
     for site_idx, site_name in enumerate(SITES):
-
         site = await Node.init(session=session, schema="Location")
         await site.new(session=session, name=site_name, type="SITE")
         await site.save(session=session)
@@ -230,7 +227,6 @@ async def load_data(session: AsyncSession):
         other_sites = sorted(other_sites)
 
         for idx, device in enumerate(DEVICES):
-
             device_name = f"{site_name}-{device[0]}"
             status_id = statuses_dict[device[1]].id
             role_id = roles_dict[device[4]].id
@@ -293,7 +289,6 @@ async def load_data(session: AsyncSession):
 
             # Other Interfaces
             for intf_idx, intf_name in enumerate(INTERFACE_NAMES[device_type]):
-
                 intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
                 intf_role_id = roles_dict[intf_role].id
 
@@ -456,7 +451,6 @@ async def load_data(session: AsyncSession):
     # CREATE BACKBONE LINKS & CIRCUITS
     # --------------------------------------------------
     for idx, backbone_link in enumerate(P2P_NETWORKS_POOL.keys()):
-
         site1 = backbone_link[0]
         site2 = backbone_link[2]
         device = backbone_link[1]

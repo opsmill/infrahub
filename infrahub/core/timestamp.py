@@ -18,7 +18,6 @@ REGEX_MAPPING = {
 
 class Timestamp:
     def __init__(self, value=None):
-
         if value and isinstance(value, DateTime):
             self.obj = value
         elif value and isinstance(value, self.__class__):
@@ -30,7 +29,6 @@ class Timestamp:
 
     @classmethod
     def _parse_string(cls, value):
-
         try:
             return pendulum.parse(value)
         except pendulum.parsing.exceptions.ParserError:

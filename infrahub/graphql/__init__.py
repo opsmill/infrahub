@@ -32,7 +32,6 @@ async def generate_graphql_schema(
     include_types: bool = True,
     branch: Union[Branch, str] = None,
 ) -> GraphQLSchema:
-
     if include_types:
         await generate_object_types(session=session, branch=branch)
         types_dict = registry.get_all_graphql_type(branch=branch)
@@ -51,7 +50,6 @@ async def generate_graphql_schema(
 
 
 async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None):
-
     QueryMixin = await generate_query_mixin(session=session, branch=branch)
 
     class Query(InfrahubBaseQuery, QueryMixin):
@@ -61,7 +59,6 @@ async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None
 
 
 async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = None):
-
     MutationMixin = await generate_mutation_mixin(session=session, branch=branch)
 
     class Mutation(InfrahubBaseMutation, MutationMixin):

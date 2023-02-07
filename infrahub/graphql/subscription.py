@@ -15,7 +15,6 @@ class EventType(ObjectType):
 
 
 class InfrahubBaseSubscription(ObjectType):
-
     query = GenericScalar(name=String(), params=GenericScalar(required=False), min_interval=Int(required=False))
     event = GenericScalar(topics=List(String, required=False))
 
@@ -27,7 +26,6 @@ class InfrahubBaseSubscription(ObjectType):
         min_interval=5,
         params=None,
     ):
-
         # pylint: disable=import-outside-toplevel
         from . import execute_query
 
@@ -42,7 +40,6 @@ class InfrahubBaseSubscription(ObjectType):
         yield result.data
 
         async with connection:
-
             # Creating a channel & Queue
             channel = await connection.channel()
             queue = await channel.declare_queue(exclusive=True)
@@ -68,11 +65,9 @@ class InfrahubBaseSubscription(ObjectType):
 
     @staticmethod
     async def subscribe_event(root, info, topics: List = None):  # pylint: disable=unused-argument
-
         connection = await get_broker()
 
         async with connection:
-
             # Creating a channel & Queue
             channel = await connection.channel()
             queue = await channel.declare_queue(exclusive=True)

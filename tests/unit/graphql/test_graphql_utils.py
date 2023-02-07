@@ -4,7 +4,6 @@ from infrahub.graphql.utils import extract_fields
 
 
 async def test_extract_fields():
-
     query = """
     query {
         person {
@@ -27,7 +26,6 @@ async def test_extract_fields():
 
 
 async def test_extract_fields_fragment():
-
     query = """
         query {
             person {

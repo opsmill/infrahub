@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class DiffQuery(Query):
-
     branch_names: List[str]
     diff_from: Timestamp
     diff_to: Timestamp
@@ -47,12 +46,10 @@ class DiffQuery(Query):
 
 
 class DiffNodeQuery(DiffQuery):
-
     name: str = "diff_node"
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         # TODO need to improve the query to capture an object that has been delete into the branch
         # TODO probably also need to consider a node what was merged already
 
@@ -79,12 +76,10 @@ class DiffNodeQuery(DiffQuery):
 
 
 class DiffAttributeQuery(DiffQuery):
-
     name: str = "diff_attribute"
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         # TODO need to improve the query to capture an object that has been deleted into the branch
         query = """
         MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
@@ -120,12 +115,10 @@ class DiffAttributeQuery(DiffQuery):
 
 
 class DiffRelationshipQuery(DiffQuery):
-
     name: str = "diff_relationship"
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         query = """
         MATCH p = ((sn)-[r1]->(rel:Relationship)<-[r2]-(dn))
         WHERE (r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
@@ -140,7 +133,6 @@ class DiffRelationshipQuery(DiffQuery):
         self.return_labels = ["sn", "dn", "rel", "r1", "r2"]
 
     def get_results(self) -> Generator[QueryResult, None, None]:
-
         if not self.results:
             return iter(())
 
@@ -149,7 +141,6 @@ class DiffRelationshipQuery(DiffQuery):
 
         # Extract all attrname and relationships on all branches
         for idx, result in enumerate(self.results):
-
             # Generate unique set composed of all the IDs of the nodes and the relationship returned
             # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
             ids_set = {item.element_id for item in result}
@@ -175,12 +166,10 @@ class DiffRelationshipQuery(DiffQuery):
 
 
 class DiffRelationshipPropertyQuery(DiffQuery):
-
     name: str = "diff_relationship_property"
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.diff_to)
         self.params.update(rels_params)
 
@@ -206,7 +195,6 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     #   1/ avoid dup code with DiffRelationshipPropertyQuery
     #   2/ leverage the code from Group_by
     def get_results(self) -> Generator[QueryResult, None, None]:
-
         if not self.results:
             return iter(())
 
@@ -215,7 +203,6 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 
         # Extract all attrname and relationships on all branches
         for idx, result in enumerate(self.results):
-
             # Generate unique set composed of all the IDs of the nodes and the relationship returned
             # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
             ids_set = {item.element_id for item in result}
@@ -263,7 +250,6 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(

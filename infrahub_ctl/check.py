@@ -39,7 +39,6 @@ def run(
 
     # search for python file
     for python_file in python_files:
-
         directory_name = os.path.dirname(python_file)
         filename = os.path.basename(python_file)
         module_name = os.path.splitext(filename)[0]

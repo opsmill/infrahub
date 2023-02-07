@@ -3,7 +3,6 @@ from infrahub.core.branch import Branch
 
 
 async def test_get_branch_from_registry(session, default_branch):
-
     br1 = get_branch_from_registry()
     assert br1.name == default_branch.name
 
@@ -12,7 +11,6 @@ async def test_get_branch_from_registry(session, default_branch):
 
 
 async def test_get_branch_not_in_registry(session, default_branch):
-
     branch1 = Branch(name="branch1", status="OPEN")
     await branch1.save(session=session)
 

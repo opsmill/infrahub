@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 
 @dataclass
 class NodeToProcess:
-
     schema: NodeSchema
 
     node_id: int
@@ -67,7 +66,6 @@ class AttrToProcess:
 
 
 def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
-
     for label in node.labels:
         if registry.has_schema(name=label, branch=branch):
             return registry.get_schema(name=label, branch=branch)
@@ -111,7 +109,6 @@ class NodeCreateQuery(NodeQuery):
     raise_error_if_empty: bool = True
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["uuid"] = str(uuid.uuid4())
         self.params["branch"] = self.branch.name
 
@@ -131,7 +128,6 @@ class NodeCreateQuery(NodeQuery):
         self.return_labels = ["n"]
 
     def get_new_ids(self) -> Tuple[str, str]:
-
         result = self.get_result()
         node = result.get("n")
 
@@ -149,7 +145,6 @@ class NodeDeleteQuery(NodeQuery):
     raise_error_if_empty: bool = True
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
 
@@ -166,7 +161,6 @@ class NodeDeleteQuery(NodeQuery):
 
 
 class NodeListGetLocalAttributeValueQuery(Query):
-
     name: str = "node_list_get_local_attribute_value"
 
     def __init__(self, ids: List[str], *args, **kwargs):
@@ -174,7 +168,6 @@ class NodeListGetLocalAttributeValueQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["attrs_ids"] = self.ids
 
         rel_filter, rel_params = self.branch.get_query_filter_relationships(
@@ -200,7 +193,6 @@ class NodeListGetLocalAttributeValueQuery(Query):
 
 
 class NodeListGetAttributeQuery(Query):
-
     name: str = "node_list_get_attribute"
     order_by: List[str] = ["a.name"]
 
@@ -231,7 +223,6 @@ class NodeListGetAttributeQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -356,7 +347,6 @@ class NodeListGetAttributeQuery(Query):
         return attrs_by_node
 
     def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> QueryResult:
-
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
             if result.get("n").get("uuid") == node_id and result.get("a").get("name") == attr_name:
                 return result
@@ -365,7 +355,6 @@ class NodeListGetAttributeQuery(Query):
 
 
 class NodeListGetInfoQuery(Query):
-
     name: str = "node_list_get_info"
 
     def __init__(self, ids: List[str], account=None, *args, **kwargs):
@@ -374,7 +363,6 @@ class NodeListGetInfoQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         branches = list(self.branch.get_branches_and_times_to_query().keys())
         self.params["branches"] = branches
 
@@ -414,20 +402,17 @@ class NodeListGetInfoQuery(Query):
 
 
 class NodeGetListQuery(Query):
-
     name = "node_get_list"
 
     order_by: List[str] = ["id(n)"]
 
     def __init__(self, schema: NodeSchema, filters: dict = None, *args, **kwargs):
-
         self.schema = schema
         self.filters = filters
 
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         branches = list(self.branch.get_branches_and_times_to_query().keys())
 
         branch_filter, branch_params = self.branch.get_query_filter_branch_to_node(
@@ -464,7 +449,6 @@ class NodeGetListQuery(Query):
         #  Go over all the fields, remove the first part of the query to identify the field
         #  { "name__name": value }
         for field_name in self.schema.valid_input_names:
-
             attr_filters = {
                 key.replace(f"{field_name}__", ""): value
                 for key, value in self.filters.items()

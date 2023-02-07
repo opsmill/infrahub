@@ -60,7 +60,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         branch: Branch,
         at: Timestamp,
     ):
-
         self._schema: NodeSchema = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
@@ -85,7 +84,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
     ) -> Node:
-
         attrs = {}
 
         branch = await get_branch(branch=branch, session=session)
@@ -93,7 +91,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if isinstance(schema, NodeSchema):
             attrs["schema"] = schema
         elif isinstance(schema, str):
-
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
             attrs["schema"] = registry.get_schema(name=schema, branch=branch)
         else:
@@ -109,7 +106,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return cls(**attrs)
 
     async def _process_fields(self, fields: dict, session: AsyncSession):
-
         errors = []
 
         if "_source" in fields.keys():
@@ -141,7 +137,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Assign values
         for attr_schema in self._schema.attributes:
-
             attr_class = ATTRIBUTES_MAPPING[attr_schema.kind]
             self._attributes.append(attr_schema.name)
 
@@ -188,7 +183,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             raise ValidationError(errors)
 
     async def new(self, session: AsyncSession, **kwargs) -> SelfNode:
-
         await self._process_fields(session=session, fields=kwargs)
         return self
 
@@ -200,7 +194,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         updated_at: Union[Timestamp, str] = None,
         **kwargs,
     ) -> SelfNode:
-
         self.id = id
         self.db_id = db_id
 
@@ -211,7 +204,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return self
 
     async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None):
-
         create_at = Timestamp(at)
 
         query = await NodeCreateQuery.init(session=session, node=self, at=create_at)
@@ -222,7 +214,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Go over the list of Attribute and create them one by one
         for name in self._attributes:
-
             attr: BaseAttribute = getattr(self, name)
             # Handle LocalAttribute attributes
             if issubclass(attr.__class__, BaseAttribute):
@@ -230,7 +221,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Go over the list of relationships and create them one by one
         for name in self._relationships:
-
             rel: RelationshipManager = getattr(self, name)
             await rel.save(at=create_at, session=session)
 
@@ -316,7 +306,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         response = {"id": self.id, "type": self.get_kind()}
 
         for field_name in fields.keys():
-
             if field_name in ["id"] or field_name in self._schema.relationship_names:
                 continue
 

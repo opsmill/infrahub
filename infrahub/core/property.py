@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 
 class FlagPropertyMixin:
-
     _flag_properties: List[str] = ["is_visible", "is_protected"]
 
     is_visible = True
@@ -26,7 +25,6 @@ class FlagPropertyMixin:
 
 
 class NodePropertyMixin:
-
     _node_properties: List[str] = ["source", "owner"]
 
     def _init_node_property_mixin(self, kwargs: dict = None):

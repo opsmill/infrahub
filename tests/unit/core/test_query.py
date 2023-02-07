@@ -19,7 +19,6 @@ class Query01(Query):
 
 
 async def test_query_base(session):
-
     query = await Query01.init(session=session)
     expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2"
 
@@ -27,7 +26,6 @@ async def test_query_base(session):
 
 
 async def test_query_results(session, simple_dataset_01):
-
     query = await Query01.init(session=session)
 
     assert query.has_been_executed is False
@@ -40,7 +38,6 @@ async def test_query_results(session, simple_dataset_01):
 
 
 async def test_query_async(session, simple_dataset_01):
-
     query = await Query01.init(session=session)
 
     assert query.has_been_executed is False
@@ -53,7 +50,6 @@ async def test_query_async(session, simple_dataset_01):
 
 
 async def test_query_result_getters(neo4j_factory):
-
     time0 = pendulum.now(tz="UTC")
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
@@ -98,7 +94,6 @@ async def test_query_result_getters(neo4j_factory):
 
 
 async def test_sort_results_by_time(neo4j_factory):
-
     time0 = pendulum.now(tz="UTC")
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")

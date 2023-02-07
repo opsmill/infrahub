@@ -8,7 +8,6 @@ from infrahub.core.timestamp import Timestamp
 
 
 async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch, car_person_schema):
-
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -38,7 +37,6 @@ async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch
 
 
 async def test_query_NodeListGetAttributeQuery_all_fields(session, base_dataset_02):
-
     default_branch = await get_branch(session=session, branch="main")
     branch1 = await get_branch(session=session, branch="branch1")
 
@@ -64,7 +62,6 @@ async def test_query_NodeListGetAttributeQuery_all_fields(session, base_dataset_
 async def test_query_NodeListGetAttributeQuery_with_source(
     session, default_branch, criticality_schema, first_account, second_account
 ):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4, _source=first_account)
     await obj1.save(session=session)
@@ -93,7 +90,6 @@ async def test_query_NodeListGetAttributeQuery_with_source(
 
 
 async def test_query_NodeListGetAttributeQuery(session, base_dataset_02):
-
     default_branch = await get_branch(session=session, branch="main")
     branch1 = await get_branch(session=session, branch="branch1")
 

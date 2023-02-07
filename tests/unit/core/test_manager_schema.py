@@ -54,7 +54,6 @@ async def test_register_schema_to_registry(session, default_branch):
 
 
 async def test_load_node_to_db_node_schema(session, default_branch):
-
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema)
 
@@ -77,7 +76,6 @@ async def test_load_node_to_db_node_schema(session, default_branch):
 
 
 async def test_load_node_to_db_generic_schema(session, default_branch):
-
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema)
 
@@ -96,7 +94,6 @@ async def test_load_node_to_db_generic_schema(session, default_branch):
 
 
 async def test_load_node_to_db_group_schema(session, default_branch):
-
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema)
 
@@ -112,7 +109,6 @@ async def test_load_node_to_db_group_schema(session, default_branch):
 
 
 async def test_load_schema_to_db_internal_models(session, default_branch):
-
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema)
 
@@ -124,7 +120,6 @@ async def test_load_schema_to_db_internal_models(session, default_branch):
 
 
 async def test_load_schema_to_db_core_models(session, default_branch, register_internal_models_schema):
-
     schema = SchemaRoot(**core_models)
     await SchemaManager.register_schema_to_registry(schema=schema)
 
@@ -136,7 +131,6 @@ async def test_load_schema_to_db_core_models(session, default_branch, register_i
 
 
 async def test_load_schema_from_db(session, reset_registry, default_branch, register_internal_models_schema):
-
     FULL_SCHEMA = {
         "nodes": [
             {

@@ -13,7 +13,6 @@ LOGGER = logging.getLogger("infrahub")
 
 
 async def initialization(session: AsyncSession):
-
     # pylint: disable=import-outside-toplevel
 
     # ---------------------------------------------------
@@ -53,7 +52,6 @@ async def initialization(session: AsyncSession):
 
 
 async def create_default_branch(session: AsyncSession) -> Branch:
-
     default_branch = Branch(
         name=config.SETTINGS.main.default_branch,
         status="OPEN",
@@ -70,7 +68,6 @@ async def create_default_branch(session: AsyncSession) -> Branch:
 
 
 async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
-
     branch = Branch(name=branch_name, status="OPEN", description=f"Branch {branch_name}", is_default=False)
     await branch.save(session=session)
     registry.branch[branch.name] = branch
@@ -81,7 +78,6 @@ async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
 
 
 async def first_time_initialization(session: AsyncSession, load_infrastructure_models: bool = True):
-
     # pylint: disable=import-outside-toplevel
     from infrahub.core.node import Node
 

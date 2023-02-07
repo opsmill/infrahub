@@ -110,7 +110,6 @@ class QueryResult:
                 return
 
     def get(self, label: str) -> Union[Node, Relationship]:
-
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
@@ -137,7 +136,6 @@ class QueryResult:
 
 
 class Query(ABC):
-
     name: str = "base-query"
     type: QueryType = QueryType.READ
 
@@ -147,7 +145,6 @@ class Query(ABC):
     order_by: Optional[List[str]] = None
 
     def __init__(self, branch: Branch = None, at: Union[Timestamp, str] = None, limit: int = None):
-
         if branch:
             self.branch = branch
 
@@ -178,7 +175,6 @@ class Query(ABC):
         *args,
         **kwargs,
     ):
-
         query = cls(branch=branch, at=at, limit=limit, *args, **kwargs)
 
         await query.query_init(session=session, *args, **kwargs)
@@ -220,7 +216,6 @@ class Query(ABC):
         return query_str
 
     async def execute(self, session: AsyncSession = None) -> SelfQuery:
-
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -313,7 +308,6 @@ class Query(ABC):
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self):
-
         # pylint: disable=import-outside-toplevel
 
         from rich.console import Console
@@ -324,7 +318,6 @@ class Query(ABC):
         table = Table(title=f"Query {self.name} : params: {self.params}")
 
         for label in self.return_labels:
-
             # table.add_column("Name", justify="right", style="cyan", no_wrap=True)
             table.add_column(label)
 
@@ -334,7 +327,6 @@ class Query(ABC):
         console.print(table)
 
     def print(self, include_var=False):
-
         # pylint: disable=import-outside-toplevel
         from rich import print as rprint
 

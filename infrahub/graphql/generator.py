@@ -224,7 +224,6 @@ async def generate_object_types(
         related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch.name)
 
         for rel in node_schema.relationships:
-
             peer_schema = await rel.get_peer_schema()
 
             peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
@@ -245,7 +244,6 @@ async def generate_object_types(
 
 
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
-
     class_attrs = {}
 
     full_schema = registry.get_full_schema(branch=branch)
@@ -254,7 +252,6 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
     await generate_object_types(session=session)
 
     for node_name, node_schema in full_schema.items():
-
         if not isinstance(node_schema, NodeSchema):
             continue
 
@@ -271,7 +268,6 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
 
 
 async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
-
     class_attrs = {}
 
     branch = await get_branch(branch=branch, session=session)
@@ -328,7 +324,6 @@ def generate_union_object(
     members: List,
     branch: Branch,
 ) -> Type[graphene.Union]:
-
     types = [registry.get_graphql_type(name=member, branch=branch.name) for member in members]
 
     if not types:
@@ -349,7 +344,6 @@ def generate_union_object(
 
 
 def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[graphene.Interface]:
-
     meta_attrs = {
         "name": schema.kind,
         "description": schema.description,
@@ -369,7 +363,6 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
 
 
 def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> Type[graphene.Interface]:
-
     meta_attrs = {
         "name": f"Related{schema.kind}",
         "description": schema.description,
@@ -413,7 +406,6 @@ def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[
         "Meta": type("Meta", (object,), meta_attrs),
     }
     for attr in schema.attributes:
-
         attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
@@ -423,7 +415,6 @@ def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[
 def generate_graphql_mutations(
     schema: NodeSchema, base_class: type[InfrahubMutation], branch: Branch
 ) -> Tuple[Type[InfrahubMutation], Type[InfrahubMutation], Type[InfrahubMutation]]:
-
     create = generate_graphql_mutation_create(branch=branch, schema=schema, base_class=base_class)
     update = generate_graphql_mutation_update(branch=branch, schema=schema, base_class=base_class)
     delete = generate_graphql_mutation_delete(branch=branch, schema=schema, base_class=base_class)
@@ -452,7 +443,6 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> graphene.Input
         attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
 
     for rel in schema.relationships:
-
         required = not rel.optional
         if rel.cardinality == "one":
             attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=required, description=rel.description)

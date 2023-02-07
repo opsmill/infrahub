@@ -7,17 +7,14 @@ from infrahub.database import execute_write_query_async
 
 
 async def test_delete_all_nodes(session):
-
     assert await delete_all_nodes(session) == []
 
 
 def test_element_id_to_id():
-
     assert element_id_to_id("4:c0814fa2-df5b-4d66-ba5f-9a01817f16fb:167") == 167
 
 
 async def test_get_paths_between_nodes(session, empty_database):
-
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })

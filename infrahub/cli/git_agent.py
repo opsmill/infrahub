@@ -108,7 +108,6 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
 
 
 async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
-
     initialize_repositories_directory()
 
     # TODO Validate access to the GraphQL API with the proper credentials

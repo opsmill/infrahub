@@ -2,11 +2,9 @@ from infrahub.checks import InfrahubCheck
 
 
 class Check01(InfrahubCheck):
-
     query = "my_query"
 
     def validate(self):
-
         self.log_error("Not Valid")
 
 

@@ -13,12 +13,10 @@ if TYPE_CHECKING:
 
 class AccountTokenValidateQuery(Query):
     def __init__(self, token, *args, **kwargs):
-
         self.token = token
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         token_filter_perms, token_params = self.branch.get_query_filter_relationships(
             rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )
@@ -55,7 +53,6 @@ class AccountTokenValidateQuery(Query):
 
 
 async def validate_token(token, session: AsyncSession, branch: Union[Branch, str] = None, at=None):
-
     branch = await get_branch(session=session, branch=branch)
     query = await AccountTokenValidateQuery.init(session=session, branch=branch, token=token, at=at)
     await query.execute(session=session)

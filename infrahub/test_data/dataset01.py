@@ -76,7 +76,6 @@ LOGGER = logging.getLogger("infrahub")
 
 
 async def load_data(session: AsyncSession, nbr_devices: int = None):
-
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
@@ -130,7 +129,6 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
 
     LOGGER.info("Creating Device")
     for idx, device in enumerate(DEVICES):
-
         if nbr_devices and nbr_devices <= idx:
             continue
 
@@ -169,7 +167,6 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
         # Create and connect interfaces
         INTERFACES = ["Ethernet0", "Ethernet1", "Ethernet2"]
         for intf_idx, intf_name in enumerate(INTERFACES):
-
             intf_role = INTERFACE_ROLES[device[4]][intf_idx]
             intf_role_id = roles_dict[intf_role].id
 

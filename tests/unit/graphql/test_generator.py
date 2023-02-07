@@ -17,7 +17,6 @@ from infrahub.graphql.types import InfrahubObject
 
 
 async def test_generate_interface_object(session, default_branch: Branch, generic_vehicule_schema):
-
     load_attribute_types_in_registry(branch=default_branch)
 
     result = generate_interface_object(schema=generic_vehicule_schema, branch=default_branch)
@@ -30,7 +29,6 @@ async def test_generate_interface_object(session, default_branch: Branch, generi
 async def test_generate_union_object(
     session, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema, group_on_road_vehicule_schema
 ):
-
     load_attribute_types_in_registry(branch=default_branch)
 
     node_type = generate_interface_object(generic_vehicule_schema, branch=default_branch)
@@ -51,7 +49,6 @@ async def test_generate_union_object(
 
 
 async def test_generate_graphql_object(session, default_branch: Branch, criticality_schema):
-
     load_attribute_types_in_registry(branch=default_branch)
 
     result = generate_graphql_object(schema=criticality_schema, branch=default_branch)
@@ -64,7 +61,6 @@ async def test_generate_graphql_object(session, default_branch: Branch, critical
 async def test_generate_graphql_object_with_interface(
     session, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema
 ):
-
     load_attribute_types_in_registry(branch=default_branch)
 
     node_type = generate_interface_object(generic_vehicule_schema, branch=default_branch)
@@ -78,7 +74,6 @@ async def test_generate_graphql_object_with_interface(
 
 
 async def test_generate_graphql_mutation_create(session, default_branch: Branch, criticality_schema):
-
     load_attribute_types_in_registry(branch=default_branch)
 
     result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch)
@@ -87,7 +82,6 @@ async def test_generate_graphql_mutation_create(session, default_branch: Branch,
 
 
 async def test_generate_graphql_mutation_update(session, default_branch: Branch, criticality_schema):
-
     load_attribute_types_in_registry(branch=default_branch)
 
     result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch)
@@ -96,7 +90,6 @@ async def test_generate_graphql_mutation_update(session, default_branch: Branch,
 
 
 async def test_generate_object_types(session, default_branch: Branch, data_schema, car_person_schema):
-
     load_attribute_types_in_registry(branch=default_branch)
 
     await generate_object_types(session=session, branch=default_branch)

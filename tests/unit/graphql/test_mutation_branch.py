@@ -16,7 +16,6 @@ from infrahub.message_bus.events import (
 
 @pytest.fixture
 async def repos_and_checks_in_main(session, register_core_models_schema):
-
     repo01 = await Node.init(session=session, schema="Repository")
     await repo01.new(session=session, name="repo01", location="git@github.com:user/repo01.git")
     await repo01.save(session=session)
@@ -55,7 +54,6 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
 
 
 async def test_branch_create(db, session, default_branch, car_person_schema):
-
     query = """
     mutation {
         branch_create(data: { name: "branch2", is_data_only: true }) {
@@ -96,7 +94,6 @@ async def test_branch_create(db, session, default_branch, car_person_schema):
 async def test_branch_create_with_repositories(
     db, session, default_branch, rpc_client, repos_and_checks_in_main, register_core_models_schema, data_schema
 ):
-
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value)
     await rpc_client.add_response(
         response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.BRANCH_ADD
@@ -132,7 +129,6 @@ async def test_branch_create_with_repositories(
 
 
 async def test_branch_rebase(db, session, default_branch, car_person_schema):
-
     branch2 = await create_branch(session=session, branch_name="branch2")
 
     query = """
@@ -162,7 +158,6 @@ async def test_branch_rebase(db, session, default_branch, car_person_schema):
 
 
 async def test_branch_validate(db, session, base_dataset_02, register_core_models_schema):
-
     branch1 = await Branch.get_by_name(session=session, name="branch1")
 
     query = """
@@ -191,7 +186,6 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
 async def test_branch_validate_with_repositories_success(
     db, session, rpc_client, base_dataset_02, repos_and_checks_in_main, register_core_models_schema
 ):
-
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"passed": True, "errors": []})
     await rpc_client.add_response(
         response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
@@ -230,7 +224,6 @@ async def test_branch_validate_with_repositories_success(
 async def test_branch_validate_with_repositories_failed(
     db, session, rpc_client, base_dataset_02, repos_and_checks_in_main, register_core_models_schema
 ):
-
     mock_response = InfrahubRPCResponse(
         status=RPCStatusCode.OK.value,
         response={"passed": False, "errors": [{"branch": "main", "level": "ERROR", "message": "Not Valid"}]},
@@ -270,7 +263,6 @@ async def test_branch_validate_with_repositories_failed(
 
 
 async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
-
     branch1 = await Branch.get_by_name(session=session, name="branch1")
 
     query = """
@@ -297,7 +289,6 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
 
 
 async def test_branch_merge_with_repositories(db, session, rpc_client, base_dataset_02, repos_and_checks_in_main):
-
     branch2 = await create_branch(branch_name="branch2", session=session)
 
     p1 = await Node.init(session=session, schema="Person", branch=branch2)

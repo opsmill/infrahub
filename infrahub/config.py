@@ -13,7 +13,6 @@ VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 
 
 class MainSettings(BaseSettings):
-
     default_branch: str = "main"
     default_account: str = "default"
     default_account_perm: str = "CAN_READ"
@@ -33,7 +32,6 @@ class MainSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-
     protocol: str = "neo4j"
     username: str = "neo4j"
     password: str = "admin"

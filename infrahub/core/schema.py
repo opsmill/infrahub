@@ -99,7 +99,6 @@ class RelationshipSchema(BaseModel):
         include_match: bool = True,
         param_prefix: str = None,
     ) -> Tuple[List[str], Dict, int]:
-
         query_filters = []
         query_params = {}
         nbr_rels = 0
@@ -116,7 +115,6 @@ class RelationshipSchema(BaseModel):
         rel_type = self.get_class().rel_type
 
         if "id" in filters.keys():
-
             query_filter = ""
             if include_match:
                 query_filter += "MATCH (n)"
@@ -200,7 +198,6 @@ class BaseNodeSchema(BaseModel):
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
-
         if field := self.get_attribute(name, raise_on_error=False):
             return field
 

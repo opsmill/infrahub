@@ -421,7 +421,6 @@ class InfrahubClient:
     """GraphQL Client to interact with Infrahub."""
 
     def __init__(self, address="http://localhost:8000", default_timeout=5, test_client=None):
-
         self.address = address
         self.client = None
         self.default_timeout = default_timeout
@@ -432,7 +431,6 @@ class InfrahubClient:
 
     @classmethod
     async def init(cls, *args, **kwargs):
-
         return cls(*args, **kwargs)
 
     async def execute_graphql(
@@ -445,7 +443,6 @@ class InfrahubClient:
         timeout: int = None,
         raise_for_error: bool = True,
     ):
-
         url = f"{self.address}/graphql"
         if branch_name:
             url += f"/{branch_name}"
@@ -496,7 +493,6 @@ class InfrahubClient:
         timeout: int = None,
         raise_for_error: bool = True,
     ):
-
         url = f"{self.address}/query/{name}"
         url_params = copy.deepcopy(params or {})
 
@@ -527,7 +523,6 @@ class InfrahubClient:
         return resp.json()
 
     async def create_branch(self, branch_name: str, background_execution: bool = False) -> bool:
-
         variables = {"branch_name": branch_name, "background_execution": background_execution}
 
         await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
@@ -535,7 +530,6 @@ class InfrahubClient:
         return True
 
     async def get_list_branches(self) -> Dict[str, BranchData]:
-
         data = await self.execute_graphql(query=QUERY_ALL_BRANCHES)
 
         branches = {
@@ -546,7 +540,6 @@ class InfrahubClient:
         return branches
 
     async def get_list_repositories(self, branches: Dict[str, RepositoryData] = None) -> Dict[str, RepositoryData]:
-
         if not branches:
             branches = await self.get_list_branches()
 
@@ -575,7 +568,6 @@ class InfrahubClient:
         return repositories
 
     async def get_list_graphql_queries(self, branch_name: str) -> Dict[str, GraphQLQueryData]:
-
         data = await self.execute_graphql(query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name)
 
         items = {
@@ -591,7 +583,6 @@ class InfrahubClient:
         return items
 
     async def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
-
         data = await self.execute_graphql(query=QUERY_ALL_CHECKS, branch_name=branch_name)
 
         items = {
@@ -612,7 +603,6 @@ class InfrahubClient:
         return items
 
     async def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
-
         data = await self.execute_graphql(query=QUERY_ALL_TRANSFORM_PYTHON, branch_name=branch_name)
 
         items = {
@@ -634,7 +624,6 @@ class InfrahubClient:
         return items
 
     async def create_graphql_query(self, branch_name: str, name: str, query: str, description: str = "") -> bool:
-
         variables = {"name": name, "description": description, "query": query}
         await self.execute_graphql(query=MUTATION_GRAPHQL_QUERY_CREATE, variables=variables, branch_name=branch_name)
 
@@ -643,14 +632,12 @@ class InfrahubClient:
     async def update_graphql_query(
         self, branch_name: str, id: str, name: str, query: str, description: str = ""
     ) -> bool:
-
         variables = {"id": id, "name": name, "description": description, "query": query}
         await self.execute_graphql(query=MUTATION_GRAPHQL_QUERY_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
 
     async def get_list_rfiles(self, branch_name: str) -> Dict[str, RFileData]:
-
         data = await self.execute_graphql(query=QUERY_ALL_RFILES, branch_name=branch_name)
 
         items = {
@@ -676,7 +663,6 @@ class InfrahubClient:
         template_repository: str,
         description: str = "",
     ) -> bool:
-
         variables = {
             "name": name,
             "description": description,
@@ -691,7 +677,6 @@ class InfrahubClient:
     async def update_rfile(
         self, branch_name: str, id: str, name: str, template_path: str, description: str = ""
     ) -> bool:
-
         variables = {"id": id, "name": name, "description": description, "template_path": template_path}
         await self.execute_graphql(query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name)
 
@@ -709,7 +694,6 @@ class InfrahubClient:
         timeout: int = 10,
         rebase: bool = False,
     ) -> bool:
-
         variables = {
             "name": name,
             "description": description,
@@ -736,7 +720,6 @@ class InfrahubClient:
         timeout: int = 10,
         rebase: bool = False,
     ):
-
         variables = {
             "id": id,
             "name": name,
@@ -764,7 +747,6 @@ class InfrahubClient:
         timeout: int = 10,
         rebase: bool = False,
     ) -> bool:
-
         variables = {
             "name": name,
             "description": description,
@@ -793,7 +775,6 @@ class InfrahubClient:
         timeout: int = 10,
         rebase: bool = False,
     ):
-
         variables = {
             "id": id,
             "name": name,
@@ -810,7 +791,6 @@ class InfrahubClient:
         return True
 
     async def repository_update_commit(self, branch_name, repository_id: str, commit: str) -> bool:
-
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
         await self.execute_graphql(query=MUTATION_COMMIT_UPDATE, variables=variables, branch_name=branch_name)
 

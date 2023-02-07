@@ -8,13 +8,11 @@ from infrahub_client import QUERY_ALL_BRANCHES, InfrahubClient
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-
     return await InfrahubClient.init(address="http://mock")
 
 
 @pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response = {
         "data": {
             "branch": [
@@ -39,7 +37,6 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
     response1 = {
         "data": {
             "repository": [

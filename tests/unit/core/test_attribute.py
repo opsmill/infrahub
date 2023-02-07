@@ -7,7 +7,6 @@ from infrahub.core.timestamp import Timestamp
 
 
 async def test_init(session, default_branch, criticality_schema, first_account, second_account):
-
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
@@ -33,7 +32,6 @@ async def test_init(session, default_branch, criticality_schema, first_account, 
 
 
 async def test_node_property_getter(session, default_branch, criticality_schema):
-
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
@@ -59,7 +57,6 @@ async def test_node_property_getter(session, default_branch, criticality_schema)
 
 
 async def test_string_attr_query_filter(session, default_branch):
-
     filters, params, nbr_rels = String.get_query_filter(name="description")
     assert filters == []
     assert params == {}
@@ -93,7 +90,6 @@ async def test_string_attr_query_filter(session, default_branch):
 
 
 async def test_base_serialization(session, default_branch, all_attribute_types_schema):
-
     obj1 = await Node.init(session=session, schema="AllAttributeTypes")
     await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
     await obj1.save(session=session)

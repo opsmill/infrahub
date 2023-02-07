@@ -33,14 +33,12 @@ class GetListMixin:
 
     @classmethod
     async def get_list(cls, fields: dict, context: dict, **kwargs):
-
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
         db = context.get("infrahub_database")
 
         async with db.session(database=config.SETTINGS.database.database) as session:
-
             context["infrahub_session"] = session
 
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
@@ -93,7 +91,6 @@ class InfrahubUnion(Union):
     def __init_subclass_with_meta__(
         cls, schema: GroupSchema = None, types=(), _meta=None, **options
     ):  # pylint: disable=arguments-renamed
-
         if not isinstance(schema, GroupSchema):
             raise ValueError(f"You need to pass a valid GroupSchema in '{cls.__name__}.Meta', received '{schema}'")
 
@@ -107,7 +104,6 @@ class InfrahubUnion(Union):
 
     @classmethod
     def resolve_type(cls, instance, info):
-
         branch = info.context["infrahub_branch"]
 
         if "type" in instance:
@@ -128,7 +124,6 @@ class InfrahubInterfaceOptions(InterfaceOptions):
 class InfrahubInterface(Interface, GetListMixin):
     @classmethod
     def resolve_type(cls, instance, info):
-
         branch = info.context["infrahub_branch"]
 
         if "Related" in cls.__name__ and "type" in instance:
@@ -153,7 +148,6 @@ class InfrahubObjectOptions(ObjectTypeOptions):
 class InfrahubObject(ObjectType, GetListMixin):
     @classmethod
     def __init_subclass_with_meta__(cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options):
-
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
@@ -183,7 +177,6 @@ class InfrahubObjectType(ObjectType):
         _meta=None,
         **options,
     ):
-
         if not _meta:
             _meta = InfrahubObjectTypeOptions(cls)
 
@@ -193,14 +186,12 @@ class InfrahubObjectType(ObjectType):
 
     @classmethod
     async def get_list(cls, fields, context, **kwargs):
-
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
         db = context.get("infrahub_database")
 
         async with db.session(database=config.SETTINGS.database.database) as session:
-
             context["infrahub_session"] = session
 
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
@@ -322,11 +313,9 @@ class BranchType(InfrahubObjectType):
 
     @classmethod
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
-
         db = context.get("infrahub_database")
 
         async with db.session(database=config.SETTINGS.database.database) as session:
-
             context["infrahub_session"] = session
 
             # at, branch = extract_global_kwargs(kwargs)
@@ -393,7 +382,6 @@ class BranchDiffType(ObjectType):
     async def get_diff(
         cls, branch, diff_from: str, diff_to: str, branch_only: bool, fields: dict, context: dict, *args, **kwargs
     ):  # pylint: disable=unused-argument
-
         context.get("infrahub_at")
         session = context.get("infrahub_session")
         rpc_client = context.get("infrahub_rpc_client")

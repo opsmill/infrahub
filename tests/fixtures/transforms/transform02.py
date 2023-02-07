@@ -2,7 +2,6 @@ from infrahub.transforms import InfrahubTransform
 
 
 class Transform02(InfrahubTransform):
-
     query = "my_query"
     # url = "transform01"
 

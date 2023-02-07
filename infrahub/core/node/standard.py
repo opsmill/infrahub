@@ -13,7 +13,6 @@ SelfNode = TypeVar("SelfNode", bound="StandardNode")
 
 
 class StandardNode(BaseModel):
-
     id: Optional[str]
     uuid: Optional[UUID]
 
@@ -26,7 +25,6 @@ class StandardNode(BaseModel):
         return cls.__name__
 
     async def to_graphql(self, fields: dict = None) -> dict:
-
         response = {"id": self.uuid}
 
         for field_name in fields.keys():
@@ -130,7 +128,6 @@ class StandardNode(BaseModel):
 
     @classmethod
     async def _get_item_raw(cls, id, session: AsyncSession):
-
         query = (
             """
         MATCH (n:%s)
@@ -162,7 +159,6 @@ class StandardNode(BaseModel):
 
     @classmethod
     async def get_list(cls, session: AsyncSession, limit: int = 1000) -> List[SelfNode]:
-
         query = (
             """
         MATCH (n:%s)

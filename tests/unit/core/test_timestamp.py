@@ -5,7 +5,6 @@ from infrahub.core.timestamp import Timestamp
 
 
 def test_init_empty():
-
     t1 = Timestamp()
     assert isinstance(t1, Timestamp)
     assert t1.to_string() == t1.obj.to_iso8601_string()
@@ -24,7 +23,6 @@ def test_init_timestamp():
 
 
 def test_parse_string():
-
     REF = "2022-01-01T10:00:00.000000Z"
 
     assert Timestamp._parse_string(REF) == pendulum.parse(REF)
@@ -38,7 +36,6 @@ def test_parse_string():
 
 
 def test_compare():
-
     time1 = "2022-01-01T11:00:00.000000Z"
     time2 = "2022-02-01T11:00:00.000000Z"
 

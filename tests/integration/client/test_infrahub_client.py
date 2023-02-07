@@ -16,7 +16,6 @@ class TestInfrahubClient:
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):
-
         await create_branch(branch_name="branch01", session=session)
 
         query_string = """
@@ -63,7 +62,6 @@ class TestInfrahubClient:
         await obj4.save(session=session)
 
     async def test_query_branches(self, client, init_db_base, base_dataset):
-
         ifc = await InfrahubClient.init(test_client=client)
         branches = await ifc.get_list_branches()
 
@@ -71,14 +69,12 @@ class TestInfrahubClient:
         assert "branch01" in branches
 
     async def test_query_graphql_queries(self, client, init_db_base, base_dataset):
-
         ifc = await InfrahubClient.init(test_client=client)
         queries = await ifc.get_list_graphql_queries(branch_name="main")
 
         assert "test_query2" in queries
 
     async def test_create_graphql_query_main(self, client, session, init_db_base, base_dataset):
-
         query_string = """
         query {
             branch {
@@ -101,14 +97,12 @@ class TestInfrahubClient:
         assert len(queries) == 2
 
     async def test_query_rfiles(self, client, init_db_base, base_dataset):
-
         ifc = await InfrahubClient.init(test_client=client)
         rfiles = await ifc.get_list_rfiles(branch_name="main")
 
         assert "rfile1" in rfiles
 
     async def test_create_rfile_main(self, client, session, init_db_base, base_dataset):
-
         branch_name = "main"
 
         rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
@@ -131,14 +125,12 @@ class TestInfrahubClient:
         assert len(rfiles) == 2
 
     async def test_query_transform_python(self, client, init_db_base, base_dataset):
-
         ifc = await InfrahubClient.init(test_client=client)
         transforms = await ifc.get_list_transform_python(branch_name="main")
 
         assert "transform01" in transforms
 
     async def test_create_transform_python_main(self, client, session, init_db_base, base_dataset):
-
         branch_name = "main"
 
         transforms = await NodeManager.query("TransformPython", branch=branch_name, session=session)
