@@ -69,6 +69,7 @@ ENV_VARS = f"IMAGE_NAME={IMAGE_NAME}, IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_V
 
 VOLUME_NAMES = ["neo4j_data", "neo4j_logs", "git_data"]
 
+
 @task
 def build(
     context, name=IMAGE_NAME, python_ver=PYTHON_VER, image_ver=IMAGE_VER, nocache=False
@@ -83,10 +84,13 @@ def build(
         nocache (bool): Do not use cache when building the image
     """
     print(f"Building image {name}:{image_ver}")
-    exec_cmd = f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} build --build-arg PYTHON_VER={PYTHON_VER}"
+    exec_cmd = (
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} build --build-arg PYTHON_VER={PYTHON_VER}"
+    )
     if nocache:
         exec_cmd += " --no-cache"
     context.run(exec_cmd, pty=True)
+
 
 # ----------------------------------------------------------------------------
 # Local Environment tasks
@@ -100,7 +104,6 @@ def debug(context):
     """
     exec_cmd = f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} up"
     return context.run(exec_cmd, pty=True)
-
 
 
 @task
@@ -125,6 +128,7 @@ def stop(context: Context):
     exec_cmd = f"{ENV_VARS} docker compose  {COMPOSE_FILES_CMD} -p {BUILD_NAME} down"
     return context.run(exec_cmd, pty=True)
 
+
 @task
 def destroy(context: Context):
     """Destroy all containers and volumes."""
@@ -132,6 +136,7 @@ def destroy(context: Context):
 
     for volume in VOLUME_NAMES:
         context.run(f"{ENV_VARS} docker volume rm -f {BUILD_NAME}_{volume}", pty=True)
+
 
 @task
 def cli_server(context):
@@ -141,6 +146,7 @@ def cli_server(context):
         pty=True,
     )
 
+
 @task
 def cli_git(context):
     """Launch a bash shell inside the running Infrahub container."""
@@ -148,6 +154,7 @@ def cli_git(context):
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git bash",
         pty=True,
     )
+
 
 @task
 def init(context):
@@ -207,6 +214,7 @@ def performance_test(context, directory="utilities", dataset="dataset03"):
         with open(result_file_name, "w", encoding="UTF-8") as f:
             print(result.stdout, file=f)
 
+
 # ----------------------------------------------------------------------------
 # Formatting tasks
 # ----------------------------------------------------------------------------
@@ -248,6 +256,7 @@ def format_isort(context: Context):
     exec_cmd = "isort --skip=examples --skip=repositories ."
     context.run(exec_cmd, pty=True)
 
+
 @task(name="format")
 def format_all(context: Context):
     """This will run all formatter.
@@ -263,6 +272,7 @@ def format_all(context: Context):
     format_black(context)
 
     print("All formatters have been executed!")
+
 
 # ----------------------------------------------------------------------------
 # Testing tasks
@@ -282,6 +292,7 @@ def pytest(context: Context):
     exec_cmd = "pytest --cov=diffsync --cov-config pyproject.toml --cov-report html --cov-report term -vv"
     context.run(exec_cmd, pty=True)
 
+
 @task
 def black(context: Context):
     """This will run black to check that Python files adherence to black standards.
@@ -295,6 +306,7 @@ def black(context: Context):
     exec_cmd = "black --check --diff ."
     context.run(exec_cmd, pty=True)
 
+
 @task
 def flake8(context: Context):
     """This will run flake8 for the specified name and Python version.
@@ -305,6 +317,7 @@ def flake8(context: Context):
 
     exec_cmd = "flake8 --ignore=E203,E501,W503,W504,E701,E251,E231 --exclude=examples,repositories ."
     context.run(exec_cmd, pty=True)
+
 
 @task
 def mypy(context: Context):
@@ -317,6 +330,7 @@ def mypy(context: Context):
     exec_cmd = 'find . -name "*.py" -not -path "*/examples/*" -not -path "*/repositories/*" -not -path "*/tests/*" | xargs mypy --show-error-codes'
     context.run(exec_cmd, pty=True)
 
+
 @task
 def pylint(context: Context):
     """This will run pylint for the specified name and Python version.
@@ -328,6 +342,7 @@ def pylint(context: Context):
     exec_cmd = 'find . -name "*.py" -not -path "*/tests/*" -not -path "*/repositories/*" -not -path "*/examples/*" | xargs pylint'
     context.run(exec_cmd, pty=True)
 
+
 @task
 def yamllint(context: Context):
     """This will run yamllint to validate formatting adheres to NTC defined YAML standards.
@@ -338,6 +353,7 @@ def yamllint(context: Context):
 
     exec_cmd = "yamllint ."
     context.run(exec_cmd, pty=True)
+
 
 @task
 def pydocstyle(context: Context):

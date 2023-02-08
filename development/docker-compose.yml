@@ -10,10 +10,14 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - database
-      - message-queue
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+    volumes:
+      - ../:/source
     tty: true
   infrahub-git:
     build:
@@ -25,4 +29,6 @@ services:
       - infrahub-server
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+    volumes:
+      - ../:/source
     tty: true

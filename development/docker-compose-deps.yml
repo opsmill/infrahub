@@ -11,8 +11,19 @@ services:
       - "./plugins:/plugins"
       - "neo4j_data:/data"
       - "neo4j_logs:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
   message-queue:
     image: "rabbitmq:3-management"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 30s
+      retries: 3
 volumes:
   neo4j_data:
   neo4j_logs:
