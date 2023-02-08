@@ -164,6 +164,14 @@ def init(context):
         pty=True,
     )
 
+@task
+def load_demo_data(context):
+    """Launch a bash shell inside the running Infrahub container."""
+    context.run(
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server infrahub db load-test-data --dataset dataset03",
+        pty=True,
+    )
+
 
 # ----------------------------------------------------------------------------
 # Dev Environment tasks
