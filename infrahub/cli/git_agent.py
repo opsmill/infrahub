@@ -145,8 +145,6 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int, log: lo
 async def _start(listen: str, port: int, debug: bool, interval: int, config_file: str):
     """Start Infrahub Git Agent."""
 
-    # Query the list of repo and try to initialize all of them
-    # Wait for messages
     log_level = "DEBUG" if debug else "INFO"
 
     FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
@@ -157,7 +155,10 @@ async def _start(listen: str, port: int, debug: bool, interval: int, config_file
 
     config.load_and_exit(config_file)
 
-    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address)
+    # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
+    log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
+    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    await client.get_list_branches()
 
     await initialize_git_agent(client=client, log=log)
 

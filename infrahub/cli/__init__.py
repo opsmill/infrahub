@@ -13,7 +13,7 @@ from infrahub.database import get_db
 
 # pylint: disable=import-outside-toplevel
 
-app = typer.Typer()
+app = typer.Typer(pretty_exceptions_enable=False)
 
 app.add_typer(server_app, name="server", help="Control the API Server.")
 app.add_typer(git_app, name="git-agent", help="Control the GIT Repositories.")
