@@ -1,0 +1,18 @@
+---
+version: "3.4"
+services:
+  database:
+    image: "neo4j:5.1-enterprise"
+    environment:
+      - "NEO4J_AUTH=neo4j/admin"
+      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
+      - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
+    volumes:
+      - "./plugins:/plugins"
+      - "neo4j_data:/data"
+      - "neo4j_logs:/logs"
+  message-queue:
+    image: "rabbitmq:3-management"
+volumes:
+  neo4j_data:
+  neo4j_logs:

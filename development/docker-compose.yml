@@ -1,21 +1,28 @@
 ---
 version: "3.4"
 services:
-
-  database:
-    image: "neo4j:5.1-enterprise"
+  infrahub-server:
+    build:
+      context: ../
+      dockerfile: development/Dockerfile
+    image: "opsmill/infrahub-py${PYTHON_VER}:${IMAGE_VER}"
+    command: gunicorn infrahub.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "8000:8000"
+    depends_on:
+      - database
+      - message-queue
     environment:
-      - "NEO4J_AUTH=neo4j/admin"
-      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
-      - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
-    volumes:
-      - "./plugins:/plugins"
-
-  message-queue:
-    image: "rabbitmq:3-management"
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+    tty: true
+  infrahub-git:
+    build:
+      context: ../
+      dockerfile: development/Dockerfile
+    image: "opsmill/infrahub-py${PYTHON_VER}:${IMAGE_VER}"
+    command: infrahub git-agent start --debug
+    depends_on:
+      - infrahub-server
+    environment:
+      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+    tty: true

@@ -38,10 +38,6 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
-# Master
-#  Check if a new version of the repo/ branch is available online
-
-
 # All
 #   Listen to Git Request
 #    Merge
@@ -155,7 +151,7 @@ async def _start(listen: str, port: int, debug: bool, interval: int, config_file
 
     FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub.worker")
+    log = logging.getLogger("infrahub.git")
 
     log.debug(f"Config file : {config_file}")
 
@@ -181,7 +177,7 @@ def start(
     debug: bool = False,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    # logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpx").setLevel(logging.ERROR)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("aio_pika").setLevel(logging.ERROR)
     logging.getLogger("aiormq").setLevel(logging.ERROR)
