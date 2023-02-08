@@ -25,6 +25,8 @@ jobs:
           git config --global --add safe.directory '*'
           git config --global user.email "infrahub@example.com"
           git config --global user.name "Infrahub"
+      - name: "Setup Docker-Compose"
+        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       - name: "Start database"
         run: "invoke dev-start"
       - name: "Install project"
