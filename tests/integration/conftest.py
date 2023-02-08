@@ -38,7 +38,6 @@ async def db():
 
 @pytest.fixture(scope="module")
 async def session(db):
-
     session = db.session(database=config.SETTINGS.database.database)
 
     yield session

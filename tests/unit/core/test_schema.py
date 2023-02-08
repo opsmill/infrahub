@@ -6,7 +6,6 @@ from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_s
 
 
 def test_schema_root_no_generic():
-
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -25,7 +24,6 @@ def test_schema_root_no_generic():
 
 
 def test_node_schema_unique_names():
-
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
@@ -63,7 +61,6 @@ def test_node_schema_unique_names():
 
 
 def test_node_schema_unique_identifiers():
-
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
@@ -102,7 +99,6 @@ def test_node_schema_unique_identifiers():
 
 
 async def test_rel_schema_query_filter(session, car_person_schema):
-
     person = registry.get_schema(name="Person")
     rel = person.relationships[0]
 
@@ -129,7 +125,6 @@ async def test_rel_schema_query_filter(session, car_person_schema):
 
 
 async def test_extend_node_with_interface(session, default_branch):
-
     SCHEMA = {
         "generics": [
             {
@@ -163,10 +158,8 @@ async def test_extend_node_with_interface(session, default_branch):
 
 
 def test_core_models():
-
     assert SchemaRoot(**core_models)
 
 
 def test_internal_schema():
-
     assert SchemaRoot(**internal_schema)

@@ -6,7 +6,6 @@ from infrahub.core.query.diff import (
 
 
 async def test_diff_node_query(session, default_branch, base_dataset_02):
-
     branch1 = await get_branch(branch="branch1", session=session)
 
     # Query all nodes from the creation of the first nodes (m60) to now
@@ -44,7 +43,6 @@ async def test_diff_node_query(session, default_branch, base_dataset_02):
 
 
 async def test_diff_relationship_properties_ids_range_query(session, default_branch, base_dataset_02):
-
     branch1 = await get_branch(branch="branch1", session=session)
 
     # Query all Rels from the creation of the first nodes (m60) to now

@@ -54,7 +54,6 @@ class NodePropertyData:
 
 @dataclass
 class RelationshipPeerData:
-
     branch: str
 
     peer_id: UUID
@@ -78,7 +77,6 @@ class RelationshipPeerData:
     updated_at: str = None
 
     def rel_ids_per_branch(self) -> dict[str, List[str]]:
-
         response = defaultdict(list)
         for rel in self.rels:
             response[rel.branch].append(rel.db_id)
@@ -104,7 +102,6 @@ class RelationshipQuery(Query):
         *args,
         **kwargs,
     ):
-
         if not source and not source_id:
             raise ValueError("Either source or source_id must be provided.")
         if not rel and not rel_type:
@@ -155,14 +152,12 @@ class RelationshipCreateQuery(RelationshipQuery):
         *args,
         **kwargs,
     ):
-
         if not destination and not destination_id:
             raise ValueError("Either destination or destination_id must be provided.")
 
         super().__init__(destination=destination, destination_id=destination_id, *args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -237,14 +232,12 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         *args,
         **kwargs,
     ):
-
         self.properties_to_update = properties_to_update
         self.data = data
 
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
@@ -294,12 +287,10 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         *args,
         **kwargs,
     ):
-
         self.data = data
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
@@ -350,7 +341,6 @@ class RelationshipDeleteQuery(RelationshipQuery):
     type: QueryType = QueryType.WRITE
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         # FIXME DO we need to check if both nodes are part of the same Branch right now ?
 
         self.params["source_id"] = self.source_id
@@ -385,14 +375,12 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         *args,
         **kwargs,
     ):
-
         self.filters = filters or {}
         self.limit = limit
 
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["source_id"] = self.source_id
 
         query = "MATCH (n { uuid: $source_id })"
@@ -427,7 +415,6 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             self.return_labels = ["n", "p", "rl"] + [f"r{i}" for i in range(1, nbr_rels + 1)]
 
         else:
-
             self.params["identifier"] = self.schema.identifier
 
             rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -491,7 +478,6 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         return [peer.peer_id for peer in self.get_peers()]
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
-
         for result in self.get_results_group_by(("p", "uuid")):
             data = RelationshipPeerData(
                 peer_id=result.get("p").get("uuid"),
@@ -505,7 +491,6 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
             if hasattr(self.rel, "_flag_properties"):
                 for prop in self.rel._flag_properties:
-
                     if prop_node := result.get(prop):
                         data.properties[prop] = FlagPropertyData(
                             name=prop,
@@ -533,7 +518,6 @@ class RelationshipGetQuery(RelationshipQuery):
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier

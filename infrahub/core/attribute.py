@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
-
     type = None
 
     _rel_to_node_label: str = "HAS_ATTRIBUTE"
@@ -49,7 +48,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         updated_at: Union[Timestamp, str] = None,
         **kwargs,
     ):
-
         self.id: UUID = id
         self.db_id: str = db_id
 
@@ -131,7 +129,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return await self._create(at=save_at, session=session)
 
     async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
-
         if not self.db_id:
             return False
 
@@ -181,7 +178,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return True
 
     async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
-
         create_at = Timestamp(at)
 
         query = await AttributeCreateQuery.init(session=session, attr=self, branch=self.branch, at=create_at)
@@ -293,7 +289,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return query_filters, query_params, nbr_rels
 
         for attr_name, value in filters.items():
-
             query_filter = ""
 
             # if attr_name not in cls.__fields__.keys():
@@ -334,7 +329,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         response = {"id": self.id}
 
         for field_name in fields.keys():
-
             if field_name == "updated_at":
                 if self.updated_at:
                     response[field_name] = await self.updated_at.to_graphql()
@@ -363,7 +357,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
 
 class AnyAttribute(BaseAttribute):
-
     type = Any
 
     @classmethod
@@ -372,22 +365,18 @@ class AnyAttribute(BaseAttribute):
 
 
 class String(BaseAttribute):
-
     type = str
 
 
 class Integer(BaseAttribute):
-
     type = int
 
 
 class Boolean(BaseAttribute):
-
     type = bool
 
 
 class ListAttribute(BaseAttribute):
-
     type = list
 
     @classmethod

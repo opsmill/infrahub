@@ -21,7 +21,6 @@ async def add_relationship(
     at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
 ):
-
     create_rel_query = (
         """
     MATCH (s) WHERE ID(s) = $src_node_id
@@ -54,7 +53,6 @@ async def add_relationship(
 
 
 async def delete_all_relationships_for_branch(branch_name: str, session: AsyncSession):
-
     query = """
     MATCH ()-[r { branch: $branch_name }]-() DELETE r
     """
@@ -125,7 +123,6 @@ async def get_paths_between_nodes(
 
 
 async def delete_all_nodes(session: AsyncSession):
-
     query = """
     MATCH (n)
     DETACH DELETE n
@@ -137,7 +134,6 @@ async def delete_all_nodes(session: AsyncSession):
 
 
 def element_id_to_id(element_id: str) -> int:
-
     return int(element_id.split(":")[2])
 
 

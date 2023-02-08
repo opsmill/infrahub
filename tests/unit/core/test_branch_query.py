@@ -7,7 +7,6 @@ from infrahub.core.timestamp import Timestamp
 
 
 async def test_DiffRelationshipQuery(session, base_dataset_02):
-
     branch1 = await get_branch("branch1", session=session)
 
     # Execute the query with default timestamp from the creation of the branch to now
@@ -32,7 +31,6 @@ async def test_DiffRelationshipQuery(session, base_dataset_02):
 
 
 async def test_DiffRelationshipPropertyQuery(session, base_dataset_02):
-
     branch1 = await get_branch("branch1", session=session)
 
     # Execute the query with default timestamp from the creation of the branch to now

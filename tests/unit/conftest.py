@@ -48,7 +48,6 @@ async def db():
 
 @pytest.fixture
 async def session(db):
-
     session = db.session(database=config.SETTINGS.database.database)
 
     yield session
@@ -76,7 +75,6 @@ def neo4j_factory():
 
 @pytest.fixture
 async def simple_dataset_01(session, empty_database):
-
     await create_default_branch(session)
 
     params = {
@@ -317,7 +315,6 @@ async def base_dataset_02(session, default_branch, car_person_schema):
 
 @pytest.fixture
 async def car_person_schema(session, data_schema):
-
     SCHEMA = {
         "nodes": [
             {
@@ -358,7 +355,6 @@ async def car_person_schema(session, data_schema):
 
 @pytest.fixture
 async def person_tag_schema(session, data_schema):
-
     SCHEMA = {
         "nodes": [
             {
@@ -397,7 +393,6 @@ async def person_tag_schema(session, data_schema):
 
 @pytest.fixture
 async def all_attribute_types_schema(session, data_schema):
-
     SCHEMA = {
         "name": "all_attribute_types",
         "kind": "AllAttributeTypes",
@@ -417,7 +412,6 @@ async def all_attribute_types_schema(session, data_schema):
 
 @pytest.fixture
 async def criticality_schema(session, data_schema):
-
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
@@ -439,7 +433,6 @@ async def criticality_schema(session, data_schema):
 
 @pytest.fixture
 async def generic_vehicule_schema(session):
-
     SCHEMA = {
         "name": "vehicule",
         "kind": "Vehicule",
@@ -457,7 +450,6 @@ async def generic_vehicule_schema(session):
 
 @pytest.fixture
 async def group_on_road_vehicule_schema(session):
-
     SCHEMA = {
         "name": "on_road",
         "kind": "OnRoad",
@@ -475,7 +467,6 @@ async def group_on_road_vehicule_schema(session):
 
 @pytest.fixture
 async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema):
-
     SCHEMA = {
         "name": "car",
         "kind": "Car",
@@ -495,7 +486,6 @@ async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_sc
 
 @pytest.fixture
 async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
-
     SCHEMA = {
         "name": "motorcycle",
         "kind": "Motorcycle",
@@ -515,7 +505,6 @@ async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehi
 
 @pytest.fixture
 async def truck_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
-
     SCHEMA = {
         "name": "truck",
         "kind": "Truck",
@@ -535,7 +524,6 @@ async def truck_schema(session, generic_vehicule_schema, group_on_road_vehicule_
 
 @pytest.fixture
 async def boat_schema(session, generic_vehicule_schema):
-
     SCHEMA = {
         "name": "boat",
         "kind": "Boat",
@@ -557,7 +545,6 @@ async def boat_schema(session, generic_vehicule_schema):
 
 @pytest.fixture
 async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema):
-
     SCHEMA = {
         "name": "person",
         "kind": "Person",
@@ -579,7 +566,6 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
 
 @pytest.fixture
 async def fruit_tag_schema(session, data_schema):
-
     SCHEMA = {
         "nodes": [
             {
@@ -616,7 +602,6 @@ async def fruit_tag_schema(session, data_schema):
 
 @pytest.fixture
 async def data_schema(session):
-
     SCHEMA = {
         "generics": [
             {
@@ -669,7 +654,6 @@ async def default_branch(reset_registry, empty_database, session) -> Branch:
 
 @pytest.fixture
 async def register_internal_models_schema(default_branch):
-
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
@@ -682,7 +666,6 @@ async def register_core_models_schema(default_branch, register_internal_models_s
 
 @pytest.fixture
 async def register_account_schema(session):
-
     SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
 
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
@@ -694,7 +677,6 @@ async def register_account_schema(session):
 
 @pytest.fixture
 async def first_account(session, register_account_schema):
-
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="First Account", type="GIT")
     await obj.save(session=session)
@@ -703,7 +685,6 @@ async def first_account(session, register_account_schema):
 
 @pytest.fixture
 async def second_account(session, register_account_schema):
-
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="Second Account", type="GIT")
     await obj.save(session=session)

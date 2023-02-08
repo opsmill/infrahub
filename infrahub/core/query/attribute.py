@@ -43,14 +43,12 @@ class AttributeQuery(Query):
 
 
 class AttributeCreateQuery(AttributeQuery):
-
     raise_error_if_empty: bool = True
 
     name = "attribute_create"
     type: QueryType = QueryType.WRITE
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.query_add_match()
 
         if self.attr.source_id:
@@ -82,7 +80,6 @@ class AttributeCreateQuery(AttributeQuery):
         self.add_to_query(query)
 
     def query_add_create(self):
-
         query = """
         CREATE (a:Attribute:AttributeLocal { uuid: $uuid, name: $name, type: $attribute_type })
         CREATE (n)-[r1:%s { branch: $branch, status: "active", from: $at, to: null }]->(a)
@@ -106,20 +103,17 @@ class AttributeCreateQuery(AttributeQuery):
         self.return_labels = ["a", "av", "r1", "r2"]
 
     def get_new_ids(self) -> Set[str, int]:
-
         result = self.get_result()
         attr = result.get("a")
 
         return attr.get("uuid"), attr.element_id
 
     def query_add_match_source(self):
-
         self.add_to_query("MATCH (src { uuid: $source_id })")
 
         self.params["source_id"] = self.attr.source_id
 
     def query_add_create_source(self):
-
         query = """
         CREATE (a)-[:HAS_SOURCE { branch: $branch, status: "active", from: $at, to: null }]->(src)
         """
@@ -127,13 +121,11 @@ class AttributeCreateQuery(AttributeQuery):
         self.add_to_query(query)
 
     def query_add_match_owner(self):
-
         self.add_to_query("MATCH (owner { uuid: $owner_id })")
 
         self.params["owner_id"] = self.attr.owner_id
 
     def query_add_create_owner(self):
-
         query = """
         CREATE (a)-[:HAS_OWNER { branch: $branch, status: "active", from: $at, to: null }]->(owner)
         """
@@ -161,12 +153,10 @@ class AttributeCreateQuery(AttributeQuery):
 
 
 class AttributeGetValueQuery(AttributeQuery):
-
     name = "attribute_get_value"
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["attr_uuid"] = self.attr.id
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
@@ -204,14 +194,12 @@ class AttributeGetValueQuery(AttributeQuery):
 
 
 class AttributeUpdateValueQuery(AttributeQuery):
-
     name = "attribute_update_value"
     type: QueryType = QueryType.WRITE
 
     raise_error_if_empty: bool = True
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -234,7 +222,6 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
 
 class AttributeUpdateFlagQuery(AttributeQuery):
-
     name = "attribute_update_flag"
     type: QueryType = QueryType.WRITE
 
@@ -256,7 +243,6 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -279,7 +265,6 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
 
 class AttributeUpdateNodePropertyQuery(AttributeQuery):
-
     name = "attribute_update_node_property"
     type: QueryType = QueryType.WRITE
 
@@ -292,14 +277,12 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         *args,
         **kwargs,
     ):
-
         self.prop_name = prop_name
         self.prop_id = prop_id
 
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -324,12 +307,10 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
 
 class AttributeGetQuery(AttributeQuery):
-
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 

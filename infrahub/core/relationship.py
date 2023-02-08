@@ -34,7 +34,6 @@ SelfRelationshipManager = TypeVar("SelfRelationshipManager", bound="Relationship
 
 
 class Relationship(FlagPropertyMixin, NodePropertyMixin):
-
     rel_type: str = "IS_RELATED"
 
     def __init__(
@@ -46,7 +45,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node_id: Optional[str] = None,
         **kwargs,
     ):
-
         if not node and not node_id:
             raise ValueError("Either node or node_id must be provided.")
 
@@ -71,7 +69,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._init_flag_property_mixin(kwargs=kwargs)
 
     async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]):
-
         self.data = data
 
         prop_prefix = "_relation__"
@@ -107,7 +104,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         data: Union[dict, RelationshipPeerData, Any] = None,
         **kwargs,
     ) -> SelfRelationship:
-
         await self._process_data(data=data)
 
         return self
@@ -120,7 +116,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         updated_at: Union[Timestamp, str] = None,
         data: Union[dict, RelationshipPeerData, Any] = None,
     ) -> SelfRelationship:
-
         self.id = id
         self.db_id = db_id
 
@@ -174,7 +169,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def set_peer(self, value: Union[Node, str]):
         if hasattr(value, "_schema"):
             if value.get_kind() != self.schema.peer and self.schema.peer not in value._schema.inherit_from:
-
                 peer_schema = registry.get_schema(name=value.get_kind(), branch=self.branch)
 
                 if self.schema.peer not in peer_schema.groups:
@@ -226,7 +220,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return registry.get_schema(name=self.schema.peer, branch=self.branch)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
-
         different_properties = []
 
         for prop_name, prop in data.properties.items():
@@ -291,7 +284,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         await query.execute(session=session)
 
     async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None):
-
         delete_at = Timestamp(at)
 
         node = await self.get_node(session=session)
@@ -350,7 +342,6 @@ class RelationshipManager:
         # data: Optional[Union[Dict, List, str]] = None,
         **kwargs,
     ):
-
         self.schema: RelationshipSchema = schema
         self.name: str = schema.name
         self.node: Node = node
@@ -375,7 +366,6 @@ class RelationshipManager:
         *args,
         **kwargs,
     ):
-
         rm = cls(schema=schema, branch=branch, at=at, node=node, *args, **kwargs)
 
         # By default we are not loading the relationships
@@ -391,7 +381,6 @@ class RelationshipManager:
             data = [data]
 
         for item in data:
-
             if not isinstance(item, (rm.rel_class, str, dict)) and not hasattr(item, "_schema"):
                 raise ValidationError({rm.name: f"Invalid data provided to form a relationship {item}"})
 
@@ -480,7 +469,6 @@ class RelationshipManager:
             await self.remove(peer_id=peer_id, session=session)
 
     async def get(self, session: AsyncSession) -> Union[Relationship, List[Relationship]]:
-
         rels = await self.get_relationships(session=session)
 
         if self.schema.cardinality == "one":
@@ -489,7 +477,6 @@ class RelationshipManager:
         return rels
 
     async def get_relationships(self, session: AsyncSession) -> List[Relationship]:
-
         if not self.has_fetched_relationships:
             await self._fetch_relationships(session=session)
 
@@ -569,7 +556,6 @@ class RelationshipManager:
         at: Optional[Timestamp] = None,
         session: Optional[AsyncSession] = None,
     ):
-
         remove_at = Timestamp(at)
 
         # when we remove a relationship we need to :

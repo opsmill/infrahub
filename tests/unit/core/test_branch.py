@@ -22,7 +22,6 @@ from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 @pytest.fixture
 async def repos_in_main(session, register_core_models_schema):
-
     repo01 = await Node.init(session=session, schema="Repository")
     await repo01.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaaaa")
     await repo01.save(session=session)
@@ -35,7 +34,6 @@ async def repos_in_main(session, register_core_models_schema):
 
 
 async def test_get_query_filter_relationships_main(session, base_dataset_02):
-
     default_branch = await get_branch(branch="main", session=session)
 
     filters, params = default_branch.get_query_filter_relationships(
@@ -55,7 +53,6 @@ async def test_get_query_filter_relationships_main(session, base_dataset_02):
 
 
 async def test_get_query_filter_relationships_branch1(session, base_dataset_02):
-
     branch1 = await get_branch(branch="branch1", session=session)
 
     filters, params = branch1.get_query_filter_relationships(
@@ -69,7 +66,6 @@ async def test_get_query_filter_relationships_branch1(session, base_dataset_02):
 
 
 async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
-
     now = Timestamp("1s")
 
     main_branch = await get_branch(branch="main", session=session)
@@ -83,7 +79,6 @@ async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
 
 
 async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02):
-
     now = Timestamp("1s")
 
     branch1 = await get_branch(branch="branch1", session=session)
@@ -104,7 +99,6 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
 
 
 async def test_diff_has_changes_graph(session, base_dataset_02):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     diff = await Diff.init(branch=branch1, session=session)
@@ -127,7 +121,6 @@ async def test_diff_has_changes_graph(session, base_dataset_02):
 
 
 async def test_diff_has_conflict_graph(session, base_dataset_02):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     diff = await Diff.init(branch=branch1, session=session)
@@ -147,7 +140,6 @@ async def test_diff_has_conflict_graph(session, base_dataset_02):
 
 
 async def test_diff_get_modified_paths_graph(session, base_dataset_02):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     expected_paths_main = {
@@ -205,7 +197,6 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
 
 
 async def test_diff_get_files_repository(session, rpc_client, repos_in_main, base_dataset_02):
-
     mock_response = InfrahubRPCResponse(
         status=RPCStatusCode.OK.value,
         response={
@@ -313,7 +304,6 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
 
 async def test_diff_get_nodes(session, base_dataset_02):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     diff = await Diff.init(branch=branch1, session=session)
@@ -409,7 +399,6 @@ async def test_diff_get_nodes(session, base_dataset_02):
 
 
 async def test_diff_get_relationships(session, base_dataset_02):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     diff = await Diff.init(branch=branch1, session=session)
@@ -430,7 +419,6 @@ async def test_diff_get_relationships(session, base_dataset_02):
 
 
 async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
     passed, messages = await branch1.validate_graph(session=session)
 
@@ -448,7 +436,6 @@ async def test_validate_graph(session, base_dataset_02, register_core_models_sch
 
 
 async def test_validate_empty_branch(session, base_dataset_02, register_core_models_schema):
-
     branch2 = await create_branch(branch_name="branch2", session=session)
 
     passed, messages = await branch2.validate_graph(session=session)
@@ -458,7 +445,6 @@ async def test_validate_empty_branch(session, base_dataset_02, register_core_mod
 
 
 async def test_merge_graph(session, base_dataset_02, register_core_models_schema):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
     await branch1.merge_graph(session=session)
 
@@ -497,7 +483,6 @@ async def test_merge_graph(session, base_dataset_02, register_core_models_schema
 
 
 async def test_merge_graph_delete(session, base_dataset_02, register_core_models_schema):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     persons = sorted(await NodeManager.query(schema="Person", session=session), key=lambda p: p.id)
@@ -514,7 +499,6 @@ async def test_merge_graph_delete(session, base_dataset_02, register_core_models
 
 
 async def test_rebase_flag(session, base_dataset_02):
-
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     cars = sorted(await NodeManager.query(schema="Car", branch=branch1, session=session), key=lambda c: c.id)

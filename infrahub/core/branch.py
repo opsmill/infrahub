@@ -48,14 +48,12 @@ if TYPE_CHECKING:
 
 
 class AddNodeToBranch(Query):
-
     name: str = "node_add_to_branch"
     insert_return: bool = False
 
     type: QueryType = QueryType.WRITE
 
     def __init__(self, node_id: int, *args, **kwargs):
-
         self.node_id = node_id
         super().__init__(*args, **kwargs)
 
@@ -96,7 +94,6 @@ class Branch(StandardNode):
 
     @classmethod
     async def get_by_name(cls, name: str, session: AsyncSession) -> Branch:
-
         query = """
         MATCH (n:Branch)
         WHERE n.name = $name
@@ -113,7 +110,6 @@ class Branch(StandardNode):
         return cls._convert_node_to_obj(results[0].values()[0])
 
     async def get_origin_branch(self, session: AsyncSession) -> Branch:
-
         # pylint: disable=import-outside-toplevel
         from infrahub.core import get_branch
 
@@ -122,7 +118,8 @@ class Branch(StandardNode):
     def get_branches_in_scope(self) -> List[str]:
         """Get the list of all the branches that are constituing this branch.
 
-        For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best."""
+        For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best.
+        """
         default_branch = config.SETTINGS.main.default_branch
         if self.name == default_branch:
             return [self.name]
@@ -157,12 +154,10 @@ class Branch(StandardNode):
         at: Union[Timestamp, str] = None,
         include_outside_parentheses: bool = False,
     ) -> Tuple[str, Dict]:
-
         filters = []
         params = {}
 
         for idx, (branch_name, time_to_query) in enumerate(self.get_branches_and_times_to_query(at=at).items()):
-
             br_filter = f"({branch_label}.name = $branch{idx} AND ("
             br_filter += f"({rel_label}.from <= $time{idx} AND {rel_label}.to IS NULL)"
             br_filter += f" OR ({rel_label}.from <= $time{idx} AND {rel_label}.to >= $time{idx})"
@@ -196,10 +191,8 @@ class Branch(StandardNode):
             params[f"time{idx}"] = time_to_query
 
         for rel in rel_labels:
-
             filters_per_rel = []
             for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-
                 filters_per_rel.append(
                     f"({rel}.branch = $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
                 )
@@ -235,7 +228,6 @@ class Branch(StandardNode):
 
         filters = []
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-
             filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to IS NULL)")
             filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to >= $time{idx})")
 
@@ -268,7 +260,6 @@ class Branch(StandardNode):
         params["end_time"] = end_time.to_string()
 
         for rel in rel_labels:
-
             filters_per_rel = [
                 f"({rel}.branch in $branches AND {rel}.from >= $start_time AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
                 f"({rel}.branch in $branches AND (({rel}.from >= $start_time AND {rel}.from <= $end_time) OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
@@ -343,7 +334,6 @@ class Branch(StandardNode):
         return passed, messages
 
     async def validate_graph(self, session: AsyncSession) -> set(bool, List[str]):
-
         passed = True
         messages = []
 
@@ -357,7 +347,6 @@ class Branch(StandardNode):
         return passed, messages
 
     async def validate_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession) -> set(bool, List[str]):
-
         passed = True
         messages = []
         tasks = []
@@ -454,7 +443,6 @@ class Branch(StandardNode):
         # NODES
         # ---------------------------------------------
         for node_id, node in nodes[self.name].items():
-
             if node.action == DiffAction.ADDED:
                 query = await AddNodeToBranch.init(session=session, node_id=node.db_id, branch=default_branch)
                 await query.execute(session=session)
@@ -466,7 +454,6 @@ class Branch(StandardNode):
                 rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
             for _, attr in node.attributes.items():
-
                 if attr.action == DiffAction.ADDED:
                     await add_relationship(
                         src_node_id=node.db_id,
@@ -494,7 +481,6 @@ class Branch(StandardNode):
                     pass
 
                 for prop_type, prop in attr.properties.items():
-
                     if prop.action == DiffAction.ADDED:
                         await add_relationship(
                             src_node_id=attr.db_id,
@@ -507,7 +493,6 @@ class Branch(StandardNode):
                         rel_ids_to_update.append(prop.rel_id)
 
                     elif prop.action == DiffAction.UPDATED:
-
                         await add_relationship(
                             src_node_id=attr.db_id,
                             dst_node_id=prop.db_id,
@@ -555,7 +540,6 @@ class Branch(StandardNode):
                         rel_ids_to_update.append(node.rel_id)
 
                 for prop_type, prop in rel.properties.items():
-
                     rel_status = RelationshipStatus.ACTIVE
                     if prop.action == DiffAction.REMOVED:
                         rel_status = RelationshipStatus.DELETED
@@ -578,7 +562,6 @@ class Branch(StandardNode):
         await self.rebase(session=session)
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
-
         # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
@@ -590,7 +573,6 @@ class Branch(StandardNode):
         repos_in_branch_list = await NodeManager.query(schema="Repository", session=session, branch=self)
 
         for repo in repos_in_branch_list:
-
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:
                 continue
@@ -764,7 +746,6 @@ class Diff:
         diff_to: Union[str, Timestamp] = None,
         session: Optional[AsyncSession] = None,
     ):
-
         origin_branch = await branch.get_origin_branch(session=session)
 
         return cls(
@@ -820,7 +801,6 @@ class Diff:
         return await self.get_conflicts_graph(session=session)
 
     async def get_conflicts_graph(self, session: AsyncSession) -> Set[Tuple]:
-
         if self.branch_only:
             return []
 
@@ -920,7 +900,6 @@ class Diff:
         repo_ids_common = set(repos_to.keys()) & set(repos_from.keys())
 
         for repo_id in repo_ids_common:
-
             if repos_to[repo_id].commit.value == repos_from[repo_id].commit.value:
                 continue
 
@@ -1029,13 +1008,11 @@ class Diff:
         #  and we'll query the current value to fully understand what we need to do with it.
         # ------------------------------------------------------------
         for result in query_attrs.get_results():
-
             node_id = result.get("n").get("uuid")
             branch_name = result.get("r2").get("branch")
 
             # Check if the node already exist, if not it means it was not added or removed so it was updated
             if node_id not in self._results[branch_name]["nodes"].keys():
-
                 item = {
                     "labels": sorted(list(result.get("n").labels)),
                     "id": node_id,
@@ -1052,7 +1029,6 @@ class Diff:
             # Check if the Attribute is already present or if it was added during this time frame.
             attr_name = result.get("a").get("name")
             if attr_name not in self._results[branch_name]["nodes"][node_id].attributes.keys():
-
                 node = self._results[branch_name]["nodes"][node_id]
                 item = {
                     "id": result.get("a").get("uuid"),
@@ -1112,7 +1088,6 @@ class Diff:
         await origin_attr_query.execute(session=session)
 
         for result in query_attrs.get_results():
-
             node_id = result.get("n").get("uuid")
             branch_name = result.get("r2").get("branch")
             branch_status = result.get("r2").get("status")
@@ -1167,7 +1142,6 @@ class Diff:
     async def get_relationships(
         self, session: AsyncSession
     ) -> Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]]:
-
         if not self._calculated_diff_rels_at:
             await self._calculated_diff_rels(session=session)
 
@@ -1191,7 +1165,6 @@ class Diff:
         await query_rels.execute(session=session)
 
         for result in query_rels.get_results():
-
             branch_name = result.get("r1").get("branch")
             branch_status = result.get("r1").get("status")
             rel_name = result.get("rel").get("name")
@@ -1249,7 +1222,6 @@ class Diff:
         await query_props.execute(session=session)
 
         for result in query_props.get_results():
-
             branch_name = result.get("r3").get("branch")
             branch_status = result.get("r3").get("status")
             rel_name = result.get("rel").get("name")
@@ -1304,7 +1276,6 @@ class Diff:
         await origin_rel_properties_query.execute(session=session)
 
         for result in query_props.get_results():
-
             branch_name = result.get("r3").get("branch")
             branch_status = result.get("r3").get("status")
             rel_name = result.get("rel").get("name")
@@ -1345,14 +1316,12 @@ class Diff:
         self._calculated_diff_rels_at = Timestamp()
 
     async def get_files(self, session: AsyncSession) -> Dict[str, Dict[str, FileDiffElement]]:
-
         if not self._calculated_diff_files_at:
             await self._calculated_diff_files(session=session)
 
         return {branch_name: data["files"] for branch_name, data in self._results.items()}
 
     async def _calculated_diff_files(self, session: AsyncSession):
-
         results = []
         # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
@@ -1361,7 +1330,6 @@ class Diff:
         repos_in_main = {repo.id: repo for repo in await NodeManager.query(schema="Repository", session=session)}
 
         for repo in await NodeManager.query(schema="Repository", branch=self.branch, session=session):
-
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:
                 continue
@@ -1450,7 +1418,6 @@ class Diff:
         repo_ids_common = set(repos_to.keys()) & set(repos_from.keys())
 
         for repo_id in repo_ids_common:
-
             if repos_to[repo_id].commit.value == repos_from[repo_id].commit.value:
                 continue
 

@@ -209,7 +209,6 @@ class NodeManager:
         nodes = {}
 
         async for node in nodes_info:
-
             node_id = node.node_uuid
             attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
@@ -220,9 +219,7 @@ class NodeManager:
             # Attributes
             # --------------------------------------------------------
             for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
-
                 if "AttributeLocal" in attr.attr_labels:
-
                     attrs[attr_name] = dict(
                         db_id=attr.attr_id,
                         id=attr.attr_uuid,
@@ -283,7 +280,6 @@ class SchemaManager(NodeManager):
         node: Union[NodeSchema, GenericSchema, GroupSchema],
         branch: Union[str, Branch] = None,
     ):
-
         branch = await get_branch(branch=branch, session=session)
 
         node_type = node.__class__.__name__
@@ -364,7 +360,6 @@ class SchemaManager(NodeManager):
             node_data[attr_name] = getattr(schema_node, attr_name).value
 
         for rel_name in schema_node._relationships:
-
             if rel_name not in node_data:
                 node_data[rel_name] = []
 
@@ -391,7 +386,6 @@ class SchemaManager(NodeManager):
             node_data[attr_name] = getattr(schema_node, attr_name).value
 
         for rel_name in schema_node._relationships:
-
             if rel_name not in node_data:
                 node_data[rel_name] = []
 

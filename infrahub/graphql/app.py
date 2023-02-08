@@ -127,7 +127,6 @@ class InfrahubGraphQLApp:
             self.on_get = make_playground_handler()
 
     async def _get_schema(self, session: AsyncSession):
-
         if not self._schema:
             self._schema = graphene.Schema(
                 query=await get_gql_query(session=session),
@@ -171,7 +170,6 @@ class InfrahubGraphQLApp:
         return cast(Response, response)
 
     async def _get_context_value(self, session: AsyncSession, request: HTTPConnection) -> Dict:
-
         branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
         branch = await get_branch(session=session, branch=branch_name)
         branch.ephemeral_rebase = bool(strtobool(str(request.query_params.get("rebase", False))))
@@ -458,7 +456,7 @@ async def _get_operation_from_multipart(
         raise ValueError("'map' field must be an Object")
 
     files = {k: v for (k, v) in request_body.items() if isinstance(v, UploadFile)}
-    for (name, paths) in name_path_map.items():
+    for name, paths in name_path_map.items():
         file = files.get(name)
         if not file:
             raise ValueError(f"File fields don't contain a valid UploadFile type for '{name}' mapping")

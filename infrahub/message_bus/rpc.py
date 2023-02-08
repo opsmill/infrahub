@@ -71,7 +71,6 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
     """InfrahubRPCClient instrumented for testing and mocking."""
 
     def __init__(self, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
 
         self.responses = defaultdict(list)
@@ -80,7 +79,6 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
         return self
 
     async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
-
         if len(self.responses[(message.type, message.action)]) == 0:
             raise IndexError(f"No more RPC message in store for '{message.type}::{message.action}'")
 
@@ -95,7 +93,6 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
         self.responses[(message_type.value, action.value)].append(response)
 
     async def ensure_all_responses_have_been_delivered(self) -> bool:
-
         for key, messages in self.responses.items():
             if len(messages) != 0:
                 raise Exception(f"Some responses for {key}, haven't been delivered.")

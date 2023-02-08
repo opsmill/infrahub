@@ -12,14 +12,12 @@ INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 
 class InfrahubCheck:
-
     name: Optional[str] = None
     query: str = None
     timeout: int = 10
     rebase: bool = True
 
     def __init__(self, branch=None, root_directory=None, output=None, server_url=None):
-
         self.data = None
         self.git = None
 
@@ -59,7 +57,6 @@ class InfrahubCheck:
         return [log for log in self.logs if log["level"] == "ERROR"]
 
     def log_error(self, message, object_id=None, object_type=None):
-
         log_message = {"level": "ERROR", "message": message, "branch": self.branch_name}
         if object_id:
             log_message["object_id"] = object_id
@@ -71,7 +68,6 @@ class InfrahubCheck:
             print(json.dumps(log_message))
 
     def log_info(self, message, object_id=None, object_type=None):
-
         log_message = {"level": "INFO", "message": message, "branch": self.branch_name}
         if object_id:
             log_message["object_id"] = object_id

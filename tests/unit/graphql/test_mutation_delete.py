@@ -6,7 +6,6 @@ from infrahub.graphql import generate_graphql_schema
 
 
 async def test_delete_object(db, session, default_branch, car_person_schema):
-
     obj1 = await Node.init(session=session, schema="Person")
     await obj1.new(session=session, name="John", height=180)
     await obj1.save(session=session)

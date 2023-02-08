@@ -38,7 +38,6 @@ class InfrahubMutationOptions(MutationOptions):
 class InfrahubMutationMixin:
     @classmethod
     async def mutate(cls, root, info, *args, **kwargs):
-
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
         # account = info.context.get("infrahub_account", None)
@@ -61,7 +60,6 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_create(cls, root, info, data, branch=None, at=None):
-
         session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
@@ -75,7 +73,6 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_update(cls, root, info, data, branch=None, at=None):
-
         session: AsyncSession = info.context.get("infrahub_session")
 
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
@@ -92,7 +89,6 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_delete(cls, root, info, data, branch=None, at=None):
-
         session: AsyncSession = info.context.get("infrahub_session")
 
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
@@ -109,7 +105,6 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
     def __init_subclass_with_meta__(
         cls, schema: NodeSchema = None, _meta=None, **options
     ):  # pylint: disable=arguments-differ
-
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -127,7 +122,6 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     def __init_subclass_with_meta__(
         cls, schema: NodeSchema = None, _meta=None, **options
     ):  # pylint: disable=arguments-differ
-
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -141,7 +135,6 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     async def mutate_create(cls, root, info, data, branch=None, at=None):
-
         session: AsyncSession = info.context.get("infrahub_session")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
@@ -213,7 +206,6 @@ class BranchCreate(Mutation):
 
     @classmethod
     async def mutate(cls, root, info, data, background_execution=False):
-
         session: AsyncSession = info.context.get("infrahub_session")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
@@ -272,7 +264,6 @@ class BranchRebase(Mutation):
 
     @classmethod
     async def mutate(cls, root, info, data):
-
         session: AsyncSession = info.context.get("infrahub_session")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
@@ -300,7 +291,6 @@ class BranchValidate(Mutation):
 
     @classmethod
     async def mutate(cls, root, info, data):
-
         session: AsyncSession = info.context.get("infrahub_session")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
@@ -321,7 +311,6 @@ class BranchMerge(Mutation):
 
     @classmethod
     async def mutate(cls, root, info, data):
-
         session: AsyncSession = info.context.get("infrahub_session")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 

@@ -29,7 +29,6 @@ def patch_rpc_client():
 
 @pytest.fixture
 async def car_person_data(session, car_person_schema, register_core_models_schema):
-
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -76,7 +75,6 @@ headers = {"Authorization": "Token XXXX"}
 async def test_transform_endpoint(
     session, default_branch, patch_rpc_client, register_core_models_schema, car_person_data
 ):
-
     from infrahub.main import app
 
     client = TestClient(app)
@@ -119,7 +117,6 @@ async def test_transform_endpoint(
 
 
 async def test_transform_endpoint_path(session, patch_rpc_client, default_branch, car_person_data):
-
     from infrahub.main import app
 
     client = TestClient(app)
@@ -162,7 +159,6 @@ async def test_transform_endpoint_path(session, patch_rpc_client, default_branch
 
 
 async def test_graphql_endpoint(session, client, default_branch, car_person_data):
-
     query = """
     query {
         person {

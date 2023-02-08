@@ -112,7 +112,6 @@ class BaseTokenAuth(_BaseSchemeAuth):
         return [token]
 
     async def verify(self, session: AsyncSession, token: str) -> Optional[auth.BaseUser]:
-
         if account_name := await validate_token(session=session, token=token):
             account = await get_account(session=session, account=account_name)
             return account

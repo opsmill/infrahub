@@ -91,7 +91,6 @@ async def get_account(
     branch=None,
     at=None,
 ):
-
     # No default value supported for now
     if not account:
         return None
@@ -119,7 +118,6 @@ async def get_account(
 
 
 def get_account_by_id(id):
-
     # No default value supported for now
     if not id:
         return None
@@ -162,7 +160,6 @@ class Registry:
             return False
 
     def get_item(self, kind: str, name: str, branch: Optional[Union[Branch, str]] = None):
-
         branch = get_branch_from_registry(branch=branch)
 
         attr = getattr(self, kind)
@@ -224,7 +221,6 @@ class Registry:
         return self.get_all_item(kind="graphql_type", branch=branch)
 
     def delete_all(self):
-
         self.branch = {}
         self.node = {}
         self.schema = defaultdict(dict)

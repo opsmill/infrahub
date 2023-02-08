@@ -12,7 +12,6 @@ from infrahub.message_bus.events import (
 
 
 async def test_git_rpc_create_successful(git_upstream_repo_02):
-
     message = InfrahubGitRPC(
         action=GitMessageAction.REPO_ADD.value,
         repository_id=uuid.uuid4(),
@@ -27,7 +26,6 @@ async def test_git_rpc_create_successful(git_upstream_repo_02):
 
 
 async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
-
     message = InfrahubGitRPC(
         action=GitMessageAction.REPO_ADD.value,
         repository_id=uuid.uuid4(),
@@ -42,7 +40,6 @@ async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
 
 
 async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubRepository, tmp_path):
-
     repo = git_repo_01
 
     await repo.create_branch_in_git(branch_name="branch01")
@@ -67,7 +64,6 @@ async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubReposito
 
 
 async def test_git_rpc_diff(git_upstream_repo_01, git_repo_01: InfrahubRepository, tmp_path):
-
     repo = git_repo_01
 
     await repo.create_branch_in_git(branch_name="branch01")

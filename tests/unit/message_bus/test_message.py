@@ -15,14 +15,12 @@ from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
 def test_message_init(incoming_data_message_01):
-
     message = InfrahubMessage.convert(incoming_data_message_01)
 
     assert isinstance(message, InfrahubDataMessage)
 
 
 async def test_rpc_client_testing(rpc_client: InfrahubRpcClientTesting):
-
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.TOO_EARLY.value)
     await rpc_client.add_response(
         response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.REPO_ADD
@@ -42,7 +40,6 @@ async def test_rpc_client_testing(rpc_client: InfrahubRpcClientTesting):
 
 
 async def test_rpc_client_testing_multiple_messages(rpc_client: InfrahubRpcClientTesting):
-
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.TOO_EARLY.value)
     await rpc_client.add_response(
         response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.REPO_ADD
@@ -68,7 +65,6 @@ async def test_rpc_client_testing_multiple_messages(rpc_client: InfrahubRpcClien
 
 
 async def test_rpc_client_ensure_response_delivered(rpc_client: InfrahubRpcClientTesting):
-
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.TOO_EARLY.value)
     await rpc_client.add_response(
         response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.REPO_ADD

@@ -11,7 +11,6 @@ INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT = "INFRAHUB_TRANSFORMS"
 
 
 class InfrahubTransform:
-
     name: Optional[str] = None
     query: str = None
     url: str = None
@@ -19,7 +18,6 @@ class InfrahubTransform:
     rebase: bool = True
 
     def __init__(self, branch=None, root_directory=None, server_url=None):
-
         self.data = None
         self.git = None
 

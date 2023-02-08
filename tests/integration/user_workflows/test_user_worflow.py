@@ -334,7 +334,6 @@ class TestUserWorkflow01:
         assert result["device"][0]["interfaces"][0]["description"]["value"] == new_description
 
     def test_validate_diff(self, client, dataset01):
-
         with client:
             variables = {"branch_name": branch1}
             response = client.post("/graphql", json={"query": DIFF, "variables": variables}, headers=headers)
@@ -427,7 +426,6 @@ class TestUserWorkflow01:
         assert result["device"][0]["interfaces"][0]["description"]["value"] == new_description
 
     def test_create_second_branch(self, client, init_db_infra, dataset01):
-
         with client:
             response = client.post(
                 "/graphql", json={"query": BRANCH_CREATE, "variables": {"branch": branch2}}, headers=headers
@@ -440,7 +438,6 @@ class TestUserWorkflow01:
         assert result["branch_create"]["ok"]
 
     def test_update_intf_description_main_after_branch2(self, client, dataset01):
-
         assert pytest.state["spine1_eth1_id"]
         new_description = f"New description in {main_branch} after creating {branch2}"
 
@@ -537,7 +534,6 @@ class TestUserWorkflow01:
             assert result["device"][0]["interfaces"][0]["description"]["value"] == main_description
 
     def test_query_spine1_lo0_at_start_time(self, client, dataset01):
-
         with client:
             response = client.post(
                 "/graphql",
@@ -559,7 +555,6 @@ class TestUserWorkflow01:
             pytest.state["spine1_lo0_description_start"] = result["device"][0]["interfaces"][0]["description"]["value"]
 
     def test_add_new_interface_in_first_branch(self, client, dataset01):
-
         with client:
             response = client.post(
                 f"/graphql/{branch1}",
@@ -585,7 +580,6 @@ class TestUserWorkflow01:
             assert result["interface_create"]["object"]["name"]["value"] == "Ethernet8"
 
     def test_merge_first_branch_into_main(self, client, dataset01):
-
         # Expected description for Loopback0 after the merge
         expected_description = f"New New description in {branch1}"
 

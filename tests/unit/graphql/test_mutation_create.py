@@ -6,7 +6,6 @@ from infrahub.graphql import generate_graphql_schema
 
 
 async def test_create_simple_object(db, session, default_branch, car_person_schema):
-
     query = """
     mutation {
         person_create(data: {name: { value: "John"}, height: {value: 182}}) {
@@ -31,7 +30,6 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
 
 
 async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
-
     query = """
     mutation {
         all_attribute_types_create(
@@ -73,7 +71,6 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
 
 
 async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
-
     query = """
     mutation {
         person_create(data: {name: { value: "John", is_protected: true}, height: {value: 182, is_visible: false}}) {
@@ -127,7 +124,6 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
 async def test_create_object_with_node_property(
     db, session, default_branch, car_person_schema, first_account, second_account
 ):
-
     graphql_schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
 
     query = """
@@ -194,7 +190,6 @@ async def test_create_object_with_node_property(
 
 
 async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
-
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -229,7 +224,6 @@ async def test_create_object_with_single_relationship(db, session, default_branc
 
 
 async def test_create_object_with_single_relationship_flap_property(db, session, default_branch, car_person_schema):
-
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -268,7 +262,6 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
 
 
 async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
-
     t1 = await Node.init(session=session, schema="Tag")
     await t1.new(session=session, name="tag1")
     await t1.save(session=session)
@@ -310,7 +303,6 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
 
 
 async def test_create_object_with_multiple_relationships_flag_property(db, session, default_branch, fruit_tag_schema):
-
     t1 = await Node.init(session=session, schema="Tag")
     await t1.new(session=session, name="tag1")
     await t1.save(session=session)
@@ -360,7 +352,6 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
 
 
 async def test_create_person_not_valid(db, session, default_branch, car_person_schema):
-
     query = """
     mutation {
         person_create(data: {name: { value: "John"}, height: {value: "182"}}) {

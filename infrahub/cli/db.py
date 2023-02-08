@@ -36,7 +36,6 @@ async def _init(config_file: str):
     db = await get_db()
 
     async with db.session(database=config.SETTINGS.database.database) as session:
-
         log.info("Delete All Nodes")
         await delete_all_nodes(session=session)
         await first_time_initialization(session=session)
@@ -52,7 +51,6 @@ async def _load_test_data(config_file: str, dataset: str):
     db = await get_db()
 
     async with db.session(database=config.SETTINGS.database.database) as session:
-
         await initialization(session=session)
 
         log_level = "DEBUG"

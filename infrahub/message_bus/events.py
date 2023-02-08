@@ -122,7 +122,6 @@ class InfrahubMessage(PickleSerializer):
     CONTENT_TYPE = "application/python-pickle"
 
     def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
-
         self._message = None
 
     @classmethod
@@ -191,7 +190,6 @@ class InfrahubActionMessage(InfrahubMessage):
     actions = None
 
     def __init__(self, action: str, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
 
         if not self.validate_action(action):
@@ -236,7 +234,6 @@ class InfrahubRPC(InfrahubActionMessage):
         *args,
         **kwargs,
     ):
-
         super().__init__(*args, **kwargs)
 
         if message:
@@ -262,7 +259,6 @@ class InfrahubRPC(InfrahubActionMessage):
 
 
 class InfrahubRPCResponse(InfrahubMessage):
-
     type = MessageType.RPC_RESPONSE
 
     def __init__(
@@ -273,7 +269,6 @@ class InfrahubRPCResponse(InfrahubMessage):
         *args,
         **kwargs,
     ):
-
         super().__init__(*args, **kwargs)
 
         self.status = status
@@ -298,7 +293,6 @@ class InfrahubRPCResponse(InfrahubMessage):
 
 
 class InfrahubGitRPC(InfrahubRPC):
-
     type = MessageType.GIT
     actions = GitMessageAction
 
@@ -312,7 +306,6 @@ class InfrahubGitRPC(InfrahubRPC):
         *args,
         **kwargs,
     ):
-
         if not repository and not repository_id:
             raise ValueError("Either Repository or repository_id must be provided for InfrahubGitRPC.")
 
@@ -354,7 +347,6 @@ class InfrahubGitRPC(InfrahubRPC):
 
 
 class InfrahubTransformRPC(InfrahubRPC):
-
     type = MessageType.TRANSFORMATION
     actions = TransformMessageAction
 
@@ -371,7 +363,6 @@ class InfrahubTransformRPC(InfrahubRPC):
         *args,
         **kwargs,
     ):
-
         if not repository and not repository_id:
             raise ValueError("Either Repository or repository_id must be provided for InfrahubTransformRPC.")
 
@@ -416,7 +407,6 @@ class InfrahubTransformRPC(InfrahubRPC):
 
 
 class InfrahubCheckRPC(InfrahubRPC):
-
     type = MessageType.CHECK
     actions = CheckMessageAction
 
@@ -433,7 +423,6 @@ class InfrahubCheckRPC(InfrahubRPC):
         *args,
         **kwargs,
     ):
-
         if not repository and not repository_id:
             raise ValueError("Either Repository or repository_id must be provided for InfrahubTransformRPC.")
 
@@ -481,14 +470,12 @@ class InfrahubCheckRPC(InfrahubRPC):
 # Events
 # --------------------------------------------------------
 class InfrahubDataMessage(InfrahubActionMessage):
-
     type = MessageType.DATA
     actions = DataMessageAction
 
     def __init__(
         self, node: Node = None, node_id: str = None, node_kind: str = None, branch: str = None, *args, **kwargs
     ):
-
         super().__init__(*args, **kwargs)
 
         self.node_kind = node_kind or node.get_kind()
@@ -546,7 +533,6 @@ class InfrahubBranchMessage(InfrahubActionMessage):
     actions = BranchMessageAction
 
     def __init__(self, branch: str, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
         self.branch = branch
 

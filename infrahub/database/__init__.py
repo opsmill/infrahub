@@ -11,7 +11,6 @@ validated_database = {}
 
 
 async def get_db():
-
     global validated_database  # pylint: disable=global-variable-not-assigned
 
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
@@ -19,18 +18,15 @@ async def get_db():
 
     if config.SETTINGS.database.database not in validated_database:
         try:
-
             session = driver.session(database=config.SETTINGS.database.database)
             await session.run("SHOW TRANSACTIONS")
             validated_database[config.SETTINGS.database.database] = True
 
         except ClientError as exc:
             if "database does not exist" in exc.message:
-
                 default_db = driver.session()
                 await default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
             elif "Unable to get a routing table for database" in exc.message:
-
                 default_db = driver.session()
                 await default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
 

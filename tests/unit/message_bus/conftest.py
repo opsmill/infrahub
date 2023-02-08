@@ -17,7 +17,6 @@ async def rpc_client():
 
 @pytest.fixture
 def incoming_data_message_01():
-
     body = {
         "action": DataMessageAction.CREATE.value,
         "branch": "main",

@@ -5,7 +5,6 @@ from infrahub.core.node import Node
 
 
 async def test_get_one_attribute(session, default_branch, criticality_schema):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)
@@ -43,7 +42,6 @@ async def test_get_one_attribute(session, default_branch, criticality_schema):
 async def test_get_one_attribute_with_node_property(
     session, default_branch, criticality_schema, first_account, second_account
 ):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4, _source=first_account)
     await obj1.save(session=session)
@@ -79,7 +77,6 @@ async def test_get_one_attribute_with_node_property(
 async def test_get_one_attribute_with_flag_property(
     session, default_branch, criticality_schema, first_account, second_account
 ):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(
         session=session, name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False}
@@ -107,7 +104,6 @@ async def test_get_one_attribute_with_flag_property(
 
 
 async def test_get_one_relationship(session, default_branch, car_person_schema):
-
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
 
@@ -137,7 +133,6 @@ async def test_get_one_relationship(session, default_branch, car_person_schema):
 
 
 async def test_get_one_relationship_with_flag_property(session, default_branch, car_person_schema):
-
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -184,7 +179,6 @@ async def test_get_one_relationship_with_flag_property(session, default_branch, 
 
 
 async def test_get_many(session, default_branch, criticality_schema):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)
@@ -198,7 +192,6 @@ async def test_get_many(session, default_branch, criticality_schema):
 
 
 async def test_query_no_filter(session, default_branch, criticality_schema):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)
@@ -216,7 +209,6 @@ async def test_query_no_filter(session, default_branch, criticality_schema):
 
 
 async def test_query_with_filter_string_int(session, default_branch, criticality_schema):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=3)
     await obj1.save(session=session)
@@ -244,7 +236,6 @@ async def test_query_with_filter_string_int(session, default_branch, criticality
 
 
 async def test_query_with_filter_bool_rel(session, default_branch, car_person_schema):
-
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
 
@@ -300,7 +291,6 @@ async def test_query_non_default_class(session, default_branch, criticality_sche
 
 
 async def test_query_class_name(session, default_branch, criticality_schema):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=3)
     await obj1.save(session=session)
@@ -319,7 +309,6 @@ async def test_query_class_name(session, default_branch, criticality_schema):
 
 
 async def test_get_one_local_attribute_with_branch(session, default_branch, criticality_schema):
-
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)

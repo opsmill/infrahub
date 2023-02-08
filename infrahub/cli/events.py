@@ -21,19 +21,16 @@ app = typer.Typer()
 
 
 async def print_event(event: IncomingMessage) -> None:
-
     event = InfrahubMessage.init(event)
     rprint(event)
 
 
 async def _listen(topic: str, config_file: str):
-
     config.load_and_exit(config_file)
 
     connection = await get_broker()
 
     async with connection:
-
         # Creating a channel
         channel = await connection.channel()
 
@@ -50,13 +47,11 @@ async def _listen(topic: str, config_file: str):
 
 
 async def _generate(msg_type: MessageType, config_file: str):
-
     config.load_and_exit(config_file)
 
     db = await get_db()
 
     async with db.session(database=config.SETTINGS.database.database) as session:
-
         await initialization(session=session)
         nodes = await NodeManager.query(session=session, schema="Criticality")
 

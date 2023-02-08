@@ -10,7 +10,6 @@ from infrahub.message_bus.events import (
 
 
 async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository):
-
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = InfrahubTransformRPC(
@@ -30,7 +29,6 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository):
 
 
 async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository):
-
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = InfrahubTransformRPC(
@@ -50,7 +48,6 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository):
 
 
 async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository):
-
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = InfrahubTransformRPC(

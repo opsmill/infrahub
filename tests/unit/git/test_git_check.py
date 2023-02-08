@@ -10,7 +10,6 @@ from infrahub.message_bus.events import (
 
 
 async def test_git_check_python_success(client, git_repo_checks: InfrahubRepository, mock_gql_query_my_query):
-
     commit = git_repo_checks.get_commit_value(branch_name="main")
 
     message = InfrahubCheckRPC(
@@ -32,7 +31,6 @@ async def test_git_check_python_success(client, git_repo_checks: InfrahubReposit
 
 
 async def test_git_check_python_missing(client, git_repo_checks: InfrahubRepository):
-
     commit = git_repo_checks.get_commit_value(branch_name="main")
 
     message = InfrahubCheckRPC(

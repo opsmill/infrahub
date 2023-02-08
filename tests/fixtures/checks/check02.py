@@ -6,7 +6,6 @@ class Check02(InfrahubCheck):
     The query is missing."""
 
     def validate(self):
-
         self.log_error("Not Valid")
 
 

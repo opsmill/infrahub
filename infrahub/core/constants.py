@@ -2,7 +2,6 @@ import enum
 
 
 class PermissionLevel(enum.Flag):
-
     READ = 1
 
     WRITE = 2
@@ -13,7 +12,6 @@ class PermissionLevel(enum.Flag):
 
 
 class DiffAction(enum.Flag):
-
     ADDED = "added"
 
     REMOVED = "removed"
@@ -22,7 +20,6 @@ class DiffAction(enum.Flag):
 
 
 class RelationshipStatus(enum.Flag):
-
     ACTIVE = "active"
 
     DELETED = "deleted"

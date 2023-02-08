@@ -8,7 +8,6 @@ from infrahub.core.utils import get_paths_between_nodes
 
 
 async def test_one_init_no_input_no_rel(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
 
@@ -28,7 +27,6 @@ async def test_one_init_no_input_no_rel(session, default_branch, person_tag_sche
 
 
 async def test_one_init_no_input_existing_rel(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
     t1 = await Node.init(session=session, schema="Tag")
@@ -47,7 +45,6 @@ async def test_one_init_no_input_existing_rel(session, default_branch, person_ta
 
 
 async def test_many_init_no_input_no_rel(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
     p1 = await Node.init(session=session, schema=person_schema)
@@ -66,7 +63,6 @@ async def test_many_init_no_input_no_rel(session, default_branch, person_tag_sch
 
 
 async def test_many_init_no_input_existing_rel(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
     t1 = await Node.init(session=session, schema="Tag")
@@ -87,7 +83,6 @@ async def test_many_init_no_input_existing_rel(session, default_branch, person_t
 
 
 async def test_one_init_input_obj(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
     t1 = await Node.init(session=session, schema="Tag")
@@ -106,7 +101,6 @@ async def test_one_init_input_obj(session, default_branch, person_tag_schema):
 
 
 async def test_one_save_input_obj(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("primary_tag")
 
@@ -133,7 +127,6 @@ async def test_one_save_input_obj(session, default_branch, person_tag_schema):
 
 
 async def test_many_init_input_obj(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -155,7 +148,6 @@ async def test_many_init_input_obj(session, default_branch, person_tag_schema):
 
 
 async def test_many_save_input_obj(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
     t1 = await Node.init(session=session, schema="Tag")
@@ -188,7 +180,6 @@ async def test_many_save_input_obj(session, default_branch, person_tag_schema):
 
 
 async def test_many_update(session, default_branch, person_tag_schema):
-
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
