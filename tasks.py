@@ -164,6 +164,7 @@ def init(context):
         pty=True,
     )
 
+
 @task
 def load_demo_data(context):
     """Launch a bash shell inside the running Infrahub container."""
