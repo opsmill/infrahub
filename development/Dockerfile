@@ -1,22 +1,27 @@
-ARG PYTHON_VER
-FROM python:3.9-slim
+ARG PYTHON_VER=3.9
+FROM python:${PYTHON_VER}
 
+ENV PYTHONUNBUFFERED 1
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install --no-install-recommends -y pkg-config build-essential && \
+    apt-get autoremove -y && \
+    apt-get clean all && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip --no-cache-dir install --upgrade pip wheel
+
+RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="${PATH}:/root/.local/bin"
 
-RUN apt -y update && apt -y install git
-
-RUN pip install poetry && \
-    poetry config virtualenvs.create false && \
-    poetry config installer.parallel false
+RUN poetry config virtualenvs.create false
 
 WORKDIR /source
 
 # Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
 COPY poetry.lock pyproject.toml /source/
-# --no-root declares not to install the project package since we're wanting to take advantage of caching dependency installation
-# and the project is copied in and installed after this step
 RUN poetry install --no-interaction --no-ansi --no-root
 
-# Copy in the rest of the source code and install local Nautobot plugin
+# Copy in the rest of the source code and install the project
 COPY . /source
 RUN poetry install --no-interaction --no-ansi

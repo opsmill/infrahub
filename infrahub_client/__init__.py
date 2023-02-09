@@ -1,9 +1,13 @@
 import asyncio
 import copy
-from typing import Dict, List, Optional
+import logging
+from logging import Logger
+from typing import Dict, Optional
 
 import httpx
 from pydantic import BaseModel
+
+from .exceptions import GraphQLError, ServerNotReacheableError
 
 # pylint: disable=redefined-builtin
 
@@ -353,15 +357,6 @@ mutation($id: String!, $name: String!, $description: String!, $file_path: String
 """
 
 
-class GraphQLError(Exception):
-    def __init__(self, errors: List[str], query: str = None, variables: dict = None):
-        self.query = query
-        self.variables = variables
-        self.errors = errors
-        self.message = f"An error occured while executing the GraphQL Query {self.query}, {self.errors}"
-        super().__init__(self.message)
-
-
 class BranchData(BaseModel):
     id: str
     name: str
@@ -420,11 +415,22 @@ class TransformPythonData(BaseModel):
 class InfrahubClient:
     """GraphQL Client to interact with Infrahub."""
 
-    def __init__(self, address="http://localhost:8000", default_timeout=5, test_client=None):
+    def __init__(
+        self,
+        address: str = "http://localhost:8000",
+        default_timeout: int = 5,
+        retry_on_failure: bool = False,
+        retry_delay: int = 5,
+        log: Logger = None,
+        test_client=None,
+    ):
         self.address = address
         self.client = None
         self.default_timeout = default_timeout
         self.test_client = test_client
+        self.retry_on_failure = retry_on_failure
+        self.retry_delay = retry_delay
+        self.log = log or logging.getLogger("infrahub_client")
 
         if test_client:
             self.address = ""
@@ -435,7 +441,7 @@ class InfrahubClient:
 
     async def execute_graphql(
         self,
-        query,
+        query: str,
         variables: dict = None,
         branch_name: str = None,
         at: str = None,
@@ -443,6 +449,24 @@ class InfrahubClient:
         timeout: int = None,
         raise_for_error: bool = True,
     ):
+        """Execute a GraphQL query (or mutation).
+        If retry_on_failure is True, the query will retry until the server becomes reacheable.
+
+        Args:
+            query (_type_): GraphQL Query to execute, can be a query or a mutation
+            variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
+            branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
+            at (str, optional): Time when the query should be executed. Defaults to None.
+            rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
+            timeout (int, optional): Timeout in second for the query. Defaults to None.
+            raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
+
+        Raises:
+            GraphQLError: _description_
+
+        Returns:
+            _type_: _description_
+        """
         url = f"{self.address}/graphql"
         if branch_name:
             url += f"/{branch_name}"
@@ -460,12 +484,19 @@ class InfrahubClient:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         if not self.test_client:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    url=url,
-                    json=payload,
-                    timeout=timeout or self.default_timeout,
-                )
+            retry = True
+            while retry:
+                retry = self.retry_on_failure
+                try:
+                    resp = await self.post(url=url, payload=payload, timeout=timeout)
+                except ServerNotReacheableError:
+                    if retry:
+                        self.log.warning(
+                            f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
+                        )
+                        await asyncio.sleep(delay=self.retry_delay)
+                    else:
+                        self.log.critical(f"Unable to connect to {self.address} .. ")
 
         else:
             with self.test_client as client:
@@ -482,6 +513,22 @@ class InfrahubClient:
         return response["data"]
 
         # TODO add a special method to execute mutation that will check if the method returned OK
+
+    async def post(self, url: str, payload: dict, timeout: int = None):
+        """Execute a HTTP POST with HTTPX.
+
+        Raises:
+            ServerNotReacheableError if we are not able to connect to the server
+        """
+        async with httpx.AsyncClient() as client:
+            try:
+                return await client.post(
+                    url=url,
+                    json=payload,
+                    timeout=timeout or self.default_timeout,
+                )
+            except httpx.ConnectError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
 
     async def query_gql_query(
         self,

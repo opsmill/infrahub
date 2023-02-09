@@ -38,10 +38,6 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
-# Master
-#  Check if a new version of the repo/ branch is available online
-
-
 # All
 #   Listen to Git Request
 #    Merge
@@ -149,19 +145,20 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int, log: lo
 async def _start(listen: str, port: int, debug: bool, interval: int, config_file: str):
     """Start Infrahub Git Agent."""
 
-    # Query the list of repo and try to initialize all of them
-    # Wait for messages
     log_level = "DEBUG" if debug else "INFO"
 
     FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub.worker")
+    log = logging.getLogger("infrahub.git")
 
     log.debug(f"Config file : {config_file}")
 
     config.load_and_exit(config_file)
 
-    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address)
+    # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
+    log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
+    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    await client.get_list_branches()
 
     await initialize_git_agent(client=client, log=log)
 
@@ -181,7 +178,7 @@ def start(
     debug: bool = False,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    # logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpx").setLevel(logging.ERROR)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("aio_pika").setLevel(logging.ERROR)
     logging.getLogger("aiormq").setLevel(logging.ERROR)

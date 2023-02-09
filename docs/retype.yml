@@ -1,7 +1,7 @@
 ---
 input: .
 output: .retype
-url: infrahub.pages.dev
+url:  # Add your website address here
 branding:
   title: Infrahub
   label: Docs
