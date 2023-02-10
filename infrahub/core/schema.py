@@ -743,6 +743,8 @@ core_models = {
                 {"name": "type", "kind": "String", "default_value": "LOCAL"},
                 {"name": "default_branch", "kind": "String", "default_value": "main"},
                 {"name": "commit", "kind": "String", "optional": True},
+                {"name": "username", "kind": "String", "optional": True},
+                {"name": "password", "kind": "String", "optional": True},
             ],
             "relationships": [
                 {"name": "account", "peer": "Account", "optional": True, "cardinality": "one"},

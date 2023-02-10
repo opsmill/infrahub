@@ -297,7 +297,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             #     )
 
             if not isinstance(value, (str, bool, int)):
-                raise Exception(f"filter {attr_name}: {value} ({type(value)}) is not supported.")
+                raise TypeError(f"filter {attr_name}: {value} ({type(value)}) is not supported.")
 
             # value_filter = f"{value}"
             # if isinstance(value, str):
