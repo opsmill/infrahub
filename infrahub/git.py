@@ -24,6 +24,7 @@ import infrahub.config as config
 from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
 from infrahub.exceptions import (
     CheckError,
+    Error,
     FileNotFound,
     RepositoryError,
     TransformError,
@@ -261,7 +262,7 @@ class Worktree(BaseModel):
             # this is the either a commit or a branch worktree
             identifier = relative_paths[3]
         else:
-            raise Exception("Unexpected directory path for a worktree.")
+            raise Error("Unexpected directory path for a worktree.")
 
         item = cls(
             identifier=identifier,

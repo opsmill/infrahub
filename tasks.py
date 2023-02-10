@@ -49,7 +49,7 @@ IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/infrahub-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
 PWD = os.getcwd()
 
-BUILD_NAME = f"infrahub-dev"
+BUILD_NAME = "infrahub-dev"
 USE_OVERRIDE_FILE = False
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 
@@ -85,7 +85,7 @@ def build(
     """
     print(f"Building image {name}:{image_ver}")
     exec_cmd = (
-        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} build --build-arg PYTHON_VER={PYTHON_VER}"
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} build --build-arg PYTHON_VER={python_ver}"
     )
     if nocache:
         exec_cmd += " --no-cache"

@@ -36,7 +36,7 @@ def find_graphql_query(name, directory="."):
 
         if query_name != name:
             continue
-        with open(query_file, "r") as file_data:
+        with open(query_file, "r", encoding="UTF-8") as file_data:
             query_string = file_data.read()
 
         return query_string

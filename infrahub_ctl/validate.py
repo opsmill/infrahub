@@ -8,6 +8,6 @@ def config():
     pass
 
 
-@app.command()
-def all():
-    print("Not implemented yet.")
+# @app.command()
+# def all():
+#     print("Not implemented yet.")
