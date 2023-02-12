@@ -107,6 +107,7 @@ disable = """,
     consider-using-f-string,
     protected-access,
     cyclic-import,
+    import-self,
     """
 
 [tool.pylint.miscellaneous]
