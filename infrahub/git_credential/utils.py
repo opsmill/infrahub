@@ -1,6 +1,6 @@
 QUERY = """
 query ($repository_location: String!) {
-    repository(location__value: $repository_location){ 
+    repository(location__value: $repository_location){
         name {
             value
         }
