@@ -32,7 +32,7 @@ jobs:
       - name: "Install project"
         run: "poetry install"
       - name: "Pylint Tests"
-        run: "invoke pylint"
+        run: "poetry run invoke pylint"
       - name: "Unit Tests"
         run: "poetry run infrahub test unit"
       - name: "Integration Tests : Client"
