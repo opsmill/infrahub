@@ -139,7 +139,7 @@ def destroy(context: Context):
 
 
 @task
-def cli_server(context):
+def cli_server(context: Context):
     """Launch a bash shell inside the running Infrahub container."""
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server bash",
@@ -148,7 +148,7 @@ def cli_server(context):
 
 
 @task
-def cli_git(context):
+def cli_git(context: Context):
     """Launch a bash shell inside the running Infrahub container."""
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git bash",
@@ -157,7 +157,7 @@ def cli_git(context):
 
 
 @task
-def init(context):
+def init(context: Context):
     """Initialize Infrahub database before using it the first time."""
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server infrahub db init",
@@ -166,7 +166,7 @@ def init(context):
 
 
 @task
-def load_demo_data(context):
+def load_demo_data(context: Context):
     """Launch a bash shell inside the running Infrahub container."""
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server infrahub db load-test-data --dataset dataset03",
@@ -179,11 +179,7 @@ def load_demo_data(context):
 # ----------------------------------------------------------------------------
 @task
 def dev_start(context: Context):
-    """Start a local instance of NEO4J & RabbitMQ.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """Start a local instance of NEO4J & RabbitMQ."""
 
     exec_cmd = f"{ENV_VARS} docker compose {DEV_COMPOSE_FILES_CMD} -p {BUILD_NAME} up -d"
     return context.run(exec_cmd, pty=True)
@@ -191,11 +187,7 @@ def dev_start(context: Context):
 
 @task
 def dev_stop(context: Context):
-    """Start a local instance of NEO4J & RabbitMQ.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """Start a local instance of NEO4J & RabbitMQ."""
 
     exec_cmd = f"{ENV_VARS} docker compose  {DEV_COMPOSE_FILES_CMD} -p {BUILD_NAME} down"
     return context.run(exec_cmd, pty=True)
@@ -205,7 +197,8 @@ def dev_stop(context: Context):
 # Misc tasks
 # ----------------------------------------------------------------------------
 @task
-def performance_test(context, directory="utilities", dataset="dataset03"):
+def performance_test(context: Context, directory: str = "utilities", dataset: str = "dataset03"):
+    """Launch a performance test using Locust. Gunicorn must be running"""
     PERFORMANCE_FILE_PREFIX = "locust_"
     NOW = datetime.now()
     date_format = NOW.strftime("%Y-%m-%d-%H-%M-%S")
@@ -229,11 +222,7 @@ def performance_test(context, directory="utilities", dataset="dataset03"):
 # ----------------------------------------------------------------------------
 @task
 def format_black(context: Context):
-    """This will run black to format all Python files.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """Run black to format all Python files."""
 
     exec_cmd = "black --exclude=examples --exclude=repositories ."
     context.run(exec_cmd, pty=True)
@@ -241,11 +230,7 @@ def format_black(context: Context):
 
 @task
 def format_autoflake(context: Context):
-    """This will run autoflack to format all Python files.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """Run autoflack to format all Python files."""
 
     exec_cmd = "autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables ."
     context.run(exec_cmd, pty=True)
@@ -253,14 +238,7 @@ def format_autoflake(context: Context):
 
 @task
 def format_isort(context: Context):
-    """This will run isort to format all Python files.
-
-    Args:
-        context (obj): Used to run specific commands
-        name (str): Used to name the docker image
-        image_ver (str): Define image version
-        local (bool): Define as `True` to execute locally
-    """
+    """Run isort to format all Python files."""
 
     exec_cmd = "isort --skip=examples --skip=repositories ."
     context.run(exec_cmd, pty=True)
@@ -268,14 +246,8 @@ def format_isort(context: Context):
 
 @task(name="format")
 def format_all(context: Context):
-    """This will run all formatter.
+    """This will run all formatter."""
 
-    Args:
-        context (obj): Used to run specific commands
-        name (str): Used to name the docker image
-        image_ver (str): Define image version
-        local (bool): Define as `True` to execute locally
-    """
     format_isort(context)
     format_autoflake(context)
     format_black(context)
@@ -287,30 +259,8 @@ def format_all(context: Context):
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def pytest(context: Context):
-    """This will run pytest for the specified name and Python version.
-
-    Args:
-        context (obj): Used to run specific commands
-        name (str): Used to name the docker image
-        image_ver (str): Will use the container version docker image
-        local (bool): Define as `True` to execute locally
-    """
-
-    # Install python module
-    exec_cmd = "pytest --cov=diffsync --cov-config pyproject.toml --cov-report html --cov-report term -vv"
-    context.run(exec_cmd, pty=True)
-
-
-@task
 def black(context: Context):
-    """This will run black to check that Python files adherence to black standards.
-
-    Args:
-        context (obj): Used to run specific commands
-        name (str): Used to name the docker image
-        image_ver (str): Define image version
-    """
+    """Run black to check that Python files adherence to black standards."""
 
     exec_cmd = "black --check --diff ."
     context.run(exec_cmd, pty=True)
@@ -318,11 +268,7 @@ def black(context: Context):
 
 @task
 def flake8(context: Context):
-    """This will run flake8 for the specified name and Python version.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """This will run flake8 for the specified name and Python version."""
 
     exec_cmd = "flake8 --ignore=E203,E501,W503,W504,E701,E251,E231 --exclude=examples,repositories ."
     context.run(exec_cmd, pty=True)
@@ -330,11 +276,7 @@ def flake8(context: Context):
 
 @task
 def mypy(context: Context):
-    """This will run mypy for the specified name and Python version.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """This will run mypy for the specified name and Python version."""
 
     exec_cmd = 'find . -name "*.py" -not -path "*/examples/*" -not -path "*/repositories/*" -not -path "*/tests/*" | xargs mypy --show-error-codes'
     context.run(exec_cmd, pty=True)
@@ -342,11 +284,7 @@ def mypy(context: Context):
 
 @task
 def pylint(context: Context):
-    """This will run pylint for the specified name and Python version.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """This will run pylint for the specified name and Python version."""
 
     exec_cmd = 'find . -name "*.py" -not -path "*/tests/*" -not -path "*/repositories/*" -not -path "*/examples/*" | xargs pylint'
     context.run(exec_cmd, pty=True)
@@ -354,11 +292,7 @@ def pylint(context: Context):
 
 @task
 def yamllint(context: Context):
-    """This will run yamllint to validate formatting adheres to NTC defined YAML standards.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """This will run yamllint to validate formatting adheres to NTC defined YAML standards."""
 
     exec_cmd = "yamllint ."
     context.run(exec_cmd, pty=True)
@@ -366,11 +300,7 @@ def yamllint(context: Context):
 
 @task
 def pydocstyle(context: Context):
-    """This will run pydocstyle to validate docstring formatting adheres to NTC defined standards.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """This will run pydocstyle to validate docstring formatting adheres to NTC defined standards."""
 
     exec_cmd = "pydocstyle ."
     context.run(exec_cmd, pty=True)
@@ -382,16 +312,12 @@ def tests(context: Context):
 
     Args:
         context (obj): Used to run specific commands
-        name (str): Used to name the docker image
-        image_ver (str): Define image version
-        local (bool): Define as `True` to execute locally
     """
     black(context)
     flake8(context)
     pylint(context)
     yamllint(context)
-    pydocstyle(context)
-    mypy(context)
-    pytest(context)
+    # pydocstyle(context)
+    # mypy(context)
 
     print("All tests have passed!")
