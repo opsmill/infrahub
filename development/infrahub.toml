@@ -1,5 +1,6 @@
 [main]
 internal_address = "http://infrahub-server:8000"
+repositories_directory = "/opt/infrahub/git"
 
 [database]
 username = "neo4j"
@@ -11,3 +12,5 @@ database = "infrahub"
 
 [broker]
 address = "message-queue"
+username = "infrahub"
+password = "infrahub"

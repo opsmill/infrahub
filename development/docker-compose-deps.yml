@@ -18,7 +18,10 @@ services:
       retries: 20
       start_period: 3s
   message-queue:
-    image: "rabbitmq:3-management"
+    image: "rabbitmq:3.11-management"
+    environment:
+      - "RABBITMQ_DEFAULT_USER=infrahub"
+      - "RABBITMQ_DEFAULT_PASS=infrahub"
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 5s

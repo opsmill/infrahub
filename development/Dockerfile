@@ -24,6 +24,7 @@ RUN git config --global user.email "infrahub@opsmill.com"
 RUN git config --global credential.usehttppath true
 RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
+RUN mkdir -p /opt/infrahub/git
 WORKDIR /source
 
 # --------------------------------------------

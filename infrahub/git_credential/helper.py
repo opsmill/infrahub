@@ -50,14 +50,16 @@ async def _get(input: str, config_file: str):
     client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address)
     response = await client.execute_graphql(query=QUERY, variables={"repository_location": location})
 
-    # TODO add some checks to ensure the response we got is correct
-    print(f"username={response['repository']['username']}")
-    print(f"password={response['repository']['password']}")
+    if len(response["repository"]) == 0:
+        sys.exit("Repository not found in the database.")
+
+    print(f"username={response['repository'][0]['username']['value']}")
+    print(f"password={response['repository'][0]['password']['value']}")
 
 
 async def _store(
-    input: str = typer.Argument(... if sys.stdin.isatty() else sys.stdin.read().strip()),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    input: str,
+    config_file: str,
 ):
     sys.exit(0)
 
@@ -72,7 +74,7 @@ def get(
 
 @app.command()
 def store(
-    input: str = typer.Argument(... if sys.stdin.isatty() else sys.stdin.read().strip()),
+    input: str = typer.Argument(None),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
     aiorun(_store(input=input, config_file=config_file))

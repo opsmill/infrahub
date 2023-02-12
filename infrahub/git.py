@@ -182,8 +182,12 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
 
 
 def get_repositories_directory() -> str:
-    current_dir = os.getcwd()
-    repos_dir = os.path.join(current_dir, config.SETTINGS.main.repositories_directory)
+    """Return the absolute path to the main directory used for the repositories."""
+    repos_dir = config.SETTINGS.main.repositories_directory
+    if not os.path.isabs(repos_dir):
+        current_dir = os.getcwd()
+        repos_dir = os.path.join(current_dir, config.SETTINGS.main.repositories_directory)
+
     return str(repos_dir)
 
 
@@ -195,11 +199,12 @@ def initialize_repositories_directory() -> bool:
         False if the directory was already present.
     """
     repos_dir = get_repositories_directory()
-    isdir = os.path.isdir(repos_dir)
-    if not isdir:
+    if not os.path.isdir(repos_dir):
         os.makedirs(repos_dir)
+        LOGGER.debug(f"Initialized the repositories_directory at {repos_dir}")
         return True
 
+    LOGGER.debug(f"Repositories_directory already present at {repos_dir}")
     return False
 
 

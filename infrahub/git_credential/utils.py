@@ -1,11 +1,11 @@
 QUERY = """
-query (repository_location: !String) {
+query ($repository_location: String!) {
     repository(location__value: $repository_location){ 
         name {
             value
         }
         location {
-            name
+            value
         }
         username {
             value

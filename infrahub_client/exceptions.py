@@ -12,6 +12,13 @@ class ServerNotReacheableError(Error):
         super().__init__(self.message)
 
 
+class ServerNotResponsiveError(Error):
+    def __init__(self, url, message=None):
+        self.url = url
+        self.message = message or f"Unable to read from '{url}'."
+        super().__init__(self.message)
+
+
 class GraphQLError(Error):
     def __init__(self, errors: List[str], query: str = None, variables: dict = None):
         self.query = query

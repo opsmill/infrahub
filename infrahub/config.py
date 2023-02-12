@@ -59,6 +59,7 @@ class BrokerSettings(BaseSettings):
     username: str = "guest"
     password: str = "guest"
     address: str = "localhost"
+    port: int = 5672
     namespace: str = "infrahub"
 
     class Config:
