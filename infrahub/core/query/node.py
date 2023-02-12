@@ -304,7 +304,7 @@ class NodeListGetAttributeQuery(Query):
     def get_attributes_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
         # TODO NEED TO REVISIT HOW TO INTEGRATE THE PERMISSION SYSTEM
 
-        attrs_by_node = defaultdict(lambda: dict(node=None, attrs=None))
+        attrs_by_node = defaultdict(lambda: {"node": None, "attrs": None})
 
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
             node_id = result.get("n").get("uuid")
@@ -387,7 +387,7 @@ class NodeListGetInfoQuery(Query):
 
         self.return_labels = ["n", "rb"]
 
-    async def get_nodes(self, session: AsyncSession) -> Generator[NodeToProcess, None, None]:
+    async def get_nodes(self) -> Generator[NodeToProcess, None, None]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):

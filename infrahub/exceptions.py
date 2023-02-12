@@ -57,23 +57,36 @@ class TransformNotFoundError(TransformError):
 class BranchNotFound(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier
-        self.message = message or f"Unable to find the branch '{identifier}' in the Database."
+        self.message = message
         super().__init__(self.message)
 
 
 class NodeNotFound(Error):
-    def __init__(self, branch_name, node_type, identifier, message="Unable to find the node in the database."):
+    def __init__(self, branch_name, node_type, identifier, message=None):
         self.branch_name = branch_name
         self.node_type = node_type
         self.identifier = identifier
-
-        self.message = message
+        self.message = message or f"Unable to find the node {identifier} / {node_type} in the database."
         super().__init__(self.message)
 
     def __str__(self):
         return f"""
         {self.message}
         {self.branch_name} | {self.node_type} | {self.identifier}
+        """
+
+
+class SchemaNotFound(Error):
+    def __init__(self, branch_name, identifier, message=None):
+        self.branch_name = branch_name
+        self.identifier = identifier
+        self.message = message or f"Unable to find the schema {identifier} in the database."
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f"""
+        {self.message}
+        {self.branch_name} | {self.identifier}
         """
 
 

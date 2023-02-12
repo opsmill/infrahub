@@ -19,7 +19,7 @@ class BaseOptions:
         if not self._frozen:
             super(BaseOptions, self).__setattr__(name, value)  # pylint: disable=super-with-arguments
         else:
-            raise Exception(f"Can't modify frozen Options {self}")
+            raise Exception(f"Can't modify frozen Options {self}")  # pylint: disable=broad-exception-raised
 
     def __repr__(self):
         return f"<{self.__class__.__name__} name={repr(self.name)}>"
@@ -52,14 +52,14 @@ class BaseNodeOptions(BaseOptions):
 
 
 class ObjectNodeMeta(BaseNodeMeta):
-    def __new__(cls, name_, bases, namespace, **options):
+    def __new__(mcs, name_, bases, namespace, **options):
         # Note: it's safe to pass options as keyword arguments as they are still type-checked by NodeOptions.
 
         # We create this type, to then overload it with the dataclass attrs
         class InterObjectNode:
             pass
 
-        base_cls = super().__new__(cls, name_, (InterObjectNode,) + bases, namespace, **options)
+        base_cls = super().__new__(mcs, name_, (InterObjectNode,) + bases, namespace, **options)
         # if base_cls._meta:
         #     fields = [
         #         (

@@ -51,6 +51,8 @@ types-toml = "^0.10.8"
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahubctl = "infrahub_ctl.cli:app"
+infrahub-git-credential = "infrahub.git_credential.helper:app"
+infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 
 [tool.black]
 line-length = 120
@@ -104,6 +106,8 @@ disable = """,
     fixme,
     consider-using-f-string,
     protected-access,
+    cyclic-import,
+    import-self,
     """
 
 [tool.pylint.miscellaneous]

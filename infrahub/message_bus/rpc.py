@@ -95,6 +95,8 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
     async def ensure_all_responses_have_been_delivered(self) -> bool:
         for key, messages in self.responses.items():
             if len(messages) != 0:
-                raise Exception(f"Some responses for {key}, haven't been delivered.")
+                raise Exception(  # pylint: disable=broad-exception-raised
+                    f"Some responses for {key}, haven't been delivered."
+                )
 
         return True

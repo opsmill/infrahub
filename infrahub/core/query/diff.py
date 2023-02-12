@@ -164,6 +164,8 @@ class DiffRelationshipQuery(DiffQuery):
 
             yield self.results[attr_info["idx"]]
 
+        return iter(())
+
 
 class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"
@@ -227,6 +229,8 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 
             yield self.results[attr_info["idx"]]
 
+        return iter(())
+
 
 class DiffRelationshipPropertiesByIDSRangeQuery(Query):
     name = "diff_relationship_properties_range_ids"
@@ -272,8 +276,8 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["rl", "rp", "r"]
 
-    def get_results_by_id_and_prop_type(self, branch_name: str, rel_id: str, type: str) -> List[QueryResult]:
-        """Return a list of all results matching a given branch / relationship id / property type.
+    def get_results_by_id_and_prop_type(self, rel_id: str, prop_type: str) -> List[QueryResult]:
+        """Return a list of all results matching a given relationship id / property type.
         The results are ordered chronologically
         """
         results = [
@@ -281,7 +285,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
             for result in self.results
             if result.get("r").get("branch") in self.branch.get_branches_in_scope()
             and result.get("rl").get("uuid") == rel_id
-            and result.get("r").type == type
+            and result.get("r").type == prop_type
         ]
 
         return sort_results_by_time(results, rel_label="r")

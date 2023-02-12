@@ -30,7 +30,7 @@ from infrahub.core.utils import (
     update_relationships_to,
 )
 from infrahub.database import execute_read_query_async
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.events import (
     CheckMessageAction,
     GitMessageAction,
@@ -44,7 +44,7 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
-# pylint: disable=redefined-builtin,too-many-statements,too-many-lines
+# pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches
 
 
 class AddNodeToBranch(Query):
@@ -312,7 +312,7 @@ class Branch(StandardNode):
 
         registry.branch[self.name] = self
 
-    async def validate(
+    async def validate_branch(
         self, rpc_client: InfrahubRpcClient, session: Optional[AsyncSession] = None
     ) -> set(bool, List[str]):
         """Validate if a branch is eligible to be merged.
@@ -405,12 +405,12 @@ class Branch(StandardNode):
     ):
         """Merge the current branch into main."""
 
-        passed, _ = await self.validate(rpc_client=rpc_client, session=session)
+        passed, _ = await self.validate_branch(rpc_client=rpc_client, session=session)
         if not passed:
-            raise Exception(f"Unable to merge the branch '{self.name}', validation failed")
+            raise ValidationError(f"Unable to merge the branch '{self.name}', validation failed")
 
         if self.name == config.SETTINGS.main.default_branch:
-            raise Exception(f"Unable to merge the branch '{self.name}' into itself")
+            raise ValidationError(f"Unable to merge the branch '{self.name}' into itself")
 
         # TODO need to find a way to properly communicate back to the user any issue that coule come up during the merge
         # From the Graph or From the repositories
@@ -521,7 +521,7 @@ class Branch(StandardNode):
         rels = await diff.get_relationships(session=session)
 
         for rel_name in rels[self.name].keys():
-            for rel_id, rel in rels[self.name][rel_name].items():
+            for _, rel in rels[self.name][rel_name].items():
                 for node in rel.nodes.values():
                     if rel.action in [DiffAction.ADDED, DiffAction.REMOVED]:
                         rel_status = RelationshipStatus.ACTIVE
@@ -731,7 +731,9 @@ class Diff:
             raise ValueError("diff_to must be later than diff_from")
 
         # Results organized by Branch
-        self._results: Dict[str, dict] = defaultdict(lambda: dict(nodes={}, rels=defaultdict(lambda: {}), files={}))
+        self._results: Dict[str, dict] = defaultdict(
+            lambda: {"nodes": {}, "rels": defaultdict(lambda: {}), "files": {}}
+        )
 
         self._calculated_diff_nodes_at = None
         self._calculated_diff_rels_at = None
@@ -752,7 +754,9 @@ class Diff:
             branch=branch, origin_branch=origin_branch, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
         )
 
-    async def has_conflict(self, session: AsyncSession, rpc_client) -> bool:
+    async def has_conflict(
+        self, session: AsyncSession, rpc_client: InfrahubRpcClient  # pylint: disable=unused-argument
+    ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
         return await self.has_changes_graph(session=session)
@@ -769,7 +773,7 @@ class Diff:
         """Return True if the diff has identified some changes, False otherwise."""
 
         has_changes_graph = await self.has_changes_graph(session=session)
-        has_changes_repositories = await self.has_changes_repositories(session=session)
+        has_changes_repositories = await self.has_changes_repositories(session=session, rpc_client=rpc_client)
 
         return has_changes_graph | has_changes_repositories
 
@@ -905,7 +909,6 @@ class Diff:
 
             tasks.append(
                 self.get_modified_paths_repository(
-                    session=session,
                     rpc_client=rpc_client,
                     repository=repos_to[repo_id],
                     commit_from=repos_from[repo_id].commit.value,
@@ -921,7 +924,7 @@ class Diff:
         return paths
 
     async def get_modified_paths_repository(
-        self, session: AsyncSession, rpc_client: InfrahubRpcClient, repository, commit_from: str, commit_to: str
+        self, rpc_client: InfrahubRpcClient, repository, commit_from: str, commit_to: str
     ) -> Set[Tuple]:
         """Return the path of all the files that have changed for a given repository between 2 commits.
 
@@ -1176,12 +1179,12 @@ class Diff:
             from_time = Timestamp(result.get("r1").get("from"))
             # to_time = result.get("r1").get("to", None)
 
-            item = dict(
-                branch=branch_name,
-                id=rel_id,
-                db_id=result.get("rel").element_id,
-                name=rel_name,
-                nodes={
+            item = {
+                "branch": branch_name,
+                "id": rel_id,
+                "db_id": result.get("rel").element_id,
+                "name": rel_name,
+                "nodes": {
                     src_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("sn").element_id,
@@ -1195,8 +1198,8 @@ class Diff:
                         labels=sorted(result.get("dn").labels),
                     ),
                 },
-                properties={},
-            )
+                "properties": {},
+            }
 
             # FIXME Need to revisit changed_at, mostlikely not accurate. More of a placeholder at this point
             if branch_status == RelationshipStatus.ACTIVE.value:
@@ -1207,7 +1210,7 @@ class Diff:
                 item["changed_at"] = from_time
                 rel_ids_to_query.append(rel_id)
             else:
-                raise Exception(f"Unexpected value for branch_status: {branch_status}")
+                raise ValueError(f"Unexpected value for branch_status: {branch_status}")
 
             self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
 
@@ -1234,11 +1237,11 @@ class Diff:
             src_node_id = result.get("sn").get("uuid")
             dst_node_id = result.get("dn").get("uuid")
 
-            item = dict(
-                id=rel_id,
-                db_id=result.get("rel").element_id,
-                name=rel_name,
-                nodes={
+            item = {
+                "id": rel_id,
+                "db_id": result.get("rel").element_id,
+                "name": rel_name,
+                "nodes": {
                     src_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("sn").element_id,
@@ -1252,11 +1255,11 @@ class Diff:
                         labels=sorted(result.get("dn").labels),
                     ),
                 },
-                properties={},
-                action=DiffAction.UPDATED,
-                changed_at=None,
-                branch=branch_name,
-            )
+                "properties": {},
+                "action": DiffAction.UPDATED,
+                "changed_at": None,
+                "branch": branch_name,
+            }
 
             self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
 
@@ -1285,7 +1288,7 @@ class Diff:
             prop_from = Timestamp(result.get("r3").get("from"))
 
             origin_prop = origin_rel_properties_query.get_results_by_id_and_prop_type(
-                branch_name=branch_name, rel_id=rel_id, type=prop_type
+                rel_id=rel_id, prop_type=prop_type
             )
 
             prop = {
@@ -1353,7 +1356,6 @@ class Diff:
 
     async def get_files_repository(
         self,
-        session: AsyncSession,
         rpc_client: InfrahubRpcClient,
         branch_name: str,
         repository,
@@ -1423,7 +1425,6 @@ class Diff:
 
             tasks.append(
                 self.get_files_repository(
-                    session=session,
                     rpc_client=rpc_client,
                     branch_name=branch.name,
                     repository=repos_to[repo_id],

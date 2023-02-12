@@ -1,4 +1,4 @@
-from graphene import Int, List, ObjectType, String
+from graphene import List, ObjectType, String
 from graphene.types.generic import GenericScalar
 
 import infrahub.config as config
@@ -15,15 +15,14 @@ class EventType(ObjectType):
 
 
 class InfrahubBaseSubscription(ObjectType):
-    query = GenericScalar(name=String(), params=GenericScalar(required=False), min_interval=Int(required=False))
+    query = GenericScalar(name=String(), params=GenericScalar(required=False))
     event = GenericScalar(topics=List(String, required=False))
 
     @staticmethod
     async def subscribe_query(
-        root,
+        root,  # pylint: disable=unused-argument
         info,
         name,
-        min_interval=5,
         params=None,
     ):
         # pylint: disable=import-outside-toplevel

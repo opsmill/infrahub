@@ -13,6 +13,9 @@ from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT
 app = typer.Typer()
 
 
+# pylint: disable=too-many-nested-blocks,too-many-branches
+
+
 @app.command()
 def run(
     branch: str = None,
@@ -83,4 +86,4 @@ def run(
             print('{"level": "WARNING", "message": "message", ""No check found"}')
 
     if failed_checks or not passed_checks:
-        exit(1)
+        sys.exit(1)

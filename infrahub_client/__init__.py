@@ -7,7 +7,7 @@ from typing import Dict, Optional
 import httpx
 from pydantic import BaseModel
 
-from .exceptions import GraphQLError, ServerNotReacheableError
+from .exceptions import GraphQLError, ServerNotReacheableError, ServerNotResponsiveError
 
 # pylint: disable=redefined-builtin
 
@@ -439,7 +439,7 @@ class InfrahubClient:
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
 
-    async def execute_graphql(
+    async def execute_graphql(  # pylint: disable=too-many-branches
         self,
         query: str,
         variables: dict = None,
@@ -489,6 +489,7 @@ class InfrahubClient:
                 retry = self.retry_on_failure
                 try:
                     resp = await self.post(url=url, payload=payload, timeout=timeout)
+                    retry = False
                 except ServerNotReacheableError:
                     if retry:
                         self.log.warning(
@@ -529,6 +530,8 @@ class InfrahubClient:
                 )
             except httpx.ConnectError as exc:
                 raise ServerNotReacheableError(address=self.address) from exc
+            except httpx.ReadTimeout as exc:
+                raise ServerNotResponsiveError(url=url) from exc
 
     async def query_gql_query(
         self,

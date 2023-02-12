@@ -117,10 +117,10 @@ async def get_account(
     return obj
 
 
-def get_account_by_id(id):
+def get_account_by_id(id: str):  # pylint: disable=unused-argument
     # No default value supported for now
-    if not id:
-        return None
+    # if not id:
+    return None
 
     # from .account import Account
 

@@ -547,7 +547,7 @@ class RelationshipManager:
             self._relationships.pop(idx)
             return True
 
-        raise Exception("Relationship not found ... unexpected")
+        raise IndexError("Relationship not found ... unexpected")
 
     async def remove_in_db(  # pylint: disable=unused-argument
         self,

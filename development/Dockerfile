@@ -16,12 +16,26 @@ ENV PATH="${PATH}:/root/.local/bin"
 
 RUN poetry config virtualenvs.create false
 
+# --------------------------------------------
+# Configure Git
+# --------------------------------------------
+RUN git config --global user.name "Infrahub"
+RUN git config --global user.email "infrahub@opsmill.com"
+RUN git config --global credential.usehttppath true
+RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
+
+RUN mkdir -p /opt/infrahub/git
 WORKDIR /source
 
-# Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
+# --------------------------------------------
+# Install Dependencies
+#   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
+# --------------------------------------------
 COPY poetry.lock pyproject.toml /source/
 RUN poetry install --no-interaction --no-ansi --no-root
 
+# --------------------------------------------
 # Copy in the rest of the source code and install the project
+# --------------------------------------------
 COPY . /source
 RUN poetry install --no-interaction --no-ansi

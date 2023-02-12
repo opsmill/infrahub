@@ -57,7 +57,7 @@ async def test_diff_relationship_properties_ids_range_query(session, default_bra
 
     assert len(query.results) == 6
 
-    r1_result = query.get_results_by_id_and_prop_type(branch_name="main", rel_id="r1", type="IS_PROTECTED")
+    r1_result = query.get_results_by_id_and_prop_type(rel_id="r1", prop_type="IS_PROTECTED")
 
     assert len(r1_result) == 2
 

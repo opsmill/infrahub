@@ -5,6 +5,8 @@ from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate
 from .types import BranchDiffType, BranchType
 from .utils import extract_fields
 
+# pylint: disable=unused-argument
+
 
 async def default_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
     fields = await extract_fields(info.field_nodes[0].selection_set)

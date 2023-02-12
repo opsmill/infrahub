@@ -40,8 +40,8 @@ from graphql.language.ast import (  # pylint: disable=no-name-in-module,import-e
     DocumentNode,
     OperationDefinitionNode,
 )
-from graphql.utilities import (
-    get_operation_ast,  # pylint: disable=no-name-in-module,import-error
+from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
+    get_operation_ast,
 )
 from neo4j import AsyncSession
 from starlette.background import BackgroundTasks
@@ -280,7 +280,7 @@ class InfrahubGraphQLApp:
         query = data["query"]
         variable_values = data.get("variables")
         operation_name = data.get("operationName")
-        context_value = await self._get_context_value(websocket)
+        context_value = await self._get_context_value(websocket)  # pylint: disable=no-value-for-parameter
         errors: List[GraphQLError] = []
         operation: Optional[OperationDefinitionNode] = None
         document: Optional[DocumentNode] = None
@@ -288,7 +288,7 @@ class InfrahubGraphQLApp:
         try:
             document = parse(query)
             operation = get_operation_ast(document, operation_name)
-            errors = validate(self.schema.graphql_schema, document)
+            errors = validate(self.schema.graphql_schema, document)  # pylint: disable=no-member
         except GraphQLError as e:
             errors = [e]
 
@@ -333,7 +333,7 @@ class InfrahubGraphQLApp:
         operation_name: str,
     ) -> List[GraphQLError]:
         result = execute(
-            self.schema.graphql_schema,
+            self.schema.graphql_schema,  # pylint: disable=no-member
             document,
             root_value=self.root_value,
             context_value=context_value,
@@ -376,7 +376,7 @@ class InfrahubGraphQLApp:
         operation_name: str,
     ) -> List[GraphQLError]:
         result = await subscribe(
-            self.schema.graphql_schema,
+            self.schema.graphql_schema,  # pylint: disable=no-member
             document,
             context_value=context_value,
             root_value=self.root_value,
@@ -402,7 +402,7 @@ class InfrahubGraphQLApp:
             async for result in asyncgen:
                 payload = {"data": result.data}
                 await websocket.send_json({"type": GQL_DATA, "id": operation_id, "payload": payload})
-        except Exception as error:
+        except Exception as error:  # pylint: disable=broad-exception-caught
             if not isinstance(error, GraphQLError):
                 self.logger.error("An exception occurred in resolvers", exc_info=error)
                 error = GraphQLError(str(error), original_error=error)

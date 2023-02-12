@@ -147,7 +147,9 @@ class InfrahubObjectOptions(ObjectTypeOptions):
 
 class InfrahubObject(ObjectType, GetListMixin):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options):
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options
+    ):  # pylint: disable=arguments-differ
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
@@ -168,7 +170,7 @@ class InfrahubObjectTypeOptions(ObjectTypeOptions):
 
 class InfrahubObjectType(ObjectType):
     @classmethod
-    def __init_subclass_with_meta__(
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
         cls,
         model=None,
         interfaces=(),
@@ -397,14 +399,14 @@ class BranchDiffType(ObjectType):
         }
         if "nodes" in fields:
             nodes = await diff.get_nodes(session=session)
-            for branch, items in nodes.items():
+            for items in nodes.values():
                 for item in items.values():
                     response["nodes"].append(item.to_graphql())
 
         if "relationships" in fields:
             rels = await diff.get_relationships(session=session)
 
-            for branch, items in rels.items():
+            for items in rels.values():
                 for item in items.values():
                     for sub_item in item.values():
                         # import pdb
@@ -413,7 +415,7 @@ class BranchDiffType(ObjectType):
 
         if "files" in fields:
             files = await diff.get_files(rpc_client=rpc_client, session=session)
-            for branch, items in files.items():
+            for items in files.values():
                 for item in items.values():
                     response["files"].append(item.to_graphql())
 

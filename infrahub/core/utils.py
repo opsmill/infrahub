@@ -184,7 +184,7 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
             elif isclass(_Meta):
                 _meta_props = props(_Meta)
             else:
-                raise Exception(f"Meta have to be either a class or a dict. Received {_Meta}")
+                raise TypeError(f"Meta have to be either a class or a dict. Received {_Meta}")
             delattr(cls, "Meta")
         options = dict(meta_options, **_meta_props)
 

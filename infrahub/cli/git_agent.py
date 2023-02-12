@@ -30,7 +30,7 @@ from infrahub_client import InfrahubClient
 app = typer.Typer()
 
 
-def signal_handler(signal, frame):
+def signal_handler(*args, **kwargs):  # pylint: disable=unused-argument
     print("Git Agent terminated by user.")
     sys.exit(0)
 
@@ -104,6 +104,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
 
 
 async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
+    log.info("Initializing Git Agent ...")
     initialize_repositories_directory()
 
     # TODO Validate access to the GraphQL API with the proper credentials
@@ -142,7 +143,7 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int, log: lo
         await asyncio.sleep(interval)
 
 
-async def _start(listen: str, port: int, debug: bool, interval: int, config_file: str):
+async def _start(debug: bool, interval: int, config_file: str):
     """Start Infrahub Git Agent."""
 
     log_level = "DEBUG" if debug else "INFO"
@@ -172,8 +173,6 @@ async def _start(listen: str, port: int, debug: bool, interval: int, config_file
 
 @app.command()
 def start(
-    listen: str = "127.0.0.1",
-    port: int = 5672,
     interval: int = 10,
     debug: bool = False,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
@@ -184,4 +183,4 @@ def start(
     logging.getLogger("aiormq").setLevel(logging.ERROR)
     logging.getLogger("git").setLevel(logging.ERROR)
 
-    aiorun(_start(listen=listen, port=port, interval=interval, debug=debug, config_file=config_file))
+    aiorun(_start(interval=interval, debug=debug, config_file=config_file))
