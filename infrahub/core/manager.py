@@ -190,7 +190,7 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(session=session, ids=ids, branch=branch, account=account, at=at)
         await query.execute(session=session)
-        nodes_info = query.get_nodes(session=session)
+        nodes_info = query.get_nodes()
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
@@ -220,13 +220,13 @@ class NodeManager:
             # --------------------------------------------------------
             for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
                 if "AttributeLocal" in attr.attr_labels:
-                    attrs[attr_name] = dict(
-                        db_id=attr.attr_id,
-                        id=attr.attr_uuid,
-                        name=attr_name,
-                        value=attr.value,
-                        updated_at=attr.updated_at,
-                    )
+                    attrs[attr_name] = {
+                        "db_id": attr.attr_id,
+                        "id": attr.attr_uuid,
+                        "name": attr_name,
+                        "value": attr.value,
+                        "updated_at": attr.updated_at,
+                    }
 
                     if attr.is_protected is not None:
                         attrs[attr_name]["is_protected"] = attr.is_protected

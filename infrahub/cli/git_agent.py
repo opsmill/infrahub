@@ -30,7 +30,7 @@ from infrahub_client import InfrahubClient
 app = typer.Typer()
 
 
-def signal_handler(signal, frame):  # pylint: disable=unused-argument
+def signal_handler(*args, **kwargs):  # pylint: disable=unused-argument
     print("Git Agent terminated by user.")
     sys.exit(0)
 

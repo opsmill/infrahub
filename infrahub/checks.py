@@ -115,7 +115,7 @@ class InfrahubCheck:
 
         nbr_errors = len([log for log in self.logs if log["level"] == "ERROR"])
 
-        self.passed = True if nbr_errors == 0 else False
+        self.passed = bool(nbr_errors == 0)
 
         if self.passed:
             self.log_info("Check succesfully completed")

@@ -731,7 +731,9 @@ class Diff:
             raise ValueError("diff_to must be later than diff_from")
 
         # Results organized by Branch
-        self._results: Dict[str, dict] = defaultdict(lambda: dict(nodes={}, rels=defaultdict(lambda: {}), files={}))
+        self._results: Dict[str, dict] = defaultdict(
+            lambda: {"nodes": {}, "rels": defaultdict(lambda: {}), "files": {}}
+        )
 
         self._calculated_diff_nodes_at = None
         self._calculated_diff_rels_at = None
@@ -1176,12 +1178,12 @@ class Diff:
             from_time = Timestamp(result.get("r1").get("from"))
             # to_time = result.get("r1").get("to", None)
 
-            item = dict(
-                branch=branch_name,
-                id=rel_id,
-                db_id=result.get("rel").element_id,
-                name=rel_name,
-                nodes={
+            item = {
+                "branch": branch_name,
+                "id": rel_id,
+                "db_id": result.get("rel").element_id,
+                "name": rel_name,
+                "nodes": {
                     src_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("sn").element_id,
@@ -1195,8 +1197,8 @@ class Diff:
                         labels=sorted(result.get("dn").labels),
                     ),
                 },
-                properties={},
-            )
+                "properties": {},
+            }
 
             # FIXME Need to revisit changed_at, mostlikely not accurate. More of a placeholder at this point
             if branch_status == RelationshipStatus.ACTIVE.value:
@@ -1234,11 +1236,11 @@ class Diff:
             src_node_id = result.get("sn").get("uuid")
             dst_node_id = result.get("dn").get("uuid")
 
-            item = dict(
-                id=rel_id,
-                db_id=result.get("rel").element_id,
-                name=rel_name,
-                nodes={
+            item = {
+                "id": rel_id,
+                "db_id": result.get("rel").element_id,
+                "name": rel_name,
+                "nodes": {
                     src_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("sn").element_id,
@@ -1252,11 +1254,11 @@ class Diff:
                         labels=sorted(result.get("dn").labels),
                     ),
                 },
-                properties={},
-                action=DiffAction.UPDATED,
-                changed_at=None,
-                branch=branch_name,
-            )
+                "properties": {},
+                "action": DiffAction.UPDATED,
+                "changed_at": None,
+                "branch": branch_name,
+            }
 
             self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
 

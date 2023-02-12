@@ -58,7 +58,7 @@ class AttributeSchema(BaseModel):
     def get_class(self):
         return ATTRIBUTES_MAPPING.get(self.kind, None)
 
-    async def get_query_filter(self, session: AsyncSession, *args, **kwargs):
+    async def get_query_filter(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=unused-argument
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
@@ -92,7 +92,7 @@ class RelationshipSchema(BaseModel):
     async def get_query_filter(
         self,
         session: AsyncSession,
-        name: str = None,
+        name: str = None,  # pylint: disable=unused-argument
         filters: dict = None,
         branch: Branch = None,
         rels_offset: int = 0,
