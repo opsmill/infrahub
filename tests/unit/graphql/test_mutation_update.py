@@ -144,7 +144,7 @@ async def test_update_invalid_object(db, session, default_branch, car_person_sch
     )
 
     assert len(result.errors) == 1
-    assert "Unable to find the node in the database." in result.errors[0].message
+    assert "Unable to find the node XXXXXX / Person in the database." in result.errors[0].message
 
 
 async def test_update_invalid_input(db, session, default_branch, car_person_schema):
