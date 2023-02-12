@@ -20,6 +20,7 @@ from infrahub.core.schema import (
     SchemaRoot,
 )
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import SchemaNotFound
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -213,7 +214,11 @@ class NodeManager:
             attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
             if not node.schema:
-                raise Exception(f"Unable to find the Schema associated with {node_id}, {node.labels}")
+                raise SchemaNotFound(
+                    branch_name=branch.name,
+                    identifier=node_id,
+                    message=f"Unable to find the Schema associated with {node_id}, {node.labels}",
+                )
 
             # --------------------------------------------------------
             # Attributes

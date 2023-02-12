@@ -212,7 +212,6 @@ async def test_diff_get_files_repository(session, rpc_client, repos_in_main, bas
     diff = await Diff.init(branch=branch2, session=session)
 
     resp = await diff.get_files_repository(
-        session=session,
         rpc_client=rpc_client,
         branch_name=branch2.name,
         repository=repos_in_main["repo01"],

@@ -6,6 +6,7 @@ from neo4j import AsyncSession
 from pydantic import BaseModel
 
 from infrahub.database import execute_read_query_async, execute_write_query_async
+from infrahub.exceptions import QueryError
 
 SelfNode = TypeVar("SelfNode", bound="StandardNode")
 
@@ -46,11 +47,11 @@ class StandardNode(BaseModel):
 
         return await self._create(session=session)
 
-    async def refresh(self, session: AsyncSession, branch="main"):
+    async def refresh(self, session: AsyncSession):
         """Pull the latest state of the object from the database."""
 
         # Might need ot check how to manage the default value
-        raw_attrs = self._get_item_raw(self.id, branch=branch, session=session)
+        raw_attrs = self._get_item_raw(self.id, session=session)
         for item in raw_attrs:
             if item[1] != getattr(self, item[0]):
                 setattr(self, item[0], item[1])
@@ -80,7 +81,7 @@ class StandardNode(BaseModel):
 
         results = await execute_write_query_async(session=session, query=query, params=params)
         if not results:
-            raise Exception("Unexpected error, unable to create the new node.")
+            raise QueryError(query=query, params=params, message="Unexpected error, unable to create the new node.")
 
         node = results[0][0]
 
@@ -112,8 +113,11 @@ class StandardNode(BaseModel):
         results = await execute_write_query_async(session=session, query=query, params=params)
 
         if not results:
-            raise Exception(f"Unexpected error, unable to update the node {self.id} / {self.uuid}.")
-
+            raise QueryError(
+                query=query,
+                params=params,
+                message=f"Unexpected error, unable to update the node {self.id} / {self.uuid}.",
+            )
         return True
 
     @classmethod
@@ -127,7 +131,7 @@ class StandardNode(BaseModel):
         return None
 
     @classmethod
-    async def _get_item_raw(cls, id, session: AsyncSession):
+    async def _get_item_raw(cls, id: str, session: AsyncSession):
         query = (
             """
         MATCH (n:%s)
@@ -169,7 +173,7 @@ class StandardNode(BaseModel):
             % cls.get_type()
         )
 
-        params = {"limit": 1000}
+        params = {"limit": limit}
 
         results = await execute_read_query_async(session=session, query=query, params=params)
         return [cls._convert_node_to_obj(node.values()[0]) for node in results]
