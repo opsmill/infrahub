@@ -10,6 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 
 # flake8: noqa
+# pylint: skip-file
 
 DEVICE_ROLES = ["edge"]
 INTF_ROLES = ["backbone", "transit", "peering", "peer", "loopback", "management", "spare"]

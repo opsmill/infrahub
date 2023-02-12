@@ -42,7 +42,10 @@ class InfrahubMutationMixin:
         branch = info.context.get("infrahub_branch")
         # account = info.context.get("infrahub_account", None)
 
+        obj = None
+        mutation = None
         action = None
+
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(root, info, branch=branch, at=at, *args, **kwargs)
             action = DataMessageAction.CREATE
@@ -52,6 +55,10 @@ class InfrahubMutationMixin:
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(root, info, branch=branch, at=at, *args, **kwargs)
             action = DataMessageAction.DELETE
+        else:
+            raise ValueError(
+                f"Unexpected class Name: {cls.__name__}, should start with either Create, Update or Delete"
+            )
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
             info.context.get("background").add_task(send_event, InfrahubDataMessage(action=action, node=obj))
@@ -295,7 +302,7 @@ class BranchValidate(Mutation):
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
-        ok, messages = await obj.validate(rpc_client=rpc_client, session=session)
+        ok, messages = await obj.validate_branch(rpc_client=rpc_client, session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 

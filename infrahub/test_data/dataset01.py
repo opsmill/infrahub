@@ -7,6 +7,7 @@ from infrahub.core.node import Node
 # from infrahub.core.account import Account, AccountToken, Group
 
 # flake8: noqa
+# pylint: skip-file
 
 ROLES = ["spine", "leaf", "firewall", "server", "loopback"]
 

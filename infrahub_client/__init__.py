@@ -439,7 +439,7 @@ class InfrahubClient:
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
 
-    async def execute_graphql(
+    async def execute_graphql(  # pylint: disable=too-many-branches
         self,
         query: str,
         variables: dict = None,

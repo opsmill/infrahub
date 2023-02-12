@@ -397,14 +397,14 @@ class BranchDiffType(ObjectType):
         }
         if "nodes" in fields:
             nodes = await diff.get_nodes(session=session)
-            for branch, items in nodes.items():
+            for items in nodes.values():
                 for item in items.values():
                     response["nodes"].append(item.to_graphql())
 
         if "relationships" in fields:
             rels = await diff.get_relationships(session=session)
 
-            for branch, items in rels.items():
+            for items in rels.values():
                 for item in items.values():
                     for sub_item in item.values():
                         # import pdb
@@ -413,7 +413,7 @@ class BranchDiffType(ObjectType):
 
         if "files" in fields:
             files = await diff.get_files(rpc_client=rpc_client, session=session)
-            for branch, items in files.items():
+            for items in files.values():
                 for item in items.values():
                     response["files"].append(item.to_graphql())
 

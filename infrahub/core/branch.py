@@ -312,7 +312,7 @@ class Branch(StandardNode):
 
         registry.branch[self.name] = self
 
-    async def validate(
+    async def validate_branch(
         self, rpc_client: InfrahubRpcClient, session: Optional[AsyncSession] = None
     ) -> set(bool, List[str]):
         """Validate if a branch is eligible to be merged.
@@ -405,7 +405,7 @@ class Branch(StandardNode):
     ):
         """Merge the current branch into main."""
 
-        passed, _ = await self.validate(rpc_client=rpc_client, session=session)
+        passed, _ = await self.validate_branch(rpc_client=rpc_client, session=session)
         if not passed:
             raise Exception(f"Unable to merge the branch '{self.name}', validation failed")
 
@@ -1285,7 +1285,7 @@ class Diff:
             prop_from = Timestamp(result.get("r3").get("from"))
 
             origin_prop = origin_rel_properties_query.get_results_by_id_and_prop_type(
-                branch_name=branch_name, rel_id=rel_id, type=prop_type
+                branch_name=branch_name, rel_id=rel_id, prop_type=prop_type
             )
 
             prop = {

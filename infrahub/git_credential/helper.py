@@ -27,7 +27,7 @@ def parse_helper_get_input(text: str) -> str:
 
     if "protocol" not in input_dict or "host" not in input_dict:
         raise ValueError("Input format not supported.")
-    elif "path" not in input_dict:
+    if "path" not in input_dict:
         raise ValueError(
             """Git usehttppath must be enabled to use this helper. You can active it with
     git config --global credential.usehttppath true
@@ -37,11 +37,11 @@ def parse_helper_get_input(text: str) -> str:
     return f"{input_dict['protocol']}://{input_dict['host']}/{input_dict['path']}"
 
 
-async def _get(input: str, config_file: str):
+async def _get(input_str: str, config_file: str):
     config.load_and_exit(config_file_name=config_file)
 
     try:
-        location = parse_helper_get_input(text=input)
+        location = parse_helper_get_input(text=input_str)
     except ValueError as exc:
         sys.exit(str(exc))
 
@@ -57,24 +57,22 @@ async def _get(input: str, config_file: str):
     print(f"password={response['repository'][0]['password']['value']}")
 
 
-async def _store(
-    input: str,
-    config_file: str,
-):
-    sys.exit(0)
+# async def _store(input_str: str, config_file: str ):
+#     sys.exit(0)
 
 
 @app.command()
 def get(
-    input: str = typer.Argument(... if sys.stdin.isatty() else sys.stdin.read().strip()),
+    input_str: str = typer.Argument(... if sys.stdin.isatty() else sys.stdin.read().strip()),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    aiorun(_get(input=input, config_file=config_file))
+    aiorun(_get(input_str=input_str, config_file=config_file))
 
 
+# pylint: disable=unused-argument
 @app.command()
 def store(
-    input: str = typer.Argument(None),
+    input_str: str = typer.Argument(None),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    aiorun(_store(input=input, config_file=config_file))
+    sys.exit(0)

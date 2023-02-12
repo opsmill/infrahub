@@ -49,7 +49,7 @@ def copy_project_to_tmp_dir(project_name):
 class MetaEnum(EnumMeta):
     def __contains__(cls, item):
         try:
-            cls(item)
+            cls(item)  # pylint: disable=no-value-for-parameter
         except ValueError:
             return False
         return True

@@ -534,8 +534,8 @@ def generate_graphql_mutation_update(
 def generate_graphql_mutation_delete(
     schema: NodeSchema,
     base_class: type[InfrahubMutation] = InfrahubMutation,
-    branch: Union[Branch, str] = None,
-) -> Type[InfrahubMutation]:  # pylint: disable=unused-argument
+    branch: Union[Branch, str] = None,  # pylint: disable=unused-argument
+) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Delete"
 
