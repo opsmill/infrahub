@@ -1,8 +1,0 @@
-
-[database]
-username = "neo4j"
-password = "admin"
-address = "localhost"
-port = 7687
-protocol = "neo4j"
-database = "infrahub.example01"

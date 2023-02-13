@@ -320,8 +320,8 @@ app.add_middleware(
 )
 app.add_route("/metrics", handle_metrics)
 
-app.add_route("/graphql", InfrahubGraphQLApp())
-app.add_route("/graphql/{branch_name:str}", InfrahubGraphQLApp())
+app.add_route("/graphql", InfrahubGraphQLApp(playground=True))
+app.add_route("/graphql/{branch_name:str}", InfrahubGraphQLApp(playground=True))
 app.add_websocket_route("/graphql", InfrahubGraphQLApp())
 app.add_websocket_route("/graphql/{branch_name:str}", InfrahubGraphQLApp())
 
