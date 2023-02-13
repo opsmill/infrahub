@@ -525,22 +525,28 @@ async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
 
 
 def test_extract_repo_file_information():
-    file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py", base_directory="/tmp/dir1")
+    file_info = extract_repo_file_information(
+        full_filename="/tmp/dir1/dir2/dir3/myfile.py", repo_directory="/tmp", worktree_directory="/tmp/dir1"
+    )
 
     assert isinstance(file_info, RepoFileInformation)
     assert file_info.filename == "myfile.py"
     assert file_info.extension == ".py"
     assert file_info.filename_wo_ext == "myfile"
-    assert file_info.relative_path == "dir2/dir3"
-    assert file_info.absolute_path == "/tmp/dir1/dir2/dir3"
-    assert file_info.file_path == "dir2/dir3/myfile.py"
+    assert file_info.relative_path_dir == "dir2/dir3"
+    assert file_info.relative_repo_path_dir == "dir1/dir2/dir3"
+    assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
+    assert file_info.relative_path_file == "dir2/dir3/myfile.py"
+    assert file_info.module_name == "dir1.dir2.dir3.myfile"
 
-    file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py")
+    file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py", repo_directory="/tmp/dir1")
 
     assert isinstance(file_info, RepoFileInformation)
     assert file_info.filename == "myfile.py"
     assert file_info.extension == ".py"
     assert file_info.filename_wo_ext == "myfile"
-    assert file_info.relative_path == "/tmp/dir1/dir2/dir3"
-    assert file_info.absolute_path == "/tmp/dir1/dir2/dir3"
-    assert file_info.file_path == "/tmp/dir1/dir2/dir3/myfile.py"
+    assert file_info.relative_repo_path_dir == "dir2/dir3"
+    assert file_info.relative_path_dir == "/tmp/dir1/dir2/dir3"
+    assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
+    assert file_info.relative_path_file == "/tmp/dir1/dir2/dir3/myfile.py"
+    assert file_info.module_name == "dir2.dir3.myfile"

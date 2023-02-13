@@ -31,4 +31,7 @@ services:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
     volumes:
       - ../:/source
+      - "git_data:/opt/infrahub/git"
     tty: true
+volumes:
+  git_data:
