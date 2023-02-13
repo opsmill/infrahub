@@ -74,7 +74,7 @@ VOLUME_NAMES = ["neo4j_data", "neo4j_logs", "git_data"]
 def build(
     context, name=IMAGE_NAME, python_ver=PYTHON_VER, image_ver=IMAGE_VER, nocache=False
 ):  # pylint: disable=too-many-arguments
-    """This will build an image with the provided name and python version.
+    """Build an image with the provided name and python version.
 
     Args:
         context (obj): Used to run specific commands
@@ -161,6 +161,15 @@ def init(context: Context):
     """Initialize Infrahub database before using it the first time."""
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server infrahub db init",
+        pty=True,
+    )
+
+
+@task
+def status(context: Context):
+    """Display the status of all containers."""
+    context.run(
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} ps",
         pty=True,
     )
 
@@ -307,12 +316,8 @@ def pydocstyle(context: Context):
 
 
 @task
-def tests(context: Context):
-    """This will run all tests for the specified name and Python version.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+def lint(context: Context):
+    """This will run all linter."""
     black(context)
     flake8(context)
     pylint(context)
