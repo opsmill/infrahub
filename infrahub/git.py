@@ -210,34 +210,71 @@ def initialize_repositories_directory() -> bool:
 
 class RepoFileInformation(BaseModel):
     filename: str
-    relative_path: str
-    absolute_path: str
-    file_path: str
-    extension: str
+    """Name of the file. Example: myfile.py"""
+
     filename_wo_ext: str
+    """Name of the file, without the extension, Example: myfile """
+
+    module_name: str
+    """Name of the module for Python, in dot notation from the root of the repository, Example: commits.71da[..]4b7.checks.myfile """
+
+    relative_path_dir: str
+    """Relative path to the directory containing the file from the root of the worktree, Example: checks/"""
+
+    relative_repo_path_dir: str
+    """Relative path to the directory containing the file from the root of repository, Example: commits/71da[..]4b7/checks/"""
+
+    absolute_path_dir: str
+    """Absolute path to the directory containing the file, Example: /opt/infrahub/git/repo01/commits/71da[..]4b7/checks/"""
+
+    relative_path_file: str
+    """Relative path to the file from the root of the worktree Example: checks/myfile.py"""
+
+    extension: str
+    """Extension of the file Example: py """
 
 
-def extract_repo_file_information(full_filename: str, base_directory: str = None):
-    directory_name = os.path.dirname(full_filename)
+def extract_repo_file_information(
+    full_filename: str, repo_directory: str, worktree_directory: str = None
+) -> RepoFileInformation:
+    """Extract all the relevant and required information from a filename.
+
+    Args:
+        full_filename (str): Absolute path to the file to load Example:/opt/infrahub/git/repo01/commits/71da[..]4b7/myfile.py
+        root_directory: Absolute path to the root of the repository directory. Example:/opt/infrahub/git/repo01
+        worktree_directory (str, optional): Absolute path to the root of the worktree directory. Defaults to None. example: /opt/infrahub/git/repo01/commits/71da[..]4b7/
+
+    Returns:
+        RepoFileInformation: Pydantic object to store all information about this file
+    """
+    abs_directory_name = os.path.dirname(full_filename)
     filename = os.path.basename(full_filename)
     filename_wo_ext, extension = os.path.splitext(filename)
 
-    if base_directory and base_directory in directory_name:
-        path_in_repo = directory_name.replace(base_directory, "")
+    relative_repo_path_dir = abs_directory_name.replace(repo_directory, "")
+    if relative_repo_path_dir.startswith("/"):
+        relative_repo_path_dir = relative_repo_path_dir[1:]
+
+    if worktree_directory and worktree_directory in abs_directory_name:
+        path_in_repo = abs_directory_name.replace(worktree_directory, "")
         if path_in_repo.startswith("/"):
             path_in_repo = path_in_repo[1:]
     else:
-        path_in_repo = directory_name
+        path_in_repo = abs_directory_name
 
     file_path = os.path.join(path_in_repo, filename)
 
+    module_name = relative_repo_path_dir.replace("/", ".") + f".{filename_wo_ext}"
+
     return RepoFileInformation(
         filename=filename,
-        absolute_path=directory_name,
-        relative_path=path_in_repo,
-        extension=extension,
         filename_wo_ext=filename_wo_ext,
-        file_path=file_path,
+        module_name=module_name,
+        absolute_path_dir=abs_directory_name,
+        relative_path_dir=path_in_repo,
+        relative_repo_path_dir=relative_repo_path_dir,
+        extension=extension,
+        relative_path_file=file_path,
     )
 
 
@@ -1174,25 +1211,28 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         branch_wt = self.get_worktree(identifier=branch_name)
         python_files = await self.find_files(extension=["py"], branch_name=branch_name)
 
+        # Ensure the path for this repository is present in sys.path
+        if self.directory_root not in sys.path:
+            sys.path.append(self.directory_root)
+
         for python_file in python_files:
             LOGGER.debug(f"{self.name} | Checking {python_file}")
 
-            file_info = extract_repo_file_information(full_filename=python_file, base_directory=branch_wt.directory)
-
-            if file_info.absolute_path not in sys.path:
-                sys.path.append(file_info.absolute_path)
+            file_info = extract_repo_file_information(
+                full_filename=python_file, repo_directory=self.directory_root, worktree_directory=branch_wt.directory
+            )
 
             try:
-                module = importlib.import_module(file_info.filename_wo_ext)
+                module = importlib.import_module(file_info.module_name)
             except ModuleNotFoundError:
                 LOGGER.warning(f"{self.name} | Unable to load python file {python_file}")
                 continue
 
             await self.import_python_checks_from_module(
-                branch_name=branch_name, module=module, file_path=file_info.file_path
+                branch_name=branch_name, module=module, file_path=file_info.relative_path_file
             )
             await self.import_python_transforms_from_module(
-                branch_name=branch_name, module=module, file_path=file_info.file_path
+                branch_name=branch_name, module=module, file_path=file_info.relative_path_file
             )
 
     async def find_files(self, extension: Union[str, List[str]], branch_name: str, recursive: bool = True):
@@ -1235,16 +1275,18 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not os.path.exists(os.path.join(commit_worktree.directory, location)):
             raise FileNotFound(repository_name=self.name, commit=commit, location=location)
 
+        # Ensure the path for this repository is present in sys.path
+        if self.directory_root not in sys.path:
+            sys.path.append(self.directory_root)
+
         try:
             file_info = extract_repo_file_information(
                 full_filename=os.path.join(commit_worktree.directory, location),
-                base_directory=commit_worktree.directory,
+                repo_directory=self.directory_root,
+                worktree_directory=commit_worktree.directory,
             )
 
-            if file_info.absolute_path not in sys.path:
-                sys.path.append(file_info.absolute_path)
-
-            module = importlib.import_module(file_info.filename_wo_ext)
+            module = importlib.import_module(file_info.module_name)
 
             check_class = getattr(module, class_name)
 
@@ -1284,20 +1326,24 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         file_path, class_name = location.split("::")
         commit_worktree = self.get_worktree(identifier=commit)
 
+        LOGGER.debug(f"Will run Python Transform from {class_name} at {location} ({commit})")
+
         # Ensure the file is present in the repository
         if not os.path.exists(os.path.join(commit_worktree.directory, file_path)):
             raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)
 
+        # Ensure the path for this repository is present in sys.path
+        if self.directory_root not in sys.path:
+            sys.path.append(self.directory_root)
+
         try:
             file_info = extract_repo_file_information(
                 full_filename=os.path.join(commit_worktree.directory, file_path),
-                base_directory=commit_worktree.directory,
+                repo_directory=self.directory_root,
+                worktree_directory=commit_worktree.directory,
             )
 
-            if file_info.absolute_path not in sys.path:
-                sys.path.append(file_info.absolute_path)
-
-            module = importlib.import_module(file_info.filename_wo_ext)
+            module = importlib.import_module(file_info.module_name)
 
             transform_class = getattr(module, class_name)
 
