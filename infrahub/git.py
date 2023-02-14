@@ -24,6 +24,7 @@ import infrahub.config as config
 from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
 from infrahub.exceptions import (
     CheckError,
+    CommitNotFoundError,
     Error,
     FileNotFound,
     RepositoryError,
@@ -520,8 +521,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         # Create a worktree for the commit in main
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
-        repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
-
+        self.create_commit_worktree(commit=commit)
         await self.update_commit_value(branch_name=self.default_branch_name, commit=commit)
 
         return True
@@ -561,6 +561,19 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 return worktree
 
         return None
+
+    def get_commit_worktree(self, commit: str) -> Worktree:
+        """Access a specific commit worktree."""
+
+        worktrees = self.get_worktrees()
+
+        for worktree in worktrees:
+            if worktree.identifier == commit:
+                return worktree
+
+        # if not worktree exist for this commit already
+        # We'll try to create one
+        return self.create_commit_worktree(commit=commit)
 
     def get_worktrees(self) -> List[Worktree]:
         """Return the list of worktrees configured for this repository."""
@@ -682,7 +695,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
         repo.git.branch(branch_name)
-        await self.create_branch_worktree(branch_name=branch_name)
+        self.create_branch_worktree(branch_name=branch_name)
 
         # If there is not remote configured, we are done
         #  Since the branch is a match for the main branch we don't need to create a commit worktree
@@ -697,7 +710,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             br_repo = self.get_git_repo_worktree(identifier=branch_name)
             br_repo.head.reference.set_tracking_branch(remote_branch[0])
             br_repo.remotes.origin.pull(branch_name)
-            await self.create_commit_worktree(str(br_repo.head.reference.commit))
+            self.create_commit_worktree(str(br_repo.head.reference.commit))
             LOGGER.debug(
                 "%s | Branch %s  created in Git, tracking remote branch %s.", self.name, branch_name, remote_branch[0]
             )
@@ -722,28 +735,41 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         LOGGER.debug(f"{self.name} | Branch {branch_name} created in the Graph")
         return True
 
-    async def create_commit_worktree(self, commit: str) -> bool:
+    def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
         """Create a new worktree for a given commit."""
 
         # Check of the worktree already exist
         if self.has_worktree(identifier=commit):
             return False
 
+        directory = os.path.join(self.directory_commits, commit)
+        worktree = Worktree(identifier=commit, directory=str(directory), commit=commit)
+
         repo = self.get_git_repo_main()
-        repo.git.worktree("add", os.path.join(self.directory_commits, commit), commit)
+        try:
+            repo.git.worktree("add", directory, commit)
+            LOGGER.debug(f"{self.name} | Commit worktree created {commit}")
+            return worktree
+        except GitCommandError as exc:
+            if "invalid reference" in exc.stderr:
+                raise CommitNotFoundError(
+                    identifier=self.name,
+                    commit=commit,
+                ) from exc
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
-        LOGGER.debug(f"{self.name} | Commit worktree created {commit}")
-        return True
-
-    async def create_branch_worktree(self, branch_name: str) -> bool:
+    def create_branch_worktree(self, branch_name: str) -> bool:
         """Create a new worktree for a given branch."""
 
         # Check if the worktree already exist
         if self.has_worktree(identifier=branch_name):
             return False
 
-        repo = self.get_git_repo_main()
-        repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+        try:
+            repo = self.get_git_repo_main()
+            repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+        except GitCommandError as exc:
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
         LOGGER.debug(f"{self.name} | Branch worktree created {branch_name}")
         return True
@@ -834,7 +860,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             await self.create_branch_in_git(branch_name=branch_name)
 
             commit = self.get_commit_value(branch_name=branch_name, remote=False)
-            await self.create_commit_worktree(commit=commit)
+            self.create_commit_worktree(commit=commit)
             await self.update_commit_value(branch_name=branch_name, commit=commit)
 
             await self.import_objects_from_files(branch_name=branch_name)
@@ -924,7 +950,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if commit_after == commit_before:
             return True
 
-        await self.create_commit_worktree(commit=commit_after)
+        self.create_commit_worktree(commit=commit_after)
         await self.update_commit_value(branch_name=branch_name, commit=commit_after)
 
         return commit_after
@@ -951,7 +977,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if commit_after == commit_before:
             return False
 
-        await self.create_commit_worktree(commit_after)
+        self.create_commit_worktree(commit_after)
         await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
 
         if self.has_origin and push_remote:
@@ -1250,7 +1276,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return files
 
     async def render_jinja2_template(self, commit: str, location: str, data: dict):
-        commit_worktree = self.get_worktree(identifier=commit)
+        commit_worktree = self.get_commit_worktree(commit=commit)
 
         if not os.path.exists(os.path.join(commit_worktree.directory, location)):
             raise FileNotFound(repository_name=self.name, commit=commit, location=location)
@@ -1269,7 +1295,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     ) -> InfrahubCheck:
         """Execute A Python Check stored in the repository."""
 
-        commit_worktree = self.get_worktree(identifier=commit)
+        commit_worktree = self.get_commit_worktree(commit=commit)
 
         # Ensure the file is present in the repository
         if not os.path.exists(os.path.join(commit_worktree.directory, location)):
@@ -1324,7 +1350,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             raise ValueError("Transformation location not valid, it must contains a double colons (::)")
 
         file_path, class_name = location.split("::")
-        commit_worktree = self.get_worktree(identifier=commit)
+        commit_worktree = self.get_commit_worktree(commit=commit)
 
         LOGGER.debug(f"Will run Python Transform from {class_name} at {location} ({commit})")
 
