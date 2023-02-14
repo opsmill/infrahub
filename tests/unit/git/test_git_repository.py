@@ -7,6 +7,7 @@ from git import Repo
 
 from infrahub.exceptions import (
     CheckError,
+    CommitNotFoundError,
     FileNotFound,
     RepositoryError,
     TransformError,
@@ -115,6 +116,36 @@ async def test_get_git_repo_main(git_repo_01: InfrahubRepository):
     assert isinstance(git_repo, Repo)
 
 
+async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
+    repo = git_repo_01
+    git_repo = repo.get_git_repo_main()
+
+    # Modify the first file in the main branch to create a new commit
+    top_level_files = os.listdir(repo.directory_default)
+    first_file = os.path.join(repo.directory_default, top_level_files[0])
+    with open(first_file, "a") as file:
+        file.write("new line\n")
+    git_repo.index.add([top_level_files[0]])
+    git_repo.index.commit("Change first file")
+
+    commit = repo.get_commit_value(branch_name="main")
+
+    assert repo.has_worktree(identifier=commit) is False
+    assert isinstance(repo.create_commit_worktree(commit=commit), Worktree)
+    assert repo.has_worktree(identifier=commit) is True
+    assert repo.create_commit_worktree(commit=commit) is False
+
+
+async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubRepository):
+    repo = git_repo_01
+    repo.get_git_repo_main()
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    with pytest.raises(CommitNotFoundError) as exc:
+        repo.create_commit_worktree(commit=commit)
+
+
 async def test_get_worktrees(git_repo_01: InfrahubRepository):
     repo = git_repo_01
 
@@ -132,6 +163,26 @@ async def test_has_worktree(git_repo_01: InfrahubRepository):
 
     assert not repo.has_worktree("notvalid")
     assert repo.has_worktree("main")
+
+
+async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
+    repo = git_repo_01
+    git_repo = repo.get_git_repo_main()
+
+    # Modify the first file in the main branch to create a new commit
+    top_level_files = os.listdir(repo.directory_default)
+    first_file = os.path.join(repo.directory_default, top_level_files[0])
+    with open(first_file, "a") as file:
+        file.write("new line\n")
+    git_repo.index.add([top_level_files[0]])
+    git_repo.index.commit("Change first file")
+
+    commit = repo.get_commit_value(branch_name="main")
+
+    assert repo.has_worktree(identifier=commit) is False
+    worktree = repo.get_commit_worktree(commit=commit)
+    assert isinstance(worktree, Worktree)
+    assert repo.has_worktree(identifier=commit) is True
 
 
 async def test_get_branches_from_local(git_repo_01: InfrahubRepository):

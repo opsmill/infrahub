@@ -13,6 +13,14 @@ class RepositoryError(Error):
         super().__init__(self.message)
 
 
+class CommitNotFoundError(Error):
+    def __init__(self, identifier, commit, message=None):
+        self.identifier = identifier
+        self.commit = commit
+        self.message = message or f"Commit {commit} not found with GitRepository '{identifier}'."
+        super().__init__(self.message)
+
+
 class FileNotFound(Error):
     def __init__(self, repository_name, location, commit, message=None):
         self.repository_name = repository_name
