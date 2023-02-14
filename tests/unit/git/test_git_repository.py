@@ -142,7 +142,7 @@ async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubReposito
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(CommitNotFoundError) as exc:
+    with pytest.raises(CommitNotFoundError):
         repo.create_commit_worktree(commit=commit)
 
 

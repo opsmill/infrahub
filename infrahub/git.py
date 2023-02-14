@@ -695,7 +695,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
         repo.git.branch(branch_name)
-        await self.create_branch_worktree(branch_name=branch_name)
+        self.create_branch_worktree(branch_name=branch_name)
 
         # If there is not remote configured, we are done
         #  Since the branch is a match for the main branch we don't need to create a commit worktree
@@ -758,15 +758,18 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 ) from exc
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
-    async def create_branch_worktree(self, branch_name: str) -> bool:
+    def create_branch_worktree(self, branch_name: str) -> bool:
         """Create a new worktree for a given branch."""
 
         # Check if the worktree already exist
         if self.has_worktree(identifier=branch_name):
             return False
 
-        repo = self.get_git_repo_main()
-        repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+        try:
+            repo = self.get_git_repo_main()
+            repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+        except GitCommandError as exc:
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
         LOGGER.debug(f"{self.name} | Branch worktree created {branch_name}")
         return True
