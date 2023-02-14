@@ -97,33 +97,31 @@ def build(
 # ----------------------------------------------------------------------------
 @task
 def debug(context):
-    """Start a local instance of Infrahub in debug mode.
+    """Start a local instance of Infrahub in debug mode."""
 
-    Args:
-        context (obj): Used to run specific commands
-    """
     exec_cmd = f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} up"
     return context.run(exec_cmd, pty=True)
 
 
 @task
 def start(context: Context):
-    """Start a local instance of Infrahub within docker compose.
+    """Start a local instance of Infrahub within docker compose."""
 
-    Args:
-        context (obj): Used to run specific commands
-    """
+    exec_cmd = f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} up -d"
+    return context.run(exec_cmd, pty=True)
+
+
+@task
+def restart(context: Context):
+    """Restart Infrahub API Server and Git Agent within docker compose."""
+
     exec_cmd = f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} up -d"
     return context.run(exec_cmd, pty=True)
 
 
 @task
 def stop(context: Context):
-    """Stop the running instance of Infrahub.
-
-    Args:
-        context (obj): Used to run specific commands
-    """
+    """Stop the running instance of Infrahub."""
 
     exec_cmd = f"{ENV_VARS} docker compose  {COMPOSE_FILES_CMD} -p {BUILD_NAME} down"
     return context.run(exec_cmd, pty=True)
@@ -132,6 +130,7 @@ def stop(context: Context):
 @task
 def destroy(context: Context):
     """Destroy all containers and volumes."""
+
     context.run(f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} down --remove-orphans", pty=True)
 
     for volume in VOLUME_NAMES:
@@ -141,6 +140,7 @@ def destroy(context: Context):
 @task
 def cli_server(context: Context):
     """Launch a bash shell inside the running Infrahub container."""
+
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server bash",
         pty=True,
@@ -150,6 +150,7 @@ def cli_server(context: Context):
 @task
 def cli_git(context: Context):
     """Launch a bash shell inside the running Infrahub container."""
+
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git bash",
         pty=True,
@@ -168,6 +169,7 @@ def cli_frontend(context: Context):
 @task
 def init(context: Context):
     """Initialize Infrahub database before using it the first time."""
+
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server infrahub db init",
         pty=True,
@@ -177,6 +179,7 @@ def init(context: Context):
 @task
 def status(context: Context):
     """Display the status of all containers."""
+
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} ps",
         pty=True,

@@ -1318,41 +1318,28 @@ class Diff:
 
         self._calculated_diff_rels_at = Timestamp()
 
-    async def get_files(self, session: AsyncSession) -> Dict[str, Dict[str, FileDiffElement]]:
+    async def get_files(
+        self, session: AsyncSession, rcp_client: InfrahubRpcClient
+    ) -> Dict[str, Dict[str, FileDiffElement]]:
         if not self._calculated_diff_files_at:
-            await self._calculated_diff_files(session=session)
+            await self._calculated_diff_files(session=session, rcp_client=rcp_client)
 
         return {branch_name: data["files"] for branch_name, data in self._results.items()}
 
-    async def _calculated_diff_files(self, session: AsyncSession):
-        results = []
+    async def _calculated_diff_files(self, session: AsyncSession, rcp_client: InfrahubRpcClient):
+        pass
         # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
 
-        # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main = {repo.id: repo for repo in await NodeManager.query(schema="Repository", session=session)}
+        self._results[self.branch.name]["files"] = self.get_files_repositories_for_branch(
+            session=session, rpc_client=rcp_client, branch=self.branch
+        )
 
-        for repo in await NodeManager.query(schema="Repository", branch=self.branch, session=session):
-            # Check if the repo, exist in main, if not ignore this repo
-            if repo.id not in repos_in_main:
-                continue
-
-            repo_in_main = repos_in_main[repo.id]
-            changed_files = repo.calculate_diff_with_commit(repo_in_main.commit.value)
-
-            if not changed_files:
-                continue
-
-            results.append(
-                {
-                    "branch": repo.branch.name,
-                    "repository_uuid": repo.uuid,
-                    "repository_name": repo.name.value,
-                    "files": changed_files,
-                }
+        if self.origin_branch:
+            self._results[self.branch.origin_branch.name]["files"] = self.get_files_repositories_for_branch(
+                session=session, rpc_client=rcp_client, branch=self.branch.origin_branch
             )
 
-        return results
+        self._calculated_diff_files_at = Timestamp()
 
     async def get_files_repository(
         self,
