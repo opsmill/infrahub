@@ -159,6 +159,10 @@ query {
     branch {
         id
         name
+        description
+        origin_branch
+        branched_from
+        is_default
         is_data_only
     }
 }
@@ -360,7 +364,11 @@ mutation($id: String!, $name: String!, $description: String!, $file_path: String
 class BranchData(BaseModel):
     id: str
     name: str
+    description: Optional[str]
     is_data_only: bool
+    is_default: bool
+    origin_branch: str
+    branched_from: str
 
 
 class RepositoryData(BaseModel):
@@ -489,6 +497,10 @@ class InfrahubClient:
                 retry = self.retry_on_failure
                 try:
                     resp = await self.post(url=url, payload=payload, timeout=timeout)
+
+                    if raise_for_error:
+                        resp.raise_for_status()
+
                     retry = False
                 except ServerNotReacheableError:
                     if retry:
@@ -498,13 +510,11 @@ class InfrahubClient:
                         await asyncio.sleep(delay=self.retry_delay)
                     else:
                         self.log.critical(f"Unable to connect to {self.address} .. ")
+                        raise
 
         else:
             with self.test_client as client:
                 resp = client.post(url=url, json=payload)
-
-        if raise_for_error:
-            resp.raise_for_status()
 
         response = resp.json()
 
@@ -582,10 +592,7 @@ class InfrahubClient:
     async def get_list_branches(self) -> Dict[str, BranchData]:
         data = await self.execute_graphql(query=QUERY_ALL_BRANCHES)
 
-        branches = {
-            branch["name"]: BranchData(id=branch["id"], name=branch["name"], is_data_only=branch["is_data_only"])
-            for branch in data["branch"]
-        }
+        branches = {branch["name"]: BranchData(**branch) for branch in data["branch"]}
 
         return branches
 
