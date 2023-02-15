@@ -16,4 +16,4 @@ username = "infrahub"
 password = "infrahub"
 
 [api]
-cors_allowed_origin = ["*"]
+cors_allow_origins = ["*"]
