@@ -66,6 +66,7 @@ except ImportError:
 
 import infrahub.config as config
 from infrahub.core import get_branch
+from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 
@@ -141,14 +142,27 @@ class InfrahubGraphQLApp:
         if scope["type"] == "http":
             request = Request(scope=scope, receive=receive)
             response: Optional[Response] = None
-            if request.method == "POST":
-                response = await self._handle_http_request(request=request)
-            elif request.method == "GET":
-                response = await self._get_on_get(request)
 
-            if not response:
-                response = Response(status_code=405)
-            await response(scope, receive, send)
+            async with request.app.state.db.session(database=config.SETTINGS.database.database) as session:
+                # Retrieve the branch name from the request and validate that it exist in the database
+                try:
+                    branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
+                    branch = await get_branch(session=session, branch=branch_name)
+                    branch.ephemeral_rebase = bool(strtobool(str(request.query_params.get("rebase", False))))
+                except BranchNotFound as exc:
+                    response = JSONResponse({"errors": [exc.message]}, status_code=404)
+
+                if request.method == "POST" and not response:
+                    response = await self._handle_http_request(request=request, session=session, branch=branch)
+                elif request.method == "GET" and not response:
+                    response = await self._get_on_get(request)
+                elif request.method == "OPTIONS" and not response:
+                    response = Response(status_code=200, headers={"Allow": "GET, POST, OPTIONS"})
+
+                if not response:
+                    response = Response(status_code=405)
+
+                await response(scope, receive, send)
 
         elif scope["type"] == "websocket":
             websocket = WebSocket(scope=scope, receive=receive, send=send)
@@ -169,11 +183,7 @@ class InfrahubGraphQLApp:
 
         return cast(Response, response)
 
-    async def _get_context_value(self, session: AsyncSession, request: HTTPConnection) -> Dict:
-        branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
-        branch = await get_branch(session=session, branch=branch_name)
-        branch.ephemeral_rebase = bool(strtobool(str(request.query_params.get("rebase", False))))
-
+    async def _get_context_value(self, session: AsyncSession, request: HTTPConnection, branch: Branch) -> Dict:
         # info.context["infrahub_account"] = account
 
         context_value = {
@@ -188,11 +198,11 @@ class InfrahubGraphQLApp:
 
         return context_value
 
-    async def _handle_http_request(self, request: Request) -> JSONResponse:
+    async def _handle_http_request(self, request: Request, session: AsyncSession, branch: Branch) -> JSONResponse:
         try:
             operations = await _get_operation_from_request(request)
-        except ValueError as e:
-            return JSONResponse({"errors": [e.args[0]]}, status_code=400)
+        except ValueError as exc:
+            return JSONResponse({"errors": [exc.args[0]]}, status_code=400)
 
         if isinstance(operations, list):
             return JSONResponse({"errors": ["This server does not support batching"]}, status_code=400)
@@ -202,33 +212,29 @@ class InfrahubGraphQLApp:
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
 
-        async with request.app.state.db.session(database=config.SETTINGS.database.database) as session:
-            try:
-                context_value = await self._get_context_value(session=session, request=request)
-            except BranchNotFound as exc:
-                return JSONResponse({"errors": [exc.message]}, status_code=404)
+        context_value = await self._get_context_value(session=session, request=request, branch=branch)
 
-            schema = await self._get_schema(session=session)
-            result = await graphql(
-                schema.graphql_schema,
-                source=query,
-                context_value=context_value,
-                root_value=self.root_value,
-                middleware=self.middleware,
-                variable_values=variable_values,
-                operation_name=operation_name,
-                execution_context_class=self.execution_context_class,
-            )
+        schema = await self._get_schema(session=session)
+        result = await graphql(
+            schema.graphql_schema,
+            source=query,
+            context_value=context_value,
+            root_value=self.root_value,
+            middleware=self.middleware,
+            variable_values=variable_values,
+            operation_name=operation_name,
+            execution_context_class=self.execution_context_class,
+        )
 
-            response: Dict[str, Any] = {"data": result.data}
-            if result.errors:
-                for error in result.errors:
-                    if error.original_error:
-                        self.logger.error(
-                            "An exception occurred in resolvers",
-                            exc_info=error.original_error,
-                        )
-                response["errors"] = [self.error_formatter(error) for error in result.errors]
+        response: Dict[str, Any] = {"data": result.data}
+        if result.errors:
+            for error in result.errors:
+                if error.original_error:
+                    self.logger.error(
+                        "An exception occurred in resolvers",
+                        exc_info=error.original_error,
+                    )
+            response["errors"] = [self.error_formatter(error) for error in result.errors]
 
         return JSONResponse(
             response,

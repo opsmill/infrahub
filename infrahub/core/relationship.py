@@ -321,13 +321,17 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def to_graphql(self, fields: dict, session: AsyncSession) -> dict:
         """Generate GraphQL Payload for the associated Peer."""
 
-        peer_fields = {key: value for key, value in fields.items() if not key.startswith("_relation")}
+        peer_fields = {
+            key: value for key, value in fields.items() if not key.startswith("_relation") or not key == "__typename"
+        }
 
         peer = await self.get_peer(session=session)
         response = await peer.to_graphql(fields=peer_fields, session=session)
 
         if "_relation__updated_at" in fields:
             response["_relation__updated_at"] = await self.updated_at.to_graphql(session=session)
+        if "__typename" in fields:
+            response["__typename"] = f"Related{peer.get_kind()}"
 
         return response
 

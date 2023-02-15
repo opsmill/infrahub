@@ -29,6 +29,7 @@ from infrahub.message_bus.events import (
     TransformMessageAction,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
+from infrahub.middleware import InfrahubCORSMiddleware
 
 app = FastAPI()
 
@@ -318,6 +319,8 @@ app.add_middleware(
     buckets=[0.1, 0.25, 0.5],
     skip_paths=["/health"],
 )
+app.add_middleware(InfrahubCORSMiddleware)
+
 app.add_route("/metrics", handle_metrics)
 
 app.add_route("/graphql", InfrahubGraphQLApp(playground=True))

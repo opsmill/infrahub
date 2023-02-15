@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.message_bus.events import (
@@ -191,3 +192,34 @@ async def test_graphql_endpoint(session, client, default_branch, car_person_data
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]) == 2
     assert len(result_per_name["Jane"]["cars"]) == 1
+
+
+async def test_graphql_options(session, client, default_branch, car_person_data):
+    await create_branch(branch_name="branch2", session=session)
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.options(
+            "/graphql",
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        assert "Allow" in response.headers
+        assert response.headers["Allow"] == "GET, POST, OPTIONS"
+
+        response = client.options(
+            "/graphql/branch2",
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        assert "Allow" in response.headers
+        assert response.headers["Allow"] == "GET, POST, OPTIONS"
+
+        response = client.options(
+            "/graphql/notvalid",
+            headers=headers,
+        )
+
+        assert response.status_code == 404
