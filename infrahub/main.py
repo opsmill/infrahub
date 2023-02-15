@@ -29,8 +29,7 @@ from infrahub.message_bus.events import (
     TransformMessageAction,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
-
-from .middleware import InfrahubCORSMiddleware
+from infrahub.middleware import InfrahubCORSMiddleware
 
 app = FastAPI()
 
