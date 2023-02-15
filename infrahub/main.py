@@ -11,6 +11,7 @@ from neo4j import AsyncSession
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.types import ASGIApp
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
@@ -37,6 +38,22 @@ app = FastAPI()
 
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
+
+
+class InfrahubCORSMiddleware(CORSMiddleware):
+    def __init__(self, app: ASGIApp, *args, **kwargs):
+        if not config.SETTINGS:
+            config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config_file_path = os.path.abspath(config_file_name)
+            logger.info(f"Loading the configuration from {config_file_path}")
+            config.load_and_exit(config_file_path)
+
+        kwargs["allow_origins"] = config.SETTINGS.api.cors_allow_origins
+        kwargs["allow_credentials"] = config.SETTINGS.api.cors_allow_credentials
+        kwargs["allow_methods"] = config.SETTINGS.api.cors_allow_methods
+        kwargs["allow_headers"] = config.SETTINGS.api.cors_allow_headers
+
+        super().__init__(app, *args, **kwargs)
 
 
 async def get_session(request: Request) -> AsyncSession:
@@ -319,7 +336,8 @@ app.add_middleware(
     buckets=[0.1, 0.25, 0.5],
     skip_paths=["/health"],
 )
-app.add_middleware(CORSMiddleware, allow_origins=config.SETTINGS.api.cors_allowed_origin)
+app.add_middleware(InfrahubCORSMiddleware)
+
 app.add_route("/metrics", handle_metrics)
 
 app.add_route("/graphql", InfrahubGraphQLApp(playground=True))
