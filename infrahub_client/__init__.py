@@ -181,17 +181,6 @@ mutation ($repository_id: String!, $commit: String!) {
 }
 """
 
-MUTATION_BRANCH_CREATE = """
-mutation ($branch_name: String!, $background_execution: Boolean!) {
-    branch_create(background_execution: $background_execution, data: { name: $branch_name, is_data_only: false }) {
-        ok
-        object {
-            id
-            name
-        }
-    }
-}
-"""
 
 MUTATION_GRAPHQL_QUERY_CREATE = """
 mutation($name: String!, $description: String!, $query: String!) {
@@ -582,12 +571,35 @@ class InfrahubClient:
 
         return resp.json()
 
-    async def create_branch(self, branch_name: str, background_execution: bool = False) -> bool:
-        variables = {"branch_name": branch_name, "background_execution": background_execution}
+    async def create_branch(
+        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
+    ) -> BranchData:
+        MUTATION_BRANCH_CREATE = """
+        mutation ($branch_name: String!, $description: String!, $background_execution: Boolean!, $data_only: Boolean!) {
+            branch_create(background_execution: $background_execution, data: { name: $branch_name, description: $description, is_data_only: $data_only }) {
+                ok
+                object {
+                    id
+                    name
+                    description
+                    origin_branch
+                    branched_from
+                    is_default
+                    is_data_only
+                }
+            }
+        }
+        """
 
-        await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
+        variables = {
+            "branch_name": branch_name,
+            "data_only": data_only,
+            "description": description,
+            "background_execution": background_execution,
+        }
+        response = await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
 
-        return True
+        return BranchData(**response["branch_create"]["object"])
 
     async def get_list_branches(self) -> Dict[str, BranchData]:
         data = await self.execute_graphql(query=QUERY_ALL_BRANCHES)
