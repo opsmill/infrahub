@@ -3,6 +3,7 @@ import os
 import os.path
 import sys
 from pathlib import Path
+from typing import List
 
 import toml
 from pydantic import BaseSettings, Field, ValidationError
@@ -73,10 +74,15 @@ class BrokerSettings(BaseSettings):
         }
 
 
+class ApiSettings(BaseSettings):
+    cors_allowed_origin: List[str] = []
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     main: MainSettings = MainSettings()
+    api: ApiSettings = ApiSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
 

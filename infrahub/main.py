@@ -9,6 +9,7 @@ from fastapi.logger import logger
 from graphql import graphql
 from neo4j import AsyncSession
 from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
@@ -318,6 +319,7 @@ app.add_middleware(
     buckets=[0.1, 0.25, 0.5],
     skip_paths=["/health"],
 )
+app.add_middleware(CORSMiddleware, allow_origins=config.SETTINGS.api.cors_allowed_origin)
 app.add_route("/metrics", handle_metrics)
 
 app.add_route("/graphql", InfrahubGraphQLApp(playground=True))
