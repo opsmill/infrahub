@@ -309,6 +309,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if field_name in ["id"] or field_name in self._schema.relationship_names:
                 continue
 
+            if field_name == "__typename":
+                response[field_name] = self.get_kind()
+                continue
+
             if field_name == "_updated_at":
                 if self._updated_at:
                     response[field_name] = await self._updated_at.to_graphql()

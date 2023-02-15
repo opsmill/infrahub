@@ -326,7 +326,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
         """Generate GraphQL Payload for this attribute."""
 
-        response = {"id": self.id}
+        response = {
+            "id": self.id,
+        }
 
         for field_name in fields.keys():
             if field_name == "updated_at":
@@ -334,6 +336,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                     response[field_name] = await self.updated_at.to_graphql()
                 else:
                     response[field_name] = None
+                continue
+
+            if field_name == "__typename":
+                response[field_name] = self.get_kind()
                 continue
 
             if field_name in ["source", "owner"]:
