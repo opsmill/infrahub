@@ -77,7 +77,7 @@ class AddNodeToBranch(Query):
 class Branch(StandardNode):
     name: str
     status: str = "OPEN"  # OPEN, CLOSED
-    description: Optional[str]
+    description: str = ""
     origin_branch: str = "main"
     branched_from: Optional[str]
     is_default: bool = False

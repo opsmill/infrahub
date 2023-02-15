@@ -54,7 +54,9 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
     await check02.save(session=session)
 
 
-async def test_branch_create(db, session, default_branch, car_person_schema):
+async def test_branch_create(db, session, default_branch, car_person_schema, register_core_models_schema):
+    schema = await generate_graphql_schema(session=session, include_subscription=False)
+
     query = """
     mutation {
         branch_create(data: { name: "branch2", is_data_only: true }) {
@@ -62,12 +64,62 @@ async def test_branch_create(db, session, default_branch, car_person_schema):
             object {
                 id
                 name
+                description
+                is_data_only
+                is_default
+                branched_from
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    breakpoint()
+
+    assert result.errors is None
+    assert result.data["branch_create"]["ok"] is True
+    assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["branch_create"]["object"]["name"] == "branch2"
+    assert result.data["branch_create"]["object"]["description"] == ""
+    assert result.data["branch_create"]["object"]["is_data_only"] == True
+    assert result.data["branch_create"]["object"]["is_default"] == False
+    assert result.data["branch_create"]["object"]["branched_from"] is not None
+
+    assert await Branch.get_by_name(session=session, name="branch2")
+
+    # Validate that we can't create a branch with a name that already exist
+    result = await graphql(
+        schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+    assert len(result.errors) == 1
+    assert "The branch branch2, already exist" in result.errors[0].message
+
+    # Create another branch with different inputs
+    query = """
+    mutation {
+        branch_create(data: { name: "branch3", description: "my description" }) {
+            ok
+            object {
+                id
+                name
+                description
+                is_data_only
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema,
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -77,19 +129,9 @@ async def test_branch_create(db, session, default_branch, car_person_schema):
     assert result.errors is None
     assert result.data["branch_create"]["ok"] is True
     assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
-
-    assert await Branch.get_by_name(session=session, name="branch2")
-
-    # Validate that we can't create a branch with a name that already exist
-    result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
-        source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
-        root_value=None,
-        variable_values={},
-    )
-    assert len(result.errors) == 1
-    assert "The branch branch2, already exist" in result.errors[0].message
+    assert result.data["branch_create"]["object"]["name"] == "branch3"
+    assert result.data["branch_create"]["object"]["description"] == "my description"
+    assert result.data["branch_create"]["object"]["is_data_only"] == False
 
 
 async def test_branch_create_with_repositories(
