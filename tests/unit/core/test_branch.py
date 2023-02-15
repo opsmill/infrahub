@@ -219,14 +219,9 @@ async def test_diff_get_files_repository(session, rpc_client, repos_in_main, bas
         commit_to="ccccccc",
     )
 
-    # expected_response = {
-    #     ("file", repos_in_main["repo01"].id, "mydir/myfile.py"),
-    #     ("file", repos_in_main["repo01"].id, "readme.md"),
-    # }
-    assert len(resp) == 1
-    assert "branch2" in resp
-    assert isinstance(resp["branch2"], set)
-    assert sorted([fde.location for fde in resp["branch2"]]) == [
+    assert len(resp) == 4
+    assert isinstance(resp, list)
+    assert sorted([fde.location for fde in resp]) == [
         "mydir/myfile.py",
         "newandshiny.md",
         "notthere.md",
@@ -258,10 +253,9 @@ async def test_diff_get_files_repositories_for_branch_case01(
 
     resp = await diff.get_files_repositories_for_branch(session=session, rpc_client=rpc_client, branch=branch2)
 
-    assert len(resp) == 1
-    assert "branch2" in resp
-    assert isinstance(resp["branch2"], set)
-    assert sorted([fde.location for fde in resp["branch2"]]) == ["mydir/myfile.py", "readme.md"]
+    assert len(resp) == 2
+    assert isinstance(resp, list)
+    assert sorted([fde.location for fde in resp]) == ["mydir/myfile.py", "readme.md"]
 
     assert await rpc_client.ensure_all_responses_have_been_delivered()
 
@@ -296,9 +290,42 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
     resp = await diff.get_files_repositories_for_branch(session=session, rpc_client=rpc_client, branch=branch2)
 
-    assert len(resp) == 1
+    assert len(resp) == 3
+    assert isinstance(resp, list)
+    assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
+
+
+async def test_diff_get_files(session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main):
+    """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
+    both repositories have a new commit value so we expect both to return something"""
+
+    mock_response = InfrahubRPCResponse(
+        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+    )
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]})
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos = {repo.name.value: repo for repo in repos_list}
+
+    repo01 = repos["repo01"]
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(session=session)
+
+    repo02 = repos["repo02"]
+    repo02.commit.value = "eeeeeeeeee"
+    await repo02.save(session=session)
+
+    diff = await Diff.init(branch=branch2, session=session)
+
+    resp = await diff.get_files(session=session, rpc_client=rpc_client)
+
+    assert len(resp) == 2
     assert "branch2" in resp
-    assert isinstance(resp["branch2"], set)
+    assert isinstance(resp["branch2"], list)
     assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 

@@ -1318,25 +1318,20 @@ class Diff:
 
         self._calculated_diff_rels_at = Timestamp()
 
-    async def get_files(
-        self, session: AsyncSession, rcp_client: InfrahubRpcClient
-    ) -> Dict[str, Dict[str, FileDiffElement]]:
+    async def get_files(self, session: AsyncSession, rpc_client: InfrahubRpcClient) -> Dict[str, List[FileDiffElement]]:
         if not self._calculated_diff_files_at:
-            await self._calculated_diff_files(session=session, rcp_client=rcp_client)
+            await self._calculated_diff_files(session=session, rpc_client=rpc_client)
 
         return {branch_name: data["files"] for branch_name, data in self._results.items()}
 
-    async def _calculated_diff_files(self, session: AsyncSession, rcp_client: InfrahubRpcClient):
-        pass
-        # pylint: disable=import-outside-toplevel
-
-        self._results[self.branch.name]["files"] = self.get_files_repositories_for_branch(
-            session=session, rpc_client=rcp_client, branch=self.branch
+    async def _calculated_diff_files(self, session: AsyncSession, rpc_client: InfrahubRpcClient):
+        self._results[self.branch.name]["files"] = await self.get_files_repositories_for_branch(
+            session=session, rpc_client=rpc_client, branch=self.branch
         )
 
         if self.origin_branch:
-            self._results[self.branch.origin_branch.name]["files"] = self.get_files_repositories_for_branch(
-                session=session, rpc_client=rcp_client, branch=self.branch.origin_branch
+            self._results[self.origin_branch.name]["files"] = await self.get_files_repositories_for_branch(
+                session=session, rpc_client=rpc_client, branch=self.origin_branch
             )
 
         self._calculated_diff_files_at = Timestamp()
@@ -1348,10 +1343,10 @@ class Diff:
         repository,
         commit_from: str,
         commit_to: str,
-    ) -> Dict[str, List[FileDiffElement]]:
+    ) -> List[FileDiffElement]:
         """Return all the files that have added, changed or removed for a given repository between 2 commits."""
 
-        files = defaultdict(set)
+        files = []
 
         response: InfrahubRPCResponse = await rpc_client.call(
             message=InfrahubGitRPC(
@@ -1362,21 +1357,21 @@ class Diff:
         )
 
         for filename in response.response.get("files_changed", []):
-            files[branch_name].add(
+            files.append(
                 FileDiffElement(
                     branch=branch_name, location=filename, repository=repository.id, action=DiffAction.UPDATED
                 )
             )
 
         for filename in response.response.get("files_added", []):
-            files[branch_name].add(
+            files.append(
                 FileDiffElement(
                     branch=branch_name, location=filename, repository=repository.id, action=DiffAction.ADDED
                 )
             )
 
         for filename in response.response.get("files_removed", []):
-            files[branch_name].add(
+            files.append(
                 FileDiffElement(
                     branch=branch_name, location=filename, repository=repository.id, action=DiffAction.REMOVED
                 )
@@ -1386,12 +1381,12 @@ class Diff:
 
     async def get_files_repositories_for_branch(
         self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
-    ) -> Dict[str, List[FileDiffElement]]:
+    ) -> List[FileDiffElement]:
         # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
         tasks = []
-        files = defaultdict(set)
+        files = []
 
         repos_to = {
             repo.id: repo
@@ -1423,7 +1418,7 @@ class Diff:
         responses = await asyncio.gather(*tasks)
 
         for response in responses:
-            for branch_name, items in response.items():
-                files[branch_name].update(items)
+            if isinstance(response, list):
+                files.extend(response)
 
         return files

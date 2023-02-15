@@ -371,7 +371,7 @@ class BranchDiffRelationshipType(ObjectType):
 class BranchDiffFileType(ObjectType):
     branch = String()
     repository = String()
-    location = String
+    location = String()
     action = String()
 
 
@@ -409,14 +409,12 @@ class BranchDiffType(ObjectType):
             for items in rels.values():
                 for item in items.values():
                     for sub_item in item.values():
-                        # import pdb
-                        # pdb.set_trace()
                         response["relationships"].append(sub_item.to_graphql())
 
         if "files" in fields:
             files = await diff.get_files(rpc_client=rpc_client, session=session)
             for items in files.values():
-                for item in items.values():
+                for item in items:
                     response["files"].append(item.to_graphql())
 
         return response

@@ -3,6 +3,7 @@ from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql import generate_graphql_schema
 from infrahub.message_bus.events import (
@@ -330,3 +331,93 @@ async def test_branch_merge_with_repositories(db, session, rpc_client, base_data
     assert result.data["branch_merge"]["object"]["id"] == str(branch2.uuid)
 
     assert await rpc_client.ensure_all_responses_have_been_delivered()
+
+
+async def test_branch_diff_with_repositories(db, session, rpc_client, base_dataset_02, repos_and_checks_in_main):
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    mock_response = InfrahubRPCResponse(
+        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+    )
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]})
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+
+    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos = {repo.name.value: repo for repo in repos_list}
+
+    repo01 = repos["repo01"]
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(session=session)
+
+    repo02 = repos["repo02"]
+    repo02.commit.value = "eeeeeeeeee"
+    await repo02.save(session=session)
+
+    p1 = await Node.init(session=session, schema="Person", branch=branch2)
+    await p1.new(session=session, name="bob", height=155)
+    await p1.save(session=session)
+
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.MERGE)
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.MERGE)
+
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"passed": True, "errors": []})
+    await rpc_client.add_response(
+        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
+    )
+    await rpc_client.add_response(
+        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
+    )
+
+    query = """
+    query {
+        diff(branch: "branch2") {
+            nodes {
+                branch
+                labels
+                id
+                changed_at
+                action
+                attributes {
+                    name
+                    id
+                    changed_at
+                    action
+                    properties {
+                    action
+                    }
+                }
+            }
+            relationships {
+                branch
+                id
+                name
+                properties {
+                    branch
+                    type
+                    changed_at
+                    action
+                }
+                changed_at
+                action
+            }
+            files {
+                action
+                repository
+                branch
+                location
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["diff"] == {}
