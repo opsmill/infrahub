@@ -3,6 +3,18 @@ import os
 from typing import List, Union
 
 import httpx
+import pendulum
+
+
+def calculate_time_diff(value: str) -> str:
+    """Calculate the time in human format between a timedate in string format and now."""
+    try:
+        time_value = pendulum.parse(value)
+    except pendulum.parsing.exceptions.ParserError:
+        return None
+
+    pendulum.set_locale("en")
+    return time_value.diff_for_humans(other=pendulum.now(), absolute=True)
 
 
 def execute_query(

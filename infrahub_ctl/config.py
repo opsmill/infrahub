@@ -3,6 +3,7 @@ import os
 import os.path
 import sys
 from pathlib import Path
+from typing import Optional
 
 import toml
 from pydantic import BaseSettings, ValidationError
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     server_address: str = "http://localhost:8000"
-    api_key: str
+    api_key: Optional[str]
 
 
 def load(config_file_name="infrahubctl.toml", config_data=None):
