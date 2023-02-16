@@ -15,15 +15,7 @@ export default function Layout() {
 
         <div className="flex flex-1 flex-col md:pl-64">
           <Header setSidebarOpen={setSidebarOpen} />
-
-          <main className="flex-1 overflow-auto">
-            <div className="pt-6">
-              {/* <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8"> */}
-              <div className="mx-auto px-4 sm:px-0 md:px-0">
-                <DeviceList />
-              </div>
-            </div>
-          </main>
+          <DeviceList />
         </div>
       </div>
     </>

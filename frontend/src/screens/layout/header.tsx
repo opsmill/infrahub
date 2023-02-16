@@ -1,16 +1,25 @@
-import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
+import {
+  Bars3BottomLeftIcon,
+  BellIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Menu, Transition } from "@headlessui/react";
+import Datetime from "react-datetime";
+import "react-datetime/css/react-datetime.css";
 
 import { classNames } from "../../App";
 import { userNavigation } from "./navigation-list";
+import BranchSelector from "../../components/branch-selector/branch-selector";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function Header(props: Props) {
+  const [date, setDate] = useState(new Date());
+  const [isDateDefault, setIsDateDefault] = useState(true);
   const { setSidebarOpen } = props;
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-white shadow">
@@ -43,9 +52,52 @@ export default function Header(props: Props) {
           </form>
         </div>
         <div className="ml-4 flex items-center md:ml-6">
+          {isDateDefault && (
+            <button
+              onClick={() => setIsDateDefault(false)}
+              type="button"
+              className="mr-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              <span className="sr-only">Query Date Time</span>
+              <ClockIcon className="h-6 w-6" aria-hidden="true" />
+            </button>
+          )}
+
+          {!isDateDefault && (
+            <Datetime
+              initialValue={date}
+              onChange={(a: any) => {
+                if (a.toDate) {
+                  setDate(a.toDate());
+                }
+              }}
+              className="mr-5"
+              inputProps={{
+                className:
+                  "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+              }}
+              renderView={(mode: any, renderDefault: any) => {
+                // Only for years, months and days view
+                if (mode === "time") return renderDefault();
+
+                return (
+                  <div className="wrapper">
+                    {renderDefault()}
+                    <div className="controls">
+                      <button onClick={() => setIsDateDefault(true)}>
+                        Now
+                      </button>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          )}
+
+          <BranchSelector />
           <button
             type="button"
-            className="rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="ml-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             <span className="sr-only">View notifications</span>
             <BellIcon className="h-6 w-6" aria-hidden="true" />
