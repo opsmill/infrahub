@@ -232,6 +232,125 @@ class DiffRelationshipPropertyQuery(DiffQuery):
         return iter(())
 
 
+class DiffNodePropertiesByIDSRangeQuery(Query):
+    name: str = "diff_node_properties_range_ids"
+    order_by: List[str] = ["a.name"]
+
+    property_type_mapping = {
+        "HAS_VALUE": ("r2", "av"),
+        "HAS_OWNER": ("rel_owner", "owner"),
+        "HAS_SOURCE": ("rel_source", "source"),
+        "IS_PROTECTED": ("rel_isp", "isp"),
+        "IS_VISIBLE": ("rel_isv", "isv"),
+    }
+
+    def __init__(
+        self,
+        ids: List[str],
+        fields: dict = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        account=None,
+        *args,
+        **kwargs,
+    ):
+        self.account = account
+        self.ids = ids
+        self.fields = fields
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["ids"] = self.ids
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (n) WHERE n.uuid IN $ids
+        MATCH p = ((n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE]-(av))
+        """
+
+        if self.fields:
+            query += "\n WHERE all(r IN relationships(p) WHERE ((a.name IN $field_names) AND %s))" % rels_filter
+            self.params["field_names"] = list(self.fields.keys())
+        else:
+            query += "\n WHERE all(r IN relationships(p) WHERE ( %s))" % rels_filter
+
+        self.add_to_query(query)
+
+        self.return_labels = ["n", "a", "av", "r1", "r2"]
+
+        query = """
+        MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
+        MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
+        WHERE all(r IN [rel_isv, rel_isp] WHERE ( %s ))
+        OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
+        WHERE all(r IN [rel_source] WHERE ( %s ))
+        OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
+        WHERE all(r IN [rel_owner] WHERE ( %s ))
+        """ % (
+            rels_filter,
+            rels_filter,
+            rels_filter,
+        )
+        self.add_to_query(query)
+
+        self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp", "source", "rel_source", "owner", "rel_owner"])
+
+    def get_attributes_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
+        # TODO NEED TO REVISIT HOW TO INTEGRATE THE PERMISSION SYSTEM
+
+        attrs_by_node = defaultdict(lambda: {"node": None, "attrs": None})
+
+        for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
+            node_id = result.get("n").get("uuid")
+            attr_name = result.get("a").get("name")
+            attr = AttrToProcess(
+                name=attr_name,
+                type=result.get("a").get("type"),
+                attr_labels=result.get("a").labels,
+                attr_id=result.get("a").element_id,
+                attr_uuid=result.get("a").get("uuid"),
+                attr_value_id=result.get("av").element_id,
+                attr_value_uuid=result.get("av").get("uuid"),
+                updated_at=result.get("r2").get("from"),
+                value=result.get("av").get("value"),
+                # permission=result.permission_score,
+                branch=self.branch.name,
+                is_inherited=None,
+                is_protected=result.get("isp").get("value"),
+                is_visible=result.get("isv").get("value"),
+                source_uuid=None,
+                source_labels=None,
+                owner_uuid=None,
+                owner_labels=None,
+            )
+
+            if self.include_source and result.get("source"):
+                attr.source_uuid = result.get("source").get("uuid")
+                attr.source_labels = result.get("source").labels
+
+            if self.include_owner and result.get("owner"):
+                attr.owner_uuid = result.get("owner").get("uuid")
+                attr.owner_labels = result.get("owner").labels
+
+            if node_id not in attrs_by_node:
+                attrs_by_node[node_id]["node"] = result.get("n")
+                attrs_by_node[node_id]["attrs"] = {}
+
+            attrs_by_node[node_id]["attrs"][attr_name] = attr
+
+        return attrs_by_node
+
+    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> QueryResult:
+        for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
+            if result.get("n").get("uuid") == node_id and result.get("a").get("name") == attr_name:
+                return result
+
+        return None
+
+
 class DiffRelationshipPropertiesByIDSRangeQuery(Query):
     name = "diff_relationship_properties_range_ids"
 

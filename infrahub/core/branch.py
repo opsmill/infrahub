@@ -955,22 +955,16 @@ class Diff:
         The results will be stored in self._results organized by branch.
         """
 
-        # Query all the nodes and the attributes that have been modified in the branch between the two timestamps.
-        query_nodes = await DiffNodeQuery.init(
-            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
-        )
-        await query_nodes.execute(session=session)
-
-        query_attrs = await DiffAttributeQuery.init(
-            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
-        )
-        await query_attrs.execute(session=session)
-
         attrs_to_query = {"nodes": set(), "fields": set(), "attrs": set()}
 
         # ------------------------------------------------------------
         # Process nodes that have been Added or Removed first
         # ------------------------------------------------------------
+        query_nodes = await DiffNodeQuery.init(
+            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+        )
+        await query_nodes.execute(session=session)
+
         for result in query_nodes.get_results():
             node_id = result.get("n").get("uuid")
 
@@ -1010,6 +1004,11 @@ class Diff:
         #  We don't process the properties right away, instead we'll identify the node that mostlikely already exist
         #  and we'll query the current value to fully understand what we need to do with it.
         # ------------------------------------------------------------
+        query_attrs = await DiffAttributeQuery.init(
+            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+        )
+        await query_attrs.execute(session=session)
+
         for result in query_attrs.get_results():
             node_id = result.get("n").get("uuid")
             branch_name = result.get("r2").get("branch")
@@ -1024,7 +1023,7 @@ class Diff:
                     "changed_at": None,
                     "action": DiffAction.UPDATED,
                     "rel_id": None,
-                    "branch": None,
+                    "branch": branch_name,
                 }
 
                 self._results[branch_name]["nodes"][node_id] = NodeDiffElement(**item)

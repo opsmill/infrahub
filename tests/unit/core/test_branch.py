@@ -329,7 +329,46 @@ async def test_diff_get_files(session, rpc_client: InfrahubRpcClientTesting, def
     assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_nodes(session, base_dataset_02):
+async def test_diff_get_nodes(session, default_branch, repos_in_main):
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2.commit.value = "bbbbbbbbbbbbbbbb"
+    time01 = Timestamp()
+    await repo01b2.save(session=session, at=time01)
+
+    diff = await Diff.init(branch=branch2, session=session)
+    nodes = await diff.get_nodes(session=session)
+
+    expected_response_branch2_repo01 = {
+        "branch": None,
+        "labels": ["Node", "Repository"],
+        "id": repo01b2.id,
+        "action": "updated",
+        "changed_at": None,
+        "attributes": [
+            {
+                "id": repo01b2.commit.id,
+                "name": "commit",
+                "action": "updated",
+                "changed_at": None,
+                "properties": [
+                    {
+                        "branch": "branch2",
+                        "type": "HAS_VALUE",
+                        "action": "updated",
+                        "value": None,
+                        "changed_at": time01.to_string(),
+                    }
+                ],
+            }
+        ],
+    }
+
+    assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01
+
+
+async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     diff = await Diff.init(branch=branch1, session=session)
