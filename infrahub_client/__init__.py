@@ -415,7 +415,7 @@ class InfrahubClient:
     def __init__(
         self,
         address: str = "http://localhost:8000",
-        default_timeout: int = 5,
+        default_timeout: int = 10,
         retry_on_failure: bool = False,
         retry_delay: int = 5,
         log: Logger = None,
@@ -864,3 +864,55 @@ class InfrahubClient:
         await self.execute_graphql(query=MUTATION_COMMIT_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
+
+    async def get_branch_diff(
+        self,
+        branch_name: str,
+        branch_only: bool = True,
+        diff_from: str = None,
+        diff_to: str = None,
+    ):
+        QUERY_BRANCH_DIFF = """
+        query($branch_name: String!, $branch_only: Boolean! ) {
+            diff(branch: $branch_name, branch_only: $branch_only ) {
+                nodes {
+                    branch
+                    labels
+                    id
+                    changed_at
+                    action
+                    attributes {
+                        name
+                        id
+                        changed_at
+                        action
+                        properties {
+                        action
+                        }
+                    }
+                }
+                relationships {
+                    branch
+                    id
+                    name
+                    properties {
+                        branch
+                        type
+                        changed_at
+                        action
+                    }
+                    changed_at
+                    action
+                    }
+                files {
+                    action
+                    repository
+                    branch
+                }
+            }
+        }
+        """
+        variables = {"branch_name": branch_name, "branch_only": branch_only}
+        response = await self.execute_graphql(query=QUERY_BRANCH_DIFF, variables=variables)
+
+        return response
