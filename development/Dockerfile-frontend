@@ -1,0 +1,10 @@
+FROM node:16-slim
+
+RUN mkdir /source
+
+COPY frontend/package.json  frontend/package-lock.json /source/
+
+WORKDIR /source
+RUN npm install
+
+COPY frontend /source

@@ -155,6 +155,15 @@ def cli_git(context: Context):
         pty=True,
     )
 
+@task
+def cli_frontend(context: Context):
+    """Launch a bash shell inside the running Infrahub container."""
+    context.run(
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run frontend bash",
+        pty=True,
+    )
+
+
 
 @task
 def init(context: Context):
