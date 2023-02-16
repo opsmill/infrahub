@@ -1,3 +1,4 @@
+---
 overwrite: true
 schema: "http://localhost:8000/graphql"
 documents: "./src/graphql/queries/*.ts"
