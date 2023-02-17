@@ -168,6 +168,23 @@ query {
 }
 """
 
+MUTATION_BRANCH_CREATE = """
+mutation ($branch_name: String!, $description: String!, $background_execution: Boolean!, $data_only: Boolean!) {
+    branch_create(background_execution: $background_execution, data: { name: $branch_name, description: $description, is_data_only: $data_only }) {
+        ok
+        object {
+            id
+            name
+            description
+            origin_branch
+            branched_from
+            is_default
+            is_data_only
+        }
+    }
+}
+"""
+
 MUTATION_COMMIT_UPDATE = """
 mutation ($repository_id: String!, $commit: String!) {
     repository_update(data: { id: $repository_id, commit: { value: $commit } }) {
@@ -356,7 +373,7 @@ class BranchData(BaseModel):
     description: Optional[str]
     is_data_only: bool
     is_default: bool
-    origin_branch: str
+    origin_branch: Optional[str]
     branched_from: str
 
 
@@ -574,23 +591,6 @@ class InfrahubClient:
     async def create_branch(
         self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
     ) -> BranchData:
-        MUTATION_BRANCH_CREATE = """
-        mutation ($branch_name: String!, $description: String!, $background_execution: Boolean!, $data_only: Boolean!) {
-            branch_create(background_execution: $background_execution, data: { name: $branch_name, description: $description, is_data_only: $data_only }) {
-                ok
-                object {
-                    id
-                    name
-                    description
-                    origin_branch
-                    branched_from
-                    is_default
-                    is_data_only
-                }
-            }
-        }
-        """
-
         variables = {
             "branch_name": branch_name,
             "data_only": data_only,

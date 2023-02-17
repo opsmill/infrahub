@@ -329,11 +329,17 @@ class BranchType(InfrahubObjectType):
             return [obj.to_graphql(fields=fields) for obj in objs]
 
 
+class BranchDiffPropertyValueType(ObjectType):
+    new = GenericScalar()
+    previous = GenericScalar()
+
+
 class BranchDiffPropertyType(ObjectType):
     branch = String()
     type = String()
     changed_at = String()
     action = String()
+    value = BranchDiffPropertyValueType()
 
 
 class BranchDiffAttributeType(ObjectType):

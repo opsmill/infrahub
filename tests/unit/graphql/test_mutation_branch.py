@@ -80,8 +80,6 @@ async def test_branch_create(db, session, default_branch, car_person_schema, reg
         variable_values={},
     )
 
-    breakpoint()
-
     assert result.errors is None
     assert result.data["branch_create"]["ok"] is True
     assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID

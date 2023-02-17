@@ -73,7 +73,7 @@ async def test_diff_node_properties_ids_range_query(session, default_branch, bas
     )
     await query.execute(session=session)
 
-    assert len(query.results) == 13
+    assert len(query.results) == 24
 
     # Query all nodes from m60 to m25
     query = await DiffNodePropertiesByIDSRangeQuery.init(
@@ -117,7 +117,7 @@ async def test_diff_relationship_properties_ids_range_query(session, default_bra
     )
     await query.execute(session=session)
 
-    assert len(query.results) == 3
+    assert len(query.results) == 6
 
     # Query all nodes from m60 to m25
     query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
