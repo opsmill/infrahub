@@ -448,11 +448,30 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
+            "branch_create": {
+                "ok": True,
+                "object": {
+                    "id": "8927425e-fd89-482a-bcec-aad267eb2c66",
+                    "name": "branch01",
+                    "is_default": False,
+                    "is_data_only": False,
+                    "description": "",
+                    "branched_from": "2023-02-17T09:30:17.811719Z",
+                },
+            }
         }
     }
+
     request_content = json.dumps(
-        {"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01", "background_execution": True}}
+        {
+            "query": MUTATION_BRANCH_CREATE,
+            "variables": {
+                "branch_name": "branch01",
+                "data_only": False,
+                "description": "",
+                "background_execution": True,
+            },
+        }
     ).encode()
 
     httpx_mock.add_response(method="POST", json=response, match_content=request_content)

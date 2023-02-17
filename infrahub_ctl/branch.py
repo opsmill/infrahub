@@ -9,7 +9,7 @@ from rich.table import Table
 
 import infrahub_ctl.config as config
 from infrahub_client import GraphQLError, InfrahubClient
-from infrahub_ctl.utils import calculate_time_diff
+from infrahub_ctl.utils import calculate_time_diff, render_action_rich
 
 app = typer.Typer()
 
@@ -133,13 +133,38 @@ def validate(
 
 
 async def _diff(branch_name: str, diff_from: str, diff_to: str, branch_only: str):
-    Console()
+    console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
 
     response = await client.get_branch_diff(branch_name=branch_name, branch_only=branch_only)
 
-    print(response)
+    attr_padding = " " * 2
+
+    for node in response["diff"]["nodes"]:
+        console.print(f"Node '{node['id']}'")
+        for attr in node["attributes"]:
+            console.print(f"{attr_padding}{attr['name']} {render_action_rich(attr['action'])} ")
+
+            grid = Table.grid(expand=True)
+            grid.add_column(justify="right")
+            grid.add_column(justify="right")
+            grid.add_column(justify="center", width=4)
+            grid.add_column(justify="left")
+            grid.add_column()
+            # grid.add_column(justify="right")
+
+            for prop in attr["properties"]:
+                clean_prop_name = prop["type"].replace("HAS_", "").replace("IS_", "").lower()
+                grid.add_row(
+                    clean_prop_name,
+                    f"[magenta]{prop['value']['previous']}",
+                    "[blue] >> ",
+                    f"[magenta]{prop['value']['new']}",
+                    f"[green]{prop['changed_at']}[/green] ({calculate_time_diff(prop['changed_at'])})",
+                )
+
+            console.print(grid)
 
 
 # ? pendulum.now()

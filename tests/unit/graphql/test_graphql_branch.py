@@ -425,7 +425,7 @@ async def test_branch_diff_with_repositories(db, session, rpc_client, base_datas
                     changed_at
                     action
                     properties {
-                    action
+                        action
                     }
                 }
             }

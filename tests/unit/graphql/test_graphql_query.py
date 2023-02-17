@@ -1131,7 +1131,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
     expected_nodes = [
         {
             "action": "updated",
-            "branch": None,
+            "branch": "main",
             "attributes": [{"action": "updated", "name": "name"}],
             "changed_at": None,
             "id": "c1",
@@ -1139,7 +1139,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
         },
         {
             "action": "updated",
-            "branch": None,
+            "branch": "branch1",
             "attributes": [{"action": "updated", "name": "nbr_seats"}],
             "changed_at": None,
             "id": "c1",

@@ -339,7 +339,7 @@ class BranchDiffPropertyType(ObjectType):
     type = String()
     changed_at = String()
     action = String()
-    value = BranchDiffPropertyValueType()
+    value = Field(BranchDiffPropertyValueType)
 
 
 class BranchDiffAttributeType(ObjectType):

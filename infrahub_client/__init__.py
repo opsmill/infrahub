@@ -887,7 +887,14 @@ class InfrahubClient:
                         changed_at
                         action
                         properties {
-                        action
+                            action
+                            type
+                            changed_at
+                            branch
+                            value {
+                                previous
+                                new
+                            }
                         }
                     }
                 }
@@ -900,14 +907,19 @@ class InfrahubClient:
                         type
                         changed_at
                         action
+                        value {
+                            previous
+                            new
+                        }
                     }
                     changed_at
                     action
-                    }
+                }
                 files {
                     action
                     repository
                     branch
+                    location
                 }
             }
         }
