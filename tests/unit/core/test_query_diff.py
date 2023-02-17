@@ -1,5 +1,8 @@
+from collections import defaultdict
+
 from infrahub.core import get_branch
 from infrahub.core.query.diff import (
+    DiffAttributeQuery,
     DiffNodePropertiesByIDSRangeQuery,
     DiffNodeQuery,
     DiffRelationshipPropertiesByIDSRangeQuery,
@@ -41,6 +44,63 @@ async def test_diff_node_query(session, default_branch, base_dataset_02):
     await query.execute(session=session)
 
     assert len(query.results) == 5
+
+
+async def test_diff_attribute_query(session, default_branch, base_dataset_02):
+    branch1 = await get_branch(branch="branch1", session=session)
+
+    def group_results_per_node(results):
+        results_per_node = defaultdict(list)
+        for result in query.results:
+            results_per_node[result.get("n").get("uuid")].append(result)
+
+        return results_per_node
+
+    # Query all attributes from the creation of the branch (m45) to now
+    query = await DiffAttributeQuery.init(
+        session=session,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m45"],
+        diff_to=base_dataset_02["time0"],
+    )
+    await query.execute(session=session)
+
+    results_per_node = group_results_per_node(query.results)
+
+    assert sorted(results_per_node.keys()) == ["c1", "c2", "c3"]
+
+    assert len(results_per_node["c1"]) == 3
+    assert len(results_per_node["c2"]) == 12
+    assert len(results_per_node["c3"]) == 12
+
+    # Query all attributes from m30 to now
+    query = await DiffAttributeQuery.init(
+        session=session,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m30"],
+        diff_to=base_dataset_02["time0"],
+    )
+    await query.execute(session=session)
+
+    results_per_node = group_results_per_node(query.results)
+    assert sorted(results_per_node.keys()) == ["c1", "c2"]
+
+    assert len(results_per_node["c1"]) == 3
+    assert len(results_per_node["c2"]) == 12
+
+    # Query all nodes from m45 to m30
+    query = await DiffAttributeQuery.init(
+        session=session,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m45"],
+        diff_to=base_dataset_02["time_m30"],
+    )
+    await query.execute(session=session)
+
+    results_per_node = group_results_per_node(query.results)
+    assert sorted(results_per_node.keys()) == ["c3"]
+
+    assert len(results_per_node["c3"]) == 12
 
 
 async def test_diff_node_properties_ids_range_query(session, default_branch, base_dataset_02):

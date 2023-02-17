@@ -83,12 +83,13 @@ class DiffAttributeQuery(DiffQuery):
         # TODO need to improve the query to capture an object that has been deleted into the branch
         query = """
         MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
-        WHERE (r2.branch IN $branch_names AND r2.from >= $from ) OR (r2.branch IN $branch_names AND r2.to <= $from)
+        WHERE (r2.branch IN $branch_names AND r2.from >= $from AND r2.from <= $to ) OR (r2.branch IN $branch_names AND r2.from >= $from AND r2.to <= $from)
         """
 
         self.add_to_query(query)
         self.params["branch_names"] = self.branch_names
         self.params["from"] = self.diff_from.to_string()
+        self.params["to"] = self.diff_to.to_string()
 
         self.return_labels = ["n", "a", "ap", "r1", "r2"]
 
