@@ -66,8 +66,8 @@ async def _list():
     console.print(table)
 
 
-@app.command()
-def list(
+@app.command("list")
+def list_branch(
     config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """List all existing branches."""
@@ -182,7 +182,9 @@ async def _diff(branch_name: str, diff_from: str, diff_to: str, branch_only: str
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
 
-    response = await client.get_branch_diff(branch_name=branch_name, branch_only=branch_only)
+    response = await client.get_branch_diff(
+        branch_name=branch_name, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
+    )
 
     attr_padding = " " * 2
 

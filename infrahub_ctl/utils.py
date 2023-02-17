@@ -76,3 +76,5 @@ def render_action_rich(value):
         return f"[magenta]{value.upper()}[/magenta]"
     if value == "deleted":
         return f"[red]{value.upper()}[/red]"
+
+    return value.upper()

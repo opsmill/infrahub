@@ -463,7 +463,7 @@ class TransformPythonData(BaseModel):
     rebase: Optional[bool]
 
 
-class InfrahubClient:
+class InfrahubClient:  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
 
     def __init__(
@@ -644,17 +644,13 @@ class InfrahubClient:
 
         return response["branch_rebase"]["ok"]
 
-    async def branch_validate(
-        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
-    ) -> BranchData:
+    async def branch_validate(self, branch_name: str) -> BranchData:
         variables = {"branch_name": branch_name}
         response = await self.execute_graphql(query=MUTATION_BRANCH_VALIDATE, variables=variables)
 
         return response["branch_validate"]["ok"]
 
-    async def branch_merge(
-        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
-    ) -> BranchData:
+    async def branch_merge(self, branch_name: str) -> BranchData:
         variables = {"branch_name": branch_name}
         response = await self.execute_graphql(query=MUTATION_BRANCH_MERGE, variables=variables)
 
@@ -932,8 +928,8 @@ class InfrahubClient:
         diff_to: str = None,
     ):
         QUERY_BRANCH_DIFF = """
-        query($branch_name: String!, $branch_only: Boolean! ) {
-            diff(branch: $branch_name, branch_only: $branch_only ) {
+        query($branch_name: String!, $branch_only: Boolean!, $diff_from: String!, $diff_to: String! ) {
+            diff(branch: $branch_name, branch_only: $branch_only, time_from: $diff_from, time_to: $diff_to ) {
                 nodes {
                     branch
                     labels
@@ -983,7 +979,7 @@ class InfrahubClient:
             }
         }
         """
-        variables = {"branch_name": branch_name, "branch_only": branch_only}
+        variables = {"branch_name": branch_name, "branch_only": branch_only, "diff_from": diff_from, "diff_to": diff_to}
         response = await self.execute_graphql(query=QUERY_BRANCH_DIFF, variables=variables)
 
         return response
