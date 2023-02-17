@@ -946,7 +946,11 @@ class Diff:
         if not self._calculated_diff_nodes_at:
             await self._calculate_diff_nodes(session=session)
 
-        return {branch_name: data["nodes"] for branch_name, data in self._results.items()}
+        return {
+            branch_name: data["nodes"]
+            for branch_name, data in self._results.items()
+            if not self.branch_only or branch_name == self.branch.name
+        }
 
     async def _calculate_diff_nodes(self, session: AsyncSession):
         """Calculate the diff for all the nodes and attributes.
@@ -1148,7 +1152,11 @@ class Diff:
         if not self._calculated_diff_rels_at:
             await self._calculated_diff_rels(session=session)
 
-        return {branch_name: data["rels"] for branch_name, data in self._results.items()}
+        return {
+            branch_name: data["rels"]
+            for branch_name, data in self._results.items()
+            if not self.branch_only or branch_name == self.branch.name
+        }
 
     async def _calculated_diff_rels(self, session: AsyncSession):
         """Calculate the diff for all the relationships between Nodes.
@@ -1322,7 +1330,11 @@ class Diff:
         if not self._calculated_diff_files_at:
             await self._calculated_diff_files(session=session, rpc_client=rpc_client)
 
-        return {branch_name: data["files"] for branch_name, data in self._results.items()}
+        return {
+            branch_name: data["files"]
+            for branch_name, data in self._results.items()
+            if not self.branch_only or branch_name == self.branch.name
+        }
 
     async def _calculated_diff_files(self, session: AsyncSession, rpc_client: InfrahubRpcClient):
         self._results[self.branch.name]["files"] = await self.get_files_repositories_for_branch(
