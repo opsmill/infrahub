@@ -13,16 +13,13 @@ from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
+    DiffNodePropertiesByIDSRangeQuery,
     DiffNodeQuery,
     DiffRelationshipPropertiesByIDSRangeQuery,
     DiffRelationshipPropertyQuery,
     DiffRelationshipQuery,
 )
-from infrahub.core.query.node import (
-    NodeDeleteQuery,
-    NodeListGetAttributeQuery,
-    NodeListGetInfoQuery,
-)
+from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
@@ -242,7 +239,9 @@ class Branch(StandardNode):
         end_time: Union[Timestamp, str],
         include_outside_parentheses: bool = False,
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph between start_time and end_time."""
+        """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph.
+        The goal is to return all the values that are valid during this timerange.
+        """
 
         filters = []
         params = {}
@@ -261,8 +260,8 @@ class Branch(StandardNode):
 
         for rel in rel_labels:
             filters_per_rel = [
-                f"({rel}.branch in $branches AND {rel}.from >= $start_time AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
-                f"({rel}.branch in $branches AND (({rel}.from >= $start_time AND {rel}.from <= $end_time) OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
+                f"({rel}.branch in $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
+                f"({rel}.branch in $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
             ]
 
             if not include_outside_parentheses:
@@ -955,7 +954,7 @@ class Diff:
         The results will be stored in self._results organized by branch.
         """
 
-        attrs_to_query = {"nodes": set(), "fields": set(), "attrs": set()}
+        # attrs_to_query = {"nodes": set(), "fields": set(), "attrs": set()}
 
         # ------------------------------------------------------------
         # Process nodes that have been Added or Removed first
@@ -1004,6 +1003,7 @@ class Diff:
         #  We don't process the properties right away, instead we'll identify the node that mostlikely already exist
         #  and we'll query the current value to fully understand what we need to do with it.
         # ------------------------------------------------------------
+        attrs_to_query = set()
         query_attrs = await DiffAttributeQuery.init(
             session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
@@ -1030,10 +1030,11 @@ class Diff:
 
             # Check if the Attribute is already present or if it was added during this time frame.
             attr_name = result.get("a").get("name")
+            attr_id = result.get("a").get("uuid")
             if attr_name not in self._results[branch_name]["nodes"][node_id].attributes.keys():
                 node = self._results[branch_name]["nodes"][node_id]
                 item = {
-                    "id": result.get("a").get("uuid"),
+                    "id": attr_id,
                     "db_id": result.get("a").element_id,
                     "name": attr_name,
                     "rel_id": result.get("r1").element_id,
@@ -1065,39 +1066,37 @@ class Diff:
                     item["action"] = DiffAction.REMOVED
                     item["changed_at"] = attr_from
 
-                    attrs_to_query["nodes"].add(node_id)
-                    attrs_to_query["fields"].add(attr_name)
+                    attrs_to_query.add(attr_id)
                 else:
                     item["action"] = DiffAction.UPDATED
                     item["changed_at"] = None
 
-                    attrs_to_query["nodes"].add(node_id)
-                    attrs_to_query["fields"].add(attr_name)
+                    attrs_to_query.add(attr_id)
 
                 self._results[branch_name]["nodes"][node_id].attributes[attr_name] = NodeAttributeDiffElement(**item)
 
         # ------------------------------------------------------------
         # Query the current value for all attributes that have been updated
         # ------------------------------------------------------------
-        origin_attr_query = await NodeListGetAttributeQuery.init(
+        origin_attr_query = await DiffNodePropertiesByIDSRangeQuery.init(
             session=session,
-            ids=list(attrs_to_query["nodes"]),
-            branch=self.origin_branch,
-            at=self.diff_to,
-            include_source=True,
-            include_owner=True,
+            ids=list(attrs_to_query),
+            branch=self.branch,
+            diff_from=self.diff_from,
+            diff_to=self.diff_to,
         )
+
         await origin_attr_query.execute(session=session)
 
         for result in query_attrs.get_results():
             node_id = result.get("n").get("uuid")
             branch_name = result.get("r2").get("branch")
             branch_status = result.get("r2").get("status")
+            attr_id = result.get("a").get("uuid")
             attr_name = result.get("a").get("name")
             prop_type = result.get("r2").type
 
-            origin_attr = origin_attr_query.get_result_by_id_and_name(node_id, attr_name)
-            origin_rel_name = origin_attr_query.property_type_mapping[prop_type][0]
+            origin_attr = origin_attr_query.get_results_by_id_and_prop_type(attr_id=attr_id, prop_type=prop_type)
 
             # Process the Property of the Attribute
             prop_to = None
@@ -1117,10 +1116,12 @@ class Diff:
                 "db_id": result.get("ap").element_id,
                 "rel_id": result.get("r2").element_id,
                 "origin_rel_id": None,
+                "value": {"new": result.get("ap").get("value"), "previous": None},
             }
 
             if origin_attr:
-                item["origin_rel_id"] = origin_attr.get(origin_rel_name).element_id
+                item["origin_rel_id"] = origin_attr[0].get("r").element_id
+                item["value"]["previous"] = origin_attr[0].get("ap").get("value")
 
             if not origin_attr and prop_from >= self.diff_from and branch_status == RelationshipStatus.ACTIVE.value:
                 item["action"] = DiffAction.ADDED

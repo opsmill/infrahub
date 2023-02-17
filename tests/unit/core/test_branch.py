@@ -333,7 +333,7 @@ async def test_diff_get_nodes(session, default_branch, repos_in_main):
     branch2 = await create_branch(branch_name="branch2", session=session)
 
     repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
-    repo01b2.commit.value = "bbbbbbbbbbbbbbbb"
+    repo01b2.commit.value = "1234567890"
     time01 = Timestamp()
     await repo01b2.save(session=session, at=time01)
 
@@ -341,7 +341,7 @@ async def test_diff_get_nodes(session, default_branch, repos_in_main):
     nodes = await diff.get_nodes(session=session)
 
     expected_response_branch2_repo01 = {
-        "branch": None,
+        "branch": "branch2",
         "labels": ["Node", "Repository"],
         "id": repo01b2.id,
         "action": "updated",
@@ -357,7 +357,10 @@ async def test_diff_get_nodes(session, default_branch, repos_in_main):
                         "branch": "branch2",
                         "type": "HAS_VALUE",
                         "action": "updated",
-                        "value": None,
+                        "value": {
+                            "new": "1234567890",
+                            "previous": "aaaaaaaaaaa",
+                        },
                         "changed_at": time01.to_string(),
                     }
                 ],
@@ -375,7 +378,7 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     nodes = await diff.get_nodes(session=session)
 
     expected_response_main_c1 = {
-        "branch": None,
+        "branch": "main",
         "labels": ["Car"],
         "id": "c1",
         "action": "updated",
@@ -391,17 +394,17 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
                         "branch": "main",
                         "type": "HAS_VALUE",
                         "action": "updated",
-                        "value": None,
+                        "value": {"new": "volt", "previous": "accord"},
                         "changed_at": base_dataset_02["time_m20"],
                     }
                 ],
             }
         ],
     }
-    assert DeepDiff(nodes["main"]["c1"].to_graphql(), expected_response_main_c1, ignore_order=True).to_dict() == {}
+    assert nodes["main"]["c1"].to_graphql() == expected_response_main_c1
 
     expected_response_branch1_c1 = {
-        "branch": None,
+        "branch": "branch1",
         "labels": ["Car"],
         "id": "c1",
         "action": "updated",
@@ -417,14 +420,14 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
                         "branch": "branch1",
                         "type": "IS_PROTECTED",
                         "action": "updated",
-                        "value": None,
+                        "value": {"new": True, "previous": False},
                         "changed_at": base_dataset_02["time_m20"],
                     },
                     {
                         "branch": "branch1",
                         "type": "HAS_VALUE",
                         "action": "updated",
-                        "value": None,
+                        "value": {"new": 4, "previous": 5},
                         "changed_at": base_dataset_02["time_m20"],
                     },
                 ],
