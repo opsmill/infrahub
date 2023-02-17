@@ -67,3 +67,12 @@ def find_files(extension: Union[str, List[str]], directory=".", recursive: bool 
             files.extend(glob.glob(f"{directory}/**/*.{ext}", recursive=recursive))
             files.extend(glob.glob(f"{directory}/**/.*.{ext}", recursive=recursive))
     return files
+
+
+def render_action_rich(value):
+    if value == "created":
+        return f"[green]{value.upper()}[/green]"
+    if value == "updated":
+        return f"[magenta]{value.upper()}[/magenta]"
+    if value == "deleted":
+        return f"[red]{value.upper()}[/red]"
