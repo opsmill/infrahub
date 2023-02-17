@@ -185,6 +185,43 @@ mutation ($branch_name: String!, $description: String!, $background_execution: B
 }
 """
 
+MUTATION_BRANCH_REBASE = """
+mutation ($branch_name: String!) {
+    branch_rebase(data: { name: $branch_name }){
+        ok
+        object {
+            name
+            branched_from
+        }
+    }
+}
+"""
+
+MUTATION_BRANCH_VALIDATE = """
+mutation ($branch_name: String!) {
+    branch_validate(data: { name: $branch_name }) {
+        ok
+        messages
+        object {
+            id
+            name
+        }
+    }
+}
+"""
+
+MUTATION_BRANCH_MERGE = """
+mutation ($branch_name: String!) {
+    branch_merge(data: { name: $branch_name }) {
+        ok
+        object {
+            id
+            name
+        }
+    }
+}
+"""
+
 MUTATION_COMMIT_UPDATE = """
 mutation ($repository_id: String!, $commit: String!) {
     repository_update(data: { id: $repository_id, commit: { value: $commit } }) {
@@ -600,6 +637,28 @@ class InfrahubClient:
         response = await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
 
         return BranchData(**response["branch_create"]["object"])
+
+    async def branch_rebase(self, branch_name: str) -> BranchData:
+        variables = {"branch_name": branch_name}
+        response = await self.execute_graphql(query=MUTATION_BRANCH_REBASE, variables=variables)
+
+        return response["branch_rebase"]["ok"]
+
+    async def branch_validate(
+        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
+    ) -> BranchData:
+        variables = {"branch_name": branch_name}
+        response = await self.execute_graphql(query=MUTATION_BRANCH_VALIDATE, variables=variables)
+
+        return response["branch_validate"]["ok"]
+
+    async def branch_merge(
+        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
+    ) -> BranchData:
+        variables = {"branch_name": branch_name}
+        response = await self.execute_graphql(query=MUTATION_BRANCH_MERGE, variables=variables)
+
+        return BranchData(**response["branch_merge"]["ok"])
 
     async def get_list_branches(self) -> Dict[str, BranchData]:
         data = await self.execute_graphql(query=QUERY_ALL_BRANCHES)

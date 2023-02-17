@@ -102,14 +102,44 @@ def create(
     aiorun(_create(branch_name=branch_name, description=description, data_only=data_only))
 
 
+async def _rebase(branch_name: str):
+    console = Console()
+
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+
+    try:
+        await client.branch_rebase(branch_name=branch_name)
+    except GraphQLError as exc:
+        for error in exc.errors:
+            console.print(f"[red]{error['message']}")
+        sys.exit(1)
+
+    console.print(f"Branch '{branch_name}' rebased successfully.")
+
+
 @app.command()
 def rebase(
     branch_name: str,
     config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
-    """Rebase a Branch with main (NOT IMPLEMENTED YET)."""
+    """Rebase a Branch with main."""
     config.load_and_exit(config_file_name=config_file)
-    # aiorun(_rebase(branch_name=branch_name))
+    aiorun(_rebase(branch_name=branch_name))
+
+
+async def _merge(branch_name: str):
+    console = Console()
+
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+
+    try:
+        await client.branch_merge(branch_name=branch_name)
+    except GraphQLError as exc:
+        for error in exc.errors:
+            console.print(f"[red]{error['message']}")
+        sys.exit(1)
+
+    console.print(f"Branch '{branch_name}' merged successfully.")
 
 
 @app.command()
@@ -119,7 +149,22 @@ def merge(
 ):
     """Merge a Branch with main (NOT IMPLEMENTED YET)."""
     config.load_and_exit(config_file_name=config_file)
-    # aiorun(_merge(branch_name=branch_name))
+    aiorun(_merge(branch_name=branch_name))
+
+
+async def _validate(branch_name: str):
+    console = Console()
+
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+
+    try:
+        await client.branch_validate(branch_name=branch_name)
+    except GraphQLError as exc:
+        for error in exc.errors:
+            console.print(f"[red]{error['message']}")
+        sys.exit(1)
+
+    console.print(f"Branch '{branch_name}' is valid.")
 
 
 @app.command()
@@ -129,7 +174,7 @@ def validate(
 ):
     """Validate if a branch has some conflict and is passing all the tests (NOT IMPLEMENTED YET)."""
     config.load_and_exit(config_file_name=config_file)
-    # aiorun(_validate(branch_name=branch_name))
+    aiorun(_validate(branch_name=branch_name))
 
 
 async def _diff(branch_name: str, diff_from: str, diff_to: str, branch_only: str):
