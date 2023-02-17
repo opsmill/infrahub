@@ -30,7 +30,7 @@ async def _list():
             console.print(f"[red]{error}")
         sys.exit(1)
 
-    table = Table(title=f"List of all branches")
+    table = Table(title="List of all branches")
 
     table.add_column("Name", justify="right", style="cyan", no_wrap=True)
     table.add_column("Description")

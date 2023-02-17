@@ -85,8 +85,8 @@ async def test_branch_create(db, session, default_branch, car_person_schema, reg
     assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
     assert result.data["branch_create"]["object"]["name"] == "branch2"
     assert result.data["branch_create"]["object"]["description"] == ""
-    assert result.data["branch_create"]["object"]["is_data_only"] == True
-    assert result.data["branch_create"]["object"]["is_default"] == False
+    assert result.data["branch_create"]["object"]["is_data_only"] is True
+    assert result.data["branch_create"]["object"]["is_default"] is False
     assert result.data["branch_create"]["object"]["branched_from"] is not None
 
     assert await Branch.get_by_name(session=session, name="branch2")
@@ -129,7 +129,7 @@ async def test_branch_create(db, session, default_branch, car_person_schema, reg
     assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
     assert result.data["branch_create"]["object"]["name"] == "branch3"
     assert result.data["branch_create"]["object"]["description"] == "my description"
-    assert result.data["branch_create"]["object"]["is_data_only"] == False
+    assert result.data["branch_create"]["object"]["is_data_only"] is False
 
 
 async def test_branch_create_with_repositories(
