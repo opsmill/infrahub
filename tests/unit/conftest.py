@@ -166,7 +166,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     MATCH (b0:Branch { name: $main_branch })
     MATCH (b1:Branch { name: $branch1 })
 
-    CREATE (c1:Car { uuid: "c1" })
+    CREATE (c1:Node:Car { uuid: "c1", kind: "Car" })
     CREATE (c1)-[:IS_PART_OF { from: $time_m60, status: "active" }]->(b0)
 
     CREATE (bool_true:Boolean { value: true })
@@ -209,7 +209,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c2:Car { uuid: "c2" })
+    CREATE (c2:Node:Car { uuid: "c2", kind: "Car" })
     CREATE (c2)-[:IS_PART_OF {from: $time_m20, status: "active"}]->(b0)
 
     CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
@@ -221,8 +221,8 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m20}]->(c2at3)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m20}]->(c2at4)
 
-    CREATE (c2av11:AttributeValue { value: "odyssey"})
-    CREATE (c2av21:AttributeValue { value: 8})
+    CREATE (c2av11:AttributeValue { value: "odyssey" })
+    CREATE (c2av21:AttributeValue { value: 8 })
 
     CREATE (c2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c2av11)
     CREATE (c2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_false)
@@ -240,7 +240,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_false)
     CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c3:Car { uuid: "c3" })
+    CREATE (c3:Node:Car { uuid: "c3", kind: "Car" })
     CREATE (c3)-[:IS_PART_OF {from: $time_m40, status: "active"}]->(b1)
 
     CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
@@ -271,7 +271,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bool_false)
     CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (p1:Person { uuid: "p1" })
+    CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
     CREATE (p1)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p1at1)
@@ -280,7 +280,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p2:Person { uuid: "p2" })
+    CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
     CREATE (p2)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p2at1)
@@ -289,7 +289,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
     CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p3:Person { uuid: "p3" })
+    CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
     CREATE (p3)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p3at1)
@@ -465,7 +465,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
     CREATE (green:AttributeValue { value: "green"})
 
     // TAG 1 - BLUE
-    CREATE (t1:Person { uuid: "p1" })
+    CREATE (t1:Node:Tag { uuid: "p1", kind: "Tag" })
     CREATE (t1)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
 
     CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name"})
@@ -476,7 +476,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
     CREATE (t1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 2 - RED
-    CREATE (t2:Person { uuid: "p1" })
+    CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag" })
     CREATE (t2)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
 
     CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name"})
@@ -487,7 +487,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
     CREATE (t2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 3 - GREEN
-    CREATE (t3:Person { uuid: "p1" })
+    CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag" })
     CREATE (t3)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
 
     CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name"})
@@ -503,7 +503,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
     //    primary Tag: Blue
     //  firstname value in main keeps changing every 20s using the day of the week
 
-    CREATE (p1:Person { uuid: "p1" })
+    CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
     CREATE (p1)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
 
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
@@ -554,7 +554,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
     //  firstname and lastname values in branch2 changes at m80 before the branch is rebase at m30
     //  firstname value in branch2 changes again at m20 after the branch has been rebased
 
-    CREATE (p2:Person { uuid: "p2" })
+    CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
     CREATE (p2)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
 
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
@@ -587,7 +587,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
     //    tags: None
     //    primary Tag: Red
 
-    CREATE (p3:Person { uuid: "p3" })
+    CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
     CREATE (p3)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
 
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})

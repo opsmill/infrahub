@@ -432,7 +432,7 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
 
     expected_response_main_c1 = {
         "branch": "main",
-        "labels": ["Car"],
+        "labels": ["Car", "Node"],
         "id": "c1",
         "action": "updated",
         "changed_at": None,
@@ -458,7 +458,7 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
 
     expected_response_branch1_c1 = {
         "branch": "branch1",
-        "labels": ["Car"],
+        "labels": ["Car", "Node"],
         "id": "c1",
         "action": "updated",
         "changed_at": None,

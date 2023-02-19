@@ -13,9 +13,8 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.core.schema import NodeSchema
-
-    from . import Node
 
 # pylint: disable=consider-using-f-string,redefined-builtin
 
@@ -111,12 +110,13 @@ class NodeCreateQuery(NodeQuery):
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["uuid"] = str(uuid.uuid4())
         self.params["branch"] = self.branch.name
+        self.params["kind"] = self.node.get_kind()
 
         query = (
             """
         MATCH (b:Branch { name: $branch })
-        CREATE (n:Node:%s { uuid: $uuid })
-        CREATE (n)-[r:IS_PART_OF { status: "active", from: $at}]->(b)
+        CREATE (n:Node:%s { uuid: $uuid, kind: $kind })
+        CREATE (n)-[r:IS_PART_OF { status: "active", from: $at }]->(b)
         """
             % self.node.get_kind()
         )
