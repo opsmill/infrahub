@@ -65,7 +65,7 @@ class TransformNotFoundError(TransformError):
 class BranchNotFound(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier
-        self.message = message
+        self.message = message or f"Branch: {identifier} not found."
         super().__init__(self.message)
 
 

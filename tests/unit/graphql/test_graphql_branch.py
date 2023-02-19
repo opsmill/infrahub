@@ -224,6 +224,29 @@ async def test_branch_rebase(db, session, default_branch, car_person_schema):
     assert new_branch2.branched_from != branch2.branched_from
 
 
+async def test_branch_rebase_wrong_branch(db, session, default_branch, car_person_schema):
+    query = """
+    mutation {
+        branch_rebase(data: { name: "branch2" }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Branch: branch2 not found."
+
+
 async def test_branch_validate(db, session, base_dataset_02, register_core_models_schema):
     branch1 = await Branch.get_by_name(session=session, name="branch1")
 
