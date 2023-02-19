@@ -107,7 +107,7 @@ async def simple_dataset_01(session, empty_database):
 
 
 @pytest.fixture
-async def base_dataset_02(session, default_branch, car_person_schema):
+async def base_dataset_02(session, default_branch: Branch, car_person_schema):
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
 
     To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
@@ -150,7 +150,11 @@ async def base_dataset_02(session, default_branch, car_person_schema):
         "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
     }
 
-    # Create new Branch
+    # Update Main Branch and Create new Branch1
+    default_branch.created_at = params["time_m60"]
+    default_branch.branched_from = params["time_m60"]
+    await default_branch.save(session=session)
+
     branch1 = Branch(
         name="branch1",
         status="OPEN",
@@ -158,6 +162,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
         is_default=False,
         is_data_only=True,
         branched_from=params["time_m45"],
+        created_at=params["time_m45"],
     )
     await branch1.save(session=session)
     registry.branch[branch1.name] = branch1
@@ -321,7 +326,7 @@ async def base_dataset_02(session, default_branch, car_person_schema):
 
 
 @pytest.fixture
-async def base_dataset_03(session, default_branch, person_tag_schema):
+async def base_dataset_03(session, default_branch: Branch, person_tag_schema):
     """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships
 
     To recreate a deterministic timeline, there are 20 timestamps that are being created ahead of time:
@@ -365,14 +370,19 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
         params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_iso8601_string()
 
     # ---- Create all Branches and register them in the Registry -----------------
+    # Update Main Branch
+    default_branch.created_at = params["time_m120"]
+    default_branch.branched_from = params["time_m120"]
+    await default_branch.save(session=session)
+
     branches = (
-        ("branch1", "First Branch", "time_m100"),
-        ("branch2", "First Branch", "time_m30"),
-        ("branch3", "First Branch", "time_m70"),
-        ("branch4", "First Branch", "time_m40"),
+        ("branch1", "First Branch", "time_m100", "time_m100"),
+        ("branch2", "First Branch", "time_m90", "time_m30"),
+        ("branch3", "First Branch", "time_m70", "time_m70"),
+        ("branch4", "First Branch", "time_m40", "time_m40"),
     )
 
-    for branch_name, description, branched_from in branches:
+    for branch_name, description, created_at, branched_from in branches:
         obj = Branch(
             name=branch_name,
             status="OPEN",
@@ -380,6 +390,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
             is_default=False,
             is_data_only=True,
             branched_from=params[branched_from],
+            created_at=params[created_at],
         )
         await obj.save(session=session)
         registry.branch[obj.name] = obj
@@ -965,7 +976,7 @@ async def register_internal_models_schema(default_branch):
 
 
 @pytest.fixture
-async def register_core_models_schema(default_branch, register_internal_models_schema):
+async def register_core_models_schema(default_branch: Branch, register_internal_models_schema):
     schema = SchemaRoot(**core_models)
     await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 

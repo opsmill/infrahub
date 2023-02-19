@@ -142,10 +142,9 @@ class Branch(StandardNode):
         """Return all the names of the branches that are constituing this branch with the associated times."""
 
         at = Timestamp(at)
-        default_branch = config.SETTINGS.main.default_branch
 
-        if self.name == default_branch:
-            return {default_branch: at.to_string()}
+        if self.is_default:
+            return {self.name: at.to_string()}
 
         time_default_branch = Timestamp(self.branched_from)
 
@@ -155,9 +154,40 @@ class Branch(StandardNode):
             time_default_branch = at
 
         return {
-            default_branch: time_default_branch.to_string(),
+            self.origin_branch: time_default_branch.to_string(),
             self.name: at.to_string(),
         }
+
+    def get_branches_and_times_for_range(
+        self, start_time: Timestamp, end_time: Timestamp
+    ) -> Tuple[Dict[str, str], Dict[str, str]]:
+        """Return the names of the branches that are constituing this branch with the start and end times."""
+
+        start = {}
+        end = {}
+
+        time_branched_from = Timestamp(self.branched_from)
+        time_created_at = Timestamp(self.created_at)
+
+        # Ensure start time is not older than the creation of the branch (time_created_at)
+        time_query_start = start_time
+        if start_time < time_created_at:
+            time_query_start = time_created_at
+
+        start[self.name] = time_query_start.to_string()
+
+        # START
+        if not self.is_default and time_query_start <= time_branched_from:
+            start[self.origin_branch] = time_branched_from.to_string()
+        elif not self.is_default and time_query_start > time_branched_from:
+            start[self.origin_branch] = time_query_start.to_string()
+
+        # END
+        end[self.name] = end_time.to_string()
+        if not self.is_default:
+            end[self.origin_branch] = end_time.to_string()
+
+        return start, end
 
     def get_query_filter_branch_to_node(
         self,
@@ -291,6 +321,41 @@ class Branch(StandardNode):
 
         return filters, params
 
+    def get_query_filter_relationships_diff(
+        self,
+        rel_labels: list,
+        diff_from: Timestamp,
+        diff_to: Timestamp,
+        include_outside_parentheses: bool = False,
+    ) -> Tuple[List, Dict]:
+        """Generate a CYPHER Query filter to query all events that are applicable to a given branch based
+        - The time when the branch as created
+        - The branched_from time of the branch
+        - The diff_to and diff_from time as provided
+        """
+
+        if not isinstance(rel_labels, list):
+            raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
+
+        # branches_times = self.get_branches_and_times_to_query(at=)
+
+        # params["branches"] = list(branches_times.keys())
+        # params["start_time"] = start_time.to_string()
+        # params["end_time"] = end_time.to_string()
+
+        # for rel in rel_labels:
+        #     filters_per_rel = [
+        #         f"({rel}.branch in $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
+        #         f"({rel}.branch in $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
+        #     ]
+
+        #     if not include_outside_parentheses:
+        #         filters.append("\n OR ".join(filters_per_rel))
+
+        #     filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
+
+        # return filters, params
+
     def get_query_filter_branch_range(
         self,
         branch_label: str,
@@ -322,6 +387,8 @@ class Branch(StandardNode):
     async def rebase(self, session: Optional[AsyncSession] = None):
         """Rebase the current Branch with its origin branch"""
 
+        # FIXME, we must ensure that there is no conflict before rebasing a branch
+        #   Otherwise we could endup with a complicated situation
         self.branched_from = Timestamp().to_string()
         await self.save(session=session)
 
@@ -736,14 +803,16 @@ class Diff:
         self.branch_only = branch_only
         self.origin_branch = origin_branch
 
-        if diff_from:
-            self.diff_from = Timestamp(diff_from)
-        elif not diff_from and not self.branch.is_default:
-            self.diff_from = Timestamp(self.branch.branched_from)
-        else:
+        if not diff_from and self.branch.is_default:
             raise ValueError(f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`.")
 
-        # If diff_to is not defined it will automatically select the current time.
+        # If diff from hasn't been provided, we'll use the creation of the branch as the starting point
+        if diff_from:
+            self.diff_from = Timestamp(diff_from)
+        else:
+            self.diff_from = Timestamp(self.branch.created_at)
+
+        # If diff_to hasn't been provided, we will use the current time.
         self.diff_to = Timestamp(diff_to)
 
         if self.diff_to < self.diff_from:
@@ -977,9 +1046,6 @@ class Diff:
 
         The results will be stored in self._results organized by branch.
         """
-
-        # attrs_to_query = {"nodes": set(), "fields": set(), "attrs": set()}
-
         # ------------------------------------------------------------
         # Process nodes that have been Added or Removed first
         # ------------------------------------------------------------

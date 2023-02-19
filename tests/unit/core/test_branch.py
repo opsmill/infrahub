@@ -123,11 +123,11 @@ async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
 
     main_branch = await get_branch(branch="main", session=session)
 
-    results = main_branch.get_branches_and_times_to_query()
+    results = main_branch.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results["main"]) > now
 
     t1 = Timestamp("2s")
-    results = main_branch.get_branches_and_times_to_query(t1.to_string())
+    results = main_branch.get_branches_and_times_to_query(at=t1.to_string())
     assert results["main"] == t1.to_string()
 
 
@@ -136,19 +136,84 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
 
     branch1 = await get_branch(branch="branch1", session=session)
 
-    results = branch1.get_branches_and_times_to_query()
+    results = branch1.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results["branch1"]) > now
     assert results["main"] == base_dataset_02["time_m45"]
 
     t1 = Timestamp("2s")
-    results = branch1.get_branches_and_times_to_query(t1.to_string())
+    results = branch1.get_branches_and_times_to_query(at=t1.to_string())
     assert results["branch1"] == t1.to_string()
     assert results["main"] == base_dataset_02["time_m45"]
 
     branch1.ephemeral_rebase = True
-    results = branch1.get_branches_and_times_to_query()
+    results = branch1.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results["branch1"]) > now
     assert results["main"] == results["branch1"]
+
+
+async def test_get_branches_and_times_for_range_main(session, base_dataset_02):
+    now = Timestamp()
+    main_branch = await get_branch(branch="main", session=session)
+
+    start_times, end_times = main_branch.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
+    assert list(start_times.keys()) == ["main"]
+    assert list(end_times.keys()) == ["main"]
+    assert start_times["main"] == main_branch.created_at
+    assert end_times["main"] == now.to_string()
+
+    t1 = Timestamp("2s")
+    t5 = Timestamp("5s")
+    start_times, end_times = main_branch.get_branches_and_times_for_range(start_time=t5, end_time=t1)
+    assert list(start_times.keys()) == ["main"]
+    assert list(end_times.keys()) == ["main"]
+    assert start_times["main"] == t5.to_string()
+    assert end_times["main"] == t1.to_string()
+
+
+async def test_get_branches_and_times_for_range_branch1(session, base_dataset_02):
+    now = Timestamp()
+    branch1 = await get_branch(branch="branch1", session=session)
+
+    start_times, end_times = branch1.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
+    assert sorted(list(start_times.keys())) == ["branch1", "main"]
+    assert sorted(list(end_times.keys())) == ["branch1", "main"]
+    assert end_times["branch1"] == now.to_string()
+    assert end_times["main"] == now.to_string()
+    assert start_times["branch1"] == base_dataset_02["time_m45"]
+    assert start_times["main"] == base_dataset_02["time_m45"]
+
+    t1 = Timestamp("2s")
+    t10 = Timestamp("10s")
+    start_times, end_times = branch1.get_branches_and_times_for_range(start_time=t10, end_time=t1)
+    assert sorted(list(start_times.keys())) == ["branch1", "main"]
+    assert sorted(list(end_times.keys())) == ["branch1", "main"]
+    assert end_times["branch1"] == t1.to_string()
+    assert end_times["main"] == t1.to_string()
+    assert start_times["branch1"] == t10.to_string()
+    assert start_times["main"] == t10.to_string()
+
+
+async def test_get_branches_and_times_for_range_branch2(session, base_dataset_03):
+    now = Timestamp()
+    branch2 = await get_branch(branch="branch2", session=session)
+
+    start_times, end_times = branch2.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
+    assert sorted(list(start_times.keys())) == ["branch2", "main"]
+    assert sorted(list(end_times.keys())) == ["branch2", "main"]
+    assert end_times["branch2"] == now.to_string()
+    assert end_times["main"] == now.to_string()
+    assert start_times["branch2"] == base_dataset_03["time_m90"]
+    assert start_times["main"] == base_dataset_03["time_m30"]
+
+    t1 = Timestamp("2s")
+    t10 = Timestamp("10s")
+    start_times, end_times = branch2.get_branches_and_times_for_range(start_time=t10, end_time=t1)
+    assert sorted(list(start_times.keys())) == ["branch2", "main"]
+    assert sorted(list(end_times.keys())) == ["branch2", "main"]
+    assert end_times["branch2"] == t1.to_string()
+    assert end_times["main"] == t1.to_string()
+    assert start_times["branch2"] == t10.to_string()
+    assert start_times["main"] == t10.to_string()
 
 
 async def test_diff_has_changes_graph(session, base_dataset_02):
