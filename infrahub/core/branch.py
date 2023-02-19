@@ -107,15 +107,20 @@ class Branch(StandardNode):
         return cls._convert_node_to_obj(results[0].values()[0])
 
     async def get_origin_branch(self, session: AsyncSession) -> Branch:
-        # pylint: disable=import-outside-toplevel
+        """Return the branch Object of the origin_branch."""
+        if not self.origin_branch or self.origin_branch == self.name:
+            return None
+
+        # pylint: disable=import-outside-topleve
         from infrahub.core import get_branch
 
         return await get_branch(self.origin_branch, session=session)
 
     def get_branches_in_scope(self) -> List[str]:
-        """Get the list of all the branches that are constituing this branch.
+        """Return the list of all the branches that are constituing this branch.
 
-        For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best.
+        For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best
+        But the idea is that it will change at some point in a future version.
         """
         default_branch = config.SETTINGS.main.default_branch
         if self.name == default_branch:
@@ -124,7 +129,7 @@ class Branch(StandardNode):
         return [default_branch, self.name]
 
     def get_branches_and_times_to_query(self, at: Union[Timestamp, str] = None) -> Dict[str, str]:
-        """Get all the branches that are constituing this branch with the associated times."""
+        """Return all the names of the branches that are constituing this branch with the associated times."""
 
         at = Timestamp(at)
         default_branch = config.SETTINGS.main.default_branch
@@ -151,6 +156,11 @@ class Branch(StandardNode):
         at: Union[Timestamp, str] = None,
         include_outside_parentheses: bool = False,
     ) -> Tuple[str, Dict]:
+        """Generate a CYPHER Query filter to query the nodes associated with a given branch at a specific time.
+
+        Since the relationship between a node and a branch is slightly different than the other relationship
+        We need to different query.
+        """
         filters = []
         params = {}
 
