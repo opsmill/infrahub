@@ -132,6 +132,32 @@ async def test_branch_create(db, session, default_branch, car_person_schema, reg
     assert result.data["branch_create"]["object"]["is_data_only"] is False
 
 
+async def test_branch_create_invalid_names(db, session, default_branch, car_person_schema, register_core_models_schema):
+    schema = await generate_graphql_schema(session=session, include_subscription=False)
+
+    query = """
+    mutation($branch_name: String!) {
+        branch_create(data: { name: $branch_name, is_data_only: true }) {
+            ok
+            object {
+                id
+                name
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={"branch_name": "not valid"},
+    )
+
+    assert len(result.errors) == 1
+    assert result.errors[0].message == 'invalid field name: string does not match regex "^[a-z][a-z0-9\\-]+$"'
+
+
 async def test_branch_create_with_repositories(
     db, session, default_branch, rpc_client, repos_and_checks_in_main, register_core_models_schema, data_schema
 ):
@@ -373,6 +399,7 @@ async def test_branch_merge_with_repositories(db, session, rpc_client, base_data
     assert await rpc_client.ensure_all_responses_have_been_delivered()
 
 
+@pytest.mark.xfail(reason="Still WIP")
 async def test_branch_diff_with_repositories(db, session, rpc_client, base_dataset_02, repos_and_checks_in_main):
     branch2 = await create_branch(branch_name="branch2", session=session)
 

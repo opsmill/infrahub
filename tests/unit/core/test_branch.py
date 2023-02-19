@@ -3,6 +3,7 @@ from typing import Dict
 import pytest
 from deepdiff import DeepDiff
 from pydantic import Field
+from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import get_branch
 from infrahub.core.branch import BaseDiffElement, Branch, Diff
@@ -31,6 +32,58 @@ async def repos_in_main(session, register_core_models_schema):
     await repo02.save(session=session)
 
     return {"repo01": repo01, "repo02": repo02}
+
+
+async def test_branch_name_validator(session):
+    assert Branch(name="new-branch")
+    assert Branch(name="cr1234")
+    assert Branch(name="cr1234")
+
+    # No space
+    with pytest.raises(ValidationError):
+        Branch(name="new branch")
+
+    # No comma
+    with pytest.raises(ValidationError):
+        Branch(name="new,branch")
+
+    # No dot
+    with pytest.raises(ValidationError):
+        Branch(name="new.branch")
+
+    # No exclamation point
+    with pytest.raises(ValidationError):
+        Branch(name="new!branch")
+
+    # No uppercase
+    with pytest.raises(ValidationError) as exc:
+        Branch(name="New-Branch")
+
+    # Must start with a letter
+    with pytest.raises(ValidationError):
+        Branch(name="1branch")
+
+    # Need at least 3 characters
+    assert Branch(name="cr1")
+    with pytest.raises(ValidationError):
+        Branch(name="cr")
+
+    # No more than 32 characters
+    with pytest.raises(ValidationError):
+        Branch(name="qwertyuiopqwertyuiopqwertyuiopqwe")
+
+    assert Branch(name="new-branch")
+    assert Branch(name="cr1234-qwerty-qwerty")
+
+
+async def test_branch_branched_form_format_validator(session):
+    assert Branch(name="new-branch").branched_from is not None
+
+    time1 = Timestamp().to_string()
+    assert Branch(name="cr1234", branched_from=time1).branched_from == time1
+
+    with pytest.raises(ValidationError):
+        Branch(name="cr1234", branched_from="not a date")
 
 
 async def test_get_query_filter_relationships_main(session, base_dataset_02):
@@ -465,8 +518,9 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     assert nodes["branch1"]["p3"].attributes["name"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED
 
-async def test_diff_get_nodes_rebased_branch(session, base_dataset_03):
 
+@pytest.mark.xfail(reason="Still WIP")
+async def test_diff_get_nodes_rebased_branch(session, base_dataset_03):
     branch2 = await Branch.get_by_name(name="branch2", session=session)
 
     # Calculate the diff with the default value

@@ -1,5 +1,6 @@
 import asyncio
 
+import pydantic
 from graphene import Boolean, Field, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
 from graphene.types.mutation import MutationOptions
@@ -223,7 +224,12 @@ class BranchCreate(Mutation):
         except BranchNotFound:
             pass
 
-        obj = Branch(**data)
+        try:
+            obj = Branch(**data)
+        except pydantic.error_wrappers.ValidationError as exc:
+            error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
+            raise ValueError("\n".join(error_msgs))
+
         await obj.save(session=session)
 
         if not obj.is_data_only:

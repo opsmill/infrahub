@@ -618,6 +618,7 @@ async def base_dataset_03(session, default_branch, person_tag_schema):
 
     return params
 
+
 @pytest.fixture
 async def car_person_schema(session, data_schema):
     SCHEMA = {

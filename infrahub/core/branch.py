@@ -72,11 +72,17 @@ class AddNodeToBranch(Query):
 
 
 class Branch(StandardNode):
-    name: str
+    name: str = Field(
+        regex="^[a-z][a-z0-9\-]+$",
+        max_length=32,
+        min_length=3,
+        description="Name of the branch (only lowercase, dash & alphanumeric characters are allowed)",
+    )
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""
     origin_branch: str = "main"
     branched_from: Optional[str]
+    created_at: Optional[str]
     is_default: bool = False
     is_protected: bool = False
     is_data_only: bool = False
@@ -87,7 +93,11 @@ class Branch(StandardNode):
 
     @validator("branched_from", pre=True, always=True)
     def set_branched_from(cls, value):  # pylint: disable=no-self-argument
-        return value or Timestamp().to_string()
+        return Timestamp(value).to_string()
+
+    @validator("created_at", pre=True, always=True)
+    def set_created_at(cls, value):  # pylint: disable=no-self-argument
+        return Timestamp(value).to_string()
 
     @classmethod
     async def get_by_name(cls, name: str, session: AsyncSession) -> Branch:
