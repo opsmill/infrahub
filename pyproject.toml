@@ -126,6 +126,7 @@ testpaths = [
 ]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
+    "ignore:the imp module is deprecated"
 ]
 
 [tool.mypy]
