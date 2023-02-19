@@ -465,6 +465,18 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     assert nodes["branch1"]["p3"].attributes["name"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED
 
+async def test_diff_get_nodes_rebased_branch(session, base_dataset_03):
+
+    branch2 = await Branch.get_by_name(name="branch2", session=session)
+
+    # Calculate the diff with the default value
+    diff = await Diff.init(branch=branch2, session=session)
+    nodes = await diff.get_nodes(session=session)
+
+    assert nodes.keys() == ["branch2"]
+    assert nodes["branch2"].keys() == ["p2"]
+    assert sorted(nodes["branch2"]["p2"].attributes.keys()) == ["firstname", "lastname"]
+
 
 async def test_diff_get_relationships(session, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", session=session)

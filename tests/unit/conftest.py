@@ -108,11 +108,18 @@ async def simple_dataset_01(session, empty_database):
 
 @pytest.fixture
 async def base_dataset_02(session, default_branch, car_person_schema):
-    """This Dataset includes:
-    - 4 timestamps
+    """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
+
+    To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
       * time0 is now
+      * time_m10 is now - 10s
       * time_m20 is now - 20s
+      * time_m25 is now - 25s
+      * time_m30 is now - 30s
+      * time_m35 is now - 35s
       * time_m40 is now - 40s
+      * time_m45 is now - 45s
+      * time_m50 is now - 50s
       * time_m60 is now - 60s
 
     - 2 branches, main and branch1.
@@ -312,6 +319,304 @@ async def base_dataset_02(session, default_branch, car_person_schema):
 
     return params
 
+
+@pytest.fixture
+async def base_dataset_03(session, default_branch, person_tag_schema):
+    """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships
+
+    To recreate a deterministic timeline, there are 20 timestamps that are being created ahead of time:
+      * time0 is now
+      * time_m10 is now - 10s
+      * time_m20 is now - 20s
+      * time_m25 is now - 25s
+      * time_m30 is now - 30s
+      * time_m35 is now - 35s
+      * time_m40 is now - 40s
+      * time_m45 is now - 45s
+      * time_m50 is now - 50s
+      * time_m60 is now - 60s
+      * time_m65 is now - 65s
+      * time_m70 is now - 70s
+      * time_m75 is now - 75s
+      * time_m80 is now - 80s
+      * time_m85 is now - 85s
+      * time_m90 is now - 90s
+      * time_m100 is now - 100s
+      * time_m110 is now - 110s
+      * time_m115 is now - 115s
+      * time_m120 is now - 120s
+
+    - 4 branches : main, branch1, branch2, branch3, branch4
+        - branch1 was created at time_m100
+        - branch2 was created at time_m90, rebased at m30
+        - branch3 was created at time_m70
+        - branch4 was created at time_m40
+    """
+
+    # ---- Create all timestamps and save them in Params -----------------
+    time0 = pendulum.now(tz="UTC")
+    params = {
+        "main_branch": "main",
+        "time0": time0.to_iso8601_string(),
+    }
+
+    for cnt in range(1, 30):
+        nbr_sec = cnt * 5
+        params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_iso8601_string()
+
+    # ---- Create all Branches and register them in the Registry -----------------
+    branches = (
+        ("branch1", "First Branch", "time_m100"),
+        ("branch2", "First Branch", "time_m30"),
+        ("branch3", "First Branch", "time_m70"),
+        ("branch4", "First Branch", "time_m40"),
+    )
+
+    for branch_name, description, branched_from in branches:
+        obj = Branch(
+            name=branch_name,
+            status="OPEN",
+            description=description,
+            is_default=False,
+            is_data_only=True,
+            branched_from=params[branched_from],
+        )
+        await obj.save(session=session)
+        registry.branch[obj.name] = obj
+
+        params[branch_name] = branch_name
+
+    mermaid_graph = """
+    gitGraph
+        commit id: "CREATE Tag1, Tag2, Tag3, Person1, Person2, Person3 [m120]"
+        commit id: "(m110)"
+        commit id: "UPDATE P1 Firstname [m100]"
+        branch branch1
+        checkout main
+        commit id: "(m90)"
+        branch branch2
+        checkout main
+        commit id: "UPDATE P1 Firstname [m80]"
+        checkout branch2
+        commit id: "UPDATE P2 Lastname & Firstname [m80]"
+        checkout main
+        commit id: "(m70)"
+        branch branch3
+        checkout main
+        commit id: "UPDATE P1 Firstname [m60]"
+        commit id: "(m50)"
+        commit id: "(m45)"
+        branch branch4
+        checkout main
+        commit id: "UPDATE P1 Firstname [m40]"
+        commit id: "(m30)"
+        checkout branch2
+        commit id: "REBASE [m30]"
+        checkout main
+        commit id: "(m20)"
+        checkout branch2
+        commit id: "UPDATE P2 Firstname [m20]"
+        checkout main
+        commit id: "(m10)"
+        commit id: "(m0)"
+    """
+
+    query = """
+    // Create all branches nodes
+    MATCH (b0:Branch { name: $main_branch })
+    MATCH (b1:Branch { name: $branch1 })
+    MATCH (b2:Branch { name: $branch2 })
+    MATCH (b3:Branch { name: $branch3 })
+    MATCH (b4:Branch { name: $branch4 })
+
+    // Create the Boolean nodes for the properties
+    CREATE (bool_true:Boolean { value: true })
+    CREATE (bool_false:Boolean { value: false })
+
+    // Create the Boolean nodes for the attribute value
+    CREATE (atvf:AttributeValue { value: false })
+    CREATE (atvt:AttributeValue { value: true })
+
+    // Create a bunch a Attribute Value that can be easily identify and remembered
+    CREATE (mon:AttributeValue { value: "monday"})
+    CREATE (tue:AttributeValue { value: "tuesday"})
+    CREATE (wed:AttributeValue { value: "wednesday"})
+    CREATE (thu:AttributeValue { value: "thursday"})
+    CREATE (fri:AttributeValue { value: "friday"})
+    CREATE (sat:AttributeValue { value: "saturday"})
+    CREATE (sun:AttributeValue { value: "sunday"})
+
+    CREATE (jan:AttributeValue { value: "january"})
+    CREATE (feb:AttributeValue { value: "february"})
+    CREATE (mar:AttributeValue { value: "march"})
+    CREATE (apr:AttributeValue { value: "april"})
+    CREATE (may:AttributeValue { value: "may"})
+    CREATE (june:AttributeValue { value: "june"})
+    CREATE (july:AttributeValue { value: "july"})
+    CREATE (aug:AttributeValue { value: "august"})
+    CREATE (sept:AttributeValue { value: "september"})
+    CREATE (oct:AttributeValue { value: "october"})
+    CREATE (nov:AttributeValue { value: "november"})
+    CREATE (dec:AttributeValue { value: "december"})
+
+    CREATE (blue:AttributeValue { value: "blue"})
+    CREATE (red:AttributeValue { value: "red"})
+    CREATE (black:AttributeValue { value: "black"})
+    CREATE (green:AttributeValue { value: "green"})
+
+    // TAG 1 - BLUE
+    CREATE (t1:Person { uuid: "p1" })
+    CREATE (t1)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+
+    CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name"})
+    CREATE (t1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t1at1)
+
+    CREATE (t1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(blue)
+    CREATE (t1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (t1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // TAG 2 - RED
+    CREATE (t2:Person { uuid: "p1" })
+    CREATE (t2)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+
+    CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name"})
+    CREATE (t2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t2at1)
+
+    CREATE (t2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(red)
+    CREATE (t2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (t2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // TAG 3 - GREEN
+    CREATE (t3:Person { uuid: "p1" })
+    CREATE (t3)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+
+    CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name"})
+    CREATE (t3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t3at1)
+
+    CREATE (t3at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(green)
+    CREATE (t3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (t3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // PERSON 1
+    //  Created in the main branch at m120
+    //    tags: Blue, Green
+    //    primary Tag: Blue
+    //  firstname value in main keeps changing every 20s using the day of the week
+
+    CREATE (p1:Person { uuid: "p1" })
+    CREATE (p1)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+
+    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
+    CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p1at1)
+    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p1at2)
+
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, from: $time_m100 }]->(mon)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m100, from: $time_m80 }]->(tue)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m80, from: $time_m60 }]->(wed)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60, from: $time_m40 }]->(thu)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m40 }]->(fri)
+    CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    CREATE (p1at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(jan)
+    CREATE (p1at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p1at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // Relationship for "tags" between Person1 (p1) and Tag Blue (t1) >> relp1t1
+    CREATE (relp1t1:Relationship { uuid: "relp1t1", name: "person__tag"})
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t1)
+    CREATE (t1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t1)
+
+    CREATE (relp1t1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp1t1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // Relationship for "tags" between Person1 (p1) and Tag Green (t3) >> relp1t3
+    CREATE (relp1t3:Relationship { uuid: "relp1t3", name: "person__tag"})
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t3)
+    CREATE (t3)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t3)
+
+    CREATE (relp1t3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp1t3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // Relationship for "primary_tag" between Person1 (p1) and Tag Blue (t1) >> relp1pri
+    CREATE (relp1pri:Relationship { uuid: "relp1pri", name: "person_primary_tag"})
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1pri)
+    CREATE (t1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1pri)
+
+    CREATE (relp1pri)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp1pri)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // PERSON 2
+    //  Created in the main branch at m120
+    //    tags: Green
+    //    primary Tag: None
+    //  firstname and lastname values in branch2 changes at m80 before the branch is rebase at m30
+    //  firstname value in branch2 changes again at m20 after the branch has been rebased
+
+    CREATE (p2:Person { uuid: "p2" })
+    CREATE (p2)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+
+    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
+    CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p2at1)
+    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p2at2)
+
+    CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(tue)
+    CREATE (p2at1)-[:HAS_VALUE {branch: $branch2, status: "active", from: $time_m80, to: $time_m20 }]->(wed)
+    CREATE (p2at1)-[:HAS_VALUE {branch: $branch2, status: "active", from: $time_m20 }]->(thu)
+
+    CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    CREATE (p2at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(feb)
+    CREATE (p2at2)-[:HAS_VALUE {branch: $branch2, status: "active", from: $time_m80 }]->(mar)
+    CREATE (p2at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p2at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // Relationship for "tags" between Person2 (p2) and Tag Green (t3) >> relp2t3
+    CREATE (relp2t3:Relationship { uuid: "relp2t3", name: "person__tag"})
+    CREATE (p2)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp2t3)
+    CREATE (t3)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp2t3)
+
+    CREATE (relp2t3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp2t3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // PERSON 3
+    //  Created in the main branch at m120
+    //    tags: None
+    //    primary Tag: Red
+
+    CREATE (p3:Person { uuid: "p3" })
+    CREATE (p3)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
+    CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p3at1)
+    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p3at2)
+
+    CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(tue)
+    CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    CREATE (p3at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(feb)
+    CREATE (p3at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p3at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    // Relationship for "primary_tag" between Person3 (p3) and Tag Red (t2) >> relp3pri
+    CREATE (relp3pri:Relationship { uuid: "relp3pri", name: "person_primary_tag"})
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp3pri)
+    CREATE (t1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp3pri)
+
+    CREATE (relp3pri)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp3pri)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+
+    RETURN t1, t2, t3, p1, p2, p3
+    """
+
+    await execute_write_query_async(session=session, query=query, params=params)
+
+    return params
 
 @pytest.fixture
 async def car_person_schema(session, data_schema):
