@@ -1,4 +1,6 @@
 import sys
+import logging
+
 from asyncio import run as aiorun
 from datetime import datetime
 from typing import Optional
@@ -8,7 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 import infrahub_ctl.config as config
-from infrahub_client import GraphQLError, InfrahubClient
+from infrahub_client import GraphQLError, InfrahubClient, ServerNotReacheableError
 from infrahub_ctl.utils import calculate_time_diff, render_action_rich
 
 app = typer.Typer()
@@ -25,6 +27,9 @@ async def _list():
 
     try:
         branches = await client.get_list_branches()
+    except ServerNotReacheableError as exc:
+        console.print(f"[red]{exc.message}")
+        sys.exit(1)
     except GraphQLError as exc:
         for error in exc.errors:
             console.print(f"[red]{error}")
@@ -71,6 +76,9 @@ def list_branch(
     config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """List all existing branches."""
+
+    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+
     config.load_and_exit(config_file_name=config_file)
     aiorun(_list())
 
@@ -82,6 +90,9 @@ async def _create(branch_name: str, description: str, data_only: bool):
 
     try:
         branch = await client.create_branch(branch_name=branch_name, description=description, data_only=data_only)
+    except ServerNotReacheableError as exc:
+        console.print(f"[red]{exc.message}")
+        sys.exit(1)
     except GraphQLError as exc:
         for error in exc.errors:
             console.print(f"[red]{error['message']}")
@@ -98,6 +109,9 @@ def create(
     config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Create a new branch."""
+
+    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+
     config.load_and_exit(config_file_name=config_file)
     aiorun(_create(branch_name=branch_name, description=description, data_only=data_only))
 
@@ -109,6 +123,9 @@ async def _rebase(branch_name: str):
 
     try:
         await client.branch_rebase(branch_name=branch_name)
+    except ServerNotReacheableError as exc:
+        console.print(f"[red]{exc.message}")
+        sys.exit(1)
     except GraphQLError as exc:
         for error in exc.errors:
             console.print(f"[red]{error['message']}")
@@ -123,6 +140,9 @@ def rebase(
     config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Rebase a Branch with main."""
+
+    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+
     config.load_and_exit(config_file_name=config_file)
     aiorun(_rebase(branch_name=branch_name))
 
@@ -134,6 +154,9 @@ async def _merge(branch_name: str):
 
     try:
         await client.branch_merge(branch_name=branch_name)
+    except ServerNotReacheableError as exc:
+        console.print(f"[red]{exc.message}")
+        sys.exit(1)
     except GraphQLError as exc:
         for error in exc.errors:
             console.print(f"[red]{error['message']}")
@@ -148,6 +171,9 @@ def merge(
     config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Merge a Branch with main (NOT IMPLEMENTED YET)."""
+
+    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+
     config.load_and_exit(config_file_name=config_file)
     aiorun(_merge(branch_name=branch_name))
 
@@ -159,6 +185,9 @@ async def _validate(branch_name: str):
 
     try:
         await client.branch_validate(branch_name=branch_name)
+    except ServerNotReacheableError as exc:
+        console.print(f"[red]{exc.message}")
+        sys.exit(1)
     except GraphQLError as exc:
         for error in exc.errors:
             console.print(f"[red]{error['message']}")
@@ -186,6 +215,9 @@ async def _diff(branch_name: str, diff_from: str, diff_to: str, branch_only: str
         response = await client.get_branch_diff(
             branch_name=branch_name, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
         )
+    except ServerNotReacheableError as exc:
+        console.print(f"[red]{exc.message}")
+        sys.exit(1)
     except GraphQLError as exc:
         for error in exc.errors:
             console.print(f"[red]{error['message']}")
@@ -232,4 +264,7 @@ def diff(
 ):
     """Show the differences between a Branch and main."""
     config.load_and_exit(config_file_name=config_file)
+
+    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+
     aiorun(_diff(branch_name=branch_name, diff_from=diff_from or "", diff_to=diff_to or "", branch_only=branch_only))

@@ -552,7 +552,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
                         )
                         await asyncio.sleep(delay=self.retry_delay)
                     else:
-                        self.log.critical(f"Unable to connect to {self.address} .. ")
+                        self.log.error(f"Unable to connect to {self.address} .. ")
                         raise
 
         else:
