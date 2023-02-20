@@ -182,14 +182,19 @@ async def _diff(branch_name: str, diff_from: str, diff_to: str, branch_only: str
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
 
-    response = await client.get_branch_diff(
-        branch_name=branch_name, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
-    )
+    try:
+        response = await client.get_branch_diff(
+            branch_name=branch_name, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
+        )
+    except GraphQLError as exc:
+        for error in exc.errors:
+            console.print(f"[red]{error['message']}")
+        sys.exit(1)
 
     attr_padding = " " * 2
 
     for node in response["diff"]["nodes"]:
-        console.print(f"Node '{node['id']}'")
+        console.print(f"Node {node['kind']} '{node['id']}'")
         for attr in node["attributes"]:
             console.print(f"{attr_padding}{attr['name']} {render_action_rich(attr['action'])} ")
 
@@ -227,4 +232,4 @@ def diff(
 ):
     """Show the differences between a Branch and main."""
     config.load_and_exit(config_file_name=config_file)
-    aiorun(_diff(branch_name=branch_name, diff_from=diff_from, diff_to=diff_to, branch_only=branch_only))
+    aiorun(_diff(branch_name=branch_name, diff_from=diff_from or "", diff_to=diff_to or "", branch_only=branch_only))
