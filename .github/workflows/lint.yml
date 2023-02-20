@@ -29,6 +29,6 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
       - name: "Setup environment"
-        run: "pip install invoke toml flake8"
+        run: "pip install invoke toml flake8==1.7.8"
       - name: "Linting: Flake8"
         run: "invoke flake8"

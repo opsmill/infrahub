@@ -330,9 +330,13 @@ def pydocstyle(context: Context):
 @task
 def lint(context: Context):
     """This will run all linter."""
+    print("Executing : Black !")
     black(context)
+    print("Executing : flake8 !")
     flake8(context)
+    print("Executing : pylint !")
     pylint(context)
+    print("Executing : yamllint !")
     yamllint(context)
     # pydocstyle(context)
     # mypy(context)

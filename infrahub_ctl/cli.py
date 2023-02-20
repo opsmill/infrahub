@@ -12,12 +12,11 @@ from rich.logging import RichHandler
 
 # pylint: disable=import-outside-toplevel
 import infrahub_ctl.config as config
-
-from .branch import app as branch_app
-from .check import app as check_app
-from .schema import app as schema
-from .utils import execute_query, find_graphql_query
-from .validate import app as validate_app
+from infrahub_ctl.branch import app as branch_app
+from infrahub_ctl.check import app as check_app
+from infrahub_ctl.schema import app as schema
+from infrahub_ctl.utils import execute_query, find_graphql_query
+from infrahub_ctl.validate import app as validate_app
 
 app = typer.Typer()
 
