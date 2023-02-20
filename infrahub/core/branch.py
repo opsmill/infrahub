@@ -1295,7 +1295,7 @@ class Diff:
                         kind=result.get("sn").get("kind"),
                     ),
                     dst_node_id: RelationshipEdgeNodeDiffElement(
-                        id=src_node_id,
+                        id=dst_node_id,
                         db_id=result.get("dn").element_id,
                         rel_id=result.get("r2").element_id,
                         labels=sorted(result.get("dn").labels),
