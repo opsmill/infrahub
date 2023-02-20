@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+
 from infrahub.core import get_branch
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
@@ -7,6 +8,14 @@ from infrahub.core.query.diff import (
     DiffNodeQuery,
     DiffRelationshipPropertiesByIDSRangeQuery,
 )
+
+
+def group_results_per_node(results):
+    results_per_node = defaultdict(list)
+    for result in results:
+        results_per_node[result.get("n").get("uuid")].append(result)
+
+    return results_per_node
 
 
 async def test_diff_node_query(session, default_branch, base_dataset_02):
@@ -48,13 +57,6 @@ async def test_diff_node_query(session, default_branch, base_dataset_02):
 
 async def test_diff_attribute_query(session, default_branch, base_dataset_02):
     branch1 = await get_branch(branch="branch1", session=session)
-
-    def group_results_per_node(results):
-        results_per_node = defaultdict(list)
-        for result in query.results:
-            results_per_node[result.get("n").get("uuid")].append(result)
-
-        return results_per_node
 
     # Query all attributes from the creation of the branch (m45) to now
     query = await DiffAttributeQuery.init(
@@ -101,6 +103,22 @@ async def test_diff_attribute_query(session, default_branch, base_dataset_02):
     assert sorted(results_per_node.keys()) == ["c3"]
 
     assert len(results_per_node["c3"]) == 12
+
+
+async def test_diff_attribute_query_rebased_branch(session, default_branch, base_dataset_03):
+    branch2 = await get_branch(branch="branch2", session=session)
+
+    # Query all attributes from the creation of the branch (m45) to now
+    query = await DiffAttributeQuery.init(
+        session=session,
+        branch=branch2,
+    )
+    await query.execute(session=session)
+
+    results_per_node = group_results_per_node(query.results)
+    assert sorted(results_per_node.keys()) == ["p2"]
+
+    assert len(results_per_node["p2"]) == 2
 
 
 async def test_diff_node_properties_ids_range_query(session, default_branch, base_dataset_02):
