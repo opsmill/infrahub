@@ -1135,7 +1135,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "attributes": [{"action": "updated", "name": "name"}],
             "changed_at": None,
             "id": "c1",
-            "labels": ["Car"],
+            "labels": ["Car", "Node"],
         },
         {
             "action": "updated",
@@ -1143,7 +1143,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "attributes": [{"action": "updated", "name": "nbr_seats"}],
             "changed_at": None,
             "id": "c1",
-            "labels": ["Car"],
+            "labels": ["Car", "Node"],
         },
         {
             "action": "added",
@@ -1156,7 +1156,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             ],
             "changed_at": base_dataset_02["time_m20"],
             "id": "c2",
-            "labels": ["Car"],
+            "labels": ["Car", "Node"],
         },
         {
             "action": "added",
@@ -1169,7 +1169,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             ],
             "changed_at": base_dataset_02["time_m40"],
             "id": "c3",
-            "labels": ["Car"],
+            "labels": ["Car", "Node"],
         },
     ]
 
@@ -1231,4 +1231,3 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
     assert len(result.data["diff"]["relationships"]) == 3
     assert DeepDiff(result.data["diff"]["nodes"], expected_nodes, ignore_order=True).to_dict() == {}
     assert DeepDiff(result.data["diff"]["relationships"], expected_rels, ignore_order=True).to_dict() == {}
-    # assert sorted(result.data["diff"]["relationships"], key=lambda k: (k["id"].lower(), k["action"])) == expected_rels

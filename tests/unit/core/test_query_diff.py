@@ -1,6 +1,5 @@
 from collections import defaultdict
 
-
 from infrahub.core import get_branch
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
