@@ -440,7 +440,7 @@ class TestUserWorkflow01:
         result = response.json()["data"]
         assert result["device"][0]["interfaces"][0]["description"]["value"] == new_description
 
-    @pytest.mark.skip(reason="Currently the previous value is incorrect")
+    @pytest.mark.xfail(reason="FIXME: Currently the previous value is incorrect")
     def test_validate_diff_again_after_description_update(self, client, dataset01):
         with client:
             variables = {
