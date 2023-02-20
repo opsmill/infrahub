@@ -658,112 +658,112 @@ class TestUserWorkflow01:
         assert response.json()["data"] is not None
         result = response.json()["data"]
 
-        expected_result_nodes = [
-            {
-                "branch": "branch1",
-                "kind": "Interface",
-                "action": "added",
-                "changed_at": "2023-02-20T17:07:02.672906Z",
-                "attributes": [
-                    {
-                        "name": "speed",
-                        "action": "added",
-                        "properties": [
-                            {
-                                "branch": "branch1",
-                                "type": "HAS_VALUE",
-                                "action": "added",
-                                "value": {"new": 1000, "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "IS_PROTECTED",
-                                "action": "added",
-                                "value": {"new": False, "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "IS_VISIBLE",
-                                "action": "added",
-                                "value": {"new": True, "previous": None},
-                            },
-                        ],
-                    },
-                    {
-                        "name": "name",
-                        "action": "added",
-                        "properties": [
-                            {
-                                "branch": "branch1",
-                                "type": "HAS_VALUE",
-                                "action": "added",
-                                "value": {"new": "Ethernet8", "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "IS_VISIBLE",
-                                "action": "added",
-                                "value": {"new": True, "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "IS_PROTECTED",
-                                "action": "added",
-                                "value": {"new": False, "previous": None},
-                            },
-                        ],
-                    },
-                    {
-                        "name": "description",
-                        "action": "added",
-                        "properties": [
-                            {
-                                "branch": "branch1",
-                                "type": "IS_VISIBLE",
-                                "action": "added",
-                                "value": {"new": True, "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "HAS_VALUE",
-                                "action": "added",
-                                "value": {"new": "New interface added in Branch1", "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "IS_PROTECTED",
-                                "action": "added",
-                                "value": {"new": False, "previous": None},
-                            },
-                        ],
-                    },
-                    {
-                        "name": "enabled",
-                        "action": "added",
-                        "properties": [
-                            {
-                                "branch": "branch1",
-                                "type": "IS_VISIBLE",
-                                "action": "added",
-                                "value": {"new": True, "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "HAS_VALUE",
-                                "action": "added",
-                                "value": {"new": True, "previous": None},
-                            },
-                            {
-                                "branch": "branch1",
-                                "type": "IS_PROTECTED",
-                                "action": "added",
-                                "value": {"new": False, "previous": None},
-                            },
-                        ],
-                    },
-                ],
-            }
-        ]
+        # expected_result_nodes = [
+        #     {
+        #         "branch": "branch1",
+        #         "kind": "Interface",
+        #         "action": "added",
+        #         "changed_at": "2023-02-20T17:07:02.672906Z",
+        #         "attributes": [
+        #             {
+        #                 "name": "speed",
+        #                 "action": "added",
+        #                 "properties": [
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "HAS_VALUE",
+        #                         "action": "added",
+        #                         "value": {"new": 1000, "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_PROTECTED",
+        #                         "action": "added",
+        #                         "value": {"new": False, "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_VISIBLE",
+        #                         "action": "added",
+        #                         "value": {"new": True, "previous": None},
+        #                     },
+        #                 ],
+        #             },
+        #             {
+        #                 "name": "name",
+        #                 "action": "added",
+        #                 "properties": [
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "HAS_VALUE",
+        #                         "action": "added",
+        #                         "value": {"new": "Ethernet8", "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_VISIBLE",
+        #                         "action": "added",
+        #                         "value": {"new": True, "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_PROTECTED",
+        #                         "action": "added",
+        #                         "value": {"new": False, "previous": None},
+        #                     },
+        #                 ],
+        #             },
+        #             {
+        #                 "name": "description",
+        #                 "action": "added",
+        #                 "properties": [
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_VISIBLE",
+        #                         "action": "added",
+        #                         "value": {"new": True, "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "HAS_VALUE",
+        #                         "action": "added",
+        #                         "value": {"new": "New interface added in Branch1", "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_PROTECTED",
+        #                         "action": "added",
+        #                         "value": {"new": False, "previous": None},
+        #                     },
+        #                 ],
+        #             },
+        #             {
+        #                 "name": "enabled",
+        #                 "action": "added",
+        #                 "properties": [
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_VISIBLE",
+        #                         "action": "added",
+        #                         "value": {"new": True, "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "HAS_VALUE",
+        #                         "action": "added",
+        #                         "value": {"new": True, "previous": None},
+        #                     },
+        #                     {
+        #                         "branch": "branch1",
+        #                         "type": "IS_PROTECTED",
+        #                         "action": "added",
+        #                         "value": {"new": False, "previous": None},
+        #                     },
+        #                 ],
+        #             },
+        #         ],
+        #     }
+        # ]
 
         expected_result_relationships = [
             {
