@@ -5,6 +5,7 @@ from typing import Optional
 import typer
 
 import infrahub.config as config
+import infrahub_ctl.config as ctl_config
 
 app = typer.Typer()
 
@@ -16,7 +17,7 @@ TEST_DATABASE = "infrahub.testing"
 @app.command()
 def unit(
     path: Optional[str] = typer.Argument(None),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all unit tests."""
@@ -41,7 +42,7 @@ def unit(
 @app.command()
 def integration(
     path: Optional[str] = typer.Argument(None),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all integration tests."""
@@ -84,11 +85,15 @@ def client(
 @app.command()
 def ctl(
     path: Optional[str] = typer.Argument(None),
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
     """Execute all tests for the infrahubcli tool."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
+
+    ctl_config.load_and_exit(config_file_name=config_file)
+    ctl_config.SETTINGS.server_address = "http://mock"
 
     if not path:
         path = "./tests/ctl"

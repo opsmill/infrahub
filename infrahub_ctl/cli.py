@@ -87,7 +87,7 @@ async def _render(
 def render(
     rfile: str,
     params: Optional[List[str]] = typer.Argument(None),
-    config_file: str = typer.Argument("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = "main",
     debug: bool = False,
 ):
