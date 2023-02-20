@@ -353,7 +353,7 @@ class BranchDiffAttributeType(ObjectType):
 
 class BranchDiffNodeType(ObjectType):
     branch = String()
-    labels = List(String)
+    kind = String()
     id = String()
     changed_at = String()
     action = String()
@@ -362,14 +362,14 @@ class BranchDiffNodeType(ObjectType):
 
 class BranchDiffRelationshipEdgeNodeType(ObjectType):
     id = String()
-    labels = List(String)
+    kind = String()
 
 
 class BranchDiffRelationshipType(ObjectType):
     branch = String()
     id = String()
     name = String()
-    nodes: List(BranchDiffRelationshipEdgeNodeType)
+    nodes = List(BranchDiffRelationshipEdgeNodeType)
     properties = List(BranchDiffPropertyType)
     changed_at = String()
     action = String()

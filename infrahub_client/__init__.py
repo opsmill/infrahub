@@ -932,7 +932,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             diff(branch: $branch_name, branch_only: $branch_only, time_from: $diff_from, time_to: $diff_to ) {
                 nodes {
                     branch
-                    labels
+                    kind
                     id
                     changed_at
                     action
@@ -966,6 +966,10 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
                             previous
                             new
                         }
+                    }
+                    nodes {
+                        id
+                        kind
                     }
                     changed_at
                     action

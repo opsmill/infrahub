@@ -1091,7 +1091,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             nodes {
                 id
                 branch
-                labels
+                kind
                 action
                 changed_at
                 attributes {
@@ -1135,7 +1135,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "attributes": [{"action": "updated", "name": "name"}],
             "changed_at": None,
             "id": "c1",
-            "labels": ["Car", "Node"],
+            "kind": "Car",
         },
         {
             "action": "updated",
@@ -1143,7 +1143,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "attributes": [{"action": "updated", "name": "nbr_seats"}],
             "changed_at": None,
             "id": "c1",
-            "labels": ["Car", "Node"],
+            "kind": "Car",
         },
         {
             "action": "added",
@@ -1156,7 +1156,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             ],
             "changed_at": base_dataset_02["time_m20"],
             "id": "c2",
-            "labels": ["Car", "Node"],
+            "kind": "Car",
         },
         {
             "action": "added",
@@ -1169,7 +1169,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             ],
             "changed_at": base_dataset_02["time_m40"],
             "id": "c3",
-            "labels": ["Car", "Node"],
+            "kind": "Car",
         },
     ]
 

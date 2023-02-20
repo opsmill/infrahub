@@ -1,10 +1,12 @@
 import pytest
+from deepdiff import DeepDiff
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import generate_graphql_schema
 from infrahub.message_bus.events import (
     CheckMessageAction,
@@ -422,7 +424,6 @@ async def test_branch_merge_with_repositories(db, session, rpc_client, base_data
     assert await rpc_client.ensure_all_responses_have_been_delivered()
 
 
-@pytest.mark.xfail(reason="Still WIP")
 async def test_branch_diff_with_repositories(db, session, rpc_client, base_dataset_02, repos_and_checks_in_main):
     branch2 = await create_branch(branch_name="branch2", session=session)
 
@@ -436,17 +437,20 @@ async def test_branch_diff_with_repositories(db, session, rpc_client, base_datas
     repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
+    time1 = Timestamp()
+    time2 = Timestamp()
+
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
+    await repo01.save(session=session, at=time1)
 
     repo02 = repos["repo02"]
     repo02.commit.value = "eeeeeeeeee"
-    await repo02.save(session=session)
+    await repo02.save(session=session, at=time1)
 
     p1 = await Node.init(session=session, schema="Person", branch=branch2)
     await p1.new(session=session, name="bob", height=155)
-    await p1.save(session=session)
+    await p1.save(session=session, at=time2)
 
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value)
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.MERGE)
@@ -465,17 +469,21 @@ async def test_branch_diff_with_repositories(db, session, rpc_client, base_datas
         diff(branch: "branch2") {
             nodes {
                 branch
-                labels
-                id
+                kind
                 changed_at
                 action
                 attributes {
                     name
-                    id
                     changed_at
                     action
                     properties {
+                        branch
                         action
+                        changed_at
+                        value {
+                            new
+                            previous
+                        }
                     }
                 }
             }
@@ -488,13 +496,16 @@ async def test_branch_diff_with_repositories(db, session, rpc_client, base_datas
                     type
                     changed_at
                     action
+                    value {
+                        new
+                        previous
+                    }
                 }
                 changed_at
                 action
             }
             files {
                 action
-                repository
                 branch
                 location
             }
@@ -509,5 +520,126 @@ async def test_branch_diff_with_repositories(db, session, rpc_client, base_datas
         variable_values={},
     )
 
+    expected_files = [
+        {
+            "action": "updated",
+            "branch": "branch2",
+            "location": "readme.md",
+        },
+        {
+            "action": "updated",
+            "branch": "branch2",
+            "location": "mydir/myfile.py",
+        },
+        {
+            "action": "updated",
+            "branch": "branch2",
+            "location": "anotherfile.rb",
+        },
+    ]
+
+    expected_nodes = [
+        {
+            "action": "added",
+            "attributes": [
+                {
+                    "action": "added",
+                    "changed_at": time2.to_string(),
+                    "name": "name",
+                    "properties": [
+                        {
+                            "action": "added",
+                            "branch": "branch2",
+                            "changed_at": time2.to_string(),
+                            "value": {"new": "bob", "previous": None},
+                        },
+                        {
+                            "action": "added",
+                            "branch": "branch2",
+                            "changed_at": time2.to_string(),
+                            "value": {"new": True, "previous": None},
+                        },
+                        {
+                            "action": "added",
+                            "branch": "branch2",
+                            "changed_at": time2.to_string(),
+                            "value": {"new": False, "previous": None},
+                        },
+                    ],
+                },
+                {
+                    "action": "added",
+                    "changed_at": time2.to_string(),
+                    "name": "height",
+                    "properties": [
+                        {
+                            "action": "added",
+                            "branch": "branch2",
+                            "changed_at": time2.to_string(),
+                            "value": {"new": True, "previous": None},
+                        },
+                        {
+                            "action": "added",
+                            "branch": "branch2",
+                            "changed_at": time2.to_string(),
+                            "value": {"new": False, "previous": None},
+                        },
+                        {
+                            "action": "added",
+                            "branch": "branch2",
+                            "changed_at": time2.to_string(),
+                            "value": {"new": 155, "previous": None},
+                        },
+                    ],
+                },
+            ],
+            "branch": "branch2",
+            "changed_at": time2.to_string(),
+            "kind": "Person",
+        },
+        {
+            "action": "updated",
+            "attributes": [
+                {
+                    "action": "updated",
+                    "changed_at": None,
+                    "name": "commit",
+                    "properties": [
+                        {
+                            "action": "updated",
+                            "branch": "branch2",
+                            "changed_at": time1.to_string(),
+                            "value": {"new": "dddddddddd", "previous": "NULL"},
+                        },
+                    ],
+                },
+            ],
+            "branch": "branch2",
+            "changed_at": None,
+            "kind": "Repository",
+        },
+        {
+            "action": "updated",
+            "attributes": [
+                {
+                    "action": "updated",
+                    "changed_at": None,
+                    "name": "commit",
+                    "properties": [
+                        {
+                            "action": "updated",
+                            "branch": "branch2",
+                            "changed_at": time1.to_string(),
+                            "value": {"new": "eeeeeeeeee", "previous": "NULL"},
+                        },
+                    ],
+                },
+            ],
+            "branch": "branch2",
+            "changed_at": None,
+            "kind": "Repository",
+        },
+    ]
     assert result.errors is None
-    assert result.data["diff"] == {}
+    assert result.data["diff"]["files"] == expected_files
+    assert DeepDiff(result.data["diff"]["nodes"], expected_nodes, ignore_order=True).to_dict() == {}
