@@ -41,7 +41,7 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
-# pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches
+# pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
 
 
 class AddNodeToBranch(Query):
@@ -73,7 +73,7 @@ class AddNodeToBranch(Query):
 
 class Branch(StandardNode):
     name: str = Field(
-        regex="^[a-z][a-z0-9\-]+$",
+        regex=r"^[a-z][a-z0-9\-]+$",
         max_length=32,
         min_length=3,
         description="Name of the branch (only lowercase, dash & alphanumeric characters are allowed)",
@@ -121,7 +121,7 @@ class Branch(StandardNode):
         if not self.origin_branch or self.origin_branch == self.name:
             return None
 
-        # pylint: disable=import-outside-topleve
+        # pylint: disable=import-outside-toplevel
         from infrahub.core import get_branch
 
         return await get_branch(self.origin_branch, session=session)

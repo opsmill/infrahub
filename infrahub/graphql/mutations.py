@@ -228,7 +228,7 @@ class BranchCreate(Mutation):
             obj = Branch(**data)
         except pydantic.error_wrappers.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-            raise ValueError("\n".join(error_msgs))
+            raise ValueError("\n".join(error_msgs)) from exc
 
         await obj.save(session=session)
 

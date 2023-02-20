@@ -396,7 +396,7 @@ async def base_dataset_03(session, default_branch: Branch, person_tag_schema):
         registry.branch[obj.name] = obj
 
         params[branch_name] = branch_name
-
+    # flake8: noqa: F841
     mermaid_graph = """
     gitGraph
         commit id: "CREATE Tag1, Tag2, Tag3, Person1, Person2, Person3 [m120]"

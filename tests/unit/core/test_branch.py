@@ -56,7 +56,7 @@ async def test_branch_name_validator(session):
         Branch(name="new!branch")
 
     # No uppercase
-    with pytest.raises(ValidationError) as exc:
+    with pytest.raises(ValidationError):
         Branch(name="New-Branch")
 
     # Must start with a letter
