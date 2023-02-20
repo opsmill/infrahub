@@ -461,6 +461,7 @@ async def test_diff_get_nodes(session, default_branch, repos_in_main):
     expected_response_branch2_repo01 = {
         "branch": "branch2",
         "labels": ["Node", "Repository"],
+        "kind": "Repository",
         "id": repo01b2.id,
         "action": "updated",
         "changed_at": None,
@@ -498,6 +499,7 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     expected_response_main_c1 = {
         "branch": "main",
         "labels": ["Car", "Node"],
+        "kind": "Car",
         "id": "c1",
         "action": "updated",
         "changed_at": None,
@@ -524,6 +526,7 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     expected_response_branch1_c1 = {
         "branch": "branch1",
         "labels": ["Car", "Node"],
+        "kind": "Car",
         "id": "c1",
         "action": "updated",
         "changed_at": None,
@@ -584,7 +587,6 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED
 
 
-@pytest.mark.xfail(reason="Still WIP")
 async def test_diff_get_nodes_rebased_branch(session, base_dataset_03):
     branch2 = await Branch.get_by_name(name="branch2", session=session)
 
@@ -592,8 +594,8 @@ async def test_diff_get_nodes_rebased_branch(session, base_dataset_03):
     diff = await Diff.init(branch=branch2, session=session)
     nodes = await diff.get_nodes(session=session)
 
-    assert nodes.keys() == ["branch2"]
-    assert nodes["branch2"].keys() == ["p2"]
+    assert list(nodes.keys()) == ["branch2"]
+    assert list(nodes["branch2"].keys()) == ["p2"]
     assert sorted(nodes["branch2"]["p2"].attributes.keys()) == ["firstname", "lastname"]
 
 

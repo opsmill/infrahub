@@ -326,7 +326,6 @@ class Branch(StandardNode):
         rel_labels: list,
         diff_from: Timestamp,
         diff_to: Timestamp,
-        include_outside_parentheses: bool = False,
     ) -> Tuple[List, Dict]:
         """Generate a CYPHER Query filter to query all events that are applicable to a given branch based
         - The time when the branch as created
@@ -337,24 +336,29 @@ class Branch(StandardNode):
         if not isinstance(rel_labels, list):
             raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
 
-        # branches_times = self.get_branches_and_times_to_query(at=)
+        start_times, end_times = self.get_branches_and_times_for_range(start_time=diff_from, end_time=diff_to)
 
-        # params["branches"] = list(branches_times.keys())
-        # params["start_time"] = start_time.to_string()
-        # params["end_time"] = end_time.to_string()
+        filters = []
+        params = {}
 
-        # for rel in rel_labels:
-        #     filters_per_rel = [
-        #         f"({rel}.branch in $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
-        #         f"({rel}.branch in $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
-        #     ]
+        for idx, branch_name in enumerate(start_times.keys()):
+            params[f"branch{idx}"] = branch_name
+            params[f"start_time{idx}"] = start_times[branch_name]
+            params[f"end_time{idx}"] = end_times[branch_name]
 
-        #     if not include_outside_parentheses:
-        #         filters.append("\n OR ".join(filters_per_rel))
+        for rel in rel_labels:
+            filters_per_rel = []
+            for idx, branch_name in enumerate(start_times.keys()):
+                filters_per_rel.extend(
+                    [
+                        f"({rel}.branch = $branch{idx} AND {rel}.from >= $start_time{idx} AND {rel}.from <= $end_time{idx} AND ( r2.to is NULL or r2.to >= $end_time{idx}))",
+                        f"({rel}.branch = $branch{idx} AND {rel}.from >= $start_time{idx} AND {rel}.to <= $start_time{idx})",
+                    ]
+                )
 
-        #     filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
+            filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
 
-        # return filters, params
+        return filters, params
 
     def get_query_filter_branch_range(
         self,
@@ -738,6 +742,7 @@ class NodeAttributeDiffElement(BaseDiffElement):
 class NodeDiffElement(BaseDiffElement):
     branch: Optional[str]
     labels: List[str]
+    kind: str
     id: str
     action: DiffAction
     db_id: str = Field(exclude=True)
@@ -751,6 +756,7 @@ class RelationshipEdgeNodeDiffElement(BaseDiffElement):
     db_id: Optional[str] = Field(exclude=True)
     rel_id: Optional[str] = Field(exclude=True)
     labels: List[str]
+    kind: str
 
 
 class RelationshipDiffElement(BaseDiffElement):
@@ -1074,6 +1080,7 @@ class Diff:
             item = {
                 "branch": result.get("b").get("name"),
                 "labels": sorted(list(result.get("n").labels)),
+                "kind": result.get("n").get("kind"),
                 "id": node_id,
                 "db_id": result.get("n").element_id,
                 "attributes": {},
@@ -1107,6 +1114,7 @@ class Diff:
             if node_id not in self._results[branch_name]["nodes"].keys():
                 item = {
                     "labels": sorted(list(result.get("n").labels)),
+                    "kind": result.get("n").get("kind"),
                     "id": node_id,
                     "db_id": result.get("n").element_id,
                     "attributes": {},
@@ -1284,12 +1292,14 @@ class Diff:
                         db_id=result.get("sn").element_id,
                         rel_id=result.get("r1").element_id,
                         labels=sorted(result.get("sn").labels),
+                        kind=result.get("sn").get("kind"),
                     ),
                     dst_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("dn").element_id,
                         rel_id=result.get("r2").element_id,
                         labels=sorted(result.get("dn").labels),
+                        kind=result.get("dn").get("kind"),
                     ),
                 },
                 "properties": {},
@@ -1340,12 +1350,14 @@ class Diff:
                         id=src_node_id,
                         db_id=result.get("sn").element_id,
                         rel_id=result.get("r1").element_id,
+                        kind=result.get("sn").get("kind"),
                         labels=sorted(result.get("sn").labels),
                     ),
                     dst_node_id: RelationshipEdgeNodeDiffElement(
                         id=src_node_id,
                         db_id=result.get("dn").element_id,
                         rel_id=result.get("r2").element_id,
+                        kind=result.get("dn").get("kind"),
                         labels=sorted(result.get("dn").labels),
                     ),
                 },
