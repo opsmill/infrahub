@@ -38,8 +38,8 @@ class InfrahubBaseQuery(ObjectType):
             fields=fields,
             context=info.context,
             branch_only=branch_only,
-            diff_from=time_from,
-            diff_to=time_to,
+            diff_from=time_from or None,
+            diff_to=time_to or None,
             branch=branch,
         )
 

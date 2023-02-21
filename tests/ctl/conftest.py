@@ -3,12 +3,7 @@ import json
 import pytest
 from pytest_httpx import HTTPXMock
 
-from infrahub_client import QUERY_ALL_BRANCHES, InfrahubClient
-
-
-@pytest.fixture
-async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock")
+from infrahub_client import QUERY_ALL_BRANCHES
 
 
 @pytest.fixture
@@ -71,17 +66,3 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json=response1)
     httpx_mock.add_response(method="POST", url="http://mock/graphql/cr1234", json=response2)
     return httpx_mock
-
-
-# @pytest.fixture
-# async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-
-#     response = {
-#         "data": {
-#             "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
-#         }
-#     }
-#     request_content = json.dumps({"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01"}}).encode()
-
-#     httpx_mock.add_response(method="POST", json=response, match_content=request_content)
-#     return httpx_mock

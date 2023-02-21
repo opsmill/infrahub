@@ -159,7 +159,65 @@ query {
     branch {
         id
         name
+        description
+        origin_branch
+        branched_from
+        is_default
         is_data_only
+    }
+}
+"""
+
+MUTATION_BRANCH_CREATE = """
+mutation ($branch_name: String!, $description: String!, $background_execution: Boolean!, $data_only: Boolean!) {
+    branch_create(background_execution: $background_execution, data: { name: $branch_name, description: $description, is_data_only: $data_only }) {
+        ok
+        object {
+            id
+            name
+            description
+            origin_branch
+            branched_from
+            is_default
+            is_data_only
+        }
+    }
+}
+"""
+
+MUTATION_BRANCH_REBASE = """
+mutation ($branch_name: String!) {
+    branch_rebase(data: { name: $branch_name }){
+        ok
+        object {
+            name
+            branched_from
+        }
+    }
+}
+"""
+
+MUTATION_BRANCH_VALIDATE = """
+mutation ($branch_name: String!) {
+    branch_validate(data: { name: $branch_name }) {
+        ok
+        messages
+        object {
+            id
+            name
+        }
+    }
+}
+"""
+
+MUTATION_BRANCH_MERGE = """
+mutation ($branch_name: String!) {
+    branch_merge(data: { name: $branch_name }) {
+        ok
+        object {
+            id
+            name
+        }
     }
 }
 """
@@ -177,17 +235,6 @@ mutation ($repository_id: String!, $commit: String!) {
 }
 """
 
-MUTATION_BRANCH_CREATE = """
-mutation ($branch_name: String!, $background_execution: Boolean!) {
-    branch_create(background_execution: $background_execution, data: { name: $branch_name, is_data_only: false }) {
-        ok
-        object {
-            id
-            name
-        }
-    }
-}
-"""
 
 MUTATION_GRAPHQL_QUERY_CREATE = """
 mutation($name: String!, $description: String!, $query: String!) {
@@ -360,7 +407,11 @@ mutation($id: String!, $name: String!, $description: String!, $file_path: String
 class BranchData(BaseModel):
     id: str
     name: str
+    description: Optional[str]
     is_data_only: bool
+    is_default: bool
+    origin_branch: Optional[str]
+    branched_from: str
 
 
 class RepositoryData(BaseModel):
@@ -412,13 +463,13 @@ class TransformPythonData(BaseModel):
     rebase: Optional[bool]
 
 
-class InfrahubClient:
+class InfrahubClient:  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
 
     def __init__(
         self,
         address: str = "http://localhost:8000",
-        default_timeout: int = 5,
+        default_timeout: int = 10,
         retry_on_failure: bool = False,
         retry_delay: int = 5,
         log: Logger = None,
@@ -489,6 +540,10 @@ class InfrahubClient:
                 retry = self.retry_on_failure
                 try:
                     resp = await self.post(url=url, payload=payload, timeout=timeout)
+
+                    if raise_for_error:
+                        resp.raise_for_status()
+
                     retry = False
                 except ServerNotReacheableError:
                     if retry:
@@ -497,14 +552,12 @@ class InfrahubClient:
                         )
                         await asyncio.sleep(delay=self.retry_delay)
                     else:
-                        self.log.critical(f"Unable to connect to {self.address} .. ")
+                        self.log.error(f"Unable to connect to {self.address} .. ")
+                        raise
 
         else:
             with self.test_client as client:
                 resp = client.post(url=url, json=payload)
-
-        if raise_for_error:
-            resp.raise_for_status()
 
         response = resp.json()
 
@@ -572,20 +625,41 @@ class InfrahubClient:
 
         return resp.json()
 
-    async def create_branch(self, branch_name: str, background_execution: bool = False) -> bool:
-        variables = {"branch_name": branch_name, "background_execution": background_execution}
+    async def create_branch(
+        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
+    ) -> BranchData:
+        variables = {
+            "branch_name": branch_name,
+            "data_only": data_only,
+            "description": description,
+            "background_execution": background_execution,
+        }
+        response = await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
 
-        await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
+        return BranchData(**response["branch_create"]["object"])
 
-        return True
+    async def branch_rebase(self, branch_name: str) -> BranchData:
+        variables = {"branch_name": branch_name}
+        response = await self.execute_graphql(query=MUTATION_BRANCH_REBASE, variables=variables)
+
+        return response["branch_rebase"]["ok"]
+
+    async def branch_validate(self, branch_name: str) -> BranchData:
+        variables = {"branch_name": branch_name}
+        response = await self.execute_graphql(query=MUTATION_BRANCH_VALIDATE, variables=variables)
+
+        return response["branch_validate"]["ok"]
+
+    async def branch_merge(self, branch_name: str) -> BranchData:
+        variables = {"branch_name": branch_name}
+        response = await self.execute_graphql(query=MUTATION_BRANCH_MERGE, variables=variables)
+
+        return BranchData(**response["branch_merge"]["ok"])
 
     async def get_list_branches(self) -> Dict[str, BranchData]:
         data = await self.execute_graphql(query=QUERY_ALL_BRANCHES)
 
-        branches = {
-            branch["name"]: BranchData(id=branch["id"], name=branch["name"], is_data_only=branch["is_data_only"])
-            for branch in data["branch"]
-        }
+        branches = {branch["name"]: BranchData(**branch) for branch in data["branch"]}
 
         return branches
 
@@ -845,3 +919,71 @@ class InfrahubClient:
         await self.execute_graphql(query=MUTATION_COMMIT_UPDATE, variables=variables, branch_name=branch_name)
 
         return True
+
+    async def get_branch_diff(
+        self,
+        branch_name: str,
+        branch_only: bool = True,
+        diff_from: str = None,
+        diff_to: str = None,
+    ):
+        QUERY_BRANCH_DIFF = """
+        query($branch_name: String!, $branch_only: Boolean!, $diff_from: String!, $diff_to: String! ) {
+            diff(branch: $branch_name, branch_only: $branch_only, time_from: $diff_from, time_to: $diff_to ) {
+                nodes {
+                    branch
+                    kind
+                    id
+                    changed_at
+                    action
+                    attributes {
+                        name
+                        id
+                        changed_at
+                        action
+                        properties {
+                            action
+                            type
+                            changed_at
+                            branch
+                            value {
+                                previous
+                                new
+                            }
+                        }
+                    }
+                }
+                relationships {
+                    branch
+                    id
+                    name
+                    properties {
+                        branch
+                        type
+                        changed_at
+                        action
+                        value {
+                            previous
+                            new
+                        }
+                    }
+                    nodes {
+                        id
+                        kind
+                    }
+                    changed_at
+                    action
+                }
+                files {
+                    action
+                    repository
+                    branch
+                    location
+                }
+            }
+        }
+        """
+        variables = {"branch_name": branch_name, "branch_only": branch_only, "diff_from": diff_from, "diff_to": diff_to}
+        response = await self.execute_graphql(query=QUERY_BRANCH_DIFF, variables=variables)
+
+        return response

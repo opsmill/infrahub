@@ -12,14 +12,15 @@ from rich.logging import RichHandler
 
 # pylint: disable=import-outside-toplevel
 import infrahub_ctl.config as config
-
-from .check import app as check_app
-from .schema import app as schema
-from .utils import execute_query, find_graphql_query
-from .validate import app as validate_app
+from infrahub_ctl.branch import app as branch_app
+from infrahub_ctl.check import app as check_app
+from infrahub_ctl.schema import app as schema
+from infrahub_ctl.utils import execute_query, find_graphql_query
+from infrahub_ctl.validate import app as validate_app
 
 app = typer.Typer()
 
+app.add_typer(branch_app, name="branch", help="Manage all branches.")
 app.add_typer(check_app, name="check", help="Execute Integration checks.")
 app.add_typer(schema, name="schema", help="Manage the schema.")
 app.add_typer(validate_app, name="validate", help="Validate different components.")
@@ -86,7 +87,7 @@ async def _render(
 def render(
     rfile: str,
     params: Optional[List[str]] = typer.Argument(None),
-    config_file: str = typer.Argument("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = "main",
     debug: bool = False,
 ):

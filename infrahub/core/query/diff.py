@@ -16,6 +16,7 @@ class DiffQuery(Query):
     branch_names: List[str]
     diff_from: Timestamp
     diff_to: Timestamp
+    type: QueryType = QueryType.READ
 
     def __init__(
         self,
@@ -27,12 +28,14 @@ class DiffQuery(Query):
     ):
         """A diff is always in the context of a branch"""
 
+        if not diff_from and branch.is_default:
+            raise ValueError("diff_from is mandatory when the diff is on the main branch.")
+
+        # If diff from hasn't been provided, we'll use the creation of the branch as the starting point
         if diff_from:
             self.diff_from = Timestamp(diff_from)
-        elif not diff_from and not branch.is_default:
-            self.diff_from = Timestamp(branch.branched_from)
         else:
-            raise ValueError("diff_from is mandatory when the diff is on the main branch.")
+            self.diff_from = Timestamp(branch.created_at)
 
         # If Diff_to is not defined it will automatically select the current time.
         self.diff_to = Timestamp(diff_to)
@@ -47,10 +50,9 @@ class DiffQuery(Query):
 
 class DiffNodeQuery(DiffQuery):
     name: str = "diff_node"
-    type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        # TODO need to improve the query to capture an object that has been delete into the branch
+        # TODO need to improve the query to capture an object that has been deleted into the branch
         # TODO probably also need to consider a node what was merged already
 
         br_filter, br_params = self.branch.get_query_filter_branch_range(
@@ -77,41 +79,26 @@ class DiffNodeQuery(DiffQuery):
 
 class DiffAttributeQuery(DiffQuery):
     name: str = "diff_attribute"
-    type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
+
+        rels_filters, rels_params = self.branch.get_query_filter_relationships_diff(
+            rel_labels=["r2"], diff_from=self.diff_from, diff_to=self.diff_to
+        )
+
+        self.params.update(rels_params)
+
         query = """
         MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
-        WHERE (r2.branch IN $branch_names AND r2.from >= $from ) OR (r2.branch IN $branch_names AND r2.to <= $from)
-        """
+        WHERE %s
+        """ % (
+            "\n AND ".join(rels_filters),
+        )
 
         self.add_to_query(query)
-        self.params["branch_names"] = self.branch_names
-        self.params["from"] = self.diff_from.to_string()
 
         self.return_labels = ["n", "a", "ap", "r1", "r2"]
-
-    def get_results_group_by_branch_attribute(self) -> Generator[QueryResult, None, None]:
-        """Return results grouped by the label and attribute provided and filtered by scored."""
-
-        attrs_info = defaultdict(list)
-
-        # Extract all attrname and relationships on all branches
-        for idx, result in enumerate(self.results):
-            node_uuid = result.get("n").get("uuid")
-            attribute_name = result.get("a").get("name", None)
-            attribute_branch = result.get("r2").get("branch")
-            property_type = result.get("r2").type.lower()
-
-            attr_key = f"{node_uuid}__{attribute_branch}__{attribute_name}__{property_type}"
-            info = {"idx": idx, "branch_score": result.branch_score}
-            attrs_info[attr_key].append(info)
-
-        for attr_key, values in attrs_info.items():
-            attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
-
-            yield self.results[attr_info["idx"]]
 
 
 class DiffRelationshipQuery(DiffQuery):
@@ -230,6 +217,62 @@ class DiffRelationshipPropertyQuery(DiffQuery):
             yield self.results[attr_info["idx"]]
 
         return iter(())
+
+
+class DiffNodePropertiesByIDSRangeQuery(Query):
+    name: str = "diff_node_properties_range_ids"
+    order_by: List[str] = ["a.name"]
+
+    def __init__(
+        self,
+        ids: List[str],
+        diff_from: str,
+        diff_to: str,
+        account=None,
+        *args,
+        **kwargs,
+    ):
+        self.account = account
+        self.ids = ids
+        self.time_from = Timestamp(diff_from)
+        self.time_to = Timestamp(diff_to)
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["ids"] = self.ids
+
+        rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
+            rel_labels=["r"], start_time=self.time_from, end_time=self.time_to, include_outside_parentheses=True
+        )
+
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (a) WHERE a.uuid IN $ids
+        MATCH (a)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]-(ap)
+        WHERE %s
+        """ % (
+            "\n AND ".join(rels_filter),
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["a", "ap", "r"]
+
+    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> List[QueryResult]:
+        """Return a list of all results matching a given relationship id / property type.
+
+        The results are ordered chronologicall (from oldest to newest)
+        """
+        results = [
+            result
+            for result in self.results
+            if result.get("r").get("branch") in self.branch.get_branches_in_scope()
+            and result.get("a").get("uuid") == attr_id
+            and result.get("r").type == prop_type
+        ]
+
+        return sort_results_by_time(results, rel_label="r")
 
 
 class DiffRelationshipPropertiesByIDSRangeQuery(Query):

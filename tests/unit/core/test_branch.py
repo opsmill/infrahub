@@ -3,6 +3,7 @@ from typing import Dict
 import pytest
 from deepdiff import DeepDiff
 from pydantic import Field
+from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import get_branch
 from infrahub.core.branch import BaseDiffElement, Branch, Diff
@@ -31,6 +32,58 @@ async def repos_in_main(session, register_core_models_schema):
     await repo02.save(session=session)
 
     return {"repo01": repo01, "repo02": repo02}
+
+
+async def test_branch_name_validator(session):
+    assert Branch(name="new-branch")
+    assert Branch(name="cr1234")
+    assert Branch(name="cr1234")
+
+    # No space
+    with pytest.raises(ValidationError):
+        Branch(name="new branch")
+
+    # No comma
+    with pytest.raises(ValidationError):
+        Branch(name="new,branch")
+
+    # No dot
+    with pytest.raises(ValidationError):
+        Branch(name="new.branch")
+
+    # No exclamation point
+    with pytest.raises(ValidationError):
+        Branch(name="new!branch")
+
+    # No uppercase
+    with pytest.raises(ValidationError):
+        Branch(name="New-Branch")
+
+    # Must start with a letter
+    with pytest.raises(ValidationError):
+        Branch(name="1branch")
+
+    # Need at least 3 characters
+    assert Branch(name="cr1")
+    with pytest.raises(ValidationError):
+        Branch(name="cr")
+
+    # No more than 32 characters
+    with pytest.raises(ValidationError):
+        Branch(name="qwertyuiopqwertyuiopqwertyuiopqwe")
+
+    assert Branch(name="new-branch")
+    assert Branch(name="cr1234-qwerty-qwerty")
+
+
+async def test_branch_branched_form_format_validator(session):
+    assert Branch(name="new-branch").branched_from is not None
+
+    time1 = Timestamp().to_string()
+    assert Branch(name="cr1234", branched_from=time1).branched_from == time1
+
+    with pytest.raises(ValidationError):
+        Branch(name="cr1234", branched_from="not a date")
 
 
 async def test_get_query_filter_relationships_main(session, base_dataset_02):
@@ -70,11 +123,11 @@ async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
 
     main_branch = await get_branch(branch="main", session=session)
 
-    results = main_branch.get_branches_and_times_to_query()
+    results = main_branch.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results["main"]) > now
 
     t1 = Timestamp("2s")
-    results = main_branch.get_branches_and_times_to_query(t1.to_string())
+    results = main_branch.get_branches_and_times_to_query(at=t1.to_string())
     assert results["main"] == t1.to_string()
 
 
@@ -83,19 +136,84 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
 
     branch1 = await get_branch(branch="branch1", session=session)
 
-    results = branch1.get_branches_and_times_to_query()
+    results = branch1.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results["branch1"]) > now
     assert results["main"] == base_dataset_02["time_m45"]
 
     t1 = Timestamp("2s")
-    results = branch1.get_branches_and_times_to_query(t1.to_string())
+    results = branch1.get_branches_and_times_to_query(at=t1.to_string())
     assert results["branch1"] == t1.to_string()
     assert results["main"] == base_dataset_02["time_m45"]
 
     branch1.ephemeral_rebase = True
-    results = branch1.get_branches_and_times_to_query()
+    results = branch1.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results["branch1"]) > now
     assert results["main"] == results["branch1"]
+
+
+async def test_get_branches_and_times_for_range_main(session, base_dataset_02):
+    now = Timestamp()
+    main_branch = await get_branch(branch="main", session=session)
+
+    start_times, end_times = main_branch.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
+    assert list(start_times.keys()) == ["main"]
+    assert list(end_times.keys()) == ["main"]
+    assert start_times["main"] == main_branch.created_at
+    assert end_times["main"] == now.to_string()
+
+    t1 = Timestamp("2s")
+    t5 = Timestamp("5s")
+    start_times, end_times = main_branch.get_branches_and_times_for_range(start_time=t5, end_time=t1)
+    assert list(start_times.keys()) == ["main"]
+    assert list(end_times.keys()) == ["main"]
+    assert start_times["main"] == t5.to_string()
+    assert end_times["main"] == t1.to_string()
+
+
+async def test_get_branches_and_times_for_range_branch1(session, base_dataset_02):
+    now = Timestamp()
+    branch1 = await get_branch(branch="branch1", session=session)
+
+    start_times, end_times = branch1.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
+    assert sorted(list(start_times.keys())) == ["branch1", "main"]
+    assert sorted(list(end_times.keys())) == ["branch1", "main"]
+    assert end_times["branch1"] == now.to_string()
+    assert end_times["main"] == now.to_string()
+    assert start_times["branch1"] == base_dataset_02["time_m45"]
+    assert start_times["main"] == base_dataset_02["time_m45"]
+
+    t1 = Timestamp("2s")
+    t10 = Timestamp("10s")
+    start_times, end_times = branch1.get_branches_and_times_for_range(start_time=t10, end_time=t1)
+    assert sorted(list(start_times.keys())) == ["branch1", "main"]
+    assert sorted(list(end_times.keys())) == ["branch1", "main"]
+    assert end_times["branch1"] == t1.to_string()
+    assert end_times["main"] == t1.to_string()
+    assert start_times["branch1"] == t10.to_string()
+    assert start_times["main"] == t10.to_string()
+
+
+async def test_get_branches_and_times_for_range_branch2(session, base_dataset_03):
+    now = Timestamp()
+    branch2 = await get_branch(branch="branch2", session=session)
+
+    start_times, end_times = branch2.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
+    assert sorted(list(start_times.keys())) == ["branch2", "main"]
+    assert sorted(list(end_times.keys())) == ["branch2", "main"]
+    assert end_times["branch2"] == now.to_string()
+    assert end_times["main"] == now.to_string()
+    assert start_times["branch2"] == base_dataset_03["time_m90"]
+    assert start_times["main"] == base_dataset_03["time_m30"]
+
+    t1 = Timestamp("2s")
+    t10 = Timestamp("10s")
+    start_times, end_times = branch2.get_branches_and_times_for_range(start_time=t10, end_time=t1)
+    assert sorted(list(start_times.keys())) == ["branch2", "main"]
+    assert sorted(list(end_times.keys())) == ["branch2", "main"]
+    assert end_times["branch2"] == t1.to_string()
+    assert end_times["main"] == t1.to_string()
+    assert start_times["branch2"] == t10.to_string()
+    assert start_times["main"] == t10.to_string()
 
 
 async def test_diff_has_changes_graph(session, base_dataset_02):
@@ -219,14 +337,9 @@ async def test_diff_get_files_repository(session, rpc_client, repos_in_main, bas
         commit_to="ccccccc",
     )
 
-    # expected_response = {
-    #     ("file", repos_in_main["repo01"].id, "mydir/myfile.py"),
-    #     ("file", repos_in_main["repo01"].id, "readme.md"),
-    # }
-    assert len(resp) == 1
-    assert "branch2" in resp
-    assert isinstance(resp["branch2"], set)
-    assert sorted([fde.location for fde in resp["branch2"]]) == [
+    assert len(resp) == 4
+    assert isinstance(resp, list)
+    assert sorted([fde.location for fde in resp]) == [
         "mydir/myfile.py",
         "newandshiny.md",
         "notthere.md",
@@ -258,10 +371,9 @@ async def test_diff_get_files_repositories_for_branch_case01(
 
     resp = await diff.get_files_repositories_for_branch(session=session, rpc_client=rpc_client, branch=branch2)
 
-    assert len(resp) == 1
-    assert "branch2" in resp
-    assert isinstance(resp["branch2"], set)
-    assert sorted([fde.location for fde in resp["branch2"]]) == ["mydir/myfile.py", "readme.md"]
+    assert len(resp) == 2
+    assert isinstance(resp, list)
+    assert sorted([fde.location for fde in resp]) == ["mydir/myfile.py", "readme.md"]
 
     assert await rpc_client.ensure_all_responses_have_been_delivered()
 
@@ -296,21 +408,165 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
     resp = await diff.get_files_repositories_for_branch(session=session, rpc_client=rpc_client, branch=branch2)
 
-    assert len(resp) == 1
+    assert len(resp) == 3
+    assert isinstance(resp, list)
+    assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
+
+
+async def test_diff_get_files(session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main):
+    """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
+    both repositories have a new commit value so we expect both to return something"""
+
+    mock_response = InfrahubRPCResponse(
+        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+    )
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]})
+    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos = {repo.name.value: repo for repo in repos_list}
+
+    repo01 = repos["repo01"]
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(session=session)
+
+    repo02 = repos["repo02"]
+    repo02.commit.value = "eeeeeeeeee"
+    await repo02.save(session=session)
+
+    diff = await Diff.init(branch=branch2, session=session)
+
+    resp = await diff.get_files(session=session, rpc_client=rpc_client)
+
+    assert len(resp) == 2
     assert "branch2" in resp
-    assert isinstance(resp["branch2"], set)
+    assert isinstance(resp["branch2"], list)
     assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_nodes(session, base_dataset_02):
+@pytest.mark.xfail(reason="FIXME: Currently the previous value is incorrect")
+async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_main):
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2.commit.value = "1234567890"
+
+    time01 = Timestamp()
+    await repo01b2.save(session=session, at=time01)
+    Timestamp()
+
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2.commit.value = "0987654321"
+
+    time02 = Timestamp()
+    await repo01b2.save(session=session, at=time02)
+    Timestamp()
+
+    # Calculate the diff since the creation of the branch
+    diff1 = await Diff.init(branch=branch2, session=session)
+    nodes = await diff1.get_nodes(session=session)
+
+    expected_response_branch2_repo01_time01 = {
+        "branch": "branch2",
+        "labels": ["Node", "Repository"],
+        "kind": "Repository",
+        "id": repo01b2.id,
+        "action": "updated",
+        "changed_at": None,
+        "attributes": [
+            {
+                "id": repo01b2.commit.id,
+                "name": "commit",
+                "action": "updated",
+                "changed_at": None,
+                "properties": [
+                    {
+                        "branch": "branch2",
+                        "type": "HAS_VALUE",
+                        "action": "updated",
+                        "value": {
+                            "new": "0987654321",
+                            "previous": "aaaaaaaaaaa",
+                        },
+                        "changed_at": time01.to_string(),
+                    }
+                ],
+            }
+        ],
+    }
+
+    assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time01
+
+
+@pytest.mark.xfail(reason="FIXME: Currently the previous value is incorrect")
+async def test_diff_get_nodes_multiple_changes(session, default_branch, repos_in_main):
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2.commit.value = "1234567890"
+
+    time01 = Timestamp()
+    await repo01b2.save(session=session, at=time01)
+    time01_after = Timestamp()
+
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2.commit.value = "0987654321"
+
+    time02 = Timestamp()
+    await repo01b2.save(session=session, at=time02)
+    Timestamp()
+
+    # Calculate the diff, just after the first modication in the branch (time01_after)
+    # It should change the previous value returned by the query
+
+    diff2 = await Diff.init(branch=branch2, session=session, diff_from=time01_after)
+    nodes = await diff2.get_nodes(session=session)
+
+    expected_response_branch2_repo01_time02 = {
+        "branch": "branch2",
+        "labels": ["Node", "Repository"],
+        "kind": "Repository",
+        "id": repo01b2.id,
+        "action": "updated",
+        "changed_at": None,
+        "attributes": [
+            {
+                "id": repo01b2.commit.id,
+                "name": "commit",
+                "action": "updated",
+                "changed_at": None,
+                "properties": [
+                    {
+                        "branch": "branch2",
+                        "type": "HAS_VALUE",
+                        "action": "updated",
+                        "value": {
+                            "new": "0987654321",
+                            "previous": "1234567890",
+                        },
+                        "changed_at": time02.to_string(),
+                    }
+                ],
+            }
+        ],
+    }
+
+    assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time02
+
+
+async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
     diff = await Diff.init(branch=branch1, session=session)
     nodes = await diff.get_nodes(session=session)
 
     expected_response_main_c1 = {
-        "branch": None,
-        "labels": ["Car"],
+        "branch": "main",
+        "labels": ["Car", "Node"],
+        "kind": "Car",
         "id": "c1",
         "action": "updated",
         "changed_at": None,
@@ -325,18 +581,19 @@ async def test_diff_get_nodes(session, base_dataset_02):
                         "branch": "main",
                         "type": "HAS_VALUE",
                         "action": "updated",
-                        "value": None,
+                        "value": {"new": "volt", "previous": "accord"},
                         "changed_at": base_dataset_02["time_m20"],
                     }
                 ],
             }
         ],
     }
-    assert DeepDiff(nodes["main"]["c1"].to_graphql(), expected_response_main_c1, ignore_order=True).to_dict() == {}
+    assert nodes["main"]["c1"].to_graphql() == expected_response_main_c1
 
     expected_response_branch1_c1 = {
-        "branch": None,
-        "labels": ["Car"],
+        "branch": "branch1",
+        "labels": ["Car", "Node"],
+        "kind": "Car",
         "id": "c1",
         "action": "updated",
         "changed_at": None,
@@ -351,14 +608,14 @@ async def test_diff_get_nodes(session, base_dataset_02):
                         "branch": "branch1",
                         "type": "IS_PROTECTED",
                         "action": "updated",
-                        "value": None,
+                        "value": {"new": True, "previous": False},
                         "changed_at": base_dataset_02["time_m20"],
                     },
                     {
                         "branch": "branch1",
                         "type": "HAS_VALUE",
                         "action": "updated",
-                        "value": None,
+                        "value": {"new": 4, "previous": 5},
                         "changed_at": base_dataset_02["time_m20"],
                     },
                 ],
@@ -395,6 +652,18 @@ async def test_diff_get_nodes(session, base_dataset_02):
     assert nodes["branch1"]["p3"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED
+
+
+async def test_diff_get_nodes_rebased_branch(session, base_dataset_03):
+    branch2 = await Branch.get_by_name(name="branch2", session=session)
+
+    # Calculate the diff with the default value
+    diff = await Diff.init(branch=branch2, session=session)
+    nodes = await diff.get_nodes(session=session)
+
+    assert list(nodes.keys()) == ["branch2"]
+    assert list(nodes["branch2"].keys()) == ["p2"]
+    assert sorted(nodes["branch2"]["p2"].attributes.keys()) == ["firstname", "lastname"]
 
 
 async def test_diff_get_relationships(session, base_dataset_02):

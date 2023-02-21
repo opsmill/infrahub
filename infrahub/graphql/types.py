@@ -305,6 +305,7 @@ class BranchType(InfrahubObjectType):
     description = String(required=False)
     origin_branch = String(required=False)
     branched_from = String(required=False)
+    created_at = String(required=False)
     is_data_only = Boolean(required=False)
     is_default = Boolean(required=False)
 
@@ -329,11 +330,17 @@ class BranchType(InfrahubObjectType):
             return [obj.to_graphql(fields=fields) for obj in objs]
 
 
+class BranchDiffPropertyValueType(ObjectType):
+    new = GenericScalar()
+    previous = GenericScalar()
+
+
 class BranchDiffPropertyType(ObjectType):
     branch = String()
     type = String()
     changed_at = String()
     action = String()
+    value = Field(BranchDiffPropertyValueType)
 
 
 class BranchDiffAttributeType(ObjectType):
@@ -346,7 +353,7 @@ class BranchDiffAttributeType(ObjectType):
 
 class BranchDiffNodeType(ObjectType):
     branch = String()
-    labels = List(String)
+    kind = String()
     id = String()
     changed_at = String()
     action = String()
@@ -355,14 +362,14 @@ class BranchDiffNodeType(ObjectType):
 
 class BranchDiffRelationshipEdgeNodeType(ObjectType):
     id = String()
-    labels = List(String)
+    kind = String()
 
 
 class BranchDiffRelationshipType(ObjectType):
     branch = String()
     id = String()
     name = String()
-    nodes: List(BranchDiffRelationshipEdgeNodeType)
+    nodes = List(BranchDiffRelationshipEdgeNodeType)
     properties = List(BranchDiffPropertyType)
     changed_at = String()
     action = String()
@@ -371,7 +378,7 @@ class BranchDiffRelationshipType(ObjectType):
 class BranchDiffFileType(ObjectType):
     branch = String()
     repository = String()
-    location = String
+    location = String()
     action = String()
 
 
@@ -409,14 +416,12 @@ class BranchDiffType(ObjectType):
             for items in rels.values():
                 for item in items.values():
                     for sub_item in item.values():
-                        # import pdb
-                        # pdb.set_trace()
                         response["relationships"].append(sub_item.to_graphql())
 
         if "files" in fields:
             files = await diff.get_files(rpc_client=rpc_client, session=session)
             for items in files.values():
-                for item in items.values():
+                for item in items:
                     response["files"].append(item.to_graphql())
 
         return response
