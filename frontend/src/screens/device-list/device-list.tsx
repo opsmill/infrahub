@@ -4,6 +4,8 @@ import { sampleDeviceList } from "./sample-devices.data";
 import { Device } from "../../generated/graphql";
 import DeviceFilters from "./device-filters";
 import DeviceFilterBar from "./device-filter-bar";
+import LoadingScreen from "../loading-screen/loading-screen";
+import ErrorScreen from "../error-screen/error-screen";
 
 const GET_DEVICES_QUERY = gql`
   query DeviceList {
@@ -49,16 +51,20 @@ interface DeviceListData {
 }
 
 export default function DeviceList() {
-  const { loading, data } = useQuery<DeviceListData>(GET_DEVICES_QUERY);
+  const { loading, data, error } = useQuery<DeviceListData>(GET_DEVICES_QUERY);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingScreen />;
+  }
+
+  if (error) {
+    return <ErrorScreen />;
   }
 
   return (
-    <div className="">
+    <div className="flex-1 overflow-auto pt-0 px-4 sm:px-0 md:px-0">
       <div className="sm:flex sm:items-center pb-4 px-4 sm:px-6 lg:px-8">
-        <div className="sm:flex-auto">
+        <div className="sm:flex-auto pt-6">
           <h1 className="text-xl font-semibold text-gray-900">Devices</h1>
           <p className="mt-2 text-sm text-gray-700">
             A list of all the devices in your infrastructure.
@@ -87,49 +93,49 @@ export default function DeviceList() {
                   <tr>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8"
+                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8"
                     >
                       Name
                     </th>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
+                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
                     >
                       Status
                     </th>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:table-cell lg:table-cell"
+                      className="sticky top-0 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:table-cell lg:table-cell"
                     >
                       Type
                     </th>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
+                      className="sticky top-0 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
                     >
                       ASN
                     </th>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
+                      className="sticky top-0 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
                     >
                       Role
                     </th>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
+                      className="sticky top-0 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
                     >
                       Site
                     </th>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
+                      className="sticky top-0 hidden border-b border-gray-300 bg-gray-50 bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter lg:table-cell"
                     >
                       Tags
                     </th>
                     <th
                       scope="col"
-                      className="sticky top-0 z-10 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pr-4 pl-3 backdrop-blur backdrop-filter sm:pr-6 lg:pr-8"
+                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pr-4 pl-3 backdrop-blur backdrop-filter sm:pr-6 lg:pr-8"
                     >
                       <span className="sr-only">Edit</span>
                     </th>
@@ -215,6 +221,7 @@ export default function DeviceList() {
                         <div className="space-x-1">
                           {device.tags?.map((t) => (
                             <span
+                              key={t?.name.value}
                               className={`w-4 h-4 bg-${t?.name.value}-500 rounded-full inline-block`}
                             />
                           ))}
