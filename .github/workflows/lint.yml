@@ -40,6 +40,7 @@ jobs:
       - name: Install modules
         run: yarn
       - name: Run ESLint
+        working-directory: ./frontend
         run: eslint . --ext .js,.jsx,.ts,.tsx
       # - name: Install NodeJS
       #   uses: actions/setup-node@v2
@@ -50,4 +51,3 @@ jobs:
 
       # - name: Code Linting
       #   run: npm run lint
-

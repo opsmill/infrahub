@@ -2,8 +2,13 @@
 # yamllint disable rule:truthy
 name: "Backend"
 on:
-  - "push"
-  - "pull_request"
+  pull_request:
+    paths:
+      - backend/
+      - development/
+      - pyproject.toml
+      - poetry.lock
+      - tasks.py
 
 env:
   NEO4J_USERNAME: neo4j

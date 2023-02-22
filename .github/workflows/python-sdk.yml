@@ -2,8 +2,9 @@
 # yamllint disable rule:truthy
 name: "Python SDK"
 on:
-  - "push"
-  - "pull_request"
+  pull_request:
+    paths:
+      - python_sdk
 
 jobs:
   python-tests:

@@ -2,8 +2,9 @@
 # yamllint disable rule:truthy
 name: "infrahubctl"
 on:
-  - "push"
-  - "pull_request"
+  pull_request:
+    paths:
+      - infrahub_ctl
 
 jobs:
   python-tests:
