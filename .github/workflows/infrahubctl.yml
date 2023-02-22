@@ -20,7 +20,7 @@ jobs:
           git config --global user.email "infrahub@example.com"
           git config --global user.name "Infrahub"
       - name: "Install project"
-        run: "poetry install --only=dev,cli,sdk"
+        run: "poetry install --only=main,dev,cli,sdk"
       # - name: "Pylint Tests"
       #   run: "poetry run invoke pylint"
       - name: "Unit Tests"

@@ -35,7 +35,7 @@ jobs:
       - name: "Start database"
         run: "invoke dev-start"
       - name: "Install project"
-        run: "poetry install --only=dev,server"
+        run: "poetry install --only=main,dev,server"
       # - name: "Pylint Tests"
       #   run: "poetry run invoke pylint"
       - name: "Unit Tests"
