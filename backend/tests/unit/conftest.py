@@ -4,7 +4,6 @@ import pendulum
 import pytest
 from neo4j._codec.hydration.v1 import HydrationHandler
 
-
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch

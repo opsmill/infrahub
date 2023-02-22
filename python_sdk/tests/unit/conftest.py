@@ -1,8 +1,9 @@
 import json
 
 import pytest
-from infrahub_client import QUERY_ALL_BRANCHES, InfrahubClient
 from pytest_httpx import HTTPXMock
+
+from infrahub_client import QUERY_ALL_BRANCHES, InfrahubClient
 
 
 @pytest.fixture
