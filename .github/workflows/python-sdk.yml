@@ -1,0 +1,26 @@
+---
+# yamllint disable rule:truthy
+name: "Python SDK"
+on:
+  - "push"
+  - "pull_request"
+
+jobs:
+  python-tests:
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v2"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.1.15 toml invoke"
+      - name: "Setup Git"
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
+      - name: "Install project"
+        run: "poetry install --only=dev,sdk"
+      # - name: "Pylint Tests"
+      #   run: "poetry run invoke pylint"
+      - name: "Unit Tests"
+        run: "poetry run pytest -v python_sdk/tests/unit"
