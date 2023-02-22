@@ -2,35 +2,46 @@
 name = "infrahub"
 version = "0.2.0"
 description = ""
-authors = ["Damien Garros <dgarros@opsmill.com>"]
+authors = ["Damien Garros <damien@opsmill.com>"]
 
 packages = [
-    { include = "infrahub" },
-    { include = "infrahub_ctl" },
-    { include = "infrahub_client" },
+    { include = "infrahub", from = "backend" },
+    { include = "infrahub_ctl", from = "infrahub_ctl" },
+    { include = "infrahub_client", from = "python_sdk"},
 ]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-fastapi = "~0.89"
-neo4j = "~5.5"
-pendulum = "~2.1"
-uvicorn = {version = "~0.20", extras = ["standard"]}
-graphene = "~3.2"
 rich = "^13.3"
-starlette-exporter = "^0.12.0"
+pendulum = "~2.1"
 typer = "^0.7"
-GitPython = "^3.1"
 Jinja2 = "^3.1"
 httpx = "^0.23"
 toml = "^0.10.2"
 jsonlines = "^3.0.0"
-gunicorn = "^20.1"
 deepdiff = "^5.8.1"
+
+[tool.poetry.group.server.dependencies]
+fastapi = "~0.89"
+uvicorn = {version = "~0.20", extras = ["standard"]}
+gunicorn = "^20.1"
+graphene = "~3.2"
+neo4j = "~5.5"
+starlette-exporter = "^0.12.0"
+GitPython = "^3.1"
 aio-pika = "^8.3"
 ujson = "^5.7"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.sdk.dependencies]
+pydantic = "^1.10"
+
+[tool.poetry.group.cli.dependencies]
+GitPython = "^3.1"
+
+[tool.poetry.group.perf.dependencies]
+locust = "^2.13.1"
+
+[tool.poetry.group.dev.dependencies]
 black = "*"
 pytest = "*"
 yamllint = "*"
@@ -44,7 +55,6 @@ pre-commit = "^2.20.0"
 isort = "*"
 autoflake = "*"
 pytest-clarity = "^1.0.1"
-locust = "^2.13.1"
 pytest-httpx = "^0.21.2"
 types-toml = "^0.10.8"
 
@@ -72,6 +82,7 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
+known_first_party = [ "infrahub" , "infrahub_client", "infrahub_ctl" ]
 
 [tool.coverage.run]
 branch = true

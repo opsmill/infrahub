@@ -51,7 +51,8 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
     There is conflict between branch01 and branch02."""
 
     name = "infrahub-test-fixture-01"
-    fixtures_dir = os.path.join(os.getcwd(), "tests/fixtures")
+    here = os.path.abspath(os.path.dirname(__file__))
+    fixtures_dir = os.path.join(here, "..", "..", "fixtures")
     fixture_repo = os.path.join(fixtures_dir, "infrahub-test-fixture-01-0b341c0.tar.gz")
 
     # Extract the fixture package in the source directory

@@ -7,7 +7,6 @@ from infrahub.cli.db import app as db_app
 from infrahub.cli.events import app as events_app
 from infrahub.cli.git_agent import app as git_app
 from infrahub.cli.server import app as server_app
-from infrahub.cli.test import app as test_app
 from infrahub.core.initialization import initialization
 from infrahub.database import get_db
 
@@ -18,7 +17,6 @@ app = typer.Typer(pretty_exceptions_enable=False)
 app.add_typer(server_app, name="server", help="Control the API Server.")
 app.add_typer(git_app, name="git-agent", help="Control the GIT Repositories.")
 app.add_typer(db_app, name="db", help="Manage the database.")
-app.add_typer(test_app, name="test", help="Execute unit and integration tests.")
 app.add_typer(events_app, name="events", help="Interact with the events system.")
 
 

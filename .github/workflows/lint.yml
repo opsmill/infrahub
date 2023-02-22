@@ -2,11 +2,11 @@
 # yamllint disable rule:truthy
 name: "Linting"
 on:
-  - "push"
-  - "pull_request"
+  pull_request:
+
 jobs:
   yaml-lint:
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -15,7 +15,7 @@ jobs:
       - name: "Linting: yamllint"
         run: "yamllint ."
   python-lint:
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -24,7 +24,7 @@ jobs:
       - name: "Linting: BLACK"
         run: "black --check ."
   flake8-lint:
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -32,3 +32,18 @@ jobs:
         run: "pip install invoke toml flake8==5.0.4"
       - name: "Linting: Flake8"
         run: "invoke flake8"
+  javascript-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v2"
+      - name: Install NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install ESLint
+        working-directory: ./frontend
+        run: npm install -g eslint
+      # - name: Run ESLint
+      #   working-directory: ./frontend
+      #   run: eslint . --ext .js,.jsx,.ts,.tsx

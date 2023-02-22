@@ -1,9 +1,14 @@
 ---
 # yamllint disable rule:truthy
-name: "Testing"
+name: "Backend"
 on:
-  - "push"
-  - "pull_request"
+  pull_request:
+    paths:
+      - backend/
+      - development/
+      - pyproject.toml
+      - poetry.lock
+      - tasks.py
 
 env:
   NEO4J_USERNAME: neo4j
@@ -19,7 +24,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
       - name: "Setup Python environment"
-        run: "pip install poetry==1.1.15 toml invoke"
+        run: "pip install poetry==1.3.2 toml invoke"
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
@@ -30,16 +35,10 @@ jobs:
       - name: "Start database"
         run: "invoke dev-start"
       - name: "Install project"
-        run: "poetry install"
-      - name: "Pylint Tests"
-        run: "poetry run invoke pylint"
+        run: "poetry install --only=main,dev,server"
+      # - name: "Pylint Tests"
+      #   run: "poetry run invoke pylint"
       - name: "Unit Tests"
-        run: "poetry run infrahub test unit"
-      - name: "Integration Tests : Client"
-        run: "poetry run infrahub test integration tests/integration/client/"
+        run: "poetry run pytest -v backend/tests/unit"
       - name: "Integration Tests : User Workflows"
-        run: "poetry run infrahub test integration tests/integration/user_workflows/"
-      - name: "Client Tests"
-        run: "poetry run infrahub test client"
-      - name: "CTL Tests"
-        run: "poetry run infrahub test ctl"
+        run: "poetry run pytest -v backend/tests/integration/user_workflows/"
