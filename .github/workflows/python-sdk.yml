@@ -4,7 +4,11 @@ name: "Python SDK"
 on:
   pull_request:
     paths:
-      - python_sdk
+      - python_sdk/
+      - development/
+      - pyproject.toml
+      - poetry.lock
+      - tasks.py
 
 jobs:
   python-tests:

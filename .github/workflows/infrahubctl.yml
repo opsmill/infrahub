@@ -4,7 +4,11 @@ name: "infrahubctl"
 on:
   pull_request:
     paths:
-      - infrahub_ctl
+      - infrahub_ctl/
+      - development/
+      - pyproject.toml
+      - poetry.lock
+      - tasks.py
 
 jobs:
   python-tests:
