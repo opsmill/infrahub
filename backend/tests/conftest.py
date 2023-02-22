@@ -6,6 +6,7 @@ import infrahub.config as config
 
 TEST_DATABASE = "infrahub.testing"
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Overrides pytest default function scoped event loop"""
@@ -13,6 +14,7 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
+
 
 @pytest.fixture(scope="session", autouse=True)
 def execute_before_any_test():
