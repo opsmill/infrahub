@@ -82,6 +82,7 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
+known_first_party = [ "infrahub" , "infrahub_client", "infrahub_ctl" ]
 
 [tool.coverage.run]
 branch = true
