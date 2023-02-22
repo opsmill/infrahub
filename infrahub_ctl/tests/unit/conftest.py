@@ -5,7 +5,6 @@ from pytest_httpx import HTTPXMock
 
 from infrahub_client import QUERY_ALL_BRANCHES
 
-
 @pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
