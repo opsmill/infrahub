@@ -7,7 +7,7 @@ authors = ["Damien Garros <damien@opsmill.com>"]
 packages = [
     { include = "infrahub", from = "backend" },
     { include = "infrahub_ctl", from = "infrahub_ctl" },
-    { include = "infrahub_client", from = "infrahub_client"},
+    { include = "infrahub_client", from = "python_sdk"},
 ]
 
 [tool.poetry.dependencies]
