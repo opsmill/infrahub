@@ -37,17 +37,13 @@ jobs:
     steps: # list of steps
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
-      - name: Install modules
-        run: yarn
+      - name: Install NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install ESLint
+        working-directory: ./frontend
+        run: npm install -g eslint
       - name: Run ESLint
         working-directory: ./frontend
         run: eslint . --ext .js,.jsx,.ts,.tsx
-      # - name: Install NodeJS
-      #   uses: actions/setup-node@v2
-      #   with:
-      #     node-version: 16
-      # - name: Install Dependencies
-      #   run: npm ci
-
-      # - name: Code Linting
-      #   run: npm run lint
