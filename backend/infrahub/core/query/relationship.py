@@ -91,7 +91,7 @@ class RelationshipQuery(Query):
     def __init__(
         self,
         rel: Union[Type[Relationship], Relationship] = None,
-        rel_type: str = None,
+        rel_type: Optional[str] = None,
         source: Node = None,
         source_id: UUID = None,
         destination: Node = None,
@@ -370,8 +370,8 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
     def __init__(
         self,
-        filters: dict = None,
-        limit: int = None,
+        filters: Optional[dict] = None,
+        limit: Optional[int] = None,
         *args,
         **kwargs,
     ):

@@ -92,12 +92,12 @@ class RelationshipSchema(BaseModel):
     async def get_query_filter(
         self,
         session: AsyncSession,
-        name: str = None,  # pylint: disable=unused-argument
-        filters: dict = None,
+        name: Optional[str] = None,  # pylint: disable=unused-argument
+        filters: Optional[dict] = None,
         branch: Branch = None,
         rels_offset: int = 0,
         include_match: bool = True,
-        param_prefix: str = None,
+        param_prefix: Optional[str] = None,
     ) -> Tuple[List[str], Dict, int]:
         query_filters = []
         query_params = {}

@@ -108,8 +108,8 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         default_timeout: int = 10,
         retry_on_failure: bool = False,
         retry_delay: int = 5,
-        log: Logger = None,
-        test_client=None,
+        log: Optional[Logger] = None,
+        test_client = None,
     ):
         self.address = address
         self.client = None
@@ -131,11 +131,11 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
         query: str,
-        variables: dict = None,
-        branch_name: str = None,
-        at: str = None,
+        variables: Optional[dict] = None,
+        branch_name: Optional[str] = None,
+        at: Optional[str] = None,
         rebase: bool = False,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         raise_for_error: bool = True,
     ):
         """Execute a GraphQL query (or mutation).
@@ -206,7 +206,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
-    async def post(self, url: str, payload: dict, timeout: int = None):
+    async def post(self, url: str, payload: dict, timeout: Optional[int] = None):
         """Execute a HTTP POST with HTTPX.
 
         Raises:
@@ -227,11 +227,11 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def query_gql_query(
         self,
         name: str,
-        params: dict = None,
-        branch_name: str = None,
-        at: str = None,
+        params: Optional[dict] = None,
+        branch_name: Optional[str] = None,
+        at: Optional[str] = None,
         rebase: bool = False,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         raise_for_error: bool = True,
     ):
         url = f"{self.address}/query/{name}"
@@ -301,7 +301,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         return branches
 
-    async def get_list_repositories(self, branches: Dict[str, RepositoryData] = None) -> Dict[str, RepositoryData]:
+    async def get_list_repositories(self, branches: Optional[Dict[str, RepositoryData]] = None) -> Dict[str, RepositoryData]:
         if not branches:
             branches = await self.get_list_branches()
 
@@ -562,8 +562,8 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self,
         branch_name: str,
         branch_only: bool = True,
-        diff_from: str = None,
-        diff_to: str = None,
+        diff_from: Optional[str] = None,
+        diff_to: Optional[str] = None,
     ):
         QUERY_BRANCH_DIFF = """
         query($branch_name: String!, $branch_only: Boolean!, $diff_from: String!, $diff_to: String! ) {

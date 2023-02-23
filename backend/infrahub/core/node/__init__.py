@@ -190,7 +190,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self,
         session: AsyncSession,
         id: UUID = None,
-        db_id: int = None,
+        db_id: Optional[int] = None,
         updated_at: Union[Timestamp, str] = None,
         **kwargs,
     ) -> SelfNode:

@@ -20,7 +20,7 @@ class ServerNotResponsiveError(Exception):
 
 
 class GraphQLError(Exception):
-    def __init__(self, errors: List[str], query: str = None, variables: dict = None):
+    def __init__(self, errors: List[str], query: Optional[str] = None, variables: dict = None):
         self.query = query
         self.variables = variables
         self.errors = errors
@@ -56,8 +56,8 @@ class NetboxClient:
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
         query: str,
-        variables: dict = None,
-        timeout: int = None,
+        variables: Optional[dict] = None,
+        timeout: Optional[int] = None,
         raise_for_error: bool = True,
     ):
         """Execute a GraphQL query (or mutation).

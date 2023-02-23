@@ -31,7 +31,7 @@ class InfrahubBaseQuery(ObjectType):
 
     @staticmethod
     async def resolve_diff(
-        root, info, branch: str, branch_only: bool, time_from: str = None, time_to: str = None, **kwargs
+        root, info, branch: str, branch_only: bool, time_from: Optional[str] = None, time_to: Optional[str] = None, **kwargs
     ):
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return await BranchDiffType.get_diff(

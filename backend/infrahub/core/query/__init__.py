@@ -171,7 +171,7 @@ class Query(ABC):
         session: AsyncSession,
         branch: Branch = None,
         at: Union[Timestamp, str] = None,
-        limit: int = None,
+        limit: Optional[int] = None,
         *args,
         **kwargs,
     ):

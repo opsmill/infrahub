@@ -43,7 +43,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         at: Timestamp,
         node: Node,
         id: UUID = None,
-        db_id: str = None,
+        db_id: Optional[str] = None,
         data: Union[dict, str] = None,
         updated_at: Union[Timestamp, str] = None,
         **kwargs,
@@ -271,11 +271,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def get_query_filter(  # pylint: disable=unused-argument
         cls,
         name: str,
-        filters: dict = None,
+        filters: Optional[dict] = None,
         branch=None,
         rels_offset: int = 0,
         include_match: bool = True,
-        param_prefix: str = None,
+        param_prefix: Optional[str] = None,
     ) -> Set[List[str], Dict, int]:
         """Generate Query String Snippet to filter the right node."""
 

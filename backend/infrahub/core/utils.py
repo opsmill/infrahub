@@ -17,7 +17,7 @@ async def add_relationship(
     dst_node_id: str,
     rel_type: str,
     session: AsyncSession,
-    branch_name: str = None,
+    branch_name: Optional[str] = None,
     at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
 ):
@@ -91,7 +91,7 @@ async def get_paths_between_nodes(
     source_id: str,
     destination_id: str,
     relationships: List[str] = None,
-    max_length: int = None,
+    max_length: Optional[int] = None,
     print_query=False,
 ):
     """Return all paths between 2 nodes."""

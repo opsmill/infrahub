@@ -76,8 +76,8 @@ class NodeQuery(Query):
     def __init__(
         self,
         node: Node = None,
-        node_id: str = None,
-        node_db_id: int = None,
+        node_id: Optional[str] = None,
+        node_db_id: Optional[int] = None,
         id=None,
         branch: Branch = None,
         *args,
@@ -207,7 +207,7 @@ class NodeListGetAttributeQuery(Query):
     def __init__(
         self,
         ids: List[str],
-        fields: dict = None,
+        fields: Optional[dict] = None,
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
@@ -406,7 +406,7 @@ class NodeGetListQuery(Query):
 
     order_by: List[str] = ["id(n)"]
 
-    def __init__(self, schema: NodeSchema, filters: dict = None, *args, **kwargs):
+    def __init__(self, schema: NodeSchema, filters: Optional[dict] = None, *args, **kwargs):
         self.schema = schema
         self.filters = filters
 

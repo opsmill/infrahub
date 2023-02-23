@@ -111,8 +111,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def load(  # pylint: disable=unused-argument
         self,
         session: AsyncSession,
-        id: str = None,
-        db_id: int = None,
+        id: Optional[str] = None,
+        db_id: Optional[int] = None,
         updated_at: Union[Timestamp, str] = None,
         data: Union[dict, RelationshipPeerData, Any] = None,
     ) -> SelfRelationship:

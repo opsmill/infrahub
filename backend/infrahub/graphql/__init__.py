@@ -79,7 +79,7 @@ async def get_gql_subscription(
 async def execute_query(
     name: str,
     session: AsyncSession,
-    params: dict = None,
+    params: Optional[dict] = None,
     branch: Union[Branch, str] = None,
     at: Union[Timestamp, str] = None,
 ) -> ExecutionResult:
