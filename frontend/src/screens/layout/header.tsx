@@ -12,6 +12,8 @@ import "react-datetime/css/react-datetime.css";
 import { classNames } from "../../App";
 import { userNavigation } from "./navigation-list";
 import BranchSelector from "../../components/branch-selector/branch-selector";
+import { useAtom } from "jotai";
+import { branchState } from "../../state/atoms/branch.atom";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -19,6 +21,7 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useState(new Date());
+  const [branch] = useAtom(branchState);
   const [isDateDefault, setIsDateDefault] = useState(true);
   const { setSidebarOpen } = props;
   return (
@@ -42,6 +45,8 @@ export default function Header(props: Props) {
                 <MagnifyingGlassIcon className="h-5 w-5" aria-hidden="true" />
               </div>
               <input
+                onChange={() => {}}
+                value={branch.name}
                 id="search-field"
                 className="block h-full w-full border-transparent py-2 pl-8 pr-3 text-gray-900 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-0 sm:text-sm"
                 placeholder="Search"

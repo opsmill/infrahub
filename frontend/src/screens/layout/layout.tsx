@@ -1,8 +1,8 @@
 import { useState } from "react";
-import DeviceList from "../device-list/device-list";
 import MobileMenu from "./mobile-menu";
 import DesktopMenu from "./desktop-menu";
 import Header from "./header";
+import OpsObjects from "../ops-objects/ops-objects";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,7 +15,8 @@ export default function Layout() {
 
         <div className="flex flex-1 flex-col md:pl-64">
           <Header setSidebarOpen={setSidebarOpen} />
-          <DeviceList />
+          <OpsObjects />
+          {/* <DeviceList /> */}
         </div>
       </div>
     </>
