@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import pickle
-from typing import TYPE_CHECKING, Any, Generator, TypeVar
+from typing import TYPE_CHECKING, Any, Generator, Optional, TypeVar
 
 from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
 from aio_pika.patterns.base import Base as PickleSerializer
@@ -474,7 +474,13 @@ class InfrahubDataMessage(InfrahubActionMessage):
     actions = DataMessageAction
 
     def __init__(
-        self, node: Node = None, node_id: Optional[str] = None, node_kind: Optional[str] = None, branch: Optional[str] = None, *args, **kwargs
+        self,
+        node: Node = None,
+        node_id: Optional[str] = None,
+        node_kind: Optional[str] = None,
+        branch: Optional[str] = None,
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
 

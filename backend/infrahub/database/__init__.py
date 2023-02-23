@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Optional
+
 from neo4j import AsyncGraphDatabase, AsyncSession
 
 # from contextlib import asynccontextmanager

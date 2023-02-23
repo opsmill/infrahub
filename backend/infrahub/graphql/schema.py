@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Optional
+
 from graphene import Boolean, Field, List, ObjectType, String
 from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
 
@@ -31,7 +35,13 @@ class InfrahubBaseQuery(ObjectType):
 
     @staticmethod
     async def resolve_diff(
-        root, info, branch: str, branch_only: bool, time_from: Optional[str] = None, time_to: Optional[str] = None, **kwargs
+        root,
+        info,
+        branch: str,
+        branch_only: bool,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+        **kwargs,
     ):
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return await BranchDiffType.get_diff(
