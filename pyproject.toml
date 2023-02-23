@@ -75,6 +75,7 @@ infrahub = "infrahub.cli:app"
 infrahubctl = "infrahub_ctl.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
+infrahub-sync = "infrahub_sync.cli:app"
 
 [tool.black]
 line-length = 120
