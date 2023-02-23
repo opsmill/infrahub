@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class InfrahubSchema:
     def __init__(self, client: InfrahubClient):
         self.client = client
-        self.cache = {}
+        self.cache: dict = {}
 
     def validate(self, data):
         SchemaRoot(**data)

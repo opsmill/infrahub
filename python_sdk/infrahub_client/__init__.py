@@ -4,7 +4,7 @@ import asyncio
 import copy
 import logging
 from logging import Logger
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 import httpx
 from pydantic import BaseModel
@@ -109,7 +109,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         retry_on_failure: bool = False,
         retry_delay: int = 5,
         log: Optional[Logger] = None,
-        test_client = None,
+        test_client=None,
     ):
         self.address = address
         self.client = None
@@ -160,7 +160,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         if branch_name:
             url += f"/{branch_name}"
 
-        payload = {"query": query}
+        payload: Dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
 
@@ -301,7 +301,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         return branches
 
-    async def get_list_repositories(self, branches: Optional[Dict[str, RepositoryData]] = None) -> Dict[str, RepositoryData]:
+    async def get_list_repositories(
+        self, branches: Optional[Dict[str, BranchData]] = None
+    ) -> Dict[str, RepositoryData]:
         if not branches:
             branches = await self.get_list_branches()
 

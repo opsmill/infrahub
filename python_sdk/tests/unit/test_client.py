@@ -7,7 +7,7 @@ async def test_init_client():
     assert True
 
 
-async def test_get_branches(mock_branches_list_query):
+async def test_get_branches(mock_branches_list_query):  # pylint: disable=unused-argument
     client = await InfrahubClient.init(address="http://mock")
     branches = await client.get_list_branches()
 
@@ -15,7 +15,7 @@ async def test_get_branches(mock_branches_list_query):
     assert isinstance(branches["main"], BranchData)
 
 
-async def test_get_repositories(mock_branches_list_query, mock_repositories_query):
+async def test_get_repositories(mock_branches_list_query, mock_repositories_query):  # pylint: disable=unused-argument
     client = await InfrahubClient.init(address="http://mock")
     repos = await client.get_list_repositories()
 
