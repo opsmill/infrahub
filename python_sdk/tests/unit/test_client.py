@@ -1,4 +1,4 @@
-from infrahub_client import BranchData, InfrahubClient, Query, RepositoryData
+from infrahub_client import BranchData, InfrahubClient, RepositoryData
 
 
 async def test_init_client():
@@ -27,62 +27,3 @@ async def test_get_repositories(mock_branches_list_query, mock_repositories_quer
     )
     assert len(repos) == 1
     assert repos["infrahub-demo-edge"] == expected_response
-
-
-async def test_query_rendering_no_vars():
-    data01 = {
-        "device": {"name": {"value": None}, "description": {"value": None}, "interfaces": {"name": {"value": None}}}
-    }
-    query = Query(data=data01)
-
-    expected_query = """
-query {
-    device {
-        name {
-            value
-        }
-        description {
-            value
-        }
-        interfaces {
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-    assert query.render_first_line() == "query {"
-    assert query.render() == expected_query
-
-
-async def test_query_rendering_with_vars():
-    data01 = {
-        "device": {
-            "@filters": {"name__value": "$name"},
-            "name": {"value": None},
-            "description": {"value": None},
-            "interfaces": {"@filters": {"enabled__value": "$enabled"}, "name": {"value": None}},
-        }
-    }
-    query = Query(data=data01, variables={"name": str, "enabled": bool})
-
-    expected_query = """
-query ($name: String!, $enabled: Boolean!) {
-    device(name__value: $name) {
-        name {
-            value
-        }
-        description {
-            value
-        }
-        interfaces(enabled__value: $enabled) {
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-    assert query.render_first_line() == "query ($name: String!, $enabled: Boolean!) {"
-    assert query.render() == expected_query
