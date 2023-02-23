@@ -1,0 +1,400 @@
+{   "version": 
+    "nodes": [
+        {
+            "name": "device",
+            "kind": "Device",
+            "default_filter": "name__value",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": true
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "type",
+                    "kind": "String"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "site",
+                    "peer": "Location",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "status",
+                    "peer": "Status",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "role",
+                    "peer": "Role",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "interfaces",
+                    "peer": "Interface",
+                    "optional": true,
+                    "cardinality": "many"
+                },
+                {
+                    "name": "asn",
+                    "peer": "AutonomousSystem",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "tags",
+                    "peer": "Tag",
+                    "optional": true,
+                    "cardinality": "many"
+                }
+            ]
+        },
+        {
+            "name": "interface",
+            "kind": "Interface",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String"
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "speed",
+                    "kind": "Integer"
+                },
+                {
+                    "name": "enabled",
+                    "kind": "Boolean",
+                    "default_value": true
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "status",
+                    "peer": "Status",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "role",
+                    "peer": "Role",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "device",
+                    "peer": "Device",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "tags",
+                    "peer": "Tag",
+                    "optional": true,
+                    "cardinality": "many"
+                },
+                {
+                    "name": "ip_addresses",
+                    "peer": "IPAddress",
+                    "optional": true,
+                    "cardinality": "many"
+                },
+                {
+                    "name": "connected_circuit",
+                    "peer": "CircuitEndpoint",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "connected_interface",
+                    "peer": "Interface",
+                    "optional": true,
+                    "cardinality": "one"
+                }
+            ]
+        },
+        {
+            "name": "ipaddress",
+            "kind": "IPAddress",
+            "default_filter": "address__value",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "address",
+                    "kind": "String"
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "interface",
+                    "peer": "Interface",
+                    "optional": true,
+                    "cardinality": "one"
+                }
+            ]
+        },
+        {
+            "name": "circuit",
+            "kind": "Circuit",
+            "default_filter": "circuit_id__value",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "circuit_id",
+                    "kind": "String",
+                    "unique": true
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "vendor_id",
+                    "kind": "String",
+                    "optional": true
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "status",
+                    "peer": "Status",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "role",
+                    "peer": "Role",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "provider",
+                    "peer": "Organization",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "endpoints",
+                    "peer": "CircuitEndpoint",
+                    "optional": true,
+                    "cardinality": "many"
+                }
+            ]
+        },
+        {
+            "name": "circuit_endpoint",
+            "kind": "CircuitEndpoint",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "site",
+                    "peer": "Location",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "circuit",
+                    "peer": "Circuit",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "connected_interface",
+                    "peer": "Interface",
+                    "optional": true,
+                    "cardinality": "one"
+                }
+            ]
+        },
+        {
+            "name": "autonomous_system",
+            "kind": "AutonomousSystem",
+            "default_filter": "name__value",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": true
+                },
+                {
+                    "name": "asn",
+                    "kind": "Integer",
+                    "unique": true
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "organization",
+                    "peer": "Organization",
+                    "optional": false,
+                    "cardinality": "one"
+                }
+            ]
+        },
+        {
+            "name": "bgp_peer_group",
+            "kind": "BGPPeerGroup",
+            "default_filter": "name__value",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String"
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "import_policies",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "export_policies",
+                    "kind": "String",
+                    "optional": true
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "local_as",
+                    "identifier": "bgppeergroup__local_as",
+                    "peer": "AutonomousSystem",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "remote_as",
+                    "identifier": "bgppeergroup__remote_as",
+                    "peer": "AutonomousSystem",
+                    "optional": true,
+                    "cardinality": "one"
+                }
+            ]
+        },
+        {
+            "name": "bgp_session",
+            "kind": "BGPSession",
+            "default_filter": "asn__value",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "type",
+                    "kind": "String"
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "import_policies",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "export_policies",
+                    "kind": "String",
+                    "optional": true
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "status",
+                    "peer": "Status",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "role",
+                    "peer": "Role",
+                    "optional": false,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "local_as",
+                    "identifier": "bgpsession__local_as",
+                    "peer": "AutonomousSystem",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "remote_as",
+                    "identifier": "bgpsession__remote_as",
+                    "peer": "AutonomousSystem",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "local_ip",
+                    "identifier": "bgpsession__local_ip",
+                    "peer": "IPAddress",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "remote_ip",
+                    "identifier": "bgpsession__remote_ip",
+                    "peer": "IPAddress",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "device",
+                    "peer": "Device",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "peer_group",
+                    "peer": "BGPPeerGroup",
+                    "optional": true,
+                    "cardinality": "one"
+                },
+                {
+                    "name": "peer_session",
+                    "peer": "BGPSession",
+                    "optional": true,
+                    "cardinality": "one"
+                }
+            ]
+        }
+    ]
+}
