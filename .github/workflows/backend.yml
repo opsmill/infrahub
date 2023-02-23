@@ -4,8 +4,8 @@ name: "Backend"
 on:
   pull_request:
     paths:
-      - backend/
-      - development/
+      - "backend/**"
+      - "development/**"
       - pyproject.toml
       - poetry.lock
       - tasks.py
