@@ -3,7 +3,9 @@ from pathlib import Path
 
 import typer
 import ujson
+from pydantic import ValidationError
 from rich.console import Console
+from ujson import JSONDecodeError
 
 import infrahub_ctl.config as config
 from infrahub_client import InfrahubClient
@@ -20,12 +22,26 @@ def valid_config():
 
 
 async def _schema(schema: Path):
-    schema_data = ujson.loads(schema.read_text())
+    console = Console()
+
+    try:
+        schema_data = ujson.loads(schema.read_text())
+    except JSONDecodeError as exc:
+        console.print(f"[red]Invalid JSON file")
+        raise typer.Exit(2) from exc
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
-    Console()
 
-    client.schema.validate(schema_data)
+    try:
+        client.schema.validate(schema_data)
+    except ValidationError as exc:
+        console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s)")
+        for error in exc.errors():
+            loc_str = [str(item) for item in error["loc"]]
+            console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
+        raise typer.Exit(2)
+
+    console.print("[green]Schema is valid !!")
 
 
 @app.command(name="schema")
