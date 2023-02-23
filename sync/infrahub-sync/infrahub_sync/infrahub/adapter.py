@@ -25,5 +25,3 @@ class InfrahubAdapter(DiffSync):
 
     async def load(self):
         """Load all data from Infrahub into the internal cache after transformation."""
-
-
