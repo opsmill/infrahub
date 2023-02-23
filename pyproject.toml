@@ -8,6 +8,8 @@ packages = [
     { include = "infrahub", from = "backend" },
     { include = "infrahub_ctl", from = "infrahub_ctl" },
     { include = "infrahub_client", from = "python_sdk"},
+    { include = "infrahub_sync", from = "sync/infrahub-sync"},
+    { include = "diffsync", from = "sync/diffsync"},
 ]
 
 [tool.poetry.dependencies]
@@ -57,6 +59,14 @@ autoflake = "*"
 pytest-clarity = "^1.0.1"
 pytest-httpx = "^0.21.2"
 types-toml = "^0.10.8"
+
+
+[tool.poetry.group.sync.dependencies]
+dagster = "^1.1.19"
+dagit = "^1.1.19"
+structlog = "^22.3.0"
+pynetbox = "^7.0.1"
+pynautobot = "^1.4.0"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
