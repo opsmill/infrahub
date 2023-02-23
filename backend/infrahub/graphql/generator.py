@@ -237,7 +237,7 @@ async def generate_object_types(
                 related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
 
             elif rel.cardinality == "many":
-                node_type._meta.fields[rel.name] = graphene.Field.mounted(graphene.List(peer_type, **peer_filters))
+                node_type._meta.fields[rel.name] = graphene.Field.mounted(graphene.List(peer_type, required=True, **peer_filters))
                 related_node_type._meta.fields[rel.name] = graphene.Field.mounted(
                     graphene.List(peer_type, **peer_filters)
                 )
@@ -262,6 +262,7 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
             node_type,
             resolver=default_list_resolver,
             **node_filters,
+            required=True,
         )
 
     return type("QueryMixin", (object,), class_attrs)
