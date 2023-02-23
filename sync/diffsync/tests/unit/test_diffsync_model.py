@@ -358,6 +358,7 @@ def test_diffsync_model_subclass_validation():
 
 def test_diffsync_model_subclass_inheritance():
     """Verify that the class validation works properly even with a hierarchy of subclasses."""
+
     # Pylint would complain because we're not actually using any of the classes declared below
     # pylint: disable=unused-variable
     class Alpha(DiffSyncModel):
