@@ -245,7 +245,7 @@ def performance_test(context: Context, directory: str = "utilities", dataset: st
 def format_black(context: Context):
     """Run black to format all Python files."""
 
-    exec_cmd = "black --exclude=examples --exclude=repositories ."
+    exec_cmd = "black --extend-exclude=sync/diffsync --exclude=examples --exclude=repositories ."
     context.run(exec_cmd, pty=True)
 
 
@@ -253,7 +253,7 @@ def format_black(context: Context):
 def format_autoflake(context: Context):
     """Run autoflack to format all Python files."""
 
-    exec_cmd = "autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables ."
+    exec_cmd = "autoflake --exclude=sync/diffsync/ --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables ."
     context.run(exec_cmd, pty=True)
 
 
@@ -261,7 +261,7 @@ def format_autoflake(context: Context):
 def format_isort(context: Context):
     """Run isort to format all Python files."""
 
-    exec_cmd = "isort --skip=examples --skip=repositories ."
+    exec_cmd = "isort --skip=sync/diffsync --skip=examples --skip=repositories ."
     context.run(exec_cmd, pty=True)
 
 
