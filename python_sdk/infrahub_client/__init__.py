@@ -4,7 +4,7 @@ import asyncio
 import copy
 import logging
 from logging import Logger
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import httpx
 from pydantic import BaseModel
@@ -38,6 +38,83 @@ from infrahub_client.queries import (
 from infrahub_client.schema import InfrahubSchema
 
 # pylint: disable=redefined-builtin
+
+VARIABLE_TYPE_MAPPING = (
+    (str, "String!"),
+    (int, "Int!"),
+    (float, "Float!"),
+    (bool, "Boolean!"),
+)
+
+
+def render_variables_to_string(data) -> str:
+    vars_dict = {}
+    for key, value in data.items():
+        for class_type, var_string in VARIABLE_TYPE_MAPPING:
+            if value == class_type:
+                vars_dict[f"${key}"] = var_string
+
+    return ", ".join([f"{key}: {value}" for key, value in vars_dict.items()])
+
+
+def render_query_block(data: dict, offset: int = 4) -> List[str]:
+    FILTERS_KEY = "@filters"
+    KEYWORDS_TO_SKIP = [FILTERS_KEY]
+
+    offset_str = " " * offset
+    lines = []
+    for key, value in data.items():
+        if key in KEYWORDS_TO_SKIP:
+            continue
+        if value is None:
+            lines.append(f"{offset_str}{key}")
+        elif isinstance(value, dict):
+            if "@filters" in value:
+                filters_str = ", ".join([f"{key}: {value}" for key, value in value[FILTERS_KEY].items()])
+                lines.append(f"{offset_str}{key}({filters_str}) " + "{")
+            else:
+                lines.append(f"{offset_str}{key} " + "{")
+
+            lines.extend(render_query_block(data=value, offset=offset + 4))
+            lines.append(offset_str + "}")
+
+    return lines
+
+
+class Query:
+    def __init__(self, data: dict, variables: Optional[Dict[str, str]] = None, name: Optional[str] = None):
+        self.data = data
+        self.variables = variables
+        self.name = name or ""
+
+    def render(self):
+        lines = [self.render_first_line()]
+        lines.extend(render_query_block(data=self.data))
+        lines.append("}")
+
+        return "\n" + "\n".join(lines) + "\n"
+
+    def render_first_line(self) -> str:
+        first_line = f"query"
+
+        if self.name:
+            first_line += self.name
+
+        if self.variables:
+            first_line += f" ({render_variables_to_string(self.variables)})"
+
+        first_line += " {"
+
+        return first_line
+
+    def render_variables(self) -> str:
+        vars_dict = {}
+        for key, value in self.variables.items():
+            for class_type, var_string in VARIABLE_TYPE_MAPPING:
+                if value == class_type:
+                    vars_dict[f"${key}"] = var_string
+
+        return ", ".join([f"{key}: {value}" for key, value in vars_dict.items()])
 
 
 class BranchData(BaseModel):
