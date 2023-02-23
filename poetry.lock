@@ -3378,6 +3378,18 @@ doc = ["cairosvg (>=2.5.2,<3.0.0)", "mdx-include (>=1.4.1,<2.0.0)", "mkdocs (>=1
 test = ["black (>=22.3.0,<23.0.0)", "coverage (>=6.2,<7.0)", "isort (>=5.0.6,<6.0.0)", "mypy (==0.910)", "pytest (>=4.4.0,<8.0.0)", "pytest-cov (>=2.10.0,<5.0.0)", "pytest-sugar (>=0.9.4,<0.10.0)", "pytest-xdist (>=1.32.0,<4.0.0)", "rich (>=10.11.0,<13.0.0)", "shellingham (>=1.3.0,<2.0.0)"]
 
 [[package]]
+name = "types-pyyaml"
+version = "6.0.12.8"
+description = "Typing stubs for PyYAML"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-PyYAML-6.0.12.8.tar.gz", hash = "sha256:19304869a89d49af00be681e7b267414df213f4eb89634c4495fa62e8f942b9f"},
+    {file = "types_PyYAML-6.0.12.8-py3-none-any.whl", hash = "sha256:5314a4b2580999b2ea06b2e5f9a7763d860d6e09cdf21c0e9561daa9cbd60178"},
+]
+
+[[package]]
 name = "types-toml"
 version = "0.10.8.5"
 description = "Typing stubs for toml"
@@ -3387,6 +3399,18 @@ python-versions = "*"
 files = [
     {file = "types-toml-0.10.8.5.tar.gz", hash = "sha256:bf80fce7d2d74be91148f47b88d9ae5adeb1024abef22aa2fdbabc036d6b8b3c"},
     {file = "types_toml-0.10.8.5-py3-none-any.whl", hash = "sha256:2432017febe43174af0f3c65f03116e3d3cf43e7e1406b8200e106da8cf98992"},
+]
+
+[[package]]
+name = "types-ujson"
+version = "5.7.0.1"
+description = "Typing stubs for ujson"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-ujson-5.7.0.1.tar.gz", hash = "sha256:54351a62ec1b6550efb17af63ef7f0c00d0efa9c099de7da5c627e1efa280553"},
+    {file = "types_ujson-5.7.0.1-py3-none-any.whl", hash = "sha256:67cdedbab6ea905f21e236497e9e97d8f7f0845d72b47a7404974dcb88adeb22"},
 ]
 
 [[package]]
@@ -4055,4 +4079,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "6fc3cad6ecb8a44ee463fd814e20550a2ae16b31f9a4fde9ef1d3bdf734b0999"
+content-hash = "cf5893274e6ab6e563db7008b3f94be27d24683b3bbcfa05aa3b06fc3e5ac7c6"

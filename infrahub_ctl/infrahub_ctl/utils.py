@@ -1,16 +1,21 @@
 import glob
 import os
-from typing import List, Union
+from pathlib import Path
+from typing import List, Optional, Union
 
 import httpx
 import pendulum
+from pendulum.datetime import DateTime
 
 
-def calculate_time_diff(value: str) -> str:
+def calculate_time_diff(value: str) -> Optional[str]:
     """Calculate the time in human format between a timedate in string format and now."""
     try:
         time_value = pendulum.parse(value)
     except pendulum.parsing.exceptions.ParserError:
+        return None
+
+    if not isinstance(time_value, DateTime):
         return None
 
     pendulum.set_locale("en")
@@ -18,15 +23,15 @@ def calculate_time_diff(value: str) -> str:
 
 
 def execute_query(
-    query,
+    query: str,
     server: str = "http://localhost",
-    variables: dict = None,
+    variables: Optional[dict] = None,
     branch: str = "main",
     rebase: bool = False,
-    at=None,
+    at: Optional[str] = None,
     timeout: int = 10,
-    params: dict = None,
-):
+    params: Optional[dict] = None,
+) -> dict:
     """Execute a GraphQL Query via the GraphQL API endpoint."""
     payload = {"query": query, "variables": variables}
     params = params if params else {}
@@ -41,7 +46,7 @@ def execute_query(
     return response.json()
 
 
-def find_graphql_query(name, directory="."):
+def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> Optional[str]:
     for query_file in glob.glob(f"{directory}/**/*.gql", recursive=True):
         filename = os.path.basename(query_file)
         query_name = os.path.splitext(filename)[0]
@@ -56,7 +61,9 @@ def find_graphql_query(name, directory="."):
     return None
 
 
-def find_files(extension: Union[str, List[str]], directory=".", recursive: bool = True):
+def find_files(
+    extension: Union[str, List[str]], directory: Union[str, Path] = ".", recursive: bool = True
+) -> List[str]:
     files = []
 
     if isinstance(extension, str):
@@ -69,7 +76,7 @@ def find_files(extension: Union[str, List[str]], directory=".", recursive: bool 
     return files
 
 
-def render_action_rich(value):
+def render_action_rich(value: str) -> str:
     if value == "created":
         return f"[green]{value.upper()}[/green]"
     if value == "updated":
@@ -78,3 +85,11 @@ def render_action_rich(value):
         return f"[red]{value.upper()}[/red]"
 
     return value.upper()
+
+
+def get_fixtures_dir() -> Path:
+    """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
+    here = os.path.abspath(os.path.dirname(__file__))
+    fixtures_dir = os.path.join(here, "..", "tests", "fixtures")
+
+    return Path(os.path.abspath(fixtures_dir))

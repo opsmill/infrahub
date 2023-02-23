@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     api_key: Optional[str]
 
 
-def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: dict = None):
+def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None):
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -41,7 +41,7 @@ def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: dict =
     SETTINGS = Settings()
 
 
-def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_data: dict = None):
+def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None):
     """Calls load, but wraps it in a try except block.
 
     This is done to handle a ValidationErorr which is raised when settings are specified but invalid.
@@ -53,8 +53,9 @@ def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_dat
     """
     try:
         load(config_file=config_file, config_data=config_data)
-    except ValidationError as err:
-        print(f"Configuration not valid, found {len(err.errors())} error(s)")
-        for error in err.errors():
-            print(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+    except ValidationError as exc:
+        print(f"Configuration not valid, found {len(exc.errors())} error(s)")
+        for error in exc.errors():
+            loc_str = [str(item) for item in error["loc"]]
+            print(f"  {'/'.join(loc_str)} | {error['msg']} ({error['type']})")
         raise typer.Abort()

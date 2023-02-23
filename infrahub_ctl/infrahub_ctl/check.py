@@ -18,14 +18,13 @@ app = typer.Typer()
 
 @app.command()
 def run(
-    branch: str = None,
-    path: Optional[str] = typer.Argument(None),
+    branch: Optional[str] = None,
+    path: Optional[str] = typer.Argument("."),
     rebase: bool = True,
     debug: bool = False,
     format_json: bool = False,
 ):
     """Locate and execute all checks under the defined path."""
-    path = path or "."
 
     log_level = "DEBUG" if debug else "INFO"
 
