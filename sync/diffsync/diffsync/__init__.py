@@ -526,7 +526,7 @@ class DiffSync:  # pylint: disable=too-many-public-methods
     # Synchronization between DiffSync instances
     # ------------------------------------------------------------------------------
 
-    def sync_from(  # pylint: disable=too-many-arguments
+    async def sync_from(  # pylint: disable=too-many-arguments
         self,
         source: "DiffSync",
         diff_class: Type[Diff] = Diff,
@@ -558,13 +558,13 @@ class DiffSync:  # pylint: disable=too-many-public-methods
         if not diff:
             diff = self.diff_from(source, diff_class=diff_class, flags=flags, callback=callback)
         syncer = DiffSyncSyncer(diff=diff, src_diffsync=source, dst_diffsync=self, flags=flags, callback=callback)
-        result = syncer.perform_sync()
+        result = await syncer.perform_sync()
         if result:
             self.sync_complete(source, diff, flags, syncer.base_logger)
 
         return diff
 
-    def sync_to(  # pylint: disable=too-many-arguments
+    async def sync_to(  # pylint: disable=too-many-arguments
         self,
         target: "DiffSync",
         diff_class: Type[Diff] = Diff,
@@ -586,7 +586,7 @@ class DiffSync:  # pylint: disable=too-many-public-methods
         Raises:
             DiffClassMismatch: The provided diff's class does not match the diff_class
         """
-        return target.sync_from(self, diff_class=diff_class, flags=flags, callback=callback, diff=diff)
+        return await target.sync_from(self, diff_class=diff_class, flags=flags, callback=callback, diff=diff)
 
     def sync_complete(
         self,

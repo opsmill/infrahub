@@ -17,6 +17,7 @@ limitations under the License.
 from collections.abc import Iterable as ABCIterable, Mapping as ABCMapping
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Type, TYPE_CHECKING
 
+import asyncio
 import structlog  # type: ignore
 
 from .diff import Diff, DiffElement
@@ -315,7 +316,7 @@ class DiffSyncSyncer:  # pylint: disable=too-many-instance-attributes
             if self.callback:
                 self.callback("sync", self.elements_processed, self.total_elements)
 
-    def perform_sync(self) -> bool:
+    async def perform_sync(self) -> bool:
         """Perform data synchronization based on the provided diff.
 
         Returns:
@@ -324,11 +325,11 @@ class DiffSyncSyncer:  # pylint: disable=too-many-instance-attributes
         changed = False
         self.base_logger.info("Beginning sync")
         for element in self.diff.get_children():
-            changed |= self.sync_diff_element(element)
+            changed |= await self.sync_diff_element(element)
         self.base_logger.info("Sync complete")
         return changed
 
-    def sync_diff_element(self, element: DiffElement, parent_model: "DiffSyncModel" = None) -> bool:
+    async def sync_diff_element(self, element: DiffElement, parent_model: "DiffSyncModel" = None) -> bool:
         """Recursively synchronize the given DiffElement and its children, if any, into the dst_diffsync.
 
         Helper method to `perform_sync`.
@@ -364,7 +365,7 @@ class DiffSyncSyncer:  # pylint: disable=too-many-instance-attributes
         except ObjectNotFound:
             dst_model = None
 
-        changed, modified_model = self.sync_model(src_model=src_model, dst_model=dst_model, ids=ids, attrs=attrs)
+        changed, modified_model = await self.sync_model(src_model=src_model, dst_model=dst_model, ids=ids, attrs=attrs)
         dst_model = modified_model or dst_model
 
         if not modified_model or not dst_model:
@@ -392,7 +393,7 @@ class DiffSyncSyncer:  # pylint: disable=too-many-instance-attributes
 
         return changed
 
-    def sync_model(  # pylint: disable=too-many-branches, unused-argument
+    async def sync_model(  # pylint: disable=too-many-branches, unused-argument
         self, src_model: Optional["DiffSyncModel"], dst_model: Optional["DiffSyncModel"], ids: Mapping, attrs: Mapping
     ) -> Tuple[bool, Optional["DiffSyncModel"]]:
         """Create/update/delete the current DiffSyncModel with current ids/attrs, and update self.status and self.message.
@@ -413,15 +414,24 @@ class DiffSyncSyncer:  # pylint: disable=too-many-instance-attributes
             if self.action == DiffSyncActions.CREATE:
                 if dst_model is not None:
                     raise ObjectNotCreated(f"Failed to create {self.model_class.get_type()} {ids} - it already exists!")
-                dst_model = self.model_class.create(diffsync=self.dst_diffsync, ids=ids, attrs=attrs)
+                if asyncio.iscoroutinefunction(self.model_class.create):
+                    dst_model = await self.model_class.create(diffsync=self.dst_diffsync, ids=ids, attrs=attrs)
+                else:
+                    dst_model = self.model_class.create(diffsync=self.dst_diffsync, ids=ids, attrs=attrs)
             elif self.action == DiffSyncActions.UPDATE:
                 if dst_model is None:
                     raise ObjectNotUpdated(f"Failed to update {self.model_class.get_type()} {ids} - not found!")
-                dst_model = dst_model.update(attrs=attrs)
+                if asyncio.iscoroutinefunction(dst_model.update):
+                    dst_model = await dst_model.update(attrs=attrs)
+                else:
+                    dst_model = dst_model.update(attrs=attrs)
             elif self.action == DiffSyncActions.DELETE:
                 if dst_model is None:
                     raise ObjectNotDeleted(f"Failed to delete {self.model_class.get_type()} {ids} - not found!")
-                dst_model = dst_model.delete()
+                if asyncio.iscoroutinefunction(dst_model.delete):
+                    dst_model = await dst_model.delete()
+                else:
+                    dst_model = dst_model.delete()
             else:
                 raise ObjectCrudException(f'Unknown action "{self.action}"!')
 
