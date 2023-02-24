@@ -1,5 +1,7 @@
 from infrahub_client import InfrahubNode
 
+# pylint: disable=no-member
+
 
 async def test_init_node_no_data(client, location_schema):
     node = InfrahubNode(client=client, schema=location_schema)

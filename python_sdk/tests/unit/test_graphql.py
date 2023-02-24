@@ -7,6 +7,8 @@ from infrahub_client.graphql import (
     render_query_block,
 )
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def query_data_no_filter():

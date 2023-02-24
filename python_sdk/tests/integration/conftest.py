@@ -10,6 +10,8 @@ from infrahub_client.models import NodeSchema
 
 TEST_DATABASE = "infrahub.testing"
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -30,11 +32,11 @@ def execute_before_any_test():
 
 @pytest.fixture(scope="module")
 async def db():
-    db = await get_db()
+    driver = await get_db()
 
-    yield db
+    yield driver
 
-    await db.close()
+    await driver.close()
 
 
 @pytest.fixture(scope="module")

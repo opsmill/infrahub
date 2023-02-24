@@ -6,10 +6,13 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub_client import InfrahubClient, InfrahubNode
 
+# pylint: disable=unused-argument
+
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def client(self):
+        # pylint: disable=import-outside-toplevel
         from infrahub.main import app
 
         return TestClient(app)

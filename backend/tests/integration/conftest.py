@@ -19,11 +19,11 @@ def event_loop():
 
 @pytest.fixture(scope="module")
 async def db():
-    db = await get_db()
+    driver = await get_db()
 
-    yield db
+    yield driver
 
-    await db.close()
+    await driver.close()
 
 
 @pytest.fixture(scope="module")

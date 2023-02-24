@@ -50,7 +50,7 @@ class Timestamp:
     def to_timestamp(self):
         return self.obj.int_timestamp
 
-    async def to_graphql(self, *args, **kwargs):
+    async def to_graphql(self, *args, **kwargs):  # pylint: disable=unused-argument
         return self.obj
 
     def __eq__(self, other):

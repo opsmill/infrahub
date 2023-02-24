@@ -4,10 +4,13 @@ from fastapi.testclient import TestClient
 from infrahub_client import InfrahubClient
 from infrahub_client.models import NodeSchema
 
+# pylint: disable=unused-argument
+
 
 class TestInfrahubSchema:
     @pytest.fixture(scope="class")
     async def client(self):
+        # pylint: disable=import-outside-toplevel
         from infrahub.main import app
 
         return TestClient(app)
