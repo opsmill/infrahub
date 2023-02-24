@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Generator, List, Union
 
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession

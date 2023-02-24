@@ -10,8 +10,8 @@ from infrahub.core.query.relationship import (
     RelationshipQuery,
 )
 from infrahub.core.relationship import Relationship
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
+from infrahub_client.timestamp import Timestamp
 
 
 class DummyRelationshipQuery(RelationshipQuery):

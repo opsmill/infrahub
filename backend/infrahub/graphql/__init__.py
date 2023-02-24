@@ -7,7 +7,7 @@ from graphql import GraphQLSchema, graphql
 
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 from .generator import (
     generate_mutation_mixin,

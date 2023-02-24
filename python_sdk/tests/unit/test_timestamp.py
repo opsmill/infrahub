@@ -1,7 +1,7 @@
 import pendulum
 import pytest
 
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 
 def test_init_empty():

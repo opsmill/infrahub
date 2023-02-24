@@ -17,7 +17,6 @@ from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
 from infrahub.graphql import get_gql_mutation, get_gql_query
 from infrahub.graphql.app import InfrahubGraphQLApp
@@ -30,6 +29,7 @@ from infrahub.message_bus.events import (
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
+from infrahub_client.timestamp import Timestamp
 
 app = FastAPI()
 

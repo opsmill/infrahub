@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, List, Optional
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async, execute_write_query_async
+from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
