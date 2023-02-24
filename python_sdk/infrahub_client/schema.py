@@ -36,7 +36,7 @@ class InfrahubSchema:
         branch = branch or self.client.default_branch
 
         if refresh:
-            self.cache[branch] = self.fetch(branch=branch)
+            self.cache[branch] = await self.fetch(branch=branch)
 
         if branch in self.cache and model in self.cache[branch]:
             return self.cache[branch][model]
@@ -44,7 +44,7 @@ class InfrahubSchema:
         # Fetching the latest schema from the server if we didn't fetch it earlier
         #   because we coulnd't find the object on the local cache
         if not refresh:
-            self.cache[branch] = self.fetch(branch=branch)
+            self.cache[branch] = await self.fetch(branch=branch)
 
         if branch in self.cache and model in self.cache[branch]:
             return self.cache[branch][model]
@@ -54,7 +54,7 @@ class InfrahubSchema:
     async def all(self, branch: Optional[str] = None, refresh: bool = False) -> Dict[str, NodeSchema]:
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
-            self.cache[branch] = self.fetch(branch=branch)
+            self.cache[branch] = await self.fetch(branch=branch)
 
         return self.cache[branch]
 

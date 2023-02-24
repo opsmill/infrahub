@@ -4,7 +4,7 @@ import asyncio
 import copy
 import logging
 from logging import Logger
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 from pydantic import BaseModel
@@ -14,7 +14,7 @@ from infrahub_client.exceptions import (
     ServerNotReacheableError,
     ServerNotResponsiveError,
 )
-from infrahub_client.graphql import Mutation
+from infrahub_client.graphql import Mutation, Query
 from infrahub_client.models import NodeSchema
 from infrahub_client.queries import (
     MUTATION_BRANCH_CREATE,
@@ -131,6 +131,14 @@ class Attribute:
 
         return data
 
+    def _generate_query_data(self) -> Optional[Dict]:
+        data = {"value": None}
+
+        for prop_name in self._properties:
+            data[prop_name] = None
+
+        return data
+
 
 # class Relationship:
 #     def __init__(self, name, data):
@@ -187,9 +195,15 @@ class InfrahubNode:
 
         return {"data": data}
 
-    # def _generate_mutation_query_data(self):
+    def generate_query_data(self):
+        data = {}
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            attr_data = attr._generate_query_data()
+            if attr_data:
+                data[attr_name] = attr_data
 
-    #     return
+        return {self.schema.name: data}
 
 
 class InfrahubClient:  # pylint: disable=too-many-public-methods
@@ -222,6 +236,20 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     @classmethod
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
+
+    async def all(self, model: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
+        schema = await self.schema.get(model=model)
+
+        branch = branch or self.default_branch
+        at = Timestamp(at)
+
+        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data()
+        query = Query(query=query_data)
+        response = await self.execute_graphql(query=query.render(), branch_name=branch, at=at)
+        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+    async def filters(self, *args, at: Optional[Timestamp] = None, **kwargs):
+        pass
 
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
