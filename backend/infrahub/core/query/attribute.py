@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Set, Union
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -20,7 +20,7 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute = None,
-        attr_id: str = None,
+        attr_id: Optional[str] = None,
         at: Union[Timestamp, str] = None,
         branch: Branch = None,
         *args,

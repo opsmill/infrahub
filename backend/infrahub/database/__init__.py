@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Optional
+
 from neo4j import AsyncGraphDatabase, AsyncSession
 
 # from contextlib import asynccontextmanager
@@ -65,7 +69,7 @@ async def get_db():
 
 
 # @QUERY_READ_METRICS.time()
-# def execute_read_query(query: str, params: dict = None, session: Session = None):
+# def execute_read_query(query: str, params: Optional[dict] = None, session: Session = None):
 
 #     if not session:
 #         session: Session = next(get_db())
@@ -75,7 +79,7 @@ async def get_db():
 
 
 # @QUERY_WRITE_METRICS.time()
-# def execute_write_query(query: str, params: dict = None, session: Session = None):
+# def execute_write_query(query: str, params: Optional[dict] = None, session: Session = None):
 
 #     if not session:
 #         session: Session = next(get_db())
@@ -88,7 +92,7 @@ async def get_db():
 async def execute_read_query_async(
     session: AsyncSession,
     query: str,
-    params: dict = None,
+    params: Optional[dict] = None,
 ):
     async def work(tx, params: dict):
         response = await tx.run(query, params)

@@ -1,4 +1,6 @@
-from typing import List
+from __future__ import annotations
+
+from typing import List, Optional
 
 
 class Error(Exception):
@@ -20,7 +22,7 @@ class ServerNotResponsiveError(Error):
 
 
 class GraphQLError(Error):
-    def __init__(self, errors: List[str], query: str = None, variables: dict = None):
+    def __init__(self, errors: List[str], query: Optional[str] = None, variables: Optional[dict] = None):
         self.query = query
         self.variables = variables
         self.errors = errors
@@ -32,6 +34,13 @@ class BranchNotFound(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier
         self.message = message or f"Unable to find the branch '{identifier}' in the Database."
+        super().__init__(self.message)
+
+
+class SchemaNotFound(Error):
+    def __init__(self, identifier, message=None):
+        self.identifier = identifier
+        self.message = message or f"Unable to find the schema '{identifier}'."
         super().__init__(self.message)
 
 

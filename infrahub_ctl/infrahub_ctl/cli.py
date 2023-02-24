@@ -87,9 +87,9 @@ async def _render(
 def render(
     rfile: str,
     params: Optional[List[str]] = typer.Argument(None),
-    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = "main",
     debug: bool = False,
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
 ):
     """Render a local Jinja Template (RFile) for debugging purpose."""
     aiorun(_render(rfile=rfile, params=params, config_file=config_file, branch=branch, debug=debug))

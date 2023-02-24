@@ -2,7 +2,8 @@ import logging
 import sys
 from asyncio import run as aiorun
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 import typer
 from rich.console import Console
@@ -72,13 +73,13 @@ async def _list():
 
 @app.command("list")
 def list_branch(
-    config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """List all existing branches."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file_name=config_file)
+    config.load_and_exit(config_file=config_file)
     aiorun(_list())
 
 
@@ -105,13 +106,13 @@ def create(
     branch_name: str,
     description: str = typer.Argument(""),
     data_only: bool = True,
-    config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Create a new branch."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file_name=config_file)
+    config.load_and_exit(config_file=config_file)
     aiorun(_create(branch_name=branch_name, description=description, data_only=data_only))
 
 
@@ -136,13 +137,13 @@ async def _rebase(branch_name: str):
 @app.command()
 def rebase(
     branch_name: str,
-    config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Rebase a Branch with main."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file_name=config_file)
+    config.load_and_exit(config_file=config_file)
     aiorun(_rebase(branch_name=branch_name))
 
 
@@ -167,13 +168,13 @@ async def _merge(branch_name: str):
 @app.command()
 def merge(
     branch_name: str,
-    config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Merge a Branch with main (NOT IMPLEMENTED YET)."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file_name=config_file)
+    config.load_and_exit(config_file=config_file)
     aiorun(_merge(branch_name=branch_name))
 
 
@@ -198,14 +199,14 @@ async def _validate(branch_name: str):
 @app.command()
 def validate(
     branch_name: str,
-    config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Validate if a branch has some conflict and is passing all the tests (NOT IMPLEMENTED YET)."""
-    config.load_and_exit(config_file_name=config_file)
+    config.load_and_exit(config_file=config_file)
     aiorun(_validate(branch_name=branch_name))
 
 
-async def _diff(branch_name: str, diff_from: str, diff_to: str, branch_only: str):
+async def _diff(branch_name: str, diff_from: Union[str, datetime], diff_to: Union[str, datetime], branch_only: bool):
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
@@ -259,10 +260,10 @@ def diff(
     ),
     diff_to: Optional[datetime] = typer.Option(None, "--to", help="End Time used to calculate the Diff, Default: now"),
     branch_only: bool = True,
-    config_file: str = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
     """Show the differences between a Branch and main."""
-    config.load_and_exit(config_file_name=config_file)
+    config.load_and_exit(config_file=config_file)
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 

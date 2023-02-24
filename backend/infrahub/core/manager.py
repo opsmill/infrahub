@@ -19,8 +19,8 @@ from infrahub.core.schema import (
     RelationshipSchema,
     SchemaRoot,
 )
-from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import SchemaNotFound
+from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -37,8 +37,8 @@ class NodeManager:
     async def query(
         cls,
         schema: Union[NodeSchema, str],
-        filters: dict = None,
-        fields: dict = None,
+        filters: Optional[dict] = None,
+        fields: Optional[dict] = None,
         limit: int = 100,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -96,7 +96,7 @@ class NodeManager:
         schema: RelationshipSchema,
         filters: dict,
         session: AsyncSession,
-        fields: dict = None,
+        fields: Optional[dict] = None,
         limit: int = 100,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -146,7 +146,7 @@ class NodeManager:
     async def get_one(
         cls,
         id: UUID,
-        fields: dict = None,
+        fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
@@ -175,7 +175,7 @@ class NodeManager:
     async def get_many(
         cls,
         ids: List[UUID],
-        fields: dict = None,
+        fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,

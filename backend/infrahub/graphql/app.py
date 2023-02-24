@@ -67,8 +67,8 @@ except ImportError:
 import infrahub.config as config
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
-from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
+from infrahub_client.timestamp import Timestamp
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
 

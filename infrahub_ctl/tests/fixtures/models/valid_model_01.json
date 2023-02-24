@@ -1,0 +1,26 @@
+{   "version": "1.0",
+    "nodes": [
+        {
+            "name": "device",
+            "kind": "Device",
+            "default_filter": "name__value",
+            "branch": true,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": true
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "type",
+                    "kind": "String"
+                }
+            ]
+        }
+    ]
+}

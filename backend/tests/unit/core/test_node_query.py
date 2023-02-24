@@ -4,7 +4,7 @@ from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetLocalAttributeValueQuery,
 )
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 
 async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch, car_person_schema):

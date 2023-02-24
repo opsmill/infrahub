@@ -4,12 +4,15 @@ from fastapi.testclient import TestClient
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClient
+from infrahub_client import InfrahubClient, InfrahubNode
+
+# pylint: disable=unused-argument
 
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def client(self):
+        # pylint: disable=import-outside-toplevel
         from infrahub.main import app
 
         return TestClient(app)
@@ -95,6 +98,21 @@ class TestInfrahubClient:
 
         queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
         assert len(queries) == 2
+
+    async def test_get_all(self, client, session, init_db_base):
+        obj1 = await Node.init(schema="Location", session=session)
+        await obj1.new(session=session, name="jfk1", description="new york", type="site")
+        await obj1.save(session=session)
+
+        obj2 = await Node.init(schema="Location", session=session)
+        await obj2.new(session=session, name="sfo1", description="san francisco", type="site")
+        await obj2.save(session=session)
+
+        ifc = await InfrahubClient.init(test_client=client)
+        nodes = await ifc.all(model="Location")
+        assert len(nodes) == 2
+        assert isinstance(nodes[0], InfrahubNode)
+        assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]
 
     async def test_query_rfiles(self, client, init_db_base, base_dataset):
         ifc = await InfrahubClient.init(test_client=client)

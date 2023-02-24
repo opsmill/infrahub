@@ -3,7 +3,7 @@ from infrahub.core.query.diff import (
     DiffRelationshipPropertyQuery,
     DiffRelationshipQuery,
 )
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 
 async def test_DiffRelationshipQuery(session, base_dataset_02):

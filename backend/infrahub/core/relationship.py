@@ -14,10 +14,10 @@ from infrahub.core.query.relationship import (
     RelationshipPeerData,
     RelationshipUpdatePropertyQuery,
 )
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.utils import intersection
+from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -111,8 +111,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def load(  # pylint: disable=unused-argument
         self,
         session: AsyncSession,
-        id: str = None,
-        db_id: int = None,
+        id: Optional[str] = None,
+        db_id: Optional[int] = None,
         updated_at: Union[Timestamp, str] = None,
         data: Union[dict, RelationshipPeerData, Any] = None,
     ) -> SelfRelationship:

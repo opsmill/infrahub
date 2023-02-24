@@ -6,9 +6,9 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 from infrahub.exceptions import ValidationError
+from infrahub_client.timestamp import Timestamp
 
 
 async def test_node_init(session, default_branch: Branch, criticality_schema, first_account):

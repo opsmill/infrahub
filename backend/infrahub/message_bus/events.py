@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import pickle
-from typing import TYPE_CHECKING, Any, Generator, TypeVar
+from typing import TYPE_CHECKING, Any, Generator, Optional, TypeVar
 
 from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
 from aio_pika.patterns.base import Base as PickleSerializer
@@ -264,7 +264,7 @@ class InfrahubRPCResponse(InfrahubMessage):
     def __init__(
         self,
         status: RPCStatusCode,
-        response: dict = None,
+        response: Optional[dict] = None,
         errors: list = None,
         *args,
         **kwargs,
@@ -299,10 +299,10 @@ class InfrahubGitRPC(InfrahubRPC):
     def __init__(
         self,
         repository: Node = None,
-        repository_name: str = None,
-        repository_id: str = None,
-        location: str = None,
-        params: dict = None,
+        repository_name: Optional[str] = None,
+        repository_id: Optional[str] = None,
+        location: Optional[str] = None,
+        params: Optional[dict] = None,
         *args,
         **kwargs,
     ):
@@ -356,10 +356,10 @@ class InfrahubTransformRPC(InfrahubRPC):
         data: dict,
         branch_name: str,
         repository: Node = None,
-        repository_name: str = None,
-        repository_id: str = None,
-        commit: str = None,
-        params: dict = None,
+        repository_name: Optional[str] = None,
+        repository_id: Optional[str] = None,
+        commit: Optional[str] = None,
+        params: Optional[dict] = None,
         *args,
         **kwargs,
     ):
@@ -416,10 +416,10 @@ class InfrahubCheckRPC(InfrahubRPC):
         check_name: str,
         branch_name: str,
         repository: Node = None,
-        repository_name: str = None,
-        repository_id: str = None,
-        commit: str = None,
-        params: dict = None,
+        repository_name: Optional[str] = None,
+        repository_id: Optional[str] = None,
+        commit: Optional[str] = None,
+        params: Optional[dict] = None,
         *args,
         **kwargs,
     ):
@@ -474,7 +474,13 @@ class InfrahubDataMessage(InfrahubActionMessage):
     actions = DataMessageAction
 
     def __init__(
-        self, node: Node = None, node_id: str = None, node_kind: str = None, branch: str = None, *args, **kwargs
+        self,
+        node: Node = None,
+        node_id: Optional[str] = None,
+        node_kind: Optional[str] = None,
+        branch: Optional[str] = None,
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
 

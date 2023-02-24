@@ -1,0 +1,18 @@
+{   "version": "1.0",
+    "nodes": [
+        {
+            "name": "device",
+            "attributes": [
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "type",
+                    "kind": "String"
+                }
+            ]
+        }
+    ]
+}

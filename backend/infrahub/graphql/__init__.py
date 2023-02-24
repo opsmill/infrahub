@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import graphene
 from graphql import GraphQLSchema, graphql
 
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 from .generator import (
     generate_mutation_mixin,
@@ -79,7 +79,7 @@ async def get_gql_subscription(
 async def execute_query(
     name: str,
     session: AsyncSession,
-    params: dict = None,
+    params: Optional[dict] = None,
     branch: Union[Branch, str] = None,
     at: Union[Timestamp, str] = None,
 ) -> ExecutionResult:

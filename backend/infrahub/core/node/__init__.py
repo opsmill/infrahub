@@ -6,8 +6,8 @@ from uuid import UUID
 from infrahub.core import get_branch, registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import ATTRIBUTES_MAPPING, NodeSchema
-from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
+from infrahub_client.timestamp import Timestamp
 
 from ..attribute import BaseAttribute
 from ..relationship import RelationshipManager
@@ -190,7 +190,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self,
         session: AsyncSession,
         id: UUID = None,
-        db_id: int = None,
+        db_id: Optional[int] = None,
         updated_at: Union[Timestamp, str] = None,
         **kwargs,
     ) -> SelfNode:

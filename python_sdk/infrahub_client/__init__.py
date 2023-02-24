@@ -1,407 +1,46 @@
+from __future__ import annotations
+
 import asyncio
 import copy
 import logging
 from logging import Logger
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 from pydantic import BaseModel
 
-from .exceptions import GraphQLError, ServerNotReacheableError, ServerNotResponsiveError
+from infrahub_client.exceptions import (
+    GraphQLError,
+    ServerNotReacheableError,
+    ServerNotResponsiveError,
+)
+from infrahub_client.graphql import Mutation, Query
+from infrahub_client.models import NodeSchema
+from infrahub_client.queries import (
+    MUTATION_BRANCH_CREATE,
+    MUTATION_BRANCH_MERGE,
+    MUTATION_BRANCH_REBASE,
+    MUTATION_BRANCH_VALIDATE,
+    MUTATION_CHECK_CREATE,
+    MUTATION_CHECK_UPDATE,
+    MUTATION_COMMIT_UPDATE,
+    MUTATION_GRAPHQL_QUERY_CREATE,
+    MUTATION_GRAPHQL_QUERY_UPDATE,
+    MUTATION_RFILE_CREATE,
+    MUTATION_RFILE_UPDATE,
+    MUTATION_TRANSFORM_PYTHON_CREATE,
+    MUTATION_TRANSFORM_PYTHON_UPDATE,
+    QUERY_ALL_BRANCHES,
+    QUERY_ALL_CHECKS,
+    QUERY_ALL_GRAPHQL_QUERIES,
+    QUERY_ALL_REPOSITORIES,
+    QUERY_ALL_RFILES,
+    QUERY_ALL_TRANSFORM_PYTHON,
+)
+from infrahub_client.schema import InfrahubSchema
+from infrahub_client.timestamp import Timestamp
 
 # pylint: disable=redefined-builtin
-
-
-QUERY_ALL_REPOSITORIES = """
-query {
-    repository {
-        id
-        name {
-            value
-        }
-        location {
-            value
-        }
-        commit {
-            value
-        }
-    }
-}
-"""
-
-QUERY_ALL_GRAPHQL_QUERIES = """
-query {
-    graphql_query {
-        id
-        name {
-            value
-        }
-        description {
-            value
-        }
-        query {
-            value
-        }
-    }
-}
-"""
-
-QUERY_ALL_RFILES = """
-query {
-    rfile {
-        id
-        name {
-            value
-        }
-        description {
-            value
-        }
-        template_path {
-            value
-        }
-        template_repository {
-            id
-            name {
-                value
-            }
-        }
-        query {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-QUERY_ALL_CHECKS = """
-query {
-    check {
-        id
-        name {
-            value
-        }
-        description {
-            value
-        }
-        file_path {
-            value
-        }
-        class_name {
-            value
-        }
-        rebase {
-            value
-        }
-        timeout {
-            value
-        }
-        query {
-            id
-            name {
-                value
-            }
-        }
-        repository {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-QUERY_ALL_TRANSFORM_PYTHON = """
-query {
-    transform_python {
-        id
-        name {
-            value
-        }
-        description {
-            value
-        }
-        file_path {
-            value
-        }
-        class_name {
-            value
-        }
-        rebase {
-            value
-        }
-        timeout {
-            value
-        }
-        url {
-            value
-        }
-        query {
-            id
-            name {
-                value
-            }
-        }
-        repository {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-QUERY_ALL_BRANCHES = """
-query {
-    branch {
-        id
-        name
-        description
-        origin_branch
-        branched_from
-        is_default
-        is_data_only
-    }
-}
-"""
-
-MUTATION_BRANCH_CREATE = """
-mutation ($branch_name: String!, $description: String!, $background_execution: Boolean!, $data_only: Boolean!) {
-    branch_create(background_execution: $background_execution, data: { name: $branch_name, description: $description, is_data_only: $data_only }) {
-        ok
-        object {
-            id
-            name
-            description
-            origin_branch
-            branched_from
-            is_default
-            is_data_only
-        }
-    }
-}
-"""
-
-MUTATION_BRANCH_REBASE = """
-mutation ($branch_name: String!) {
-    branch_rebase(data: { name: $branch_name }){
-        ok
-        object {
-            name
-            branched_from
-        }
-    }
-}
-"""
-
-MUTATION_BRANCH_VALIDATE = """
-mutation ($branch_name: String!) {
-    branch_validate(data: { name: $branch_name }) {
-        ok
-        messages
-        object {
-            id
-            name
-        }
-    }
-}
-"""
-
-MUTATION_BRANCH_MERGE = """
-mutation ($branch_name: String!) {
-    branch_merge(data: { name: $branch_name }) {
-        ok
-        object {
-            id
-            name
-        }
-    }
-}
-"""
-
-MUTATION_COMMIT_UPDATE = """
-mutation ($repository_id: String!, $commit: String!) {
-    repository_update(data: { id: $repository_id, commit: { value: $commit } }) {
-        ok
-        object {
-            commit {
-                value
-            }
-        }
-    }
-}
-"""
-
-
-MUTATION_GRAPHQL_QUERY_CREATE = """
-mutation($name: String!, $description: String!, $query: String!) {
-  graphql_query_create(data: {
-    name: { value: $name },
-    description: { value: $description },
-    query: { value: $query }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_GRAPHQL_QUERY_UPDATE = """
-mutation($id: String!, $name: String!, $description: String!, $query: String!) {
-  graphql_query_update(data: {
-    id: $id
-    name: { value: $name },
-    description: { value: $description },
-    query: { value: $query }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_RFILE_CREATE = """
-mutation($name: String!, $description: String!, $template_path: String!, $template_repository: String!, $query: String!) {
-  rfile_create(data: {
-    name: { value: $name },
-    description: { value: $description },
-    query: { id: $query }
-    template_path: { value: $template_path }
-    template_repository: { id: $template_repository }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_RFILE_UPDATE = """
-mutation($id: String!, $name: String!, $description: String!, $template_path: String!) {
-  rfile_update(data: {
-    id: $id
-    name: { value: $name },
-    description: { value: $description },
-    template_path: { value: $template_path }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_CHECK_CREATE = """
-mutation($name: String!, $description: String!, $file_path: String!, $class_name: String!, $repository: String!, $query: String!, $timeout: Int!, $rebase: Boolean!) {
-  check_create(data: {
-    name: { value: $name }
-    description: { value: $description }
-    query: { id: $query }
-    file_path: { value: $file_path }
-    class_name: { value: $class_name }
-    repository: { id: $repository }
-    timeout: { value: $timeout }
-    rebase: { value: $rebase }
-  }){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_CHECK_UPDATE = """
-mutation($id: String!, $name: String!, $description: String!, $file_path: String!, $class_name: String!, $query: String!, $timeout: Int!, $rebase: Boolean!) {
-  check_update(data: {
-    id: $id
-    name: { value: $name },
-    description: { value: $description },
-    file_path: { value: $file_path },
-    class_name: { value: $class_name },
-    query: { id: $query },
-    timeout: { value: $timeout },
-    rebase: { value: $rebase },
-  }){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-
-MUTATION_TRANSFORM_PYTHON_CREATE = """
-mutation($name: String!, $description: String!, $file_path: String!, $class_name: String!, $repository: String!, $query: String!, $url: String!, $timeout: Int!, $rebase: Boolean!) {
-  transform_python_create(data: {
-    name: { value: $name }
-    description: { value: $description }
-    query: { id: $query }
-    file_path: { value: $file_path }
-    url: { value: $url }
-    class_name: { value: $class_name }
-    repository: { id: $repository }
-    timeout: { value: $timeout }
-    rebase: { value: $rebase }
-  }){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_TRANSFORM_PYTHON_UPDATE = """
-mutation($id: String!, $name: String!, $description: String!, $file_path: String!, $class_name: String!, $query: String!, $url: String!, $timeout: Int!, $rebase: Boolean!) {
-  transform_python_update(data: {
-    id: $id
-    name: { value: $name },
-    description: { value: $description },
-    file_path: { value: $file_path },
-    class_name: { value: $class_name },
-    url: { value: $url },
-    query: { id: $query },
-    timeout: { value: $timeout },
-    rebase: { value: $rebase },
-  }){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
 
 
 class BranchData(BaseModel):
@@ -463,6 +102,110 @@ class TransformPythonData(BaseModel):
     rebase: Optional[bool]
 
 
+class Attribute:
+    def __init__(self, name: str, data: Union[Any, dict]):
+        self.name = name
+
+        if not isinstance(data, dict):
+            data = {"value": data}
+
+        self._properties = ["is_visible", "is_protected"]
+        self._read_only = ["updated_at", "is_inherited"]
+
+        self.id: Optional[str] = data.get("id", None)
+        self.value: Optional[Any] = data.get("value", None)
+        self.is_inherited: Optional[bool] = data.get("is_inherited", None)
+        self.is_visible: Optional[bool] = data.get("is_visible", None)
+        self.is_protected: Optional[bool] = data.get("is_protected", None)
+        self.updated_at: Optional[bool] = data.get("updated_at", None)
+
+        self.source: Optional[dict] = data.get("source", None)
+        self.owner: Optional[dict] = data.get("owner", None)
+
+    def _generate_input_data(self) -> Optional[Dict]:
+        data = {"value": self.value}
+
+        for prop_name in self._properties:
+            if prop := getattr(self, prop_name) is not None:
+                data[prop_name] = prop
+
+        return data
+
+    def _generate_query_data(self) -> Optional[Dict]:
+        data = {"value": None}
+
+        for prop_name in self._properties:
+            data[prop_name] = None
+
+        return data
+
+
+# class Relationship:
+#     def __init__(self, name, data):
+#         self.name = name
+
+
+class InfrahubNode:
+    def __init__(
+        self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
+    ) -> None:
+        self.client = client
+        self.schema = schema
+        self._data = data
+
+        self.branch = branch or self.client.default_branch
+
+        self.id = data.get("id", None) if isinstance(data, dict) else None
+        self._attributes = [item.name for item in self.schema.attributes]
+        self._relationships = [item.name for item in self.schema.relationships]
+
+        for attr_name in self._attributes:
+            attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
+            setattr(self, attr_name, Attribute(name=attr_name, data=attr_data))
+
+    async def save(self, at: Optional[Timestamp] = None) -> None:
+        at = Timestamp(at)
+        if not self.id:
+            await self._create(at=at)
+        else:
+            await self._update(at=at)
+
+    async def _create(self, at: Timestamp) -> None:
+        input_data = self._generate_input_data()
+        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_name = f"{self.schema.name}_create"
+        query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
+        response = await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
+        self.id = response[mutation_name]["object"]["id"]
+
+    async def _update(self, at: Timestamp) -> None:
+        input_data = self._generate_input_data()
+        input_data["data"]["id"] = self.id
+        mutation_query = {"ok": None, "object": {"id": None}}
+        query = Mutation(mutation=f"{self.schema.name}_update", input_data=input_data, query=mutation_query)
+        await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
+
+    def _generate_input_data(self) -> Dict[str, Dict]:
+        data = {}
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            attr_data = attr._generate_input_data()
+            if attr_data:
+                data[attr_name] = attr_data
+
+        return {"data": data}
+
+    def generate_query_data(self) -> Dict[str, Union[Any, Dict]]:
+        data = {}
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            attr_data = attr._generate_query_data()
+            if attr_data:
+                data[attr_name] = attr_data
+
+        return {self.schema.name: data}
+
+
 class InfrahubClient:  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
 
@@ -472,8 +215,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         default_timeout: int = 10,
         retry_on_failure: bool = False,
         retry_delay: int = 5,
-        log: Logger = None,
+        log: Optional[Logger] = None,
         test_client=None,
+        default_branch: str = "main",
     ):
         self.address = address
         self.client = None
@@ -481,7 +225,10 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self.test_client = test_client
         self.retry_on_failure = retry_on_failure
         self.retry_delay = retry_delay
+        self.default_branch = default_branch
         self.log = log or logging.getLogger("infrahub_client")
+
+        self.schema = InfrahubSchema(self)
 
         if test_client:
             self.address = ""
@@ -490,14 +237,28 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
 
+    async def all(self, model: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
+        schema = await self.schema.get(model=model)
+
+        branch = branch or self.default_branch
+        at = Timestamp(at)
+
+        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data()
+        query = Query(query=query_data)
+        response = await self.execute_graphql(query=query.render(), branch_name=branch, at=at)
+        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+    async def filters(self, *args, at: Optional[Timestamp] = None, **kwargs):
+        pass
+
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
         query: str,
-        variables: dict = None,
-        branch_name: str = None,
-        at: str = None,
+        variables: Optional[dict] = None,
+        branch_name: Optional[str] = None,
+        at: Optional[Union[str, Timestamp]] = None,
         rebase: bool = False,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         raise_for_error: bool = True,
     ):
         """Execute a GraphQL query (or mutation).
@@ -518,17 +279,20 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         Returns:
             _type_: _description_
         """
+
         url = f"{self.address}/graphql"
         if branch_name:
             url += f"/{branch_name}"
 
-        payload = {"query": query}
+        payload: Dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
 
         url_params = {}
         if at:
-            url_params["at"] = at
+            at = Timestamp(at)
+            url_params["at"] = at.to_string()
+
         if rebase:
             url_params["rebase"] = "true"
         if url_params:
@@ -568,7 +332,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
-    async def post(self, url: str, payload: dict, timeout: int = None):
+    async def post(self, url: str, payload: dict, timeout: Optional[int] = None):
         """Execute a HTTP POST with HTTPX.
 
         Raises:
@@ -589,11 +353,11 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def query_gql_query(
         self,
         name: str,
-        params: dict = None,
-        branch_name: str = None,
-        at: str = None,
+        params: Optional[dict] = None,
+        branch_name: Optional[str] = None,
+        at: Optional[str] = None,
         rebase: bool = False,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         raise_for_error: bool = True,
     ):
         url = f"{self.address}/query/{name}"
@@ -663,7 +427,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         return branches
 
-    async def get_list_repositories(self, branches: Dict[str, RepositoryData] = None) -> Dict[str, RepositoryData]:
+    async def get_list_repositories(
+        self, branches: Optional[Dict[str, BranchData]] = None
+    ) -> Dict[str, RepositoryData]:
         if not branches:
             branches = await self.get_list_branches()
 
@@ -924,8 +690,8 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self,
         branch_name: str,
         branch_only: bool = True,
-        diff_from: str = None,
-        diff_to: str = None,
+        diff_from: Optional[str] = None,
+        diff_to: Optional[str] = None,
     ):
         QUERY_BRANCH_DIFF = """
         query($branch_name: String!, $branch_only: Boolean!, $diff_from: String!, $diff_to: String! ) {

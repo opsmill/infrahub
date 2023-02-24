@@ -3,13 +3,13 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Generator, List, Type, Union
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 from uuid import UUID, uuid4
 
 from neo4j.graph import Relationship as Neo4jRelationship
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.timestamp import Timestamp
+from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -91,7 +91,7 @@ class RelationshipQuery(Query):
     def __init__(
         self,
         rel: Union[Type[Relationship], Relationship] = None,
-        rel_type: str = None,
+        rel_type: Optional[str] = None,
         source: Node = None,
         source_id: UUID = None,
         destination: Node = None,
@@ -370,8 +370,8 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
     def __init__(
         self,
-        filters: dict = None,
-        limit: int = None,
+        filters: Optional[dict] = None,
+        limit: Optional[int] = None,
         *args,
         **kwargs,
     ):
