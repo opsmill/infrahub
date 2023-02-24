@@ -112,12 +112,12 @@ class Attribute:
         self._properties = ["is_visible", "is_protected"]
         self._read_only = ["updated_at", "is_inherited"]
 
-        self.id: Optional(str) = data.get("id", None)
-        self.value: Optional(Any) = data.get("value", None)
-        self.is_inherited: Optional(bool) = data.get("is_inherited", None)
-        self.is_visible: Optional(bool) = data.get("is_visible", None)
-        self.is_protected: Optional(bool) = data.get("is_protected", None)
-        self.updated_at: Optional(bool) = data.get("updated_at", None)
+        self.id: Optional[str] = data.get("id", None)
+        self.value: Optional[Any] = data.get("value", None)
+        self.is_inherited: Optional[bool] = data.get("is_inherited", None)
+        self.is_visible: Optional[bool] = data.get("is_visible", None)
+        self.is_protected: Optional[bool] = data.get("is_protected", None)
+        self.updated_at: Optional[bool] = data.get("updated_at", None)
 
         self.source: Optional[dict] = data.get("source", None)
         self.owner: Optional[dict] = data.get("owner", None)
@@ -148,7 +148,7 @@ class Attribute:
 class InfrahubNode:
     def __init__(
         self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
-    ):
+    ) -> None:
         self.client = client
         self.schema = schema
         self._data = data
@@ -163,14 +163,14 @@ class InfrahubNode:
             attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
             setattr(self, attr_name, Attribute(name=attr_name, data=attr_data))
 
-    async def save(self, at: Optional[Timestamp] = None):
+    async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if not self.id:
-            return await self._create(at=at)
+            await self._create(at=at)
         else:
-            return await self._update(at=at)
+            await self._update(at=at)
 
-    async def _create(self, at: Timestamp):
+    async def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
         mutation_name = f"{self.schema.name}_create"
@@ -178,14 +178,14 @@ class InfrahubNode:
         response = await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
         self.id = response[mutation_name]["object"]["id"]
 
-    async def _update(self, at: Timestamp):
+    async def _update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(mutation=f"{self.schema.name}_update", input_data=input_data, query=mutation_query)
         await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
 
-    def _generate_input_data(self):
+    def _generate_input_data(self) -> Dict[str, Dict]:
         data = {}
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)
@@ -195,7 +195,7 @@ class InfrahubNode:
 
         return {"data": data}
 
-    def generate_query_data(self):
+    def generate_query_data(self) -> Dict[str, Union[Any, Dict]]:
         data = {}
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)

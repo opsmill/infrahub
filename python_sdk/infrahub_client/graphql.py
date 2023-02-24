@@ -93,7 +93,7 @@ class BaseGraphQLQuery:
     query_type: str = "not-defined"
     indentation: int = 4
 
-    def __init__(self, query: dict, variables: Optional[Dict[str, str]] = None, name: Optional[str] = None):
+    def __init__(self, query: dict, variables: Optional[Dict] = None, name: Optional[str] = None):
         self.query = query
         self.variables = variables
         self.name = name or ""
