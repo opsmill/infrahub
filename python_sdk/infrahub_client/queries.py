@@ -412,6 +412,9 @@ QUERY_SCHEMA = """
                 name {
                     value
                 }
+                kind {
+                    value
+                }
                 optional {
                     value
                 }

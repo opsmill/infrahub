@@ -110,6 +110,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         retry_delay: int = 5,
         log: Optional[Logger] = None,
         test_client=None,
+        default_branch: str = "main",
     ):
         self.address = address
         self.client = None
@@ -117,6 +118,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self.test_client = test_client
         self.retry_on_failure = retry_on_failure
         self.retry_delay = retry_delay
+        self.default_branch = default_branch
         self.log = log or logging.getLogger("infrahub_client")
 
         self.schema = InfrahubSchema(self)
