@@ -1,8 +1,10 @@
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../App";
 import { CircleStackIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { branchState } from "../../state/atoms/branch.atom";
+import { useAtom } from 'jotai'
 
 const branches = [
   {
@@ -38,7 +40,7 @@ const branches = [
 ];
 
 export default function BranchSelector() {
-  const [selected, setSelected] = useState(branches[0]);
+  const [selected, setSelected] = useAtom(branchState);
 
   return (
     <Listbox value={selected} onChange={setSelected}>
