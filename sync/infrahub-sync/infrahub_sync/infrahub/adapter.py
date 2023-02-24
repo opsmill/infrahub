@@ -1,6 +1,5 @@
 """DiffSync Adapter for Infrahub to manage regions."""
 
-import pynautobot  # pylint: disable=import-error
 from diffsync import DiffSync
 from infrahub_sync.infrahub.models import InfrahubRegion, InfrahubSite
 

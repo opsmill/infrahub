@@ -1,6 +1,6 @@
 """DiffSync Adapter for Infrahub to manage regions."""
 
-import pynautobot  # pylint: disable=import-error
+
 from diffsync import DiffSync
 from infrahub_sync.netbox.client import NetboxClient
 from infrahub_sync.netbox.models import NetboxRegion, NetboxSite
