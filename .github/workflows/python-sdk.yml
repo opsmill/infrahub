@@ -23,7 +23,7 @@ jobs:
           git config --global user.email "infrahub@example.com"
           git config --global user.name "Infrahub"
       - name: "Install project"
-        run: "poetry install --only=main,dev,sdk"
+        run: "poetry install --only=main,dev,sdk,server"
       - name: "Pylint Tests"
         run: "poetry run pylint python_sdk"
       - name: "Mypy Tests"
