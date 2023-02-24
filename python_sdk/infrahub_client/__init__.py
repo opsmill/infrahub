@@ -38,6 +38,7 @@ from infrahub_client.queries import (
     QUERY_ALL_TRANSFORM_PYTHON,
 )
 from infrahub_client.schema import InfrahubSchema
+from infrahub_client.timestamp import Timestamp
 
 # pylint: disable=redefined-builtin
 
@@ -106,7 +107,10 @@ class Attribute:
         self.name = name
 
         if not isinstance(data, dict):
-            data = {"value".data}
+            data = {"value": data}
+
+        self._properties = ["is_visible", "is_protected"]
+        self._read_only = ["updated_at", "is_inherited"]
 
         self.id: Optional(str) = data.get("id", None)
         self.value: Optional(Any) = data.get("value", None)
@@ -115,8 +119,17 @@ class Attribute:
         self.is_protected: Optional(bool) = data.get("is_protected", None)
         self.updated_at: Optional(bool) = data.get("updated_at", None)
 
-        self.source = data.get("source", None)
-        self.owner = data.get("owner", None)
+        self.source: Optional[dict] = data.get("source", None)
+        self.owner: Optional[dict] = data.get("owner", None)
+
+    def _generate_input_data(self) -> Optional[Dict]:
+        data = {"value": self.value}
+
+        for prop_name in self._properties:
+            if prop := getattr(self, prop_name) is not None:
+                data[prop_name] = prop
+
+        return data
 
 
 # class Relationship:
@@ -125,25 +138,58 @@ class Attribute:
 
 
 class InfrahubNode:
-    def __init__(self, client: InfrahubClient, schema: NodeSchema, data: Optional[dict] = None):
+    def __init__(
+        self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
+    ):
         self.client = client
         self.schema = schema
         self._data = data
 
-        self.id = None
+        self.branch = branch or self.client.default_branch
+
+        self.id = data.get("id", None) if isinstance(data, dict) else None
         self._attributes = [item.name for item in self.schema.attributes]
         self._relationships = [item.name for item in self.schema.relationships]
 
-    async def save(self):
-        pass
+        for attr_name in self._attributes:
+            attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
+            setattr(self, attr_name, Attribute(name=attr_name, data=attr_data))
 
-    async def _create(self):
-        query = Mutation(mutation=f"{self.schema.name}_create", input_data={})
-        response = self.client.execute_graphql(query=query.render())
+    async def save(self, at: Optional[Timestamp] = None):
+        at = Timestamp(at)
+        if not self.id:
+            return await self._create(at=at)
+        else:
+            return await self._update(at=at)
 
-    async def _update(self):
-        query = Mutation(mutation=f"{self.schema.name}_update", input_data={})
-        response = await self.client.execute_graphql(query=query.render())
+    async def _create(self, at: Timestamp):
+        input_data = self._generate_input_data()
+        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_name = f"{self.schema.name}_create"
+        query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
+        response = await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
+        self.id = response[mutation_name]["object"]["id"]
+
+    async def _update(self, at: Timestamp):
+        input_data = self._generate_input_data()
+        input_data["data"]["id"] = self.id
+        mutation_query = {"ok": None, "object": {"id": None}}
+        query = Mutation(mutation=f"{self.schema.name}_update", input_data=input_data, query=mutation_query)
+        await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
+
+    def _generate_input_data(self):
+        data = {}
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            attr_data = attr._generate_input_data()
+            if attr_data:
+                data[attr_name] = attr_data
+
+        return {"data": data}
+
+    # def _generate_mutation_query_data(self):
+
+    #     return
 
 
 class InfrahubClient:  # pylint: disable=too-many-public-methods
@@ -182,7 +228,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         query: str,
         variables: Optional[dict] = None,
         branch_name: Optional[str] = None,
-        at: Optional[str] = None,
+        at: Optional[Union[str, Timestamp]] = None,
         rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
@@ -205,6 +251,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         Returns:
             _type_: _description_
         """
+
         url = f"{self.address}/graphql"
         if branch_name:
             url += f"/{branch_name}"
@@ -215,7 +262,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         url_params = {}
         if at:
-            url_params["at"] = at
+            at = Timestamp(at)
+            url_params["at"] = at.to_string()
+
         if rebase:
             url_params["rebase"] = "true"
         if url_params:

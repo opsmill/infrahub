@@ -33,7 +33,12 @@ def query_data_filters():
 @pytest.fixture
 def input_data_01():
     data = {
-        "data": {"name": {"value": "$name"}, "description": {"value": "$description"}, "query": {"value": "$query"}}
+        "data": {
+            "name": {"value": "$name"},
+            "some_number": {"value": 88},
+            "some_bool": {"value": True},
+            "query": {"value": "my_query"},
+        }
     }
     return data
 
@@ -85,15 +90,18 @@ def test_render_input_block(input_data_01):
     lines = render_input_block(data=input_data_01)
 
     expected_lines = [
-        "    data {",
-        "        name {",
+        "    data: {",
+        "        name: {",
         "            value: $name",
         "        }",
-        "        description {",
-        "            value: $description",
+        "        some_number: {",
+        "            value: 88",
         "        }",
-        "        query {",
-        "            value: $query",
+        "        some_bool: {",
+        "            value: true",
+        "        }",
+        "        query: {",
+        '            value: "my_query"',
         "        }",
         "    }",
     ]
@@ -103,15 +111,18 @@ def test_render_input_block(input_data_01):
     lines = render_input_block(data=input_data_01, offset=2, indentation=2)
 
     expected_lines = [
-        "  data {",
-        "    name {",
+        "  data: {",
+        "    name: {",
         "      value: $name",
         "    }",
-        "    description {",
-        "      value: $description",
+        "    some_number: {",
+        "      value: 88",
         "    }",
-        "    query {",
-        "      value: $query",
+        "    some_bool: {",
+        "      value: true",
+        "    }",
+        "    query: {",
+        '      value: "my_query"',
         "    }",
         "  }",
     ]
@@ -174,15 +185,18 @@ def test_mutation_rendering_no_vars(input_data_01):
     expected_query = """
 mutation {
     myobject_create(
-        data {
-            name {
+        data: {
+            name: {
                 value: $name
             }
-            description {
-                value: $description
+            some_number: {
+                value: 88
             }
-            query {
-                value: $query
+            some_bool: {
+                value: true
+            }
+            query: {
+                value: "my_query"
             }
         }
     ){
@@ -205,15 +219,18 @@ def test_mutation_rendering_with_vars(input_data_01):
     expected_query = """
 mutation ($name: String!, $description: String!, $number: Int!) {
     myobject_create(
-        data {
-            name {
+        data: {
+            name: {
                 value: $name
             }
-            description {
-                value: $description
+            some_number: {
+                value: 88
             }
-            query {
-                value: $query
+            some_bool: {
+                value: true
+            }
+            query: {
+                value: "my_query"
             }
         }
     ){

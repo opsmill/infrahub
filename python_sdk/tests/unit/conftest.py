@@ -4,12 +4,31 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from infrahub_client import InfrahubClient
+from infrahub_client.models import NodeSchema
 from infrahub_client.queries import QUERY_ALL_BRANCHES, QUERY_SCHEMA
 
 
 @pytest.fixture
 async def client() -> InfrahubClient:
     return await InfrahubClient.init(address="http://mock")
+
+
+@pytest.fixture
+async def location_schema() -> NodeSchema:
+    data = {
+        "name": "location",
+        "kind": "Location",
+        "default_filter": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+            {"name": "type", "kind": "String"},
+        ],
+        "relationships": [
+            {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+        ],
+    }
+    return NodeSchema(**data)
 
 
 @pytest.fixture

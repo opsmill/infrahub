@@ -53,12 +53,19 @@ def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
     lines = []
     for key, value in data.items():
         if isinstance(value, dict):
-            lines.append(f"{offset_str}{key} " + "{")
+            lines.append(f"{offset_str}{key}: " + "{")
             lines.extend(render_input_block(data=value, offset=offset + indentation, indentation=indentation))
             lines.append(offset_str + "}")
         else:
-            lines.append(f"{offset_str}{key}: {value}")
+            value_str = value
+            if isinstance(value, str) and value.startswith("$"):
+                value_str = value
+            elif isinstance(value, str):
+                value_str = f'"{value}"'
+            elif isinstance(value, bool):
+                value_str = repr(value).lower()
 
+            lines.append(f"{offset_str}{key}: {value_str}")
     return lines
 
 
