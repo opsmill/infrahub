@@ -37,6 +37,13 @@ class BranchNotFound(Error):
         super().__init__(self.message)
 
 
+class SchemaNotFound(Error):
+    def __init__(self, identifier, message=None):
+        self.identifier = identifier
+        self.message = message or f"Unable to find the schema '{identifier}'."
+        super().__init__(self.message)
+
+
 class NodeNotFound(Error):
     def __init__(self, branch_name, node_type, identifier, message="Unable to find the node in the database."):
         self.branch_name = branch_name

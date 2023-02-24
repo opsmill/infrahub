@@ -4,7 +4,7 @@ import asyncio
 import copy
 import logging
 from logging import Logger
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import httpx
 from pydantic import BaseModel
@@ -14,6 +14,8 @@ from infrahub_client.exceptions import (
     ServerNotReacheableError,
     ServerNotResponsiveError,
 )
+from infrahub_client.graphql import Mutation
+from infrahub_client.models import NodeSchema
 from infrahub_client.queries import (
     MUTATION_BRANCH_CREATE,
     MUTATION_BRANCH_MERGE,
@@ -97,6 +99,51 @@ class TransformPythonData(BaseModel):
     url: str
     timeout: Optional[int]
     rebase: Optional[bool]
+
+
+class Attribute:
+    def __init__(self, name: str, data: Union[Any, dict]):
+        self.name = name
+
+        if not isinstance(data, dict):
+            data = {"value".data}
+
+        self.id: Optional(str) = data.get("id", None)
+        self.value: Optional(Any) = data.get("value", None)
+        self.is_inherited: Optional(bool) = data.get("is_inherited", None)
+        self.is_visible: Optional(bool) = data.get("is_visible", None)
+        self.is_protected: Optional(bool) = data.get("is_protected", None)
+        self.updated_at: Optional(bool) = data.get("updated_at", None)
+
+        self.source = data.get("source", None)
+        self.owner = data.get("owner", None)
+
+
+# class Relationship:
+#     def __init__(self, name, data):
+#         self.name = name
+
+
+class InfrahubNode:
+    def __init__(self, client: InfrahubClient, schema: NodeSchema, data: Optional[dict] = None):
+        self.client = client
+        self.schema = schema
+        self._data = data
+
+        self.id = None
+        self._attributes = [item.name for item in self.schema.attributes]
+        self._relationships = [item.name for item in self.schema.relationships]
+
+    async def save(self):
+        pass
+
+    async def _create(self):
+        query = Mutation(mutation=f"{self.schema.name}_create", input_data={})
+        response = self.client.execute_graphql(query=query.render())
+
+    async def _update(self):
+        query = Mutation(mutation=f"{self.schema.name}_update", input_data={})
+        response = await self.client.execute_graphql(query=query.render())
 
 
 class InfrahubClient:  # pylint: disable=too-many-public-methods
