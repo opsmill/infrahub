@@ -28,15 +28,6 @@ def execute_before_any_test():
     config.SETTINGS.main.internal_address = "http://mock"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture(scope="module")
 async def db():
     db = await get_db()

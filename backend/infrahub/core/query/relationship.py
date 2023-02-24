@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Generator, List, Type, Union
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 from uuid import UUID, uuid4
 
 from neo4j.graph import Relationship as Neo4jRelationship

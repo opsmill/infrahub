@@ -27,7 +27,7 @@ async def _schema(schema: Path):
     try:
         schema_data = ujson.loads(schema.read_text())
     except JSONDecodeError as exc:
-        console.print(f"[red]Invalid JSON file")
+        console.print("[red]Invalid JSON file")
         raise typer.Exit(2) from exc
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
