@@ -45,7 +45,7 @@ class NetboxAdapter(DiffSync):
 
     top_level = ["region", "site"]
 
-    type = "Infrahub"
+    type = "NetBox"
 
     def __init__(self, *args, url: str, token: str, **kwargs):
         super().__init__(*args, **kwargs)

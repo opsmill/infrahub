@@ -11,22 +11,35 @@ app = typer.Typer()
 
 logging.basicConfig(level=logging.INFO)
 
-INFRAHUB_URL = "https://localhost:8000"
+INFRAHUB_URL = "http://localhost:8000"
 
 NETBOX_URL = "https://demo.netbox.dev"
-NETBOX_TOKEN = "d14fc45811bf34a2e843ed87023dcefd81b5cb3a"
+NETBOX_TOKEN = "1719c7d7b5174662c14766351820ce872777569b"
 
 
 async def _diff():
-    iha = InfrahubAdapter(url=INFRAHUB_URL)
-    await iha.load()
+    ifha = InfrahubAdapter(url=INFRAHUB_URL)
+    await ifha.load()
 
     na = NetboxAdapter(url=NETBOX_URL, token=NETBOX_TOKEN)
     await na.load()
 
-    diff = iha.diff_from(na)
+    diff = ifha.diff_from(na)
 
     print(diff.str())
+
+
+async def _sync():
+    ifha = InfrahubAdapter(url=INFRAHUB_URL)
+    await ifha.load()
+
+    na = NetboxAdapter(url=NETBOX_URL, token=NETBOX_TOKEN)
+    await na.load()
+
+    diff = ifha.diff_from(na)
+    print(diff.str())
+
+    await ifha.sync_from(na, diff=diff)
 
 
 @app.command()
@@ -36,4 +49,4 @@ def diff():
 
 @app.command()
 def sync(name: Optional[str] = None):
-    pass
+    aiorun(_sync())

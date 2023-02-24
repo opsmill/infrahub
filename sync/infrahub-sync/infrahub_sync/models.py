@@ -8,20 +8,20 @@ class Region(DiffSyncModel):
 
     _modelname = "region"
     _identifiers = ("slug",)
-    _attributes = ("name", "description")
+    _attributes = ("description",)
 
     slug: str
-    name: str
+    name: Optional[str]
     description: Optional[str]
 
 
 class Site(DiffSyncModel):
     _modelname = "site"
     _identifiers = ("slug",)
-    _attributes = ("name", "description", "address")
+    _attributes = ("description", "address")
 
     slug: str
-    name: str
+    name: Optional[str]
     region: Optional[str]
     description: Optional[str]
     address: Optional[str]
