@@ -3,29 +3,18 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
-import {
-  ApolloClient,
-  HttpLink,
-  InMemoryCache,
-  ApolloProvider,
-} from "@apollo/client";
 import { CONFIG } from "./config/config";
+import { GraphQLClient } from "graphql-request";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 
-const httpLink = new HttpLink({ uri: CONFIG.BACKEND_URL });
-const graphQLclient = new ApolloClient({
-  cache: new InMemoryCache({ addTypename: true }),
-  link: httpLink,
-});
+export const graphQLClient = new GraphQLClient(CONFIG.BACKEND_URL("main"));
 
 root.render(
   <React.StrictMode>
-    <ApolloProvider client={graphQLclient}>
-      <App />
-    </ApolloProvider>
+    <App />
   </React.StrictMode>
 );
 

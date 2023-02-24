@@ -4,7 +4,9 @@ import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../App";
 import { CircleStackIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { branchState } from "../../state/atoms/branch.atom";
-import { useAtom } from 'jotai'
+import { useAtom } from "jotai";
+import { graphQLClient } from "../..";
+import { CONFIG } from "../../config/config";
 
 const branches = [
   {
@@ -43,7 +45,13 @@ export default function BranchSelector() {
   const [selected, setSelected] = useAtom(branchState);
 
   return (
-    <Listbox value={selected} onChange={setSelected}>
+    <Listbox
+      value={selected}
+      onChange={(value) => {
+        graphQLClient.setEndpoint(CONFIG.BACKEND_URL(value.name));
+        setSelected(value);
+      }}
+    >
       {({ open }) => (
         <>
           <Listbox.Label className="sr-only"> Change branch </Listbox.Label>

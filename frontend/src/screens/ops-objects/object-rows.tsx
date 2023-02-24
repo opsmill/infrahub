@@ -3,6 +3,8 @@ import {
   ShieldCheckIcon,
   StarIcon,
 } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { graphQLClient } from "../..";
 import { NodeSchema } from "../../generated/graphql";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -52,18 +54,30 @@ export default function ObjectRows(props: Props) {
   const query = gql`
     ${queryString}
   `;
-  const { loading, data, error } = useQuery(query);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [objectRows, setObjectRows] = useState([]);
 
-  if(error) {
+  useEffect(() => {
+    const request = graphQLClient.request(query);
+    request.then((data) => {
+      const rows = data[schema.name.value!];
+      setObjectRows(rows);
+      setIsLoading(false);
+    }).catch(() => {
+      setHasError(true);
+    });
+  }, []);
+
+  if(hasError) {
     return <ErrorScreen />
   }
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingScreen />;
   }
 
   const displayAttribute = getDisplayAttribute(props.schema);
-  const rows = data[schema.name.value!];
 
   return (
     <div className="p-4">
@@ -140,12 +154,12 @@ export default function ObjectRows(props: Props) {
               ></dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-              <dt className="text-sm font-medium text-gray-500">Rows ({rows.length})</dt>
+              <dt className="text-sm font-medium text-gray-500">Rows ({objectRows.length})</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <ul
                   className="divide-y divide-gray-200 rounded-md border border-gray-200"
                 >
-                  {rows.map((row: any) => {
+                  {objectRows.map((row: any) => {
                     if (row?.[displayAttribute]) {
                       return (
                         <li className="flex items-center justify-between py-3 pl-3 pr-4 text-sm">
