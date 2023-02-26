@@ -1,13 +1,14 @@
 import logging
 import os
 import time
-from typing import Optional
+from typing import List, Optional
 
 import graphene
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.logger import logger
 from graphql import graphql
 from neo4j import AsyncSession
+from pydantic import BaseModel
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
@@ -17,7 +18,9 @@ from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
+from infrahub.core.schema import NodeSchema
 from infrahub.database import get_db
+from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import get_gql_mutation, get_gql_query
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.message_bus import close_broker_connection, connect_to_broker
@@ -83,6 +86,25 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
+class SchemaAPI(BaseModel):
+    nodes: List[NodeSchema]
+
+
+@app.get("/schema/")
+async def get_schema(
+    session: AsyncSession = Depends(get_session),
+    branch: Optional[str] = None,
+) -> SchemaAPI:
+    try:
+        branch = await get_branch(session=session, branch=branch)
+    except BranchNotFound as exc:
+        raise HTTPException(status_code=400, detail=exc.message)
+
+    return SchemaAPI(
+        nodes=[value for value in registry.get_full_schema(branch=branch).values() if isinstance(value, NodeSchema)]
+    )
+
+
 @app.get("/rfile/{rfile_id}", response_class=PlainTextResponse)
 async def generate_rfile(
     request: Request,
@@ -92,11 +114,15 @@ async def generate_rfile(
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
 ):
-    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
+    try:
+        branch = await get_branch(session=session, branch=branch)
+    except BranchNotFound as exc:
+        raise HTTPException(status_code=400, detail=exc.message)
 
-    branch = await get_branch(session=session, branch=branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
+
+    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch, at=at)
 
@@ -172,11 +198,15 @@ async def graphql_query(
     at: Optional[str] = None,
     rebase: bool = False,
 ):
-    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
+    try:
+        branch = await get_branch(session=session, branch=branch)
+    except BranchNotFound as exc:
+        raise HTTPException(status_code=400, detail=exc.message)
 
-    branch = await get_branch(session=session, branch=branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
+
+    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     gql_query = await NodeManager.get_one(session=session, id=query_id, branch=branch, at=at)
 
@@ -238,11 +268,15 @@ async def transform_python(
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
 ):
-    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
+    try:
+        branch = await get_branch(session=session, branch=branch)
+    except BranchNotFound as exc:
+        raise HTTPException(status_code=400, detail=exc.message)
 
-    branch = await get_branch(session=session, branch=branch)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
+
+    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     transform_schema = registry.get_schema(name="TransformPython", branch=branch)
     transforms = await NodeManager.query(
