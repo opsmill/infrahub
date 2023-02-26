@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.node import Node
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
 @pytest.fixture
@@ -16,13 +15,6 @@ def client():
 @pytest.fixture
 def client_headers():
     return {"Authorization": "Token XXXX"}
-
-
-@pytest.fixture
-def patch_rpc_client():
-    import infrahub.message_bus.rpc
-
-    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
 @pytest.fixture
