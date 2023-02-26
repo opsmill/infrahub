@@ -13,6 +13,7 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import (
+    FilterSchema,
     GenericSchema,
     GroupSchema,
     NodeSchema,
@@ -278,6 +279,41 @@ class SchemaManager(NodeManager):
 
         return True
 
+    @staticmethod
+    async def generate_filters(
+        session: AsyncSession, schema: NodeSchema, top_level: bool = False, include_attribute: bool = False
+    ) -> List[FilterSchema]:
+        """Generate the GraphQL filters for a given NodeSchema object."""
+
+        filters = []
+
+        if top_level:
+            filters.append(FilterSchema(name="ids", kind="List"))
+
+        else:
+            filters.append(FilterSchema(name="id", kind="String"))
+
+        for attr in schema.attributes:
+            filters.append(FilterSchema(name=f"{attr.name}__value", kind=attr.kind))
+
+        if not include_attribute:
+            return filters
+
+        for rel in schema.relationships:
+            peer_schema = await rel.get_peer_schema()
+
+            if not isinstance(peer_schema, NodeSchema):
+                continue
+
+            peer_filters = await SchemaManager.generate_filters(
+                session=session, schema=peer_schema, top_level=False, include_attribute=False
+            )
+
+            for filter in peer_filters:
+                filters.append(FilterSchema(name=f"{rel.name}__{filter.name}", kind=filter.kind))
+
+        return filters
+
     @classmethod
     async def load_node_to_db(
         cls,
@@ -301,20 +337,20 @@ class SchemaManager(NodeManager):
             rels = []
             for item in node.local_attributes:
                 attr = await Node.init(schema=attribute_schema, branch=branch, session=session)
-                await attr.new(**item.dict(), session=session)
+                await attr.new(**item.dict(exclude={"filters"}), session=session)
                 await attr.save(session=session)
                 attrs.append(attr)
 
             for item in node.local_relationships:
                 rel = await Node.init(schema=relationship_schema, branch=branch, session=session)
-                await rel.new(**item.dict(), session=session)
+                await rel.new(**item.dict(exclude={"filters"}), session=session)
                 await rel.save(session=session)
                 rels.append(rel)
 
             attribute_ids = [attr.id for attr in attrs] or None
             relationship_ids = [rel.id for rel in rels] or None
 
-        schema_dict = node.dict()
+        schema_dict = node.dict(exclude={"filters"})
 
         if isinstance(node, (NodeSchema, GenericSchema)):
             schema_dict["relationships"] = relationship_ids
@@ -332,25 +368,41 @@ class SchemaManager(NodeManager):
         session: AsyncSession,
         branch: Union[str, Branch] = None,
     ) -> SchemaRoot:
-        """Query all the node of type node_schema and generic_schema from the database and convert them to NodeSchema & GenericSchema."""
+        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type."""
 
         branch = await get_branch(branch=branch, session=session)
 
         schema = SchemaRoot()
 
         group_schema = registry.get_schema(name="GroupSchema", branch=branch)
-        for schema_node in await cls.query(group_schema, branch=branch, session=session):
+        for schema_node in await cls.query(schema=group_schema, branch=branch, session=session):
             schema.groups.append(await cls.convert_group_schema_to_schema(schema_node=schema_node))
 
         generic_schema = registry.get_schema(name="GenericSchema", branch=branch)
-        for schema_node in await cls.query(generic_schema, branch=branch, session=session):
+        for schema_node in await cls.query(schema=generic_schema, branch=branch, session=session):
             schema.generics.append(await cls.convert_generic_schema_to_schema(schema_node=schema_node, session=session))
 
         node_schema = registry.get_schema(name="NodeSchema", branch=branch)
-        for schema_node in await cls.query(node_schema, branch=branch, session=session):
+        for schema_node in await cls.query(schema=node_schema, branch=branch, session=session):
             schema.nodes.append(await cls.convert_node_schema_to_schema(schema_node=schema_node, session=session))
 
         schema.extend_nodes_with_interfaces()
+
+        # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
+        for node in schema.nodes:
+            node.filters = await SchemaManager.generate_filters(
+                session=session, schema=node, top_level=True, include_attribute=False
+            )
+
+            for rel in node.relationships:
+                peer_schema = [node for node in schema.nodes if node.kind == rel.peer]
+                if not peer_schema:
+                    continue
+
+                rel.filters = await SchemaManager.generate_filters(
+                    session=session, schema=peer_schema[0], top_level=False, include_attribute=False
+                )
+
         return schema
 
     @staticmethod
