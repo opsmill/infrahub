@@ -143,6 +143,8 @@ def selected_field_names(
         runtime_type: The type of the object you resolve to. Either its string name, or its ObjectType.
             If none is provided, this function will fail with a RuntimeError() when resolving fragments
     """
+    # pylint: disable=no-value-for-parameter
+
     # Create a temporary execution context. This operation is quite cheap, actually.
     execution_context = ExecutionContext(
         schema=info.schema,

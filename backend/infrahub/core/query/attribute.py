@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Set, Union
+from typing import TYPE_CHECKING, Optional, Set, Union
 
 from infrahub.core.query import Query, QueryType
 from infrahub_client.timestamp import Timestamp
