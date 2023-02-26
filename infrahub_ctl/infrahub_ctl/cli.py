@@ -36,7 +36,7 @@ async def _render(
     """Render a local Jinja Template (RFile) for debugging purpose."""
     log_level = "DEBUG" if debug else "INFO"
 
-    config.load_and_exit(config_file_name=config_file)
+    config.load_and_exit(config_file=config_file)
 
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])

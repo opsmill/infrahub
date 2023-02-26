@@ -49,7 +49,7 @@ async def generate_graphql_schema(
     return graphene_schema.graphql_schema
 
 
-async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None):
+async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None) -> type[InfrahubBaseQuery]:
     QueryMixin = await generate_query_mixin(session=session, branch=branch)
 
     class Query(InfrahubBaseQuery, QueryMixin):
@@ -58,7 +58,7 @@ async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None
     return Query
 
 
-async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = None):
+async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = None) -> type[InfrahubBaseMutation]:
     MutationMixin = await generate_mutation_mixin(session=session, branch=branch)
 
     class Mutation(InfrahubBaseMutation, MutationMixin):
@@ -68,8 +68,8 @@ async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = N
 
 
 async def get_gql_subscription(
-    session: AsyncSession, branch: Union[Branch, str] = None
-):  # pylint: disable=unused-argument
+    session: AsyncSession, branch: Union[Branch, str] = None  # pylint: disable=unused-argument
+) -> type[InfrahubBaseSubscription]:
     class Subscription(InfrahubBaseSubscription):
         pass
 

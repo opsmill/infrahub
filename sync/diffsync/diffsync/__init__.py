@@ -196,7 +196,7 @@ class DiffSyncModel(BaseModel):
         return model
 
     @classmethod
-    def create(cls, diffsync: "DiffSync", ids: Mapping, attrs: Mapping) -> Optional["DiffSyncModel"]:
+    async def create(cls, diffsync: "DiffSync", ids: Mapping, attrs: Mapping) -> Optional["DiffSyncModel"]:
         """Instantiate this class, along with any platform-specific data creation.
 
         Subclasses must call `super().create()` or `self.create_base()`; they may wish to then override the default status information
@@ -234,7 +234,7 @@ class DiffSyncModel(BaseModel):
         self.set_status(DiffSyncStatus.SUCCESS, "Updated successfully")
         return self
 
-    def update(self, attrs: Mapping) -> Optional["DiffSyncModel"]:
+    async def update(self, attrs: Mapping) -> Optional["DiffSyncModel"]:
         """Update the attributes of this instance, along with any platform-specific data updates.
 
         Subclasses must call `super().update()` or `self.update_base()`; they may wish to then override the default status information
@@ -263,7 +263,7 @@ class DiffSyncModel(BaseModel):
         self.set_status(DiffSyncStatus.SUCCESS, "Deleted successfully")
         return self
 
-    def delete(self) -> Optional["DiffSyncModel"]:
+    async def delete(self) -> Optional["DiffSyncModel"]:
         """Delete any platform-specific data corresponding to this instance.
 
         Subclasses must call `super().delete()` or `self.delete_base()`; they may wish to then override the default status information
@@ -481,7 +481,7 @@ class DiffSync:  # pylint: disable=too-many-public-methods
                 value_order.append(item)
         return value_order
 
-    def load(self):
+    async def load(self):
         """Load all desired data from whatever backend data source into this instance."""
         # No-op in this generic class
 

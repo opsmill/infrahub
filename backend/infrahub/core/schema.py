@@ -35,6 +35,12 @@ ATTRIBUTES_MAPPING = {
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 
+class FilterSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+
+
 class AttributeSchema(BaseModel):
     name: str
     kind: str
@@ -72,6 +78,7 @@ class RelationshipSchema(BaseModel):
     cardinality: str = "many"
     branch: bool = True
     optional: bool = True
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     @validator("cardinality")
     def cardinality_options(
@@ -284,6 +291,7 @@ class NodeSchema(BaseNodeSchema):
     groups: List[str] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     # TODO add validation to ensure that 2 attributes can't have the same name
 

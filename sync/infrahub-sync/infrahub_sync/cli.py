@@ -1,6 +1,5 @@
 import logging
 from asyncio import run as aiorun
-from typing import Optional
 
 import typer
 from infrahub_sync.infrahub.adapter import InfrahubAdapter
@@ -24,9 +23,9 @@ async def _diff():
     na = NetboxAdapter(url=NETBOX_URL, token=NETBOX_TOKEN)
     await na.load()
 
-    diff = ifha.diff_from(na)
+    mydiff = ifha.diff_from(na)
 
-    print(diff.str())
+    print(mydiff.str())
 
 
 async def _sync():
@@ -36,10 +35,10 @@ async def _sync():
     na = NetboxAdapter(url=NETBOX_URL, token=NETBOX_TOKEN)
     await na.load()
 
-    diff = ifha.diff_from(na)
-    print(diff.str())
+    mydiff = ifha.diff_from(na)
+    print(mydiff.str())
 
-    await ifha.sync_from(na, diff=diff)
+    await ifha.sync_from(na, diff=mydiff)
 
 
 @app.command()
@@ -48,5 +47,5 @@ def diff():
 
 
 @app.command()
-def sync(name: Optional[str] = None):
+def sync():
     aiorun(_sync())
