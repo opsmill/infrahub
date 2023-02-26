@@ -263,8 +263,8 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
     await obj2.save(session=session)
     obj3 = await Node.init(session=session, schema=criticality_schema)
-    await obj2.new(session=session, name="high", level=1, description="My desc", color="#222222")
-    await obj2.save(session=session)
+    await obj3.new(session=session, name="high", level=1, description="My desc", color="#222222")
+    await obj3.save(session=session)
 
     query = (
         """
