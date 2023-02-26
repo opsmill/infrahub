@@ -255,6 +255,66 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     assert result_per_name["John"]["cars"][0]["__typename"] == "RelatedCar"
 
 
+async def test_query_filter_ids(db, session, default_branch: Branch, criticality_schema):
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+    obj3 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="high", level=1, description="My desc", color="#222222")
+    await obj2.save(session=session)
+
+    query = (
+        """
+    query {
+        criticality(ids: ["%s"]) {
+            name {
+                value
+            }
+        }
+    }
+    """
+        % obj1.id
+    )
+
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["criticality"]) == 1
+
+    query = """
+    query {
+        criticality(ids: ["%s", "%s"]) {
+            name {
+                value
+            }
+        }
+    }
+    """ % (
+        obj1.id,
+        obj2.id,
+    )
+
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["criticality"]) == 2
+
+
 async def test_query_filter_local_attrs(db, session, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -319,6 +379,60 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
         }
     }
     """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["person"]) == 1
+    assert result.data["person"][0]["name"]["value"] == "John"
+    assert len(result.data["person"][0]["cars"]) == 1
+    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+
+
+async def test_query_filter_relationship_id(db, session, default_branch: Branch, car_person_schema):
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=car)
+    await c2.new(session=session, name="bolt", nbr_seats=4, is_electric=True, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=car)
+    await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
+    await c3.save(session=session)
+
+    query = (
+        """
+    query {
+        person(name__value: "John") {
+            name {
+                value
+            }
+            cars(id: "%s") {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+        % c1.id
+    )
+
     result = await graphql(
         await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
         source=query,
