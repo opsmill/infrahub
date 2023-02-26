@@ -34,7 +34,14 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub_client.timestamp import Timestamp
 
-app = FastAPI()
+app = FastAPI(
+    title="Infrahub",
+    version="0.2.0",
+    contact={
+        "name": "OpsMill",
+        "email": "info@opsmill.com",
+    },
+)
 
 # pylint: disable=too-many-locals
 
@@ -98,7 +105,7 @@ async def get_schema(
     try:
         branch = await get_branch(session=session, branch=branch)
     except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message)
+        raise HTTPException(status_code=400, detail=exc.message) from exc
 
     return SchemaAPI(
         nodes=[value for value in registry.get_full_schema(branch=branch).values() if isinstance(value, NodeSchema)]
@@ -117,7 +124,7 @@ async def generate_rfile(
     try:
         branch = await get_branch(session=session, branch=branch)
     except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message)
+        raise HTTPException(status_code=400, detail=exc.message) from exc
 
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
@@ -201,7 +208,7 @@ async def graphql_query(
     try:
         branch = await get_branch(session=session, branch=branch)
     except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message)
+        raise HTTPException(status_code=400, detail=exc.message) from exc
 
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
@@ -271,7 +278,7 @@ async def transform_python(
     try:
         branch = await get_branch(session=session, branch=branch)
     except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message)
+        raise HTTPException(status_code=400, detail=exc.message) from exc
 
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
@@ -355,12 +362,14 @@ app.add_middleware(
 )
 app.add_middleware(InfrahubCORSMiddleware)
 
-app.add_route("/metrics", handle_metrics)
+app.add_route(path="/metrics", route=handle_metrics)
 
-app.add_route("/graphql", InfrahubGraphQLApp(playground=True))
-app.add_route("/graphql/{branch_name:str}", InfrahubGraphQLApp(playground=True))
-app.add_websocket_route("/graphql", InfrahubGraphQLApp())
-app.add_websocket_route("/graphql/{branch_name:str}", InfrahubGraphQLApp())
+app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"])
+app.add_route(
+    path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
+)
+app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
+app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
 
 if __name__ != "main":
     logger.setLevel(gunicorn_logger.level)

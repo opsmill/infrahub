@@ -68,8 +68,8 @@ async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = N
 
 
 async def get_gql_subscription(
-    session: AsyncSession, branch: Union[Branch, str] = None
-) -> type[InfrahubBaseSubscription]:  # pylint: disable=unused-argument
+    session: AsyncSession, branch: Union[Branch, str] = None  # pylint: disable=unused-argument
+) -> type[InfrahubBaseSubscription]:
     class Subscription(InfrahubBaseSubscription):
         pass
 
