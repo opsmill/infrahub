@@ -441,12 +441,11 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         self.params.update(rels_params)
 
         query = """
-        WITH %s
+        WITH *
         MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
         MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
         WHERE %s
         """ % (
-            ",".join(self.return_labels),
             "\n AND ".join(
                 rels_filter,
             ),

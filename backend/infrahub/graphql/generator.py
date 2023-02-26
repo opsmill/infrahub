@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, List, Tuple, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Tuple, Type, Union
 
 import graphene
 from graphene.types.generic import GenericScalar
@@ -128,7 +128,9 @@ async def default_resolver(*args, **kwargs):
     node_rel = node_schema.get_relationship(info.field_name)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    filters = {f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value}
+    filters = {
+        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+    }
 
     async with db.session(database=config.SETTINGS.database.database) as new_session:
         objs = await NodeManager.query_peers(
@@ -226,7 +228,7 @@ async def generate_object_types(
         for rel in node_schema.relationships:
             peer_schema = await rel.get_peer_schema()
 
-            peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
+            peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
             if isinstance(peer_schema, GroupSchema):
                 peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
             else:
@@ -258,7 +260,7 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
             continue
 
         node_type = registry.get_graphql_type(name=node_name, branch=branch)
-        node_filters = await generate_filters(session=session, schema=node_schema)
+        node_filters = await generate_filters(session=session, schema=node_schema, top_level=True)
 
         class_attrs[node_schema.name] = graphene.List(
             of_type=node_type,
@@ -555,11 +557,29 @@ def generate_graphql_mutation_delete(
 
 
 async def generate_filters(
-    session: AsyncSession, schema: Union[NodeSchema, GenericSchema, GroupSchema], attribute_only: bool = False
-) -> dict:
-    """Generate the GraphQL filters for a given NodeSchema object."""
+    session: AsyncSession, schema: Union[NodeSchema, GenericSchema, GroupSchema], top_level: bool = False
+) -> Dict[str, Union[graphene.Scalar, graphene.List]]:
+    """Generate the GraphQL filters for a given Schema object.
 
-    filters = {"id": graphene.UUID()}
+    The generated filter will be different if we are at the top_level (query)
+    or if we are generating the filter for a relationship inside a node.
+
+    At the top, level it will be possible to query with a list of ID
+    Inside a node, it's only possible to query with a single ID
+
+    Args:
+        session (AsyncSession): Active session to the database
+        schema (Union[NodeSchema, GenericSchema, GroupSchema]): Schema to generate the filters
+        top_level (bool, optional): Flag to indicate if are at the top level or not. Defaults to False.
+
+    Returns:
+        dict: A Dictionnary containing all the filters with their name as the key and their Type as value
+    """
+
+    if top_level:
+        filters = {"ids": graphene.List(graphene.ID)}
+    else:
+        filters = {"id": graphene.ID()}
 
     if isinstance(schema, GroupSchema):
         return filters
@@ -568,7 +588,7 @@ async def generate_filters(
         attr_type = FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
         filters[f"{attr.name}__value"] = attr_type()
 
-    if attribute_only:
+    if not top_level:
         return filters
 
     for rel in schema.relationships:
@@ -577,7 +597,7 @@ async def generate_filters(
         if not isinstance(peer_schema, NodeSchema):
             continue
 
-        peer_filters = await generate_filters(session=session, schema=peer_schema, attribute_only=True)
+        peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
 
         for key, value in peer_filters.items():
             filters[f"{rel.name}__{key}"] = value
