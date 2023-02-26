@@ -98,7 +98,7 @@ def test_node_schema_unique_identifiers():
     assert schema.relationships[1].identifier == "something_unique"
 
 
-async def test_rel_schema_query_filter(session, car_person_schema):
+async def test_rel_schema_query_filter(session, default_branch, car_person_schema):
     person = registry.get_schema(name="Person")
     rel = person.relationships[0]
 
@@ -107,6 +107,7 @@ async def test_rel_schema_query_filter(session, car_person_schema):
     assert params == {}
     assert nbr_rels == 0
 
+    # Filter relationships by NAME__VALUE
     filters, params, nbr_rels = await rel.get_query_filter(session=session, filters={"name__value": "alice"})
     expected_response = [
         "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Car)-[r3:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_name_name } )-[r4:HAS_VALUE]-(av { value: $attr_name_value })"
@@ -115,6 +116,7 @@ async def test_rel_schema_query_filter(session, car_person_schema):
     assert params == {"attr_name_name": "name", "attr_name_value": "alice", "rel_cars_rel_name": "car__person"}
     assert nbr_rels == 4
 
+    # Filter relationship by ID
     filters, params, nbr_rels = await rel.get_query_filter(session=session, name="bob", filters={"id": "XXXX-YYYY"})
     expected_response = [
         "MATCH (n)-[r1:IS_RELATED]-(Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Car { uuid: $peer_node_id })"

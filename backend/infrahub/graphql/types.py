@@ -43,7 +43,21 @@ class GetListMixin:
 
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
-            if filters:
+            filter_ids = kwargs.get("ids")
+
+            if filter_ids:
+                objs = await NodeManager.get_many(
+                    session=session,
+                    ids=filter_ids,
+                    fields=fields,
+                    at=at,
+                    branch=branch,
+                    account=account,
+                    include_source=True,
+                    include_owner=True,
+                )
+                objs = objs.values()
+            elif filters:
                 objs = await NodeManager.query(
                     session=session,
                     schema=cls._meta.schema,
