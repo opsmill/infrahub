@@ -21,7 +21,7 @@ ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
 
 
 async def _list():
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     console = Console()
 
@@ -86,7 +86,7 @@ def list_branch(
 async def _create(branch_name: str, description: str, data_only: bool):
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
         branch = await client.branch.create(branch_name=branch_name, description=description, data_only=data_only)
@@ -119,7 +119,7 @@ def create(
 async def _rebase(branch_name: str):
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
         await client.branch.rebase(branch_name=branch_name)
@@ -150,7 +150,7 @@ def rebase(
 async def _merge(branch_name: str):
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
         await client.branch.merge(branch_name=branch_name)
@@ -181,7 +181,7 @@ def merge(
 async def _validate(branch_name: str):
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
         await client.branch.validate(branch_name=branch_name)
@@ -209,7 +209,7 @@ def validate(
 async def _diff(branch_name: str, diff_from: Union[str, datetime], diff_to: Union[str, datetime], branch_only: bool):
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
         response = await client.get_branch_diff(
