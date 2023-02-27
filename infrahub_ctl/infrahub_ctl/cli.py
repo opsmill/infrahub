@@ -69,8 +69,9 @@ async def _render(
 
     query = find_graphql_query(rfile_data.get("query"))
 
-    params = {item.split("=")[0]: item.split("=")[1] for item in params}
-    response = execute_query(server=config.SETTINGS.server_address, query=query, variables=params, branch=branch)
+    params_dict: dict = {item.split("=")[0]: item.split("=")[1] for item in params} if params else {}
+
+    response = execute_query(server=config.SETTINGS.server_address, query=query, variables=params_dict, branch=branch)
 
     template_path = rfile_data.get("template_path")
     if not os.path.isfile(rfile_data.get("template_path")):
@@ -80,7 +81,7 @@ async def _render(
     templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
     template = templateEnv.get_template(template_path)
 
-    print(template.render(**params, **response))
+    print(template.render(**params_dict, **response))
 
 
 @app.command()
