@@ -1,7 +1,7 @@
 import { useAtom } from "jotai";
 import { gql } from "@apollo/client";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { graphQLClient } from "../..";
 import { schemaState } from "../../state/atoms/schema.atom";
 import ErrorScreen from "../error-screen/error-screen";
@@ -14,6 +14,7 @@ declare var Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind.value}} {
         {{name.value}} {
+            id
             {{#each attributes}}
             {{this.name.value}} {
                 value
@@ -27,9 +28,11 @@ export default function ObjectItems() {
   let { objectname } = useParams();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [objectRows, setObjectRows] = useState([]);
+  const [objectRows, setObjectRows] = useState<any[]>([]);
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name.value === objectname)[0];
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (schema) {
@@ -49,7 +52,6 @@ export default function ObjectItems() {
         });
     }
   }, [objectname, schemaList, schema]);
-
 
   if (hasError) {
     return <ErrorScreen />;
@@ -104,17 +106,23 @@ export default function ObjectItems() {
                 </thead>
                 <tbody className="bg-white">
                   {objectRows.map((row, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
+                    <tr
+                      onClick={() => {
+                        navigate(`/objects/${schema.name.value}/${row.id}`);
+                      }}
+                      key={index}
+                      className="hover:bg-gray-50"
+                    >
                       {columns.map((column) => (
                         <td
                           className={classNames(
                             index !== objectRows.length - 1
                               ? "border-b border-gray-200"
                               : "",
-                            "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 uppercase"
+                            "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                           )}
                         >
-                          {(row[column] as any)?.value}
+                          {column === "id" ? row[column] : row[column].value}
                         </td>
                       ))}
                     </tr>

@@ -8,12 +8,17 @@ import { graphQLClient } from ".";
 import { iSchemaData, SCHEMA_QUERY } from "./graphql/queries/schema";
 import ObjectItems from "./screens/object-items/object-items";
 import Layout from "./screens/layout/layout";
+import ObjectItemDetails from "./screens/object-item-details/object-item-details";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Layout />,
     children: [
+      {
+        path: "/objects/:objectname/:objectid",
+        element: <ObjectItemDetails />,
+      },
       {
         path: "/objects/:objectname",
         element: <ObjectItems />,
