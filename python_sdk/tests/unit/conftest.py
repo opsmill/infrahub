@@ -6,7 +6,8 @@ import pytest
 import ujson
 from pytest_httpx import HTTPXMock
 
-from infrahub_client import InfrahubClient
+from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client.graphql import Query
 from infrahub_client.queries import QUERY_ALL_BRANCHES
 from infrahub_client.schema import NodeSchema
 from infrahub_client.utils import get_fixtures_dir
@@ -94,6 +95,39 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json=response1)
     httpx_mock.add_response(method="POST", url="http://mock/graphql/cr1234", json=response2)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_query_repository_all_01(
+    httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
+) -> HTTPXMock:
+    response = {
+        "data": {
+            "repository": [
+                {
+                    "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                    "name": {"value": "infrahub-demo-edge"},
+                    "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
+                    "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                },
+                {
+                    "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                    "name": {"value": "infrahub-demo-core"},
+                    "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                    "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                },
+            ]
+        }
+    }
+
+    schema = await client.schema.get(kind="Repository")
+    query_data = InfrahubNode(client=client, schema=schema).generate_query_data()
+    query = Query(query=query_data)
+
+    request_content = json.dumps({"query": query.render()}).encode()
+
+    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
     return httpx_mock
 
 

@@ -95,26 +95,38 @@ class InfrahubSchema:
         SchemaRoot(**data)
         return True
 
-    async def get(self, model: str, branch: Optional[str] = None, refresh: bool = False) -> NodeSchema:
+    async def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> NodeSchema:
         branch = branch or self.client.default_branch
 
         if refresh:
             self.cache[branch] = await self.fetch(branch=branch)
 
-        if branch in self.cache and model in self.cache[branch]:
-            return self.cache[branch][model]
+        if branch in self.cache and kind in self.cache[branch]:
+            return self.cache[branch][kind]
 
         # Fetching the latest schema from the server if we didn't fetch it earlier
         #   because we coulnd't find the object on the local cache
         if not refresh:
             self.cache[branch] = await self.fetch(branch=branch)
 
-        if branch in self.cache and model in self.cache[branch]:
-            return self.cache[branch][model]
+        if branch in self.cache and kind in self.cache[branch]:
+            return self.cache[branch][kind]
 
-        raise SchemaNotFound(identifier=model)
+        raise SchemaNotFound(identifier=kind)
 
     async def all(self, branch: Optional[str] = None, refresh: bool = False) -> Dict[str, NodeSchema]:
+        """Retrieve the entire schema for a given branch.
+
+        if present in cache, the schema will be served from the cache, unless refresh is set to True
+        if the schema is not present in the cache, it will be fetched automatically from the server
+
+        Args:
+            branch (str, optional): Name of the branch to query. Defaults to default_branch.
+            refresh (bool, optional): Force a refresh of the schema. Defaults to False.
+
+        Returns:
+            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+        """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
             self.cache[branch] = await self.fetch(branch=branch)
@@ -122,8 +134,16 @@ class InfrahubSchema:
         return self.cache[branch]
 
     async def fetch(self, branch: str) -> Dict[str, NodeSchema]:
+        """Fetch the schema from the server for a given branch.
+
+        Args:
+            branch (str): Name of the branch to fetch the schema for.
+
+        Returns:
+            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+        """
         url = f"{self.client.address}/schema?branch={branch}"
-        response = await self.client.get(url=url, timeout=2)
+        response = await self.client._get(url=url, timeout=2)
         response.raise_for_status()
 
         nodes = {}

@@ -10,7 +10,9 @@ import httpx
 from pydantic import BaseModel
 
 from infrahub_client.exceptions import (
+    FilterNotFound,
     GraphQLError,
+    NodeNotFound,
     ServerNotReacheableError,
     ServerNotResponsiveError,
 )
@@ -185,6 +187,11 @@ class InfrahubNode:
         await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
 
     def _generate_input_data(self) -> Dict[str, Dict]:
+        """Generate a dictionnary that represent the input data required by a mutation.
+
+        Returns:
+            Dict[str, Dict]: Representation of an input data in dict format
+        """
         data = {}
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)
@@ -194,8 +201,12 @@ class InfrahubNode:
 
         return {"data": data}
 
-    def generate_query_data(self) -> Dict[str, Union[Any, Dict]]:
+    def generate_query_data(self, filters: Optional[Dict[str, str]] = None) -> Dict[str, Union[Any, Dict]]:
         data = {}
+
+        if filters:
+            data["@filters"] = filters
+
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)
             attr_data = attr._generate_query_data()
@@ -203,6 +214,18 @@ class InfrahubNode:
                 data[attr_name] = attr_data
 
         return {self.schema.name: data}
+
+    def validate_filters(self, filters: Optional[Dict[str, str]] = None) -> bool:
+        for filter_name, value in filters.items():
+            found = False
+            for filter_schema in self.schema.filters:
+                if filter_name == filter_schema.name:
+                    found = True
+                    break
+            if not found:
+                raise FilterNotFound(identifier=filter_name, kind=self.schema.kind)
+
+        return True
 
 
 class InfrahubClient:  # pylint: disable=too-many-public-methods
@@ -236,8 +259,52 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
 
-    async def all(self, model: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
-        schema = await self.schema.get(model=model)
+    async def get(
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        id: Optional[str] = None,
+        **kwargs,
+    ) -> InfrahubNode:
+        schema = await self.schema.get(kind=kind)
+
+        branch = branch or self.default_branch
+        at = Timestamp(at)
+
+        node = InfrahubNode(client=self, schema=schema, branch=branch)
+
+        if id:
+            filters = {"ids": [id]}
+        elif kwargs:
+            filters = kwargs
+        else:
+            raise ValueError("At least one filter must be provided to get()")
+
+        node.validate_filters(filters=filters)
+        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
+        query = Query(query=query_data)
+        response = await self.execute_graphql(query=query.render(), branch_name=branch, at=at)
+
+        if not len(response[schema.name]):
+            raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
+        elif len(response[schema.name]) > 1:
+            raise IndexError("More than 1 node returned")
+
+        return InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+
+    async def all(self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
+        """Retrieve all nodes of a given kind
+
+        Args:
+            kind (str): kind of the nodes to query
+            at (Timestamp, optional): Time of the query. Defaults to Now.
+            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+
+        Returns:
+            List[InfrahubNode]: List of Nodes
+        """
+        schema = await self.schema.get(kind=kind)
 
         branch = branch or self.default_branch
         at = Timestamp(at)
@@ -247,8 +314,26 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         response = await self.execute_graphql(query=query.render(), branch_name=branch, at=at)
         return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
 
-    async def filters(self, *args, at: Optional[Timestamp] = None, **kwargs):
-        pass
+    async def filters(
+        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs
+    ) -> List[InfrahubNode]:
+        schema = await self.schema.get(kind=kind)
+
+        branch = branch or self.default_branch
+        at = Timestamp(at)
+
+        node = InfrahubNode(client=self, schema=schema, branch=branch)
+        filters = kwargs
+
+        if not filters:
+            raise ValueError("At least one filter must be provided to filters()")
+
+        node.validate_filters(filters=filters)
+        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
+        query = Query(query=query_data)
+        response = await self.execute_graphql(query=query.render(), branch_name=branch, at=at)
+
+        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
 
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
@@ -302,7 +387,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             while retry:
                 retry = self.retry_on_failure
                 try:
-                    resp = await self.post(url=url, payload=payload, timeout=timeout)
+                    resp = await self._post(url=url, payload=payload, timeout=timeout)
 
                     if raise_for_error:
                         resp.raise_for_status()
@@ -331,7 +416,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
-    async def post(self, url: str, payload: dict, timeout: Optional[int] = None) -> httpx.Response:
+    async def _post(self, url: str, payload: dict, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP POST with HTTPX.
 
         Raises:
@@ -350,7 +435,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url) from exc
 
-    async def get(self, url: str, timeout: Optional[int] = None) -> httpx.Response:
+    async def _get(self, url: str, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
 
         Raises:
