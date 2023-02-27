@@ -207,7 +207,7 @@ class InfrahubNode:
 
         return {"data": data}
 
-    def generate_query_data(self, filters: Optional[Dict[str, str]] = None) -> Dict[str, Union[Any, Dict]]:
+    def generate_query_data(self, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Union[Any, Dict]]:
         data = {}
 
         if filters:
@@ -221,8 +221,11 @@ class InfrahubNode:
 
         return {self.schema.name: data}
 
-    def validate_filters(self, filters: Optional[Dict[str, str]] = None) -> bool:
-        for filter_name, value in filters.items():
+    def validate_filters(self, filters: Optional[Dict[str, Any]] = None) -> bool:
+        if not filters:
+            return True
+
+        for filter_name in filters.keys():
             found = False
             for filter_schema in self.schema.filters:
                 if filter_name == filter_schema.name:
@@ -299,9 +302,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
         )
 
-        if not len(response[schema.name]):
+        if len(response[schema.name]) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
-        elif len(response[schema.name]) > 1:
+        if len(response[schema.name]) > 1:
             raise IndexError("More than 1 node returned")
 
         return InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
@@ -361,7 +364,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
-        tracker: str = None,
+        tracker: Optional[str] = None,
     ) -> Dict:
         """Execute a GraphQL query (or mutation).
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
@@ -522,9 +525,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self, branches: Optional[Dict[str, BranchData]] = None
     ) -> Dict[str, RepositoryData]:
         if not branches:
-            branches = await self.branch.all()
+            branches = await self.branch.all()  # type: ignore
 
-        branch_names = sorted(branches.keys())
+        branch_names = sorted(branches.keys())  # type: ignore
 
         tasks = []
         for branch_name in branch_names:

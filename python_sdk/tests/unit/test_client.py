@@ -79,17 +79,17 @@ async def test_method_get_by_name(
 async def test_method_get_not_found(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ):  # pylint: disable=unused-argument
-    response = {"data": {"repository": []}}
+    response: dict = {"data": {"repository": []}}
     httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
 
     with pytest.raises(NodeNotFound):
-        repo = await client.get(kind="Repository", name__value="infrahub-demo-core")
+        await client.get(kind="Repository", name__value="infrahub-demo-core")
 
 
 async def test_method_get_found_many(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ):  # pylint: disable=unused-argument
-    response = {
+    response: dict = {
         "data": {
             "repository": [
                 {
@@ -111,14 +111,14 @@ async def test_method_get_found_many(
     httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
 
     with pytest.raises(IndexError):
-        repo = await client.get(kind="Repository", id="bfae43e8-5ebb-456c-a946-bf64e930710a")
+        await client.get(kind="Repository", id="bfae43e8-5ebb-456c-a946-bf64e930710a")
 
 
 async def test_method_get_invalid_filter(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ):  # pylint: disable=unused-argument
     with pytest.raises(FilterNotFound):
-        repo = await client.get(kind="Repository", name__name="infrahub-demo-core")
+        await client.get(kind="Repository", name__name="infrahub-demo-core")
 
 
 async def test_method_filters_many(
@@ -156,7 +156,7 @@ async def test_method_filters_many(
 async def test_method_filters_empty(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ):  # pylint: disable=unused-argument
-    response = {"data": {"repository": []}}
+    response: dict = {"data": {"repository": []}}
     httpx_mock.add_response(
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-filters"}
     )

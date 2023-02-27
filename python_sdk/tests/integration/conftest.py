@@ -6,7 +6,7 @@ import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import get_db
-from infrahub_client.models import NodeSchema
+from infrahub_client.schema import NodeSchema
 
 TEST_DATABASE = "infrahub.testing"
 

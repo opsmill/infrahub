@@ -9,6 +9,8 @@ from infrahub_client import InfrahubClient
 from infrahub_client.schema import NodeSchema
 from infrahub_client.utils import get_fixtures_dir
 
+# pylint: disable=redefined-outer-name,unused-argument
+
 
 @pytest.fixture
 async def client() -> InfrahubClient:
@@ -123,7 +125,7 @@ async def mock_query_repository_all_01(
 
 @pytest.fixture
 async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text()
+    response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock
