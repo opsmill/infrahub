@@ -6,7 +6,7 @@ from infrahub_client import InfrahubClient
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock")
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True)
 
 
 @pytest.fixture

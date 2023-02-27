@@ -26,7 +26,7 @@ async def _list():
     console = Console()
 
     try:
-        branches = await client.get_list_branches()
+        branches = await client.branch.all()
     except ServerNotReacheableError as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
@@ -89,7 +89,7 @@ async def _create(branch_name: str, description: str, data_only: bool):
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
 
     try:
-        branch = await client.create_branch(branch_name=branch_name, description=description, data_only=data_only)
+        branch = await client.branch.create(branch_name=branch_name, description=description, data_only=data_only)
     except ServerNotReacheableError as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
@@ -122,7 +122,7 @@ async def _rebase(branch_name: str):
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
 
     try:
-        await client.branch_rebase(branch_name=branch_name)
+        await client.branch.rebase(branch_name=branch_name)
     except ServerNotReacheableError as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
@@ -153,7 +153,7 @@ async def _merge(branch_name: str):
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
 
     try:
-        await client.branch_merge(branch_name=branch_name)
+        await client.branch.merge(branch_name=branch_name)
     except ServerNotReacheableError as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
@@ -184,7 +184,7 @@ async def _validate(branch_name: str):
     client = await InfrahubClient.init(address=config.SETTINGS.server_address)
 
     try:
-        await client.branch_validate(branch_name=branch_name)
+        await client.branch.validate(branch_name=branch_name)
     except ServerNotReacheableError as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
@@ -251,7 +251,6 @@ async def _diff(branch_name: str, diff_from: Union[str, datetime], diff_to: Unio
             console.print(grid)
 
 
-# ? pendulum.now()
 @app.command()
 def diff(
     branch_name: str,

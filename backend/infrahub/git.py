@@ -589,7 +589,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         response = {}
 
-        branches = await self.client.get_list_branches()
+        branches = await self.client.branch.all()
 
         # TODO Need to optimize this query, right now we are querying everything unnecessarily
         repositories = await self.client.get_list_repositories(branches=branches)
@@ -730,7 +730,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         """
 
         # TODO need to handle the exception properly
-        await self.client.create_branch(branch_name=branch_name, background_execution=True)
+        await self.client.branch.create(branch_name=branch_name, background_execution=True)
 
         LOGGER.debug(f"{self.name} | Branch {branch_name} created in the Graph")
         return True

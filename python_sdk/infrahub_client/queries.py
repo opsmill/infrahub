@@ -153,60 +153,62 @@ query {
     }
 }
 """
-
-MUTATION_BRANCH_CREATE = """
-mutation ($branch_name: String!, $description: String!, $background_execution: Boolean!, $data_only: Boolean!) {
-    branch_create(background_execution: $background_execution, data: { name: $branch_name, description: $description, is_data_only: $data_only }) {
-        ok
-        object {
-            id
-            name
-            description
-            origin_branch
-            branched_from
-            is_default
-            is_data_only
-        }
-    }
-}
-"""
-
-MUTATION_BRANCH_REBASE = """
-mutation ($branch_name: String!) {
-    branch_rebase(data: { name: $branch_name }){
-        ok
-        object {
-            name
-            branched_from
-        }
-    }
-}
-"""
-
-MUTATION_BRANCH_VALIDATE = """
-mutation ($branch_name: String!) {
-    branch_validate(data: { name: $branch_name }) {
-        ok
-        messages
-        object {
-            id
-            name
-        }
-    }
-}
-"""
-
-MUTATION_BRANCH_MERGE = """
-mutation ($branch_name: String!) {
-    branch_merge(data: { name: $branch_name }) {
-        ok
-        object {
-            id
-            name
-        }
-    }
-}
-"""
+QUERY_BRANCH_DIFF = """
+            query($branch_name: String!, $branch_only: Boolean!, $diff_from: String!, $diff_to: String! ) {
+                diff(branch: $branch_name, branch_only: $branch_only, time_from: $diff_from, time_to: $diff_to ) {
+                    nodes {
+                        branch
+                        kind
+                        id
+                        changed_at
+                        action
+                        attributes {
+                            name
+                            id
+                            changed_at
+                            action
+                            properties {
+                                action
+                                type
+                                changed_at
+                                branch
+                                value {
+                                    previous
+                                    new
+                                }
+                            }
+                        }
+                    }
+                    relationships {
+                        branch
+                        id
+                        name
+                        properties {
+                            branch
+                            type
+                            changed_at
+                            action
+                            value {
+                                previous
+                                new
+                            }
+                        }
+                        nodes {
+                            id
+                            kind
+                        }
+                        changed_at
+                        action
+                    }
+                    files {
+                        action
+                        repository
+                        branch
+                        location
+                    }
+                }
+            }
+            """
 
 MUTATION_COMMIT_UPDATE = """
 mutation ($repository_id: String!, $commit: String!) {

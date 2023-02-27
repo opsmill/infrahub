@@ -1,9 +1,5 @@
-import json
-
 import pytest
 from pytest_httpx import HTTPXMock
-
-from infrahub_client import QUERY_ALL_BRANCHES
 
 
 @pytest.fixture
@@ -30,9 +26,8 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
             ]
         }
     }
-    request_content = json.dumps({"query": QUERY_ALL_BRANCHES}).encode()
 
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-branch-all"})
     return httpx_mock
 
 

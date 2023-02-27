@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 
@@ -6,16 +5,14 @@ import pytest
 import ujson
 from pytest_httpx import HTTPXMock
 
-from infrahub_client import InfrahubClient, InfrahubNode
-from infrahub_client.graphql import Query
-from infrahub_client.queries import QUERY_ALL_BRANCHES
+from infrahub_client import InfrahubClient
 from infrahub_client.schema import NodeSchema
 from infrahub_client.utils import get_fixtures_dir
 
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock")
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True)
 
 
 @pytest.fixture
@@ -60,9 +57,8 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
             ]
         }
     }
-    request_content = json.dumps({"query": QUERY_ALL_BRANCHES}).encode()
 
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-branch-all"})
     return httpx_mock
 
 
@@ -121,13 +117,7 @@ async def mock_query_repository_all_01(
         }
     }
 
-    schema = await client.schema.get(kind="Repository")
-    query_data = InfrahubNode(client=client, schema=schema).generate_query_data()
-    query = Query(query=query_data)
-
-    request_content = json.dumps({"query": query.render()}).encode()
-
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-all"})
     return httpx_mock
 
 

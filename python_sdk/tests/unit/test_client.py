@@ -1,11 +1,8 @@
-import json
-
 import pytest
 from pytest_httpx import HTTPXMock
 
-from infrahub_client import BranchData, InfrahubClient, InfrahubNode, RepositoryData
+from infrahub_client import InfrahubClient, InfrahubNode, RepositoryData
 from infrahub_client.exceptions import FilterNotFound, NodeNotFound
-from infrahub_client.graphql import Query
 
 
 async def test_init_client():
@@ -14,16 +11,8 @@ async def test_init_client():
     assert True
 
 
-async def test_get_branches(mock_branches_list_query):  # pylint: disable=unused-argument
-    client = await InfrahubClient.init(address="http://mock")
-    branches = await client.get_list_branches()
-
-    assert len(branches) == 2
-    assert isinstance(branches["main"], BranchData)
-
-
 async def test_get_repositories(mock_branches_list_query, mock_repositories_query):  # pylint: disable=unused-argument
-    client = await InfrahubClient.init(address="http://mock")
+    client = await InfrahubClient.init(address="http://mock", insert_tracker=True)
     repos = await client.get_list_repositories()
 
     expected_response = RepositoryData(
@@ -57,13 +46,7 @@ async def test_method_get_by_id(
         }
     }
 
-    schema = await client.schema.get(kind="Repository")
-    query_data = InfrahubNode(client=client, schema=schema).generate_query_data(
-        filters={"ids": ["bfae43e8-5ebb-456c-a946-bf64e930710a"]}
-    )
-    query = Query(query=query_data)
-    request_content = json.dumps({"query": query.render()}).encode()
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
 
     repo = await client.get(kind="Repository", id="bfae43e8-5ebb-456c-a946-bf64e930710a")
     assert isinstance(repo, InfrahubNode)
@@ -86,13 +69,7 @@ async def test_method_get_by_name(
         }
     }
 
-    schema = await client.schema.get(kind="Repository")
-    query_data = InfrahubNode(client=client, schema=schema).generate_query_data(
-        filters={"name__value": "infrahub-demo-core"}
-    )
-    query = Query(query=query_data)
-    request_content = json.dumps({"query": query.render()}).encode()
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
 
     repo = await client.get(kind="Repository", name__value="infrahub-demo-core")
     assert isinstance(repo, InfrahubNode)
@@ -103,14 +80,7 @@ async def test_method_get_not_found(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ):  # pylint: disable=unused-argument
     response = {"data": {"repository": []}}
-
-    schema = await client.schema.get(kind="Repository")
-    query_data = InfrahubNode(client=client, schema=schema).generate_query_data(
-        filters={"name__value": "infrahub-demo-core"}
-    )
-    query = Query(query=query_data)
-    request_content = json.dumps({"query": query.render()}).encode()
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
 
     with pytest.raises(NodeNotFound):
         repo = await client.get(kind="Repository", name__value="infrahub-demo-core")
@@ -138,13 +108,7 @@ async def test_method_get_found_many(
         }
     }
 
-    schema = await client.schema.get(kind="Repository")
-    query_data = InfrahubNode(client=client, schema=schema).generate_query_data(
-        filters={"ids": ["bfae43e8-5ebb-456c-a946-bf64e930710a"]}
-    )
-    query = Query(query=query_data)
-    request_content = json.dumps({"query": query.render()}).encode()
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
 
     with pytest.raises(IndexError):
         repo = await client.get(kind="Repository", id="bfae43e8-5ebb-456c-a946-bf64e930710a")
@@ -179,13 +143,9 @@ async def test_method_filters_many(
         }
     }
 
-    schema = await client.schema.get(kind="Repository")
-    query_data = InfrahubNode(client=client, schema=schema).generate_query_data(
-        filters={"ids": ["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]}
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-filters"}
     )
-    query = Query(query=query_data)
-    request_content = json.dumps({"query": query.render()}).encode()
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
 
     repos = await client.filters(
         kind="Repository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
@@ -197,14 +157,9 @@ async def test_method_filters_empty(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ):  # pylint: disable=unused-argument
     response = {"data": {"repository": []}}
-
-    schema = await client.schema.get(kind="Repository")
-    query_data = InfrahubNode(client=client, schema=schema).generate_query_data(
-        filters={"ids": ["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]}
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-filters"}
     )
-    query = Query(query=query_data)
-    request_content = json.dumps({"query": query.render()}).encode()
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
 
     repos = await client.filters(
         kind="Repository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
