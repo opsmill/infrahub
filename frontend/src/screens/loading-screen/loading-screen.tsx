@@ -1,10 +1,17 @@
 import loader from "./loading.gif";
 
-export default function LoadingScreen() {
+interface Props {
+  size?: string;
+  hideText?: boolean;
+}
+
+export default function LoadingScreen(props: Props) {
+  const { hideText, size } = props;
+  const sizeClass = props.size ? `w-${size} h-${size}` : "w-20 h-20";
   return (
     <div className="flex-1 flex flex-col items-center justify-center">
-      <img alt="Loading" className="w-20 h-20" src={loader} />
-      <div className="text-xl mt-2">Just a moment</div>
+      <img alt="Loading" className={`${sizeClass}`} src={loader} />
+      {!props.hideText && <div className="text-xl mt-2">Just a moment</div>}
     </div>
   );
 }
