@@ -36,6 +36,8 @@ jobs:
         run: "invoke demo.dev-start"
       - name: "Install project"
         run: "poetry install --only=main,dev,server"
+      - name: "Flake8 Tests"
+        run: "poetry run invoke backend.flake8"
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
       - name: "Unit Tests"

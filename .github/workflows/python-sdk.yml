@@ -24,6 +24,8 @@ jobs:
           git config --global user.name "Infrahub"
       - name: "Install project"
         run: "poetry install --only=main,dev,sdk,server"
+      - name: "Flake8 Tests"
+        run: "poetry run invoke sdk.flake8"
       - name: "Pylint Tests"
         run: "poetry run invoke sdk.pylint"
       - name: "Mypy Tests"
