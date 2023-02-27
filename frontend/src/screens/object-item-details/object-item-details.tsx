@@ -9,7 +9,8 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import DeviceFilters from "../device-list/device-filters";
 import DeviceFilterBar from "../device-list/device-filter-bar";
 import { classNames } from "../../App";
-import { PaperClipIcon } from "@heroicons/react/24/outline";
+import { HomeIcon, PaperClipIcon } from "@heroicons/react/24/outline";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 
 declare var Handlebars: any;
 
@@ -76,10 +77,16 @@ export default function ObjectItemDetails() {
 
   return (
     <div className="overflow-hidden bg-white">
-      <div className="px-4 py-5 sm:px-6">
-        <h3 className="text-base font-semibold leading-6 text-gray-900">
+      <div className="px-4 py-5 sm:px-6 flex items-center">
+        <div onClick={() => {
+          navigate(-1);
+        }} className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
           {schema.kind.value}
-        </h3>
+        </div>
+        <ChevronRightIcon
+          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+          aria-hidden="true"
+        />
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{row.id}</p>
       </div>
       <div className="border-t border-gray-200 px-4 py-5 sm:p-0">

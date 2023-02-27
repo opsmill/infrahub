@@ -9,6 +9,7 @@ import { iSchemaData, SCHEMA_QUERY } from "./graphql/queries/schema";
 import ObjectItems from "./screens/object-items/object-items";
 import Layout from "./screens/layout/layout";
 import ObjectItemDetails from "./screens/object-item-details/object-item-details";
+import OpsObjects from "./screens/ops-objects/ops-objects";
 
 const router = createBrowserRouter([
   {
@@ -22,6 +23,10 @@ const router = createBrowserRouter([
       {
         path: "/objects/:objectname",
         element: <ObjectItems />,
+      },
+      {
+        path: "/schema",
+        element: <OpsObjects />,
       },
       {
         path: "/devices",
@@ -43,7 +48,14 @@ function App() {
     request
       .then((data: iSchemaData) => {
         if (data.node_schema?.length) {
-          setSchema(data.node_schema);
+          setSchema(
+            data.node_schema.sort((a, b) => {
+              if (a.name.value && b.name.value) {
+                return a.name.value?.localeCompare(b.name.value);
+              }
+              return -1;
+            })
+          );
         }
       })
       .catch(() => {
