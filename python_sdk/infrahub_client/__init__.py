@@ -15,7 +15,6 @@ from infrahub_client.exceptions import (
     ServerNotResponsiveError,
 )
 from infrahub_client.graphql import Mutation, Query
-from infrahub_client.models import NodeSchema
 from infrahub_client.queries import (
     MUTATION_BRANCH_CREATE,
     MUTATION_BRANCH_MERGE,
@@ -37,7 +36,7 @@ from infrahub_client.queries import (
     QUERY_ALL_RFILES,
     QUERY_ALL_TRANSFORM_PYTHON,
 )
-from infrahub_client.schema import InfrahubSchema
+from infrahub_client.schema import InfrahubSchema, NodeSchema
 from infrahub_client.timestamp import Timestamp
 
 # pylint: disable=redefined-builtin
@@ -260,7 +259,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
-    ):
+    ) -> Dict:
         """Execute a GraphQL query (or mutation).
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
 
@@ -332,17 +331,36 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
-    async def post(self, url: str, payload: dict, timeout: Optional[int] = None):
+    async def post(self, url: str, payload: dict, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP POST with HTTPX.
 
         Raises:
             ServerNotReacheableError if we are not able to connect to the server
+            ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         async with httpx.AsyncClient() as client:
             try:
                 return await client.post(
                     url=url,
                     json=payload,
+                    timeout=timeout or self.default_timeout,
+                )
+            except httpx.ConnectError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
+            except httpx.ReadTimeout as exc:
+                raise ServerNotResponsiveError(url=url) from exc
+
+    async def get(self, url: str, timeout: Optional[int] = None) -> httpx.Response:
+        """Execute a HTTP GET with HTTPX.
+
+        Raises:
+            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotResponsiveError if the server didnd't respond before the timeout expired
+        """
+        async with httpx.AsyncClient() as client:
+            try:
+                return await client.get(
+                    url=url,
                     timeout=timeout or self.default_timeout,
                 )
             except httpx.ConnectError as exc:
@@ -359,7 +377,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
-    ):
+    ) -> Dict:
         url = f"{self.address}/query/{name}"
         url_params = copy.deepcopy(params or {})
 

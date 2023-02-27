@@ -1,18 +1,81 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 from infrahub_client.exceptions import SchemaNotFound
-from infrahub_client.models import NodeSchema, SchemaRoot
-from infrahub_client.queries import QUERY_SCHEMA
 
 if TYPE_CHECKING:
     from infrahub_client import InfrahubClient
 
 
-def flatten_dict(data):
-    return {key: value.get("value") for key, value in data.items() if not isinstance(value, (list))}
+class FilterSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+
+
+class AttributeSchema(BaseModel):
+    name: str
+    kind: str
+    label: Optional[str]
+    description: Optional[str]
+    default_value: Optional[Any]
+    inherited: bool = False
+    unique: bool = False
+    branch: bool = True
+    optional: bool = False
+
+
+class RelationshipSchema(BaseModel):
+    name: str
+    peer: str
+    label: Optional[str]
+    description: Optional[str]
+    identifier: Optional[str]
+    inherited: bool = False
+    cardinality: str = "many"
+    branch: bool = True
+    optional: bool = True
+    filters: List[FilterSchema] = Field(default_factory=list)
+
+
+class BaseNodeSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+
+class GenericSchema(BaseNodeSchema):
+    """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
+
+    label: Optional[str]
+
+
+class NodeSchema(BaseNodeSchema):
+    label: Optional[str]
+    inherit_from: List[str] = Field(default_factory=list)
+    groups: List[str] = Field(default_factory=list)
+    branch: bool = True
+    default_filter: Optional[str]
+    filters: List[FilterSchema] = Field(default_factory=list)
+
+
+class GroupSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+
+
+class SchemaRoot(BaseModel):
+    version: str
+    generics: List[GenericSchema] = Field(default_factory=list)
+    nodes: List[NodeSchema] = Field(default_factory=list)
+    groups: List[GroupSchema] = Field(default_factory=list)
 
 
 class InfrahubSchema:
@@ -59,15 +122,13 @@ class InfrahubSchema:
         return self.cache[branch]
 
     async def fetch(self, branch: str) -> Dict[str, NodeSchema]:
-        response = await self.client.execute_graphql(query=QUERY_SCHEMA, branch_name=branch)
+        url = f"{self.client.address}/schema?branch={branch}"
+        response = await self.client.get(url=url, timeout=2)
+        response.raise_for_status()
 
         nodes = {}
-        for node_schema in response["node_schema"]:
-            data = flatten_dict(node_schema)
-            data["attributes"] = [flatten_dict(attr) for attr in node_schema["attributes"]]
-            data["relationships"] = [flatten_dict(rel) for rel in node_schema["relationships"]]
-
-            node = NodeSchema(**data)
+        for node_schema in response.json()["nodes"]:
+            node = NodeSchema(**node_schema)
             nodes[node.kind] = node
 
         return nodes

@@ -1,11 +1,15 @@
 import json
+import os
+from pathlib import Path
 
 import pytest
+import ujson
 from pytest_httpx import HTTPXMock
 
 from infrahub_client import InfrahubClient
-from infrahub_client.models import NodeSchema
-from infrahub_client.queries import QUERY_ALL_BRANCHES, QUERY_SCHEMA
+from infrahub_client.queries import QUERY_ALL_BRANCHES
+from infrahub_client.schema import NodeSchema
+from infrahub_client.utils import get_fixtures_dir
 
 
 @pytest.fixture
@@ -95,143 +99,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {
-        "data": {
-            "node_schema": [
-                {
-                    "name": {"value": "repository"},
-                    "kind": {"value": "Repository"},
-                    "inherit_from": {"value": ["DataOwner", "DataSource"]},
-                    "description": {"value": None},
-                    "default_filter": {"value": "name__value"},
-                    "attributes": [
-                        {
-                            "name": {"value": "name"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": False},
-                            "unique": {"value": True},
-                            "default_value": {"value": None},
-                        },
-                        {
-                            "name": {"value": "description"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": True},
-                            "unique": {"value": False},
-                            "default_value": {"value": None},
-                        },
-                        {
-                            "name": {"value": "location"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": False},
-                            "unique": {"value": False},
-                            "default_value": {"value": None},
-                        },
-                        {
-                            "name": {"value": "type"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": False},
-                            "unique": {"value": False},
-                            "default_value": {"value": "LOCAL"},
-                        },
-                        {
-                            "name": {"value": "default_branch"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": False},
-                            "unique": {"value": False},
-                            "default_value": {"value": "main"},
-                        },
-                        {
-                            "name": {"value": "commit"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": True},
-                            "unique": {"value": False},
-                            "default_value": {"value": None},
-                        },
-                    ],
-                    "relationships": [
-                        {
-                            "name": {"value": "tags"},
-                            "peer": {"value": "Tag"},
-                            "identifier": {"value": "repository__tag"},
-                            "cardinality": {"value": "many"},
-                            "optional": {"value": True},
-                        },
-                        {
-                            "name": {"value": "queries"},
-                            "peer": {"value": "GraphQLQuery"},
-                            "identifier": {"value": "graphqlquery__repository"},
-                            "cardinality": {"value": "many"},
-                            "optional": {"value": True},
-                        },
-                    ],
-                },
-                {
-                    "name": {"value": "tag"},
-                    "kind": {"value": "Tag"},
-                    "inherit_from": {"value": []},
-                    "description": {"value": None},
-                    "default_filter": {"value": "name__value"},
-                    "attributes": [
-                        {
-                            "name": {"value": "name"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": False},
-                            "unique": {"value": True},
-                            "default_value": {"value": None},
-                        },
-                        {
-                            "name": {"value": "description"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": True},
-                            "unique": {"value": False},
-                            "default_value": {"value": None},
-                        },
-                    ],
-                    "relationships": [],
-                },
-                {
-                    "name": {"value": "graphql_query"},
-                    "kind": {"value": "GraphQLQuery"},
-                    "inherit_from": {"value": []},
-                    "description": {"value": None},
-                    "default_filter": {"value": "name__value"},
-                    "attributes": [
-                        {
-                            "name": {"value": "name"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": False},
-                            "unique": {"value": True},
-                            "default_value": {"value": None},
-                        },
-                        {
-                            "name": {"value": "description"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": True},
-                            "unique": {"value": False},
-                            "default_value": {"value": None},
-                        },
-                        {
-                            "name": {"value": "query"},
-                            "kind": {"value": "String"},
-                            "optional": {"value": False},
-                            "unique": {"value": False},
-                            "default_value": {"value": None},
-                        },
-                    ],
-                    "relationships": [
-                        {
-                            "name": {"value": "tags"},
-                            "peer": {"value": "Tag"},
-                            "identifier": {"value": "graphqlquery__tag"},
-                            "cardinality": {"value": "many"},
-                            "optional": {"value": True},
-                        }
-                    ],
-                },
-            ]
-        }
-    }
-    request_content = json.dumps({"query": QUERY_SCHEMA}).encode()
+    response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text()
 
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="GET", url="http://mock/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock

@@ -1,7 +1,5 @@
 from infrahub_client import InfrahubClient
-from infrahub_client.models import NodeSchema
-
-# from infrahub_client.schema import InfrahubSchema
+from infrahub_client.schema import NodeSchema
 
 
 async def test_fetch_schema(mock_schema_query_01):  # pylint: disable=unused-argument
