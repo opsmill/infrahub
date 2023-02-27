@@ -18,6 +18,7 @@ ns.add_collection(backend)
 ns.add_collection(demo)
 ns.add_collection(main)
 
+
 @task
 def yamllint(context: Context):
     """This will run yamllint to validate formatting of all yaml files."""
@@ -32,6 +33,7 @@ def format_all(context: Context):
     sdk.format_all(context)
     backend.format_all(context)
     ctl.format_all(context)
+
 
 @task(name="lint")
 def lint_all(context: Context):

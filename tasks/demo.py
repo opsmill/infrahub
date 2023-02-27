@@ -179,5 +179,3 @@ def dev_stop(context: Context):
 
     exec_cmd = f"{ENV_VARS} docker compose  {DEV_COMPOSE_FILES_CMD} -p {BUILD_NAME} down"
     return context.run(exec_cmd, pty=True)
-
-
