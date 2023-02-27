@@ -1,11 +1,13 @@
 import { classNames } from "../../App";
-import { gql, useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { sampleDeviceList } from "./sample-devices.data";
 import { Device } from "../../generated/graphql";
 import DeviceFilters from "./device-filters";
 import DeviceFilterBar from "./device-filter-bar";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ErrorScreen from "../error-screen/error-screen";
+import { useEffect, useState } from "react";
+import { graphQLClient } from "../..";
 
 const GET_DEVICES_QUERY = gql`
   query DeviceList {
@@ -51,14 +53,27 @@ interface DeviceListData {
 }
 
 export default function DeviceList() {
-  const { loading, data, error } = useQuery<DeviceListData>(GET_DEVICES_QUERY);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [objectRows, setObjectRows] = useState<Device[]>([]);
 
-  if (loading) {
-    return <LoadingScreen />;
+  useEffect(() => {
+    const request = graphQLClient.request(GET_DEVICES_QUERY);
+    request.then((data: DeviceListData) => {
+      const rows = data.device;
+      setObjectRows(rows);
+      setIsLoading(false);
+    }).catch(() => {
+      setHasError(true);
+    });
+  }, []);
+
+  if(hasError) {
+    return <ErrorScreen />
   }
 
-  if (error) {
-    return <ErrorScreen />;
+  if (isLoading) {
+    return <LoadingScreen />;
   }
 
   return (
@@ -72,12 +87,6 @@ export default function DeviceList() {
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <DeviceFilters />
-          {/* <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
-          >
-            Add device
-          </button> */}
         </div>
       </div>
       <DeviceFilterBar />
@@ -142,7 +151,7 @@ export default function DeviceList() {
                   </tr>
                 </thead>
                 <tbody className="bg-white">
-                  {data?.device.map((device, deviceIdx) => (
+                  {objectRows.map((device, deviceIdx) => (
                     <tr key={deviceIdx} className="hover:bg-gray-50">
                       <td
                         className={classNames(

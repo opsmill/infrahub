@@ -2,7 +2,7 @@ import { useState } from "react";
 import MobileMenu from "./mobile-menu";
 import DesktopMenu from "./desktop-menu";
 import Header from "./header";
-import OpsObjects from "../ops-objects/ops-objects";
+import { Outlet } from "react-router-dom";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,8 +15,7 @@ export default function Layout() {
 
         <div className="flex flex-1 flex-col md:pl-64">
           <Header setSidebarOpen={setSidebarOpen} />
-          <OpsObjects />
-          {/* <DeviceList /> */}
+          <Outlet />
         </div>
       </div>
     </>

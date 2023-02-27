@@ -1,4 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
 import {
   ShieldCheckIcon,
   StarIcon,
@@ -67,7 +67,7 @@ export default function ObjectRows(props: Props) {
     }).catch(() => {
       setHasError(true);
     });
-  }, []);
+  }, [query, schema]);
 
   if(hasError) {
     return <ErrorScreen />
