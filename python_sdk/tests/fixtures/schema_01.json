@@ -1,0 +1,366 @@
+{
+    "nodes": [
+        {
+            "name": "graphql_query",
+            "kind": "GraphQLQuery",
+            "description": null,
+            "attributes": [
+                {
+                    "name": "query",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": false
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": true
+                },
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": true,
+                    "optional": false
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "tags",
+                    "peer": "Tag",
+                    "label": null,
+                    "description": null,
+                    "identifier": "graphqlquery__tag",
+                    "inherited": false,
+                    "cardinality": "many",
+                    "branch": true,
+                    "optional": true,
+                    "filters": [
+                        {
+                            "name": "id",
+                            "kind": "String",
+                            "description": null
+                        },
+                        {
+                            "name": "name__value",
+                            "kind": "String",
+                            "description": null
+                        },
+                        {
+                            "name": "description__value",
+                            "kind": "String",
+                            "description": null
+                        }
+                    ]
+                }
+            ],
+            "label": null,
+            "inherit_from": [],
+            "groups": [],
+            "branch": true,
+            "default_filter": "name__value",
+            "filters": [
+                {
+                    "name": "ids",
+                    "kind": "List",
+                    "description": null
+                },
+                {
+                    "name": "query__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "description__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "name__value",
+                    "kind": "String",
+                    "description": null
+                }
+            ]
+        },
+        {
+            "name": "repository",
+            "kind": "Repository",
+            "description": null,
+            "attributes": [
+                {
+                    "name": "username",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": true
+                },
+                {
+                    "name": "type",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": "LOCAL",
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": false
+                },
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": true,
+                    "optional": false
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": true
+                },
+                {
+                    "name": "commit",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": true
+                },
+                {
+                    "name": "location",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": false
+                },
+                {
+                    "name": "password",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": true
+                },
+                {
+                    "name": "default_branch",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": "main",
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": false
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "tags",
+                    "peer": "Tag",
+                    "label": null,
+                    "description": null,
+                    "identifier": "repository__tag",
+                    "inherited": false,
+                    "cardinality": "many",
+                    "branch": true,
+                    "optional": true,
+                    "filters": [
+                        {
+                            "name": "id",
+                            "kind": "String",
+                            "description": null
+                        },
+                        {
+                            "name": "name__value",
+                            "kind": "String",
+                            "description": null
+                        },
+                        {
+                            "name": "description__value",
+                            "kind": "String",
+                            "description": null
+                        }
+                    ]
+                },
+                {
+                    "name": "queries",
+                    "peer": "GraphQLQuery",
+                    "label": null,
+                    "description": null,
+                    "identifier": "graphqlquery__repository",
+                    "inherited": false,
+                    "cardinality": "many",
+                    "branch": true,
+                    "optional": true,
+                    "filters": [
+                        {
+                            "name": "id",
+                            "kind": "String",
+                            "description": null
+                        },
+                        {
+                            "name": "query__value",
+                            "kind": "String",
+                            "description": null
+                        },
+                        {
+                            "name": "description__value",
+                            "kind": "String",
+                            "description": null
+                        },
+                        {
+                            "name": "name__value",
+                            "kind": "String",
+                            "description": null
+                        }
+                    ]
+                }
+            ],
+            "label": null,
+            "inherit_from": [
+                "DataOwner",
+                "DataSource"
+            ],
+            "groups": [],
+            "branch": true,
+            "default_filter": "name__value",
+            "filters": [
+                {
+                    "name": "ids",
+                    "kind": "List",
+                    "description": null
+                },
+                {
+                    "name": "username__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "type__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "name__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "description__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "commit__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "location__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "password__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "default_branch__value",
+                    "kind": "String",
+                    "description": null
+                }
+            ]
+        },
+        {
+            "name": "tag",
+            "kind": "Tag",
+            "description": null,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": true,
+                    "optional": false
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": true
+                }
+            ],
+            "relationships": [],
+            "label": null,
+            "inherit_from": [],
+            "groups": [],
+            "branch": true,
+            "default_filter": "name__value",
+            "filters": [
+                {
+                    "name": "ids",
+                    "kind": "List",
+                    "description": null
+                },
+                {
+                    "name": "name__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "description__value",
+                    "kind": "String",
+                    "description": null
+                }
+            ]
+        }
+    ]
+}

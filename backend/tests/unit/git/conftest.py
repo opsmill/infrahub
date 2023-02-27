@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import tarfile
@@ -12,17 +11,12 @@ from pytest_httpx import HTTPXMock
 import infrahub.config as config
 from infrahub.git import InfrahubRepository
 from infrahub.utils import get_fixtures_dir
-from infrahub_client import (
-    MUTATION_BRANCH_CREATE,
-    QUERY_ALL_BRANCHES,
-    QUERY_ALL_GRAPHQL_QUERIES,
-    InfrahubClient,
-)
+from infrahub_client import InfrahubClient
 
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock")
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True)
 
 
 @pytest.fixture
@@ -407,9 +401,7 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
         }
     }
 
-    request_content = json.dumps({"query": QUERY_ALL_BRANCHES}).encode()
-
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-branch-all"})
     return httpx_mock
 
 
@@ -463,28 +455,19 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
         }
     }
 
-    request_content = json.dumps(
-        {
-            "query": MUTATION_BRANCH_CREATE,
-            "variables": {
-                "branch_name": "branch01",
-                "data_only": False,
-                "description": "",
-                "background_execution": True,
-            },
-        }
-    ).encode()
-
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-branch-create"}
+    )
     return httpx_mock
 
 
 @pytest.fixture
 async def mock_list_graphql_query_empty(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"graphql_query": []}}
-    request_content = json.dumps({"query": QUERY_ALL_GRAPHQL_QUERIES}).encode()
 
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-graphqlquery-all"}
+    )
     return httpx_mock
 
 
@@ -495,9 +478,10 @@ async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
             "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
         }
     }
-    request_content = json.dumps({"query": MUTATION_BRANCH_CREATE, "variables": {"branch_name": "branch01"}}).encode()
 
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-branch-create"}
+    )
     return httpx_mock
 
 

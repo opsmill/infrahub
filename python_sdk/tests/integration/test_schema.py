@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub_client import InfrahubClient
-from infrahub_client.models import NodeSchema
+from infrahub_client.schema import NodeSchema
 
 # pylint: disable=unused-argument
 

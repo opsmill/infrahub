@@ -1,18 +1,81 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 from infrahub_client.exceptions import SchemaNotFound
-from infrahub_client.models import NodeSchema, SchemaRoot
-from infrahub_client.queries import QUERY_SCHEMA
 
 if TYPE_CHECKING:
     from infrahub_client import InfrahubClient
 
 
-def flatten_dict(data):
-    return {key: value.get("value") for key, value in data.items() if not isinstance(value, (list))}
+class FilterSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+
+
+class AttributeSchema(BaseModel):
+    name: str
+    kind: str
+    label: Optional[str]
+    description: Optional[str]
+    default_value: Optional[Any]
+    inherited: bool = False
+    unique: bool = False
+    branch: bool = True
+    optional: bool = False
+
+
+class RelationshipSchema(BaseModel):
+    name: str
+    peer: str
+    label: Optional[str]
+    description: Optional[str]
+    identifier: Optional[str]
+    inherited: bool = False
+    cardinality: str = "many"
+    branch: bool = True
+    optional: bool = True
+    filters: List[FilterSchema] = Field(default_factory=list)
+
+
+class BaseNodeSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+
+class GenericSchema(BaseNodeSchema):
+    """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
+
+    label: Optional[str]
+
+
+class NodeSchema(BaseNodeSchema):
+    label: Optional[str]
+    inherit_from: List[str] = Field(default_factory=list)
+    groups: List[str] = Field(default_factory=list)
+    branch: bool = True
+    default_filter: Optional[str]
+    filters: List[FilterSchema] = Field(default_factory=list)
+
+
+class GroupSchema(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str]
+
+
+class SchemaRoot(BaseModel):
+    version: str
+    generics: List[GenericSchema] = Field(default_factory=list)
+    nodes: List[NodeSchema] = Field(default_factory=list)
+    groups: List[GroupSchema] = Field(default_factory=list)
 
 
 class InfrahubSchema:
@@ -32,26 +95,38 @@ class InfrahubSchema:
         SchemaRoot(**data)
         return True
 
-    async def get(self, model: str, branch: Optional[str] = None, refresh: bool = False) -> NodeSchema:
+    async def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> NodeSchema:
         branch = branch or self.client.default_branch
 
         if refresh:
             self.cache[branch] = await self.fetch(branch=branch)
 
-        if branch in self.cache and model in self.cache[branch]:
-            return self.cache[branch][model]
+        if branch in self.cache and kind in self.cache[branch]:
+            return self.cache[branch][kind]
 
         # Fetching the latest schema from the server if we didn't fetch it earlier
         #   because we coulnd't find the object on the local cache
         if not refresh:
             self.cache[branch] = await self.fetch(branch=branch)
 
-        if branch in self.cache and model in self.cache[branch]:
-            return self.cache[branch][model]
+        if branch in self.cache and kind in self.cache[branch]:
+            return self.cache[branch][kind]
 
-        raise SchemaNotFound(identifier=model)
+        raise SchemaNotFound(identifier=kind)
 
     async def all(self, branch: Optional[str] = None, refresh: bool = False) -> Dict[str, NodeSchema]:
+        """Retrieve the entire schema for a given branch.
+
+        if present in cache, the schema will be served from the cache, unless refresh is set to True
+        if the schema is not present in the cache, it will be fetched automatically from the server
+
+        Args:
+            branch (str, optional): Name of the branch to query. Defaults to default_branch.
+            refresh (bool, optional): Force a refresh of the schema. Defaults to False.
+
+        Returns:
+            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+        """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
             self.cache[branch] = await self.fetch(branch=branch)
@@ -59,15 +134,21 @@ class InfrahubSchema:
         return self.cache[branch]
 
     async def fetch(self, branch: str) -> Dict[str, NodeSchema]:
-        response = await self.client.execute_graphql(query=QUERY_SCHEMA, branch_name=branch)
+        """Fetch the schema from the server for a given branch.
+
+        Args:
+            branch (str): Name of the branch to fetch the schema for.
+
+        Returns:
+            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+        """
+        url = f"{self.client.address}/schema?branch={branch}"
+        response = await self.client._get(url=url, timeout=2)
+        response.raise_for_status()
 
         nodes = {}
-        for node_schema in response["node_schema"]:
-            data = flatten_dict(node_schema)
-            data["attributes"] = [flatten_dict(attr) for attr in node_schema["attributes"]]
-            data["relationships"] = [flatten_dict(rel) for rel in node_schema["relationships"]]
-
-            node = NodeSchema(**data)
+        for node_schema in response.json()["nodes"]:
+            node = NodeSchema(**node_schema)
             nodes[node.kind] = node
 
         return nodes

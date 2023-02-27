@@ -30,7 +30,7 @@ async def _schema(schema: Path):
         console.print("[red]Invalid JSON file")
         raise typer.Exit(2) from exc
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address)
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
         client.schema.validate(schema_data)

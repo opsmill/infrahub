@@ -9,18 +9,16 @@ from typing import Any, Dict, List, Optional, Union
 import httpx
 from pydantic import BaseModel
 
+from infrahub_client.branch import InfrahubBranchManager
 from infrahub_client.exceptions import (
+    FilterNotFound,
     GraphQLError,
+    NodeNotFound,
     ServerNotReacheableError,
     ServerNotResponsiveError,
 )
 from infrahub_client.graphql import Mutation, Query
-from infrahub_client.models import NodeSchema
 from infrahub_client.queries import (
-    MUTATION_BRANCH_CREATE,
-    MUTATION_BRANCH_MERGE,
-    MUTATION_BRANCH_REBASE,
-    MUTATION_BRANCH_VALIDATE,
     MUTATION_CHECK_CREATE,
     MUTATION_CHECK_UPDATE,
     MUTATION_COMMIT_UPDATE,
@@ -30,14 +28,13 @@ from infrahub_client.queries import (
     MUTATION_RFILE_UPDATE,
     MUTATION_TRANSFORM_PYTHON_CREATE,
     MUTATION_TRANSFORM_PYTHON_UPDATE,
-    QUERY_ALL_BRANCHES,
     QUERY_ALL_CHECKS,
     QUERY_ALL_GRAPHQL_QUERIES,
     QUERY_ALL_REPOSITORIES,
     QUERY_ALL_RFILES,
     QUERY_ALL_TRANSFORM_PYTHON,
 )
-from infrahub_client.schema import InfrahubSchema
+from infrahub_client.schema import InfrahubSchema, NodeSchema
 from infrahub_client.timestamp import Timestamp
 
 # pylint: disable=redefined-builtin
@@ -175,7 +172,12 @@ class InfrahubNode:
         mutation_query = {"ok": None, "object": {"id": None}}
         mutation_name = f"{self.schema.name}_create"
         query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
-        response = await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
+        response = await self.client.execute_graphql(
+            query=query.render(),
+            branch_name=self.branch,
+            at=at,
+            tracker=f"mutation-{str(self.schema.kind).lower()}-create",
+        )
         self.id = response[mutation_name]["object"]["id"]
 
     async def _update(self, at: Timestamp) -> None:
@@ -183,9 +185,19 @@ class InfrahubNode:
         input_data["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(mutation=f"{self.schema.name}_update", input_data=input_data, query=mutation_query)
-        await self.client.execute_graphql(query=query.render(), branch_name=self.branch, at=at)
+        await self.client.execute_graphql(
+            query=query.render(),
+            branch_name=self.branch,
+            at=at,
+            tracker=f"mutation-{str(self.schema.kind).lower()}-update",
+        )
 
     def _generate_input_data(self) -> Dict[str, Dict]:
+        """Generate a dictionnary that represent the input data required by a mutation.
+
+        Returns:
+            Dict[str, Dict]: Representation of an input data in dict format
+        """
         data = {}
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)
@@ -195,8 +207,12 @@ class InfrahubNode:
 
         return {"data": data}
 
-    def generate_query_data(self) -> Dict[str, Union[Any, Dict]]:
+    def generate_query_data(self, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Union[Any, Dict]]:
         data = {}
+
+        if filters:
+            data["@filters"] = filters
+
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)
             attr_data = attr._generate_query_data()
@@ -204,6 +220,21 @@ class InfrahubNode:
                 data[attr_name] = attr_data
 
         return {self.schema.name: data}
+
+    def validate_filters(self, filters: Optional[Dict[str, Any]] = None) -> bool:
+        if not filters:
+            return True
+
+        for filter_name in filters.keys():
+            found = False
+            for filter_schema in self.schema.filters:
+                if filter_name == filter_schema.name:
+                    found = True
+                    break
+            if not found:
+                raise FilterNotFound(identifier=filter_name, kind=self.schema.kind)
+
+        return True
 
 
 class InfrahubClient:  # pylint: disable=too-many-public-methods
@@ -218,6 +249,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         log: Optional[Logger] = None,
         test_client=None,
         default_branch: str = "main",
+        insert_tracker: bool = False,
     ):
         self.address = address
         self.client = None
@@ -227,8 +259,12 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self.retry_delay = retry_delay
         self.default_branch = default_branch
         self.log = log or logging.getLogger("infrahub_client")
+        self.insert_tracker = insert_tracker
 
         self.schema = InfrahubSchema(self)
+        self.branch = InfrahubBranchManager(self)
+
+        self.headers = {"content-type": "application/json"}
 
         if test_client:
             self.address = ""
@@ -237,19 +273,87 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
 
-    async def all(self, model: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
-        schema = await self.schema.get(model=model)
+    async def get(
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        id: Optional[str] = None,
+        **kwargs,
+    ) -> InfrahubNode:
+        schema = await self.schema.get(kind=kind)
+
+        branch = branch or self.default_branch
+        at = Timestamp(at)
+
+        node = InfrahubNode(client=self, schema=schema, branch=branch)
+
+        if id:
+            filters = {"ids": [id]}
+        elif kwargs:
+            filters = kwargs
+        else:
+            raise ValueError("At least one filter must be provided to get()")
+
+        node.validate_filters(filters=filters)
+        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
+        query = Query(query=query_data)
+        response = await self.execute_graphql(
+            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
+        )
+
+        if len(response[schema.name]) == 0:
+            raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
+        if len(response[schema.name]) > 1:
+            raise IndexError("More than 1 node returned")
+
+        return InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+
+    async def all(self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
+        """Retrieve all nodes of a given kind
+
+        Args:
+            kind (str): kind of the nodes to query
+            at (Timestamp, optional): Time of the query. Defaults to Now.
+            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+
+        Returns:
+            List[InfrahubNode]: List of Nodes
+        """
+        schema = await self.schema.get(kind=kind)
 
         branch = branch or self.default_branch
         at = Timestamp(at)
 
         query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data()
         query = Query(query=query_data)
-        response = await self.execute_graphql(query=query.render(), branch_name=branch, at=at)
+        response = await self.execute_graphql(
+            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
+        )
         return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
 
-    async def filters(self, *args, at: Optional[Timestamp] = None, **kwargs):
-        pass
+    async def filters(
+        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs
+    ) -> List[InfrahubNode]:
+        schema = await self.schema.get(kind=kind)
+
+        branch = branch or self.default_branch
+        at = Timestamp(at)
+
+        node = InfrahubNode(client=self, schema=schema, branch=branch)
+        filters = kwargs
+
+        if not filters:
+            raise ValueError("At least one filter must be provided to filters()")
+
+        node.validate_filters(filters=filters)
+        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
+        query = Query(query=query_data)
+        response = await self.execute_graphql(
+            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-filters"
+        )
+
+        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
 
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
@@ -260,7 +364,8 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
-    ):
+        tracker: Optional[str] = None,
+    ) -> Dict:
         """Execute a GraphQL query (or mutation).
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
 
@@ -298,12 +403,16 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
+        headers = copy.copy(self.headers or {})
+        if self.insert_tracker and tracker:
+            headers["X-Infrahub-Tracker"] = tracker
+
         if not self.test_client:
             retry = True
             while retry:
                 retry = self.retry_on_failure
                 try:
-                    resp = await self.post(url=url, payload=payload, timeout=timeout)
+                    resp = await self._post(url=url, payload=payload, headers=headers, timeout=timeout)
 
                     if raise_for_error:
                         resp.raise_for_status()
@@ -332,17 +441,40 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
-    async def post(self, url: str, payload: dict, timeout: Optional[int] = None):
+    async def _post(
+        self, url: str, payload: dict, headers: Optional[dict] = None, timeout: Optional[int] = None
+    ) -> httpx.Response:
         """Execute a HTTP POST with HTTPX.
 
         Raises:
             ServerNotReacheableError if we are not able to connect to the server
+            ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         async with httpx.AsyncClient() as client:
             try:
                 return await client.post(
                     url=url,
                     json=payload,
+                    headers=headers,
+                    timeout=timeout or self.default_timeout,
+                )
+            except httpx.ConnectError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
+            except httpx.ReadTimeout as exc:
+                raise ServerNotResponsiveError(url=url) from exc
+
+    async def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
+        """Execute a HTTP GET with HTTPX.
+
+        Raises:
+            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotResponsiveError if the server didnd't respond before the timeout expired
+        """
+        async with httpx.AsyncClient() as client:
+            try:
+                return await client.get(
+                    url=url,
+                    headers=headers,
                     timeout=timeout or self.default_timeout,
                 )
             except httpx.ConnectError as exc:
@@ -359,7 +491,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
-    ):
+    ) -> Dict:
         url = f"{self.address}/query/{name}"
         url_params = copy.deepcopy(params or {})
 
@@ -389,55 +521,21 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
-    async def create_branch(
-        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
-    ) -> BranchData:
-        variables = {
-            "branch_name": branch_name,
-            "data_only": data_only,
-            "description": description,
-            "background_execution": background_execution,
-        }
-        response = await self.execute_graphql(query=MUTATION_BRANCH_CREATE, variables=variables)
-
-        return BranchData(**response["branch_create"]["object"])
-
-    async def branch_rebase(self, branch_name: str) -> BranchData:
-        variables = {"branch_name": branch_name}
-        response = await self.execute_graphql(query=MUTATION_BRANCH_REBASE, variables=variables)
-
-        return response["branch_rebase"]["ok"]
-
-    async def branch_validate(self, branch_name: str) -> BranchData:
-        variables = {"branch_name": branch_name}
-        response = await self.execute_graphql(query=MUTATION_BRANCH_VALIDATE, variables=variables)
-
-        return response["branch_validate"]["ok"]
-
-    async def branch_merge(self, branch_name: str) -> BranchData:
-        variables = {"branch_name": branch_name}
-        response = await self.execute_graphql(query=MUTATION_BRANCH_MERGE, variables=variables)
-
-        return BranchData(**response["branch_merge"]["ok"])
-
-    async def get_list_branches(self) -> Dict[str, BranchData]:
-        data = await self.execute_graphql(query=QUERY_ALL_BRANCHES)
-
-        branches = {branch["name"]: BranchData(**branch) for branch in data["branch"]}
-
-        return branches
-
     async def get_list_repositories(
         self, branches: Optional[Dict[str, BranchData]] = None
     ) -> Dict[str, RepositoryData]:
         if not branches:
-            branches = await self.get_list_branches()
+            branches = await self.branch.all()  # type: ignore
 
-        branch_names = sorted(branches.keys())
+        branch_names = sorted(branches.keys())  # type: ignore
 
         tasks = []
         for branch_name in branch_names:
-            tasks.append(self.execute_graphql(query=QUERY_ALL_REPOSITORIES, branch_name=branch_name))
+            tasks.append(
+                self.execute_graphql(
+                    query=QUERY_ALL_REPOSITORIES, branch_name=branch_name, tracker="query-repository-all"
+                )
+            )
             # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
 
         responses = await asyncio.gather(*tasks)
@@ -458,7 +556,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         return repositories
 
     async def get_list_graphql_queries(self, branch_name: str) -> Dict[str, GraphQLQueryData]:
-        data = await self.execute_graphql(query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name)
+        data = await self.execute_graphql(
+            query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name, tracker="query-graphqlquery-all"
+        )
 
         items = {
             item["name"]["value"]: GraphQLQueryData(
@@ -473,7 +573,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         return items
 
     async def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
-        data = await self.execute_graphql(query=QUERY_ALL_CHECKS, branch_name=branch_name)
+        data = await self.execute_graphql(query=QUERY_ALL_CHECKS, branch_name=branch_name, tracker="query-check-all")
 
         items = {
             item["name"]["value"]: CheckData(
@@ -493,7 +593,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         return items
 
     async def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
-        data = await self.execute_graphql(query=QUERY_ALL_TRANSFORM_PYTHON, branch_name=branch_name)
+        data = await self.execute_graphql(
+            query=QUERY_ALL_TRANSFORM_PYTHON, branch_name=branch_name, tracker="query-transformpython-all"
+        )
 
         items = {
             item["name"]["value"]: TransformPythonData(
@@ -515,7 +617,12 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
     async def create_graphql_query(self, branch_name: str, name: str, query: str, description: str = "") -> bool:
         variables = {"name": name, "description": description, "query": query}
-        await self.execute_graphql(query=MUTATION_GRAPHQL_QUERY_CREATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_GRAPHQL_QUERY_CREATE,
+            variables=variables,
+            branch_name=branch_name,
+            tracker="mutation-graphqlquery-create",
+        )
 
         return True
 
@@ -523,12 +630,17 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self, branch_name: str, id: str, name: str, query: str, description: str = ""
     ) -> bool:
         variables = {"id": id, "name": name, "description": description, "query": query}
-        await self.execute_graphql(query=MUTATION_GRAPHQL_QUERY_UPDATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_GRAPHQL_QUERY_UPDATE,
+            variables=variables,
+            branch_name=branch_name,
+            tracker="mutation-graphqlquery-update",
+        )
 
         return True
 
     async def get_list_rfiles(self, branch_name: str) -> Dict[str, RFileData]:
-        data = await self.execute_graphql(query=QUERY_ALL_RFILES, branch_name=branch_name)
+        data = await self.execute_graphql(query=QUERY_ALL_RFILES, branch_name=branch_name, tracker="query-rfile-all")
 
         items = {
             item["name"]["value"]: RFileData(
@@ -560,7 +672,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             "template_repository": template_repository,
             "query": query,
         }
-        await self.execute_graphql(query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name, tracker="mutation-rfile-create"
+        )
 
         return True
 
@@ -568,7 +682,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         self, branch_name: str, id: str, name: str, template_path: str, description: str = ""
     ) -> bool:
         variables = {"id": id, "name": name, "description": description, "template_path": template_path}
-        await self.execute_graphql(query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name, tracker="mutation-rfile-update"
+        )
 
         return True
 
@@ -594,7 +710,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             "timeout": timeout,
             "rebase": rebase,
         }
-        await self.execute_graphql(query=MUTATION_CHECK_CREATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_CHECK_CREATE, variables=variables, branch_name=branch_name, tracker="mutation-check-create"
+        )
 
         return True
 
@@ -620,7 +738,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             "timeout": timeout,
             "rebase": rebase,
         }
-        await self.execute_graphql(query=MUTATION_CHECK_UPDATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_CHECK_UPDATE, variables=variables, branch_name=branch_name, tracker="mutation-check-update"
+        )
 
         return True
 
@@ -648,7 +768,12 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             "timeout": timeout,
             "rebase": rebase,
         }
-        await self.execute_graphql(query=MUTATION_TRANSFORM_PYTHON_CREATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_TRANSFORM_PYTHON_CREATE,
+            variables=variables,
+            branch_name=branch_name,
+            tracker="mutation-transformpython-create",
+        )
 
         return True
 
@@ -676,80 +801,22 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             "timeout": timeout,
             "rebase": rebase,
         }
-        await self.execute_graphql(query=MUTATION_TRANSFORM_PYTHON_UPDATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_TRANSFORM_PYTHON_UPDATE,
+            variables=variables,
+            branch_name=branch_name,
+            tracker="mutation-transformpython-update",
+        )
 
         return True
 
     async def repository_update_commit(self, branch_name, repository_id: str, commit: str) -> bool:
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
-        await self.execute_graphql(query=MUTATION_COMMIT_UPDATE, variables=variables, branch_name=branch_name)
+        await self.execute_graphql(
+            query=MUTATION_COMMIT_UPDATE,
+            variables=variables,
+            branch_name=branch_name,
+            tracker="mutation-repository-update-commit",
+        )
 
         return True
-
-    async def get_branch_diff(
-        self,
-        branch_name: str,
-        branch_only: bool = True,
-        diff_from: Optional[str] = None,
-        diff_to: Optional[str] = None,
-    ):
-        QUERY_BRANCH_DIFF = """
-        query($branch_name: String!, $branch_only: Boolean!, $diff_from: String!, $diff_to: String! ) {
-            diff(branch: $branch_name, branch_only: $branch_only, time_from: $diff_from, time_to: $diff_to ) {
-                nodes {
-                    branch
-                    kind
-                    id
-                    changed_at
-                    action
-                    attributes {
-                        name
-                        id
-                        changed_at
-                        action
-                        properties {
-                            action
-                            type
-                            changed_at
-                            branch
-                            value {
-                                previous
-                                new
-                            }
-                        }
-                    }
-                }
-                relationships {
-                    branch
-                    id
-                    name
-                    properties {
-                        branch
-                        type
-                        changed_at
-                        action
-                        value {
-                            previous
-                            new
-                        }
-                    }
-                    nodes {
-                        id
-                        kind
-                    }
-                    changed_at
-                    action
-                }
-                files {
-                    action
-                    repository
-                    branch
-                    location
-                }
-            }
-        }
-        """
-        variables = {"branch_name": branch_name, "branch_only": branch_only, "diff_from": diff_from, "diff_to": diff_to}
-        response = await self.execute_graphql(query=QUERY_BRANCH_DIFF, variables=variables)
-
-        return response

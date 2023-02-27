@@ -4,6 +4,8 @@ from infrahub_ctl.branch import app
 
 runner = CliRunner()
 
+# pylint: disable=unused-argument
+
 
 def test_branch_list(mock_branches_list_query):
     result = runner.invoke(app=app, args=["list"])

@@ -58,3 +58,11 @@ class NodeNotFound(Error):
         {self.message}
         {self.branch_name} | {self.node_type} | {self.identifier}
         """
+
+
+class FilterNotFound(Error):
+    def __init__(self, identifier, kind, message=None):
+        self.identifier = identifier
+        self.kind = kind
+        self.message = message or f"{identifier!r} is not a valid filter for {self.identifier!r}."
+        super().__init__(self.message)

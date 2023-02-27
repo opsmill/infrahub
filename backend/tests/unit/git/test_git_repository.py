@@ -1,4 +1,3 @@
-import json
 import os
 import uuid
 
@@ -21,7 +20,6 @@ from infrahub.git import (
     Worktree,
     extract_repo_file_information,
 )
-from infrahub_client import MUTATION_COMMIT_UPDATE
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
@@ -362,9 +360,9 @@ async def test_sync_new_branch(
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
     response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
-    variables = {"repository_id": str(repo.id), "commit": str(commit)}
-    request_content = json.dumps({"query": MUTATION_COMMIT_UPDATE, "variables": variables}).encode()
-    httpx_mock.add_response(method="POST", json=response, match_content=request_content)
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"}
+    )
 
     repo.client = client
     await repo.sync()
