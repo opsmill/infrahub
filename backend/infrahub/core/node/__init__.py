@@ -374,7 +374,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return changed
 
-    async def render_display_label(self, session: AsyncSession):
+    async def render_display_label(self, session: AsyncSession):  # pylint: disable=unused-argument
         if not self._schema.display_label:
             return repr(self)
 
