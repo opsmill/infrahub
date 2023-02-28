@@ -321,6 +321,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 response[field_name] = self.get_kind()
                 continue
 
+            if field_name == "display_label":
+                response[field_name] = await self.render_display_label(session=session)
+                continue
+
             if field_name == "_updated_at":
                 if self._updated_at:
                     response[field_name] = await self._updated_at.to_graphql()
@@ -369,3 +373,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 changed = await rel.update(session=session, data=value)
 
         return changed
+
+    async def render_display_label(self, session: AsyncSession):  # pylint: disable=unused-argument
+        if not self._schema.display_label:
+            return repr(self)
+
+        display_elements = []
+        for item in self._schema.display_label:
+            item_elements = item.split("__")
+            if len(item_elements) != 2:
+                raise ValidationError("Display Label can only have one level")
+
+            if item_elements[0] not in self._schema.attribute_names:
+                raise ValidationError("Only Attribute can be used in Display Label")
+
+            attr = getattr(self, item_elements[0])
+            display_elements.append(str(getattr(attr, item_elements[1])))
+
+        return " ".join(display_elements)

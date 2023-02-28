@@ -2,7 +2,7 @@ import os
 from distutils.dir_util import copy_tree
 from enum import Enum, EnumMeta
 from itertools import groupby
-from typing import Any
+from typing import Any, List, Optional
 from uuid import UUID
 
 
@@ -38,6 +38,25 @@ def get_fixtures_dir():
     fixtures_dir = os.path.join(here, "..", "tests", "fixtures")
 
     return os.path.abspath(fixtures_dir)
+
+
+def deep_merge_dict(dicta: dict, dictb: dict, path: Optional[List] = None):
+    """Deep Merge dictionnary B into Dictionnary A.
+    Code is inspired by https://stackoverflow.com/a/7205107
+    """
+    if path is None:
+        path = []
+    for key in dictb:
+        if key in dicta:
+            if isinstance(dicta[key], dict) and isinstance(dictb[key], dict):
+                deep_merge_dict(dicta[key], dictb[key], path + [str(key)])
+            elif dicta[key] == dictb[key]:
+                pass
+            else:
+                raise ValueError("Conflict at %s" % ".".join(path + [str(key)]))
+        else:
+            dicta[key] = dictb[key]
+    return dicta
 
 
 def copy_project_to_tmp_dir(project_name):

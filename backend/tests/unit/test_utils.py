@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from infrahub.utils import duplicates, get_fixtures_dir, is_valid_uuid
+from infrahub.utils import deep_merge_dict, duplicates, get_fixtures_dir, is_valid_uuid
 
 
 def test_duplicates():
@@ -24,3 +24,11 @@ def test_is_valid_uuid():
 
 def test_get_fixtures_dir():
     assert os.path.exists(get_fixtures_dir())
+
+
+def test_deep_merge_dict():
+    a = {"keyA": 1}
+    b = {"keyB": {"sub1": 10}}
+    c = {"keyB": {"sub2": 20}}
+    assert deep_merge_dict(a, b) == {"keyA": 1, "keyB": {"sub1": 10}}
+    assert deep_merge_dict(c, b) == {"keyB": {"sub1": 10, "sub2": 20}}

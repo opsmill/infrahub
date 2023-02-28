@@ -138,6 +138,7 @@ async def default_resolver(*args, **kwargs):
             id=parent["id"],
             schema=node_rel,
             filters=filters,
+            fields=fields,
             at=at,
             branch=branch,
             account=account,
@@ -313,6 +314,7 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
     main_attrs = {
         "id": graphene.String(required=True),
         "_updated_at": graphene.DateTime(required=False),
+        "display_label": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
@@ -406,6 +408,7 @@ def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[
 
     main_attrs = {
         "id": graphene.String(required=True),
+        "display_label": graphene.String(required=False),
         "_updated_at": graphene.DateTime(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
