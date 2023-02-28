@@ -13,7 +13,7 @@ export default function Layout() {
         <MobileMenu sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <DesktopMenu />
 
-        <div className="flex flex-1 flex-col md:pl-64">
+        <div className="flex flex-1 flex-col md:pl-64 overflow-auto">
           <Header setSidebarOpen={setSidebarOpen} />
           <Outlet />
         </div>

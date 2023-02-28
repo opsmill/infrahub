@@ -4,7 +4,7 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import Datetime from "react-datetime";
 import "react-datetime/css/react-datetime.css";
@@ -14,16 +14,24 @@ import { userNavigation } from "./navigation-list";
 import BranchSelector from "../../components/branch-selector/branch-selector";
 import { useAtom } from "jotai";
 import { branchState } from "../../state/atoms/branch.atom";
+import { timeState } from "../../state/atoms/time.atom";
+import { graphQLClient } from "../..";
+import { CONFIG } from "../../config/config";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function Header(props: Props) {
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useAtom(timeState);
   const [branch] = useAtom(branchState);
   const [isDateDefault, setIsDateDefault] = useState(true);
   const { setSidebarOpen } = props;
+
+  useEffect(() => {
+    graphQLClient.setEndpoint(CONFIG.BACKEND_URL(branch?.name, date));
+  }, [date, branch]);
+
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-white shadow">
       <button
@@ -46,7 +54,6 @@ export default function Header(props: Props) {
               </div>
               <input
                 onChange={() => {}}
-                value={branch.name}
                 id="search-field"
                 className="block h-full w-full border-transparent py-2 pl-8 pr-3 text-gray-900 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-0 sm:text-sm"
                 placeholder="Search"
@@ -59,7 +66,10 @@ export default function Header(props: Props) {
         <div className="ml-4 flex items-center md:ml-6">
           {isDateDefault && (
             <button
-              onClick={() => setIsDateDefault(false)}
+              onClick={() => {
+                setIsDateDefault(false);
+                setDate(null);
+              }}
               type="button"
               className="mr-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             >
@@ -89,7 +99,10 @@ export default function Header(props: Props) {
                   <div className="wrapper">
                     {renderDefault()}
                     <div className="controls">
-                      <button onClick={() => setIsDateDefault(true)}>
+                      <button onClick={() => {
+                        setIsDateDefault(true);
+                        setDate(null);
+                      }}>
                         Now
                       </button>
                     </div>

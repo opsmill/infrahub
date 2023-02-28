@@ -10,6 +10,7 @@ import ObjectItems from "./screens/object-items/object-items";
 import Layout from "./screens/layout/layout";
 import ObjectItemDetails from "./screens/object-item-details/object-item-details";
 import OpsObjects from "./screens/ops-objects/ops-objects";
+import { branchState } from "./state/atoms/branch.atom";
 
 const router = createBrowserRouter([
   {
@@ -42,16 +43,19 @@ export function classNames(...classes: string[]) {
 
 function App() {
   const [, setSchema] = useAtom(schemaState);
+  const [branch] = useAtom(branchState);
 
   useEffect(() => {
-    const request = graphQLClient.request(SCHEMA_QUERY);
-    request
-      .then((data: iSchemaData) => {
-        if (data.node_schema?.length) {
+    fetch(
+      `http://localhost:8000/schema/?branch=${branch ? branch.name : "main"}`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.nodes?.length) {
           setSchema(
-            data.node_schema.sort((a, b) => {
-              if (a.name.value && b.name.value) {
-                return a.name.value?.localeCompare(b.name.value);
+            data.nodes.sort((a: any, b: any) => {
+              if (a.name && b.name) {
+                return a.name.localeCompare(b.name);
               }
               return -1;
             })
