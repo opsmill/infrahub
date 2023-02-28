@@ -96,6 +96,25 @@ async def test_validate_regex(session, default_branch: Branch, criticality_schem
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
 
+async def test_validate_length(session, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    # 1/ there is no min_length or max_length defined in the schema
+    String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
+
+    # 2/ min_length or max_length are defined and a valid value is provided
+    schema.min_length = 5
+    schema.max_length = 10
+    String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
+
+    # 3/ min_length or max_length are defined and a non-valid value is provided
+    with pytest.raises(ValidationError):
+        String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="two")
+
+    with pytest.raises(ValidationError):
+        String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisstringistoolong")
+
+
 async def test_node_property_getter(session, default_branch, criticality_schema):
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")

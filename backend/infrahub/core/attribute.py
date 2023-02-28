@@ -142,6 +142,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if not is_valid:
                 raise ValidationError({name: f"{value} be conform with the regex: {schema.regex!r}"})
 
+        if schema.min_length:
+            if len(value) < schema.min_length:
+                raise ValidationError({name: f"{value} must have a minimum length of {schema.min_length!r}"})
+
+        if schema.max_length:
+            if len(value) > schema.max_length:
+                raise ValidationError({name: f"{value} must have a maximum length of {schema.max_length!r}"})
+
         if schema.enum:
             if value not in schema.enum:
                 raise ValidationError({name: f"{value} must be one of {schema.enum!r}"})

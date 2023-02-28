@@ -53,6 +53,8 @@ class AttributeSchema(BaseModel):
     default_value: Optional[Any]
     enum: Optional[List]
     regex: Optional[str]
+    max_length: Optional[int]
+    min_length: Optional[int]
     inherited: bool = False
     unique: bool = False
     branch: bool = True
@@ -401,18 +403,22 @@ internal_schema = {
             "branch": True,
             "default_filter": "name__value",
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True, "regex": NODE_NAME_REGEX},
-                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX},
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": True,
+                    "regex": NODE_NAME_REGEX,
+                    "min_length": 3,
+                    "max_length": 32,
+                },
+                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
                 {
                     "name": "label",
                     "kind": "String",
                     "optional": True,
+                    "max_length": 32,
                 },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
                 {
                     "name": "branch",
                     "kind": "Boolean",
@@ -457,20 +463,20 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX},
-                {"name": "kind", "kind": "String", "enum": list(ATTRIBUTES_MAPPING.keys())},
+                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX, "min_length": 3, "max_length": 32},
+                {
+                    "name": "kind",
+                    "kind": "String",
+                    "enum": list(ATTRIBUTES_MAPPING.keys()),
+                    "min_length": 3,
+                    "max_length": 32,
+                },
                 {"name": "enum", "kind": "List", "optional": True},
                 {"name": "regex", "kind": "String", "optional": True},
-                {
-                    "name": "label",
-                    "kind": "String",
-                    "optional": True,
-                },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
+                {"name": "max_length", "kind": "Integer", "optional": True},
+                {"name": "min_length", "kind": "Integer", "optional": True},
+                {"name": "label", "kind": "String", "optional": True, "max_length": 32},
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
                 {
                     "name": "unique",
                     "kind": "Boolean",
@@ -502,23 +508,12 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX},
-                {"name": "peer", "kind": "String", "regex": NODE_KIND_REGEX},
+                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX, "min_length": 3, "max_length": 32},
+                {"name": "peer", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
                 {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
-                {
-                    "name": "label",
-                    "kind": "String",
-                    "optional": True,
-                },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
-                {
-                    "name": "identifier",
-                    "kind": "String",
-                },
+                {"name": "label", "kind": "String", "optional": True, "max_length": 32},
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
+                {"name": "identifier", "kind": "String", "max_length": 128},
                 {"name": "cardinality", "kind": "String", "enum": ["one", "many"]},
                 {
                     "name": "optional",
@@ -543,18 +538,22 @@ internal_schema = {
             "branch": True,
             "default_filter": "name__value",
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True, "regex": NODE_NAME_REGEX},
-                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX},
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": True,
+                    "regex": NODE_NAME_REGEX,
+                    "min_length": 3,
+                    "max_length": 32,
+                },
+                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
                 {
                     "name": "label",
                     "kind": "String",
                     "optional": True,
+                    "max_length": 32,
                 },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
             ],
             "relationships": [
                 {
@@ -581,13 +580,16 @@ internal_schema = {
             "branch": True,
             "default_filter": "name__value",
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True, "regex": NODE_NAME_REGEX},
-                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX},
                 {
-                    "name": "description",
+                    "name": "name",
                     "kind": "String",
-                    "optional": True,
+                    "unique": True,
+                    "regex": NODE_NAME_REGEX,
+                    "min_length": 3,
+                    "max_length": 32,
                 },
+                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
             ],
         },
     ]
