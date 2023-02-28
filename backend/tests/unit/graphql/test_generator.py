@@ -55,7 +55,15 @@ async def test_generate_graphql_object(session, default_branch: Branch, critical
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "Criticality"
-    assert sorted(list(result._meta.fields.keys())) == ["_updated_at", "color", "description", "id", "level", "name"]
+    assert sorted(list(result._meta.fields.keys())) == [
+        "_updated_at",
+        "color",
+        "description",
+        "id",
+        "label",
+        "level",
+        "name",
+    ]
 
 
 async def test_generate_graphql_object_with_interface(

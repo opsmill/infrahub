@@ -32,7 +32,11 @@ ATTRIBUTES_MAPPING = {
     "List": ListAttribute,
 }
 
+RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
+
+NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
 
 
 class FilterSchema(BaseModel):
@@ -47,6 +51,10 @@ class AttributeSchema(BaseModel):
     label: Optional[str]
     description: Optional[str]
     default_value: Optional[Any]
+    enum: Optional[List]
+    regex: Optional[str]
+    max_length: Optional[int]
+    min_length: Optional[int]
     inherited: bool = False
     unique: bool = False
     branch: bool = True
@@ -71,6 +79,7 @@ class AttributeSchema(BaseModel):
 class RelationshipSchema(BaseModel):
     name: str
     peer: str
+    kind: str = "Generic"
     label: Optional[str]
     description: Optional[str]
     identifier: Optional[str]
@@ -88,6 +97,15 @@ class RelationshipSchema(BaseModel):
         VALID_OPTIONS = ["one", "many"]
         if v not in VALID_OPTIONS:
             raise ValueError(f"Only valid value for cardinality are : {VALID_OPTIONS} ")
+        return v
+
+    @validator("kind")
+    def kind_options(
+        cls,
+        v,
+    ):
+        if v not in RELATIONSHIP_KINDS:
+            raise ValueError(f"Only valid Relationship Kind are : {RELATIONSHIP_KINDS} ")
         return v
 
     def get_class(self):
@@ -199,8 +217,13 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 class BaseNodeSchema(BaseModel):
     name: str
-    kind: str
-    description: Optional[str]
+    kind: str = Field(
+        max_length=64,
+        min_length=3,
+        description="Define the kind of the object (only alphanumeric characters are allowed, must start with an uppercase)",
+    )
+    # label: Optional[str]
+    description: Optional[str] = Field(max_length=128)
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
@@ -385,21 +408,18 @@ internal_schema = {
                     "name": "name",
                     "kind": "String",
                     "unique": True,
+                    "regex": str(NODE_NAME_REGEX),
+                    "min_length": 3,
+                    "max_length": 32,
                 },
-                {
-                    "name": "kind",
-                    "kind": "String",
-                },
+                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "label",
                     "kind": "String",
                     "optional": True,
+                    "max_length": 32,
                 },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
                 {
                     "name": "branch",
                     "kind": "Boolean",
@@ -444,24 +464,20 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "String",
-                },
+                {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "kind",
                     "kind": "String",
+                    "enum": list(ATTRIBUTES_MAPPING.keys()),
+                    "min_length": 3,
+                    "max_length": 32,
                 },
-                {
-                    "name": "label",
-                    "kind": "String",
-                    "optional": True,
-                },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
+                {"name": "enum", "kind": "List", "optional": True},
+                {"name": "regex", "kind": "String", "optional": True},
+                {"name": "max_length", "kind": "Integer", "optional": True},
+                {"name": "min_length", "kind": "Integer", "optional": True},
+                {"name": "label", "kind": "String", "optional": True, "max_length": 32},
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
                 {
                     "name": "unique",
                     "kind": "Boolean",
@@ -493,32 +509,13 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "String",
-                },
-                {
-                    "name": "peer",
-                    "kind": "String",
-                },
-                {
-                    "name": "label",
-                    "kind": "String",
-                    "optional": True,
-                },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
-                {
-                    "name": "identifier",
-                    "kind": "String",
-                },
-                {
-                    "name": "cardinality",
-                    "kind": "String",
-                },
+                {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "peer", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
+                {"name": "label", "kind": "String", "optional": True, "max_length": 32},
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
+                {"name": "identifier", "kind": "String", "max_length": 128},
+                {"name": "cardinality", "kind": "String", "enum": ["one", "many"]},
                 {
                     "name": "optional",
                     "kind": "Boolean",
@@ -546,21 +543,18 @@ internal_schema = {
                     "name": "name",
                     "kind": "String",
                     "unique": True,
+                    "regex": str(NODE_NAME_REGEX),
+                    "min_length": 3,
+                    "max_length": 32,
                 },
-                {
-                    "name": "kind",
-                    "kind": "String",
-                },
+                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "label",
                     "kind": "String",
                     "optional": True,
+                    "max_length": 32,
                 },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
             ],
             "relationships": [
                 {
@@ -591,16 +585,12 @@ internal_schema = {
                     "name": "name",
                     "kind": "String",
                     "unique": True,
+                    "regex": str(NODE_NAME_REGEX),
+                    "min_length": 3,
+                    "max_length": 32,
                 },
-                {
-                    "name": "kind",
-                    "kind": "String",
-                },
-                {
-                    "name": "description",
-                    "kind": "String",
-                    "optional": True,
-                },
+                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
             ],
         },
     ]
