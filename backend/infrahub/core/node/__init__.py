@@ -185,6 +185,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         # NOTE at some point we might need to expose that via the schema to give more control over this hack
+        # pylint: disable=no-member
         if not self.id and hasattr(self, "label") and hasattr(self, "name"):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
