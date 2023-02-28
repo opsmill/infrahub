@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../App";
@@ -7,49 +7,50 @@ import { branchState } from "../../state/atoms/branch.atom";
 import { useAtom } from "jotai";
 import { graphQLClient } from "../..";
 import { CONFIG } from "../../config/config";
-
-const branches = [
-  {
-    name: "main",
-    description: "Default Branch",
-    is_default: true,
-    origin_branch: "main",
-    branched_from: "2023-02-15T11:36:18.476325Z",
-    timeSince: "3 days ago",
-    is_data_only: false,
-    current: true,
-  },
-  {
-    name: "cr1245",
-    description: "Default Branch",
-    is_default: false,
-    origin_branch: "main",
-    branched_from: "2023-02-15T11:36:18.476325Z",
-    timeSince: "5 hours ago",
-    is_data_only: true,
-    current: false,
-  },
-  {
-    name: "cr1248",
-    description: "Default Branch",
-    is_default: false,
-    origin_branch: "main",
-    branched_from: "2023-02-15T11:36:18.476325Z",
-    timeSince: "10 mins ago",
-    is_data_only: false,
-    current: false,
-  },
-];
+import { timeState } from "../../state/atoms/time.atom";
+import { Branch } from "../../generated/graphql";
+import {
+  BRANCH_QUERY,
+  iBranchData,
+} from "../../graphql/defined_queries/branch";
+import { formatDistance } from "date-fns";
 
 export default function BranchSelector() {
-  const [selected, setSelected] = useAtom(branchState);
+  const [branch, setBranch] = useAtom(branchState);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [date] = useAtom(timeState);
+
+  useEffect(() => {
+    const request = graphQLClient.request(BRANCH_QUERY);
+
+    request
+      .then((data: iBranchData) => {
+        if (data.branch?.length) {
+          setBranches(
+            data.branch.sort((a, b) => {
+              if (a.name && b.name) {
+                return a.name.localeCompare(b.name);
+              }
+              return -1;
+            })
+          );
+        }
+      })
+      .catch(() => {
+        console.error("Something went wrong when fetching the branch details");
+      });
+  }, [branch]);
+
+  if (!branches.length) {
+    return null;
+  }
 
   return (
     <Listbox
-      value={selected}
+      value={branch ? branch : branches.filter((b) => b.name === "main")[0]}
       onChange={(value) => {
-        graphQLClient.setEndpoint(CONFIG.BACKEND_URL(value.name));
-        setSelected(value);
+        graphQLClient.setEndpoint(CONFIG.BACKEND_URL(value?.name, date));
+        setBranch(value);
       }}
     >
       {({ open }) => (
@@ -60,7 +61,11 @@ export default function BranchSelector() {
               <div className="inline-flex divide-x divide-blue-600 rounded-md shadow-sm">
                 <div className="inline-flex items-center rounded-l-md border border-transparent bg-blue-500 py-2 pl-3 pr-4 text-white shadow-sm">
                   <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                  <p className="ml-2.5 text-sm font-medium">{selected.name}</p>
+                  <p className="ml-2.5 text-sm font-medium">
+                    {branch
+                      ? branch.name
+                      : branches.filter((b) => b.name === "main")[0].name}
+                  </p>
                 </div>
                 <Listbox.Button className="inline-flex items-center rounded-l-none rounded-r-md bg-blue-500 p-2 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50">
                   <span className="sr-only">Change published status</span>
@@ -136,14 +141,20 @@ export default function BranchSelector() {
                             </span>
                           ) : null}
                         </div>
-                        <p
-                          className={classNames(
-                            active ? "text-blue-200" : "text-gray-500",
-                            "mt-2"
-                          )}
-                        >
-                          {option.timeSince}
-                        </p>
+                        {option?.created_at && (
+                          <p
+                            className={classNames(
+                              active ? "text-blue-200" : "text-gray-500",
+                              "mt-2"
+                            )}
+                          >
+                            {formatDistance(
+                              new Date(option?.created_at),
+                              new Date(),
+                              { addSuffix: true }
+                            )}
+                          </p>
+                        )}
                       </div>
                     )}
                   </Listbox.Option>

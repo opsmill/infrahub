@@ -11,7 +11,7 @@ import logo from "./logo.png";
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
   return (
-    <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
+    <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col z-20">
       <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-white pt-5">
         <div className="flex flex-shrink-0 items-center px-4">
           <img className="h-10 w-auto" src={logo} alt="Your Company" />
@@ -47,10 +47,10 @@ export default function DesktopMenu() {
                   </Disclosure.Button>
                   <Disclosure.Panel className="space-y-1">
                     {schema.map((item) => (
-                      <NavLink to={`/objects/${item.name.value}`}>
+                      <NavLink to={`/objects/${item.name}`} key={item.name}>
                         {({ isActive }) => (
                           <div
-                            key={item.name.value}
+                            key={item.name}
                             className={classNames(
                               "group flex w-full items-center rounded-md py-2 pl-11 pr-2 text-sm font-medium text-gray-600",
                               isActive
@@ -58,7 +58,7 @@ export default function DesktopMenu() {
                                 : "hover:bg-gray-50 hover:text-gray-900"
                             )}
                           >
-                            {item.kind.value}
+                            {item.kind}
                           </div>
                         )}
                       </NavLink>
