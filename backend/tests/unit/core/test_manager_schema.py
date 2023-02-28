@@ -221,6 +221,7 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
         {
             "name": "tags",
             "peer": "Tag",
+            "kind": "Generic",
             "label": None,
             "description": None,
             "identifier": "criticality__tag",
@@ -237,6 +238,7 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
         {
             "name": "primary_tag",
             "peer": "Tag",
+            "kind": "Generic",
             "label": None,
             "description": None,
             "identifier": "primary_tag__criticality",
@@ -254,4 +256,5 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
 
     assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
 
+    # breakpoint()
     assert not DeepDiff(criticality_dict["relationships"], expected_relationships, ignore_order=True)

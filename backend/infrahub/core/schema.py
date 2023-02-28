@@ -32,6 +32,7 @@ ATTRIBUTES_MAPPING = {
     "List": ListAttribute,
 }
 
+RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 
@@ -47,6 +48,7 @@ class AttributeSchema(BaseModel):
     label: Optional[str]
     description: Optional[str]
     default_value: Optional[Any]
+    enum: Optional[List]
     inherited: bool = False
     unique: bool = False
     branch: bool = True
@@ -71,6 +73,7 @@ class AttributeSchema(BaseModel):
 class RelationshipSchema(BaseModel):
     name: str
     peer: str
+    kind: str = "Generic"
     label: Optional[str]
     description: Optional[str]
     identifier: Optional[str]
@@ -88,6 +91,15 @@ class RelationshipSchema(BaseModel):
         VALID_OPTIONS = ["one", "many"]
         if v not in VALID_OPTIONS:
             raise ValueError(f"Only valid value for cardinality are : {VALID_OPTIONS} ")
+        return v
+
+    @validator("kind")
+    def kind_options(
+        cls,
+        v,
+    ):
+        if v not in RELATIONSHIP_KINDS:
+            raise ValueError(f"Only valid Relationship Kind are : {RELATIONSHIP_KINDS} ")
         return v
 
     def get_class(self):
@@ -448,10 +460,8 @@ internal_schema = {
                     "name": "name",
                     "kind": "String",
                 },
-                {
-                    "name": "kind",
-                    "kind": "String",
-                },
+                {"name": "kind", "kind": "String", "enum": list(ATTRIBUTES_MAPPING.keys())},
+                {"name": "enum", "kind": "List", "optional": True},
                 {
                     "name": "label",
                     "kind": "String",
@@ -501,6 +511,7 @@ internal_schema = {
                     "name": "peer",
                     "kind": "String",
                 },
+                {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
                 {
                     "name": "label",
                     "kind": "String",
@@ -515,10 +526,7 @@ internal_schema = {
                     "name": "identifier",
                     "kind": "String",
                 },
-                {
-                    "name": "cardinality",
-                    "kind": "String",
-                },
+                {"name": "cardinality", "kind": "String", "enum": ["one", "many"]},
                 {
                     "name": "optional",
                     "kind": "Boolean",
@@ -547,10 +555,7 @@ internal_schema = {
                     "kind": "String",
                     "unique": True,
                 },
-                {
-                    "name": "kind",
-                    "kind": "String",
-                },
+                {"name": "kind", "kind": "String", "enum": list(ATTRIBUTES_MAPPING.keys())},
                 {
                     "name": "label",
                     "kind": "String",
@@ -592,10 +597,7 @@ internal_schema = {
                     "kind": "String",
                     "unique": True,
                 },
-                {
-                    "name": "kind",
-                    "kind": "String",
-                },
+                {"name": "kind", "kind": "String", "enum": list(ATTRIBUTES_MAPPING.keys())},
                 {
                     "name": "description",
                     "kind": "String",
