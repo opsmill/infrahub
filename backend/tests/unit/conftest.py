@@ -736,6 +736,7 @@ async def criticality_schema(session, data_schema):
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
+            {"name": "label", "kind": "String", "optional": True},
             {"name": "level", "kind": "Integer"},
             {"name": "color", "kind": "String", "default_value": "#444444"},
             {"name": "description", "kind": "String", "optional": True},

@@ -137,18 +137,20 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "name": "criticality",
                 "kind": "Criticality",
                 "default_filter": "name__value",
+                "label": "Criticality",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "level", "kind": "Integer"},
-                    {"name": "color", "kind": "String", "default_value": "#444444"},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "String", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Integer", "label": "Level"},
+                    {"name": "color", "kind": "String", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "String", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                    {"name": "tags", "peer": "Tag", "label": "Tags", "optional": True, "cardinality": "many"},
                     {
                         "name": "primary_tag",
                         "peer": "Tag",
+                        "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
                         "cardinality": "one",
@@ -158,11 +160,12 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
             {
                 "name": "tag",
                 "kind": "Tag",
+                "label": "Tag",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "String", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "String", "label": "Description", "optional": True},
                 ],
             },
         ],
@@ -170,9 +173,10 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
             {
                 "name": "generic_interface",
                 "kind": "GenericInterface",
+                "label": "Generic Interface",
                 "branch": True,
                 "attributes": [
-                    {"name": "my_generic_name", "kind": "String"},
+                    {"name": "my_generic_name", "kind": "String", "label": "My Generic String"},
                 ],
             },
         ],
@@ -194,7 +198,6 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
 
     schema_criticality = [node for node in schema2.nodes if node.kind == "Criticality"][0]
 
-    # breakpoint()
     assert not DeepDiff(
         schema1.nodes[0].dict(exclude={"filters", "relationships"}),
         schema_criticality.dict(exclude={"filters", "relationships"}),
@@ -221,8 +224,8 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
         {
             "name": "tags",
             "peer": "Tag",
+            "label": "Tags",
             "kind": "Generic",
-            "label": None,
             "description": None,
             "identifier": "criticality__tag",
             "inherited": False,
@@ -238,8 +241,8 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
         {
             "name": "primary_tag",
             "peer": "Tag",
+            "label": "Primary Tag",
             "kind": "Generic",
-            "label": None,
             "description": None,
             "identifier": "primary_tag__criticality",
             "inherited": False,
@@ -255,6 +258,4 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
     ]
 
     assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
-
-    # breakpoint()
     assert not DeepDiff(criticality_dict["relationships"], expected_relationships, ignore_order=True)

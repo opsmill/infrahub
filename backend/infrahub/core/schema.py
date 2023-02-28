@@ -222,6 +222,7 @@ class BaseNodeSchema(BaseModel):
         min_length=3,
         description="Define the kind of the object (only alphanumeric characters are allowed, must start with an uppercase)",
     )
+    # label: Optional[str]
     description: Optional[str] = Field(max_length=128)
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)

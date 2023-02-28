@@ -11,27 +11,30 @@ from infrahub.exceptions import ValidationError
 from infrahub_client.timestamp import Timestamp
 
 
-async def test_node_init(session, default_branch: Branch, criticality_schema, first_account):
+async def test_node_init(session, default_branch: Branch, criticality_schema: NodeSchema, first_account: Node):
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(session=session, name="low", level=4)
 
     assert obj.name.value == "low"
+    assert obj.label.value == "Low"
     assert obj.level.value == 4
     assert obj.description.value is None
     assert obj.color.value == "#444444"
 
     obj = await Node.init(session=session, schema=criticality_schema)
-    await obj.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj.new(session=session, name="medium", label="MED", level=3, description="My desc", color="#333333")
 
     assert obj.name.value == "medium"
+    assert obj.label.value == "MED"
     assert obj.level.value == 3
     assert obj.description.value == "My desc"
     assert obj.color.value == "#333333"
 
     obj = await Node.init(session=session, schema=criticality_schema)
-    await obj.new(session=session, name="medium", level=3, description="My desc", _source=first_account)
+    await obj.new(session=session, name="medium_high", level=3, description="My desc", _source=first_account)
 
-    assert obj.name.value == "medium"
+    assert obj.name.value == "medium_high"
+    assert obj.label.value == "Medium High"
     assert obj.level.value == 3
     assert obj.description.value == "My desc"
     assert obj._source == first_account
