@@ -320,6 +320,10 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
         attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
+    if "display_label" not in schema.local_attributes:
+        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR["String"], branch=branch.name)
+        main_attrs["display_label"] = graphene.Field(attr_type, required=False)
+
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
 
