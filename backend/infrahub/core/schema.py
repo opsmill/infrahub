@@ -211,8 +211,13 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 class BaseNodeSchema(BaseModel):
     name: str
-    kind: str
-    description: Optional[str]
+    kind: str = Field(
+        regex=r"^[A-Z][a-zA-Z0-9]+$",
+        max_length=64,
+        min_length=3,
+        description="Define the kind of the object (only alphanumeric characters are allowed, must start with an uppercase)",
+    )
+    description: Optional[str] = Field(max_length=128)
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
@@ -555,7 +560,7 @@ internal_schema = {
                     "kind": "String",
                     "unique": True,
                 },
-                {"name": "kind", "kind": "String", "enum": list(ATTRIBUTES_MAPPING.keys())},
+                {"name": "kind", "kind": "String"},
                 {
                     "name": "label",
                     "kind": "String",
@@ -597,7 +602,7 @@ internal_schema = {
                     "kind": "String",
                     "unique": True,
                 },
-                {"name": "kind", "kind": "String", "enum": list(ATTRIBUTES_MAPPING.keys())},
+                {"name": "kind", "kind": "String"},
                 {
                     "name": "description",
                     "kind": "String",

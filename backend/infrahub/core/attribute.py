@@ -76,12 +76,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         elif data is not None:
             self.from_db(data)
 
-        if self.value is not None and not self.validate(self.value):
-            raise ValidationError({self.name: f"{self.name} is not of type {self.get_kind()}"})
-
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
             self.value = self.schema.default_value
+
+        if self.value is not None:
+            self.validate(value=self.value, name=self.name, schema=self.schema)
 
         if self.is_protected is None:
             self.is_protected = False
@@ -93,8 +93,47 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return self.schema.kind
 
     @classmethod
-    def validate(cls, value) -> bool:
-        return isinstance(value, cls.type)  # pylint: disable=isinstance-second-argument-not-valid-type
+    def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
+        if value is None and not schema.optional:
+            raise ValidationError({name: f"A value must be provided for {name}"})
+        elif value is None and schema.optional:
+            return True
+
+        cls.validate_format(value=value, name=name, schema=schema)
+        cls.validate_content(value=value, name=name, schema=schema)
+
+        return True
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+        """
+        if not isinstance(value, cls.type):
+            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the content of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Content of the attribute value is not valid
+        """
+        if schema.enum:
+            if value not in schema.enum:
+                raise ValidationError({name: f"{name} ({value}) must be one of {schema.enum}"})
 
     def to_db(self):
         if self.value is None:
@@ -201,7 +240,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         update_at = Timestamp(at)
 
         # Validate if the value is still correct, will raise a ValidationError if not
-        self.validate(self.value)
+        self.validate(value=self.value, name=self.name, schema=self.schema)
 
         query = await NodeListGetAttributeQuery.init(
             session=session,
@@ -366,8 +405,8 @@ class AnyAttribute(BaseAttribute):
     type = Any
 
     @classmethod
-    def validate(cls, value):
-        return True
+    def validate_format(cls, *args, **kwargs) -> None:
+        pass
 
 
 class String(BaseAttribute):

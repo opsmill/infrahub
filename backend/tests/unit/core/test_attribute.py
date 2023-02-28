@@ -1,12 +1,17 @@
 import pytest
 
-from infrahub.core.attribute import String
+from infrahub.core.attribute import Integer, String
+from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import NodeSchema
+from infrahub.exceptions import ValidationError
 from infrahub_client.timestamp import Timestamp
 
 
-async def test_init(session, default_branch, criticality_schema, first_account, second_account):
+async def test_init(
+    session, default_branch: Branch, criticality_schema: NodeSchema, first_account: Node, second_account: Node
+):
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
@@ -29,6 +34,46 @@ async def test_init(session, default_branch, criticality_schema, first_account, 
     )
     assert attr.value == "mystring"
     assert attr.source_id == second_account.id
+
+
+async def test_validate_format_string(session, default_branch: Branch, criticality_schema: NodeSchema):
+    name_schema = criticality_schema.get_attribute("name")
+
+    String(name="test", schema=name_schema, branch=default_branch, at=Timestamp(), node=None, data="five")
+
+    with pytest.raises(ValidationError):
+        String(
+            name="test",
+            schema=name_schema,
+            branch=default_branch,
+            at=Timestamp(),
+            node=None,
+            data=["list", "of", "string"],
+        )
+
+
+async def test_validate_format_integer(session, default_branch: Branch, criticality_schema: NodeSchema):
+    level_schema = criticality_schema.get_attribute("level")
+
+    Integer(name="test", schema=level_schema, branch=default_branch, at=Timestamp(), node=None, data=88)
+
+    with pytest.raises(ValidationError):
+        Integer(name="test", schema=level_schema, branch=default_branch, at=Timestamp(), node=None, data="notaninteger")
+
+
+async def test_validate_enum(session, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    # 1/ there is no enum defined in the schema
+    String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five")
+
+    # 2/ enum is defined and a valid value is provided
+    schema.enum = ["one", "two", "tree"]
+    String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="one")
+
+    # 3/ enum is defined and a non-valid value is provided
+    with pytest.raises(ValidationError):
+        String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five")
 
 
 async def test_node_property_getter(session, default_branch, criticality_schema):
