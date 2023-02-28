@@ -35,6 +35,9 @@ ATTRIBUTES_MAPPING = {
 RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
+NODE_KIND_REGEX = "^[A-Z][a-zA-Z0-9]+$"
+NODE_NAME_REGEX = "^[a-z0-9\_]+$"
+
 
 class FilterSchema(BaseModel):
     name: str
@@ -49,6 +52,7 @@ class AttributeSchema(BaseModel):
     description: Optional[str]
     default_value: Optional[Any]
     enum: Optional[List]
+    regex: Optional[str]
     inherited: bool = False
     unique: bool = False
     branch: bool = True
@@ -212,7 +216,6 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 class BaseNodeSchema(BaseModel):
     name: str
     kind: str = Field(
-        regex=r"^[A-Z][a-zA-Z0-9]+$",
         max_length=64,
         min_length=3,
         description="Define the kind of the object (only alphanumeric characters are allowed, must start with an uppercase)",
@@ -398,15 +401,8 @@ internal_schema = {
             "branch": True,
             "default_filter": "name__value",
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "String",
-                    "unique": True,
-                },
-                {
-                    "name": "kind",
-                    "kind": "String",
-                },
+                {"name": "name", "kind": "String", "unique": True, "regex": NODE_NAME_REGEX},
+                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX},
                 {
                     "name": "label",
                     "kind": "String",
@@ -461,12 +457,10 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "String",
-                },
+                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX},
                 {"name": "kind", "kind": "String", "enum": list(ATTRIBUTES_MAPPING.keys())},
                 {"name": "enum", "kind": "List", "optional": True},
+                {"name": "regex", "kind": "String", "optional": True},
                 {
                     "name": "label",
                     "kind": "String",
@@ -508,14 +502,8 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "String",
-                },
-                {
-                    "name": "peer",
-                    "kind": "String",
-                },
+                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX},
+                {"name": "peer", "kind": "String", "regex": NODE_KIND_REGEX},
                 {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
                 {
                     "name": "label",
@@ -555,12 +543,8 @@ internal_schema = {
             "branch": True,
             "default_filter": "name__value",
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "String",
-                    "unique": True,
-                },
-                {"name": "kind", "kind": "String"},
+                {"name": "name", "kind": "String", "unique": True, "regex": NODE_NAME_REGEX},
+                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX},
                 {
                     "name": "label",
                     "kind": "String",
@@ -597,12 +581,8 @@ internal_schema = {
             "branch": True,
             "default_filter": "name__value",
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "String",
-                    "unique": True,
-                },
-                {"name": "kind", "kind": "String"},
+                {"name": "name", "kind": "String", "unique": True, "regex": NODE_NAME_REGEX},
+                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX},
                 {
                     "name": "description",
                     "kind": "String",

@@ -76,6 +76,26 @@ async def test_validate_enum(session, default_branch: Branch, criticality_schema
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five")
 
 
+async def test_validate_regex(session, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    # 1/ there is no regex defined in the schema
+    String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
+
+    # 2/ a regex is defined and a valid value is provided
+    schema.regex = "^[A-Z7-9]+$"
+    String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
+
+    # 3/ a regex is defined and a non-valid value is provided
+    with pytest.raises(ValidationError):
+        String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five222")
+
+    # 4/ An invalid regex is defined
+    schema.regex = "^[A-Z7-9"
+    with pytest.raises(ValidationError):
+        String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
+
+
 async def test_node_property_getter(session, default_branch, criticality_schema):
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")

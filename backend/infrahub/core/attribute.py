@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 from uuid import UUID
 
@@ -131,9 +132,19 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         Raises:
             ValidationError: Content of the attribute value is not valid
         """
+
+        if schema.regex:
+            try:
+                is_valid = re.match(pattern=schema.regex, string=str(value))
+            except re.error:
+                raise ValidationError({name: f"The regex defined in the schema is not valid ({schema.regex!r})"})
+
+            if not is_valid:
+                raise ValidationError({name: f"{value} be conform with the regex: {schema.regex!r}"})
+
         if schema.enum:
             if value not in schema.enum:
-                raise ValidationError({name: f"{name} ({value}) must be one of {schema.enum}"})
+                raise ValidationError({name: f"{value} must be one of {schema.enum!r}"})
 
     def to_db(self):
         if self.value is None:
