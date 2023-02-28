@@ -40,6 +40,128 @@ async def test_simple_query(db, session, default_branch: Branch, criticality_sch
     assert len(result.data["criticality"]) == 2
 
 
+async def test_display_label_one_item(db, session, default_branch: Branch, data_schema):
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "display_label": ["label__value"],
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "label", "kind": "String", "optional": True},
+        ],
+    }
+
+    schema = NodeSchema(**SCHEMA)
+    registry.set_schema(name=schema.kind, schema=schema)
+
+    obj1 = await Node.init(session=session, schema=schema)
+    await obj1.new(session=session, name="low")
+    await obj1.save(session=session)
+
+    query = """
+    query {
+        criticality {
+            id
+            display_label
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["criticality"]) == 1
+    assert result.data["criticality"][0]["display_label"] == "Low"
+
+
+async def test_display_label_multiple_items(db, session, default_branch: Branch, data_schema):
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "display_label": ["name__value", "level__value"],
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "level", "kind": "Integer", "optional": True},
+        ],
+    }
+
+    schema = NodeSchema(**SCHEMA)
+    registry.set_schema(name=schema.kind, schema=schema)
+
+    obj1 = await Node.init(session=session, schema=schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
+    obj2 = await Node.init(session=session, schema=schema)
+    await obj2.new(session=session, name="medium", level=3)
+    await obj2.save(session=session)
+
+    query = """
+    query {
+        criticality {
+            id
+            display_label
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["criticality"]) == 2
+    assert sorted([node["display_label"] for node in result.data["criticality"]]) == ["low 4", "medium 3"]
+
+
+async def test_display_label_default_value(db, session, default_branch: Branch, data_schema):
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "level", "kind": "Integer", "optional": True},
+        ],
+    }
+
+    schema = NodeSchema(**SCHEMA)
+    registry.set_schema(name=schema.kind, schema=schema)
+
+    obj1 = await Node.init(session=session, schema=schema)
+    await obj1.new(session=session, name="low")
+    await obj1.save(session=session)
+
+    query = """
+    query {
+        criticality {
+            id
+            display_label
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["criticality"]) == 1
+    assert result.data["criticality"][0]["display_label"] == f"Criticality(ID: {obj1.id})"
+
+
 async def test_all_attributes(db, session, default_branch: Branch, data_schema, all_attribute_types_schema):
     obj1 = await Node.init(session=session, schema="AllAttributeTypes")
     await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
@@ -190,6 +312,76 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     assert len(result_per_name["John"]["cars"]) == 2
     assert len(result_per_name["Jane"]["cars"]) == 1
     assert result_per_name["John"]["cars"][0]["owner"]["name"]["value"] == "John"
+
+
+async def test_display_label_nested_query(db, session, default_branch: Branch, car_person_schema):
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=car)
+    await c2.new(session=session, name="bolt", nbr_seats=4, is_electric=True, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=car)
+    await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
+    await c3.save(session=session)
+
+    query = """
+    query {
+        person(name__value: "John") {
+            name {
+                value
+            }
+            cars {
+                id
+                display_label
+                owner {
+                    id
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["person"][0] == {
+        "cars": [
+            {
+                "display_label": "volt #444444",
+                "id": str(c1.id),
+                "owner": {
+                    "display_label": "John",
+                    "id": str(p1.id),
+                },
+            },
+            {
+                "display_label": "bolt #444444",
+                "id": str(c2.id),
+                "owner": {
+                    "display_label": "John",
+                    "id": str(p1.id),
+                },
+            },
+        ],
+        "name": {"value": "John"},
+    }
 
 
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):

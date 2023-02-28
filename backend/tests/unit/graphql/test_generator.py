@@ -59,6 +59,7 @@ async def test_generate_graphql_object(session, default_branch: Branch, critical
         "_updated_at",
         "color",
         "description",
+        "display_label",
         "id",
         "label",
         "level",
@@ -78,7 +79,14 @@ async def test_generate_graphql_object_with_interface(
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "Car"
-    assert sorted(list(result._meta.fields.keys())) == ["_updated_at", "description", "id", "name", "nbr_doors"]
+    assert sorted(list(result._meta.fields.keys())) == [
+        "_updated_at",
+        "description",
+        "display_label",
+        "id",
+        "name",
+        "nbr_doors",
+    ]
 
 
 async def test_generate_graphql_mutation_create(session, default_branch: Branch, criticality_schema):
@@ -115,6 +123,7 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
     assert sorted(list(car._meta.fields.keys())) == [
         "_updated_at",
         "color",
+        "display_label",
         "id",
         "is_electric",
         "name",
@@ -129,13 +138,14 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "_relation__updated_at",
         "_updated_at",
         "color",
+        "display_label",
         "id",
         "is_electric",
         "name",
         "nbr_seats",
         "owner",
     ]
-    assert sorted(list(person._meta.fields.keys())) == ["_updated_at", "cars", "height", "id", "name"]
+    assert sorted(list(person._meta.fields.keys())) == ["_updated_at", "cars", "display_label", "height", "id", "name"]
     assert sorted(list(related_person._meta.fields.keys())) == [
         "_relation__is_protected",
         "_relation__is_visible",
@@ -144,6 +154,7 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "_relation__updated_at",
         "_updated_at",
         "cars",
+        "display_label",
         "height",
         "id",
         "name",

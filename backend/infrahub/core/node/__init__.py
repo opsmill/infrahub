@@ -322,14 +322,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "display_label":
-                display_label = None
-                if field_name in self._schema.attribute_names:
-                    display_label = getattr(self, field_name, None)
-
-                if display_label:
-                    response[field_name] = display_label
-                    continue
-
                 response[field_name] = await self.render_display_label(session=session)
                 continue
 
@@ -383,11 +375,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return changed
 
     async def render_display_label(self, session: AsyncSession):
-        self._schema.default_display_label
+        if not self._schema.display_label:
+            return repr(self)
 
         display_elements = []
-
-        for item in self._schema.default_display_label:
+        for item in self._schema.display_label:
             item_elements = item.split("__")
             if len(item_elements) != 2:
                 raise ValidationError("Display Label can only have one level")
@@ -396,7 +388,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 raise ValidationError("Only Attribute can be used in Display Label")
 
             attr = getattr(self, item_elements[0])
-
-            display_elements.append(getattr(attr, item_elements[1]))
+            display_elements.append(str(getattr(attr, item_elements[1])))
 
         return " ".join(display_elements)

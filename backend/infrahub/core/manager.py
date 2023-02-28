@@ -21,6 +21,7 @@ from infrahub.core.schema import (
     SchemaRoot,
 )
 from infrahub.exceptions import SchemaNotFound
+from infrahub.utils import deep_merge_dict
 from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -77,6 +78,11 @@ class NodeManager:
         await query.execute(session=session)
         node_ids = query.get_node_ids()
 
+        # if display_label has been requested we need to ensure we are querying the right fields
+        if fields and "display_label" in fields and schema.display_label:
+            display_label_fields = schema.generate_fields_for_display_label()
+            fields = deep_merge_dict(fields, display_label_fields)
+
         response = await cls.get_many(
             ids=node_ids,
             fields=fields,
@@ -117,6 +123,13 @@ class NodeManager:
 
         peers_info = list(query.get_peers())
         peer_ids = [peer.peer_id for peer in peers_info]
+
+        # if display_label has been requested we need to ensure we are querying the right fields
+        if fields and "display_label" in fields:
+            peer_schema = await schema.get_peer_schema()
+            if peer_schema.display_label:
+                display_label_fields = peer_schema.generate_fields_for_display_label()
+                fields = deep_merge_dict(fields, display_label_fields)
 
         if not peers_info:
             return []

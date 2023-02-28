@@ -217,12 +217,7 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 class BaseNodeSchema(BaseModel):
     name: str
-    kind: str = Field(
-        max_length=64,
-        min_length=3,
-        description="Define the kind of the object (only alphanumeric characters are allowed, must start with an uppercase)",
-    )
-    # label: Optional[str]
+    kind: str
     description: Optional[str] = Field(max_length=128)
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
@@ -314,7 +309,7 @@ class NodeSchema(BaseNodeSchema):
     groups: List[str] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
-    default_display_label: Optional[List[str]]
+    display_label: Optional[List[str]]
     filters: List[FilterSchema] = Field(default_factory=list)
 
     # TODO add validation to ensure that 2 attributes can't have the same name
@@ -361,6 +356,20 @@ class NodeSchema(BaseNodeSchema):
             elif isinstance(item, RelationshipSchema):
                 self.relationships.append(new_item)
 
+    def generate_fields_for_display_label(self) -> Dict:
+        fields = {}
+
+        for item in self.display_label:
+            elements = item.split("__")
+            if len(elements) == 1:
+                fields[elements[0]] = None
+            elif len(elements) == 2:
+                fields[elements[0]] = {elements[1]: None}
+            else:
+                raise ValueError(f"Unexpected value for display_label, {item} is not valid.")
+
+        return fields
+
 
 class GroupSchema(BaseModel):
     name: str
@@ -404,7 +413,7 @@ internal_schema = {
             "kind": "NodeSchema",
             "branch": True,
             "default_filter": "name__value",
-            "default_display_label": ["label__value"],
+            "display_label": ["label__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -430,6 +439,11 @@ internal_schema = {
                 {
                     "name": "default_filter",
                     "kind": "String",
+                    "optional": True,
+                },
+                {
+                    "name": "display_label",
+                    "kind": "List",
                     "optional": True,
                 },
                 {
@@ -465,7 +479,7 @@ internal_schema = {
             "kind": "AttributeSchema",
             "branch": True,
             "default_filter": None,
-            "default_display_label": ["label__value"],
+            "display_label": ["label__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {
@@ -511,7 +525,7 @@ internal_schema = {
             "kind": "RelationshipSchema",
             "branch": True,
             "default_filter": None,
-            "default_display_label": ["label__value"],
+            "display_label": ["label__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {"name": "peer", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
@@ -542,7 +556,7 @@ internal_schema = {
             "kind": "GenericSchema",
             "branch": True,
             "default_filter": "name__value",
-            "default_display_label": ["label__value"],
+            "display_label": ["label__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -585,7 +599,7 @@ internal_schema = {
             "kind": "GroupSchema",
             "branch": True,
             "default_filter": "name__value",
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -608,7 +622,7 @@ core_models = {
         {
             "name": "data_owner",
             "kind": "DataOwner",  # Account, Group, Script ?
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
@@ -618,7 +632,7 @@ core_models = {
             "name": "data_source",
             "description": "Any Entities that stores or produces data.",
             "kind": "DataSource",  # Repository, Account ...
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
@@ -630,7 +644,7 @@ core_models = {
             "name": "criticality",
             "kind": "Criticality",
             "default_filter": "name__value",
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -642,7 +656,7 @@ core_models = {
             "name": "tag",
             "kind": "Tag",
             "default_filter": "name__value",
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -653,7 +667,7 @@ core_models = {
             "name": "organization",
             "kind": "Organization",
             "default_filter": "name__value",
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -667,7 +681,7 @@ core_models = {
             "name": "account",
             "kind": "Account",
             "default_filter": "name__value",
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
@@ -684,7 +698,7 @@ core_models = {
             "name": "account_token",
             "kind": "AccountToken",
             "default_filter": "token__value",
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "token", "kind": "String", "unique": True},
@@ -699,7 +713,7 @@ core_models = {
             "kind": "Group",
             "default_filter": "name__value",
             "inherit_from": ["DataOwner"],
-            "default_display_label": ["name__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -713,7 +727,7 @@ core_models = {
             "name": "status",
             "kind": "Status",
             "default_filter": "name__value",
-            "default_display_label": ["label__value"],
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -725,7 +739,7 @@ core_models = {
             "name": "role",
             "kind": "Role",
             "default_filter": "name__value",
-            "default_display_label": ["label__value"],
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},

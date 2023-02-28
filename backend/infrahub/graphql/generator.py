@@ -138,6 +138,7 @@ async def default_resolver(*args, **kwargs):
             id=parent["id"],
             schema=node_rel,
             filters=filters,
+            fields=fields,
             at=at,
             branch=branch,
             account=account,
@@ -313,16 +314,13 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
     main_attrs = {
         "id": graphene.String(required=True),
         "_updated_at": graphene.DateTime(required=False),
+        "display_label": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
     for attr in schema.local_attributes:
         attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
-
-    if "display_label" not in schema.local_attributes:
-        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR["String"], branch=branch.name)
-        main_attrs["display_label"] = graphene.Field(attr_type, required=False)
 
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
@@ -410,6 +408,7 @@ def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[
 
     main_attrs = {
         "id": graphene.String(required=True),
+        "display_label": graphene.String(required=False),
         "_updated_at": graphene.DateTime(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }

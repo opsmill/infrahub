@@ -98,6 +98,31 @@ def test_node_schema_unique_identifiers():
     assert schema.relationships[1].identifier == "something_unique"
 
 
+async def test_node_schema_generate_fields_for_display_label():
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "default_filter": "name__value",
+        "display_label": ["name__value", "level__value"],
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "level", "kind": "Integer"},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "Criticality", "cardinality": "one"},
+        ],
+    }
+
+    schema = NodeSchema(**SCHEMA)
+    assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
+
+    SCHEMA["display_label"] = ["name__value__third"]
+    schema = NodeSchema(**SCHEMA)
+    with pytest.raises(ValueError):
+        schema.generate_fields_for_display_label()
+
+
 async def test_rel_schema_query_filter(session, default_branch, car_person_schema):
     person = registry.get_schema(name="Person")
     rel = person.relationships[0]
