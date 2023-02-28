@@ -81,11 +81,11 @@ export default function ObjectItems() {
   }
 
   return (
-    <div className="flex-1 overflow-auto pt-0 px-4 sm:px-0 md:px-0">
-      <div className="sm:flex sm:items-center pb-4 px-4 sm:px-6 lg:px-8">
-        <div className="sm:flex-auto pt-6">
+    <div className="flex-1 pt-0 px-4 sm:px-0 md:px-0 overflow-x-auto flex flex-col">
+      <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
+        <div className="sm:flex-auto flex items-center">
           <h1 className="text-xl font-semibold text-gray-900">{schema.kind}</h1>
-          <p className="mt-2 text-sm text-gray-700">
+          <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
             A list of all the {schema.kind} in your infrastructure.
           </p>
         </div>
@@ -94,7 +94,7 @@ export default function ObjectItems() {
         </div>
       </div>
       <DeviceFilterBar />
-      <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full overflow-auto">
+      <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full overflow-x-auto">
         <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
           <div className="inline-block min-w-full pt-2 align-middle">
             <div className="shadow-sm ring-1 ring-black ring-opacity-5">
