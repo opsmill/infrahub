@@ -97,7 +97,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
         if value is None and not schema.optional:
             raise ValidationError({name: f"A value must be provided for {name}"})
-        elif value is None and schema.optional:
+        if value is None and schema.optional:
             return True
 
         cls.validate_format(value=value, name=name, schema=schema)
@@ -117,7 +117,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         Raises:
             ValidationError: Format of the attribute value is not valid
         """
-        if not isinstance(value, cls.type):
+        if not isinstance(value, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
             raise ValidationError({name: f"{name} is not of type {schema.kind}"})
 
     @classmethod
@@ -136,8 +136,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if schema.regex:
             try:
                 is_valid = re.match(pattern=schema.regex, string=str(value))
-            except re.error:
-                raise ValidationError({name: f"The regex defined in the schema is not valid ({schema.regex!r})"})
+            except re.error as exc:
+                raise ValidationError({name: f"The regex defined in the schema is not valid ({schema.regex!r})"}) from exc
 
             if not is_valid:
                 raise ValidationError({name: f"{value} be conform with the regex: {schema.regex!r}"})

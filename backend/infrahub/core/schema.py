@@ -35,8 +35,8 @@ ATTRIBUTES_MAPPING = {
 RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
-NODE_KIND_REGEX = "^[A-Z][a-zA-Z0-9]+$"
-NODE_NAME_REGEX = "^[a-z0-9\_]+$"
+NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
 
 
 class FilterSchema(BaseModel):
@@ -407,11 +407,11 @@ internal_schema = {
                     "name": "name",
                     "kind": "String",
                     "unique": True,
-                    "regex": NODE_NAME_REGEX,
+                    "regex": str(NODE_NAME_REGEX),
                     "min_length": 3,
                     "max_length": 32,
                 },
-                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
+                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "label",
                     "kind": "String",
@@ -463,7 +463,7 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX, "min_length": 3, "max_length": 32},
+                {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "kind",
                     "kind": "String",
@@ -508,8 +508,8 @@ internal_schema = {
             "branch": True,
             "default_filter": None,
             "attributes": [
-                {"name": "name", "kind": "String", "regex": NODE_NAME_REGEX, "min_length": 3, "max_length": 32},
-                {"name": "peer", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
+                {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "peer", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
                 {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
                 {"name": "label", "kind": "String", "optional": True, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
@@ -542,11 +542,11 @@ internal_schema = {
                     "name": "name",
                     "kind": "String",
                     "unique": True,
-                    "regex": NODE_NAME_REGEX,
+                    "regex": str(NODE_NAME_REGEX),
                     "min_length": 3,
                     "max_length": 32,
                 },
-                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
+                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "label",
                     "kind": "String",
@@ -584,11 +584,11 @@ internal_schema = {
                     "name": "name",
                     "kind": "String",
                     "unique": True,
-                    "regex": NODE_NAME_REGEX,
+                    "regex": str(NODE_NAME_REGEX),
                     "min_length": 3,
                     "max_length": 32,
                 },
-                {"name": "kind", "kind": "String", "regex": NODE_KIND_REGEX, "min_length": 3, "max_length": 32},
+                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
             ],
         },
