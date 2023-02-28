@@ -137,7 +137,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             try:
                 is_valid = re.match(pattern=schema.regex, string=str(value))
             except re.error as exc:
-                raise ValidationError({name: f"The regex defined in the schema is not valid ({schema.regex!r})"}) from exc
+                raise ValidationError(
+                    {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
+                ) from exc
 
             if not is_valid:
                 raise ValidationError({name: f"{value} be conform with the regex: {schema.regex!r}"})
