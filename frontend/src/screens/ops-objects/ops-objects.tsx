@@ -2,12 +2,12 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { classNames } from "../../App";
 import { NodeSchema } from "../../generated/graphql";
-import { schemaState } from "../../state/atoms/schema.atom";
+import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import ObjectRows from "./object-rows";
 
 export default function OpsObjects() {
   const [schema] = useAtom(schemaState);
-  const [selectedSchema, setSelectedSchema] = useState<any>();
+  const [selectedSchema, setSelectedSchema] = useState<iNodeSchema>();
   return (
     <div className="flex overflow-auto">
       <div className="flex-1 overflow-auto">
@@ -24,7 +24,7 @@ export default function OpsObjects() {
                   setSelectedSchema(schema);
                 }}
               >
-                {schema?.kind} - {schema?.name}
+                {schema.label}
                 <div className="text-sm text-gray-600">
                   {schema?.attributes?.length} attribute(s),{" "}
                   {schema?.relationships?.length} relationships(s)
