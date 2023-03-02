@@ -25,7 +25,7 @@ class TestInfrahubSchema:
 
     async def test_schema_get(self, client, init_db_base):
         ifc = await InfrahubClient.init(test_client=client)
-        schema_node = await ifc.schema.get(model="Location")
+        schema_node = await ifc.schema.get(kind="Location")
 
         assert isinstance(schema_node, NodeSchema)
         assert ifc.default_branch in ifc.schema.cache

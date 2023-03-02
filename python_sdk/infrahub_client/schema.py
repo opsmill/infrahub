@@ -80,7 +80,7 @@ class SchemaRoot(BaseModel):
 
 class InfrahubSchema:
     """
-    client.schema.get(branch="name", model="xxx")
+    client.schema.get(branch="name", kind="xxx")
     client.schema.all(branch="xxx")
     client.schema.validate()
     client.schema.add()
