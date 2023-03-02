@@ -1,93 +1,24 @@
-import { gql } from "@apollo/client";
 import {
-  ArrowRightIcon,
   ChevronDoubleRightIcon,
   ChevronRightIcon,
   ShieldCheckIcon,
   StarIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
-import { graphQLClient } from "../..";
-import { NodeSchema } from "../../generated/graphql";
-import ErrorScreen from "../error-screen/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
-
-declare var Handlebars: any;
-
-const template = Handlebars.compile(`query {{kind}} {
-        {{name}} {
-            {{#each attributes}}
-            {{this.name}} {
-                value
-            }
-            {{/each}}
-        }
-    }
-`);
-
-const getDisplayAttribute = (schema: any): string => {
-  const requiredAttributes = schema.attributes?.filter(
-    (attribute: any) => attribute?.optional === false
-  );
-  const attributesWithDefaultValue = schema.attributes?.filter(
-    (attribute: any) => !!attribute?.default_value
-  );
-  const nameAttribute = schema.attributes?.filter(
-    (attribute: any) => attribute?.name === "name"
-  );
-
-  if (nameAttribute?.length) {
-    return "name";
-  } else if (requiredAttributes?.length) {
-    return requiredAttributes[0]?.name!;
-  } else if (attributesWithDefaultValue?.length) {
-    return attributesWithDefaultValue[0]?.name!;
-  } else {
-    return "";
-  }
-};
+import { iNodeSchema } from "../../state/atoms/schema.atom";
 
 interface Props {
-  schema: any;
+  schema: iNodeSchema;
 }
 
 export default function ObjectRows(props: Props) {
   const { schema } = props;
-  const queryString = template(schema);
-  const query = gql`
-    ${queryString}
-  `;
-  // const [isLoading, setIsLoading] = useState(true);
-  // const [hasError, setHasError] = useState(false);
-  // const [objectRows, setObjectRows] = useState([]);
-
-  // useEffect(() => {
-  //   const request = graphQLClient.request(query);
-  //   request.then((data) => {
-  //     const rows = data[schema.name];
-  //     setObjectRows(rows);
-  //     setIsLoading(false);
-  //   }).catch(() => {
-  //     setHasError(true);
-  //   });
-  // }, [query, schema]);
-
-  // if(hasError) {
-  //   return <ErrorScreen />
-  // }
-
-  // if (isLoading) {
-  //   return <LoadingScreen />;
-  // }
-
-  // const displayAttribute = getDisplayAttribute(props.schema);
-
+  
   return (
     <div className="p-4">
       <div>
         <div>
           <h3 className="mt-2 text-lg font-medium leading-6 text-gray-900">
-            {schema.kind}
+            {schema.label}
           </h3>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             Attributes and details
@@ -108,6 +39,12 @@ export default function ObjectRows(props: Props) {
               </dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
+              <dt className="text-sm font-medium text-gray-500">Label</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                {schema.label}
+              </dd>
+            </div>
+            <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">
                 Default filter
               </dt>
@@ -125,11 +62,11 @@ export default function ObjectRows(props: Props) {
               <dt className="text-sm font-medium text-gray-500">Attributes</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
-                  {schema.attributes?.map((attribute: any) => (
+                  {schema.attributes?.map((attribute) => (
                     <li key={attribute.name} className="flex items-center justify-between py-3 pl-3 pr-4 text-sm">
                       <div className="flex w-0 flex-1 items-center">
                         <span className="ml-2 w-0 flex-1 truncate">
-                          {attribute?.name}
+                          {attribute.label}
                         </span>
                       </div>
                       <div className="ml-4 flex-shrink-0 flex space-x-2">
@@ -152,11 +89,11 @@ export default function ObjectRows(props: Props) {
               </dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
-                  {schema.relationships?.map((relationship: any) => (
+                  {schema.relationships?.map((relationship) => (
                     <li key={relationship.name} className="flex items-center justify-between py-3 pl-3 pr-4 text-sm">
                       <div className="flex w-0 flex-1 items-center">
                         <span className="ml-2 w-0 flex-1 truncate">
-                          {relationship?.name}
+                          {relationship.label}
                         </span>
                       </div>
                       <div>
@@ -169,51 +106,12 @@ export default function ObjectRows(props: Props) {
                       </div>
                       <div className="ml-4 flex-shrink-0 flex space-x-2 flex-1 justify-end">
                         {relationship.peer}
-                        {/* {(relationship?.optional === false ||
-                          relationship?.unique) && (
-                          <ShieldCheckIcon className="w-4 h-4" />
-                        )}
-                        {(relationship?.unique === true ||
-                          relationship?.unique) && (
-                          <StarIcon className="w-4 h-4" />
-                        )} */}
                       </div>
                     </li>
                   ))}
                 </ul>
               </dd>
             </div>
-            {/* <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-              <dt className="text-sm font-medium text-gray-500">Query</dt>
-              <dd
-                className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: queryString }}
-              ></dd>
-            </div> */}
-            {/* <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-              <dt className="text-sm font-medium text-gray-500">Rows ({objectRows.length})</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                <ul
-                  className="divide-y divide-gray-200 rounded-md border border-gray-200"
-                >
-                  {objectRows.map((row: any) => {
-                    if (row?.[displayAttribute]) {
-                      return (
-                        <li className="flex items-center justify-between py-3 pl-3 pr-4 text-sm">
-                          <div className="flex w-0 flex-1 items-center">
-                            <span className="ml-2 w-0 flex-1 truncate">
-                              {row?.[displayAttribute].value}
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    } else {
-                      return null;
-                    }
-                  })}
-                </ul>
-              </dd>
-            </div> */}
           </dl>
         </div>
       </div>

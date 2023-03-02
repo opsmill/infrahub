@@ -1,7 +1,7 @@
 import { useAtom } from "jotai";
 import { gql } from "@apollo/client";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { graphQLClient } from "../..";
 import { schemaState } from "../../state/atoms/schema.atom";
 import ErrorScreen from "../error-screen/error-screen";

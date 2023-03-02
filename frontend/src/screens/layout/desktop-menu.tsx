@@ -58,7 +58,7 @@ export default function DesktopMenu() {
                                 : "hover:bg-gray-50 hover:text-gray-900"
                             )}
                           >
-                            {item.kind}
+                            {item.label}
                           </div>
                         )}
                       </NavLink>
