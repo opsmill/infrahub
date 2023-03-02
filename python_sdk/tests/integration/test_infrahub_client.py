@@ -66,7 +66,7 @@ class TestInfrahubClient:
 
     async def test_query_branches(self, client, init_db_base, base_dataset):
         ifc = await InfrahubClient.init(test_client=client)
-        branches = await ifc.get_list_branches()
+        branches = await ifc.branch.all()
 
         assert "main" in branches
         assert "branch01" in branches

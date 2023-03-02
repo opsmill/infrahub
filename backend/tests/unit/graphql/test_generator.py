@@ -23,7 +23,7 @@ async def test_generate_interface_object(session, default_branch: Branch, generi
     assert inspect.isclass(result)
     assert issubclass(result, graphene.Interface)
     assert result._meta.name == "Vehicule"
-    assert sorted(list(result._meta.fields.keys())) == ["description", "id", "name"]
+    assert sorted(list(result._meta.fields.keys())) == ["description", "display_label", "id", "name"]
 
 
 async def test_generate_union_object(

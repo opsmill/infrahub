@@ -108,7 +108,7 @@ async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
     initialize_repositories_directory()
 
     # TODO Validate access to the GraphQL API with the proper credentials
-    branches = await client.get_list_branches()
+    branches = await client.branch.all()
     repositories = await client.get_list_repositories(branches=branches)
 
     for repo_name, repository in repositories.items():
@@ -130,7 +130,7 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int, log: lo
     log.info("Monitoring remote repository for updates .. ")
 
     while True:
-        branches = await client.get_list_branches()
+        branches = await client.branch.all()
         repositories = await client.get_list_repositories(branches=branches)
 
         for repo_name, repository in repositories.items():
@@ -159,7 +159,7 @@ async def _start(debug: bool, interval: int, config_file: str):
     # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
     log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
     client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
-    await client.get_list_branches()
+    await client.branch.all()
 
     await initialize_git_agent(client=client, log=log)
 
