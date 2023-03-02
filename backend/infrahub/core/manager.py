@@ -295,7 +295,7 @@ class SchemaManager(NodeManager):
 
     @staticmethod
     async def generate_filters(
-        session: AsyncSession, schema: NodeSchema, top_level: bool = False, include_relationships: bool = False
+        schema: NodeSchema, top_level: bool = False, include_relationships: bool = False
     ) -> List[FilterSchema]:
         """Generate the FilterSchema for a given NodeSchema object."""
 
@@ -407,9 +407,7 @@ class SchemaManager(NodeManager):
 
         # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
         for node in schema.nodes:
-            node.filters = await SchemaManager.generate_filters(
-                session=session, schema=node, top_level=True, include_relationships=True
-            )
+            node.filters = await SchemaManager.generate_filters(schema=node, top_level=True, include_relationships=True)
 
             for rel in node.relationships:
                 peer_schema = [node for node in schema.nodes if node.kind == rel.peer]
@@ -417,7 +415,7 @@ class SchemaManager(NodeManager):
                     continue
 
                 rel.filters = await SchemaManager.generate_filters(
-                    session=session, schema=peer_schema[0], top_level=False, include_relationships=False
+                    schema=peer_schema[0], top_level=False, include_relationships=False
                 )
 
         return schema
