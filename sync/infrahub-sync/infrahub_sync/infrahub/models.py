@@ -10,7 +10,7 @@ class InfrahubRegion(Region):
 
     @classmethod
     async def create(cls, diffsync, ids, attrs):
-        schema = await diffsync.client.schema.get(model="Location")
+        schema = await diffsync.client.schema.get(kind="Location")
 
         data = {"name": ids["slug"], "description": attrs["description"], "type": "REGION"}
         node = InfrahubNode(client=diffsync.client, schema=schema, data=data)
@@ -28,7 +28,7 @@ class InfrahubSite(Site):
 
     @classmethod
     async def create(cls, diffsync, ids, attrs):
-        schema = await diffsync.client.schema.get(model="Location")
+        schema = await diffsync.client.schema.get(kind="Location")
 
         data = {"name": ids["slug"], "description": attrs["description"], "type": "SITE"}
         node = InfrahubNode(client=diffsync.client, schema=schema, data=data)
