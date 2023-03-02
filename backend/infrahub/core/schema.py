@@ -702,8 +702,8 @@ core_models = {
                 {
                     "name": "type",
                     "kind": "String",
-                    "default_value": "USER",
-                    "enum": ["User", "Bot", "Git"],
+                    "default_value": "User",
+                    "enum": ["User", "Script", "Bot", "Git"],
                 },
             ],
             "relationships": [
