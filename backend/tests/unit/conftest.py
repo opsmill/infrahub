@@ -643,7 +643,7 @@ async def car_person_schema(session, data_schema):
                 "attributes": [
                     {"name": "name", "kind": "String", "unique": True},
                     {"name": "nbr_seats", "kind": "Integer"},
-                    {"name": "color", "kind": "String", "default_value": "#444444"},
+                    {"name": "color", "kind": "String", "default_value": "#444444", "max_length": 7},
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
                 "relationships": [
@@ -999,7 +999,7 @@ async def register_account_schema(session):
 @pytest.fixture
 async def first_account(session, register_account_schema):
     obj = await Node.init(session=session, schema="Account")
-    await obj.new(session=session, name="First Account", type="GIT")
+    await obj.new(session=session, name="First Account", type="Git")
     await obj.save(session=session)
     return obj
 
@@ -1007,7 +1007,7 @@ async def first_account(session, register_account_schema):
 @pytest.fixture
 async def second_account(session, register_account_schema):
     obj = await Node.init(session=session, schema="Account")
-    await obj.new(session=session, name="Second Account", type="GIT")
+    await obj.new(session=session, name="Second Account", type="Git")
     await obj.save(session=session)
     return obj
 

@@ -63,9 +63,9 @@ GROUPS = (
 )
 
 ACCOUNTS = (
-    ("ozzie", "USER", ("operator",)),
-    ("nelly", "USER", ("network-engineer", "operator")),
-    ("mary", "USER", ("manager",)),
+    ("ozzie", "User", ("operator",)),
+    ("nelly", "User", ("network-engineer", "operator")),
+    ("mary", "User", ("manager",)),
 )
 
 INTERFACE_ROLES = {

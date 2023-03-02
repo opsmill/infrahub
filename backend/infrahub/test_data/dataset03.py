@@ -107,9 +107,9 @@ ORGANIZATIONS = (
 INTERFACE_OBJS = defaultdict(list)
 
 ACCOUNTS = (
-    ("pop-builder", "SCRIPT", ("operator",)),
-    # ("nelly", "USER", ("network-engineer", "operator")),
-    # ("mary", "USER", ("manager",)),
+    ("pop-builder", "Script", ("operator",)),
+    # ("nelly", "User", ("network-engineer", "operator")),
+    # ("mary", "User", ("manager",)),
 )
 
 BGP_PEER_GROUPS = (

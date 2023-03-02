@@ -25,7 +25,7 @@ class InfrahubAdapter(DiffSync):
     async def load(self):
         """Load all data from Infrahub into the internal cache after transformation."""
 
-        locations = await self.client.all(model="Location")
+        locations = await self.client.all(kind="Location")
         for location in locations:
             if str(location.type.value).lower() == "site":
                 site = self.site(

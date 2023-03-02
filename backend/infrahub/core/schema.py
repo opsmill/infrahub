@@ -14,7 +14,7 @@ from infrahub.core.attribute import (
     String,
 )
 from infrahub.core.relationship import Relationship
-from infrahub.utils import duplicates
+from infrahub.utils import BaseEnum, duplicates
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -39,9 +39,21 @@ NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
 
 
+class FilterSchemaKind(str, BaseEnum):
+    STRING = "String"
+    LIST = "String"
+    INTEGER = "Integer"
+    BOOLEAN = "Boolean"
+    OBJECT = "Object"
+    MULTIOBJECT = "MultiObject"
+    ENUM = "Enum"
+
+
 class FilterSchema(BaseModel):
     name: str
-    kind: str
+    kind: FilterSchemaKind
+    enum: Optional[List]
+    object_kind: Optional[str]
     description: Optional[str]
 
 
@@ -648,7 +660,7 @@ core_models = {
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
-                {"name": "level", "kind": "Integer"},
+                {"name": "level", "kind": "Integer", "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
                 {"name": "description", "kind": "String", "optional": True},
             ],
         },
@@ -687,7 +699,12 @@ core_models = {
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
-                {"name": "type", "kind": "String", "default_value": "USER"},  # USER, BOT, GIT
+                {
+                    "name": "type",
+                    "kind": "String",
+                    "default_value": "User",
+                    "enum": ["User", "Script", "Bot", "Git"],
+                },
             ],
             "relationships": [
                 {"name": "tokens", "peer": "AccountToken", "optional": True, "cardinality": "many"},
@@ -751,6 +768,7 @@ core_models = {
             "name": "location",
             "kind": "Location",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
@@ -764,20 +782,21 @@ core_models = {
             "name": "repository",
             "kind": "Repository",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
                 {"name": "location", "kind": "String"},
-                {"name": "type", "kind": "String", "default_value": "LOCAL"},
+                # {"name": "type", "kind": "String", "default_value": "LOCAL", "enum" },
                 {"name": "default_branch", "kind": "String", "default_value": "main"},
                 {"name": "commit", "kind": "String", "optional": True},
                 {"name": "username", "kind": "String", "optional": True},
                 {"name": "password", "kind": "String", "optional": True},
             ],
             "relationships": [
-                {"name": "account", "peer": "Account", "optional": True, "cardinality": "one"},
+                {"name": "account", "peer": "Account", "kind": "Attribute", "optional": True, "cardinality": "one"},
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
                 {"name": "rfiles", "peer": "RFile", "optional": True, "cardinality": "many"},
                 {"name": "queries", "peer": "GraphQLQuery", "optional": True, "cardinality": "many"},
@@ -789,6 +808,7 @@ core_models = {
             "name": "rfile",
             "kind": "RFile",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -799,11 +819,12 @@ core_models = {
                 {
                     "name": "template_repository",
                     "peer": "Repository",
+                    "kind": "Attribute",
                     "identifier": "rfile_template_repository",
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "query", "peer": "GraphQLQuery", "cardinality": "one", "optional": False},
+                {"name": "query", "peer": "GraphQLQuery", "kind": "Attribute", "cardinality": "one", "optional": False},
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
             ],
         },
@@ -811,6 +832,7 @@ core_models = {
             "name": "check",
             "kind": "Check",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -824,10 +846,11 @@ core_models = {
                 {
                     "name": "repository",
                     "peer": "Repository",
+                    "kind": "Attribute",
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "query", "peer": "GraphQLQuery", "cardinality": "one", "optional": True},
+                {"name": "query", "peer": "GraphQLQuery", "kind": "Attribute", "cardinality": "one", "optional": True},
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
             ],
         },
@@ -835,6 +858,7 @@ core_models = {
             "name": "transform_python",
             "kind": "TransformPython",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -849,10 +873,11 @@ core_models = {
                 {
                     "name": "repository",
                     "peer": "Repository",
+                    "kind": "Attribute",
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "query", "peer": "GraphQLQuery", "cardinality": "one", "optional": True},
+                {"name": "query", "peer": "GraphQLQuery", "kind": "Attribute", "cardinality": "one", "optional": True},
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
             ],
         },
@@ -860,6 +885,7 @@ core_models = {
             "name": "graphql_query",
             "kind": "GraphQLQuery",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},

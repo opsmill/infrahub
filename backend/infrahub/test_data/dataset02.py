@@ -65,9 +65,9 @@ GROUPS = (
 )
 
 ACCOUNTS = (
-    ("site-builder", "SCRIPT", ("operator",)),
-    # ("nelly", "USER", ("network-engineer", "operator")),
-    # ("mary", "USER", ("manager",)),
+    ("site-builder", "Script", ("operator",)),
+    # ("nelly", "User", ("network-engineer", "operator")),
+    # ("mary", "User", ("manager",)),
 )
 
 LOGGER = logging.getLogger("infrahub")

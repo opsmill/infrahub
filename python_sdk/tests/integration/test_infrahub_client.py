@@ -109,7 +109,7 @@ class TestInfrahubClient:
         await obj2.save(session=session)
 
         ifc = await InfrahubClient.init(test_client=client)
-        nodes = await ifc.all(model="Location")
+        nodes = await ifc.all(kind="Location")
         assert len(nodes) == 2
         assert isinstance(nodes[0], InfrahubNode)
         assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]

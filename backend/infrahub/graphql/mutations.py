@@ -11,7 +11,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import BranchNotFound, NodeNotFound
+from infrahub.exceptions import BranchNotFound, NodeNotFound, ValidationError
 from infrahub.message_bus.events import (
     BranchMessageAction,
     DataMessageAction,
@@ -70,9 +70,12 @@ class InfrahubMutationMixin:
     async def mutate_create(cls, root, info, data, branch=None, at=None):
         session: AsyncSession = info.context.get("infrahub_session")
 
-        obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
-        await obj.new(session=session, **data)
-        await obj.save(session=session)
+        try:
+            obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
+            await obj.new(session=session, **data)
+            await obj.save(session=session)
+        except ValidationError as exc:
+            raise ValueError(str(exc)) from exc
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
         ok = True
@@ -86,8 +89,11 @@ class InfrahubMutationMixin:
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
-        await obj.from_graphql(session=session, data=data)
-        await obj.save(session=session)
+        try:
+            await obj.from_graphql(session=session, data=data)
+            await obj.save(session=session)
+        except ValidationError as exc:
+            raise ValueError(str(exc)) from exc
 
         ok = True
 

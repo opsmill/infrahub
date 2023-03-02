@@ -3,6 +3,7 @@ from deepdiff import DeepDiff
 from infrahub.core import registry
 from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import (
+    FilterSchemaKind,
     GenericSchema,
     GroupSchema,
     NodeSchema,
@@ -213,11 +214,35 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
     criticality_dict = schema_criticality.dict()
 
     expected_filters = [
-        {"name": "ids", "kind": "List", "description": None},
-        {"name": "level__value", "kind": "Integer", "description": None},
-        {"name": "color__value", "kind": "String", "description": None},
-        {"name": "name__value", "kind": "String", "description": None},
-        {"name": "description__value", "kind": "String", "description": None},
+        {"name": "ids", "kind": FilterSchemaKind.LIST, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "level__value",
+            "kind": FilterSchemaKind.INTEGER,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "color__value",
+            "kind": FilterSchemaKind.STRING,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "name__value",
+            "kind": FilterSchemaKind.STRING,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__value",
+            "kind": FilterSchemaKind.STRING,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
     ]
 
     expected_relationships = [
@@ -233,9 +258,21 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
             "branch": True,
             "optional": True,
             "filters": [
-                {"name": "id", "kind": "String", "description": None},
-                {"name": "description__value", "kind": "String", "description": None},
-                {"name": "name__value", "kind": "String", "description": None},
+                {"name": "id", "kind": FilterSchemaKind.STRING, "enum": None, "object_kind": None, "description": None},
+                {
+                    "name": "description__value",
+                    "kind": FilterSchemaKind.STRING,
+                    "enum": None,
+                    "object_kind": None,
+                    "description": None,
+                },
+                {
+                    "name": "name__value",
+                    "kind": FilterSchemaKind.STRING,
+                    "enum": None,
+                    "object_kind": None,
+                    "description": None,
+                },
             ],
         },
         {
@@ -250,9 +287,21 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
             "branch": True,
             "optional": True,
             "filters": [
-                {"name": "id", "kind": "String", "description": None},
-                {"name": "description__value", "kind": "String", "description": None},
-                {"name": "name__value", "kind": "String", "description": None},
+                {"name": "id", "kind": FilterSchemaKind.STRING, "enum": None, "object_kind": None, "description": None},
+                {
+                    "name": "description__value",
+                    "kind": FilterSchemaKind.STRING,
+                    "enum": None,
+                    "object_kind": None,
+                    "description": None,
+                },
+                {
+                    "name": "name__value",
+                    "kind": FilterSchemaKind.STRING,
+                    "enum": None,
+                    "object_kind": None,
+                    "description": None,
+                },
             ],
         },
     ]

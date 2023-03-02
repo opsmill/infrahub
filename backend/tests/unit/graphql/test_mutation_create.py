@@ -372,3 +372,36 @@ async def test_create_person_not_valid(db, session, default_branch, car_person_s
 
     assert len(result.errors) == 1
     assert "Int cannot represent non-integer value" in result.errors[0].message
+
+
+async def test_create_with_attribute_not_valid(db, session, default_branch, car_person_schema):
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    query = """
+    mutation {
+        car_create(data: {
+            name: { value: "Accord" },
+            nbr_seats: { value: 5 },
+            color: { value: "#44444444" },
+            is_electric: { value: true },
+            owner: { id: "John" },
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert len(result.errors) == 1
+    assert "#44444444 must have a maximum length of 7 at color" in result.errors[0].message
