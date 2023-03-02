@@ -294,9 +294,9 @@ class SchemaManager(NodeManager):
 
     @staticmethod
     async def generate_filters(
-        session: AsyncSession, schema: NodeSchema, top_level: bool = False, include_attribute: bool = False
+        session: AsyncSession, schema: NodeSchema, top_level: bool = False, include_relationships: bool = False
     ) -> List[FilterSchema]:
-        """Generate the GraphQL filters for a given NodeSchema object."""
+        """Generate the FilterSchema for a given NodeSchema object."""
 
         filters = []
 
@@ -307,23 +307,19 @@ class SchemaManager(NodeManager):
             filters.append(FilterSchema(name="id", kind="String"))
 
         for attr in schema.attributes:
-            filters.append(FilterSchema(name=f"{attr.name}__value", kind=attr.kind))
+            filter = FilterSchema(name=f"{attr.name}__value", kind=attr.kind)
 
-        if not include_attribute:
+            if attr.enum:
+                filter.enum = attr.enum
+
+            filters.append(filter)
+
+        if not include_relationships:
             return filters
 
         for rel in schema.relationships:
-            peer_schema = await rel.get_peer_schema()
-
-            if not isinstance(peer_schema, NodeSchema):
-                continue
-
-            peer_filters = await SchemaManager.generate_filters(
-                session=session, schema=peer_schema, top_level=False, include_attribute=False
-            )
-
-            for filter in peer_filters:
-                filters.append(FilterSchema(name=f"{rel.name}__{filter.name}", kind=filter.kind))
+            if rel.kind in ["Attribute", "Parent"]:
+                filters.append(FilterSchema(name=f"{rel.name}__id", kind="Object", object_kind=rel.peer))
 
         return filters
 
@@ -404,7 +400,7 @@ class SchemaManager(NodeManager):
         # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
         for node in schema.nodes:
             node.filters = await SchemaManager.generate_filters(
-                session=session, schema=node, top_level=True, include_attribute=False
+                session=session, schema=node, top_level=True, include_relationships=True
             )
 
             for rel in node.relationships:
@@ -413,7 +409,7 @@ class SchemaManager(NodeManager):
                     continue
 
                 rel.filters = await SchemaManager.generate_filters(
-                    session=session, schema=peer_schema[0], top_level=False, include_attribute=False
+                    session=session, schema=peer_schema[0], top_level=False, include_relationships=False
                 )
 
         return schema

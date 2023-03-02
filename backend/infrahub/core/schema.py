@@ -14,7 +14,7 @@ from infrahub.core.attribute import (
     String,
 )
 from infrahub.core.relationship import Relationship
-from infrahub.utils import duplicates
+from infrahub.utils import BaseEnum, duplicates
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -39,9 +39,21 @@ NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
 
 
+class FilterSchemaKind(str, BaseEnum):
+    STRING = "String"
+    LIST = "String"
+    INTEGER = "Integer"
+    BOOLEAN = "Boolean"
+    OBJECT = "Object"
+    MULTIOBJECT = "MultiObject"
+    ENUM = "Enum"
+
+
 class FilterSchema(BaseModel):
     name: str
     kind: str
+    enum: Optional[List]
+    object_kind: Optional[str]
     description: Optional[str]
 
 
