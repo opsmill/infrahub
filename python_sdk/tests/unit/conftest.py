@@ -127,5 +127,5 @@ async def mock_query_repository_all_01(
 async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text(encoding="UTF-8")
 
-    httpx_mock.add_response(method="GET", url="http://mock/schema?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(method="GET", url="http://mock/schema/?branch=main", json=ujson.loads(response_text))
     return httpx_mock
