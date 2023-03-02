@@ -4,6 +4,7 @@ infrastructure_models = {
             "name": "device",
             "kind": "Device",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -34,6 +35,7 @@ infrastructure_models = {
         {
             "name": "interface",
             "kind": "Interface",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String"},
@@ -61,6 +63,7 @@ infrastructure_models = {
             "name": "ipaddress",
             "kind": "IPAddress",
             "default_filter": "address__value",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "address", "kind": "String"},
@@ -74,6 +77,7 @@ infrastructure_models = {
             "name": "circuit",
             "kind": "Circuit",
             "default_filter": "circuit_id__value",
+            "display_label": ["circuit_id__value"],
             "branch": True,
             "attributes": [
                 {"name": "circuit_id", "kind": "String", "unique": True},
@@ -116,6 +120,7 @@ infrastructure_models = {
             "name": "autonomous_system",
             "kind": "AutonomousSystem",
             "default_filter": "name__value",
+            "display_label": ["name__value", "asn__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -136,6 +141,7 @@ infrastructure_models = {
             "name": "bgp_peer_group",
             "kind": "BGPPeerGroup",
             "default_filter": "name__value",
+            "display_label": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String"},
@@ -165,10 +171,9 @@ infrastructure_models = {
         {
             "name": "bgp_session",
             "kind": "BGPSession",
-            "default_filter": "asn__value",
             "branch": True,
             "attributes": [
-                {"name": "type", "kind": "String"},
+                {"name": "type", "kind": "String", "enum": ["EXTERNAL", "INTERNAL"]},
                 {"name": "description", "kind": "String", "optional": True},
                 {"name": "import_policies", "kind": "String", "optional": True},
                 {"name": "export_policies", "kind": "String", "optional": True},
