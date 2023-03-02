@@ -120,7 +120,10 @@ class Attribute:
         self.owner: Optional[dict] = data.get("owner", None)
 
     def _generate_input_data(self) -> Optional[Dict]:
-        data = {"value": self.value}
+        data = {}
+
+        if self.value is not None:
+            data["value"] = self.value
 
         for prop_name in self._properties:
             if prop := getattr(self, prop_name) is not None:
@@ -273,6 +276,12 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
 
+    async def create(self, kind: str, data: dict, branch: Optional[str] = None, **kwargs):
+        branch = branch or self.default_branch
+        schema = await self.schema.get(kind=kind, branch=branch)
+
+        return InfrahubNode(client=self, schema=schema, branch=branch, data=data or kwargs)
+
     async def get(
         self,
         kind: str,
@@ -281,9 +290,9 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         id: Optional[str] = None,
         **kwargs,
     ) -> InfrahubNode:
-        schema = await self.schema.get(kind=kind)
-
         branch = branch or self.default_branch
+        schema = await self.schema.get(kind=kind, branch=branch)
+
         at = Timestamp(at)
 
         node = InfrahubNode(client=self, schema=schema, branch=branch)
