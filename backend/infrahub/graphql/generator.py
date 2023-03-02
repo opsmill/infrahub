@@ -356,6 +356,7 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
     }
 
     main_attrs = {
+        "display_label": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
@@ -375,6 +376,7 @@ def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> 
     }
 
     main_attrs = {
+        "display_label": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
