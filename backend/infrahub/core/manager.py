@@ -14,6 +14,7 @@ from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import (
     FilterSchema,
+    FilterSchemaKind,
     GenericSchema,
     GroupSchema,
     NodeSchema,
@@ -301,13 +302,20 @@ class SchemaManager(NodeManager):
         filters = []
 
         if top_level:
-            filters.append(FilterSchema(name="ids", kind="List"))
+            filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
 
         else:
-            filters.append(FilterSchema(name="id", kind="String"))
+            filters.append(FilterSchema(name="id", kind=FilterSchemaKind.STRING))
 
         for attr in schema.attributes:
-            filter = FilterSchema(name=f"{attr.name}__value", kind=attr.kind)
+            if attr.kind == "String":
+                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.STRING)
+            elif attr.kind == "Integer":
+                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.INTEGER)
+            elif attr.kind == "Boolean":
+                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.BOOLEAN)
+            else:
+                continue
 
             if attr.enum:
                 filter.enum = attr.enum
@@ -319,7 +327,7 @@ class SchemaManager(NodeManager):
 
         for rel in schema.relationships:
             if rel.kind in ["Attribute", "Parent"]:
-                filters.append(FilterSchema(name=f"{rel.name}__id", kind="Object", object_kind=rel.peer))
+                filters.append(FilterSchema(name=f"{rel.name}__id", kind=FilterSchemaKind.OBJECT, object_kind=rel.peer))
 
         return filters
 

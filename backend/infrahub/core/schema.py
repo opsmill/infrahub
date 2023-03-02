@@ -51,7 +51,7 @@ class FilterSchemaKind(str, BaseEnum):
 
 class FilterSchema(BaseModel):
     name: str
-    kind: str
+    kind: FilterSchemaKind
     enum: Optional[List]
     object_kind: Optional[str]
     description: Optional[str]
