@@ -142,7 +142,7 @@ class InfrahubSchema:
         Returns:
             Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
         """
-        url = f"{self.client.address}/schema?branch={branch}"
+        url = f"{self.client.address}/schema/?branch={branch}"
         response = await self.client._get(url=url, timeout=2)
         response.raise_for_status()
 
