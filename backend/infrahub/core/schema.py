@@ -768,7 +768,7 @@ core_models = {
             "name": "location",
             "kind": "Location",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
                 {"name": "description", "kind": "String", "optional": True},
