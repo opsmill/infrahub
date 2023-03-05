@@ -57,7 +57,7 @@ async def test_generate_input_data(client, location_schema):
     }
 
 
-async def test_generate_input_data__with_relationships(client, location_schema):
+async def test_generate_input_data__with_relationships_01(client, location_schema):
     data = {
         "name": {"value": "JFK1"},
         "description": {"value": "JFK Airport"},
@@ -73,5 +73,41 @@ async def test_generate_input_data__with_relationships(client, location_schema):
             "type": {"value": "SITE"},
             "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
             "primary_tag": {"id": "pppppppp"},
+        }
+    }
+
+
+async def test_generate_input_data_with_relationships_02(client, rfile_schema):
+    data = {
+        "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff", "owner": "ffffffff"},
+        "template_path": {"value": "mytemplate.j2"},
+        "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff"},
+        "template_repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
+        "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
+    }
+    client.schema.get("RFile")
+    node = InfrahubNode(client=client, schema=rfile_schema, data=data)
+    # breakpoint()
+
+    assert node._generate_input_data() == {
+        "data": {
+            "name": {
+                "is_protected": True,
+                "owner": "ffffffff",
+                "source": "ffffffff",
+                "value": "rfile01",
+            },
+            "query": {
+                "_relation__owner": "ffffffff",
+                "_relation__source": "ffffffff",
+                "id": "qqqqqqqq",
+            },
+            "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
+            "template_path": {"value": "mytemplate.j2"},
+            "template_repository": {
+                "_relation__owner": "ffffffff",
+                "_relation__source": "ffffffff",
+                "id": "rrrrrrrr",
+            },
         }
     }

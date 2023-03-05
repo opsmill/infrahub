@@ -111,18 +111,22 @@ class Attribute:
         if not isinstance(data, dict):
             data = {"value": data}
 
-        self._properties = ["is_visible", "is_protected"]
+        self._properties_flag = ["is_visible", "is_protected"]
+        self._properties_object = ["source", "owner"]
+        self._properties = self._properties_flag + self._properties_object
+
         self._read_only = ["updated_at", "is_inherited"]
 
         self.id: Optional[str] = data.get("id", None)
         self.value: Optional[Any] = data.get("value", None)
+
         self.is_inherited: Optional[bool] = data.get("is_inherited", None)
+        self.updated_at: Optional[str] = data.get("updated_at", None)
+
         self.is_visible: Optional[bool] = data.get("is_visible", None)
         self.is_protected: Optional[bool] = data.get("is_protected", None)
-        self.updated_at: Optional[bool] = data.get("updated_at", None)
-
-        self.source: Optional[dict] = data.get("source", None)
-        self.owner: Optional[dict] = data.get("owner", None)
+        self.source: Optional[str] = data.get("source", None)
+        self.owner: Optional[str] = data.get("owner", None)
 
     def _generate_input_data(self) -> Optional[Dict]:
         data = {}
@@ -131,16 +135,18 @@ class Attribute:
             data["value"] = self.value
 
         for prop_name in self._properties:
-            if prop := getattr(self, prop_name) is not None:
-                data[prop_name] = prop
+            if getattr(self, prop_name) is not None:
+                data[prop_name] = getattr(self, prop_name)
 
         return data
 
     def _generate_query_data(self) -> Optional[Dict]:
         data = {"value": None}
 
-        for prop_name in self._properties:
+        for prop_name in self._properties_flag:
             data[prop_name] = None
+        for prop_name in self._properties_object:
+            data[prop_name] = {"id": None, "display_label": None}
 
         return data
 
@@ -150,7 +156,10 @@ class RelatedNode:
         self.schema = schema
         self.name = name
 
-        self._properties = ["is_visible", "is_protected"]
+        self._properties_flag = ["is_visible", "is_protected"]
+        self._properties_object = ["source", "owner"]
+        self._properties = self._properties_flag + self._properties_object
+
         self.peer = None
 
         if isinstance(data, InfrahubNode):
@@ -161,12 +170,12 @@ class RelatedNode:
 
         self.id: Optional[str] = data.get("id", None)
         self.display_label = data.get("display_label", None)
-        self.is_visible: Optional[bool] = data.get("_relation__is_visible", None)
-        self.is_protected: Optional[bool] = data.get("_relation__is_protected", None)
         self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
 
-        self.source: Optional[dict] = data.get("source", None)
-        self.owner: Optional[dict] = data.get("owner", None)
+        self.is_visible: Optional[bool] = data.get("_relation__is_visible", None)
+        self.is_protected: Optional[bool] = data.get("_relation__is_protected", None)
+        self.source: Optional[str] = data.get("source", None)
+        self.owner: Optional[str] = data.get("owner", None)
 
     def _generate_input_data(self):
         data = {}
@@ -175,16 +184,18 @@ class RelatedNode:
             data["id"] = self.id
 
         for prop_name in self._properties:
-            if prop := getattr(self, prop_name) is not None:
-                data[prop_name] = prop
+            if getattr(self, prop_name) is not None:
+                data[f"_relation__{prop_name}"] = getattr(self, prop_name)
 
         return data
 
     def _generate_query_data(self) -> Optional[Dict]:
         data = {"id": None, "display_label": None}
 
-        for prop_name in self._properties:
+        for prop_name in self._properties_flag:
             data[f"_relation__{prop_name}"] = None
+        for prop_name in self._properties_object:
+            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None}
 
         return data
 
@@ -195,7 +206,9 @@ class RelationshipManager:
         self.schema = schema
         self.peers: List[RelatedNode] = []
 
-        self._properties = ["is_visible", "is_protected"]
+        self._properties_flag = ["is_visible", "is_protected"]
+        self._properties_object = ["source", "owner"]
+        self._properties = self._properties_flag + self._properties_object
 
         if data is None:
             return
@@ -204,7 +217,7 @@ class RelationshipManager:
             raise ValueError(f"{name} found a {type(data)} instead of a list")
 
         for item in data:
-            self.peers.append(RelatedNode(schema=schema, data=item))
+            self.peers.append(RelatedNode(name=name, schema=schema, data=item))
 
     def add(self, data: Union[str, RelatedNode, dict]):
         """Add a new peer to this relationship.
@@ -212,14 +225,10 @@ class RelationshipManager:
         """
 
         # TODO add some check to ensure
-        # that we are respecting the cardinality
         # that we are not adding a node that already exist
         self.peers.append(RelatedNode(schema=self.schema, data=data))
 
     def remove(self, data):
-        pass
-
-    async def fetch(self):
         pass
 
     def _generate_input_data(self) -> List[Dict]:
@@ -228,8 +237,10 @@ class RelationshipManager:
     def _generate_query_data(self) -> Dict:
         data = {"id": None, "display_label": None}
 
-        for prop_name in self._properties:
+        for prop_name in self._properties_flag:
             data[f"_relation__{prop_name}"] = None
+        for prop_name in self._properties_object:
+            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None}
 
         return data
 
@@ -400,9 +411,12 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
     async def init(cls, *args, **kwargs):
         return cls(*args, **kwargs)
 
-    async def create(self, kind: str, data: dict, branch: Optional[str] = None, **kwargs):
+    async def create(self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs):
         branch = branch or self.default_branch
         schema = await self.schema.get(kind=kind, branch=branch)
+
+        if not data and not kwargs:
+            raise ValueError("Either data or a list of keywords but be provided")
 
         return InfrahubNode(client=self, schema=schema, branch=branch, data=data or kwargs)
 
@@ -430,6 +444,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         node.validate_filters(filters=filters)
         query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
+        breakpoint()
         query = Query(query=query_data)
         response = await self.execute_graphql(
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
@@ -539,6 +554,8 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
+
+        # self.log.error(payload)
 
         if not self.test_client:
             retry = True

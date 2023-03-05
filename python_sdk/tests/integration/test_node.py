@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub_client import InfrahubClient, InfrahubNode
 
 # pylint: disable=unused-argument
@@ -27,7 +28,14 @@ class TestInfrahubNode:
         assert node.id is not None
 
     async def test_node_create_with_relationships(
-        self, session, client: InfrahubClient, init_db_base, tag_blue, tag_red, repo01, gqlquery01
+        self,
+        session,
+        client: InfrahubClient,
+        init_db_base,
+        tag_blue: Node,
+        tag_red: Node,
+        repo01: Node,
+        gqlquery01: Node,
     ):
         data = {
             "name": {"value": "rfile01"},
@@ -47,7 +55,44 @@ class TestInfrahubNode:
         querydb = await nodedb.query.get_peer(session=session)
         assert node.query.id == querydb.id
 
-    async def test_node_update(self, session, client: InfrahubClient, init_db_base, tag_blue, tag_red, repo01):
+    async def test_node_create_with_properties(
+        self,
+        session,
+        client: InfrahubClient,
+        init_db_base,
+        tag_blue: Node,
+        tag_red: Node,
+        repo01: Node,
+        gqlquery01: Node,
+        first_account: Node,
+    ):
+        data = {
+            "name": {"value": "rfile01", "is_protected": True, "source": first_account.id, "owner": first_account.id},
+            "template_path": {"value": "mytemplate.j2"},
+            "query": {"id": gqlquery01.id},  # "source": first_account.id, "owner": first_account.id},
+            "template_repository": {"id": repo01.id},  # "source": first_account.id, "owner": first_account.id},
+            "tags": [{"id": tag_blue.id}, tag_red.id],
+        }
+
+        node = await client.create(kind="RFile", data=data)
+        await node.save()
+
+        assert node.id is not None
+
+        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+        assert nodedb.name.value == node.name.value
+        assert nodedb.name.is_protected == True
+
+        # source = await nodedb.name.get_source(session=session)
+        # assert source is not None
+        # breakpoint()
+        # querydb = await nodedb.query.get(session=session)
+        # await querydb.get_peer(session=session)
+        # assert node.query.id == querydb.id
+
+    async def test_node_update(
+        self, session, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo01: Node
+    ):
         node = await client.get(kind="Repository", name__value="repo01")
         assert node.id is not None
 

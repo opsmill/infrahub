@@ -17,6 +17,9 @@ def convert_to_graphql_as_string(value) -> str:
         return f'"{value}"'
     if isinstance(value, bool):
         return repr(value).lower()
+    if isinstance(value, list):
+        values_as_string = [convert_to_graphql_as_string(item) for item in value]
+        return "[" + ", ".join(values_as_string) + "]"
 
     return value
 
