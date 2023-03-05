@@ -18,7 +18,7 @@ def format_black(context: Context):
     """Run black to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with black")
-    exec_cmd = f"black {MAIN_DIRECTORY}/"
+    exec_cmd = f"black {MAIN_DIRECTORY}/ models/"
     context.run(exec_cmd, pty=True)
 
 
