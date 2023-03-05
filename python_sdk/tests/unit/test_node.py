@@ -1,4 +1,4 @@
-from infrahub_client import InfrahubNode
+from infrahub_client import InfrahubNode, RelatedNode, RelationshipManager
 
 # pylint: disable=no-member
 
@@ -22,6 +22,28 @@ async def test_init_node_data(client, location_schema):
     assert node.type.value == "SITE"
 
 
+async def test_init_node_data_with_relationships(client, location_schema):
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+        "primary_tag": "pppppppp",
+        "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
+    }
+    node = InfrahubNode(client=client, schema=location_schema, data=data)
+
+    assert node.name.value == "JFK1"
+    assert node.name.is_protected is None
+    assert node.description.value == "JFK Airport"
+    assert node.type.value == "SITE"
+
+    assert isinstance(node.tags, RelationshipManager)
+    assert len(node.tags.peers) == 2
+    assert isinstance(node.tags.peers[0], RelatedNode)
+    assert isinstance(node.primary_tag, RelatedNode)
+    assert node.primary_tag.id == "pppppppp"
+
+
 async def test_generate_input_data(client, location_schema):
     data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
 
@@ -31,5 +53,25 @@ async def test_generate_input_data(client, location_schema):
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
             "type": {"value": "SITE"},
+        }
+    }
+
+
+async def test_generate_input_data__with_relationships(client, location_schema):
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+        "primary_tag": "pppppppp",
+        "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
+    }
+    node = InfrahubNode(client=client, schema=location_schema, data=data)
+    assert node._generate_input_data() == {
+        "data": {
+            "name": {"value": "JFK1"},
+            "description": {"value": "JFK Airport"},
+            "type": {"value": "SITE"},
+            "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
+            "primary_tag": {"id": "pppppppp"},
         }
     }

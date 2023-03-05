@@ -30,6 +30,7 @@ async def location_schema() -> NodeSchema:
         ],
         "relationships": [
             {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+            {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
         ],
     }
     return NodeSchema(**data)

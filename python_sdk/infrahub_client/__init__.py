@@ -34,7 +34,12 @@ from infrahub_client.queries import (
     QUERY_ALL_RFILES,
     QUERY_ALL_TRANSFORM_PYTHON,
 )
-from infrahub_client.schema import InfrahubSchema, NodeSchema
+from infrahub_client.schema import (
+    AttributeSchema,
+    InfrahubSchema,
+    NodeSchema,
+    RelationshipSchema,
+)
 from infrahub_client.timestamp import Timestamp
 
 # pylint: disable=redefined-builtin
@@ -100,7 +105,7 @@ class TransformPythonData(BaseModel):
 
 
 class Attribute:
-    def __init__(self, name: str, data: Union[Any, dict]):
+    def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):
         self.name = name
 
         if not isinstance(data, dict):
@@ -140,9 +145,116 @@ class Attribute:
         return data
 
 
-# class Relationship:
-#     def __init__(self, name, data):
-#         self.name = name
+class RelatedNode:
+    def __init__(self, schema: RelationshipSchema, data: Union[Any, dict], name: Optional[str] = None):
+        self.schema = schema
+        self.name = name
+
+        self._properties = ["is_visible", "is_protected"]
+        self.peer = None
+
+        if isinstance(data, InfrahubNode):
+            self.peer = data
+            data = {"id": self._peer.id}
+        elif not isinstance(data, dict):
+            data = {"id": data}
+
+        self.id: Optional[str] = data.get("id", None)
+        self.display_label = data.get("display_label", None)
+        self.is_visible: Optional[bool] = data.get("_relation__is_visible", None)
+        self.is_protected: Optional[bool] = data.get("_relation__is_protected", None)
+        self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
+
+        self.source: Optional[dict] = data.get("source", None)
+        self.owner: Optional[dict] = data.get("owner", None)
+
+    def _generate_input_data(self):
+        data = {}
+
+        if self.id is not None:
+            data["id"] = self.id
+
+        for prop_name in self._properties:
+            if prop := getattr(self, prop_name) is not None:
+                data[prop_name] = prop
+
+        return data
+
+    def _generate_query_data(self) -> Optional[Dict]:
+        data = {"id": None, "display_label": None}
+
+        for prop_name in self._properties:
+            data[f"_relation__{prop_name}"] = None
+
+        return data
+
+
+class RelationshipManager:
+    def __init__(self, name: str, schema: RelationshipSchema, data: Union[Any, dict]):
+        self.name = name
+        self.schema = schema
+        self.peers: List[RelatedNode] = []
+
+        self._properties = ["is_visible", "is_protected"]
+
+        if data is None:
+            return
+
+        if not isinstance(data, list):
+            raise ValueError(f"{name} found a {type(data)} instead of a list")
+
+        for item in data:
+            self.peers.append(RelatedNode(schema=schema, data=item))
+
+    def add(self, data: Union[str, RelatedNode, dict]):
+        """Add a new peer to this relationship.
+        Need to check if the peer is already present
+        """
+
+        # TODO add some check to ensure
+        # that we are respecting the cardinality
+        # that we are not adding a node that already exist
+        self.peers.append(RelatedNode(schema=self.schema, data=data))
+
+    def remove(self, data):
+        pass
+
+    async def fetch(self):
+        pass
+
+    def _generate_input_data(self) -> Optional[Dict]:
+        if self.schema.cardinality == "one" and self.peers:
+            return self.peers[0]._generate_input_data()
+
+        return [peer._generate_input_data() for peer in self.peers]
+
+    def _generate_query_data(self) -> Optional[Dict]:
+        data = {"id": None, "display_label": None}
+
+        for prop_name in self._properties:
+            data[f"_relation__{prop_name}"] = None
+
+        return data
+
+
+def generate_relationship_property(name):
+    """Return a property that stores values under a private non-public name."""
+    internal_name = "_" + name.lower()
+    external_name = name
+
+    @property
+    def prop(self):
+        return getattr(self, internal_name)
+
+    @prop.setter
+    def prop(self, value):
+        if isinstance(value, RelatedNode) or value is None:
+            setattr(self, internal_name, value)
+        else:
+            schema = [rel for rel in self.schema.relationships if rel.name == external_name][0]
+            setattr(self, internal_name, RelatedNode(name=external_name, schema=schema, data=value))
+
+    return prop
 
 
 class InfrahubNode:
@@ -160,8 +272,20 @@ class InfrahubNode:
         self._relationships = [item.name for item in self.schema.relationships]
 
         for attr_name in self._attributes:
+            attr_schema = [attr for attr in self.schema.attributes if attr.name == attr_name][0]
             attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
-            setattr(self, attr_name, Attribute(name=attr_name, data=attr_data))
+            setattr(self, attr_name, Attribute(name=attr_name, schema=attr_schema, data=attr_data))
+
+        for rel_name in self._relationships:
+            rel_schema = [rel for rel in self.schema.relationships if rel.name == rel_name][0]
+            rel_data = data.get(rel_name, None) if isinstance(data, dict) else None
+
+            if rel_schema.cardinality == "one":
+                setattr(self, f"_{rel_name}", None)
+                setattr(self.__class__, rel_name, generate_relationship_property(rel_name))
+                setattr(self, rel_name, rel_data)
+            else:
+                setattr(self, rel_name, RelationshipManager(name=rel_name, schema=rel_schema, data=rel_data))
 
     async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
@@ -202,11 +326,14 @@ class InfrahubNode:
             Dict[str, Dict]: Representation of an input data in dict format
         """
         data = {}
-        for attr_name in self._attributes:
-            attr: Attribute = getattr(self, attr_name)
-            attr_data = attr._generate_input_data()
-            if attr_data:
-                data[attr_name] = attr_data
+        for item_name in self._attributes + self._relationships:
+            item = getattr(self, item_name)
+            if item is None:
+                continue
+
+            item_data = item._generate_input_data()
+            if item_data:
+                data[item_name] = item_data
 
         return {"data": data}
 
@@ -439,7 +566,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         else:
             with self.test_client as client:
-                resp = client.post(url=url, json=payload)
+                resp = client.post(url=url, json=payload, headers=headers)
 
         response = resp.json()
 
@@ -479,17 +606,21 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             ServerNotReacheableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
-        async with httpx.AsyncClient() as client:
-            try:
-                return await client.get(
-                    url=url,
-                    headers=headers,
-                    timeout=timeout or self.default_timeout,
-                )
-            except httpx.ConnectError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
-            except httpx.ReadTimeout as exc:
-                raise ServerNotResponsiveError(url=url) from exc
+        if not self.test_client:
+            async with httpx.AsyncClient() as client:
+                try:
+                    return await client.get(
+                        url=url,
+                        headers=headers,
+                        timeout=timeout or self.default_timeout,
+                    )
+                except httpx.ConnectError as exc:
+                    raise ServerNotReacheableError(address=self.address) from exc
+                except httpx.ReadTimeout as exc:
+                    raise ServerNotResponsiveError(url=url) from exc
+        else:
+            with self.test_client as client:
+                return client.get(url=url, headers=headers)
 
     async def query_gql_query(
         self,
