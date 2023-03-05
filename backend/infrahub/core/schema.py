@@ -698,6 +698,7 @@ core_models = {
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
+                {"name": "label", "kind": "String", "optional": True},
                 {"name": "description", "kind": "String", "optional": True},
                 {
                     "name": "type",
