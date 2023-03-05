@@ -4,7 +4,7 @@ infrastructure_models = {
             "name": "device",
             "kind": "Device",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -35,7 +35,7 @@ infrastructure_models = {
         {
             "name": "interface",
             "kind": "Interface",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String"},
@@ -63,7 +63,7 @@ infrastructure_models = {
             "name": "ipaddress",
             "kind": "IPAddress",
             "default_filter": "address__value",
-            "display_label": ["label__value"],
+            "display_label": ["address__value"],
             "branch": True,
             "attributes": [
                 {"name": "address", "kind": "String"},
@@ -141,7 +141,7 @@ infrastructure_models = {
             "name": "bgp_peer_group",
             "kind": "BGPPeerGroup",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String"},
