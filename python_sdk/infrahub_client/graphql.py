@@ -13,9 +13,9 @@ VARIABLE_TYPE_MAPPING = (
 def convert_to_graphql_as_string(value) -> str:
     if isinstance(value, str) and value.startswith("$"):
         return value
-    elif isinstance(value, str):
+    if isinstance(value, str):
         return f'"{value}"'
-    elif isinstance(value, bool):
+    if isinstance(value, bool):
         return repr(value).lower()
 
     return value

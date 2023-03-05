@@ -105,7 +105,7 @@ class TransformPythonData(BaseModel):
 
 
 class Attribute:
-    def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):
+    def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):  # pylint: disable=unused-argument
         self.name = name
 
         if not isinstance(data, dict):
@@ -155,7 +155,7 @@ class RelatedNode:
 
         if isinstance(data, InfrahubNode):
             self.peer = data
-            data = {"id": self._peer.id}
+            data = {"id": self.peer.id}
         elif not isinstance(data, dict):
             data = {"id": data}
 
@@ -222,13 +222,10 @@ class RelationshipManager:
     async def fetch(self):
         pass
 
-    def _generate_input_data(self) -> Optional[Dict]:
-        if self.schema.cardinality == "one" and self.peers:
-            return self.peers[0]._generate_input_data()
-
+    def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
 
-    def _generate_query_data(self) -> Optional[Dict]:
+    def _generate_query_data(self) -> Dict:
         data = {"id": None, "display_label": None}
 
         for prop_name in self._properties:
@@ -267,7 +264,7 @@ class InfrahubNode:
 
         self.branch = branch or self.client.default_branch
 
-        self.id = data.get("id", None) if isinstance(data, dict) else None
+        self.id: Optional[str] = data.get("id", None) if isinstance(data, dict) else None
         self._attributes = [item.name for item in self.schema.attributes]
         self._relationships = [item.name for item in self.schema.relationships]
 
@@ -338,7 +335,7 @@ class InfrahubNode:
         return {"data": data}
 
     def generate_query_data(self, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Union[Any, Dict]]:
-        data = {"id": None, "display_label": None}
+        data: Dict[str, Any] = {"id": None, "display_label": None}
 
         if filters:
             data["@filters"] = filters

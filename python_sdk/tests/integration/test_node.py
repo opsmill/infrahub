@@ -51,9 +51,9 @@ class TestInfrahubNode:
         node = await client.get(kind="Repository", name__value="repo01")
         assert node.id is not None
 
-        node.name.value = "repo02"
-        node.tags.add(tag_blue.id)
-        node.tags.add(tag_red.id)
+        node.name.value = "repo02"  # type: ignore[attr-defined]
+        node.tags.add(tag_blue.id)  # type: ignore[attr-defined]
+        node.tags.add(tag_red.id)  # type: ignore[attr-defined]
         await node.save()
 
         nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
