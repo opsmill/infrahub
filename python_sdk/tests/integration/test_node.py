@@ -81,14 +81,7 @@ class TestInfrahubNode:
 
         nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
         assert nodedb.name.value == node.name.value
-        assert nodedb.name.is_protected == True
-
-        # source = await nodedb.name.get_source(session=session)
-        # assert source is not None
-        # breakpoint()
-        # querydb = await nodedb.query.get(session=session)
-        # await querydb.get_peer(session=session)
-        # assert node.query.id == querydb.id
+        assert nodedb.name.is_protected is True
 
     async def test_node_update(
         self, session, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo01: Node

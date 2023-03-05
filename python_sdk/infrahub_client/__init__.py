@@ -129,7 +129,7 @@ class Attribute:
         self.owner: Optional[str] = data.get("owner", None)
 
     def _generate_input_data(self) -> Optional[Dict]:
-        data = {}
+        data: Dict[str, Any] = {}
 
         if self.value is not None:
             data["value"] = self.value
@@ -141,7 +141,7 @@ class Attribute:
         return data
 
     def _generate_query_data(self) -> Optional[Dict]:
-        data = {"value": None}
+        data: Dict[str, Any] = {"value": None}
 
         for prop_name in self._properties_flag:
             data[prop_name] = None
@@ -190,7 +190,7 @@ class RelatedNode:
         return data
 
     def _generate_query_data(self) -> Optional[Dict]:
-        data = {"id": None, "display_label": None}
+        data: Dict[str, Any] = {"id": None, "display_label": None}
 
         for prop_name in self._properties_flag:
             data[f"_relation__{prop_name}"] = None
@@ -235,7 +235,7 @@ class RelationshipManager:
         return [peer._generate_input_data() for peer in self.peers]
 
     def _generate_query_data(self) -> Dict:
-        data = {"id": None, "display_label": None}
+        data: Dict[str, Any] = {"id": None, "display_label": None}
 
         for prop_name in self._properties_flag:
             data[f"_relation__{prop_name}"] = None

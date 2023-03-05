@@ -112,7 +112,7 @@ class TestInfrahubClient:
         nodes = await client.all(kind="Location")
         assert len(nodes) == 2
         assert isinstance(nodes[0], InfrahubNode)
-        assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]
+        assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]  # type: ignore[attr-defined]
 
     async def test_get_one(self, client: InfrahubClient, session, init_db_base):
         obj1 = await Node.init(schema="Location", session=session)
@@ -125,7 +125,7 @@ class TestInfrahubClient:
 
         node = await client.get(kind="Location", id=obj1.id)
         assert isinstance(node, InfrahubNode)
-        assert node.name.value == "jfk1"
+        assert node.name.value == "jfk1"  # type: ignore[attr-defined]
 
     async def test_query_rfiles(self, client: InfrahubClient, init_db_base, base_dataset):
         rfiles = await client.get_list_rfiles(branch_name="main")
