@@ -4,6 +4,7 @@ import pytest
 
 import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
+from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import get_db
 from infrahub_client.schema import NodeSchema
@@ -75,6 +76,55 @@ async def location_schema() -> NodeSchema:
         ],
         "relationships": [
             {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+            {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
         ],
     }
     return NodeSchema(**data)
+
+
+@pytest.fixture
+async def tag_blue(session):
+    obj = await Node.init(schema="Tag", session=session)
+    await obj.new(session=session, name="Blue")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def tag_red(session):
+    obj = await Node.init(schema="Tag", session=session)
+    await obj.new(session=session, name="Red")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def first_account(session):
+    obj = await Node.init(session=session, schema="Account")
+    await obj.new(session=session, name="First Account", type="Git")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def second_account(session):
+    obj = await Node.init(session=session, schema="Account")
+    await obj.new(session=session, name="Second Account", type="Git")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def repo01(session):
+    obj = await Node.init(session=session, schema="Repository")
+    await obj.new(session=session, name="repo01", location="https://github.com/my/repo.git")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def gqlquery01(session):
+    obj = await Node.init(session=session, schema="GraphQLQuery")
+    await obj.new(session=session, name="query01", query="query { device { name { value }}}")
+    await obj.save(session=session)
+    return obj
