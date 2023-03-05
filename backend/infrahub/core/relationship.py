@@ -141,7 +141,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
-        self._node = await NodeManager.get_one(session=session, id=self.node_id, branch=self.branch, at=self.at)
+        self._node = await NodeManager.get_one(
+            session=session, id=self.node_id, branch=self.branch, at=self.at, include_owner=True, include_source=True
+        )
 
         if self._node:
             return True
