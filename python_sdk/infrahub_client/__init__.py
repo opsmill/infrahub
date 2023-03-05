@@ -444,7 +444,6 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         node.validate_filters(filters=filters)
         query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
-        breakpoint()
         query = Query(query=query_data)
         response = await self.execute_graphql(
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
