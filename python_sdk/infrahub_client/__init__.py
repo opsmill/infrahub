@@ -338,7 +338,7 @@ class InfrahubNode:
         return {"data": data}
 
     def generate_query_data(self, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Union[Any, Dict]]:
-        data = {}
+        data = {"id": None, "display_label": None}
 
         if filters:
             data["@filters"] = filters
