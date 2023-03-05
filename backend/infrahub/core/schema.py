@@ -782,7 +782,7 @@ core_models = {
             "name": "repository",
             "kind": "Repository",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
