@@ -6,7 +6,7 @@ import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import get_db
+from infrahub.database import AsyncSession, get_db
 from infrahub_client.schema import NodeSchema
 
 TEST_DATABASE = "infrahub.testing"
@@ -50,14 +50,14 @@ async def session(db):
 
 
 @pytest.fixture(scope="module")
-async def init_db_infra(session):
+async def init_db_infra(session: AsyncSession):
     await delete_all_nodes(session=session)
     await first_time_initialization(session=session, load_infrastructure_models=True)
     await initialization(session=session)
 
 
 @pytest.fixture(scope="module")
-async def init_db_base(session):
+async def init_db_base(session: AsyncSession):
     await delete_all_nodes(session=session)
     await first_time_initialization(session=session, load_infrastructure_models=False)
     await initialization(session=session)
@@ -83,7 +83,7 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
-async def tag_blue(session):
+async def tag_blue(session: AsyncSession) -> Node:
     obj = await Node.init(schema="Tag", session=session)
     await obj.new(session=session, name="Blue")
     await obj.save(session=session)
@@ -91,7 +91,7 @@ async def tag_blue(session):
 
 
 @pytest.fixture
-async def tag_red(session):
+async def tag_red(session: AsyncSession) -> Node:
     obj = await Node.init(schema="Tag", session=session)
     await obj.new(session=session, name="Red")
     await obj.save(session=session)
@@ -99,7 +99,7 @@ async def tag_red(session):
 
 
 @pytest.fixture
-async def first_account(session):
+async def first_account(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="First Account", type="Git")
     await obj.save(session=session)
@@ -107,7 +107,7 @@ async def first_account(session):
 
 
 @pytest.fixture
-async def second_account(session):
+async def second_account(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="Second Account", type="Git")
     await obj.save(session=session)
@@ -115,7 +115,7 @@ async def second_account(session):
 
 
 @pytest.fixture
-async def repo01(session):
+async def repo01(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="Repository")
     await obj.new(session=session, name="repo01", location="https://github.com/my/repo.git")
     await obj.save(session=session)
@@ -123,7 +123,7 @@ async def repo01(session):
 
 
 @pytest.fixture
-async def gqlquery01(session):
+async def gqlquery01(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="GraphQLQuery")
     await obj.new(session=session, name="query01", query="query { device { name { value }}}")
     await obj.save(session=session)
