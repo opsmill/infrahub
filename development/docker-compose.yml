@@ -29,6 +29,7 @@ services:
       - infrahub-server
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+      - "INFRAHUB_ADDRESS=http://infrahub-server:8000"
     volumes:
       - ../:/source
       - "git_data:/opt/infrahub/git"

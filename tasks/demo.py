@@ -157,7 +157,7 @@ def status(context: Context):
 def load_data(context: Context):
     """Launch a bash shell inside the running Infrahub container."""
     context.run(
-        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-server infrahub db load-test-data --dataset dataset03",
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git infrahubctl run models/infrastructure_edge.py",
         pty=True,
     )
 

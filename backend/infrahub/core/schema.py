@@ -698,6 +698,7 @@ core_models = {
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
+                {"name": "label", "kind": "String", "optional": True},
                 {"name": "description", "kind": "String", "optional": True},
                 {
                     "name": "type",
@@ -782,7 +783,7 @@ core_models = {
             "name": "repository",
             "kind": "Repository",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [

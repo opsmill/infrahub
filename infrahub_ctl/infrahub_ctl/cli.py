@@ -1,7 +1,9 @@
+import importlib
 import logging
 import os
 import sys
 from asyncio import run as aiorun
+from pathlib import Path
 from typing import List, Optional
 
 import jinja2
@@ -12,6 +14,7 @@ from rich.logging import RichHandler
 
 # pylint: disable=import-outside-toplevel
 import infrahub_ctl.config as config
+from infrahub_client import InfrahubClient
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
 from infrahub_ctl.schema import app as schema
@@ -84,6 +87,31 @@ async def _render(
     print(template.render(**params_dict, **response))
 
 
+async def _run(
+    script: Path,
+    method: str,
+    log: logging.Logger,
+):
+    directory_name = os.path.dirname(script)
+    filename = os.path.basename(script)
+    module_name = os.path.splitext(filename)[0]
+
+    if directory_name not in sys.path:
+        sys.path.append(directory_name)
+
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        raise typer.Abort(f"Unable to Load the Python script at {script}") from exc
+
+    if not hasattr(module, method):
+        raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
+
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    func = getattr(module, method)
+    await func(client=client, log=log)
+
+
 @app.command()
 def render(
     rfile: str,
@@ -94,3 +122,23 @@ def render(
 ):
     """Render a local Jinja Template (RFile) for debugging purpose."""
     aiorun(_render(rfile=rfile, params=params, config_file=config_file, branch=branch, debug=debug))
+
+
+@app.command()
+def run(
+    script: Path,
+    method: str = "run",
+    debug: bool = False,
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+):
+    """Execute a script."""
+    config.load_and_exit(config_file=config_file)
+
+    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+
+    log_level = "DEBUG" if debug else "INFO"
+    FORMAT = "%(message)s"
+    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
+    log = logging.getLogger("infrahubctl")
+
+    aiorun(_run(script=script, method=method, log=log))

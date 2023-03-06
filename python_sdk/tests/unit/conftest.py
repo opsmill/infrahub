@@ -30,6 +30,36 @@ async def location_schema() -> NodeSchema:
         ],
         "relationships": [
             {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+            {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
+        ],
+    }
+    return NodeSchema(**data)
+
+
+@pytest.fixture
+async def rfile_schema() -> NodeSchema:
+    data = {
+        "name": "rfile",
+        "kind": "RFile",
+        "default_filter": "name__value",
+        "display_label": ["label__value"],
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+            {"name": "template_path", "kind": "String"},
+        ],
+        "relationships": [
+            {
+                "name": "template_repository",
+                "peer": "Repository",
+                "kind": "Attribute",
+                "identifier": "rfile_template_repository",
+                "cardinality": "one",
+                "optional": False,
+            },
+            {"name": "query", "peer": "GraphQLQuery", "kind": "Attribute", "cardinality": "one", "optional": False},
+            {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
         ],
     }
     return NodeSchema(**data)

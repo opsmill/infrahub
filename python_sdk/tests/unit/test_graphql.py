@@ -20,13 +20,25 @@ def query_data_no_filter():
 
 
 @pytest.fixture
-def query_data_filters():
+def query_data_filters_01():
     data = {
         "device": {
             "@filters": {"name__value": "$name"},
             "name": {"value": None},
             "description": {"value": None},
             "interfaces": {"@filters": {"enabled__value": "$enabled"}, "name": {"value": None}},
+        }
+    }
+    return data
+
+
+@pytest.fixture
+def query_data_filters_02():
+    data = {
+        "device": {
+            "@filters": {"name__value": "myname", "integer__value": 44},
+            "name": {"value": None},
+            "interfaces": {"@filters": {"enabled__value": True}, "name": {"value": None}},
         }
     }
     return data
@@ -155,8 +167,8 @@ query {
     assert query.render() == expected_query
 
 
-def test_query_rendering_with_vars(query_data_filters):
-    query = Query(query=query_data_filters, variables={"name": str, "enabled": bool})
+def test_query_rendering_with_filters_and_vars(query_data_filters_01):
+    query = Query(query=query_data_filters_01, variables={"name": str, "enabled": bool})
 
     expected_query = """
 query ($name: String!, $enabled: Boolean!) {
@@ -176,6 +188,26 @@ query ($name: String!, $enabled: Boolean!) {
 }
 """
     assert query.render_first_line() == "query ($name: String!, $enabled: Boolean!) {"
+    assert query.render() == expected_query
+
+
+def test_query_rendering_with_filters(query_data_filters_02):
+    query = Query(query=query_data_filters_02)
+
+    expected_query = """
+query {
+    device(name__value: "myname", integer__value: 44) {
+        name {
+            value
+        }
+        interfaces(enabled__value: true) {
+            name {
+                value
+            }
+        }
+    }
+}
+"""
     assert query.render() == expected_query
 
 
@@ -200,6 +232,49 @@ mutation {
             query: {
                 value: "my_query"
             }
+        }
+    ){
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+    assert query.render_first_line() == "mutation {"
+    assert query.render() == expected_query
+
+
+def test_mutation_rendering_many_relationships():
+    query_data = {"ok": None, "object": {"id": None}}
+    input_data = {
+        "data": {
+            "description": {"value": "JFK Airport"},
+            "name": {"value": "JFK1"},
+            "tags": [{"id": "b44c6a7d-3b9c-466a-b6e3-a547b0ecc965"}, {"id": "c5dffab1-e3f1-4039-9a1e-c0df1705d612"}],
+        }
+    }
+
+    query = Mutation(mutation="myobject_create", query=query_data, input_data=input_data)
+
+    expected_query = """
+mutation {
+    myobject_create(
+        data: {
+            description: {
+                value: "JFK Airport"
+            }
+            name: {
+                value: "JFK1"
+            }
+            tags: [
+                {
+                    id: "b44c6a7d-3b9c-466a-b6e3-a547b0ecc965"
+                },
+                {
+                    id: "c5dffab1-e3f1-4039-9a1e-c0df1705d612"
+                },
+            ]
         }
     ){
         ok

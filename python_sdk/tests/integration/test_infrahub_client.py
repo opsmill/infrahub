@@ -11,11 +11,15 @@ from infrahub_client import InfrahubClient, InfrahubNode
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
-    async def client(self):
+    async def test_client(self):
         # pylint: disable=import-outside-toplevel
         from infrahub.main import app
 
         return TestClient(app)
+
+    @pytest.fixture
+    async def client(self, test_client):
+        return await InfrahubClient.init(test_client=test_client)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):
@@ -64,20 +68,18 @@ class TestInfrahubClient:
         )
         await obj4.save(session=session)
 
-    async def test_query_branches(self, client, init_db_base, base_dataset):
-        ifc = await InfrahubClient.init(test_client=client)
-        branches = await ifc.branch.all()
+    async def test_query_branches(self, client: InfrahubClient, init_db_base, base_dataset):
+        branches = await client.branch.all()
 
         assert "main" in branches
         assert "branch01" in branches
 
-    async def test_query_graphql_queries(self, client, init_db_base, base_dataset):
-        ifc = await InfrahubClient.init(test_client=client)
-        queries = await ifc.get_list_graphql_queries(branch_name="main")
+    async def test_query_graphql_queries(self, client: InfrahubClient, init_db_base, base_dataset):
+        queries = await client.get_list_graphql_queries(branch_name="main")
 
         assert "test_query2" in queries
 
-    async def test_create_graphql_query_main(self, client, session, init_db_base, base_dataset):
+    async def test_create_graphql_query_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
         query_string = """
         query {
             branch {
@@ -93,13 +95,12 @@ class TestInfrahubClient:
 
         assert len(queries) == 1
 
-        ifc = await InfrahubClient.init(test_client=client)
-        await ifc.create_graphql_query(branch_name=branch_name, name="test_query", query=query_string)
+        await client.create_graphql_query(branch_name=branch_name, name="test_query", query=query_string)
 
         queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
         assert len(queries) == 2
 
-    async def test_get_all(self, client, session, init_db_base):
+    async def test_get_all(self, client: InfrahubClient, session, init_db_base):
         obj1 = await Node.init(schema="Location", session=session)
         await obj1.new(session=session, name="jfk1", description="new york", type="site")
         await obj1.save(session=session)
@@ -108,19 +109,30 @@ class TestInfrahubClient:
         await obj2.new(session=session, name="sfo1", description="san francisco", type="site")
         await obj2.save(session=session)
 
-        ifc = await InfrahubClient.init(test_client=client)
-        nodes = await ifc.all(kind="Location")
+        nodes = await client.all(kind="Location")
         assert len(nodes) == 2
         assert isinstance(nodes[0], InfrahubNode)
-        assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]
+        assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]  # type: ignore[attr-defined]
 
-    async def test_query_rfiles(self, client, init_db_base, base_dataset):
-        ifc = await InfrahubClient.init(test_client=client)
-        rfiles = await ifc.get_list_rfiles(branch_name="main")
+    async def test_get_one(self, client: InfrahubClient, session, init_db_base):
+        obj1 = await Node.init(schema="Location", session=session)
+        await obj1.new(session=session, name="jfk1", description="new york", type="site")
+        await obj1.save(session=session)
+
+        obj2 = await Node.init(schema="Location", session=session)
+        await obj2.new(session=session, name="sfo1", description="san francisco", type="site")
+        await obj2.save(session=session)
+
+        node = await client.get(kind="Location", id=obj1.id)
+        assert isinstance(node, InfrahubNode)
+        assert node.name.value == "jfk1"  # type: ignore[attr-defined]
+
+    async def test_query_rfiles(self, client: InfrahubClient, init_db_base, base_dataset):
+        rfiles = await client.get_list_rfiles(branch_name="main")
 
         assert "rfile1" in rfiles
 
-    async def test_create_rfile_main(self, client, session, init_db_base, base_dataset):
+    async def test_create_rfile_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
         branch_name = "main"
 
         rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
@@ -129,8 +141,7 @@ class TestInfrahubClient:
 
         assert len(rfiles) == 1
 
-        ifc = await InfrahubClient.init(test_client=client)
-        await ifc.create_rfile(
+        await client.create_rfile(
             branch_name=branch_name,
             name="rfile1",
             description="test rfile2",
@@ -142,13 +153,12 @@ class TestInfrahubClient:
         rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
         assert len(rfiles) == 2
 
-    async def test_query_transform_python(self, client, init_db_base, base_dataset):
-        ifc = await InfrahubClient.init(test_client=client)
-        transforms = await ifc.get_list_transform_python(branch_name="main")
+    async def test_query_transform_python(self, client: InfrahubClient, init_db_base, base_dataset):
+        transforms = await client.get_list_transform_python(branch_name="main")
 
         assert "transform01" in transforms
 
-    async def test_create_transform_python_main(self, client, session, init_db_base, base_dataset):
+    async def test_create_transform_python_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
         branch_name = "main"
 
         transforms = await NodeManager.query("TransformPython", branch=branch_name, session=session)
@@ -157,8 +167,7 @@ class TestInfrahubClient:
 
         assert len(transforms) == 1
 
-        ifc = await InfrahubClient.init(test_client=client)
-        await ifc.create_transform_python(
+        await client.create_transform_python(
             branch_name=branch_name,
             name="transform02",
             description="test fransform02",

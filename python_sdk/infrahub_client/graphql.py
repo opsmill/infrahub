@@ -10,6 +10,20 @@ VARIABLE_TYPE_MAPPING = (
 )
 
 
+def convert_to_graphql_as_string(value) -> str:
+    if isinstance(value, str) and value.startswith("$"):
+        return value
+    if isinstance(value, str):
+        return f'"{value}"'
+    if isinstance(value, bool):
+        return repr(value).lower()
+    if isinstance(value, list):
+        values_as_string = [convert_to_graphql_as_string(item) for item in value]
+        return "[" + ", ".join(values_as_string) + "]"
+
+    return value
+
+
 def render_variables_to_string(data: Dict[str, type[Union[str, int, float, bool]]]) -> str:
     """Render a dict into a variable string that will be used in a GraphQL Query.
 
@@ -37,7 +51,9 @@ def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
             lines.append(f"{offset_str}{key}")
         elif isinstance(value, dict):
             if "@filters" in value:
-                filters_str = ", ".join([f"{key}: {value}" for key, value in value[FILTERS_KEY].items()])
+                filters_str = ", ".join(
+                    [f"{key}: {convert_to_graphql_as_string(value)}" for key, value in value[FILTERS_KEY].items()]
+                )
                 lines.append(f"{offset_str}{key}({filters_str}) " + "{")
             else:
                 lines.append(f"{offset_str}{key} " + "{")
@@ -56,16 +72,19 @@ def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
             lines.append(f"{offset_str}{key}: " + "{")
             lines.extend(render_input_block(data=value, offset=offset + indentation, indentation=indentation))
             lines.append(offset_str + "}")
+        elif isinstance(value, list):
+            lines.append(f"{offset_str}{key}: " + "[")
+            for item in value:
+                if isinstance(item, dict):
+                    lines.append(f"{offset_str}{' '*indentation}" + "{")
+                lines.extend(
+                    render_input_block(data=item, offset=offset + indentation + indentation, indentation=indentation)
+                )
+                if isinstance(item, dict):
+                    lines.append(f"{offset_str}{' '*indentation}" + "},")
+            lines.append(offset_str + "]")
         else:
-            value_str = value
-            if isinstance(value, str) and value.startswith("$"):
-                value_str = value
-            elif isinstance(value, str):
-                value_str = f'"{value}"'
-            elif isinstance(value, bool):
-                value_str = repr(value).lower()
-
-            lines.append(f"{offset_str}{key}: {value_str}")
+            lines.append(f"{offset_str}{key}: {convert_to_graphql_as_string(value)}")
     return lines
 
 
