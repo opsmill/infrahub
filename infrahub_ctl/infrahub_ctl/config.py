@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     server_address: str = "http://localhost:8000"
     api_key: Optional[str]
 
+    class Config:
+        """Additional parameters to automatically map environment variable to some settings."""
+
+        fields = {
+            "server_address": {"env": "INFRAHUB_ADDRESS"},
+            "api_key": {"env": "INFRAHUB_API_KEY"},
+        }
+
 
 def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None):
     """Load configuration.
