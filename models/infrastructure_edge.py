@@ -1,19 +1,15 @@
-import typer
-from asyncio import run as aiorun
 import copy
 import logging
 import uuid
+from asyncio import run as aiorun
 from collections import defaultdict
 from ipaddress import IPv4Network
 from typing import Dict, List
 
-from rich.console import Console
-from neo4j import AsyncSession
+import typer
+from rich.logging import RichHandler
 
 from infrahub_client import InfrahubClient, InfrahubNode
-
-# from infrahub.core.manager import NodeManager
-# from infrahub.core.node import Node
 
 # flake8: noqa
 # pylint: skip-file
@@ -114,6 +110,7 @@ INTERFACE_OBJS: Dict[str, List[InfrahubNode]] = defaultdict(list)
 
 ACCOUNTS = (
     ("pop-builder", "Script", ("operator",)),
+    ("CRM Synchronization", "Script", ("operator",)),
     ("Jack Bauer", "User", ("operator",)),
     ("Chloe O'Brian", "User", ("operator",)),
     ("David Palmer", "User", ("operator",)),
@@ -136,9 +133,15 @@ def load_data():
 
 
 async def _load_data():
-    console = Console()
+    FORMAT = "%(message)s"
+    logging.basicConfig(level="DEBUG", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
+    log = logging.getLogger()
     client = await InfrahubClient.init(insert_tracker=True)
 
+    await run(client=client, log=log)
+
+
+async def run(client: InfrahubClient, log: logging.Logger):
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
@@ -157,10 +160,11 @@ async def _load_data():
         await obj.save()
         accounts_dict[account[0]] = obj
 
-        print(f"Account Created: {obj.name.value}")
+        log.info(f"Account Created: {obj.name.value}")
 
     account_pop = accounts_dict["pop-builder"]
     account_cloe = accounts_dict["Chloe O'Brian"]
+    account_crm = accounts_dict["CRM Synchronization"]
 
     for org in ORGANIZATIONS:
         obj = await client.create(kind="Organization", data={"name": {"value": org[0], "is_protected": True}})
@@ -178,7 +182,7 @@ async def _load_data():
 
         asn_dict[org[0]] = asn
         orgs_dict[org[0]] = obj
-        console.print(f"Organization Created: {obj.name.value} | {asn.asn.value}")
+        log.info(f"Organization Created: {obj.name.value} | {asn.asn.value}")
 
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
@@ -188,49 +192,54 @@ async def _load_data():
 
         obj = await client.create(
             kind="BGPPeerGroup",
-            name=peer_group[0],
-            import_policies=peer_group[1],
-            export_policies=peer_group[2],
+            name={"value": peer_group[0], "source": account_pop.id},
+            import_policies={"value": peer_group[1], "source": account_pop.id},
+            export_policies={"value": peer_group[2], "source": account_pop.id},
             local_as=asn_dict.get(peer_group[3]).id,
             remote_as=remote_as_id,
         )
         await obj.save()
 
         peer_group_dict[peer_group[0]] = obj
-        console.print(f"Peer Group Created: {obj.name.value}")
+        log.info(f"Peer Group Created: {obj.name.value}")
 
     # ------------------------------------------
     # Create Status, Role & DeviceProfile
     # ------------------------------------------
 
-    console.print("Creating Roles, Status & Tag")
+    log.info("Creating Roles, Status & Tag")
     for role in DEVICE_ROLES + INTF_ROLES:
-        obj = await client.create(kind="Role", description=role.title(), name=role)
+        obj = await client.create(kind="Role", name={"value": role, "source": account_pop.id})
         await obj.save()
         roles_dict[role] = obj
-        console.print(f" Created Role: {role}")
+        log.info(f" Created Role: {role}")
 
     for status in STATUSES:
-        obj = await client.create(kind="Status", description=status.title(), name=status)
+        obj = await client.create(kind="Status", name={"value": status, "source": account_pop.id})
         await obj.save()
         statuses_dict[status] = obj
-        console.print(f" Created Status: {status}")
+        log.info(f" Created Status: {status}")
 
     for tag in TAGS:
-        obj = await client.create(kind="Tag", name=tag)
+        obj = await client.create(kind="Tag", name={"value": tag, "source": account_pop.id})
         await obj.save()
         tags_dict[tag] = obj
-        console.print(f" Created Tag: {tag}")
+        log.info(f" Created Tag: {tag}")
 
     active_status = statuses_dict["active"]
     internal_as = asn_dict["Duff"]
 
-    console.print("Creating Site & Device")
+    log.info("Creating Site & Device")
 
+    # { "value": role, "source": account_pop.id },
     for site_idx, site_name in enumerate(SITES):
-        site = await client.create(kind="Location", name=site_name, type="SITE")
+        site = await client.create(
+            kind="Location",
+            name={"value": site_name, "is_protected": True, "source": account_crm.id},
+            type={"value": "SITE", "is_protected": True, "source": account_crm.id},
+        )
         await site.save()
-        console.print(f"Created Site: {site_name}")
+        log.info(f"Created Site: {site_name}")
 
         # site_networks = next(NETWORKS_POOL_INTERNAL).subnets(new_prefix=24)
         peer_networks = {
@@ -252,24 +261,23 @@ async def _load_data():
             obj = await client.create(
                 kind="Device",
                 site=site.id,
-                name=device_name,
+                name={"value": device_name, "source": account_pop.id},
                 status=status_id,
-                type=device[2],
+                type={"value": device[2], "source": account_pop.id},
                 role=role_id,
-                # source=pop_builder_account,
                 asn=asn_dict["Duff"].id,
                 tags=[tags_dict[tag_name].id for tag_name in device[5]],
             )
             await obj.save()
 
             device_dict[device_name] = obj
-            console.print(f"- Created Device: {device_name}")
+            log.info(f"- Created Device: {device_name}")
 
             # Loopback Interface
             intf = await client.create(
                 kind="Interface",
                 device=obj.id,
-                name="Loopback0",
+                name={"value": "Loopback0", "source": account_pop.id, "is_protected": True},
                 enabled=True,
                 status=active_status.id,
                 role=roles_dict["loopback"].id,
@@ -278,7 +286,11 @@ async def _load_data():
             )
             await intf.save()
 
-            ip = await client.create(kind="IPAddress", interface=intf.id, address=f"{str(next(LOOPBACK_POOL))}/32")
+            ip = await client.create(
+                kind="IPAddress",
+                interface=intf.id,
+                address={"value": f"{str(next(LOOPBACK_POOL))}/32", "source": account_pop.id},
+            )
             await ip.save()
 
             loopback_ip_dict[device_name] = ip
@@ -341,8 +353,7 @@ async def _load_data():
                 ip = await client.create(
                     kind="IPAddress",
                     interface=intf.id,
-                    address=address,
-                    # source=pop_builder_account
+                    address={"value": address, "source": account_pop.id},
                 )
                 await ip.save()
 
@@ -363,7 +374,6 @@ async def _load_data():
                         circuit_id=circuit_id,
                         vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
                         provider=provider.id,
-                        # type=intf_role.upper(),
                         status=active_status.id,
                         role=roles_dict[intf_role].id,
                     )
@@ -403,7 +413,7 @@ async def _load_data():
                         )
                         await bgp_session.save()
 
-                        console.print(
+                        log.info(
                             f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                         )
 
@@ -419,9 +429,7 @@ async def _load_data():
             intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
             await intf2.save()
 
-            console.print(
-                f"Connected  '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'"
-            )
+            log.info(f"Connected  '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # CREATE iBGP SESSION
