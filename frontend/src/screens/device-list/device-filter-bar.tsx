@@ -2,10 +2,14 @@ import { Fragment } from "react";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { ChevronDownIcon, FunnelIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../App";
-import FilterBranch from "./filters/filter-branch";
-import FilterTime from "./filters/filter-time";
-import FilterTags from "./filters/filter-tags";
-import FilterStatus from "./filters/filter-status";
+import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
+import { useAtom } from "jotai";
+import FilterCombobox from "../filters/filter-combobox";
+import { iNodeSchema } from "../../state/atoms/schema.atom";
+import FilterTextField from "../filters/filter-textfield";
+import FilterComboEnum from "../filters/filter-enum";
+
+const comboBoxFilters = ["status", "device", "interface", "tag", "role"];
 
 const sortOptions = [
   { name: "Name", href: "#", current: true },
@@ -13,16 +17,15 @@ const sortOptions = [
   { name: "ASN", href: "#", current: false },
 ];
 
-const activeFilters = [
-  { value: "status", label: "Active" },
-  { value: "role", label: "Edge" },
-];
+interface Props {
+  schema: iNodeSchema;
+}
 
-export default function DeviceFilterBar() {
+export default function DeviceFilterBar(props: Props) {
+  const [currentFilters, setCurrentFilters] = useAtom(comboxBoxFilterState);
   return (
     <div className="bg-white">
-      <Disclosure
-        as="section"
+      <div
         aria-labelledby="filter-heading"
         className="grid items-center border-t border-b border-gray-200"
       >
@@ -33,16 +36,20 @@ export default function DeviceFilterBar() {
           <div className="mx-auto py-3 sm:flex sm:items-center sm:px-6 lg:px-8">
             <div className="flex space-x-6 divide-x divide-gray-200 text-sm">
               <div>
-                <Disclosure.Button className="group flex items-center font-medium text-blue-500">
+                <div className="group flex items-center font-medium text-blue-500">
                   <FunnelIcon
                     className="mr-2 h-5 w-5 flex-none text-blue-400 group-hover:text-blue-500"
                     aria-hidden="true"
                   />
-                  2 Filters
-                </Disclosure.Button>
+                  {currentFilters.length} Filters
+                </div>
               </div>
               <div className="pl-6">
-                <button type="button" className="text-gray-500">
+                <button
+                  onClick={() => setCurrentFilters([])}
+                  type="button"
+                  className="text-gray-500"
+                >
                   Clear all
                 </button>
               </div>
@@ -54,18 +61,23 @@ export default function DeviceFilterBar() {
 
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
-                {activeFilters.map((activeFilter) => (
+                {currentFilters.map((filter) => (
                   <span
-                    key={activeFilter.value}
+                    key={filter.name}
                     className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900"
                   >
-                    <span>{activeFilter.label}</span>
+                    <span>{filter.display_label}</span>
                     <button
                       type="button"
+                      onClick={() =>
+                        setCurrentFilters(
+                          currentFilters.filter((row) => row !== filter)
+                        )
+                      }
                       className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
                     >
                       <span className="sr-only">
-                        Remove filter for {activeFilter.label}
+                        Remove filter for {filter.display_label}
                       </span>
                       <svg
                         className="h-2 w-2"
@@ -133,64 +145,29 @@ export default function DeviceFilterBar() {
             </div>
           </div>
         </div>
-        <Disclosure.Panel className="border-t border-gray-200 pb-10">
+        <div className="border-t border-gray-200 pb-10">
           <div className="mx-auto max-w-7xl px-4 text-sm sm:px-6">
-            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-6">
-              <div className="sm:col-span-2">
-                <FilterBranch />
-              </div>
-
-              <div className="sm:col-span-2">
-                <FilterTime />
-              </div>
-
-              <div className="sm:col-span-2">
-                <FilterTags />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="asn"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  ASN
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="asn"
-                    id="asn"
-                    autoComplete="address-level2"
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="site"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Site
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="site"
-                    id="site"
-                    autoComplete="site"
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <FilterStatus />
-              </div>
+            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {props.schema.filters
+                ?.map((filter) => {
+                  if (filter.kind === "Object") {
+                    return <FilterCombobox filter={filter} key={filter.name} />;
+                  } else if (filter.kind === "String" && !filter.enum) {
+                    return (
+                      <FilterTextField filter={filter} key={filter.name} />
+                    );
+                  } else {
+                    if(filter.kind === "String" && filter.enum) {
+                      return (
+                        <FilterComboEnum filter={filter} key={filter.name} />
+                      );
+                    }
+                  }
+                })}
             </div>
           </div>
-        </Disclosure.Panel>
-      </Disclosure>
+        </div>
+      </div>
     </div>
   );
 }

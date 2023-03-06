@@ -89,7 +89,6 @@ export default function DeviceList() {
           <DeviceFilters />
         </div>
       </div>
-      <DeviceFilterBar />
       <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8">
         <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
           <div className="inline-block min-w-full pt-2 align-middle">

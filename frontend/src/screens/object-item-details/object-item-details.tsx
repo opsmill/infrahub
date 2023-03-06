@@ -12,6 +12,7 @@ import { branchState } from "../../state/atoms/branch.atom";
 import NoDataFound from "../no-data-found/no-data-found";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { CheckIcon } from "@heroicons/react/24/outline";
+import { classNames } from "../../App";
 
 declare var Handlebars: any;
 
@@ -40,6 +41,7 @@ export default function ObjectItemDetails() {
   const [date] = useAtom(timeState);
   const [branch] = useAtom(branchState);
   const [schemaKindName] = useAtom(schemaKindNameState);
+  const [selectedTab, setSelectedTab] = useState<string | undefined>();
 
   const [objectRows, setObjectRows] = useState<any[] | undefined>();
   const [schemaList] = useAtom(schemaState);
@@ -52,6 +54,7 @@ export default function ObjectItemDetails() {
       setHasError(false);
       setIsLoading(true);
       setObjectRows(undefined);
+      setSelectedTab(undefined);
       const queryString = template({
         ...schema,
         objectid,
@@ -87,13 +90,6 @@ export default function ObjectItemDetails() {
     return <NoDataFound />;
   }
 
-  let columns: string[] = [];
-
-  if (objectRows && objectRows.length) {
-    const firstRow = objectRows[0];
-    columns = Object.keys(firstRow);
-  }
-
   return (
     <div className="bg-white flex-1 overflow-auto">
       <div className="px-4 py-5 sm:px-6 flex items-center">
@@ -111,76 +107,169 @@ export default function ObjectItemDetails() {
         />
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{row.id}</p>
       </div>
-      <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-        <dl className="sm:divide-y sm:divide-gray-200">
-          <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">ID</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-              {row.id}
-            </dd>
+      <div>
+        <div>
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
+              <div
+                onClick={() => setSelectedTab(undefined)}
+                className={classNames(
+                  !selectedTab
+                    ? "border-indigo-500 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                  "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
+                )}
+              >
+                {schema.label}
+              </div>
+              {schema.relationships
+                ?.filter((relationship) => relationship.kind !== "Attribute")
+                .map((relationship, index) => (
+                  <div
+                    key={relationship.name}
+                    onClick={() => setSelectedTab(relationship.name)}
+                    className={classNames(
+                      selectedTab && selectedTab === relationship.name
+                        ? "border-indigo-500 text-indigo-600"
+                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                      "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
+                    )}
+                  >
+                    {relationship.label}
+                  </div>
+                ))}
+            </nav>
           </div>
-          {schema.attributes?.map((attribute) => (
-            <div
-              className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
-              key={attribute.name}
-            >
-              <dt className="text-sm font-medium text-gray-500">
-                {attribute.name}
-              </dt>
-              {row[attribute.name] && (
-                <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {row[attribute.name].value || "-"}
-                  {row[attribute.name].value === true && (
-                    <CheckIcon className="h-4 w-4" />
-                  )}
-                </dd>
-              )}
+        </div>
+      </div>
+      {!selectedTab && (
+        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl className="sm:divide-y sm:divide-gray-200">
+            <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">ID</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                {row.id}
+              </dd>
             </div>
-          ))}
-          {schema.relationships?.map((relationship) => (
-            <div
-              className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
-              key={relationship.name}
-            >
-              <dt className="text-sm font-medium text-gray-500">
-                {relationship.name}
-              </dt>
-              {row[relationship.name] && (
-                <>
-                  {relationship.cardinality === "one" && (
-                    <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline">
-                      <Link
-                        to={`/objects/${schemaKindName[relationship.peer]}/${
-                          row[relationship.name].id
-                        }`}
-                      >
-                        {row[relationship.name].display_label}
-                      </Link>
-                    </dd>
-                  )}
-                  {relationship.cardinality === "many" && (
-                    <div className="sm:col-span-2 space-y-4">
-                      {row[relationship.name].map((item: any) => (
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 underline">
+            {schema.attributes?.map((attribute) => (
+              <div
+                className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
+                key={attribute.name}
+              >
+                <dt className="text-sm font-medium text-gray-500">
+                  {attribute.label}
+                </dt>
+                {row[attribute.name] && (
+                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                    {row[attribute.name].value || "-"}
+                    {row[attribute.name].value === true && (
+                      <CheckIcon className="h-4 w-4" />
+                    )}
+                  </dd>
+                )}
+              </div>
+            ))}
+            {schema.relationships
+              ?.filter((relationship) => relationship.kind === "Attribute")
+              .map((relationship) => (
+                <div
+                  className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
+                  key={relationship.name}
+                >
+                  <dt className="text-sm font-medium text-gray-500">
+                    {relationship.label}
+                  </dt>
+                  {row[relationship.name] && (
+                    <>
+                      {relationship.cardinality === "one" && (
+                        <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline">
                           <Link
-                            key={item.id}
                             to={`/objects/${
                               schemaKindName[relationship.peer]
-                            }/${item.id}`}
+                            }/${row[relationship.name].id}`}
                           >
-                            {item.display_label}
+                            {row[relationship.name].id}
                           </Link>
                         </dd>
-                      ))}
-                    </div>
+                      )}
+                      {relationship.cardinality === "many" && (
+                        <div className="sm:col-span-2 space-y-4">
+                          {row[relationship.name].map((item: any) => (
+                            <dd
+                              className="mt-1 text-sm text-gray-900 sm:mt-0 underline"
+                              key={item.id}
+                            >
+                              <Link
+                                to={`/objects/${
+                                  schemaKindName[relationship.peer]
+                                }/${item.id}`}
+                              >
+                                {item.id}
+                              </Link>
+                            </dd>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
-              {!row[relationship.name] && <>-</>}
-            </div>
-          ))}
-        </dl>
-      </div>
+                  {!row[relationship.name] && <>-</>}
+                </div>
+              ))}
+          </dl>
+        </div>
+      )}
+      {selectedTab && (
+        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl className="sm:divide-y sm:divide-gray-200">
+            {schema.relationships
+              ?.filter((relationship) => relationship.name === selectedTab)
+              .map((relationship) => (
+                <div
+                  className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
+                  key={relationship.name}
+                >
+                  <dt className="text-sm font-medium text-gray-500">
+                    {relationship.label}
+                  </dt>
+                  {row[relationship.name] && (
+                    <>
+                      {relationship.cardinality === "one" && (
+                        <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline">
+                          <Link
+                            to={`/objects/${
+                              schemaKindName[relationship.peer]
+                            }/${row[relationship.name].id}`}
+                          >
+                            {row[relationship.name].display_label}
+                          </Link>
+                        </dd>
+                      )}
+                      {relationship.cardinality === "many" && (
+                        <div className="sm:col-span-2 space-y-4">
+                          {row[relationship.name].map((item: any) => (
+                            <dd
+                              className="mt-1 text-sm text-gray-900 sm:mt-0 underline"
+                              key={item.id}
+                            >
+                              <Link
+                                to={`/objects/${
+                                  schemaKindName[relationship.peer]
+                                }/${item.id}`}
+                              >
+                                {item.display_label}
+                              </Link>
+                            </dd>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {!row[relationship.name] && <>-</>}
+                </div>
+              ))}
+          </dl>
+        </div>
+      )}
     </div>
   );
 }
