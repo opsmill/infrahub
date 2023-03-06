@@ -1,0 +1,37 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve Infrahub
+title: 'bug: '
+body:
+  - type: checkboxes
+    attributes:
+      label: Component
+      description: Please indicate which component this bug is associated with (leave blanc if unknown)
+      options:
+        - label: Frontend UI
+        - label: API Server / GraphQL
+        - label: Git Integration
+        - label: Python SDK
+        - label: infrahubctl CLI
+        - label: Not Sure
+  - type: textarea
+    attributes:
+      label: Current Behavior
+      description: A clear description of what the bug is and how it manifests.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: A clear description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Please explain the steps required to duplicate this issue.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional Information
+      description: List any other information that is relevant to your issue. Stack traces, related issues, suggestions on how to fix, Stack Overflow links, forum links, etc.
