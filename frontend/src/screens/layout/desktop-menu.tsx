@@ -3,6 +3,7 @@ import { LinkIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Link, NavLink } from "react-router-dom";
 import { classNames } from "../../App";
+import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import LoadingScreen from "../loading-screen/loading-screen";
 
@@ -10,6 +11,7 @@ import logo from "./logo.png";
 
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
+  const [, setCurrentFilters] = useAtom(comboxBoxFilterState);
   return (
     <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col z-20">
       <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-white pt-5">
@@ -47,7 +49,11 @@ export default function DesktopMenu() {
                   </Disclosure.Button>
                   <Disclosure.Panel className="space-y-1">
                     {schema.map((item) => (
-                      <NavLink to={`/objects/${item.name}`} key={item.name}>
+                      <NavLink
+                        to={`/objects/${item.name}`}
+                        key={item.name}
+                        onClick={() => setCurrentFilters([])}
+                      >
                         {({ isActive }) => (
                           <div
                             key={item.name}

@@ -72,11 +72,20 @@ export interface components {
     FilterSchema: {
       /** Name */
       name: string;
-      /** Kind */
-      kind: string;
+      kind: components["schemas"]["FilterSchemaKind"];
+      /** Enum */
+      enum?: (Record<string, never>)[];
+      /** Object Kind */
+      object_kind?: string;
       /** Description */
       description?: string;
     };
+    /**
+     * FilterSchemaKind 
+     * @description An enumeration. 
+     * @enum {string}
+     */
+    FilterSchemaKind: "String" | "Integer" | "Boolean" | "Object" | "MultiObject" | "Enum";
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -86,10 +95,7 @@ export interface components {
     NodeSchema: {
       /** Name */
       name: string;
-      /**
-       * Kind 
-       * @description Define the kind of the object (only alphanumeric characters are allowed, must start with an uppercase)
-       */
+      /** Kind */
       kind: string;
       /** Description */
       description?: string;
@@ -110,6 +116,8 @@ export interface components {
       branch?: boolean;
       /** Default Filter */
       default_filter?: string;
+      /** Display Label */
+      display_label?: (string)[];
       /** Filters */
       filters?: (components["schemas"]["FilterSchema"])[];
     };
