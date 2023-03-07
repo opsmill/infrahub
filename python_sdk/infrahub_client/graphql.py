@@ -21,7 +21,7 @@ def convert_to_graphql_as_string(value) -> str:
         values_as_string = [convert_to_graphql_as_string(item) for item in value]
         return "[" + ", ".join(values_as_string) + "]"
 
-    return value
+    return str(value)
 
 
 def render_variables_to_string(data: Dict[str, type[Union[str, int, float, bool]]]) -> str:
@@ -77,11 +77,14 @@ def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
             for item in value:
                 if isinstance(item, dict):
                     lines.append(f"{offset_str}{' '*indentation}" + "{")
-                lines.extend(
-                    render_input_block(data=item, offset=offset + indentation + indentation, indentation=indentation)
-                )
-                if isinstance(item, dict):
+                    lines.extend(
+                        render_input_block(
+                            data=item, offset=offset + indentation + indentation, indentation=indentation
+                        )
+                    )
                     lines.append(f"{offset_str}{' '*indentation}" + "},")
+                else:
+                    lines.append(f"{offset_str}{' '*indentation}{convert_to_graphql_as_string(item)},")
             lines.append(offset_str + "]")
         else:
             lines.append(f"{offset_str}{key}: {convert_to_graphql_as_string(value)}")

@@ -51,6 +51,7 @@ def input_data_01():
             "name": {"value": "$name"},
             "some_number": {"value": 88},
             "some_bool": {"value": True},
+            "some_list": {"value": ["value1", 33]},
             "query": {"value": "my_query"},
         }
     }
@@ -114,6 +115,12 @@ def test_render_input_block(input_data_01):
         "        some_bool: {",
         "            value: true",
         "        }",
+        "        some_list: {",
+        "            value: [",
+        '                "value1",',
+        "                33,",
+        "            ]",
+        "        }",
         "        query: {",
         '            value: "my_query"',
         "        }",
@@ -134,6 +141,12 @@ def test_render_input_block(input_data_01):
         "    }",
         "    some_bool: {",
         "      value: true",
+        "    }",
+        "    some_list: {",
+        "      value: [",
+        '        "value1",',
+        "        33,",
+        "      ]",
         "    }",
         "    query: {",
         '      value: "my_query"',
@@ -229,6 +242,12 @@ mutation {
             some_bool: {
                 value: true
             }
+            some_list: {
+                value: [
+                    "value1",
+                    33,
+                ]
+            }
             query: {
                 value: "my_query"
             }
@@ -305,6 +324,12 @@ mutation ($name: String!, $description: String!, $number: Int!) {
             }
             some_bool: {
                 value: true
+            }
+            some_list: {
+                value: [
+                    "value1",
+                    33,
+                ]
             }
             query: {
                 value: "my_query"
