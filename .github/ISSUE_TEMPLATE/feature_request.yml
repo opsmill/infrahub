@@ -1,3 +1,4 @@
+---
 name: 💡 Feature Request
 description: Suggest an idea for Infrahub
 title: 'feature: '
@@ -36,4 +37,6 @@ body:
   - type: textarea
     attributes:
       label: Additional Information
-      description: List any other information that is relevant to your request. Stack traces, related issues, suggestions on how to implement, Stack Overflow links, forum links, etc.
+      description: |
+        List any other information that is relevant to your request.
+        Stack traces, related issues, suggestions on how to implement, Stack Overflow links, forum links, etc.
