@@ -1,3 +1,4 @@
+---
 name: 🐛 Bug Report
 description: Create a report to help us improve Infrahub
 title: 'bug: '
@@ -34,4 +35,6 @@ body:
   - type: textarea
     attributes:
       label: Additional Information
-      description: List any other information that is relevant to your issue. Stack traces, related issues, suggestions on how to fix, Stack Overflow links, forum links, etc.
+      description: |
+        List any other information that is relevant to your request.
+        Stack traces, related issues, suggestions on how to implement, Stack Overflow links, forum links, etc.
