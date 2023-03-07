@@ -49,6 +49,18 @@ class FilterSchemaKind(str, BaseEnum):
     ENUM = "Enum"
 
 
+class RelationshipCardinality(str, BaseEnum):
+    ONE = "one"
+    MANY = "many"
+
+
+class RelationshipKind(str, BaseEnum):
+    GENERIC = "Generic"
+    ATTRIBUTE = "Attribute"
+    COMPONENT = "Component"
+    PARENT = "Parent"
+
+
 class FilterSchema(BaseModel):
     name: str
     kind: FilterSchemaKind
@@ -91,25 +103,15 @@ class AttributeSchema(BaseModel):
 class RelationshipSchema(BaseModel):
     name: str
     peer: str
-    kind: str = "Generic"
+    kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
     description: Optional[str]
     identifier: Optional[str]
     inherited: bool = False
-    cardinality: str = "many"
+    cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
-
-    @validator("cardinality")
-    def cardinality_options(
-        cls,
-        v,
-    ):
-        VALID_OPTIONS = ["one", "many"]
-        if v not in VALID_OPTIONS:
-            raise ValueError(f"Only valid value for cardinality are : {VALID_OPTIONS} ")
-        return v
 
     @validator("kind")
     def kind_options(
@@ -425,7 +427,7 @@ internal_schema = {
             "kind": "NodeSchema",
             "branch": True,
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -491,7 +493,7 @@ internal_schema = {
             "kind": "AttributeSchema",
             "branch": True,
             "default_filter": None,
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {
@@ -507,29 +509,15 @@ internal_schema = {
                 {"name": "min_length", "kind": "Integer", "optional": True},
                 {"name": "label", "kind": "String", "optional": True, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
-                {
-                    "name": "unique",
-                    "kind": "Boolean",
-                },
-                {
-                    "name": "optional",
-                    "kind": "Boolean",
-                },
-                {
-                    "name": "branch",
-                    "kind": "Boolean",
-                    "default": True,
-                },
+                {"name": "unique", "kind": "Boolean", "default": False, "optional": True},
+                {"name": "optional", "kind": "Boolean", "default": True, "optional": True},
+                {"name": "branch", "kind": "Boolean", "default": True, "optional": True},
                 {
                     "name": "default_value",
                     "kind": "Any",
                     "optional": True,
                 },
-                {
-                    "name": "inherited",
-                    "kind": "Boolean",
-                    "default": False,
-                },
+                {"name": "inherited", "kind": "Boolean", "default": False, "optional": True},
             ],
         },
         {
@@ -537,7 +525,7 @@ internal_schema = {
             "kind": "RelationshipSchema",
             "branch": True,
             "default_filter": None,
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {"name": "peer", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
