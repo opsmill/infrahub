@@ -463,16 +463,19 @@ internal_schema = {
                 {
                     "name": "inherit_from",
                     "kind": "List",
+                    "optional": True,
                 },
                 {
                     "name": "groups",
                     "kind": "List",
+                    "optional": True,
                 },
             ],
             "relationships": [
                 {
                     "name": "attributes",
                     "peer": "AttributeSchema",
+                    "kind": "Component",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
                     "branch": True,
@@ -481,6 +484,7 @@ internal_schema = {
                 {
                     "name": "relationships",
                     "peer": "RelationshipSchema",
+                    "kind": "Component",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
                     "branch": True,
@@ -519,6 +523,17 @@ internal_schema = {
                 },
                 {"name": "inherited", "kind": "Boolean", "default": False, "optional": True},
             ],
+            "relationships": [
+                {
+                    "name": "node",
+                    "peer": "NodeSchema",
+                    "kind": "Parent",
+                    "identifier": "schema__node__attributes",
+                    "cardinality": "one",
+                    "branch": True,
+                    "optional": True,
+                }
+            ],
         },
         {
             "name": "relationship_schema",
@@ -532,23 +547,37 @@ internal_schema = {
                 {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
                 {"name": "label", "kind": "String", "optional": True, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
-                {"name": "identifier", "kind": "String", "max_length": 128},
+                {"name": "identifier", "kind": "String", "max_length": 128, "optional": True},
                 {"name": "cardinality", "kind": "String", "enum": ["one", "many"]},
                 {
                     "name": "optional",
                     "kind": "Boolean",
                     "default": False,
+                    "optional": True,
                 },
                 {
                     "name": "branch",
                     "kind": "Boolean",
                     "default": True,
+                    "optional": True,
                 },
                 {
                     "name": "inherited",
                     "kind": "Boolean",
                     "default": False,
+                    "optional": True,
                 },
+            ],
+            "relationships": [
+                {
+                    "name": "node",
+                    "peer": "NodeSchema",
+                    "kind": "Parent",
+                    "identifier": "schema__node__relationships",
+                    "cardinality": "one",
+                    "branch": True,
+                    "optional": True,
+                }
             ],
         },
         {
