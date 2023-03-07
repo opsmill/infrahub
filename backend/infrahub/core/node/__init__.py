@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, List, Optional, TypeVar, Union
 from uuid import UUID
 
 from infrahub.core import get_branch, registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import ATTRIBUTES_MAPPING, NodeSchema
+from infrahub.core.schema import (
+    ATTRIBUTES_MAPPING,
+    AttributeSchema,
+    NodeSchema,
+    RelationshipSchema,
+)
 from infrahub.exceptions import ValidationError
 from infrahub_client.timestamp import Timestamp
 
@@ -113,7 +118,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if "_owner" in fields.keys():
             self._owner = fields["_owner"]
 
-        # Validate input
+        # -------------------------------------------
+        # Validate Input
+        # -------------------------------------------
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
@@ -135,24 +142,28 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if errors:
             raise ValidationError(errors)
 
-        # Assign values
+        # -------------------------------------------
+        # Generate Attribute and Relationship and assign them
+        # -------------------------------------------
         for attr_schema in self._schema.attributes:
-            attr_class = ATTRIBUTES_MAPPING[attr_schema.kind]
             self._attributes.append(attr_schema.name)
 
+            # Check if there is a more specific generator present
+            # Otherwise use the default generator
+            generator_method_name = "_generate_attribute_default"
+            if hasattr(self, f"generate_{attr_schema.name}"):
+                generator_method_name = f"generate_{attr_schema.name}"
+
+            generator_method = getattr(self, generator_method_name)
             try:
                 setattr(
                     self,
                     attr_schema.name,
-                    attr_class(
-                        data=fields.get(attr_schema.name, None),
+                    await generator_method(
+                        session=session,
                         name=attr_schema.name,
                         schema=attr_schema,
-                        branch=self._branch,
-                        at=self._at,
-                        node=self,
-                        source=self._source,
-                        owner=self._owner,
+                        data=fields.get(attr_schema.name, None),
                     ),
                 )
             except ValidationError as exc:
@@ -161,20 +172,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for rel_schema in self._schema.relationships:
             self._relationships.append(rel_schema.name)
 
-            try:
-                rm = await RelationshipManager.init(
-                    session=session,
-                    data=fields.get(rel_schema.name, None),
-                    schema=rel_schema,
-                    branch=self._branch,
-                    at=self._at,
-                    node=self,
-                )
+            # Check if there is a more specific generator present
+            # Otherwise use the default generator
+            generator_method_name = "_generate_relationship_default"
+            if hasattr(self, f"generate_{rel_schema.name}"):
+                generator_method_name = f"generate_{rel_schema.name}"
 
+            generator_method = getattr(self, generator_method_name)
+            try:
                 setattr(
                     self,
                     rel_schema.name,
-                    rm,
+                    await generator_method(
+                        session=session, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
+                    ),
                 )
             except ValidationError as exc:
                 errors.append(exc)
@@ -182,9 +193,45 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if errors:
             raise ValidationError(errors)
 
+        # Check if any post processor have been defined
+        # A processor can be used for example to assigne a default value
+        for name in self._attributes + self._relationships:
+            if hasattr(self, f"process_{name}"):
+                await getattr(self, f"process_{name}")(session=session)
+
+    async def _generate_relationship_default(
+        self, session: AsyncSession, name: str, schema: RelationshipSchema, data: Any
+    ) -> RelationshipManager:
+        rm = await RelationshipManager.init(
+            session=session,
+            data=data,
+            schema=schema,
+            branch=self._branch,
+            at=self._at,
+            node=self,
+        )
+
+        return rm
+
+    async def _generate_attribute_default(
+        self, session: AsyncSession, name: str, schema: AttributeSchema, data: Any
+    ) -> BaseAttribute:
+        attr_class = ATTRIBUTES_MAPPING[schema.kind]
+        attr = attr_class(
+            data=data,
+            name=name,
+            schema=schema,
+            branch=self._branch,
+            at=self._at,
+            node=self,
+            source=self._source,
+            owner=self._owner,
+        )
+        return attr
+
+    async def process_label(self, session: AsyncSession):
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
-        # NOTE at some point we might need to expose that via the schema to give more control over this hack
         # pylint: disable=no-member
         if not self.id and hasattr(self, "label") and hasattr(self, "name"):
             if self.label.value is None and self.name.value:
