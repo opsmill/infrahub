@@ -61,6 +61,8 @@ async def test_generate_graphql_object(session, default_branch: Branch, critical
         "description",
         "display_label",
         "id",
+        "is_false",
+        "is_true",
         "label",
         "level",
         "name",
