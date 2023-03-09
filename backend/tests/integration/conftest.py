@@ -1,11 +1,17 @@
 import asyncio
+import os
+from pathlib import Path
 
 import pytest
+import ujson
 
 import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
+from infrahub.core.manager import SchemaManager
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import get_db
+from infrahub.utils import get_models_dir
 
 
 @pytest.fixture(scope="session")
@@ -35,15 +41,29 @@ async def session(db):
     await session.close()
 
 
+async def load_infrastructure_schema(session):
+    models_dir = get_models_dir()
+
+    schema_txt = Path(os.path.join(models_dir, "infrastructure_base.json")).read_text()
+    infra_schema = ujson.loads(schema_txt)
+
+    schema = SchemaRoot(**infra_schema)
+    schema.extend_nodes_with_interfaces()
+
+    await SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.load_schema_to_db(schema, session=session)
+
+
 @pytest.fixture(scope="module")
 async def init_db_infra(session):
     await delete_all_nodes(session=session)
-    await first_time_initialization(session=session, load_infrastructure_models=True)
+    await first_time_initialization(session=session)
+    await load_infrastructure_schema(session=session)
     await initialization(session=session)
 
 
 @pytest.fixture(scope="module")
 async def init_db_base(session):
     await delete_all_nodes(session=session)
-    await first_time_initialization(session=session, load_infrastructure_models=False)
+    await first_time_initialization(session=session)
     await initialization(session=session)

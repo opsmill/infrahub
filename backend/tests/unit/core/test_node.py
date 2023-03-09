@@ -402,6 +402,7 @@ async def test_node_create_with_multiple_relationship(session, default_branch: B
 # Update
 # --------------------------------------------------------------------------
 
+
 async def test_node_update_local_attrs(session, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
