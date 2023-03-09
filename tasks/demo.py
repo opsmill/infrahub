@@ -91,6 +91,7 @@ def restart(context: Context):
         pty=True,
     )
 
+
 @task
 def stop(context: Context):
     """Stop the running instance of Infrahub."""
