@@ -742,6 +742,8 @@ async def criticality_schema(session, data_schema):
             {"name": "label", "kind": "String", "optional": True},
             {"name": "level", "kind": "Integer"},
             {"name": "color", "kind": "String", "default_value": "#444444"},
+            {"name": "is_true", "kind": "Boolean", "default_value": True},
+            {"name": "is_false", "kind": "Boolean", "default_value": False},
             {"name": "description", "kind": "String", "optional": True},
         ],
     }

@@ -296,7 +296,7 @@ class BaseNodeSchema(BaseModel):
 
     @property
     def mandatory_attribute_names(self) -> List[str]:
-        return [item.name for item in self.attributes if not item.optional and not item.default_value]
+        return [item.name for item in self.attributes if not item.optional and item.default_value is None]
 
     @property
     def mandatory_relationship_names(self) -> List[str]:
