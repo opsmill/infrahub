@@ -319,8 +319,8 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     label: Optional[str]
-    inherit_from: List[str] = Field(default_factory=list)
-    groups: List[str] = Field(default_factory=list)
+    inherit_from: Optional[List[str]] = Field(default_factory=list)
+    groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
     display_label: Optional[List[str]]
@@ -408,6 +408,8 @@ class SchemaRoot(BaseModel):
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for node in self.nodes:
+            if not node.inherit_from:
+                continue
             for generic_kind in node.inherit_from:
                 if generic_kind not in generics:
                     # TODO add a proper exception for all schema related issue

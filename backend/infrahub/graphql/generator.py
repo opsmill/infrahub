@@ -205,8 +205,9 @@ async def generate_object_types(
         registry.set_graphql_type(name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name)
 
         # Register this model to all the groups it belongs to.
-        for group_name in node_schema.groups:
-            group_memberships[group_name].append(f"Related{node_schema.kind}")
+        if node_schema.groups:
+            for group_name in node_schema.groups:
+                group_memberships[group_name].append(f"Related{node_schema.kind}")
 
     # Generate all the Groups with associated ObjectType / RelatedObjectType
     for node_name, node_schema in full_schema.items():
@@ -307,9 +308,10 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
         "interfaces": set(),
     }
 
-    for generic in schema.inherit_from:
-        generic = registry.get_graphql_type(name=generic, branch=branch.name)
-        meta_attrs["interfaces"].add(generic)
+    if schema.inherit_from:
+        for generic in schema.inherit_from:
+            generic = registry.get_graphql_type(name=generic, branch=branch.name)
+            meta_attrs["interfaces"].add(generic)
 
     main_attrs = {
         "id": graphene.String(required=True),
@@ -400,13 +402,14 @@ def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[
         "interfaces": {RelatedNodeInterface},
     }
 
-    for generic in schema.inherit_from:
-        try:
-            generic = registry.get_graphql_type(name=f"Related{generic}", branch=branch.name)
-            meta_attrs["interfaces"].add(generic)
-        except ValueError:
-            # If the object is not present it might be because the generic is a group, will need to carefully test that.
-            pass
+    if schema.inherit_from:
+        for generic in schema.inherit_from:
+            try:
+                generic = registry.get_graphql_type(name=f"Related{generic}", branch=branch.name)
+                meta_attrs["interfaces"].add(generic)
+            except ValueError:
+                # If the object is not present it might be because the generic is a group, will need to carefully test that.
+                pass
 
     main_attrs = {
         "id": graphene.String(required=True),
