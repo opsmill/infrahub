@@ -2,6 +2,8 @@ from neo4j import AsyncSession
 
 from infrahub.core.node import Node
 
+# pylint: disable=no-member
+
 
 class NodeSchema(Node):
     pass

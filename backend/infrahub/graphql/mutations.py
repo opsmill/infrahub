@@ -71,8 +71,6 @@ class InfrahubMutationMixin:
     async def mutate_create(cls, root, info, data, branch=None, at=None):
         session: AsyncSession = info.context.get("infrahub_session")
 
-        cls._meta.schema.kind
-
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]

@@ -200,7 +200,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 await getattr(self, f"process_{name}")(session=session)
 
     async def _generate_relationship_default(
-        self, session: AsyncSession, name: str, schema: RelationshipSchema, data: Any
+        self, session: AsyncSession, name: str, schema: RelationshipSchema, data: Any  # pylint: disable=unused-argument
     ) -> RelationshipManager:
         rm = await RelationshipManager.init(
             session=session,
@@ -214,7 +214,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return rm
 
     async def _generate_attribute_default(
-        self, session: AsyncSession, name: str, schema: AttributeSchema, data: Any
+        self, session: AsyncSession, name: str, schema: AttributeSchema, data: Any  # pylint: disable=unused-argument
     ) -> BaseAttribute:
         attr_class = ATTRIBUTES_MAPPING[schema.kind]
         attr = attr_class(
@@ -229,7 +229,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
         return attr
 
-    async def process_label(self, session: AsyncSession):
+    async def process_label(self, session: AsyncSession):  # pylint: disable=unused-argument
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         # pylint: disable=no-member
