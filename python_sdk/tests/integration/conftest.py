@@ -50,16 +50,9 @@ async def session(db):
 
 
 @pytest.fixture(scope="module")
-async def init_db_infra(session: AsyncSession):
-    await delete_all_nodes(session=session)
-    await first_time_initialization(session=session, load_infrastructure_models=True)
-    await initialization(session=session)
-
-
-@pytest.fixture(scope="module")
 async def init_db_base(session: AsyncSession):
     await delete_all_nodes(session=session)
-    await first_time_initialization(session=session, load_infrastructure_models=False)
+    await first_time_initialization(session=session)
     await initialization(session=session)
 
 
