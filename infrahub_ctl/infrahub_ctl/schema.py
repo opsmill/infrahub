@@ -37,35 +37,27 @@ async def _load(schema: Path, log: logging.Logger):
 
     current_nodes = {node.kind.value: node for node in await client.all(kind="NodeSchema")}
 
-    for node_kind, node in current_nodes.items():
-        print(f"{node.id}: {node_kind}")
-
     for node in schema_data.get("nodes"):
         if node["kind"] in current_nodes:
             # Ignoring the existing nodes for now, will need to revisit
             pass
 
         node_data = {key: value for key, value in node.items() if key not in ["relationships", "attributes"]}
-        log.info(f"Creating Node {node_data['kind']}")
+        log.info(f"Loading schema for : {node_data['kind']}")
         new_node = await client.create(kind="NodeSchema", data=node_data)
         await new_node.save()
-
-        log.info(f"Created Node {new_node.id}")
 
         for attribute in node.get("attributes", []):
             attribute["node"] = str(new_node.id)
             new_attribute = await client.create(kind="AttributeSchema", data=attribute)
             await new_attribute.save()
-            log.info(f"  - Attribute {attribute['name']} {new_attribute.id}")
-
-            # new_node.attributes.add(new_attribute)
+            log.debug(f"  - Attribute {attribute['name']}")
 
         for rel in node.get("relationships", []):
             rel["node"] = str(new_node.id)
             new_rel = await client.create(kind="RelationshipSchema", data=rel)
             await new_rel.save()
-            log.info(f"  - Relationship {rel['name']} {new_rel.id}")
-            # new_node.relationships.add(new_rel)
+            log.debug(f"  - Relationship {rel['name']}")
 
 
 @app.command()
