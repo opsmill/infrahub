@@ -116,6 +116,14 @@ async def repo01(session: AsyncSession) -> Node:
 
 
 @pytest.fixture
+async def repo99(session: AsyncSession) -> Node:
+    obj = await Node.init(session=session, schema="Repository")
+    await obj.new(session=session, name="repo99", location="https://github.com/my/repo99.git")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
 async def gqlquery01(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="GraphQLQuery")
     await obj.new(session=session, name="query01", query="query { device { name { value }}}")

@@ -84,17 +84,17 @@ class TestInfrahubNode:
         assert nodedb.name.is_protected is True
 
     async def test_node_update(
-        self, session, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo01: Node
+        self, session, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo99: Node
     ):
-        node = await client.get(kind="Repository", name__value="repo01")
+        node = await client.get(kind="Repository", name__value="repo99")
         assert node.id is not None
 
-        node.name.value = "repo02"  # type: ignore[attr-defined]
+        node.name.value = "repo95"  # type: ignore[attr-defined]
         node.tags.add(tag_blue.id)  # type: ignore[attr-defined]
         node.tags.add(tag_red.id)  # type: ignore[attr-defined]
         await node.save()
 
         nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
-        assert nodedb.name.value == "repo02"
+        assert nodedb.name.value == "repo95"
         tags = await nodedb.tags.get(session=session)
         assert len(tags) == 2
