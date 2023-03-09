@@ -6,7 +6,6 @@ import { useAtom } from "jotai";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { gql } from "graphql-request";
 import { graphQLClient } from "../..";
-import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { components } from "../../infraops";

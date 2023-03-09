@@ -4,8 +4,6 @@ import { useEffect } from "react";
 import DeviceList from "./screens/device-list/device-list";
 import { schemaState } from "./state/atoms/schema.atom";
 import { useAtom } from "jotai";
-import { graphQLClient } from ".";
-import { iSchemaData, SCHEMA_QUERY } from "./graphql/queries/schema";
 import ObjectItems from "./screens/object-items/object-items";
 import Layout from "./screens/layout/layout";
 import ObjectItemDetails from "./screens/object-item-details/object-item-details";
@@ -76,14 +74,14 @@ function App() {
                   ...acc,
                   [value.kind]: value.name,
                 };
-              })
+              }, {})
           );
         }
       })
       .catch(() => {
         console.error("Something went wrong when fetching the schema details");
       });
-  }, [setSchema]);
+  }, [setSchema, branch, setSchemaKindNameState]);
 
   return <RouterProvider router={router} />;
 }

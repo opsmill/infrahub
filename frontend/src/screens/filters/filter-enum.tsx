@@ -1,13 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { Combobox } from "@headlessui/react";
 import { classNames } from "../../App";
 import { useAtom } from "jotai";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { gql } from "graphql-request";
-import { graphQLClient } from "../..";
-import ErrorScreen from "../error-screen/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { components } from "../../infraops";
 
@@ -15,20 +10,10 @@ interface Props {
   filter: components["schemas"]["FilterSchema"];
 }
 
-declare var Handlebars: any;
-const template = Handlebars.compile(`query {{kind.value}} {
-    {{name}} {
-        id
-        display_label
-    }
-}
-`);
-
 export default function FilterComboEnum(props: Props) {
   const { filter } = props;
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useAtom(comboxBoxFilterState);
-  const [objectRows, setObjectRows] = useState<any[] | undefined>();
   const currentFilter = filters.filter((row) => row.name === filter.name);
   const enums: string[] = (filter.enum as any) || [];
 

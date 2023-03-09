@@ -3,7 +3,6 @@ import { gql } from "@apollo/client";
 import { sampleDeviceList } from "./sample-devices.data";
 import { Device } from "../../generated/graphql";
 import DeviceFilters from "./device-filters";
-import DeviceFilterBar from "./device-filter-bar";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ErrorScreen from "../error-screen/error-screen";
 import { useEffect, useState } from "react";

@@ -33,8 +33,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "codegen": "graphql-codegen --config codegen.yml",
-    "prepare": "husky install"
+    "codegen": "graphql-codegen --config codegen.yml"
   },
   "eslintConfig": {
     "extends": [
@@ -55,7 +54,6 @@
     ]
   },
   "devDependencies": {
-    "husky": "^8.0.0",
     "lint-staged": "^13.1.2",
     "openapi-typescript": "^6.1.1",
     "prettier": "2.8.4",
