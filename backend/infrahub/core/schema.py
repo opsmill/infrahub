@@ -448,7 +448,8 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Boolean",
-                    "default": True,
+                    "default_value": True,
+                    "optional": True,
                 },
                 {
                     "name": "default_filter",
@@ -513,15 +514,15 @@ internal_schema = {
                 {"name": "min_length", "kind": "Integer", "optional": True},
                 {"name": "label", "kind": "String", "optional": True, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
-                {"name": "unique", "kind": "Boolean", "default": False, "optional": True},
-                {"name": "optional", "kind": "Boolean", "default": True, "optional": True},
-                {"name": "branch", "kind": "Boolean", "default": True, "optional": True},
+                {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
+                {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
+                {"name": "branch", "kind": "Boolean", "default_value": True, "optional": True},
                 {
                     "name": "default_value",
                     "kind": "Any",
                     "optional": True,
                 },
-                {"name": "inherited", "kind": "Boolean", "default": False, "optional": True},
+                {"name": "inherited", "kind": "Boolean", "default_value": False, "optional": True},
             ],
             "relationships": [
                 {
@@ -544,7 +545,7 @@ internal_schema = {
             "attributes": [
                 {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {"name": "peer", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
-                {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
+                {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default_value": "Generic"},
                 {"name": "label", "kind": "String", "optional": True, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
                 {"name": "identifier", "kind": "String", "max_length": 128, "optional": True},
@@ -552,19 +553,19 @@ internal_schema = {
                 {
                     "name": "optional",
                     "kind": "Boolean",
-                    "default": False,
+                    "default_value": False,
                     "optional": True,
                 },
                 {
                     "name": "branch",
                     "kind": "Boolean",
-                    "default": True,
+                    "default_value": True,
                     "optional": True,
                 },
                 {
                     "name": "inherited",
                     "kind": "Boolean",
-                    "default": False,
+                    "default_value": False,
                     "optional": True,
                 },
             ],
