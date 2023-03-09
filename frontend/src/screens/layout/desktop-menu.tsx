@@ -1,7 +1,7 @@
 import { Disclosure } from "@headlessui/react";
 import { LinkIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { Link, NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { classNames } from "../../App";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";

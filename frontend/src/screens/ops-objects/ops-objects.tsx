@@ -1,7 +1,6 @@
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { classNames } from "../../App";
-import { NodeSchema } from "../../generated/graphql";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import ObjectRows from "./object-rows";
 

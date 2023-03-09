@@ -11,7 +11,7 @@ export default function LoadingScreen(props: Props) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center">
       <img alt="Loading" className={`${sizeClass}`} src={loader} />
-      {!props.hideText && <div className="text-xl mt-2">Just a moment</div>}
+      {!hideText && <div className="text-xl mt-2">Just a moment</div>}
     </div>
   );
 }

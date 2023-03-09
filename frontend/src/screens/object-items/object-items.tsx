@@ -70,7 +70,7 @@ export default function ObjectItems() {
           setIsLoading(false);
         });
     }
-  }, [objectname, schemaList, schema, date, branch, currentFilters]);
+  }, [objectname, schemaList, schema, date, branch, currentFilters, filterString]);
 
   if (hasError) {
     return <ErrorScreen />;

@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Disclosure, Menu, Transition } from "@headlessui/react";
+import { Menu, Transition } from "@headlessui/react";
 import { ChevronDownIcon, FunnelIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../App";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
@@ -8,8 +8,6 @@ import FilterCombobox from "../filters/filter-combobox";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import FilterTextField from "../filters/filter-textfield";
 import FilterComboEnum from "../filters/filter-enum";
-
-const comboBoxFilters = ["status", "device", "interface", "tag", "role"];
 
 const sortOptions = [
   { name: "Name", href: "#", current: true },
@@ -148,22 +146,17 @@ export default function DeviceFilterBar(props: Props) {
         <div className="border-t border-gray-200 pb-10">
           <div className="mx-auto max-w-7xl px-4 text-sm sm:px-6">
             <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {props.schema.filters
-                ?.map((filter) => {
-                  if (filter.kind === "Object") {
-                    return <FilterCombobox filter={filter} key={filter.name} />;
-                  } else if (filter.kind === "String" && !filter.enum) {
-                    return (
-                      <FilterTextField filter={filter} key={filter.name} />
-                    );
-                  } else {
-                    if(filter.kind === "String" && filter.enum) {
-                      return (
-                        <FilterComboEnum filter={filter} key={filter.name} />
-                      );
-                    }
-                  }
-                })}
+              {props.schema.filters?.map((filter) => {
+                if (filter.kind === "Object") {
+                  return <FilterCombobox filter={filter} key={filter.name} />;
+                } else if (filter.kind === "String" && !filter.enum) {
+                  return <FilterTextField filter={filter} key={filter.name} />;
+                } else if (filter.kind === "String" && filter.enum) {
+                  return <FilterComboEnum filter={filter} key={filter.name} />;
+                } else {
+                  return null;
+                }
+              })}
             </div>
           </div>
         </div>

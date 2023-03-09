@@ -1,7 +1,7 @@
 import { useAtom } from "jotai";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { components } from "../../infraops";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
 interface Props {
   filter: components["schemas"]["FilterSchema"];
@@ -11,8 +11,7 @@ export default function FilterTextField(props: Props) {
   const { filter } = props;
   const [filters, setFilters] = useAtom(comboxBoxFilterState);
   const [value, setValue] = useState("");
-  const currentFilter = filters.filter((row) => row.name === filter.name);
-
+  
   const updateFilter = () => {
     if (value) {
       setFilters([
