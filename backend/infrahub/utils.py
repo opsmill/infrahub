@@ -73,6 +73,16 @@ def copy_project_to_tmp_dir(project_name):
     copy_tree(os.path.join(fixtures_dir, project_name), "./")
 
 
+def find_first_file_in_directory(directory: str) -> Optional[str]:
+    top_level_files = os.listdir(directory)
+    for filename in top_level_files:
+        full_filename = os.path.join(directory, filename)
+        if os.path.isfile(full_filename):
+            return filename
+
+    return None
+
+
 class MetaEnum(EnumMeta):
     def __contains__(cls, item):
         try:
