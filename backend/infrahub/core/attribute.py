@@ -95,9 +95,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     @classmethod
     def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
-        if value is None and not schema.optional:
+        if value is None and schema.optional is False:
             raise ValidationError({name: f"A value must be provided for {name}"})
-        if value is None and schema.optional:
+        if value is None and schema.optional is True:
             return True
 
         cls.validate_format(value=value, name=name, schema=schema)

@@ -7,7 +7,6 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
-from infrahub.models import infrastructure_models
 
 LOGGER = logging.getLogger("infrahub")
 
@@ -34,9 +33,13 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     # Load internal models into the registry
     # ---------------------------------------------------
+    from infrahub.core.models import NodeSchema as NodeSchemaModel
+    from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
     from infrahub.core.node import Node
 
     registry.node["Node"] = Node
+    registry.node["NodeSchema"] = NodeSchemaModel
+    registry.node["RelationshipSchema"] = RelationshipSchemaModel
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry
@@ -77,7 +80,7 @@ async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
     return branch
 
 
-async def first_time_initialization(session: AsyncSession, load_infrastructure_models: bool = True):
+async def first_time_initialization(session: AsyncSession):
     # pylint: disable=import-outside-toplevel
     from infrahub.core.node import Node
 
@@ -103,13 +106,6 @@ async def first_time_initialization(session: AsyncSession, load_infrastructure_m
     await SchemaManager.register_schema_to_registry(schema)
     await SchemaManager.load_schema_to_db(schema, session=session)
     LOGGER.info("Created the core models in the database")
-
-    if load_infrastructure_models:
-        schema = SchemaRoot(**infrastructure_models)
-        schema.extend_nodes_with_interfaces()
-        await SchemaManager.register_schema_to_registry(schema)
-        await SchemaManager.load_schema_to_db(schema, session=session)
-        LOGGER.info("Created the infrastructure models in the database")
 
     # --------------------------------------------------
     # Create Default Users and Groups

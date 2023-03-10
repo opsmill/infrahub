@@ -10,7 +10,7 @@ from pytest_httpx import HTTPXMock
 
 import infrahub.config as config
 from infrahub.git import InfrahubRepository
-from infrahub.utils import get_fixtures_dir
+from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 from infrahub_client import InfrahubClient
 
 
@@ -164,11 +164,10 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRe
     upstream = Repo(git_upstream_repo_03["path"])
     upstream.git.checkout("branch01")
 
-    top_level_files = os.listdir(git_upstream_repo_03["path"])
-    first_file = os.path.join(git_upstream_repo_03["path"], top_level_files[0])
-    with open(first_file, "a") as file:
+    first_file = find_first_file_in_directory(git_upstream_repo_03["path"])
+    with open(os.path.join(git_upstream_repo_03["path"], first_file), "a") as file:
         file.write("new line\n")
-    upstream.index.add([top_level_files[0]])
+    upstream.index.add([first_file])
     upstream.index.commit("Change first file")
 
     upstream.git.checkout("main")
@@ -194,11 +193,10 @@ async def git_repo_05(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
 
     # Update the first file at the top level and commit the change in the branch
     upstream = Repo(git_upstream_repo_01["path"])
-    top_level_files = os.listdir(git_upstream_repo_01["path"])
-    first_file = os.path.join(git_upstream_repo_01["path"], top_level_files[0])
-    with open(first_file, "a") as file:
+    first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
+    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a") as file:
         file.write("new line\n")
-    upstream.index.add([top_level_files[0]])
+    upstream.index.add([first_file])
     upstream.index.commit("Change first file")
 
     await repo.fetch()
@@ -226,11 +224,10 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     upstream = Repo(git_upstream_repo_01["path"])
     upstream.git.checkout("branch01")
 
-    top_level_files = os.listdir(git_upstream_repo_01["path"])
-    first_file = os.path.join(git_upstream_repo_01["path"], top_level_files[0])
-    with open(first_file, "a") as file:
+    first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
+    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a") as file:
         file.write("new line\n")
-    upstream.index.add([top_level_files[0]])
+    upstream.index.add([first_file])
     upstream.index.commit("Change first file")
 
     upstream.git.checkout("main")
@@ -238,11 +235,10 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     # Update the local branch branch01 to create a conflict.
     branch_wt = repo.get_worktree(identifier="branch01")
     branch_repo = Repo(branch_wt.directory)
-    first_file_in_repo = os.path.join(branch_wt.directory, top_level_files[0])
-
+    first_file_in_repo = os.path.join(branch_wt.directory, first_file)
     with open(first_file_in_repo, "a") as file:
         file.write("not the same line\n")
-    branch_repo.index.add([top_level_files[0]])
+    branch_repo.index.add([first_file])
     branch_repo.index.commit("Change first file in main")
 
     await repo.fetch()

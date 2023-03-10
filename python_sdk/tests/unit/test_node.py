@@ -85,9 +85,7 @@ async def test_generate_input_data_with_relationships_02(client, rfile_schema):
         "template_repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
-    client.schema.get("RFile")
     node = InfrahubNode(client=client, schema=rfile_schema, data=data)
-    # breakpoint()
 
     assert node._generate_input_data() == {
         "data": {

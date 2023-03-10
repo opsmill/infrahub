@@ -7,6 +7,7 @@ from graphene.types.mutation import MutationOptions
 from neo4j import AsyncSession
 
 import infrahub.config as config
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -70,8 +71,12 @@ class InfrahubMutationMixin:
     async def mutate_create(cls, root, info, data, branch=None, at=None):
         session: AsyncSession = info.context.get("infrahub_session")
 
+        node_class = Node
+        if cls._meta.schema.kind in registry.node:
+            node_class = registry.node[cls._meta.schema.kind]
+
         try:
-            obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
+            obj = await node_class.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(session=session, **data)
             await obj.save(session=session)
         except ValidationError as exc:

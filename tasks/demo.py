@@ -82,8 +82,14 @@ def start(context: Context):
 def restart(context: Context):
     """Restart Infrahub API Server and Git Agent within docker compose."""
 
-    exec_cmd = f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} up -d"
-    return context.run(exec_cmd, pty=True)
+    context.run(
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} restart infrahub-server",
+        pty=True,
+    )
+    context.run(
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} restart infrahub-git",
+        pty=True,
+    )
 
 
 @task
@@ -154,8 +160,22 @@ def status(context: Context):
 
 
 @task
-def load_data(context: Context):
-    """Launch a bash shell inside the running Infrahub container."""
+def load_infra_schema(context: Context):
+    """Load the base schema for infrastructure."""
+    context.run(
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git infrahubctl schema load models/infrastructure_base.json",
+        pty=True,
+    )
+
+    context.run(
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} restart infrahub-server",
+        pty=True,
+    )
+
+
+@task
+def load_infra_data(context: Context):
+    """Load some demo data."""
     context.run(
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git infrahubctl run models/infrastructure_edge.py",
         pty=True,

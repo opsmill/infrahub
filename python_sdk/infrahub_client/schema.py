@@ -58,8 +58,8 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     label: Optional[str]
-    inherit_from: List[str] = Field(default_factory=list)
-    groups: List[str] = Field(default_factory=list)
+    inherit_from: Optional[List[str]] = Field(default_factory=list)
+    groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
     filters: List[FilterSchema] = Field(default_factory=list)

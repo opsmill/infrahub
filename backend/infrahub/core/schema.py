@@ -49,6 +49,18 @@ class FilterSchemaKind(str, BaseEnum):
     ENUM = "Enum"
 
 
+class RelationshipCardinality(str, BaseEnum):
+    ONE = "one"
+    MANY = "many"
+
+
+class RelationshipKind(str, BaseEnum):
+    GENERIC = "Generic"
+    ATTRIBUTE = "Attribute"
+    COMPONENT = "Component"
+    PARENT = "Parent"
+
+
 class FilterSchema(BaseModel):
     name: str
     kind: FilterSchemaKind
@@ -91,25 +103,15 @@ class AttributeSchema(BaseModel):
 class RelationshipSchema(BaseModel):
     name: str
     peer: str
-    kind: str = "Generic"
+    kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
     description: Optional[str]
     identifier: Optional[str]
     inherited: bool = False
-    cardinality: str = "many"
+    cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
-
-    @validator("cardinality")
-    def cardinality_options(
-        cls,
-        v,
-    ):
-        VALID_OPTIONS = ["one", "many"]
-        if v not in VALID_OPTIONS:
-            raise ValueError(f"Only valid value for cardinality are : {VALID_OPTIONS} ")
-        return v
 
     @validator("kind")
     def kind_options(
@@ -294,7 +296,7 @@ class BaseNodeSchema(BaseModel):
 
     @property
     def mandatory_attribute_names(self) -> List[str]:
-        return [item.name for item in self.attributes if not item.optional and not item.default_value]
+        return [item.name for item in self.attributes if not item.optional and item.default_value is None]
 
     @property
     def mandatory_relationship_names(self) -> List[str]:
@@ -317,8 +319,8 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     label: Optional[str]
-    inherit_from: List[str] = Field(default_factory=list)
-    groups: List[str] = Field(default_factory=list)
+    inherit_from: Optional[List[str]] = Field(default_factory=list)
+    groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
     display_label: Optional[List[str]]
@@ -406,6 +408,8 @@ class SchemaRoot(BaseModel):
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for node in self.nodes:
+            if not node.inherit_from:
+                continue
             for generic_kind in node.inherit_from:
                 if generic_kind not in generics:
                     # TODO add a proper exception for all schema related issue
@@ -425,7 +429,7 @@ internal_schema = {
             "kind": "NodeSchema",
             "branch": True,
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -446,7 +450,8 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Boolean",
-                    "default": True,
+                    "default_value": True,
+                    "optional": True,
                 },
                 {
                     "name": "default_filter",
@@ -461,16 +466,19 @@ internal_schema = {
                 {
                     "name": "inherit_from",
                     "kind": "List",
+                    "optional": True,
                 },
                 {
                     "name": "groups",
                     "kind": "List",
+                    "optional": True,
                 },
             ],
             "relationships": [
                 {
                     "name": "attributes",
                     "peer": "AttributeSchema",
+                    "kind": "Component",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
                     "branch": True,
@@ -479,6 +487,7 @@ internal_schema = {
                 {
                     "name": "relationships",
                     "peer": "RelationshipSchema",
+                    "kind": "Component",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
                     "branch": True,
@@ -491,7 +500,7 @@ internal_schema = {
             "kind": "AttributeSchema",
             "branch": True,
             "default_filter": None,
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {
@@ -507,29 +516,26 @@ internal_schema = {
                 {"name": "min_length", "kind": "Integer", "optional": True},
                 {"name": "label", "kind": "String", "optional": True, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
-                {
-                    "name": "unique",
-                    "kind": "Boolean",
-                },
-                {
-                    "name": "optional",
-                    "kind": "Boolean",
-                },
-                {
-                    "name": "branch",
-                    "kind": "Boolean",
-                    "default": True,
-                },
+                {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
+                {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
+                {"name": "branch", "kind": "Boolean", "default_value": True, "optional": True},
                 {
                     "name": "default_value",
                     "kind": "Any",
                     "optional": True,
                 },
+                {"name": "inherited", "kind": "Boolean", "default_value": False, "optional": True},
+            ],
+            "relationships": [
                 {
-                    "name": "inherited",
-                    "kind": "Boolean",
-                    "default": False,
-                },
+                    "name": "node",
+                    "peer": "NodeSchema",
+                    "kind": "Parent",
+                    "identifier": "schema__node__attributes",
+                    "cardinality": "one",
+                    "branch": True,
+                    "optional": True,
+                }
             ],
         },
         {
@@ -537,30 +543,44 @@ internal_schema = {
             "kind": "RelationshipSchema",
             "branch": True,
             "default_filter": None,
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {"name": "peer", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
-                {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default": "Generic"},
+                {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default_value": "Generic"},
                 {"name": "label", "kind": "String", "optional": True, "max_length": 32},
                 {"name": "description", "kind": "String", "optional": True, "max_length": 128},
-                {"name": "identifier", "kind": "String", "max_length": 128},
+                {"name": "identifier", "kind": "String", "max_length": 128, "optional": True},
                 {"name": "cardinality", "kind": "String", "enum": ["one", "many"]},
                 {
                     "name": "optional",
                     "kind": "Boolean",
-                    "default": False,
+                    "default_value": False,
+                    "optional": True,
                 },
                 {
                     "name": "branch",
                     "kind": "Boolean",
-                    "default": True,
+                    "default_value": True,
+                    "optional": True,
                 },
                 {
                     "name": "inherited",
                     "kind": "Boolean",
-                    "default": False,
+                    "default_value": False,
+                    "optional": True,
                 },
+            ],
+            "relationships": [
+                {
+                    "name": "node",
+                    "peer": "NodeSchema",
+                    "kind": "Parent",
+                    "identifier": "schema__node__relationships",
+                    "cardinality": "one",
+                    "branch": True,
+                    "optional": True,
+                }
             ],
         },
         {

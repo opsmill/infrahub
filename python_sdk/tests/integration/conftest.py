@@ -50,16 +50,9 @@ async def session(db):
 
 
 @pytest.fixture(scope="module")
-async def init_db_infra(session: AsyncSession):
-    await delete_all_nodes(session=session)
-    await first_time_initialization(session=session, load_infrastructure_models=True)
-    await initialization(session=session)
-
-
-@pytest.fixture(scope="module")
 async def init_db_base(session: AsyncSession):
     await delete_all_nodes(session=session)
-    await first_time_initialization(session=session, load_infrastructure_models=False)
+    await first_time_initialization(session=session)
     await initialization(session=session)
 
 
@@ -118,6 +111,14 @@ async def second_account(session: AsyncSession) -> Node:
 async def repo01(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="Repository")
     await obj.new(session=session, name="repo01", location="https://github.com/my/repo.git")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def repo99(session: AsyncSession) -> Node:
+    obj = await Node.init(session=session, schema="Repository")
+    await obj.new(session=session, name="repo99", location="https://github.com/my/repo99.git")
     await obj.save(session=session)
     return obj
 

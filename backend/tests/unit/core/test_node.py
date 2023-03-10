@@ -20,15 +20,28 @@ async def test_node_init(session, default_branch: Branch, criticality_schema: No
     assert obj.level.value == 4
     assert obj.description.value is None
     assert obj.color.value == "#444444"
+    assert obj.is_true.value is True
+    assert obj.is_false.value is False
 
     obj = await Node.init(session=session, schema=criticality_schema)
-    await obj.new(session=session, name="medium", label="MED", level=3, description="My desc", color="#333333")
+    await obj.new(
+        session=session,
+        name="medium",
+        label="MED",
+        level=3,
+        description="My desc",
+        is_true=False,
+        is_false=True,
+        color="#333333",
+    )
 
     assert obj.name.value == "medium"
     assert obj.label.value == "MED"
     assert obj.level.value == 3
     assert obj.description.value == "My desc"
     assert obj.color.value == "#333333"
+    assert obj.is_true.value is False
+    assert obj.is_false.value is True
 
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(session=session, name="medium_high", level=3, description="My desc", _source=first_account)
@@ -97,6 +110,7 @@ async def test_node_default_value(session, default_branch):
             {"name": "mystr_default", "kind": "String", "default_value": "test"},
             {"name": "mybool", "kind": "Boolean"},
             {"name": "mybool_default", "kind": "Boolean", "default_value": True},
+            {"name": "mybool_default_false", "kind": "Boolean", "default_value": False},
         ],
     }
 
@@ -113,6 +127,7 @@ async def test_node_default_value(session, default_branch):
     assert obj.mystr_default.value == "test"
     assert obj.mybool.value is False
     assert obj.mybool_default.value is True
+    assert obj.mybool_default_false.value is False
 
 
 async def test_node_init_with_single_relationship(session, default_branch: Branch, car_person_schema):
@@ -166,9 +181,13 @@ async def test_node_create_local_attrs(session, default_branch: Branch, critical
     assert obj.description.id
     assert obj.color.value == "#444444"
     assert obj.color.id
+    assert obj.is_true.value is True
+    assert obj.is_false.value is False
 
     obj = await Node.init(session=session, schema=criticality_schema)
-    await obj.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj.new(
+        session=session, name="medium", level=3, description="My desc", is_true=False, is_false=True, color="#333333"
+    )
     await obj.save(session=session)
 
     assert obj.id
@@ -181,6 +200,8 @@ async def test_node_create_local_attrs(session, default_branch: Branch, critical
     assert obj.description.id
     assert obj.color.value == "#333333"
     assert obj.color.id
+    assert obj.is_true.value is False
+    assert obj.is_false.value is True
 
 
 async def test_node_create_attribute_with_source(session, default_branch: Branch, criticality_schema, first_account):
@@ -390,11 +411,15 @@ async def test_node_update_local_attrs(session, default_branch: Branch, critical
     obj2 = await NodeManager.get_one(session=session, id=obj1.id)
     obj2.name.value = "high"
     obj2.level.value = 1
+    obj2.is_true.value = False
+    obj2.is_false.value = True
     await obj2.save(session=session)
 
     obj3 = await NodeManager.get_one(session=session, id=obj1.id)
     assert obj3.name.value == "high"
     assert obj3.level.value == 1
+    assert obj3.is_true.value is False
+    assert obj3.is_false.value is True
 
 
 async def test_node_update_local_attrs_with_flags(session, default_branch: Branch, criticality_schema):

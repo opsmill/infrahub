@@ -259,7 +259,7 @@ def generate_relationship_property(name):
         if isinstance(value, RelatedNode) or value is None:
             setattr(self, internal_name, value)
         else:
-            schema = [rel for rel in self.schema.relationships if rel.name == external_name][0]
+            schema = [rel for rel in self._schema.relationships if rel.name == external_name][0]
             setattr(self, internal_name, RelatedNode(name=external_name, schema=schema, data=value))
 
     return prop
@@ -269,23 +269,23 @@ class InfrahubNode:
     def __init__(
         self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
     ) -> None:
-        self.client = client
-        self.schema = schema
+        self._client = client
+        self._schema = schema
         self._data = data
 
-        self.branch = branch or self.client.default_branch
+        self._branch = branch or self._client.default_branch
 
         self.id: Optional[str] = data.get("id", None) if isinstance(data, dict) else None
-        self._attributes = [item.name for item in self.schema.attributes]
-        self._relationships = [item.name for item in self.schema.relationships]
+        self._attributes = [item.name for item in self._schema.attributes]
+        self._relationships = [item.name for item in self._schema.relationships]
 
         for attr_name in self._attributes:
-            attr_schema = [attr for attr in self.schema.attributes if attr.name == attr_name][0]
+            attr_schema = [attr for attr in self._schema.attributes if attr.name == attr_name][0]
             attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
             setattr(self, attr_name, Attribute(name=attr_name, schema=attr_schema, data=attr_data))
 
         for rel_name in self._relationships:
-            rel_schema = [rel for rel in self.schema.relationships if rel.name == rel_name][0]
+            rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
             rel_data = data.get(rel_name, None) if isinstance(data, dict) else None
 
             if rel_schema.cardinality == "one":
@@ -305,13 +305,13 @@ class InfrahubNode:
     async def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
-        mutation_name = f"{self.schema.name}_create"
+        mutation_name = f"{self._schema.name}_create"
         query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
-        response = await self.client.execute_graphql(
+        response = await self._client.execute_graphql(
             query=query.render(),
-            branch_name=self.branch,
+            branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self.schema.kind).lower()}-create",
+            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
         )
         self.id = response[mutation_name]["object"]["id"]
 
@@ -319,12 +319,12 @@ class InfrahubNode:
         input_data = self._generate_input_data()
         input_data["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        query = Mutation(mutation=f"{self.schema.name}_update", input_data=input_data, query=mutation_query)
-        await self.client.execute_graphql(
+        query = Mutation(mutation=f"{self._schema.name}_update", input_data=input_data, query=mutation_query)
+        await self._client.execute_graphql(
             query=query.render(),
-            branch_name=self.branch,
+            branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self.schema.kind).lower()}-update",
+            tracker=f"mutation-{str(self._schema.kind).lower()}-update",
         )
 
     def _generate_input_data(self) -> Dict[str, Dict]:
@@ -357,7 +357,7 @@ class InfrahubNode:
             if attr_data:
                 data[attr_name] = attr_data
 
-        return {self.schema.name: data}
+        return {self._schema.name: data}
 
     def validate_filters(self, filters: Optional[Dict[str, Any]] = None) -> bool:
         if not filters:
@@ -365,12 +365,12 @@ class InfrahubNode:
 
         for filter_name in filters.keys():
             found = False
-            for filter_schema in self.schema.filters:
+            for filter_schema in self._schema.filters:
                 if filter_name == filter_schema.name:
                     found = True
                     break
             if not found:
-                raise FilterNotFound(identifier=filter_name, kind=self.schema.kind)
+                raise FilterNotFound(identifier=filter_name, kind=self._schema.kind)
 
         return True
 

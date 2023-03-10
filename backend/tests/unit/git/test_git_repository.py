@@ -20,6 +20,7 @@ from infrahub.git import (
     Worktree,
     extract_repo_file_information,
 )
+from infrahub.utils import find_first_file_in_directory
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
@@ -119,11 +120,10 @@ async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
     git_repo = repo.get_git_repo_main()
 
     # Modify the first file in the main branch to create a new commit
-    top_level_files = os.listdir(repo.directory_default)
-    first_file = os.path.join(repo.directory_default, top_level_files[0])
-    with open(first_file, "a") as file:
+    first_file = find_first_file_in_directory(repo.directory_default)
+    with open(os.path.join(repo.directory_default, first_file), "a") as file:
         file.write("new line\n")
-    git_repo.index.add([top_level_files[0]])
+    git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
 
     commit = repo.get_commit_value(branch_name="main")
@@ -168,11 +168,10 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
     git_repo = repo.get_git_repo_main()
 
     # Modify the first file in the main branch to create a new commit
-    top_level_files = os.listdir(repo.directory_default)
-    first_file = os.path.join(repo.directory_default, top_level_files[0])
-    with open(first_file, "a") as file:
+    first_file = find_first_file_in_directory(repo.directory_default)
+    with open(os.path.join(repo.directory_default, first_file), "a") as file:
         file.write("new line\n")
-    git_repo.index.add([top_level_files[0]])
+    git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
 
     commit = repo.get_commit_value(branch_name="main")
@@ -327,11 +326,10 @@ async def test_rebase(git_repo_01: InfrahubRepository):
 
     # Add a new commit in the main branch to have something to rebase.
     git_repo = repo.get_git_repo_main()
-    top_level_files = os.listdir(repo.directory_default)
-    first_file = os.path.join(repo.directory_default, top_level_files[0])
-    with open(first_file, "a") as file:
+    first_file = find_first_file_in_directory(repo.directory_default)
+    with open(os.path.join(repo.directory_default, first_file), "a") as file:
         file.write("new line\n")
-    git_repo.index.add([top_level_files[0]])
+    git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
 
     commit_before = repo.get_commit_value(branch_name="branch01", remote=False)

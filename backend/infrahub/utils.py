@@ -40,6 +40,14 @@ def get_fixtures_dir():
     return os.path.abspath(fixtures_dir)
 
 
+def get_models_dir():
+    """Get the directory which stores additional models."""
+    here = os.path.abspath(os.path.dirname(__file__))
+    models_dir = os.path.join(here, "..", "..", "models")
+
+    return os.path.abspath(models_dir)
+
+
 def deep_merge_dict(dicta: dict, dictb: dict, path: Optional[List] = None):
     """Deep Merge dictionnary B into Dictionnary A.
     Code is inspired by https://stackoverflow.com/a/7205107
@@ -63,6 +71,16 @@ def copy_project_to_tmp_dir(project_name):
     """Function used to copy data to isolated file system."""
     fixtures_dir = get_fixtures_dir()
     copy_tree(os.path.join(fixtures_dir, project_name), "./")
+
+
+def find_first_file_in_directory(directory: str) -> Optional[str]:
+    top_level_files = os.listdir(directory)
+    for filename in top_level_files:
+        full_filename = os.path.join(directory, filename)
+        if os.path.isfile(full_filename):
+            return filename
+
+    return None
 
 
 class MetaEnum(EnumMeta):
