@@ -3,7 +3,7 @@
 
 # Introduction
 
-Infrahub is composed of multiple components, mostly written in Python.
+Infrahub is composed of multiple components, the backend is mostly written in Python and the frontend in React.
 
 The main dependencies are:
 - Neo4j 5.x
