@@ -1,24 +1,27 @@
-import { useAtom } from "jotai";
 import { gql } from "@apollo/client";
+import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import { graphQLClient } from "../..";
+import { classNames } from "../../App";
+import { branchState } from "../../state/atoms/branch.atom";
+import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { timeState } from "../../state/atoms/time.atom";
+import DeviceFilterBar from "../device-list/device-filter-bar";
+import DeviceFilters from "../device-list/device-filters";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
-import DeviceFilters from "../device-list/device-filters";
-import DeviceFilterBar from "../device-list/device-filter-bar";
-import { classNames } from "../../App";
-import { timeState } from "../../state/atoms/time.atom";
-import { branchState } from "../../state/atoms/branch.atom";
 import NoDataFound from "../no-data-found/no-data-found";
-import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 
 declare var Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind}} {
         {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
             id
+            display_label
             {{#each attributes}}
             {{this.name}} {
                 value
@@ -40,26 +43,27 @@ export default function ObjectItems() {
   const [currentFilters] = useAtom(comboxBoxFilterState);
 
   const filterString = currentFilters
-    .map((row) => `${row.name}: "${row.value}"`)
-    .join(",");
+  .map((row) => `${row.name}: "${row.value}"`)
+  .join(",");
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (schema) {
-      setHasError(false);
-      setIsLoading(true);
-      setObjectRows(undefined);
-      const queryString = template({
-        ...schema,
-        filterString,
-      });
-      const query = gql`
+  useEffect(
+    () => {
+      if (schema) {
+        setHasError(false);
+        setIsLoading(true);
+        setObjectRows(undefined);
+        const queryString = template({
+          ...schema,
+          filterString,
+        });
+        const query = gql`
         ${queryString}
       `;
 
-      const request = graphQLClient.request(query);
-      request
+        const request = graphQLClient.request(query);
+        request
         .then((data) => {
           const rows = data[schema.name];
           setObjectRows(rows);
@@ -69,8 +73,18 @@ export default function ObjectItems() {
           setHasError(true);
           setIsLoading(false);
         });
-    }
-  }, [objectname, schemaList, schema, date, branch, currentFilters, filterString]);
+      }
+    },
+    [
+      objectname,
+      schemaList,
+      schema,
+      date,
+      branch,
+      currentFilters,
+      filterString
+    ]
+  );
 
   if (hasError) {
     return <ErrorScreen />;
@@ -114,7 +128,7 @@ export default function ObjectItems() {
                         scope="col"
                         className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8"
                       >
-                        ID
+                        Display label
                       </th>
                       {schema.attributes?.map((attribute) => (
                         <th
@@ -144,7 +158,7 @@ export default function ObjectItems() {
                             "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                           )}
                         >
-                          {row.id}
+                          {row.display_label}
                         </td>
                         {schema.attributes?.map((attribute) => (
                           <td
@@ -156,7 +170,9 @@ export default function ObjectItems() {
                               "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                             )}
                           >
-                            {row[attribute.name] && row[attribute.name].value}
+                            {row[attribute.name].value || "-"}
+                            {row[attribute.name].value === true && (<CheckIcon className="h-4 w-4" />)}
+                            {row[attribute.name].value === false && (<XMarkIcon className="h-4 w-4" />)}
                           </td>
                         ))}
                       </tr>
