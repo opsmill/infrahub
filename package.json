@@ -17,7 +17,9 @@
     },
     "lint-staged": {
         "*.(js|tsx|ts)": [
-            "npm run lint:frontend"
+            "npm run lint:frontend",
+            "git add .",
+            "git commit -m 'lint js files'"
         ]
     }
 }
