@@ -134,7 +134,7 @@ export default function ObjectItemDetails() {
           className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
           aria-hidden="true"
         />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">{row.id}</p>
+        <p className="mt-1 max-w-2xl text-sm text-gray-500">{row.display_label}</p>
       </div>
       <div>
         <div>
