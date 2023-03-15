@@ -40,8 +40,8 @@ export default function ObjectItems() {
   const [currentFilters] = useAtom(comboxBoxFilterState);
 
   const filterString = currentFilters
-    .map((row) => `${row.name}: "${row.value}"`)
-    .join(",");
+  .map((row) => `${row.name}: "${row.value}"`)
+  .join(",");
 
   const navigate = useNavigate();
 
@@ -60,15 +60,15 @@ export default function ObjectItems() {
 
       const request = graphQLClient.request(query);
       request
-        .then((data) => {
-          const rows = data[schema.name];
-          setObjectRows(rows);
-          setIsLoading(false);
-        })
-        .catch(() => {
-          setHasError(true);
-          setIsLoading(false);
-        });
+      .then((data) => {
+        const rows = data[schema.name];
+        setObjectRows(rows);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setHasError(true);
+        setIsLoading(false);
+      });
     }
   }, [objectname, schemaList, schema, date, branch, currentFilters, filterString]);
 

@@ -1,1 +1,1 @@
-declare module 'react-datetime';
+declare module "react-datetime";
