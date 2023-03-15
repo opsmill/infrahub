@@ -8,7 +8,8 @@
         "test": "react-scripts test",
         "eject": "react-scripts eject",
         "codegen": "graphql-codegen --config codegen.yml",
-        "lintjs": "eslint . --fix"
+        "eslint": "eslint .",
+        "eslint:fix": "eslint . --fix"
     },
     "dependencies": {
         "@apollo/client": "^3.7.7",
