@@ -44,6 +44,7 @@
         "eslint-plugin-n": "^15.6.1",
         "eslint-plugin-promise": "^6.1.1",
         "eslint-plugin-react": "^7.32.2",
+        "eslint-plugin-unused-imports": "^2.0.0",
         "husky": "^8.0.3",
         "lint-staged": "^13.2.0",
         "openapi-typescript": "^6.1.1",
@@ -61,6 +62,9 @@
             "plugin:react/recommended",
             "react-app",
             "react-app/jest"
+        ],
+        "plugins": [
+            "unused-imports"
         ],
         "rules": {
             "quotes": [
@@ -105,8 +109,8 @@
                 0
             ],
             "react/react-in-jsx-scope": "off",
-            "no-unused-vars": "error",
-            "@typescript-eslint/no-unused-vars": "error"
+            "@typescript-eslint/no-unused-vars": "error",
+            "unused-imports/no-unused-imports-ts": 2
         }
     },
     "browserslist": {
