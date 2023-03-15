@@ -15,11 +15,11 @@ export type Scalars = {
 };
 
 export type Account = DataOwner & DataSource & {
-  __typename?: 'Account';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Account";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
   groups: Array<Maybe<RelatedGroup>>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   tokens: Array<Maybe<RelatedAccountToken>>;
   type: StrAttribute;
@@ -27,88 +27,88 @@ export type Account = DataOwner & DataSource & {
 
 
 export type AccountGroupsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type AccountTokensArgs = {
-  expiration_date__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  token__value?: InputMaybe<Scalars['String']>;
+  expiration_date__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  token__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type AccountCreate = {
-  __typename?: 'AccountCreate';
+  __typename?: "AccountCreate";
   object?: Maybe<Account>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AccountCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
   groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   tokens?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   type?: InputMaybe<StringAttributeInput>;
 };
 
 export type AccountDelete = {
-  __typename?: 'AccountDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "AccountDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AccountToken = {
-  __typename?: 'AccountToken';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "AccountToken";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   account?: Maybe<RelatedAccount>;
   expiration_date?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   token: StrAttribute;
 };
 
 export type AccountTokenCreate = {
-  __typename?: 'AccountTokenCreate';
+  __typename?: "AccountTokenCreate";
   object?: Maybe<AccountToken>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AccountTokenCreateInput = {
   account: RelatedNodeInput;
   expiration_date?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   token: StringAttributeInput;
 };
 
 export type AccountTokenDelete = {
-  __typename?: 'AccountTokenDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "AccountTokenDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AccountTokenUpdate = {
-  __typename?: 'AccountTokenUpdate';
+  __typename?: "AccountTokenUpdate";
   object?: Maybe<AccountToken>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AccountTokenUpdateInput = {
   account?: InputMaybe<RelatedNodeInput>;
   expiration_date?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   token?: InputMaybe<StringAttributeInput>;
 };
 
 export type AccountUpdate = {
-  __typename?: 'AccountUpdate';
+  __typename?: "AccountUpdate";
   object?: Maybe<Account>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AccountUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
   groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   tokens?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   type?: InputMaybe<StringAttributeInput>;
@@ -116,39 +116,39 @@ export type AccountUpdateInput = {
 
 /** Attribute of type GenericScalar */
 export type AnyAttribute = AttributeInterface & {
-  __typename?: 'AnyAttribute';
-  id?: Maybe<Scalars['String']>;
-  is_inherited?: Maybe<Scalars['Boolean']>;
-  is_protected?: Maybe<Scalars['Boolean']>;
-  is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "AnyAttribute";
+  id?: Maybe<Scalars["String"]>;
+  is_inherited?: Maybe<Scalars["Boolean"]>;
+  is_protected?: Maybe<Scalars["Boolean"]>;
+  is_visible?: Maybe<Scalars["Boolean"]>;
   owner?: Maybe<DataOwner>;
   source?: Maybe<DataSource>;
-  updated_at?: Maybe<Scalars['DateTime']>;
-  value?: Maybe<Scalars['GenericScalar']>;
+  updated_at?: Maybe<Scalars["DateTime"]>;
+  value?: Maybe<Scalars["GenericScalar"]>;
 };
 
 export type AnyAttributeInput = {
-  is_protected?: InputMaybe<Scalars['Boolean']>;
-  is_visible?: InputMaybe<Scalars['Boolean']>;
-  owner?: InputMaybe<Scalars['String']>;
-  source?: InputMaybe<Scalars['String']>;
-  value?: InputMaybe<Scalars['GenericScalar']>;
+  is_protected?: InputMaybe<Scalars["Boolean"]>;
+  is_visible?: InputMaybe<Scalars["Boolean"]>;
+  owner?: InputMaybe<Scalars["String"]>;
+  source?: InputMaybe<Scalars["String"]>;
+  value?: InputMaybe<Scalars["GenericScalar"]>;
 };
 
 export type AttributeInterface = {
-  is_inherited?: Maybe<Scalars['Boolean']>;
-  is_protected?: Maybe<Scalars['Boolean']>;
-  is_visible?: Maybe<Scalars['Boolean']>;
-  updated_at?: Maybe<Scalars['DateTime']>;
+  is_inherited?: Maybe<Scalars["Boolean"]>;
+  is_protected?: Maybe<Scalars["Boolean"]>;
+  is_visible?: Maybe<Scalars["Boolean"]>;
+  updated_at?: Maybe<Scalars["DateTime"]>;
 };
 
 export type AttributeSchema = {
-  __typename?: 'AttributeSchema';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "AttributeSchema";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   branch: BoolAttribute;
   default_value?: Maybe<AnyAttribute>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   inherited: BoolAttribute;
   kind: StrAttribute;
   label?: Maybe<StrAttribute>;
@@ -158,16 +158,16 @@ export type AttributeSchema = {
 };
 
 export type AttributeSchemaCreate = {
-  __typename?: 'AttributeSchemaCreate';
+  __typename?: "AttributeSchemaCreate";
   object?: Maybe<AttributeSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AttributeSchemaCreateInput = {
   branch: BoolAttributeInput;
   default_value?: InputMaybe<AnyAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   inherited: BoolAttributeInput;
   kind: StringAttributeInput;
   label?: InputMaybe<StringAttributeInput>;
@@ -177,21 +177,21 @@ export type AttributeSchemaCreateInput = {
 };
 
 export type AttributeSchemaDelete = {
-  __typename?: 'AttributeSchemaDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "AttributeSchemaDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AttributeSchemaUpdate = {
-  __typename?: 'AttributeSchemaUpdate';
+  __typename?: "AttributeSchemaUpdate";
   object?: Maybe<AttributeSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AttributeSchemaUpdateInput = {
   branch?: InputMaybe<BoolAttributeInput>;
   default_value?: InputMaybe<AnyAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   inherited?: InputMaybe<BoolAttributeInput>;
   kind?: InputMaybe<StringAttributeInput>;
   label?: InputMaybe<StringAttributeInput>;
@@ -201,54 +201,54 @@ export type AttributeSchemaUpdateInput = {
 };
 
 export type AutonomousSystem = {
-  __typename?: 'AutonomousSystem';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "AutonomousSystem";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   asn: IntAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   organization?: Maybe<RelatedOrganization>;
 };
 
 export type AutonomousSystemCreate = {
-  __typename?: 'AutonomousSystemCreate';
+  __typename?: "AutonomousSystemCreate";
   object?: Maybe<AutonomousSystem>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AutonomousSystemCreateInput = {
   asn: IntAttributeInput;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   organization: RelatedNodeInput;
 };
 
 export type AutonomousSystemDelete = {
-  __typename?: 'AutonomousSystemDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "AutonomousSystemDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AutonomousSystemUpdate = {
-  __typename?: 'AutonomousSystemUpdate';
+  __typename?: "AutonomousSystemUpdate";
   object?: Maybe<AutonomousSystem>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type AutonomousSystemUpdateInput = {
   asn?: InputMaybe<IntAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   organization?: InputMaybe<RelatedNodeInput>;
 };
 
 export type BgpPeerGroup = {
-  __typename?: 'BGPPeerGroup';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "BGPPeerGroup";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
   export_policies?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   import_policies?: Maybe<StrAttribute>;
   local_as?: Maybe<RelatedAutonomousSystem>;
   name: StrAttribute;
@@ -256,15 +256,15 @@ export type BgpPeerGroup = {
 };
 
 export type BgpPeerGroupCreate = {
-  __typename?: 'BGPPeerGroupCreate';
+  __typename?: "BGPPeerGroupCreate";
   object?: Maybe<BgpPeerGroup>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BgpPeerGroupCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
   export_policies?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   import_policies?: InputMaybe<StringAttributeInput>;
   local_as?: InputMaybe<RelatedNodeInput>;
   name: StringAttributeInput;
@@ -272,20 +272,20 @@ export type BgpPeerGroupCreateInput = {
 };
 
 export type BgpPeerGroupDelete = {
-  __typename?: 'BGPPeerGroupDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "BGPPeerGroupDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BgpPeerGroupUpdate = {
-  __typename?: 'BGPPeerGroupUpdate';
+  __typename?: "BGPPeerGroupUpdate";
   object?: Maybe<BgpPeerGroup>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BgpPeerGroupUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
   export_policies?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   import_policies?: InputMaybe<StringAttributeInput>;
   local_as?: InputMaybe<RelatedNodeInput>;
   name?: InputMaybe<StringAttributeInput>;
@@ -293,12 +293,12 @@ export type BgpPeerGroupUpdateInput = {
 };
 
 export type BgpSession = {
-  __typename?: 'BGPSession';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "BGPSession";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
   device?: Maybe<RelatedDevice>;
   export_policies?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   import_policies?: Maybe<StrAttribute>;
   local_as?: Maybe<RelatedAutonomousSystem>;
   local_ip?: Maybe<RelatedIpAddress>;
@@ -312,16 +312,16 @@ export type BgpSession = {
 };
 
 export type BgpSessionCreate = {
-  __typename?: 'BGPSessionCreate';
+  __typename?: "BGPSessionCreate";
   object?: Maybe<BgpSession>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BgpSessionCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
   device?: InputMaybe<RelatedNodeInput>;
   export_policies?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   import_policies?: InputMaybe<StringAttributeInput>;
   local_as?: InputMaybe<RelatedNodeInput>;
   local_ip?: InputMaybe<RelatedNodeInput>;
@@ -335,21 +335,21 @@ export type BgpSessionCreateInput = {
 };
 
 export type BgpSessionDelete = {
-  __typename?: 'BGPSessionDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "BGPSessionDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BgpSessionUpdate = {
-  __typename?: 'BGPSessionUpdate';
+  __typename?: "BGPSessionUpdate";
   object?: Maybe<BgpSession>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BgpSessionUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
   device?: InputMaybe<RelatedNodeInput>;
   export_policies?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   import_policies?: InputMaybe<StringAttributeInput>;
   local_as?: InputMaybe<RelatedNodeInput>;
   local_ip?: InputMaybe<RelatedNodeInput>;
@@ -364,149 +364,149 @@ export type BgpSessionUpdateInput = {
 
 /** Attribute of type Boolean */
 export type BoolAttribute = AttributeInterface & {
-  __typename?: 'BoolAttribute';
-  id?: Maybe<Scalars['String']>;
-  is_inherited?: Maybe<Scalars['Boolean']>;
-  is_protected?: Maybe<Scalars['Boolean']>;
-  is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "BoolAttribute";
+  id?: Maybe<Scalars["String"]>;
+  is_inherited?: Maybe<Scalars["Boolean"]>;
+  is_protected?: Maybe<Scalars["Boolean"]>;
+  is_visible?: Maybe<Scalars["Boolean"]>;
   owner?: Maybe<DataOwner>;
   source?: Maybe<DataSource>;
-  updated_at?: Maybe<Scalars['DateTime']>;
-  value?: Maybe<Scalars['Boolean']>;
+  updated_at?: Maybe<Scalars["DateTime"]>;
+  value?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BoolAttributeInput = {
-  is_protected?: InputMaybe<Scalars['Boolean']>;
-  is_visible?: InputMaybe<Scalars['Boolean']>;
-  owner?: InputMaybe<Scalars['String']>;
-  source?: InputMaybe<Scalars['String']>;
-  value?: InputMaybe<Scalars['Boolean']>;
+  is_protected?: InputMaybe<Scalars["Boolean"]>;
+  is_visible?: InputMaybe<Scalars["Boolean"]>;
+  owner?: InputMaybe<Scalars["String"]>;
+  source?: InputMaybe<Scalars["String"]>;
+  value?: InputMaybe<Scalars["Boolean"]>;
 };
 
 /** Branch */
 export type Branch = {
-  __typename?: 'Branch';
-  branched_from?: Maybe<Scalars['String']>;
-  created_at?: Maybe<Scalars['String']>;
-  description?: Maybe<Scalars['String']>;
-  id: Scalars['String'];
-  is_data_only?: Maybe<Scalars['Boolean']>;
-  is_default?: Maybe<Scalars['Boolean']>;
-  name: Scalars['String'];
-  origin_branch?: Maybe<Scalars['String']>;
+  __typename?: "Branch";
+  branched_from?: Maybe<Scalars["String"]>;
+  created_at?: Maybe<Scalars["String"]>;
+  description?: Maybe<Scalars["String"]>;
+  id: Scalars["String"];
+  is_data_only?: Maybe<Scalars["Boolean"]>;
+  is_default?: Maybe<Scalars["Boolean"]>;
+  name: Scalars["String"];
+  origin_branch?: Maybe<Scalars["String"]>;
 };
 
 export type BranchCreate = {
-  __typename?: 'BranchCreate';
+  __typename?: "BranchCreate";
   object?: Maybe<Branch>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BranchCreateInput = {
-  branched_from?: InputMaybe<Scalars['String']>;
-  description?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['String']>;
-  is_data_only?: InputMaybe<Scalars['Boolean']>;
-  name: Scalars['String'];
-  origin_branch?: InputMaybe<Scalars['String']>;
+  branched_from?: InputMaybe<Scalars["String"]>;
+  description?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["String"]>;
+  is_data_only?: InputMaybe<Scalars["Boolean"]>;
+  name: Scalars["String"];
+  origin_branch?: InputMaybe<Scalars["String"]>;
 };
 
 export type BranchDiffAttributeType = {
-  __typename?: 'BranchDiffAttributeType';
-  action?: Maybe<Scalars['String']>;
-  changed_at?: Maybe<Scalars['String']>;
-  id?: Maybe<Scalars['String']>;
-  name?: Maybe<Scalars['String']>;
+  __typename?: "BranchDiffAttributeType";
+  action?: Maybe<Scalars["String"]>;
+  changed_at?: Maybe<Scalars["String"]>;
+  id?: Maybe<Scalars["String"]>;
+  name?: Maybe<Scalars["String"]>;
   properties?: Maybe<Array<Maybe<BranchDiffPropertyType>>>;
 };
 
 export type BranchDiffFileType = {
-  __typename?: 'BranchDiffFileType';
-  action?: Maybe<Scalars['String']>;
-  branch?: Maybe<Scalars['String']>;
-  location?: Maybe<Scalars['String']>;
-  repository?: Maybe<Scalars['String']>;
+  __typename?: "BranchDiffFileType";
+  action?: Maybe<Scalars["String"]>;
+  branch?: Maybe<Scalars["String"]>;
+  location?: Maybe<Scalars["String"]>;
+  repository?: Maybe<Scalars["String"]>;
 };
 
 export type BranchDiffNodeType = {
-  __typename?: 'BranchDiffNodeType';
-  action?: Maybe<Scalars['String']>;
+  __typename?: "BranchDiffNodeType";
+  action?: Maybe<Scalars["String"]>;
   attributes?: Maybe<Array<Maybe<BranchDiffAttributeType>>>;
-  branch?: Maybe<Scalars['String']>;
-  changed_at?: Maybe<Scalars['String']>;
-  id?: Maybe<Scalars['String']>;
-  kind?: Maybe<Scalars['String']>;
+  branch?: Maybe<Scalars["String"]>;
+  changed_at?: Maybe<Scalars["String"]>;
+  id?: Maybe<Scalars["String"]>;
+  kind?: Maybe<Scalars["String"]>;
 };
 
 export type BranchDiffPropertyType = {
-  __typename?: 'BranchDiffPropertyType';
-  action?: Maybe<Scalars['String']>;
-  branch?: Maybe<Scalars['String']>;
-  changed_at?: Maybe<Scalars['String']>;
-  type?: Maybe<Scalars['String']>;
+  __typename?: "BranchDiffPropertyType";
+  action?: Maybe<Scalars["String"]>;
+  branch?: Maybe<Scalars["String"]>;
+  changed_at?: Maybe<Scalars["String"]>;
+  type?: Maybe<Scalars["String"]>;
   value?: Maybe<BranchDiffPropertyValueType>;
 };
 
 export type BranchDiffPropertyValueType = {
-  __typename?: 'BranchDiffPropertyValueType';
-  new?: Maybe<Scalars['GenericScalar']>;
-  previous?: Maybe<Scalars['GenericScalar']>;
+  __typename?: "BranchDiffPropertyValueType";
+  new?: Maybe<Scalars["GenericScalar"]>;
+  previous?: Maybe<Scalars["GenericScalar"]>;
 };
 
 export type BranchDiffRelationshipEdgeNodeType = {
-  __typename?: 'BranchDiffRelationshipEdgeNodeType';
-  id?: Maybe<Scalars['String']>;
-  kind?: Maybe<Scalars['String']>;
+  __typename?: "BranchDiffRelationshipEdgeNodeType";
+  id?: Maybe<Scalars["String"]>;
+  kind?: Maybe<Scalars["String"]>;
 };
 
 export type BranchDiffRelationshipType = {
-  __typename?: 'BranchDiffRelationshipType';
-  action?: Maybe<Scalars['String']>;
-  branch?: Maybe<Scalars['String']>;
-  changed_at?: Maybe<Scalars['String']>;
-  id?: Maybe<Scalars['String']>;
-  name?: Maybe<Scalars['String']>;
+  __typename?: "BranchDiffRelationshipType";
+  action?: Maybe<Scalars["String"]>;
+  branch?: Maybe<Scalars["String"]>;
+  changed_at?: Maybe<Scalars["String"]>;
+  id?: Maybe<Scalars["String"]>;
+  name?: Maybe<Scalars["String"]>;
   nodes?: Maybe<Array<Maybe<BranchDiffRelationshipEdgeNodeType>>>;
   properties?: Maybe<Array<Maybe<BranchDiffPropertyType>>>;
 };
 
 export type BranchDiffType = {
-  __typename?: 'BranchDiffType';
+  __typename?: "BranchDiffType";
   files?: Maybe<Array<Maybe<BranchDiffFileType>>>;
   nodes?: Maybe<Array<Maybe<BranchDiffNodeType>>>;
   relationships?: Maybe<Array<Maybe<BranchDiffRelationshipType>>>;
 };
 
 export type BranchMerge = {
-  __typename?: 'BranchMerge';
+  __typename?: "BranchMerge";
   object?: Maybe<Branch>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BranchNameInput = {
-  name?: InputMaybe<Scalars['String']>;
+  name?: InputMaybe<Scalars["String"]>;
 };
 
 export type BranchRebase = {
-  __typename?: 'BranchRebase';
+  __typename?: "BranchRebase";
   object?: Maybe<Branch>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type BranchValidate = {
-  __typename?: 'BranchValidate';
-  messages?: Maybe<Array<Maybe<Scalars['String']>>>;
+  __typename?: "BranchValidate";
+  messages?: Maybe<Array<Maybe<Scalars["String"]>>>;
   object?: Maybe<Branch>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type Check = {
-  __typename?: 'Check';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Check";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   class_name: StrAttribute;
   description?: Maybe<StrAttribute>;
   file_path: StrAttribute;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query?: Maybe<RelatedGraphQlQuery>;
   rebase: BoolAttribute;
@@ -517,22 +517,22 @@ export type Check = {
 
 
 export type CheckTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type CheckCreate = {
-  __typename?: 'CheckCreate';
+  __typename?: "CheckCreate";
   object?: Maybe<Check>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CheckCreateInput = {
   class_name: StringAttributeInput;
   description?: InputMaybe<StringAttributeInput>;
   file_path: StringAttributeInput;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   query?: InputMaybe<RelatedNodeInput>;
   rebase: BoolAttributeInput;
@@ -542,21 +542,21 @@ export type CheckCreateInput = {
 };
 
 export type CheckDelete = {
-  __typename?: 'CheckDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "CheckDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CheckUpdate = {
-  __typename?: 'CheckUpdate';
+  __typename?: "CheckUpdate";
   object?: Maybe<Check>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CheckUpdateInput = {
   class_name?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
   file_path?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   query?: InputMaybe<RelatedNodeInput>;
   rebase?: InputMaybe<BoolAttributeInput>;
@@ -566,12 +566,12 @@ export type CheckUpdateInput = {
 };
 
 export type Circuit = {
-  __typename?: 'Circuit';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Circuit";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   circuit_id: StrAttribute;
   description?: Maybe<StrAttribute>;
   endpoints: Array<Maybe<RelatedCircuitEndpoint>>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   provider?: Maybe<RelatedOrganization>;
   role?: Maybe<RelatedRole>;
   status?: Maybe<RelatedStatus>;
@@ -580,21 +580,21 @@ export type Circuit = {
 
 
 export type CircuitEndpointsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
 };
 
 export type CircuitCreate = {
-  __typename?: 'CircuitCreate';
+  __typename?: "CircuitCreate";
   object?: Maybe<Circuit>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CircuitCreateInput = {
   circuit_id: StringAttributeInput;
   description?: InputMaybe<StringAttributeInput>;
   endpoints?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   provider: RelatedNodeInput;
   role: RelatedNodeInput;
   status: RelatedNodeInput;
@@ -602,64 +602,64 @@ export type CircuitCreateInput = {
 };
 
 export type CircuitDelete = {
-  __typename?: 'CircuitDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "CircuitDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CircuitEndpoint = {
-  __typename?: 'CircuitEndpoint';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "CircuitEndpoint";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   circuit?: Maybe<RelatedCircuit>;
   connected_interface?: Maybe<RelatedInterface>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   site?: Maybe<RelatedLocation>;
 };
 
 export type CircuitEndpointCreate = {
-  __typename?: 'CircuitEndpointCreate';
+  __typename?: "CircuitEndpointCreate";
   object?: Maybe<CircuitEndpoint>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CircuitEndpointCreateInput = {
   circuit: RelatedNodeInput;
   connected_interface?: InputMaybe<RelatedNodeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   site: RelatedNodeInput;
 };
 
 export type CircuitEndpointDelete = {
-  __typename?: 'CircuitEndpointDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "CircuitEndpointDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CircuitEndpointUpdate = {
-  __typename?: 'CircuitEndpointUpdate';
+  __typename?: "CircuitEndpointUpdate";
   object?: Maybe<CircuitEndpoint>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CircuitEndpointUpdateInput = {
   circuit?: InputMaybe<RelatedNodeInput>;
   connected_interface?: InputMaybe<RelatedNodeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   site?: InputMaybe<RelatedNodeInput>;
 };
 
 export type CircuitUpdate = {
-  __typename?: 'CircuitUpdate';
+  __typename?: "CircuitUpdate";
   object?: Maybe<Circuit>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CircuitUpdateInput = {
   circuit_id?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
   endpoints?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   provider?: InputMaybe<RelatedNodeInput>;
   role?: InputMaybe<RelatedNodeInput>;
   status?: InputMaybe<RelatedNodeInput>;
@@ -667,41 +667,41 @@ export type CircuitUpdateInput = {
 };
 
 export type Criticality = {
-  __typename?: 'Criticality';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Criticality";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   level: IntAttribute;
   name: StrAttribute;
 };
 
 export type CriticalityCreate = {
-  __typename?: 'CriticalityCreate';
+  __typename?: "CriticalityCreate";
   object?: Maybe<Criticality>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CriticalityCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   level: IntAttributeInput;
   name: StringAttributeInput;
 };
 
 export type CriticalityDelete = {
-  __typename?: 'CriticalityDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "CriticalityDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CriticalityUpdate = {
-  __typename?: 'CriticalityUpdate';
+  __typename?: "CriticalityUpdate";
   object?: Maybe<Criticality>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type CriticalityUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   level?: InputMaybe<IntAttributeInput>;
   name?: InputMaybe<StringAttributeInput>;
 };
@@ -709,7 +709,7 @@ export type CriticalityUpdateInput = {
 export type DataOwner = {
   description?: Maybe<StrAttribute>;
   /** Unique identifier */
-  id?: Maybe<Scalars['String']>;
+  id?: Maybe<Scalars["String"]>;
   name: StrAttribute;
 };
 
@@ -717,20 +717,20 @@ export type DataOwner = {
 export type DataSource = {
   description?: Maybe<StrAttribute>;
   /** Unique identifier */
-  id?: Maybe<Scalars['String']>;
+  id?: Maybe<Scalars["String"]>;
   name: StrAttribute;
 };
 
 export type DeleteInput = {
-  id: Scalars['String'];
+  id: Scalars["String"];
 };
 
 export type Device = {
-  __typename?: 'Device';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Device";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   asn?: Maybe<RelatedAutonomousSystem>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   interfaces: Array<Maybe<RelatedInterface>>;
   name: StrAttribute;
   role?: Maybe<RelatedRole>;
@@ -742,30 +742,30 @@ export type Device = {
 
 
 export type DeviceInterfacesArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  enabled__value?: InputMaybe<Scalars['Boolean']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  speed__value?: InputMaybe<Scalars['Int']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  enabled__value?: InputMaybe<Scalars["Boolean"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  speed__value?: InputMaybe<Scalars["Int"]>;
 };
 
 
 export type DeviceTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type DeviceCreate = {
-  __typename?: 'DeviceCreate';
+  __typename?: "DeviceCreate";
   object?: Maybe<Device>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type DeviceCreateInput = {
   asn?: InputMaybe<RelatedNodeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   interfaces?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name: StringAttributeInput;
   role: RelatedNodeInput;
@@ -776,20 +776,20 @@ export type DeviceCreateInput = {
 };
 
 export type DeviceDelete = {
-  __typename?: 'DeviceDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "DeviceDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type DeviceUpdate = {
-  __typename?: 'DeviceUpdate';
+  __typename?: "DeviceUpdate";
   object?: Maybe<Device>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type DeviceUpdateInput = {
   asn?: InputMaybe<RelatedNodeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   interfaces?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<StringAttributeInput>;
   role?: InputMaybe<RelatedNodeInput>;
@@ -800,11 +800,11 @@ export type DeviceUpdateInput = {
 };
 
 export type GenericSchema = {
-  __typename?: 'GenericSchema';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "GenericSchema";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   attributes: Array<Maybe<RelatedAttributeSchema>>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   kind: StrAttribute;
   label?: Maybe<StrAttribute>;
   name: StrAttribute;
@@ -813,42 +813,42 @@ export type GenericSchema = {
 
 
 export type GenericSchemaAttributesArgs = {
-  branch__value?: InputMaybe<Scalars['Boolean']>;
-  default_value__value?: InputMaybe<Scalars['GenericScalar']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  inherited__value?: InputMaybe<Scalars['Boolean']>;
-  kind__value?: InputMaybe<Scalars['String']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  optional__value?: InputMaybe<Scalars['Boolean']>;
-  unique__value?: InputMaybe<Scalars['Boolean']>;
+  branch__value?: InputMaybe<Scalars["Boolean"]>;
+  default_value__value?: InputMaybe<Scalars["GenericScalar"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  kind__value?: InputMaybe<Scalars["String"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  optional__value?: InputMaybe<Scalars["Boolean"]>;
+  unique__value?: InputMaybe<Scalars["Boolean"]>;
 };
 
 
 export type GenericSchemaRelationshipsArgs = {
-  branch__value?: InputMaybe<Scalars['Boolean']>;
-  cardinality__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  identifier__value?: InputMaybe<Scalars['String']>;
-  inherited__value?: InputMaybe<Scalars['Boolean']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  optional__value?: InputMaybe<Scalars['Boolean']>;
-  peer__value?: InputMaybe<Scalars['String']>;
+  branch__value?: InputMaybe<Scalars["Boolean"]>;
+  cardinality__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  identifier__value?: InputMaybe<Scalars["String"]>;
+  inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  optional__value?: InputMaybe<Scalars["Boolean"]>;
+  peer__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type GenericSchemaCreate = {
-  __typename?: 'GenericSchemaCreate';
+  __typename?: "GenericSchemaCreate";
   object?: Maybe<GenericSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GenericSchemaCreateInput = {
   attributes?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   kind: StringAttributeInput;
   label?: InputMaybe<StringAttributeInput>;
   name: StringAttributeInput;
@@ -856,20 +856,20 @@ export type GenericSchemaCreateInput = {
 };
 
 export type GenericSchemaDelete = {
-  __typename?: 'GenericSchemaDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "GenericSchemaDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GenericSchemaUpdate = {
-  __typename?: 'GenericSchemaUpdate';
+  __typename?: "GenericSchemaUpdate";
   object?: Maybe<GenericSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GenericSchemaUpdateInput = {
   attributes?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   kind?: InputMaybe<StringAttributeInput>;
   label?: InputMaybe<StringAttributeInput>;
   name?: InputMaybe<StringAttributeInput>;
@@ -877,10 +877,10 @@ export type GenericSchemaUpdateInput = {
 };
 
 export type GraphQlQuery = {
-  __typename?: 'GraphQLQuery';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "GraphQLQuery";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query: StrAttribute;
   tags: Array<Maybe<RelatedTag>>;
@@ -888,202 +888,202 @@ export type GraphQlQuery = {
 
 
 export type GraphQlQueryTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type GraphQlQueryCreate = {
-  __typename?: 'GraphQLQueryCreate';
+  __typename?: "GraphQLQueryCreate";
   object?: Maybe<GraphQlQuery>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GraphQlQueryCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   query: StringAttributeInput;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 export type GraphQlQueryDelete = {
-  __typename?: 'GraphQLQueryDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "GraphQLQueryDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GraphQlQueryUpdate = {
-  __typename?: 'GraphQLQueryUpdate';
+  __typename?: "GraphQLQueryUpdate";
   object?: Maybe<GraphQlQuery>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GraphQlQueryUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   query?: InputMaybe<StringAttributeInput>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 export type Group = DataOwner & {
-  __typename?: 'Group';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Group";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   members: Array<Maybe<RelatedAccount>>;
   name: StrAttribute;
 };
 
 
 export type GroupMembersArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  type__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  type__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type GroupCreate = {
-  __typename?: 'GroupCreate';
+  __typename?: "GroupCreate";
   object?: Maybe<Group>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GroupCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name: StringAttributeInput;
 };
 
 export type GroupDelete = {
-  __typename?: 'GroupDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "GroupDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GroupSchema = {
-  __typename?: 'GroupSchema';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "GroupSchema";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   kind: StrAttribute;
   name: StrAttribute;
 };
 
 export type GroupSchemaCreate = {
-  __typename?: 'GroupSchemaCreate';
+  __typename?: "GroupSchemaCreate";
   object?: Maybe<GroupSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GroupSchemaCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   kind: StringAttributeInput;
   name: StringAttributeInput;
 };
 
 export type GroupSchemaDelete = {
-  __typename?: 'GroupSchemaDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "GroupSchemaDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GroupSchemaUpdate = {
-  __typename?: 'GroupSchemaUpdate';
+  __typename?: "GroupSchemaUpdate";
   object?: Maybe<GroupSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GroupSchemaUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   kind?: InputMaybe<StringAttributeInput>;
   name?: InputMaybe<StringAttributeInput>;
 };
 
 export type GroupUpdate = {
-  __typename?: 'GroupUpdate';
+  __typename?: "GroupUpdate";
   object?: Maybe<Group>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type GroupUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<StringAttributeInput>;
 };
 
 export type IpAddress = {
-  __typename?: 'IPAddress';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "IPAddress";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   address: StrAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   interface?: Maybe<RelatedInterface>;
 };
 
 export type IpAddressCreate = {
-  __typename?: 'IPAddressCreate';
+  __typename?: "IPAddressCreate";
   object?: Maybe<IpAddress>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type IpAddressCreateInput = {
   address: StringAttributeInput;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   interface?: InputMaybe<RelatedNodeInput>;
 };
 
 export type IpAddressDelete = {
-  __typename?: 'IPAddressDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "IPAddressDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type IpAddressUpdate = {
-  __typename?: 'IPAddressUpdate';
+  __typename?: "IPAddressUpdate";
   object?: Maybe<IpAddress>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type IpAddressUpdateInput = {
   address?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   interface?: InputMaybe<RelatedNodeInput>;
 };
 
 /** Attribute of type Integer */
 export type IntAttribute = AttributeInterface & {
-  __typename?: 'IntAttribute';
-  id?: Maybe<Scalars['String']>;
-  is_inherited?: Maybe<Scalars['Boolean']>;
-  is_protected?: Maybe<Scalars['Boolean']>;
-  is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "IntAttribute";
+  id?: Maybe<Scalars["String"]>;
+  is_inherited?: Maybe<Scalars["Boolean"]>;
+  is_protected?: Maybe<Scalars["Boolean"]>;
+  is_visible?: Maybe<Scalars["Boolean"]>;
   owner?: Maybe<DataOwner>;
   source?: Maybe<DataSource>;
-  updated_at?: Maybe<Scalars['DateTime']>;
-  value?: Maybe<Scalars['Int']>;
+  updated_at?: Maybe<Scalars["DateTime"]>;
+  value?: Maybe<Scalars["Int"]>;
 };
 
 export type IntAttributeInput = {
-  is_protected?: InputMaybe<Scalars['Boolean']>;
-  is_visible?: InputMaybe<Scalars['Boolean']>;
-  owner?: InputMaybe<Scalars['String']>;
-  source?: InputMaybe<Scalars['String']>;
-  value?: InputMaybe<Scalars['Int']>;
+  is_protected?: InputMaybe<Scalars["Boolean"]>;
+  is_visible?: InputMaybe<Scalars["Boolean"]>;
+  owner?: InputMaybe<Scalars["String"]>;
+  source?: InputMaybe<Scalars["String"]>;
+  value?: InputMaybe<Scalars["Int"]>;
 };
 
 export type Interface = {
-  __typename?: 'Interface';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Interface";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   connected_circuit?: Maybe<RelatedCircuitEndpoint>;
   connected_interface?: Maybe<RelatedInterface>;
   description?: Maybe<StrAttribute>;
   device?: Maybe<RelatedDevice>;
   enabled: BoolAttribute;
-  id: Scalars['String'];
+  id: Scalars["String"];
   ip_addresses: Array<Maybe<RelatedIpAddress>>;
   name: StrAttribute;
   role?: Maybe<RelatedRole>;
@@ -1094,22 +1094,22 @@ export type Interface = {
 
 
 export type InterfaceIp_AddressesArgs = {
-  address__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
+  address__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
 };
 
 
 export type InterfaceTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type InterfaceCreate = {
-  __typename?: 'InterfaceCreate';
+  __typename?: "InterfaceCreate";
   object?: Maybe<Interface>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type InterfaceCreateInput = {
@@ -1118,7 +1118,7 @@ export type InterfaceCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
   device: RelatedNodeInput;
   enabled?: InputMaybe<BoolAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   ip_addresses?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name: StringAttributeInput;
   role: RelatedNodeInput;
@@ -1128,14 +1128,14 @@ export type InterfaceCreateInput = {
 };
 
 export type InterfaceDelete = {
-  __typename?: 'InterfaceDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "InterfaceDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type InterfaceUpdate = {
-  __typename?: 'InterfaceUpdate';
+  __typename?: "InterfaceUpdate";
   object?: Maybe<Interface>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type InterfaceUpdateInput = {
@@ -1144,7 +1144,7 @@ export type InterfaceUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
   device?: InputMaybe<RelatedNodeInput>;
   enabled?: InputMaybe<BoolAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   ip_addresses?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<StringAttributeInput>;
   role?: InputMaybe<RelatedNodeInput>;
@@ -1155,30 +1155,30 @@ export type InterfaceUpdateInput = {
 
 /** Attribute of type List */
 export type ListAttribute = AttributeInterface & {
-  __typename?: 'ListAttribute';
-  id?: Maybe<Scalars['String']>;
-  is_inherited?: Maybe<Scalars['Boolean']>;
-  is_protected?: Maybe<Scalars['Boolean']>;
-  is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "ListAttribute";
+  id?: Maybe<Scalars["String"]>;
+  is_inherited?: Maybe<Scalars["Boolean"]>;
+  is_protected?: Maybe<Scalars["Boolean"]>;
+  is_visible?: Maybe<Scalars["Boolean"]>;
   owner?: Maybe<DataOwner>;
   source?: Maybe<DataSource>;
-  updated_at?: Maybe<Scalars['DateTime']>;
-  value?: Maybe<Scalars['GenericScalar']>;
+  updated_at?: Maybe<Scalars["DateTime"]>;
+  value?: Maybe<Scalars["GenericScalar"]>;
 };
 
 export type ListAttributeInput = {
-  is_protected?: InputMaybe<Scalars['Boolean']>;
-  is_visible?: InputMaybe<Scalars['Boolean']>;
-  owner?: InputMaybe<Scalars['String']>;
-  source?: InputMaybe<Scalars['String']>;
-  value?: InputMaybe<Scalars['GenericScalar']>;
+  is_protected?: InputMaybe<Scalars["Boolean"]>;
+  is_visible?: InputMaybe<Scalars["Boolean"]>;
+  owner?: InputMaybe<Scalars["String"]>;
+  source?: InputMaybe<Scalars["String"]>;
+  value?: InputMaybe<Scalars["GenericScalar"]>;
 };
 
 export type Location = {
-  __typename?: 'Location';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Location";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   tags: Array<Maybe<RelatedTag>>;
   type: StrAttribute;
@@ -1186,46 +1186,46 @@ export type Location = {
 
 
 export type LocationTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type LocationCreate = {
-  __typename?: 'LocationCreate';
+  __typename?: "LocationCreate";
   object?: Maybe<Location>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type LocationCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   type: StringAttributeInput;
 };
 
 export type LocationDelete = {
-  __typename?: 'LocationDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "LocationDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type LocationUpdate = {
-  __typename?: 'LocationUpdate';
+  __typename?: "LocationUpdate";
   object?: Maybe<Location>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type LocationUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   type?: InputMaybe<StringAttributeInput>;
 };
 
 export type Mutation = {
-  __typename?: 'Mutation';
+  __typename?: "Mutation";
   account_create?: Maybe<AccountCreate>;
   account_delete?: Maybe<AccountDelete>;
   account_token_create?: Maybe<AccountTokenCreate>;
@@ -1405,7 +1405,7 @@ export type MutationBgp_Session_UpdateArgs = {
 
 
 export type MutationBranch_CreateArgs = {
-  background_execution?: InputMaybe<Scalars['Boolean']>;
+  background_execution?: InputMaybe<Scalars["Boolean"]>;
   data: BranchCreateInput;
 };
 
@@ -1740,14 +1740,14 @@ export type MutationTransform_Python_UpdateArgs = {
 };
 
 export type NodeSchema = {
-  __typename?: 'NodeSchema';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "NodeSchema";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   attributes: Array<Maybe<RelatedAttributeSchema>>;
   branch: BoolAttribute;
   default_filter?: Maybe<StrAttribute>;
   description?: Maybe<StrAttribute>;
   groups: ListAttribute;
-  id: Scalars['String'];
+  id: Scalars["String"];
   inherit_from: ListAttribute;
   kind: StrAttribute;
   label?: Maybe<StrAttribute>;
@@ -1757,36 +1757,36 @@ export type NodeSchema = {
 
 
 export type NodeSchemaAttributesArgs = {
-  branch__value?: InputMaybe<Scalars['Boolean']>;
-  default_value__value?: InputMaybe<Scalars['GenericScalar']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  inherited__value?: InputMaybe<Scalars['Boolean']>;
-  kind__value?: InputMaybe<Scalars['String']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  optional__value?: InputMaybe<Scalars['Boolean']>;
-  unique__value?: InputMaybe<Scalars['Boolean']>;
+  branch__value?: InputMaybe<Scalars["Boolean"]>;
+  default_value__value?: InputMaybe<Scalars["GenericScalar"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  kind__value?: InputMaybe<Scalars["String"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  optional__value?: InputMaybe<Scalars["Boolean"]>;
+  unique__value?: InputMaybe<Scalars["Boolean"]>;
 };
 
 
 export type NodeSchemaRelationshipsArgs = {
-  branch__value?: InputMaybe<Scalars['Boolean']>;
-  cardinality__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  identifier__value?: InputMaybe<Scalars['String']>;
-  inherited__value?: InputMaybe<Scalars['Boolean']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  optional__value?: InputMaybe<Scalars['Boolean']>;
-  peer__value?: InputMaybe<Scalars['String']>;
+  branch__value?: InputMaybe<Scalars["Boolean"]>;
+  cardinality__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  identifier__value?: InputMaybe<Scalars["String"]>;
+  inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  optional__value?: InputMaybe<Scalars["Boolean"]>;
+  peer__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type NodeSchemaCreate = {
-  __typename?: 'NodeSchemaCreate';
+  __typename?: "NodeSchemaCreate";
   object?: Maybe<NodeSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type NodeSchemaCreateInput = {
@@ -1795,7 +1795,7 @@ export type NodeSchemaCreateInput = {
   default_filter?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
   groups: ListAttributeInput;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   inherit_from: ListAttributeInput;
   kind: StringAttributeInput;
   label?: InputMaybe<StringAttributeInput>;
@@ -1804,14 +1804,14 @@ export type NodeSchemaCreateInput = {
 };
 
 export type NodeSchemaDelete = {
-  __typename?: 'NodeSchemaDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "NodeSchemaDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type NodeSchemaUpdate = {
-  __typename?: 'NodeSchemaUpdate';
+  __typename?: "NodeSchemaUpdate";
   object?: Maybe<NodeSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type NodeSchemaUpdateInput = {
@@ -1820,7 +1820,7 @@ export type NodeSchemaUpdateInput = {
   default_filter?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
   groups?: InputMaybe<ListAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   inherit_from?: InputMaybe<ListAttributeInput>;
   kind?: InputMaybe<StringAttributeInput>;
   label?: InputMaybe<StringAttributeInput>;
@@ -1829,54 +1829,54 @@ export type NodeSchemaUpdateInput = {
 };
 
 export type Organization = {
-  __typename?: 'Organization';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Organization";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   tags: Array<Maybe<RelatedTag>>;
 };
 
 
 export type OrganizationTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type OrganizationCreate = {
-  __typename?: 'OrganizationCreate';
+  __typename?: "OrganizationCreate";
   object?: Maybe<Organization>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type OrganizationCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 export type OrganizationDelete = {
-  __typename?: 'OrganizationDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "OrganizationDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type OrganizationUpdate = {
-  __typename?: 'OrganizationUpdate';
+  __typename?: "OrganizationUpdate";
   object?: Maybe<Organization>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type OrganizationUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 export type Query = {
-  __typename?: 'Query';
+  __typename?: "Query";
   account?: Maybe<Array<Maybe<Account>>>;
   account_token?: Maybe<Array<Maybe<AccountToken>>>;
   attribute_schema?: Maybe<Array<Maybe<AttributeSchema>>>;
@@ -1910,517 +1910,517 @@ export type Query = {
 
 
 export type QueryAccountArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  groups__description__value?: InputMaybe<Scalars['String']>;
-  groups__id?: InputMaybe<Scalars['ID']>;
-  groups__name__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  tokens__expiration_date__value?: InputMaybe<Scalars['String']>;
-  tokens__id?: InputMaybe<Scalars['ID']>;
-  tokens__token__value?: InputMaybe<Scalars['String']>;
-  type__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  groups__description__value?: InputMaybe<Scalars["String"]>;
+  groups__id?: InputMaybe<Scalars["ID"]>;
+  groups__name__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  tokens__expiration_date__value?: InputMaybe<Scalars["String"]>;
+  tokens__id?: InputMaybe<Scalars["ID"]>;
+  tokens__token__value?: InputMaybe<Scalars["String"]>;
+  type__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryAccount_TokenArgs = {
-  account__description__value?: InputMaybe<Scalars['String']>;
-  account__id?: InputMaybe<Scalars['ID']>;
-  account__name__value?: InputMaybe<Scalars['String']>;
-  account__type__value?: InputMaybe<Scalars['String']>;
-  expiration_date__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  token__value?: InputMaybe<Scalars['String']>;
+  account__description__value?: InputMaybe<Scalars["String"]>;
+  account__id?: InputMaybe<Scalars["ID"]>;
+  account__name__value?: InputMaybe<Scalars["String"]>;
+  account__type__value?: InputMaybe<Scalars["String"]>;
+  expiration_date__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  token__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryAttribute_SchemaArgs = {
-  branch__value?: InputMaybe<Scalars['Boolean']>;
-  default_value__value?: InputMaybe<Scalars['GenericScalar']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  inherited__value?: InputMaybe<Scalars['Boolean']>;
-  kind__value?: InputMaybe<Scalars['String']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  optional__value?: InputMaybe<Scalars['Boolean']>;
-  unique__value?: InputMaybe<Scalars['Boolean']>;
+  branch__value?: InputMaybe<Scalars["Boolean"]>;
+  default_value__value?: InputMaybe<Scalars["GenericScalar"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  kind__value?: InputMaybe<Scalars["String"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  optional__value?: InputMaybe<Scalars["Boolean"]>;
+  unique__value?: InputMaybe<Scalars["Boolean"]>;
 };
 
 
 export type QueryAutonomous_SystemArgs = {
-  asn__value?: InputMaybe<Scalars['Int']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  organization__description__value?: InputMaybe<Scalars['String']>;
-  organization__id?: InputMaybe<Scalars['ID']>;
-  organization__name__value?: InputMaybe<Scalars['String']>;
+  asn__value?: InputMaybe<Scalars["Int"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  organization__description__value?: InputMaybe<Scalars["String"]>;
+  organization__id?: InputMaybe<Scalars["ID"]>;
+  organization__name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryBgp_Peer_GroupArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  export_policies__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  import_policies__value?: InputMaybe<Scalars['String']>;
-  local_as__asn__value?: InputMaybe<Scalars['Int']>;
-  local_as__description__value?: InputMaybe<Scalars['String']>;
-  local_as__id?: InputMaybe<Scalars['ID']>;
-  local_as__name__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  remote_as__asn__value?: InputMaybe<Scalars['Int']>;
-  remote_as__description__value?: InputMaybe<Scalars['String']>;
-  remote_as__id?: InputMaybe<Scalars['ID']>;
-  remote_as__name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  export_policies__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  import_policies__value?: InputMaybe<Scalars["String"]>;
+  local_as__asn__value?: InputMaybe<Scalars["Int"]>;
+  local_as__description__value?: InputMaybe<Scalars["String"]>;
+  local_as__id?: InputMaybe<Scalars["ID"]>;
+  local_as__name__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  remote_as__asn__value?: InputMaybe<Scalars["Int"]>;
+  remote_as__description__value?: InputMaybe<Scalars["String"]>;
+  remote_as__id?: InputMaybe<Scalars["ID"]>;
+  remote_as__name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryBgp_SessionArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  device__description__value?: InputMaybe<Scalars['String']>;
-  device__id?: InputMaybe<Scalars['ID']>;
-  device__name__value?: InputMaybe<Scalars['String']>;
-  device__type__value?: InputMaybe<Scalars['String']>;
-  export_policies__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  import_policies__value?: InputMaybe<Scalars['String']>;
-  local_as__asn__value?: InputMaybe<Scalars['Int']>;
-  local_as__description__value?: InputMaybe<Scalars['String']>;
-  local_as__id?: InputMaybe<Scalars['ID']>;
-  local_as__name__value?: InputMaybe<Scalars['String']>;
-  local_ip__address__value?: InputMaybe<Scalars['String']>;
-  local_ip__description__value?: InputMaybe<Scalars['String']>;
-  local_ip__id?: InputMaybe<Scalars['ID']>;
-  peer_group__description__value?: InputMaybe<Scalars['String']>;
-  peer_group__export_policies__value?: InputMaybe<Scalars['String']>;
-  peer_group__id?: InputMaybe<Scalars['ID']>;
-  peer_group__import_policies__value?: InputMaybe<Scalars['String']>;
-  peer_group__name__value?: InputMaybe<Scalars['String']>;
-  peer_session__description__value?: InputMaybe<Scalars['String']>;
-  peer_session__export_policies__value?: InputMaybe<Scalars['String']>;
-  peer_session__id?: InputMaybe<Scalars['ID']>;
-  peer_session__import_policies__value?: InputMaybe<Scalars['String']>;
-  peer_session__type__value?: InputMaybe<Scalars['String']>;
-  remote_as__asn__value?: InputMaybe<Scalars['Int']>;
-  remote_as__description__value?: InputMaybe<Scalars['String']>;
-  remote_as__id?: InputMaybe<Scalars['ID']>;
-  remote_as__name__value?: InputMaybe<Scalars['String']>;
-  remote_ip__address__value?: InputMaybe<Scalars['String']>;
-  remote_ip__description__value?: InputMaybe<Scalars['String']>;
-  remote_ip__id?: InputMaybe<Scalars['ID']>;
-  role__description__value?: InputMaybe<Scalars['String']>;
-  role__id?: InputMaybe<Scalars['ID']>;
-  role__name__value?: InputMaybe<Scalars['String']>;
-  status__description__value?: InputMaybe<Scalars['String']>;
-  status__id?: InputMaybe<Scalars['ID']>;
-  status__name__value?: InputMaybe<Scalars['String']>;
-  type__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  device__description__value?: InputMaybe<Scalars["String"]>;
+  device__id?: InputMaybe<Scalars["ID"]>;
+  device__name__value?: InputMaybe<Scalars["String"]>;
+  device__type__value?: InputMaybe<Scalars["String"]>;
+  export_policies__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  import_policies__value?: InputMaybe<Scalars["String"]>;
+  local_as__asn__value?: InputMaybe<Scalars["Int"]>;
+  local_as__description__value?: InputMaybe<Scalars["String"]>;
+  local_as__id?: InputMaybe<Scalars["ID"]>;
+  local_as__name__value?: InputMaybe<Scalars["String"]>;
+  local_ip__address__value?: InputMaybe<Scalars["String"]>;
+  local_ip__description__value?: InputMaybe<Scalars["String"]>;
+  local_ip__id?: InputMaybe<Scalars["ID"]>;
+  peer_group__description__value?: InputMaybe<Scalars["String"]>;
+  peer_group__export_policies__value?: InputMaybe<Scalars["String"]>;
+  peer_group__id?: InputMaybe<Scalars["ID"]>;
+  peer_group__import_policies__value?: InputMaybe<Scalars["String"]>;
+  peer_group__name__value?: InputMaybe<Scalars["String"]>;
+  peer_session__description__value?: InputMaybe<Scalars["String"]>;
+  peer_session__export_policies__value?: InputMaybe<Scalars["String"]>;
+  peer_session__id?: InputMaybe<Scalars["ID"]>;
+  peer_session__import_policies__value?: InputMaybe<Scalars["String"]>;
+  peer_session__type__value?: InputMaybe<Scalars["String"]>;
+  remote_as__asn__value?: InputMaybe<Scalars["Int"]>;
+  remote_as__description__value?: InputMaybe<Scalars["String"]>;
+  remote_as__id?: InputMaybe<Scalars["ID"]>;
+  remote_as__name__value?: InputMaybe<Scalars["String"]>;
+  remote_ip__address__value?: InputMaybe<Scalars["String"]>;
+  remote_ip__description__value?: InputMaybe<Scalars["String"]>;
+  remote_ip__id?: InputMaybe<Scalars["ID"]>;
+  role__description__value?: InputMaybe<Scalars["String"]>;
+  role__id?: InputMaybe<Scalars["ID"]>;
+  role__name__value?: InputMaybe<Scalars["String"]>;
+  status__description__value?: InputMaybe<Scalars["String"]>;
+  status__id?: InputMaybe<Scalars["ID"]>;
+  status__name__value?: InputMaybe<Scalars["String"]>;
+  type__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryCheckArgs = {
-  class_name__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  file_path__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  query__description__value?: InputMaybe<Scalars['String']>;
-  query__id?: InputMaybe<Scalars['ID']>;
-  query__name__value?: InputMaybe<Scalars['String']>;
-  query__query__value?: InputMaybe<Scalars['String']>;
-  rebase__value?: InputMaybe<Scalars['Boolean']>;
-  repository__commit__value?: InputMaybe<Scalars['String']>;
-  repository__default_branch__value?: InputMaybe<Scalars['String']>;
-  repository__description__value?: InputMaybe<Scalars['String']>;
-  repository__id?: InputMaybe<Scalars['ID']>;
-  repository__location__value?: InputMaybe<Scalars['String']>;
-  repository__name__value?: InputMaybe<Scalars['String']>;
-  repository__password__value?: InputMaybe<Scalars['String']>;
-  repository__type__value?: InputMaybe<Scalars['String']>;
-  repository__username__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
-  timeout__value?: InputMaybe<Scalars['Int']>;
+  class_name__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  file_path__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  query__description__value?: InputMaybe<Scalars["String"]>;
+  query__id?: InputMaybe<Scalars["ID"]>;
+  query__name__value?: InputMaybe<Scalars["String"]>;
+  query__query__value?: InputMaybe<Scalars["String"]>;
+  rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  repository__commit__value?: InputMaybe<Scalars["String"]>;
+  repository__default_branch__value?: InputMaybe<Scalars["String"]>;
+  repository__description__value?: InputMaybe<Scalars["String"]>;
+  repository__id?: InputMaybe<Scalars["ID"]>;
+  repository__location__value?: InputMaybe<Scalars["String"]>;
+  repository__name__value?: InputMaybe<Scalars["String"]>;
+  repository__password__value?: InputMaybe<Scalars["String"]>;
+  repository__type__value?: InputMaybe<Scalars["String"]>;
+  repository__username__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
+  timeout__value?: InputMaybe<Scalars["Int"]>;
 };
 
 
 export type QueryCircuitArgs = {
-  circuit_id__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  endpoints__description__value?: InputMaybe<Scalars['String']>;
-  endpoints__id?: InputMaybe<Scalars['ID']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  provider__description__value?: InputMaybe<Scalars['String']>;
-  provider__id?: InputMaybe<Scalars['ID']>;
-  provider__name__value?: InputMaybe<Scalars['String']>;
-  role__description__value?: InputMaybe<Scalars['String']>;
-  role__id?: InputMaybe<Scalars['ID']>;
-  role__name__value?: InputMaybe<Scalars['String']>;
-  status__description__value?: InputMaybe<Scalars['String']>;
-  status__id?: InputMaybe<Scalars['ID']>;
-  status__name__value?: InputMaybe<Scalars['String']>;
-  vendor_id__value?: InputMaybe<Scalars['String']>;
+  circuit_id__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  endpoints__description__value?: InputMaybe<Scalars["String"]>;
+  endpoints__id?: InputMaybe<Scalars["ID"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  provider__description__value?: InputMaybe<Scalars["String"]>;
+  provider__id?: InputMaybe<Scalars["ID"]>;
+  provider__name__value?: InputMaybe<Scalars["String"]>;
+  role__description__value?: InputMaybe<Scalars["String"]>;
+  role__id?: InputMaybe<Scalars["ID"]>;
+  role__name__value?: InputMaybe<Scalars["String"]>;
+  status__description__value?: InputMaybe<Scalars["String"]>;
+  status__id?: InputMaybe<Scalars["ID"]>;
+  status__name__value?: InputMaybe<Scalars["String"]>;
+  vendor_id__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryCircuit_EndpointArgs = {
-  circuit__circuit_id__value?: InputMaybe<Scalars['String']>;
-  circuit__description__value?: InputMaybe<Scalars['String']>;
-  circuit__id?: InputMaybe<Scalars['ID']>;
-  circuit__vendor_id__value?: InputMaybe<Scalars['String']>;
-  connected_interface__description__value?: InputMaybe<Scalars['String']>;
-  connected_interface__enabled__value?: InputMaybe<Scalars['Boolean']>;
-  connected_interface__id?: InputMaybe<Scalars['ID']>;
-  connected_interface__name__value?: InputMaybe<Scalars['String']>;
-  connected_interface__speed__value?: InputMaybe<Scalars['Int']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  site__description__value?: InputMaybe<Scalars['String']>;
-  site__id?: InputMaybe<Scalars['ID']>;
-  site__name__value?: InputMaybe<Scalars['String']>;
-  site__type__value?: InputMaybe<Scalars['String']>;
+  circuit__circuit_id__value?: InputMaybe<Scalars["String"]>;
+  circuit__description__value?: InputMaybe<Scalars["String"]>;
+  circuit__id?: InputMaybe<Scalars["ID"]>;
+  circuit__vendor_id__value?: InputMaybe<Scalars["String"]>;
+  connected_interface__description__value?: InputMaybe<Scalars["String"]>;
+  connected_interface__enabled__value?: InputMaybe<Scalars["Boolean"]>;
+  connected_interface__id?: InputMaybe<Scalars["ID"]>;
+  connected_interface__name__value?: InputMaybe<Scalars["String"]>;
+  connected_interface__speed__value?: InputMaybe<Scalars["Int"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  site__description__value?: InputMaybe<Scalars["String"]>;
+  site__id?: InputMaybe<Scalars["ID"]>;
+  site__name__value?: InputMaybe<Scalars["String"]>;
+  site__type__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryCriticalityArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  level__value?: InputMaybe<Scalars['Int']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  level__value?: InputMaybe<Scalars["Int"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryDeviceArgs = {
-  asn__asn__value?: InputMaybe<Scalars['Int']>;
-  asn__description__value?: InputMaybe<Scalars['String']>;
-  asn__id?: InputMaybe<Scalars['ID']>;
-  asn__name__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  interfaces__description__value?: InputMaybe<Scalars['String']>;
-  interfaces__enabled__value?: InputMaybe<Scalars['Boolean']>;
-  interfaces__id?: InputMaybe<Scalars['ID']>;
-  interfaces__name__value?: InputMaybe<Scalars['String']>;
-  interfaces__speed__value?: InputMaybe<Scalars['Int']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  role__description__value?: InputMaybe<Scalars['String']>;
-  role__id?: InputMaybe<Scalars['ID']>;
-  role__name__value?: InputMaybe<Scalars['String']>;
-  site__description__value?: InputMaybe<Scalars['String']>;
-  site__id?: InputMaybe<Scalars['ID']>;
-  site__name__value?: InputMaybe<Scalars['String']>;
-  site__type__value?: InputMaybe<Scalars['String']>;
-  status__description__value?: InputMaybe<Scalars['String']>;
-  status__id?: InputMaybe<Scalars['ID']>;
-  status__name__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
-  type__value?: InputMaybe<Scalars['String']>;
+  asn__asn__value?: InputMaybe<Scalars["Int"]>;
+  asn__description__value?: InputMaybe<Scalars["String"]>;
+  asn__id?: InputMaybe<Scalars["ID"]>;
+  asn__name__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  interfaces__description__value?: InputMaybe<Scalars["String"]>;
+  interfaces__enabled__value?: InputMaybe<Scalars["Boolean"]>;
+  interfaces__id?: InputMaybe<Scalars["ID"]>;
+  interfaces__name__value?: InputMaybe<Scalars["String"]>;
+  interfaces__speed__value?: InputMaybe<Scalars["Int"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  role__description__value?: InputMaybe<Scalars["String"]>;
+  role__id?: InputMaybe<Scalars["ID"]>;
+  role__name__value?: InputMaybe<Scalars["String"]>;
+  site__description__value?: InputMaybe<Scalars["String"]>;
+  site__id?: InputMaybe<Scalars["ID"]>;
+  site__name__value?: InputMaybe<Scalars["String"]>;
+  site__type__value?: InputMaybe<Scalars["String"]>;
+  status__description__value?: InputMaybe<Scalars["String"]>;
+  status__id?: InputMaybe<Scalars["ID"]>;
+  status__name__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
+  type__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryDiffArgs = {
-  branch: Scalars['String'];
-  branch_only?: InputMaybe<Scalars['Boolean']>;
-  time_from?: InputMaybe<Scalars['String']>;
-  time_to?: InputMaybe<Scalars['String']>;
+  branch: Scalars["String"];
+  branch_only?: InputMaybe<Scalars["Boolean"]>;
+  time_from?: InputMaybe<Scalars["String"]>;
+  time_to?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryGeneric_SchemaArgs = {
-  attributes__branch__value?: InputMaybe<Scalars['Boolean']>;
-  attributes__default_value__value?: InputMaybe<Scalars['GenericScalar']>;
-  attributes__description__value?: InputMaybe<Scalars['String']>;
-  attributes__id?: InputMaybe<Scalars['ID']>;
-  attributes__inherited__value?: InputMaybe<Scalars['Boolean']>;
-  attributes__kind__value?: InputMaybe<Scalars['String']>;
-  attributes__label__value?: InputMaybe<Scalars['String']>;
-  attributes__name__value?: InputMaybe<Scalars['String']>;
-  attributes__optional__value?: InputMaybe<Scalars['Boolean']>;
-  attributes__unique__value?: InputMaybe<Scalars['Boolean']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  kind__value?: InputMaybe<Scalars['String']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  relationships__branch__value?: InputMaybe<Scalars['Boolean']>;
-  relationships__cardinality__value?: InputMaybe<Scalars['String']>;
-  relationships__description__value?: InputMaybe<Scalars['String']>;
-  relationships__id?: InputMaybe<Scalars['ID']>;
-  relationships__identifier__value?: InputMaybe<Scalars['String']>;
-  relationships__inherited__value?: InputMaybe<Scalars['Boolean']>;
-  relationships__label__value?: InputMaybe<Scalars['String']>;
-  relationships__name__value?: InputMaybe<Scalars['String']>;
-  relationships__optional__value?: InputMaybe<Scalars['Boolean']>;
-  relationships__peer__value?: InputMaybe<Scalars['String']>;
+  attributes__branch__value?: InputMaybe<Scalars["Boolean"]>;
+  attributes__default_value__value?: InputMaybe<Scalars["GenericScalar"]>;
+  attributes__description__value?: InputMaybe<Scalars["String"]>;
+  attributes__id?: InputMaybe<Scalars["ID"]>;
+  attributes__inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  attributes__kind__value?: InputMaybe<Scalars["String"]>;
+  attributes__label__value?: InputMaybe<Scalars["String"]>;
+  attributes__name__value?: InputMaybe<Scalars["String"]>;
+  attributes__optional__value?: InputMaybe<Scalars["Boolean"]>;
+  attributes__unique__value?: InputMaybe<Scalars["Boolean"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  kind__value?: InputMaybe<Scalars["String"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  relationships__branch__value?: InputMaybe<Scalars["Boolean"]>;
+  relationships__cardinality__value?: InputMaybe<Scalars["String"]>;
+  relationships__description__value?: InputMaybe<Scalars["String"]>;
+  relationships__id?: InputMaybe<Scalars["ID"]>;
+  relationships__identifier__value?: InputMaybe<Scalars["String"]>;
+  relationships__inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  relationships__label__value?: InputMaybe<Scalars["String"]>;
+  relationships__name__value?: InputMaybe<Scalars["String"]>;
+  relationships__optional__value?: InputMaybe<Scalars["Boolean"]>;
+  relationships__peer__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryGraphql_QueryArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  query__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  query__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryGroupArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  members__description__value?: InputMaybe<Scalars['String']>;
-  members__id?: InputMaybe<Scalars['ID']>;
-  members__name__value?: InputMaybe<Scalars['String']>;
-  members__type__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  members__description__value?: InputMaybe<Scalars["String"]>;
+  members__id?: InputMaybe<Scalars["ID"]>;
+  members__name__value?: InputMaybe<Scalars["String"]>;
+  members__type__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryGroup_SchemaArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  kind__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  kind__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryInterfaceArgs = {
-  connected_circuit__description__value?: InputMaybe<Scalars['String']>;
-  connected_circuit__id?: InputMaybe<Scalars['ID']>;
-  connected_interface__description__value?: InputMaybe<Scalars['String']>;
-  connected_interface__enabled__value?: InputMaybe<Scalars['Boolean']>;
-  connected_interface__id?: InputMaybe<Scalars['ID']>;
-  connected_interface__name__value?: InputMaybe<Scalars['String']>;
-  connected_interface__speed__value?: InputMaybe<Scalars['Int']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  device__description__value?: InputMaybe<Scalars['String']>;
-  device__id?: InputMaybe<Scalars['ID']>;
-  device__name__value?: InputMaybe<Scalars['String']>;
-  device__type__value?: InputMaybe<Scalars['String']>;
-  enabled__value?: InputMaybe<Scalars['Boolean']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  ip_addresses__address__value?: InputMaybe<Scalars['String']>;
-  ip_addresses__description__value?: InputMaybe<Scalars['String']>;
-  ip_addresses__id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  role__description__value?: InputMaybe<Scalars['String']>;
-  role__id?: InputMaybe<Scalars['ID']>;
-  role__name__value?: InputMaybe<Scalars['String']>;
-  speed__value?: InputMaybe<Scalars['Int']>;
-  status__description__value?: InputMaybe<Scalars['String']>;
-  status__id?: InputMaybe<Scalars['ID']>;
-  status__name__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
+  connected_circuit__description__value?: InputMaybe<Scalars["String"]>;
+  connected_circuit__id?: InputMaybe<Scalars["ID"]>;
+  connected_interface__description__value?: InputMaybe<Scalars["String"]>;
+  connected_interface__enabled__value?: InputMaybe<Scalars["Boolean"]>;
+  connected_interface__id?: InputMaybe<Scalars["ID"]>;
+  connected_interface__name__value?: InputMaybe<Scalars["String"]>;
+  connected_interface__speed__value?: InputMaybe<Scalars["Int"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  device__description__value?: InputMaybe<Scalars["String"]>;
+  device__id?: InputMaybe<Scalars["ID"]>;
+  device__name__value?: InputMaybe<Scalars["String"]>;
+  device__type__value?: InputMaybe<Scalars["String"]>;
+  enabled__value?: InputMaybe<Scalars["Boolean"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  ip_addresses__address__value?: InputMaybe<Scalars["String"]>;
+  ip_addresses__description__value?: InputMaybe<Scalars["String"]>;
+  ip_addresses__id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  role__description__value?: InputMaybe<Scalars["String"]>;
+  role__id?: InputMaybe<Scalars["ID"]>;
+  role__name__value?: InputMaybe<Scalars["String"]>;
+  speed__value?: InputMaybe<Scalars["Int"]>;
+  status__description__value?: InputMaybe<Scalars["String"]>;
+  status__id?: InputMaybe<Scalars["ID"]>;
+  status__name__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryIpaddressArgs = {
-  address__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  interface__description__value?: InputMaybe<Scalars['String']>;
-  interface__enabled__value?: InputMaybe<Scalars['Boolean']>;
-  interface__id?: InputMaybe<Scalars['ID']>;
-  interface__name__value?: InputMaybe<Scalars['String']>;
-  interface__speed__value?: InputMaybe<Scalars['Int']>;
+  address__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  interface__description__value?: InputMaybe<Scalars["String"]>;
+  interface__enabled__value?: InputMaybe<Scalars["Boolean"]>;
+  interface__id?: InputMaybe<Scalars["ID"]>;
+  interface__name__value?: InputMaybe<Scalars["String"]>;
+  interface__speed__value?: InputMaybe<Scalars["Int"]>;
 };
 
 
 export type QueryLocationArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
-  type__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
+  type__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryNode_SchemaArgs = {
-  attributes__branch__value?: InputMaybe<Scalars['Boolean']>;
-  attributes__default_value__value?: InputMaybe<Scalars['GenericScalar']>;
-  attributes__description__value?: InputMaybe<Scalars['String']>;
-  attributes__id?: InputMaybe<Scalars['ID']>;
-  attributes__inherited__value?: InputMaybe<Scalars['Boolean']>;
-  attributes__kind__value?: InputMaybe<Scalars['String']>;
-  attributes__label__value?: InputMaybe<Scalars['String']>;
-  attributes__name__value?: InputMaybe<Scalars['String']>;
-  attributes__optional__value?: InputMaybe<Scalars['Boolean']>;
-  attributes__unique__value?: InputMaybe<Scalars['Boolean']>;
-  branch__value?: InputMaybe<Scalars['Boolean']>;
-  default_filter__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  groups__value?: InputMaybe<Scalars['GenericScalar']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  inherit_from__value?: InputMaybe<Scalars['GenericScalar']>;
-  kind__value?: InputMaybe<Scalars['String']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  relationships__branch__value?: InputMaybe<Scalars['Boolean']>;
-  relationships__cardinality__value?: InputMaybe<Scalars['String']>;
-  relationships__description__value?: InputMaybe<Scalars['String']>;
-  relationships__id?: InputMaybe<Scalars['ID']>;
-  relationships__identifier__value?: InputMaybe<Scalars['String']>;
-  relationships__inherited__value?: InputMaybe<Scalars['Boolean']>;
-  relationships__label__value?: InputMaybe<Scalars['String']>;
-  relationships__name__value?: InputMaybe<Scalars['String']>;
-  relationships__optional__value?: InputMaybe<Scalars['Boolean']>;
-  relationships__peer__value?: InputMaybe<Scalars['String']>;
+  attributes__branch__value?: InputMaybe<Scalars["Boolean"]>;
+  attributes__default_value__value?: InputMaybe<Scalars["GenericScalar"]>;
+  attributes__description__value?: InputMaybe<Scalars["String"]>;
+  attributes__id?: InputMaybe<Scalars["ID"]>;
+  attributes__inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  attributes__kind__value?: InputMaybe<Scalars["String"]>;
+  attributes__label__value?: InputMaybe<Scalars["String"]>;
+  attributes__name__value?: InputMaybe<Scalars["String"]>;
+  attributes__optional__value?: InputMaybe<Scalars["Boolean"]>;
+  attributes__unique__value?: InputMaybe<Scalars["Boolean"]>;
+  branch__value?: InputMaybe<Scalars["Boolean"]>;
+  default_filter__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  groups__value?: InputMaybe<Scalars["GenericScalar"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  inherit_from__value?: InputMaybe<Scalars["GenericScalar"]>;
+  kind__value?: InputMaybe<Scalars["String"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  relationships__branch__value?: InputMaybe<Scalars["Boolean"]>;
+  relationships__cardinality__value?: InputMaybe<Scalars["String"]>;
+  relationships__description__value?: InputMaybe<Scalars["String"]>;
+  relationships__id?: InputMaybe<Scalars["ID"]>;
+  relationships__identifier__value?: InputMaybe<Scalars["String"]>;
+  relationships__inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  relationships__label__value?: InputMaybe<Scalars["String"]>;
+  relationships__name__value?: InputMaybe<Scalars["String"]>;
+  relationships__optional__value?: InputMaybe<Scalars["Boolean"]>;
+  relationships__peer__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryOrganizationArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryRelationship_SchemaArgs = {
-  branch__value?: InputMaybe<Scalars['Boolean']>;
-  cardinality__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  identifier__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  inherited__value?: InputMaybe<Scalars['Boolean']>;
-  label__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  optional__value?: InputMaybe<Scalars['Boolean']>;
-  peer__value?: InputMaybe<Scalars['String']>;
+  branch__value?: InputMaybe<Scalars["Boolean"]>;
+  cardinality__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  identifier__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  inherited__value?: InputMaybe<Scalars["Boolean"]>;
+  label__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  optional__value?: InputMaybe<Scalars["Boolean"]>;
+  peer__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryRepositoryArgs = {
-  account__description__value?: InputMaybe<Scalars['String']>;
-  account__id?: InputMaybe<Scalars['ID']>;
-  account__name__value?: InputMaybe<Scalars['String']>;
-  account__type__value?: InputMaybe<Scalars['String']>;
-  checks__class_name__value?: InputMaybe<Scalars['String']>;
-  checks__description__value?: InputMaybe<Scalars['String']>;
-  checks__file_path__value?: InputMaybe<Scalars['String']>;
-  checks__id?: InputMaybe<Scalars['ID']>;
-  checks__name__value?: InputMaybe<Scalars['String']>;
-  checks__rebase__value?: InputMaybe<Scalars['Boolean']>;
-  checks__timeout__value?: InputMaybe<Scalars['Int']>;
-  commit__value?: InputMaybe<Scalars['String']>;
-  default_branch__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  location__value?: InputMaybe<Scalars['String']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  password__value?: InputMaybe<Scalars['String']>;
-  queries__description__value?: InputMaybe<Scalars['String']>;
-  queries__id?: InputMaybe<Scalars['ID']>;
-  queries__name__value?: InputMaybe<Scalars['String']>;
-  queries__query__value?: InputMaybe<Scalars['String']>;
-  rfiles__description__value?: InputMaybe<Scalars['String']>;
-  rfiles__id?: InputMaybe<Scalars['ID']>;
-  rfiles__name__value?: InputMaybe<Scalars['String']>;
-  rfiles__template_path__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
-  transform_python__class_name__value?: InputMaybe<Scalars['String']>;
-  transform_python__description__value?: InputMaybe<Scalars['String']>;
-  transform_python__file_path__value?: InputMaybe<Scalars['String']>;
-  transform_python__id?: InputMaybe<Scalars['ID']>;
-  transform_python__name__value?: InputMaybe<Scalars['String']>;
-  transform_python__rebase__value?: InputMaybe<Scalars['Boolean']>;
-  transform_python__timeout__value?: InputMaybe<Scalars['Int']>;
-  transform_python__url__value?: InputMaybe<Scalars['String']>;
-  type__value?: InputMaybe<Scalars['String']>;
-  username__value?: InputMaybe<Scalars['String']>;
+  account__description__value?: InputMaybe<Scalars["String"]>;
+  account__id?: InputMaybe<Scalars["ID"]>;
+  account__name__value?: InputMaybe<Scalars["String"]>;
+  account__type__value?: InputMaybe<Scalars["String"]>;
+  checks__class_name__value?: InputMaybe<Scalars["String"]>;
+  checks__description__value?: InputMaybe<Scalars["String"]>;
+  checks__file_path__value?: InputMaybe<Scalars["String"]>;
+  checks__id?: InputMaybe<Scalars["ID"]>;
+  checks__name__value?: InputMaybe<Scalars["String"]>;
+  checks__rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  checks__timeout__value?: InputMaybe<Scalars["Int"]>;
+  commit__value?: InputMaybe<Scalars["String"]>;
+  default_branch__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  location__value?: InputMaybe<Scalars["String"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  password__value?: InputMaybe<Scalars["String"]>;
+  queries__description__value?: InputMaybe<Scalars["String"]>;
+  queries__id?: InputMaybe<Scalars["ID"]>;
+  queries__name__value?: InputMaybe<Scalars["String"]>;
+  queries__query__value?: InputMaybe<Scalars["String"]>;
+  rfiles__description__value?: InputMaybe<Scalars["String"]>;
+  rfiles__id?: InputMaybe<Scalars["ID"]>;
+  rfiles__name__value?: InputMaybe<Scalars["String"]>;
+  rfiles__template_path__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
+  transform_python__class_name__value?: InputMaybe<Scalars["String"]>;
+  transform_python__description__value?: InputMaybe<Scalars["String"]>;
+  transform_python__file_path__value?: InputMaybe<Scalars["String"]>;
+  transform_python__id?: InputMaybe<Scalars["ID"]>;
+  transform_python__name__value?: InputMaybe<Scalars["String"]>;
+  transform_python__rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  transform_python__timeout__value?: InputMaybe<Scalars["Int"]>;
+  transform_python__url__value?: InputMaybe<Scalars["String"]>;
+  type__value?: InputMaybe<Scalars["String"]>;
+  username__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryRfileArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  query__description__value?: InputMaybe<Scalars['String']>;
-  query__id?: InputMaybe<Scalars['ID']>;
-  query__name__value?: InputMaybe<Scalars['String']>;
-  query__query__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
-  template_path__value?: InputMaybe<Scalars['String']>;
-  template_repository__commit__value?: InputMaybe<Scalars['String']>;
-  template_repository__default_branch__value?: InputMaybe<Scalars['String']>;
-  template_repository__description__value?: InputMaybe<Scalars['String']>;
-  template_repository__id?: InputMaybe<Scalars['ID']>;
-  template_repository__location__value?: InputMaybe<Scalars['String']>;
-  template_repository__name__value?: InputMaybe<Scalars['String']>;
-  template_repository__password__value?: InputMaybe<Scalars['String']>;
-  template_repository__type__value?: InputMaybe<Scalars['String']>;
-  template_repository__username__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  query__description__value?: InputMaybe<Scalars["String"]>;
+  query__id?: InputMaybe<Scalars["ID"]>;
+  query__name__value?: InputMaybe<Scalars["String"]>;
+  query__query__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
+  template_path__value?: InputMaybe<Scalars["String"]>;
+  template_repository__commit__value?: InputMaybe<Scalars["String"]>;
+  template_repository__default_branch__value?: InputMaybe<Scalars["String"]>;
+  template_repository__description__value?: InputMaybe<Scalars["String"]>;
+  template_repository__id?: InputMaybe<Scalars["ID"]>;
+  template_repository__location__value?: InputMaybe<Scalars["String"]>;
+  template_repository__name__value?: InputMaybe<Scalars["String"]>;
+  template_repository__password__value?: InputMaybe<Scalars["String"]>;
+  template_repository__type__value?: InputMaybe<Scalars["String"]>;
+  template_repository__username__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryRoleArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryStatusArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryTagArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type QueryTransform_PythonArgs = {
-  class_name__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  file_path__value?: InputMaybe<Scalars['String']>;
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']>>>;
-  name__value?: InputMaybe<Scalars['String']>;
-  query__description__value?: InputMaybe<Scalars['String']>;
-  query__id?: InputMaybe<Scalars['ID']>;
-  query__name__value?: InputMaybe<Scalars['String']>;
-  query__query__value?: InputMaybe<Scalars['String']>;
-  rebase__value?: InputMaybe<Scalars['Boolean']>;
-  repository__commit__value?: InputMaybe<Scalars['String']>;
-  repository__default_branch__value?: InputMaybe<Scalars['String']>;
-  repository__description__value?: InputMaybe<Scalars['String']>;
-  repository__id?: InputMaybe<Scalars['ID']>;
-  repository__location__value?: InputMaybe<Scalars['String']>;
-  repository__name__value?: InputMaybe<Scalars['String']>;
-  repository__password__value?: InputMaybe<Scalars['String']>;
-  repository__type__value?: InputMaybe<Scalars['String']>;
-  repository__username__value?: InputMaybe<Scalars['String']>;
-  tags__description__value?: InputMaybe<Scalars['String']>;
-  tags__id?: InputMaybe<Scalars['ID']>;
-  tags__name__value?: InputMaybe<Scalars['String']>;
-  timeout__value?: InputMaybe<Scalars['Int']>;
-  url__value?: InputMaybe<Scalars['String']>;
+  class_name__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  file_path__value?: InputMaybe<Scalars["String"]>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  query__description__value?: InputMaybe<Scalars["String"]>;
+  query__id?: InputMaybe<Scalars["ID"]>;
+  query__name__value?: InputMaybe<Scalars["String"]>;
+  query__query__value?: InputMaybe<Scalars["String"]>;
+  rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  repository__commit__value?: InputMaybe<Scalars["String"]>;
+  repository__default_branch__value?: InputMaybe<Scalars["String"]>;
+  repository__description__value?: InputMaybe<Scalars["String"]>;
+  repository__id?: InputMaybe<Scalars["ID"]>;
+  repository__location__value?: InputMaybe<Scalars["String"]>;
+  repository__name__value?: InputMaybe<Scalars["String"]>;
+  repository__password__value?: InputMaybe<Scalars["String"]>;
+  repository__type__value?: InputMaybe<Scalars["String"]>;
+  repository__username__value?: InputMaybe<Scalars["String"]>;
+  tags__description__value?: InputMaybe<Scalars["String"]>;
+  tags__id?: InputMaybe<Scalars["ID"]>;
+  tags__name__value?: InputMaybe<Scalars["String"]>;
+  timeout__value?: InputMaybe<Scalars["Int"]>;
+  url__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RFile = {
-  __typename?: 'RFile';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "RFile";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query?: Maybe<RelatedGraphQlQuery>;
   tags: Array<Maybe<RelatedTag>>;
@@ -2430,20 +2430,20 @@ export type RFile = {
 
 
 export type RFileTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RFileCreate = {
-  __typename?: 'RFileCreate';
+  __typename?: "RFileCreate";
   object?: Maybe<RFile>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RFileCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   query: RelatedNodeInput;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2452,19 +2452,19 @@ export type RFileCreateInput = {
 };
 
 export type RFileDelete = {
-  __typename?: 'RFileDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "RFileDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RFileUpdate = {
-  __typename?: 'RFileUpdate';
+  __typename?: "RFileUpdate";
   object?: Maybe<RFile>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RFileUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   query?: InputMaybe<RelatedNodeInput>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2473,16 +2473,16 @@ export type RFileUpdateInput = {
 };
 
 export type RelatedAccount = RelatedDataOwner & RelatedDataSource & RelatedNodeInterface & {
-  __typename?: 'RelatedAccount';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedAccount";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
   groups: Array<Maybe<RelatedGroup>>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   tokens: Array<Maybe<RelatedAccountToken>>;
   type: StrAttribute;
@@ -2490,44 +2490,44 @@ export type RelatedAccount = RelatedDataOwner & RelatedDataSource & RelatedNodeI
 
 
 export type RelatedAccountGroupsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type RelatedAccountTokensArgs = {
-  expiration_date__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  token__value?: InputMaybe<Scalars['String']>;
+  expiration_date__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  token__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedAccountToken = RelatedNodeInterface & {
-  __typename?: 'RelatedAccountToken';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedAccountToken";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   account?: Maybe<RelatedAccount>;
   expiration_date?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   token: StrAttribute;
 };
 
 export type RelatedAttributeSchema = RelatedNodeInterface & {
-  __typename?: 'RelatedAttributeSchema';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedAttributeSchema";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   branch: BoolAttribute;
   default_value?: Maybe<AnyAttribute>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   inherited: BoolAttribute;
   kind: StrAttribute;
   label?: Maybe<StrAttribute>;
@@ -2537,31 +2537,31 @@ export type RelatedAttributeSchema = RelatedNodeInterface & {
 };
 
 export type RelatedAutonomousSystem = RelatedNodeInterface & {
-  __typename?: 'RelatedAutonomousSystem';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedAutonomousSystem";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   asn: IntAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   organization?: Maybe<RelatedOrganization>;
 };
 
 export type RelatedBgpPeerGroup = RelatedNodeInterface & {
-  __typename?: 'RelatedBGPPeerGroup';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedBGPPeerGroup";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
   export_policies?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   import_policies?: Maybe<StrAttribute>;
   local_as?: Maybe<RelatedAutonomousSystem>;
   name: StrAttribute;
@@ -2569,17 +2569,17 @@ export type RelatedBgpPeerGroup = RelatedNodeInterface & {
 };
 
 export type RelatedBgpSession = RelatedNodeInterface & {
-  __typename?: 'RelatedBGPSession';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedBGPSession";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
   device?: Maybe<RelatedDevice>;
   export_policies?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   import_policies?: Maybe<StrAttribute>;
   local_as?: Maybe<RelatedAutonomousSystem>;
   local_ip?: Maybe<RelatedIpAddress>;
@@ -2593,17 +2593,17 @@ export type RelatedBgpSession = RelatedNodeInterface & {
 };
 
 export type RelatedCheck = RelatedNodeInterface & {
-  __typename?: 'RelatedCheck';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedCheck";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   class_name: StrAttribute;
   description?: Maybe<StrAttribute>;
   file_path: StrAttribute;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query?: Maybe<RelatedGraphQlQuery>;
   rebase: BoolAttribute;
@@ -2614,23 +2614,23 @@ export type RelatedCheck = RelatedNodeInterface & {
 
 
 export type RelatedCheckTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedCircuit = RelatedNodeInterface & {
-  __typename?: 'RelatedCircuit';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedCircuit";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   circuit_id: StrAttribute;
   description?: Maybe<StrAttribute>;
   endpoints: Array<Maybe<RelatedCircuitEndpoint>>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   provider?: Maybe<RelatedOrganization>;
   role?: Maybe<RelatedRole>;
   status?: Maybe<RelatedStatus>;
@@ -2639,29 +2639,29 @@ export type RelatedCircuit = RelatedNodeInterface & {
 
 
 export type RelatedCircuitEndpointsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
 };
 
 export type RelatedCircuitEndpoint = RelatedNodeInterface & {
-  __typename?: 'RelatedCircuitEndpoint';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedCircuitEndpoint";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   circuit?: Maybe<RelatedCircuit>;
   connected_interface?: Maybe<RelatedInterface>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   site?: Maybe<RelatedLocation>;
 };
 
 export type RelatedDataOwner = {
   description?: Maybe<StrAttribute>;
   /** Unique identifier */
-  id?: Maybe<Scalars['String']>;
+  id?: Maybe<Scalars["String"]>;
   name: StrAttribute;
 };
 
@@ -2669,21 +2669,21 @@ export type RelatedDataOwner = {
 export type RelatedDataSource = {
   description?: Maybe<StrAttribute>;
   /** Unique identifier */
-  id?: Maybe<Scalars['String']>;
+  id?: Maybe<Scalars["String"]>;
   name: StrAttribute;
 };
 
 export type RelatedDevice = RelatedNodeInterface & {
-  __typename?: 'RelatedDevice';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedDevice";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   asn?: Maybe<RelatedAutonomousSystem>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   interfaces: Array<Maybe<RelatedInterface>>;
   name: StrAttribute;
   role?: Maybe<RelatedRole>;
@@ -2695,30 +2695,30 @@ export type RelatedDevice = RelatedNodeInterface & {
 
 
 export type RelatedDeviceInterfacesArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  enabled__value?: InputMaybe<Scalars['Boolean']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  speed__value?: InputMaybe<Scalars['Int']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  enabled__value?: InputMaybe<Scalars["Boolean"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  speed__value?: InputMaybe<Scalars["Int"]>;
 };
 
 
 export type RelatedDeviceTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedGraphQlQuery = RelatedNodeInterface & {
-  __typename?: 'RelatedGraphQLQuery';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedGraphQLQuery";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query: StrAttribute;
   tags: Array<Maybe<RelatedTag>>;
@@ -2726,61 +2726,61 @@ export type RelatedGraphQlQuery = RelatedNodeInterface & {
 
 
 export type RelatedGraphQlQueryTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedGroup = RelatedDataOwner & RelatedNodeInterface & {
-  __typename?: 'RelatedGroup';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedGroup";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   members: Array<Maybe<RelatedAccount>>;
   name: StrAttribute;
 };
 
 
 export type RelatedGroupMembersArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  type__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  type__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedIpAddress = RelatedNodeInterface & {
-  __typename?: 'RelatedIPAddress';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedIPAddress";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   address: StrAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   interface?: Maybe<RelatedInterface>;
 };
 
 export type RelatedInterface = RelatedNodeInterface & {
-  __typename?: 'RelatedInterface';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedInterface";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   connected_circuit?: Maybe<RelatedCircuitEndpoint>;
   connected_interface?: Maybe<RelatedInterface>;
   description?: Maybe<StrAttribute>;
   device?: Maybe<RelatedDevice>;
   enabled: BoolAttribute;
-  id: Scalars['String'];
+  id: Scalars["String"];
   ip_addresses: Array<Maybe<RelatedIpAddress>>;
   name: StrAttribute;
   role?: Maybe<RelatedRole>;
@@ -2791,28 +2791,28 @@ export type RelatedInterface = RelatedNodeInterface & {
 
 
 export type RelatedInterfaceIp_AddressesArgs = {
-  address__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
+  address__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
 };
 
 
 export type RelatedInterfaceTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedLocation = RelatedNodeInterface & {
-  __typename?: 'RelatedLocation';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedLocation";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   tags: Array<Maybe<RelatedTag>>;
   type: StrAttribute;
@@ -2820,56 +2820,56 @@ export type RelatedLocation = RelatedNodeInterface & {
 
 
 export type RelatedLocationTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedNodeInput = {
-  _relation__is_protected?: InputMaybe<Scalars['Boolean']>;
-  _relation__is_visible?: InputMaybe<Scalars['Boolean']>;
-  _relation__owner?: InputMaybe<Scalars['String']>;
-  _relation__source?: InputMaybe<Scalars['String']>;
-  id: Scalars['String'];
+  _relation__is_protected?: InputMaybe<Scalars["Boolean"]>;
+  _relation__is_visible?: InputMaybe<Scalars["Boolean"]>;
+  _relation__owner?: InputMaybe<Scalars["String"]>;
+  _relation__source?: InputMaybe<Scalars["String"]>;
+  id: Scalars["String"];
 };
 
 export type RelatedNodeInterface = {
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
 };
 
 export type RelatedOrganization = RelatedNodeInterface & {
-  __typename?: 'RelatedOrganization';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedOrganization";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   tags: Array<Maybe<RelatedTag>>;
 };
 
 
 export type RelatedOrganizationTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedRFile = RelatedNodeInterface & {
-  __typename?: 'RelatedRFile';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedRFile";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query?: Maybe<RelatedGraphQlQuery>;
   tags: Array<Maybe<RelatedTag>>;
@@ -2879,23 +2879,23 @@ export type RelatedRFile = RelatedNodeInterface & {
 
 
 export type RelatedRFileTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedRelationshipSchema = RelatedNodeInterface & {
-  __typename?: 'RelatedRelationshipSchema';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedRelationshipSchema";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   branch: BoolAttribute;
   cardinality: StrAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   identifier: StrAttribute;
   inherited: BoolAttribute;
   label?: Maybe<StrAttribute>;
@@ -2905,19 +2905,19 @@ export type RelatedRelationshipSchema = RelatedNodeInterface & {
 };
 
 export type RelatedRepository = RelatedDataOwner & RelatedDataSource & RelatedNodeInterface & {
-  __typename?: 'RelatedRepository';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedRepository";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   account?: Maybe<RelatedAccount>;
   checks: Array<Maybe<RelatedCheck>>;
   commit?: Maybe<StrAttribute>;
   default_branch: StrAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   location: StrAttribute;
   name: StrAttribute;
   password?: Maybe<StrAttribute>;
@@ -2931,101 +2931,101 @@ export type RelatedRepository = RelatedDataOwner & RelatedDataSource & RelatedNo
 
 
 export type RelatedRepositoryChecksArgs = {
-  class_name__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  file_path__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  rebase__value?: InputMaybe<Scalars['Boolean']>;
-  timeout__value?: InputMaybe<Scalars['Int']>;
+  class_name__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  file_path__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  timeout__value?: InputMaybe<Scalars["Int"]>;
 };
 
 
 export type RelatedRepositoryQueriesArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  query__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  query__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type RelatedRepositoryRfilesArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  template_path__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  template_path__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type RelatedRepositoryTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type RelatedRepositoryTransform_PythonArgs = {
-  class_name__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  file_path__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  rebase__value?: InputMaybe<Scalars['Boolean']>;
-  timeout__value?: InputMaybe<Scalars['Int']>;
-  url__value?: InputMaybe<Scalars['String']>;
+  class_name__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  file_path__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  timeout__value?: InputMaybe<Scalars["Int"]>;
+  url__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelatedRole = RelatedNodeInterface & {
-  __typename?: 'RelatedRole';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedRole";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
 };
 
 export type RelatedStatus = RelatedNodeInterface & {
-  __typename?: 'RelatedStatus';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedStatus";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
 };
 
 export type RelatedTag = RelatedNodeInterface & {
-  __typename?: 'RelatedTag';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedTag";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
 };
 
 export type RelatedTransformPython = RelatedNodeInterface & {
-  __typename?: 'RelatedTransformPython';
-  _relation__is_protected?: Maybe<Scalars['Boolean']>;
-  _relation__is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelatedTransformPython";
+  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
   _relation__owner?: Maybe<DataOwner>;
   _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars['DateTime']>;
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   class_name: StrAttribute;
   description?: Maybe<StrAttribute>;
   file_path: StrAttribute;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query?: Maybe<RelatedGraphQlQuery>;
   rebase: BoolAttribute;
@@ -3037,18 +3037,18 @@ export type RelatedTransformPython = RelatedNodeInterface & {
 
 
 export type RelatedTransformPythonTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RelationshipSchema = {
-  __typename?: 'RelationshipSchema';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "RelationshipSchema";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   branch: BoolAttribute;
   cardinality: StrAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   identifier: StrAttribute;
   inherited: BoolAttribute;
   label?: Maybe<StrAttribute>;
@@ -3058,16 +3058,16 @@ export type RelationshipSchema = {
 };
 
 export type RelationshipSchemaCreate = {
-  __typename?: 'RelationshipSchemaCreate';
+  __typename?: "RelationshipSchemaCreate";
   object?: Maybe<RelationshipSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RelationshipSchemaCreateInput = {
   branch: BoolAttributeInput;
   cardinality: StringAttributeInput;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   identifier: StringAttributeInput;
   inherited: BoolAttributeInput;
   label?: InputMaybe<StringAttributeInput>;
@@ -3077,21 +3077,21 @@ export type RelationshipSchemaCreateInput = {
 };
 
 export type RelationshipSchemaDelete = {
-  __typename?: 'RelationshipSchemaDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "RelationshipSchemaDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RelationshipSchemaUpdate = {
-  __typename?: 'RelationshipSchemaUpdate';
+  __typename?: "RelationshipSchemaUpdate";
   object?: Maybe<RelationshipSchema>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RelationshipSchemaUpdateInput = {
   branch?: InputMaybe<BoolAttributeInput>;
   cardinality?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   identifier?: InputMaybe<StringAttributeInput>;
   inherited?: InputMaybe<BoolAttributeInput>;
   label?: InputMaybe<StringAttributeInput>;
@@ -3101,14 +3101,14 @@ export type RelationshipSchemaUpdateInput = {
 };
 
 export type Repository = DataOwner & DataSource & {
-  __typename?: 'Repository';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Repository";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   account?: Maybe<RelatedAccount>;
   checks: Array<Maybe<RelatedCheck>>;
   commit?: Maybe<StrAttribute>;
   default_branch: StrAttribute;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   location: StrAttribute;
   name: StrAttribute;
   password?: Maybe<StrAttribute>;
@@ -3122,54 +3122,54 @@ export type Repository = DataOwner & DataSource & {
 
 
 export type RepositoryChecksArgs = {
-  class_name__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  file_path__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  rebase__value?: InputMaybe<Scalars['Boolean']>;
-  timeout__value?: InputMaybe<Scalars['Int']>;
+  class_name__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  file_path__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  timeout__value?: InputMaybe<Scalars["Int"]>;
 };
 
 
 export type RepositoryQueriesArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  query__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  query__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type RepositoryRfilesArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  template_path__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  template_path__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type RepositoryTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 
 export type RepositoryTransform_PythonArgs = {
-  class_name__value?: InputMaybe<Scalars['String']>;
-  description__value?: InputMaybe<Scalars['String']>;
-  file_path__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
-  rebase__value?: InputMaybe<Scalars['Boolean']>;
-  timeout__value?: InputMaybe<Scalars['Int']>;
-  url__value?: InputMaybe<Scalars['String']>;
+  class_name__value?: InputMaybe<Scalars["String"]>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  file_path__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
+  rebase__value?: InputMaybe<Scalars["Boolean"]>;
+  timeout__value?: InputMaybe<Scalars["Int"]>;
+  url__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type RepositoryCreate = {
-  __typename?: 'RepositoryCreate';
+  __typename?: "RepositoryCreate";
   object?: Maybe<Repository>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RepositoryCreateInput = {
@@ -3178,7 +3178,7 @@ export type RepositoryCreateInput = {
   commit?: InputMaybe<StringAttributeInput>;
   default_branch?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   location: StringAttributeInput;
   name: StringAttributeInput;
   password?: InputMaybe<StringAttributeInput>;
@@ -3191,14 +3191,14 @@ export type RepositoryCreateInput = {
 };
 
 export type RepositoryDelete = {
-  __typename?: 'RepositoryDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "RepositoryDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RepositoryUpdate = {
-  __typename?: 'RepositoryUpdate';
+  __typename?: "RepositoryUpdate";
   object?: Maybe<Repository>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RepositoryUpdateInput = {
@@ -3207,7 +3207,7 @@ export type RepositoryUpdateInput = {
   commit?: InputMaybe<StringAttributeInput>;
   default_branch?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   location?: InputMaybe<StringAttributeInput>;
   name?: InputMaybe<StringAttributeInput>;
   password?: InputMaybe<StringAttributeInput>;
@@ -3220,161 +3220,161 @@ export type RepositoryUpdateInput = {
 };
 
 export type Role = {
-  __typename?: 'Role';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Role";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
 };
 
 export type RoleCreate = {
-  __typename?: 'RoleCreate';
+  __typename?: "RoleCreate";
   object?: Maybe<Role>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RoleCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
 };
 
 export type RoleDelete = {
-  __typename?: 'RoleDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "RoleDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RoleUpdate = {
-  __typename?: 'RoleUpdate';
+  __typename?: "RoleUpdate";
   object?: Maybe<Role>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type RoleUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
 };
 
 export type Status = {
-  __typename?: 'Status';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Status";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
 };
 
 export type StatusCreate = {
-  __typename?: 'StatusCreate';
+  __typename?: "StatusCreate";
   object?: Maybe<Status>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type StatusCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
 };
 
 export type StatusDelete = {
-  __typename?: 'StatusDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "StatusDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type StatusUpdate = {
-  __typename?: 'StatusUpdate';
+  __typename?: "StatusUpdate";
   object?: Maybe<Status>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type StatusUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
 };
 
 /** Attribute of type String */
 export type StrAttribute = AttributeInterface & {
-  __typename?: 'StrAttribute';
-  id?: Maybe<Scalars['String']>;
-  is_inherited?: Maybe<Scalars['Boolean']>;
-  is_protected?: Maybe<Scalars['Boolean']>;
-  is_visible?: Maybe<Scalars['Boolean']>;
+  __typename?: "StrAttribute";
+  id?: Maybe<Scalars["String"]>;
+  is_inherited?: Maybe<Scalars["Boolean"]>;
+  is_protected?: Maybe<Scalars["Boolean"]>;
+  is_visible?: Maybe<Scalars["Boolean"]>;
   owner?: Maybe<DataOwner>;
   source?: Maybe<DataSource>;
-  updated_at?: Maybe<Scalars['DateTime']>;
-  value?: Maybe<Scalars['String']>;
+  updated_at?: Maybe<Scalars["DateTime"]>;
+  value?: Maybe<Scalars["String"]>;
 };
 
 export type StringAttributeInput = {
-  is_protected?: InputMaybe<Scalars['Boolean']>;
-  is_visible?: InputMaybe<Scalars['Boolean']>;
-  owner?: InputMaybe<Scalars['String']>;
-  source?: InputMaybe<Scalars['String']>;
-  value?: InputMaybe<Scalars['String']>;
+  is_protected?: InputMaybe<Scalars["Boolean"]>;
+  is_visible?: InputMaybe<Scalars["Boolean"]>;
+  owner?: InputMaybe<Scalars["String"]>;
+  source?: InputMaybe<Scalars["String"]>;
+  value?: InputMaybe<Scalars["String"]>;
 };
 
 export type Subscription = {
-  __typename?: 'Subscription';
-  event?: Maybe<Scalars['GenericScalar']>;
-  query?: Maybe<Scalars['GenericScalar']>;
+  __typename?: "Subscription";
+  event?: Maybe<Scalars["GenericScalar"]>;
+  query?: Maybe<Scalars["GenericScalar"]>;
 };
 
 
 export type SubscriptionEventArgs = {
-  topics?: InputMaybe<Array<InputMaybe<Scalars['String']>>>;
+  topics?: InputMaybe<Array<InputMaybe<Scalars["String"]>>>;
 };
 
 
 export type SubscriptionQueryArgs = {
-  name?: InputMaybe<Scalars['String']>;
-  params?: InputMaybe<Scalars['GenericScalar']>;
+  name?: InputMaybe<Scalars["String"]>;
+  params?: InputMaybe<Scalars["GenericScalar"]>;
 };
 
 export type Tag = {
-  __typename?: 'Tag';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "Tag";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   description?: Maybe<StrAttribute>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
 };
 
 export type TagCreate = {
-  __typename?: 'TagCreate';
+  __typename?: "TagCreate";
   object?: Maybe<Tag>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type TagCreateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
 };
 
 export type TagDelete = {
-  __typename?: 'TagDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "TagDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type TagUpdate = {
-  __typename?: 'TagUpdate';
+  __typename?: "TagUpdate";
   object?: Maybe<Tag>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type TagUpdateInput = {
   description?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
 };
 
 export type TransformPython = {
-  __typename?: 'TransformPython';
-  _updated_at?: Maybe<Scalars['DateTime']>;
+  __typename?: "TransformPython";
+  _updated_at?: Maybe<Scalars["DateTime"]>;
   class_name: StrAttribute;
   description?: Maybe<StrAttribute>;
   file_path: StrAttribute;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name: StrAttribute;
   query?: Maybe<RelatedGraphQlQuery>;
   rebase: BoolAttribute;
@@ -3386,22 +3386,22 @@ export type TransformPython = {
 
 
 export type TransformPythonTagsArgs = {
-  description__value?: InputMaybe<Scalars['String']>;
-  id?: InputMaybe<Scalars['ID']>;
-  name__value?: InputMaybe<Scalars['String']>;
+  description__value?: InputMaybe<Scalars["String"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  name__value?: InputMaybe<Scalars["String"]>;
 };
 
 export type TransformPythonCreate = {
-  __typename?: 'TransformPythonCreate';
+  __typename?: "TransformPythonCreate";
   object?: Maybe<TransformPython>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type TransformPythonCreateInput = {
   class_name: StringAttributeInput;
   description?: InputMaybe<StringAttributeInput>;
   file_path: StringAttributeInput;
-  id?: InputMaybe<Scalars['String']>;
+  id?: InputMaybe<Scalars["String"]>;
   name: StringAttributeInput;
   query?: InputMaybe<RelatedNodeInput>;
   rebase: BoolAttributeInput;
@@ -3412,21 +3412,21 @@ export type TransformPythonCreateInput = {
 };
 
 export type TransformPythonDelete = {
-  __typename?: 'TransformPythonDelete';
-  ok?: Maybe<Scalars['Boolean']>;
+  __typename?: "TransformPythonDelete";
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type TransformPythonUpdate = {
-  __typename?: 'TransformPythonUpdate';
+  __typename?: "TransformPythonUpdate";
   object?: Maybe<TransformPython>;
-  ok?: Maybe<Scalars['Boolean']>;
+  ok?: Maybe<Scalars["Boolean"]>;
 };
 
 export type TransformPythonUpdateInput = {
   class_name?: InputMaybe<StringAttributeInput>;
   description?: InputMaybe<StringAttributeInput>;
   file_path?: InputMaybe<StringAttributeInput>;
-  id: Scalars['String'];
+  id: Scalars["String"];
   name?: InputMaybe<StringAttributeInput>;
   query?: InputMaybe<RelatedNodeInput>;
   rebase?: InputMaybe<BoolAttributeInput>;

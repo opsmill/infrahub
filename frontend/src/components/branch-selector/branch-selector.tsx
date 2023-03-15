@@ -24,21 +24,21 @@ export default function BranchSelector() {
     const request = graphQLClient.request(BRANCH_QUERY);
 
     request
-      .then((data: iBranchData) => {
-        if (data.branch?.length) {
-          setBranches(
-            data.branch.sort((a, b) => {
-              if (a.name && b.name) {
-                return a.name.localeCompare(b.name);
-              }
-              return -1;
-            })
-          );
-        }
-      })
-      .catch(() => {
-        console.error("Something went wrong when fetching the branch details");
-      });
+    .then((data: iBranchData) => {
+      if (data.branch?.length) {
+        setBranches(
+          data.branch.sort((a, b) => {
+            if (a.name && b.name) {
+              return a.name.localeCompare(b.name);
+            }
+            return -1;
+          })
+        );
+      }
+    })
+    .catch(() => {
+      console.error("Something went wrong when fetching the branch details");
+    });
   }, [branch]);
 
   if (!branches.length) {

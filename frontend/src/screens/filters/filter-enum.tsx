@@ -21,8 +21,8 @@ export default function FilterComboEnum(props: Props) {
     query === ""
       ? enums
       : enums.filter((row) => {
-          return row.toLowerCase().includes(query.toLowerCase());
-        });
+        return row.toLowerCase().includes(query.toLowerCase());
+      });
 
   return (
     <Combobox
