@@ -104,7 +104,9 @@
             "import/no-relative-packages": [
                 0
             ],
-            "react/react-in-jsx-scope": "off"
+            "react/react-in-jsx-scope": "off",
+            "no-unused-vars": "error",
+            "@typescript-eslint/no-unused-vars": "error"
         }
     },
     "browserslist": {
