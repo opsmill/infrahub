@@ -154,9 +154,9 @@ export default function ObjectItems() {
                               "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                             )}
                           >
-                            {row[attribute.name].value || "-"}
-                            {row[attribute.name].value === true && (<CheckIcon className="h-4 w-4" />)}
-                            {row[attribute.name].value === false && (<XMarkIcon className="h-4 w-4" />)}
+                            {(row[attribute.name]?.value !== false && row[attribute.name]?.value) ?? "-"}
+                            {row[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
+                            {row[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
                           </td>
                         ))}
                       </tr>
