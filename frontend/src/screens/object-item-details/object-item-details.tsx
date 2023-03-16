@@ -105,7 +105,6 @@ export default function ObjectItemDetails() {
   }, [objectname, objectid, schemaList, schema, date, branch]);
 
   const row = (objectRows || [])[0];
-  console.log("row: ", row);
 
   if (hasError) {
     return <ErrorScreen />;
