@@ -124,12 +124,6 @@ export default function ObjectItems() {
                 >
                   <thead className="bg-gray-50">
                     <tr>
-                      <th
-                        scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8"
-                      >
-                        Display label
-                      </th>
                       {schema.attributes?.map((attribute) => (
                         <th
                           key={attribute.name}
@@ -150,16 +144,6 @@ export default function ObjectItems() {
                         key={index}
                         className="hover:bg-gray-50"
                       >
-                        <td
-                          className={classNames(
-                            index !== objectRows.length - 1
-                              ? "border-b border-gray-200"
-                              : "",
-                            "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                          )}
-                        >
-                          {row.display_label}
-                        </td>
                         {schema.attributes?.map((attribute) => (
                           <td
                             key={row.id + "-" + attribute.name}
