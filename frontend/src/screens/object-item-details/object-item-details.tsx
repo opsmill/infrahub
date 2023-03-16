@@ -198,9 +198,9 @@ export default function ObjectItemDetails() {
 
                   <div className="flex items-center">
                     <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                      {row[attribute.name].value || "-"}
-                      {row[attribute.name].value === true && (<CheckIcon className="h-4 w-4" />)}
-                      {row[attribute.name].value === false && (<XMarkIcon className="h-4 w-4" />)}
+                      {(row[attribute.name]?.value !== false && row[attribute.name]?.value) ?? "-"}
+                      {row[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
+                      {row[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
                     </dd>
 
                     {row[attribute.name] &&
