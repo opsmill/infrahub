@@ -6,12 +6,12 @@ import { components } from "./infraops";
 import DeviceList from "./screens/device-list/device-list";
 import Layout from "./screens/layout/layout";
 import ObjectItemDetails from "./screens/object-item-details/object-item-details";
+import ObjectItemEdit from "./screens/object-item-edit/object-item-edit";
 import ObjectItems from "./screens/object-items/object-items";
 import OpsObjects from "./screens/ops-objects/ops-objects";
 import { branchState } from "./state/atoms/branch.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
-import ObjectItemEdit from "./screens/object-item-edit/object-item-edit";
 
 type APIResponse = components["schemas"]["SchemaAPI"];
 

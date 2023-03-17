@@ -2,8 +2,12 @@ import { gql } from "@apollo/client";
 import { Popover, Transition } from "@headlessui/react";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
-  CheckIcon, EyeSlashIcon, InformationCircleIcon,
-  LockClosedIcon, PencilIcon
+  CheckIcon,
+  EyeSlashIcon,
+  InformationCircleIcon,
+  LockClosedIcon,
+  PencilIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline";
 import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
@@ -24,6 +28,7 @@ declare var Handlebars: any;
 const template = Handlebars.compile(`query {{kind.value}} {
         {{name}} (ids: ["{{objectid}}"]) {
             id
+            display_label
             {{#each attributes}}
             {{this.name}} {
                 value
@@ -133,7 +138,7 @@ export default function ObjectItemDetails() {
           className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
           aria-hidden="true"
         />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">{row.id}</p>
+        <p className="mt-1 max-w-2xl text-sm text-gray-500">{row.display_label}</p>
       </div>
       <div className="flex items-center">
         <div className="flex-1">
@@ -191,6 +196,7 @@ export default function ObjectItemDetails() {
               if (!row[attribute.name]) {
                 return null;
               }
+
               return (
                 <div
                   className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
@@ -202,10 +208,9 @@ export default function ObjectItemDetails() {
 
                   <div className="flex items-center">
                     <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                      {row[attribute.name].value || "-"}
-                      {row[attribute.name].value === true && (
-                        <CheckIcon className="h-4 w-4" />
-                      )}
+                      {(row[attribute.name]?.value !== false && row[attribute.name]?.value) ?? "-"}
+                      {row[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
+                      {row[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
                     </dd>
 
                     {row[attribute.name] &&
