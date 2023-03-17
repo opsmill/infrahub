@@ -96,45 +96,45 @@ export default function ObjectItemEdit() {
     `;
     const request = graphQLClient.request(query);
     request
-      .then((data) => {
-        const formStructure: DynamicFieldData[] = [
-          ...(schema.attributes || []).map((attribute) => ({
-            fieldName: attribute.name,
-            inputType: attribute.enum ? "select" : ("text" as ControlType),
-            label: attribute.name,
-            options: attribute.enum?.map((row: any) => ({
-              label: row,
-              value: row,
-            })),
-            defaultValue: row[attribute.name] ? row[attribute.name].value : "",
-            config: {
-              required: attribute.optional === false ? "Required" : "",
-            },
+    .then((data) => {
+      const formStructure: DynamicFieldData[] = [
+        ...(schema.attributes || []).map((attribute) => ({
+          fieldName: attribute.name,
+          inputType: attribute.enum ? "select" : ("text" as ControlType),
+          label: attribute.name,
+          options: attribute.enum?.map((row: any) => ({
+            label: row,
+            value: row,
           })),
-          ...(schema.relationships || [])
-            .filter((relationship) => relationship.kind === "Attribute")
-            .map((relationship) => ({
-              fieldName: relationship.name,
-              inputType:
+          defaultValue: row[attribute.name] ? row[attribute.name].value : "",
+          config: {
+            required: attribute.optional === false ? "Required" : "",
+          },
+        })),
+        ...(schema.relationships || [])
+        .filter((relationship) => relationship.kind === "Attribute")
+        .map((relationship) => ({
+          fieldName: relationship.name,
+          inputType:
                 relationship.cardinality === "many"
                   ? ("multiselect" as ControlType)
                   : ("select" as ControlType),
-              label: relationship.name,
-              options: data[schemaKindName[relationship.peer]].map(
-                (row: any) => ({
-                  label: row.display_label,
-                  value: row.id,
-                })
-              ),
-              defaultValue:
+          label: relationship.name,
+          options: data[schemaKindName[relationship.peer]].map(
+            (row: any) => ({
+              label: row.display_label,
+              value: row.id,
+            })
+          ),
+          defaultValue:
                 relationship.cardinality === "many"
                   ? row[relationship.name].map((item: any) => item.id)
                   : row[relationship.name].id,
-            })),
-        ];
-        setFormStructure(formStructure);
-      })
-      .catch(() => {});
+        })),
+      ];
+      setFormStructure(formStructure);
+    })
+    .catch(() => {});
   }, [schema, schemaKindName]);
 
   useEffect(() => {
@@ -151,18 +151,18 @@ export default function ObjectItemEdit() {
       `;
       const request = graphQLClient.request(query);
       request
-        .then((data) => {
-          const rows = data[schema.name];
-          setObjectRows(rows);
-          if (rows.length) {
-            initForm(rows[0]);
-          }
-          setIsLoading(false);
-        })
-        .catch(() => {
-          setHasError(true);
-          setIsLoading(false);
-        });
+      .then((data) => {
+        const rows = data[schema.name];
+        setObjectRows(rows);
+        if (rows.length) {
+          initForm(rows[0]);
+        }
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setHasError(true);
+        setIsLoading(false);
+      });
     }
   }, [objectname, objectid, schemaList, schema, date, branch, initForm]);
 
@@ -213,11 +213,11 @@ export default function ObjectItemEdit() {
           relationship.cardinality === "many"
         ) {
           const values = data[relationship.name]
-            .map((value: any) => `{ id: "${value.value}" }`)
-            .join(",");
+          .map((value: any) => `{ id: "${value.value}" }`)
+          .join(",");
           const updatedIds = data[relationship.name]
-            .map((value: any) => value.value)
-            .sort();
+          .map((value: any) => value.value)
+          .sort();
           const oldIds = row[relationship.name].map((r: any) => r.id).sort();
           if (JSON.stringify(updatedIds) === JSON.stringify(oldIds)) {
             return false;
@@ -241,12 +241,12 @@ export default function ObjectItemEdit() {
       setUpdateMutation(updateMutation);
       const request = graphQLClient.request(updateMutation);
       request
-        .catch((err) => {
-          console.error("Something went wrong while updating the object");
-        })
-        .finally(() => {
-          navigate(-1);
-        });
+      .catch((err) => {
+        console.error("Something went wrong while updating the object");
+      })
+      .finally(() => {
+        navigate(-1);
+      });
     } else {
       setUpdateMutation("");
     }

@@ -49,8 +49,8 @@ export default function FilterBranch() {
     query === ""
       ? branches
       : branches.filter((person) => {
-          return person.name.toLowerCase().includes(query.toLowerCase());
-        });
+        return person.name.toLowerCase().includes(query.toLowerCase());
+      });
 
   return (
     <Combobox as="div" value={selectedBranch} onChange={setSelectedBranch}>

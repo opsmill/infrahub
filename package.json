@@ -1,5 +1,24 @@
 {
-  "dependencies": {
-    "retypeapp": "^2.4.0"
-  }
+    "scripts": {
+        "lint:frontend": "cd frontend && npm run eslint:fix",
+        "prepare": "husky install"
+    },
+    "dependencies": {
+        "retypeapp": "^2.4.0"
+    },
+    "devDependencies": {
+        "husky": "^8.0.3",
+        "lint-staged": "^13.2.0"
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "lint-staged"
+        }
+    },
+    "lint-staged": {
+        "*.(js|tsx|ts)": [
+            "npm run lint:frontend",
+            "git add ."
+        ]
+    }
 }

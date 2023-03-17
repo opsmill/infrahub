@@ -1,8 +1,6 @@
 import {
   BuildingOfficeIcon,
-  CreditCardIcon,
   UserIcon,
-  UsersIcon,
 } from "@heroicons/react/20/solid";
 import { classNames } from "../../App";
 

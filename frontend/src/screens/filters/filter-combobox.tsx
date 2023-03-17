@@ -44,15 +44,15 @@ export default function FilterCombobox(props: Props) {
       `;
       const request = graphQLClient.request(query);
       request
-        .then((data) => {
-          const rows = data[schema.name];
-          setObjectRows(rows);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          setHasError(true);
-          setIsLoading(false);
-        });
+      .then((data) => {
+        const rows = data[schema.name];
+        setObjectRows(rows);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setHasError(true);
+        setIsLoading(false);
+      });
     } else if (filter.enum) {
       setObjectRows(
         filter.enum.map((en) => ({
@@ -78,8 +78,8 @@ export default function FilterCombobox(props: Props) {
     query === ""
       ? objectRows
       : objectRows.filter((row) => {
-          return row.display_label.toLowerCase().includes(query.toLowerCase());
-        });
+        return row.display_label.toLowerCase().includes(query.toLowerCase());
+      });
 
   return (
     <Combobox

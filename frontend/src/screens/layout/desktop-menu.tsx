@@ -102,7 +102,7 @@ export default function DesktopMenu() {
                     </svg>
                   </Disclosure.Button>
                   <Disclosure.Panel className="space-y-1">
-                    <NavLink to={`/schema`}>
+                    <NavLink to={"/schema"}>
                       {({ isActive }) => (
                         <div
                           className={classNames(
