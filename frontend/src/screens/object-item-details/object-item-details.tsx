@@ -6,6 +6,7 @@ import {
   EyeSlashIcon,
   InformationCircleIcon,
   LockClosedIcon,
+  PencilIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import { formatDistance } from "date-fns";
@@ -77,6 +78,10 @@ export default function ObjectItemDetails() {
     navigate(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`);
   };
 
+  const navigateToObjectEditPage = () => {
+    navigate(`/objects/${objectname}/${objectid}/edit`);
+  };
+
   useEffect(() => {
     if (schema) {
       setHasError(false);
@@ -135,8 +140,8 @@ export default function ObjectItemDetails() {
         />
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{row.display_label}</p>
       </div>
-      <div>
-        <div>
+      <div className="flex items-center">
+        <div className="flex-1">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
               <div
@@ -169,6 +174,14 @@ export default function ObjectItemDetails() {
             </nav>
           </div>
         </div>
+        <button
+          onClick={() => navigateToObjectEditPage()}
+          type="button"
+          className="mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-white  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        >
+          Edit
+          <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
       {!selectedTab && (
         <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
@@ -292,7 +305,7 @@ export default function ObjectItemDetails() {
                             schemaKindName[relationship.peer]
                           }/${row[relationship.name].id}`}
                         >
-                          {row[relationship.name].id}
+                          {row[relationship.name].display_label}
                         </Link>
                         {row[relationship.name]._relation__is_protected && (
                           <LockClosedIcon className="h-5 w-5 ml-2" />
@@ -314,7 +327,7 @@ export default function ObjectItemDetails() {
                                 schemaKindName[relationship.peer]
                               }/${item.id}`}
                             >
-                              {item.id}
+                              {item.display_label}
                             </Link>
                             {item._relation__is_protected && (
                               <LockClosedIcon className="h-5 w-5 ml-2" />
