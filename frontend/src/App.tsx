@@ -11,6 +11,7 @@ import OpsObjects from "./screens/ops-objects/ops-objects";
 import { branchState } from "./state/atoms/branch.atom";
 import { components } from "./infraops";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
+import ObjectItemEdit from "./screens/object-item-edit/object-item-edit";
 
 type APIResponse = components["schemas"]["SchemaAPI"];
 
@@ -19,6 +20,10 @@ const router = createBrowserRouter([
     path: "/",
     element: <Layout />,
     children: [
+      {
+        path: "/objects/:objectname/:objectid/edit",
+        element: <ObjectItemEdit />,
+      },
       {
         path: "/objects/:objectname/:objectid",
         element: <ObjectItemDetails />,
