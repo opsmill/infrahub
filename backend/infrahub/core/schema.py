@@ -829,7 +829,7 @@ core_models = {
             "name": "rfile",
             "kind": "RFile",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -853,7 +853,7 @@ core_models = {
             "name": "check",
             "kind": "Check",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -879,7 +879,7 @@ core_models = {
             "name": "transform_python",
             "kind": "TransformPython",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
@@ -906,7 +906,7 @@ core_models = {
             "name": "graphql_query",
             "kind": "GraphQLQuery",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_label": ["name__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "String", "unique": True},
