@@ -3,17 +3,18 @@ name: 🐛 Bug Report
 description: Create a report to help us improve Infrahub
 title: 'bug: '
 body:
-  - type: checkboxes
+  - type: dropdown
     attributes:
       label: Component
-      description: Please indicate which component this bug is associated with (leave blanc if unknown)
+      description: Please indicate which component(s) this feature is associated with (leave blanc if unknown)
+      multiple: true
       options:
-        - label: Frontend UI
-        - label: API Server / GraphQL
-        - label: Git Integration
-        - label: Python SDK
-        - label: infrahubctl CLI
-        - label: Not Sure
+        - Frontend UI
+        - API Server / GraphQL
+        - Git Integration
+        - Python SDK
+        - infrahubctl CLI
+        - Not Sure
   - type: textarea
     attributes:
       label: Current Behavior
