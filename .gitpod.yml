@@ -1,0 +1,20 @@
+---
+# Commands to start on workspace startup
+tasks:
+  - name: Setup & Build
+    init: |
+      pip install toml invoke
+      curl -sSL https://install.python-poetry.org | python3 -
+      poetry config settings.virtualenvs.create false
+    command: poetry install
+
+# Ports to expose on workspace startup
+ports:
+  - port: 3000
+    onOpen: open-preview
+    name: Frontend
+    description: Frontend Interface
+  - port: 8000
+    onOpen: open-preview
+    name: GraphQL
+    description: GraphQL playground

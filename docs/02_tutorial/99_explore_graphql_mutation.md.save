@@ -1,27 +1,33 @@
 ---
-label: Branches and Version Control
+label: GraphQL Mutation
 # icon: file-directory
 tags: [tutorial]
-order: 800
+order: 100
 ---
 
-## Create a new Branch and load some data
+GraphQL Mutations are available to create, update or delete any objects in the database. In a REST API they are the equivalent of a the methods POST, PUT or DELETE.
 
-Create a new branch named `cr1234`
-```graphql
-# Endpoint : http://127.0.0.1:8000/graphql/main
+```graphql # Create a new organization
+# Endpoint : http://localhost:8000/graphql/main
 mutation {
-  branch_create(data: { name: "cr1234", is_data_only: false}) {
+  organization_create(
+    data: {
+      name: { value: "Hooli" },
+      description: { value: "Transforming the world as we know it."}
+    }
+  ) {
     ok
     object {
       id
-      name
     }
   }
 }
 ```
 
+
+
 ### Add a new interface and a new IP address in the Graph
+
 Add a new interface `Ethernet9` to the device `ord1-edge1`
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/cr1234
