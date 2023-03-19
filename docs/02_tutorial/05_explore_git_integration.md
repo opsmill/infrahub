@@ -12,8 +12,7 @@ The goal is to have a copy of this repo under your name this way your demo won't
 
 Once you have created a fork in Github, you'll need a Personal Access Token to authorize Infrahub to access this repository.
 
-<details>
-  <summary>How to create a Personal Access Token in Github</summary>
+==- How to create a Personal Access Token in Github
 
   1. Go to settings > Developer Settings > Personal access tokens
   2. Select Fine-grained tokens
@@ -21,15 +20,13 @@ Once you have created a fork in Github, you'll need a Personal Access Token to a
   4. Grant the token permission to `Read/Write` the **Content** of the repository
 
   ![Fine-Grained Token](../media/github_fined_grain_access_token_setup.png)
-
-</details>
+==-
 
 
 > If you already cloned the repo in the past, ensure there only the main branch is present in Github.
 If you other branches are present, it's recommanded to delete them for now.
 
-<details>
-  <summary>How to Delete a branch in Github</summary>
+==- How to Delete a branch in Github
 
   1. Select the name of the active branch in the top left corner (usually main)
   2. Select `View All Branches` at the bottom of the popup
@@ -37,8 +34,7 @@ If you other branches are present, it's recommanded to delete them for now.
 
   ![View all Branches](../media/github_view_all_branches.png)
 
-</details>
-
+==-
 
 
 ## Integrate the Git Repository with the data in the Graph
@@ -65,5 +61,5 @@ mutation {
 
 ### Validate that all resources included in the Git repository are working properly
 
-- The template **device_startup** should render properly at [http://localhost:8000/rfile/device_startup?device=ord1-edge1](http://localhost:8000/rfile/device_startup?device=ord1-edge1)
-- The Python Transform **Openconfig Interface** should render properly at [http://localhost:8000/transform/openconfig/interfaces?device=ord1-edge1](http://localhost:8000/transform/openconfig/interfaces?device=ord1-edge1)
+[!ref Full config for the device `ord1-edge1` should render properly](http://localhost:8000/rfile/device_startup?device=ord1-edge1)
+[!ref The Data Transformation endpoint in the **Openconfig Interface** format should be operational](http://localhost:8000/transform/openconfig/interfaces?device=ord1-edge1)
