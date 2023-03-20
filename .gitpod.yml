@@ -1,12 +1,20 @@
 ---
 # Commands to start on workspace startup
 tasks:
-  - name: Setup & Build
+  - name: Setup & Build Frontend
+    before: cd frontend
+    init: npm install
+    command: |
+      gp env INFRAHUB_API_SERVER_URL=https://8000-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}
+      npm start
+  - name: Setup Python Environment
     init: |
       pip install toml invoke
       curl -sSL https://install.python-poetry.org | python3 -
-      poetry config settings.virtualenvs.create false
-    command: poetry install
+      poetry config virtualenvs.create false
+      poetry install
+    command: invoke demo.dev-start
+
 
 # Ports to expose on workspace startup
 ports:
