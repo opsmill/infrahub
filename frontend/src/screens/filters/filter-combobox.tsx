@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { Combobox } from "@headlessui/react";
 import { classNames } from "../../App";
@@ -34,7 +34,7 @@ export default function FilterCombobox(props: Props) {
   const [query, setQuery] = useState("");
   const currentFilter = filters.filter((row) => row.name === filter.name);
 
-  useEffect(() => {
+  const fetchFilterRows = useCallback(async () => {
     if (schema && !filter.enum) {
       setHasError(false);
       setIsLoading(true);
@@ -42,17 +42,15 @@ export default function FilterCombobox(props: Props) {
       const query = gql`
         ${queryString}
       `;
-      const request = graphQLClient.request(query);
-      request
-      .then((data) => {
+      try {
+        const data = await graphQLClient.request(query);
         const rows = data[schema.name];
         setObjectRows(rows);
         setIsLoading(false);
-      })
-      .catch((err) => {
+      } catch {
         setHasError(true);
         setIsLoading(false);
-      });
+      }
     } else if (filter.enum) {
       setObjectRows(
         filter.enum.map((en) => ({
@@ -61,7 +59,11 @@ export default function FilterCombobox(props: Props) {
         }))
       );
     }
-  }, [schemaList, schema, filter]);
+  }, [filter.enum, schema]);
+
+  useEffect(() => {
+    fetchFilterRows();
+  }, [schemaList, schema, filter, fetchFilterRows]);
 
   if (hasError) {
     return (

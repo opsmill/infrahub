@@ -11,7 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { graphQLClient } from "../..";
 import { classNames } from "../../App";
@@ -82,7 +82,7 @@ export default function ObjectItemDetails() {
     navigate(`/objects/${objectname}/${objectid}/edit`);
   };
 
-  useEffect(() => {
+  const fetchObjectDetails = useCallback(async () => {
     if (schema) {
       setHasError(false);
       setIsLoading(true);
@@ -95,19 +95,21 @@ export default function ObjectItemDetails() {
       const query = gql`
         ${queryString}
       `;
-      const request = graphQLClient.request(query);
-      request
-      .then((data) => {
+      try {
+        const data = await graphQLClient.request(query);
         const rows = data[schema.name];
         setObjectRows(rows);
         setIsLoading(false);
-      })
-      .catch(() => {
+      } catch(err) {
         setHasError(true);
         setIsLoading(false);
-      });
+      }
     }
-  }, [objectname, objectid, schemaList, schema, date, branch]);
+  }, [objectid, schema]);
+
+  useEffect(() => {
+    fetchObjectDetails();
+  }, [fetchObjectDetails, date, branch]);
 
   const row = (objectRows || [])[0];
 
