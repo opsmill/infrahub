@@ -1,7 +1,9 @@
 import { useAtom } from "jotai";
+import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./App.css";
+import { API_SERVER_URL } from "./config/config";
 import { Branch } from "./generated/graphql";
 import { components } from "./infraops";
 import DeviceList from "./screens/device-list/device-list";
@@ -13,7 +15,6 @@ import OpsObjects from "./screens/ops-objects/ops-objects";
 import { branchState } from "./state/atoms/branch.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
-import * as R from "ramda";
 
 type APIResponse = components["schemas"]["SchemaAPI"];
 
@@ -51,7 +52,7 @@ export function classNames(...classes: string[]) {
 }
 
 const getSchemaEndpoint = (branch: Branch | null) => {
-  return `http://localhost:8000/schema/?branch=${
+  return `${API_SERVER_URL}/schema/?branch=${
     branch ? branch.name : "main"
   }`;
 };

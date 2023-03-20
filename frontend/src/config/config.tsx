@@ -1,11 +1,11 @@
+export const API_SERVER_URL = process.env.API_SERVER_URL || "http://localhost:8000"
+
 export const CONFIG = {
   BACKEND_URL: (branch: string = "main", time?: Date | null) => {
-    let endpoint: string;
     if(!time) {
-      endpoint = `http://localhost:8000/graphql/${branch}`;
+      return `${API_SERVER_URL}/graphql/${branch}`;
     } else {
-      endpoint = `http://localhost:8000/graphql/${branch}?at=${time.toISOString()}`;
+      return `${API_SERVER_URL}/graphql/${branch}?at=${time.toISOString()}`;
     }
-    return endpoint;
   },
 };
