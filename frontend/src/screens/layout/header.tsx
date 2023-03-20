@@ -1,22 +1,22 @@
+import { Menu, Transition } from "@headlessui/react";
+import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import {
   Bars3BottomLeftIcon,
   BellIcon,
-  ClockIcon,
+  ClockIcon
 } from "@heroicons/react/24/outline";
-import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Fragment, useEffect, useState } from "react";
-import { Menu, Transition } from "@headlessui/react";
 import Datetime from "react-datetime";
 import "react-datetime/css/react-datetime.css";
 
-import { classNames } from "../../App";
-import { userNavigation } from "./navigation-list";
-import BranchSelector from "../../components/branch-selector/branch-selector";
 import { useAtom } from "jotai";
+import { graphQLClient } from "../..";
+import { classNames } from "../../App";
+import BranchSelector from "../../components/branch-selector/branch-selector";
+import { CONFIG } from "../../config/config";
 import { branchState } from "../../state/atoms/branch.atom";
 import { timeState } from "../../state/atoms/time.atom";
-import { graphQLClient } from "../..";
-import { CONFIG } from "../../config/config";
+import { userNavigation } from "./navigation-list";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -29,7 +29,7 @@ export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
   useEffect(() => {
-    graphQLClient.setEndpoint(CONFIG.BACKEND_URL(branch?.name, date));
+    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
   }, [date, branch]);
 
   return (
