@@ -1,16 +1,16 @@
+import { GraphQLClient } from "graphql-request";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./index.css";
 import App from "./App";
-import reportWebVitals from "./reportWebVitals";
 import { CONFIG } from "./config/config";
-import { GraphQLClient } from "graphql-request";
+import "./index.css";
+import reportWebVitals from "./reportWebVitals";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 
-export const graphQLClient = new GraphQLClient(CONFIG.BACKEND_URL("main"));
+export const graphQLClient = new GraphQLClient(CONFIG.GRAPHQL_URL("main"));
 
 root.render(
   <React.StrictMode>

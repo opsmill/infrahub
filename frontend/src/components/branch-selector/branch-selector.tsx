@@ -1,20 +1,20 @@
-import { Fragment, useCallback, useEffect, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
-import { classNames } from "../../App";
 import { CircleStackIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import { branchState } from "../../state/atoms/branch.atom";
+import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
+import * as R from "ramda";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { graphQLClient } from "../..";
+import { classNames } from "../../App";
 import { CONFIG } from "../../config/config";
-import { timeState } from "../../state/atoms/time.atom";
 import { Branch } from "../../generated/graphql";
 import {
   BRANCH_QUERY,
-  iBranchData,
+  iBranchData
 } from "../../graphql/defined_queries/branch";
-import { formatDistance } from "date-fns";
-import * as R from "ramda";
+import { branchState } from "../../state/atoms/branch.atom";
+import { timeState } from "../../state/atoms/time.atom";
 
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
@@ -47,7 +47,7 @@ export default function BranchSelector() {
    * Update GraphQL client endpoint whenever branch changes
    */
   const onBranchChange = (branch: Branch) => {
-    graphQLClient.setEndpoint(CONFIG.BACKEND_URL(branch?.name, date));
+    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
     setBranch(branch);
   };
 

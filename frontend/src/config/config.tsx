@@ -1,11 +1,12 @@
-export const API_SERVER_URL = process.env.API_SERVER_URL || "http://localhost:8000"
+export const INFRAHUB_API_SERVER_URL = process.env.INFRAHUB_API_SERVER_URL || "http://localhost:8000"
 
 export const CONFIG = {
-  BACKEND_URL: (branch: string = "main", time?: Date | null) => {
+  GRAPHQL_URL: (branch: string = "main", time?: Date | null) => {
     if(!time) {
-      return `${API_SERVER_URL}/graphql/${branch}`;
+      return `${INFRAHUB_API_SERVER_URL}/graphql/${branch}`;
     } else {
-      return `${API_SERVER_URL}/graphql/${branch}?at=${time.toISOString()}`;
+      return `${INFRAHUB_API_SERVER_URL}/graphql/${branch}?at=${time.toISOString()}`;
     }
   },
+  SCHEMA_URL: (branch: string = "main") => `${INFRAHUB_API_SERVER_URL}/schema/?branch=${branch}`
 };

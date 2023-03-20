@@ -3,8 +3,7 @@ import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./App.css";
-import { API_SERVER_URL } from "./config/config";
-import { Branch } from "./generated/graphql";
+import { CONFIG } from "./config/config";
 import { components } from "./infraops";
 import DeviceList from "./screens/device-list/device-list";
 import Layout from "./screens/layout/layout";
@@ -51,12 +50,6 @@ export function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-const getSchemaEndpoint = (branch: Branch | null) => {
-  return `${API_SERVER_URL}/schema/?branch=${
-    branch ? branch.name : "main"
-  }`;
-};
-
 function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
@@ -66,10 +59,9 @@ function App() {
    * Fetch schema from the backend, sort, and return them
    */
   const fetchSchema = useCallback(async () => {
-    const schemaEndpoint = getSchemaEndpoint(branch);
     const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
-      const rawResponse = await fetch(schemaEndpoint);
+      const rawResponse = await fetch(CONFIG.SCHEMA_URL(branch?.name));
       const data = await rawResponse.json();
       return sortByName(data.nodes || []);
     } catch(err) {
