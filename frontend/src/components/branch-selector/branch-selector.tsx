@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../App";
@@ -14,33 +14,50 @@ import {
   iBranchData,
 } from "../../graphql/defined_queries/branch";
 import { formatDistance } from "date-fns";
+import * as R from "ramda";
 
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [date] = useAtom(timeState);
 
-  useEffect(() => {
-    const request = graphQLClient.request(BRANCH_QUERY);
-
-    request
-    .then((data: iBranchData) => {
-      if (data.branch?.length) {
-        setBranches(
-          data.branch.sort((a, b) => {
-            if (a.name && b.name) {
-              return a.name.localeCompare(b.name);
-            }
-            return -1;
-          })
-        );
-      }
-    })
-    .catch(() => {
+  /**
+   * Fetch branches from the backend, sort, and return them
+   */
+  const fetchBranches = async () => {
+    const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+    try {
+      const data: iBranchData = await graphQLClient.request(BRANCH_QUERY);
+      return sortByName(data.branch || []);
+    } catch (err) {
       console.error("Something went wrong when fetching the branch details");
-    });
-  }, [branch]);
+      return [];
+    }
+  };
 
+  /**
+   * Set branches in state atom
+   */
+  const setBranchesInState = useCallback(async () => {
+    const branches = await fetchBranches();
+    setBranches(branches);
+  }, []);
+
+  /**
+   * Update GraphQL client endpoint whenever branch changes
+   */
+  const onBranchChange = (branch: Branch) => {
+    graphQLClient.setEndpoint(CONFIG.BACKEND_URL(branch?.name, date));
+    setBranch(branch);
+  };
+
+  useEffect(() => {
+    setBranchesInState();
+  }, [setBranchesInState]);
+
+  /**
+   * There's always a main branch present at least.
+   */
   if (!branches.length) {
     return null;
   }
@@ -48,10 +65,7 @@ export default function BranchSelector() {
   return (
     <Listbox
       value={branch ? branch : branches.filter((b) => b.name === "main")[0]}
-      onChange={(value) => {
-        graphQLClient.setEndpoint(CONFIG.BACKEND_URL(value?.name, date));
-        setBranch(value);
-      }}
+      onChange={onBranchChange}
     >
       {({ open }) => (
         <>

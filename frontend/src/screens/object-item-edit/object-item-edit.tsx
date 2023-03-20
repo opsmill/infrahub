@@ -74,7 +74,7 @@ export default function ObjectItemEdit() {
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  const initForm = useCallback((row: any) => {
+  const initForm = useCallback(async (row: any) => {
     const template = Handlebars.compile(`query {{kind.value}}FormOptions {
       {{#each relationships}}
       {{this.node}} {
@@ -94,9 +94,8 @@ export default function ObjectItemEdit() {
     const query = gql`
       ${queryString}
     `;
-    const request = graphQLClient.request(query);
-    request
-    .then((data) => {
+    try {
+      const data = await graphQLClient.request(query);
       const formStructure: DynamicFieldData[] = [
         ...(schema.attributes || []).map((attribute) => ({
           fieldName: attribute.name,
@@ -133,11 +132,13 @@ export default function ObjectItemEdit() {
         })),
       ];
       setFormStructure(formStructure);
-    })
-    .catch(() => {});
+    }
+    catch(err) {
+      console.error("Error while creating the form structure");
+    }
   }, [schema, schemaKindName]);
 
-  useEffect(() => {
+  const fetchItemDetails = useCallback(async () => {
     if (schema) {
       setHasError(false);
       setIsLoading(true);
@@ -149,22 +150,25 @@ export default function ObjectItemEdit() {
       const query = gql`
         ${queryString}
       `;
-      const request = graphQLClient.request(query);
-      request
-      .then((data) => {
+
+      try {
+        const data = await graphQLClient.request(query);
         const rows = data[schema.name];
         setObjectRows(rows);
         if (rows.length) {
           initForm(rows[0]);
         }
         setIsLoading(false);
-      })
-      .catch(() => {
+      } catch(err) {
         setHasError(true);
         setIsLoading(false);
-      });
+      }
     }
-  }, [objectname, objectid, schemaList, schema, date, branch, initForm]);
+  }, [initForm, objectid, schema]);
+
+  useEffect(() => {
+    fetchItemDetails();
+  }, [objectname, objectid, schemaList, schema, date, branch, fetchItemDetails]);
 
   const row = (objectRows || [])[0];
 

@@ -30,6 +30,7 @@
         "graphql-request": "^5.1.0",
         "handlebars": "^4.7.7",
         "jotai": "^2.0.2",
+        "ramda": "^0.28.0",
         "react": "^18.2.0",
         "react-datetime": "^3.2.0",
         "react-dom": "^18.2.0",
@@ -41,6 +42,7 @@
         "web-vitals": "^2.1.4"
     },
     "devDependencies": {
+        "@types/ramda": "^0.28.23",
         "@typescript-eslint/eslint-plugin": "^5.55.0",
         "eslint": "^8.36.0",
         "eslint-config-standard-with-typescript": "^34.0.1",
