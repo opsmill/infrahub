@@ -3,7 +3,7 @@ from asyncio import run as aiorun
 from pathlib import Path
 
 import typer
-import ujson
+import yaml
 from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
@@ -19,7 +19,7 @@ async def _load(schema: Path, log: logging.Logger):
     console = Console()
 
     try:
-        schema_data = ujson.loads(schema.read_text())
+        schema_data = yaml.safe_load(schema.read_text())
     except JSONDecodeError as exc:
         console.print("[red]Invalid JSON file")
         raise typer.Exit(2) from exc
