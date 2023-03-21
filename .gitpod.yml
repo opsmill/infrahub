@@ -17,6 +17,7 @@ tasks:
       cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       invoke demo.dev-start
       gp ports await 5672
+      sleep 5
       poetry run infrahub db init
       gp sync-done python-setup
     command: invoke demo.dev-start
