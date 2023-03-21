@@ -7,7 +7,6 @@ import yaml
 from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
-from ujson import JSONDecodeError
 
 import infrahub_ctl.config as config
 from infrahub_client import InfrahubClient
@@ -20,7 +19,7 @@ async def _load(schema: Path, log: logging.Logger):
 
     try:
         schema_data = yaml.safe_load(schema.read_text())
-    except JSONDecodeError as exc:
+    except yaml.YAMLError as exc:
         console.print("[red]Invalid JSON file")
         raise typer.Exit(2) from exc
 
