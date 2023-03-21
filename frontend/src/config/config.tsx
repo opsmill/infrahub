@@ -1,4 +1,3 @@
-console.log("process.env: ", process.env);
 export const INFRAHUB_API_SERVER_URL = process.env.REACT_APP_INFRAHUB_API_SERVER_URL || "http://localhost:8000"
 
 export const CONFIG = {
