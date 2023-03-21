@@ -17,14 +17,16 @@ tasks:
       cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       invoke demo.dev-start
       gp ports await 5672
-      sleep 5
+      sleep 30
       poetry run infrahub db init
+    command: |
+      invoke demo.dev-start
       gp sync-done python-setup
-    command: invoke demo.dev-start
 
   - name: Run API Server
     command: |
       gp ports await 5672
+      gp sync-await python-setup
       poetry run gunicorn infrahub.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 
   - name: Run Git Server
