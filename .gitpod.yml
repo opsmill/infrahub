@@ -6,7 +6,7 @@ tasks:
     init: npm install
     command: |
       URL_8000=`gp url 8000`
-      gp env INFRAHUB_API_SERVER_URL=$URL_8000
+      gp env REACT_APP_INFRAHUB_API_SERVER_URL=$URL_8000
       npm start
   - name: Setup Python Environment
     init: |
