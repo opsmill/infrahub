@@ -37,12 +37,12 @@ const template = Handlebars.compile(`query {{kind}} {
     }
 `);
 
-const getItemsColumn = (schema: any) => {
-  const relationsShipsColumns = schema?.relationships?.filter((relationship: any) => relationship?.cardinality === "one");
+const getRelationshipsColumns = (schema: any) => schema?.relationships?.filter((relationship: any) => relationship?.cardinality === "one");
 
+const getItemsColumn = (schema: any) => {
   return [
     ...(schema?.attributes ?? []),
-    ...(relationsShipsColumns ?? [])
+    ...(getRelationshipsColumns(schema) ?? [])
   ]
   .sort(
     (a, b) => {
@@ -106,7 +106,7 @@ export default function ObjectItems() {
             const queryString = template({
               ...schema,
               filterString,
-              columns
+              relationships: getRelationshipsColumns(schema)
             });
 
             const query = gql`

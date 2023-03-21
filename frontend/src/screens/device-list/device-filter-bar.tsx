@@ -1,13 +1,13 @@
-import { Fragment } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import { ChevronDownIcon, FunnelIcon } from "@heroicons/react/20/solid";
+import { useAtom } from "jotai";
+import { Fragment } from "react";
 import { classNames } from "../../App";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
-import { useAtom } from "jotai";
-import FilterCombobox from "../filters/filter-combobox";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
-import FilterTextField from "../filters/filter-textfield";
+import FilterCombobox from "../filters/filter-combobox";
 import FilterComboEnum from "../filters/filter-enum";
+import FilterTextField from "../filters/filter-textfield";
 
 const sortOptions = [
   { name: "Name", href: "#", current: true },
@@ -56,42 +56,42 @@ export default function DeviceFilterBar(props: Props) {
               aria-hidden="true"
               className="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block"
             />
-
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
-                {currentFilters.map((filter) => (
-                  <span
-                    key={filter.name}
-                    className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900"
-                  >
-                    <span>{filter.display_label}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCurrentFilters(
-                          currentFilters.filter((row) => row !== filter)
-                        )
-                      }
-                      className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
-                    >
-                      <span className="sr-only">
-                        Remove filter for {filter.display_label}
-                      </span>
-                      <svg
-                        className="h-2 w-2"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 8 8"
+                {
+                  currentFilters
+                  .map(
+                    (filter) => (
+                      <span
+                        key={filter.name}
+                        className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeWidth="1.5"
-                          d="M1 1l6 6m0-6L1 7"
-                        />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
+                        <span>{filter.display_label}</span>
+                        <button
+                          type="button"
+                          onClick={() =>setCurrentFilters(currentFilters.filter((row) => row !== filter))}
+                          className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
+                        >
+                          <span className="sr-only">
+                            Remove filter for {filter.display_label}
+                          </span>
+                          <svg
+                            className="h-2 w-2"
+                            stroke="currentColor"
+                            fill="none"
+                            viewBox="0 0 8 8"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeWidth="1.5"
+                              d="M1 1l6 6m0-6L1 7"
+                            />
+                          </svg>
+                        </button>
+                      </span>
+                    )
+                  )
+                }
               </div>
             </div>
 
@@ -118,24 +118,31 @@ export default function DeviceFilterBar(props: Props) {
                 >
                   <Menu.Items className="absolute right-0 z-20 mt-2 w-40 origin-top-right rounded-md bg-white shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="py-1">
-                      {sortOptions.map((option) => (
-                        <Menu.Item key={option.name}>
-                          {({ active }) => (
-                            <a
-                              href={option.href}
-                              className={classNames(
-                                option.current
-                                  ? "font-medium text-gray-900"
-                                  : "text-gray-500",
-                                active ? "bg-gray-100" : "",
-                                "block px-4 py-2 text-sm"
-                              )}
-                            >
-                              {option.name}
-                            </a>
-                          )}
-                        </Menu.Item>
-                      ))}
+                      {
+                        sortOptions
+                        .map(
+                          (option) => (
+                            <Menu.Item key={option.name}>
+                              {
+                                ({ active }) => (
+                                  <a
+                                    href={option.href}
+                                    className={classNames(
+                                      option.current
+                                        ? "font-medium text-gray-900"
+                                        : "text-gray-500",
+                                      active ? "bg-gray-100" : "",
+                                      "block px-4 py-2 text-sm"
+                                    )}
+                                  >
+                                    {option.name}
+                                  </a>
+                                )
+                              }
+                            </Menu.Item>
+                          )
+                        )
+                      }
                     </div>
                   </Menu.Items>
                 </Transition>
@@ -146,17 +153,22 @@ export default function DeviceFilterBar(props: Props) {
         <div className="border-t border-gray-200 pb-10">
           <div className="mx-auto max-w-7xl px-4 text-sm sm:px-6">
             <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {props.schema.filters?.map((filter) => {
-                if (filter.kind === "Object") {
-                  return <FilterCombobox filter={filter} key={filter.name} />;
-                } else if (filter.kind === "String" && !filter.enum) {
-                  return <FilterTextField filter={filter} key={filter.name} />;
-                } else if (filter.kind === "String" && filter.enum) {
-                  return <FilterComboEnum filter={filter} key={filter.name} />;
-                } else {
-                  return null;
-                }
-              })}
+              {
+                props.schema.filters
+                ?.map(
+                  (filter) => {
+                    if (filter.kind === "Object") {
+                      return <FilterCombobox filter={filter} key={filter.name} />;
+                    } else if (filter.kind === "String" && !filter.enum) {
+                      return <FilterTextField filter={filter} key={filter.name} />;
+                    } else if (filter.kind === "String" && filter.enum) {
+                      return <FilterComboEnum filter={filter} key={filter.name} />;
+                    } else {
+                      return null;
+                    }
+                  }
+                )
+              }
             </div>
           </div>
         </div>
