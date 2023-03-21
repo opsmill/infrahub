@@ -5,8 +5,9 @@ tasks:
     before: cd frontend
     init: npm install
     command: |
+      gp ports await 8000
       URL_8000=`gp url 8000`
-      gp env REACT_APP_INFRAHUB_API_SERVER_URL=$URL_8000
+      export REACT_APP_INFRAHUB_API_SERVER_URL=$URL_8000
       npm start
   - name: Setup Python Environment
     init: |
@@ -15,13 +16,18 @@ tasks:
       poetry install
       cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       invoke demo.dev-start
+      gp ports await 5672
+      sleep 30
       poetry run infrahub db init
+    command: |
+      invoke demo.dev-start
       gp sync-done python-setup
-    command: invoke demo.dev-start
 
   - name: Run API Server
-    init: gp sync-await python-setup
-    command: poetry run gunicorn infrahub.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+    command: |
+      gp ports await 5672
+      gp sync-await python-setup
+      poetry run gunicorn infrahub.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 
   - name: Run Git Server
     command: |
