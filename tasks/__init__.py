@@ -43,6 +43,13 @@ def lint_all(context: Context):
     ctl.lint(context)
 
 
+@task(name="generate-doc")
+def generate_doc(context: Context):
+    backend.generate_doc(context)
+    ctl.generate_doc(context)
+
+
 ns.add_task(format_all)
 ns.add_task(lint_all)
 ns.add_task(yamllint)
+ns.add_task(generate_doc)

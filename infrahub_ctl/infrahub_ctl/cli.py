@@ -23,10 +23,10 @@ from infrahub_ctl.validate import app as validate_app
 
 app = typer.Typer()
 
-app.add_typer(branch_app, name="branch", help="Manage all branches.")
-app.add_typer(check_app, name="check", help="Execute Integration checks.")
-app.add_typer(schema, name="schema", help="Manage the schema.")
-app.add_typer(validate_app, name="validate", help="Validate different components.")
+app.add_typer(branch_app, name="branch")
+app.add_typer(check_app, name="check")
+app.add_typer(schema, name="schema")
+app.add_typer(validate_app, name="validate")
 
 
 async def _render(

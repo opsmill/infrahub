@@ -20,6 +20,15 @@ DEFAULT_CONFIG_FILE = "infrahubctl.toml"
 ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
 
 
+@app.callback()
+def callback():
+    """
+    Manage the branches in a remote Infrahub instance.
+
+    List, create, merge, rebase ..
+    """
+
+
 async def _list():
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 

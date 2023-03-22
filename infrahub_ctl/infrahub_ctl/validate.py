@@ -16,9 +16,11 @@ DEFAULT_CONFIG_FILE = "infrahubctl.toml"
 ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
 
 
-@app.command(name="config")
-def valid_config():
-    pass
+@app.callback()
+def callback():
+    """
+    Helper to validate the format of various files.
+    """
 
 
 async def _schema(schema: Path):
@@ -46,5 +48,6 @@ async def _schema(schema: Path):
 
 @app.command(name="schema")
 def validate_schema(schema: Path, config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE)):
+    """Validate the format of a schema file either in JSON or YAML"""
     config.load_and_exit(config_file=config_file)
     aiorun(_schema(schema=schema))

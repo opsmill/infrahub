@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 import pytest
-import ujson
+import yaml
 
 import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
@@ -44,8 +44,8 @@ async def session(db):
 async def load_infrastructure_schema(session):
     models_dir = get_models_dir()
 
-    schema_txt = Path(os.path.join(models_dir, "infrastructure_base.json")).read_text()
-    infra_schema = ujson.loads(schema_txt)
+    schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
+    infra_schema = yaml.safe_load(schema_txt)
 
     schema = SchemaRoot(**infra_schema)
     schema.extend_nodes_with_interfaces()
