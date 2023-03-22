@@ -38,17 +38,6 @@ function App() {
   };
 
   /**
-   * Set branches in state atom
-   */
-  const setBranchesInState = useCallback(
-    async () => {
-      const branches = await fetchBranches();
-      setBranches(branches);
-    },
-    [setBranches]
-  );
-
-  /**
    * Fetch schema from the backend, sort, and return them
    */
   const fetchSchema = useCallback(
@@ -73,6 +62,7 @@ function App() {
     async () => {
       const schema: APIResponse["nodes"] = await fetchSchema();
       setSchema(schema);
+
       const schemaNames = R.map(R.prop("name"), schema);
       const schemaKinds = R.map(R.prop("kind"), schema);
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
@@ -80,6 +70,17 @@ function App() {
       setSchemaKindNameState(schemaKindNameMap);
     },
     [fetchSchema, setSchema, setSchemaKindNameState]
+  );
+
+  /**
+   * Set branches in state atom
+   */
+  const setBranchesInState = useCallback(
+    async () => {
+      const branches = await fetchBranches();
+      setBranches(branches);
+    },
+    [setBranches]
   );
 
   useEffect(

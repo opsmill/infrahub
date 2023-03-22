@@ -1,7 +1,7 @@
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import { formatDistance } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { Fragment } from "react";
 import { graphQLClient } from "../..";
@@ -132,9 +132,8 @@ export default function BranchSelector() {
                               "mt-2"
                             )}
                           >
-                            {formatDistance(
+                            {formatDistanceToNow(
                               new Date(option?.created_at),
-                              new Date(),
                               { addSuffix: true }
                             )}
                           </p>
