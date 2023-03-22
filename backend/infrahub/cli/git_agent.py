@@ -38,21 +38,11 @@ def signal_handler(*args, **kwargs):  # pylint: disable=unused-argument
 signal.signal(signal.SIGINT, signal_handler)
 
 
-# All
-#   Listen to Git Request
-#    Merge
-#    Pull
-#    Push
-#   Read Repo and look for
-#     Schema
-#     Data
-#     Forms
-#     Resource Allocation
-#     Validators.          RPC
-#     Template.           HTTP
-#     Jinja Filters
-#     Checks.               RPC ?
-#     API Endpoint.    HTTP
+@app.callback()
+def callback():
+    """
+    Control the Git Agent.
+    """
 
 
 async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):

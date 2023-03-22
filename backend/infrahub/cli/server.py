@@ -5,6 +5,11 @@ import uvicorn
 
 app = typer.Typer()
 
+@app.callback()
+def callback():
+    """
+    Control the API Server.
+    """
 
 @app.command()
 def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):

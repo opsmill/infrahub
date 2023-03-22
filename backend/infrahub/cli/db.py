@@ -15,6 +15,13 @@ app = typer.Typer()
 PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 
+@app.callback()
+def callback():
+    """
+    Manage the graph in the database.
+    """
+
+
 async def _init(config_file: str):
     """Erase the content of the database and initialize it with the core schema."""
     config.load_and_exit(config_file_name=config_file)
