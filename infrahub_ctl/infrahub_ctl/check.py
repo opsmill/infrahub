@@ -15,6 +15,7 @@ app = typer.Typer()
 
 # pylint: disable=too-many-nested-blocks,too-many-branches
 
+
 @app.callback()
 def callback():
     """
