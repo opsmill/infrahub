@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 import toml
 import typer
-from pydantic import BaseSettings, ValidationError
+from pydantic import BaseSettings, ValidationError, root_validator
 
 SETTINGS = None
 
@@ -22,6 +22,11 @@ class Settings(BaseSettings):
             "server_address": {"env": "INFRAHUB_ADDRESS"},
             "api_key": {"env": "INFRAHUB_API_KEY"},
         }
+
+    @root_validator
+    def cleanup_server_address(cls, values):
+        values["server_address"] = values["server_address"].rstrip("/")
+        return values
 
 
 def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None):
