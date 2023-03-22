@@ -42,7 +42,7 @@ async def _load(schema: Path, log: logging.Logger):
         raise typer.Exit(2)
 
     current_nodes = {item.kind.value: item for item in await client.all(kind="NodeSchema")}
-    current_generics = {item.kind.value: item for item in await client.all(kind="GenericSchema")}
+    # current_generics = {item.kind.value: item for item in await client.all(kind="GenericSchema")}
 
     # Nodes
     for node in schema_data.get("nodes"):
