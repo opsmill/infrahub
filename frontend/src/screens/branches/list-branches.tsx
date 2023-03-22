@@ -1,4 +1,4 @@
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowPathRoundedSquareIcon, CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
@@ -29,7 +29,19 @@ export const ListBranches = () => {
     },
   ]
 
-  const deleteBranch = (id: string) => {
+  const mergeBranch = (id: string) => {
+    console.log("id: ", id);
+  }
+
+  const rebaseBranch = (id: string) => {
+    console.log("id: ", id);
+  }
+
+  const validateBranch = (id: string) => {
+    console.log("id: ", id);
+  }
+
+  const createPulRequest = (id: string) => {
     console.log("id: ", id);
   }
 
@@ -129,21 +141,39 @@ export const ListBranches = () => {
                               && (
                                 <>
                                   <button
-                                    onClick={() => deleteBranch(branch.id)}
+                                    onClick={() => mergeBranch(branch.id)}
                                     type="button"
-                                    className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red-600  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-red-400"
+                                    className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-green-600  text-gray-50 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-green-400"
                                   >
-                                    Delete
-                                    <XMarkIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                                    Merge
+                                    <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                                   </button>
 
                                   <button
-                                    onClick={() => deleteBranch(branch.id)}
+                                    onClick={() => rebaseBranch(branch.id)}
+                                    type="button"
+                                    className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200"
+                                  >
+                                    Rebase
+                                    <ArrowPathRoundedSquareIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => createPulRequest(branch.id)}
                                     type="button"
                                     className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200"
                                   >
                                     Pull request
                                     <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => validateBranch(branch.id)}
+                                    type="button"
+                                    className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200"
+                                  >
+                                    Validate
+                                    <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                                   </button>
                                 </>
                               )
