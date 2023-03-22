@@ -4,10 +4,10 @@ import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { graphQLClient } from "../..";
-import { classNames } from "../../App";
 import { components } from "../../infraops";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
 
 interface Props {

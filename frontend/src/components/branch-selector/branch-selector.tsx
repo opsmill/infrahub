@@ -6,7 +6,6 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { graphQLClient } from "../..";
-import { classNames } from "../../App";
 import { CONFIG } from "../../config/config";
 import { Branch } from "../../generated/graphql";
 import {
@@ -15,6 +14,7 @@ import {
 } from "../../graphql/defined_queries/branch";
 import { branchState } from "../../state/atoms/branch.atom";
 import { timeState } from "../../state/atoms/time.atom";
+import { classNames } from "../../utils/common";
 
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);

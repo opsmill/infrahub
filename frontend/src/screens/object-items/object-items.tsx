@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { graphQLClient } from "../..";
-import { classNames } from "../../App";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
+import { classNames } from "../../utils/common";
 import DeviceFilterBar from "../device-list/device-filter-bar";
 import DeviceFilters from "../device-list/device-filters";
 import ErrorScreen from "../error-screen/error-screen";
