@@ -1,14 +1,14 @@
 import { Disclosure } from "@headlessui/react";
-import { LinkIcon } from "@heroicons/react/24/outline";
 import { classNames } from "../../utils/common";
 
 interface Props {
   title: string;
   items: React.ReactElement[];
+  Icon: React.ComponentType<any>;
 }
 
 export default function DropDownMenuHeader(props: Props) {
-  const { title, items } = props;
+  const { title, items, Icon } = props;
 
   return (
     <Disclosure defaultOpen={true} as="div" className="space-y-1">
@@ -22,7 +22,7 @@ export default function DropDownMenuHeader(props: Props) {
               "group w-full flex items-center pl-2 pr-1 py-2 text-left text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             )}
           >
-            <LinkIcon
+            <Icon
               className="mr-3 h-6 w-6 flex-shrink-0 text-blue-400 group-hover:text-gray-500"
               aria-hidden="true"
             />

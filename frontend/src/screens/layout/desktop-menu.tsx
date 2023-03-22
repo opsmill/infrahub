@@ -1,3 +1,4 @@
+import { LinkIcon, Square3Stack3DIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS } from "../../config/constants";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
@@ -54,9 +55,9 @@ export default function DesktopMenu() {
         </div>
         <div className="mt-5 flex flex-grow flex-col flex-1 overflow-auto py-2">
           <nav className="flex-1 space-y-2 bg-white px-2" aria-label="Sidebar">
-            <DropDownMenuHeader title={"Objects"} items={schemaItems} />
-            <DropDownMenuHeader title={"Admin"} items={adminItems} />
-            <DropDownMenuHeader title={"Branches"} items={branchesItems} />
+            <DropDownMenuHeader title={"Objects"} items={schemaItems} Icon={LinkIcon} />
+            <DropDownMenuHeader title={"Admin"} items={adminItems} Icon={UserIcon} />
+            <DropDownMenuHeader title={"Branches"} items={branchesItems} Icon={Square3Stack3DIcon} />
           </nav>
         </div>
       </div>
