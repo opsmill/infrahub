@@ -2,11 +2,14 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { graphQLClient } from ".";
 import "./App.css";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
+import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import { components } from "./infraops";
 import { branchState } from "./state/atoms/branch.atom";
+import { branchesState } from "./state/atoms/branches.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 
@@ -18,6 +21,32 @@ function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
+  const [, setBranches] = useAtom(branchesState);
+
+  /**
+   * Fetch branches from the backend, sort, and return them
+   */
+  const fetchBranches = async () => {
+    const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+    try {
+      const data: iBranchData = await graphQLClient.request(BRANCH_QUERY);
+      return sortByName(data.branch || []);
+    } catch (err) {
+      console.error("Something went wrong when fetching the branch details");
+      return [];
+    }
+  };
+
+  /**
+   * Set branches in state atom
+   */
+  const setBranchesInState = useCallback(
+    async () => {
+      const branches = await fetchBranches();
+      setBranches(branches);
+    },
+    [setBranches]
+  );
 
   /**
    * Fetch schema from the backend, sort, and return them
@@ -51,6 +80,13 @@ function App() {
       setSchemaKindNameState(schemaKindNameMap);
     },
     [fetchSchema, setSchema, setSchemaKindNameState]
+  );
+
+  useEffect(
+    () => {
+      setBranchesInState();
+    },
+    [setBranchesInState]
   );
 
   useEffect(

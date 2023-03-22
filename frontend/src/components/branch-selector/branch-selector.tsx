@@ -3,45 +3,19 @@ import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
-import * as R from "ramda";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment } from "react";
 import { graphQLClient } from "../..";
 import { CONFIG } from "../../config/config";
 import { Branch } from "../../generated/graphql";
-import {
-  BRANCH_QUERY,
-  iBranchData
-} from "../../graphql/defined_queries/branch";
 import { branchState } from "../../state/atoms/branch.atom";
+import { branchesState } from "../../state/atoms/branches.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branches] = useAtom(branchesState);
   const [date] = useAtom(timeState);
-
-  /**
-   * Fetch branches from the backend, sort, and return them
-   */
-  const fetchBranches = async () => {
-    const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
-    try {
-      const data: iBranchData = await graphQLClient.request(BRANCH_QUERY);
-      return sortByName(data.branch || []);
-    } catch (err) {
-      console.error("Something went wrong when fetching the branch details");
-      return [];
-    }
-  };
-
-  /**
-   * Set branches in state atom
-   */
-  const setBranchesInState = useCallback(async () => {
-    const branches = await fetchBranches();
-    setBranches(branches);
-  }, []);
 
   /**
    * Update GraphQL client endpoint whenever branch changes
@@ -50,10 +24,6 @@ export default function BranchSelector() {
     graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
     setBranch(branch);
   };
-
-  useEffect(() => {
-    setBranchesInState();
-  }, [setBranchesInState]);
 
   /**
    * There's always a main branch present at least.
