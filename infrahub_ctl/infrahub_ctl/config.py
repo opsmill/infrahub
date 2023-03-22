@@ -24,7 +24,7 @@ class Settings(BaseSettings):
         }
 
     @root_validator
-    def cleanup_server_address(cls, values):
+    def cleanup_server_address(cls, values):  # pylint: disable=no-self-argument
         values["server_address"] = values["server_address"].rstrip("/")
         return values
 

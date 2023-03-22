@@ -163,7 +163,7 @@ def status(context: Context):
 def load_infra_schema(context: Context):
     """Load the base schema for infrastructure."""
     context.run(
-        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git infrahubctl schema load models/infrastructure_base.json",
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git infrahubctl schema load models/infrastructure_base.yml",
         pty=True,
     )
 
