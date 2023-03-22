@@ -1,5 +1,7 @@
 # `infrahubctl validate`
 
+Helper to validate the format of various files.
+
 **Usage**:
 
 ```console
@@ -14,22 +16,11 @@ $ infrahubctl validate [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `config`
-* `schema`
-
-## `infrahubctl validate config`
-
-**Usage**:
-
-```console
-$ infrahubctl validate config [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
+* `schema`: Validate the format of a schema file...
 
 ## `infrahubctl validate schema`
+
+Validate the format of a schema file either in JSON or YAML
 
 **Usage**:
 

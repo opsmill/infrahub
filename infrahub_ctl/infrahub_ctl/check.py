@@ -15,6 +15,12 @@ app = typer.Typer()
 
 # pylint: disable=too-many-nested-blocks,too-many-branches
 
+@app.callback()
+def callback():
+    """
+    Execute user-defined checks.
+    """
+
 
 @app.command()
 def run(
