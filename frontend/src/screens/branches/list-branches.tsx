@@ -1,12 +1,22 @@
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
+import * as R from "ramda";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { classNames } from "../../utils/common";
 import NoDataFound from "../no-data-found/no-data-found";
 
 export const ListBranches = () => {
-  const [branches] = useAtom(branchesState);
+  const [storedBranches] = useAtom(branchesState);
+
+  const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+
+  const sortedBranches = sortByName(storedBranches.filter(b => b.name !== "main"));
+
+  const branches = [
+    ...storedBranches.filter(b => b.name === "main"),
+    ...sortedBranches
+  ]
 
   const columns = [
     {
@@ -74,9 +84,9 @@ export const ListBranches = () => {
 
                     <th
                       scope="col"
-                      className="text-right sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-4 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pr-6 lg:pr-8"
+                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-4 text-right text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pr-6 lg:pr-8"
                     >
-                            Actions
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -87,7 +97,7 @@ export const ListBranches = () => {
                       (branch, index) => (
                         <tr
                           key={index}
-                          className="hover:bg-gray-50"
+                          className={classNames(branch.name === "main" ? "bg-blue-50" : "")}
                         >
                           {
                             columns?.map(
@@ -114,26 +124,28 @@ export const ListBranches = () => {
                               "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                             )}
                           >
-                            <button
-                              onClick={() => deleteBranch(branch.id)}
-                              type="button"
-                              className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red-600  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-red-400"
-                            >
-                              Delete
-                              <XMarkIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                            </button>
-
                             {
                               branch.name !== "main"
                               && (
-                                <button
-                                  onClick={() => deleteBranch(branch.id)}
-                                  type="button"
-                                  className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200"
-                                >
-                                  Pull request
-                                  <XMarkIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => deleteBranch(branch.id)}
+                                    type="button"
+                                    className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red-600  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-red-400"
+                                  >
+                                    Delete
+                                    <XMarkIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => deleteBranch(branch.id)}
+                                    type="button"
+                                    className="float-right mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-red  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200"
+                                  >
+                                    Pull request
+                                    <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                                  </button>
+                                </>
                               )
                             }
                           </td>
