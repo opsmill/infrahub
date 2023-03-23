@@ -60,6 +60,7 @@ export const BranchesItems = () => {
                       && (
                         <>
                           <Button
+                            className="mr-3"
                             onClick={() => mergeBranch(branch.id)}
                             type={BUTTON_TYPES.VALIDATE}
                           >
@@ -68,6 +69,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
+                            className="mr-3"
                             onClick={() => mergeBranch(branch.id)}
                             type={BUTTON_TYPES.VALIDATE}
                             disabled
@@ -77,6 +79,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
+                            className="mr-3"
                             onClick={() => rebaseBranch(branch.id)}
                           >
                             Pull request
@@ -84,6 +87,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
+                            className="mr-3"
                             onClick={() => createPulRequest(branch.id)}
                             disabled
                           >
@@ -92,6 +96,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
+                            className="mr-3"
                             onClick={() => validateBranch(branch.id)}
                             type={BUTTON_TYPES.WARNING}
                           >
@@ -100,6 +105,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
+                            className="mr-3"
                             onClick={() => validateBranch(branch.id)}
                             type={BUTTON_TYPES.WARNING}
                             disabled
@@ -109,6 +115,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
+                            className="mr-3"
                             onClick={() => validateBranch(branch.id)}
                             type={BUTTON_TYPES.CANCEL}
                           >
@@ -117,6 +124,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
+                            className="mr-3"
                             onClick={() => validateBranch(branch.id)}
                             type={BUTTON_TYPES.CANCEL}
                             disabled

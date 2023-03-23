@@ -9,7 +9,7 @@ export enum BUTTON_TYPES {
 }
 
 const DEFAULT_CLASS = `
-  mr-3 py-1.5 px-2.5
+  py-1.5 px-2.5
   inline-flex items-center gap-x-1.5 rounded-md
   text-sm font-semibold
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
@@ -50,7 +50,7 @@ const getButtonClasseName = (type: BUTTON_TYPES) => {
 }
 
 export const Button = (props: any) => {
-  const { type, ...propsToPass } = props;
+  const { type, className, ...propsToPass } = props;
 
   const customClassName = getButtonClasseName(type);
 
@@ -60,7 +60,8 @@ export const Button = (props: any) => {
       className={
         classNames(
           DEFAULT_CLASS,
-          customClassName
+          customClassName,
+          className
         )
       }
       {...propsToPass}
