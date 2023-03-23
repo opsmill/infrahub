@@ -1,4 +1,3 @@
-import { gql } from "@apollo/client";
 import { Popover, Transition } from "@headlessui/react";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
@@ -13,51 +12,15 @@ import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { graphQLClient } from "../..";
 import { branchState } from "../../state/atoms/branch.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
+import getObjectDetails from "../../utils/objectDetails";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-
-declare var Handlebars: any;
-
-const template = Handlebars.compile(`query {{kind.value}} {
-        {{name}} (ids: ["{{objectid}}"]) {
-            id
-            display_label
-            {{#each attributes}}
-            {{this.name}} {
-                value
-                updated_at
-                is_protected
-                is_visible
-                source {
-                  id
-                  display_label
-                  __typename
-                }
-                owner {
-                  id
-                  display_label
-                  __typename
-                }
-            }
-            {{/each}}
-            {{#each relationships}}
-            {{this.name}} {
-                id
-                display_label
-                _relation__is_visible
-                _relation__is_protected
-            }
-            {{/each}}
-        }
-    }
-`);
 
 export default function ObjectItemDetails() {
   let { objectname, objectid } = useParams();
@@ -68,7 +31,7 @@ export default function ObjectItemDetails() {
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [selectedTab, setSelectedTab] = useState<string | undefined>();
 
-  const [objectRows, setObjectRows] = useState<any[] | undefined>();
+  const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
@@ -83,47 +46,38 @@ export default function ObjectItemDetails() {
   };
 
   const fetchObjectDetails = useCallback(async () => {
-    if (schema) {
-      setHasError(false);
-      setIsLoading(true);
-      setObjectRows(undefined);
-      setSelectedTab(undefined);
-      const queryString = template({
-        ...schema,
-        objectid,
-      });
-      const query = gql`
-        ${queryString}
-      `;
-      try {
-        const data = await graphQLClient.request(query);
-        const rows = data[schema.name];
-        setObjectRows(rows);
-        setIsLoading(false);
-      } catch(err) {
-        setHasError(true);
-        setIsLoading(false);
-      }
+    setHasError(false);
+    setIsLoading(true);
+    setObjectDetails(undefined);
+    setSelectedTab(undefined);
+    try {
+      const data = await getObjectDetails(schema, objectid!);
+      setObjectDetails(data);
+    } catch(err) {
+      setHasError(true);
     }
+    setIsLoading(false);
   }, [objectid, schema]);
 
   useEffect(() => {
-    fetchObjectDetails();
-  }, [fetchObjectDetails, date, branch]);
-
-  const row = (objectRows || [])[0];
+    if(schema) {
+      fetchObjectDetails();
+    }
+  }, [fetchObjectDetails, schema, date, branch]);
 
   if (hasError) {
     return <ErrorScreen />;
   }
 
-  if ((isLoading && !objectRows) || !objectRows?.length || !row || !schema) {
+  if (isLoading || !schema) {
     return <LoadingScreen />;
   }
 
-  if (objectRows && objectRows.length === 0) {
+  if (!objectDetails) {
     return <NoDataFound />;
   }
+
+  const row = objectDetails;
 
   return (
     <div className="bg-white flex-1 overflow-auto">
