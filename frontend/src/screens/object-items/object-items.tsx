@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
@@ -12,7 +12,6 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import DeviceFilterBar from "../device-list/device-filter-bar";
-import DeviceFilters from "../device-list/device-filters";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -164,9 +163,15 @@ export default function ObjectItems() {
           )
         }
 
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <DeviceFilters />
-        </div>
+        <button
+          onClick={() => {
+            navigate(`/objects/${schema.name}/new`);
+          }}
+          type="button"
+          className="rounded-full bg-blue-600 p-1.5 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        >
+          <PlusIcon className="h-5 w-5" aria-hidden="true" />
+        </button>
       </div>
 
       {

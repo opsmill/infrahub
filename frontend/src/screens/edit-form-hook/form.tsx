@@ -53,9 +53,9 @@ export const Form = ({ fields, onSubmit }: FormProps) => {
               <h3 className="text-base font-semibold leading-6 text-gray-900">
                 Object details
               </h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              {/* <p className="mt-1 max-w-2xl text-sm text-gray-500">
                 Update details of the object
-              </p>
+              </p> */}
             </div>
 
             <div className="space-y-6 sm:space-y-5 divide-y">
