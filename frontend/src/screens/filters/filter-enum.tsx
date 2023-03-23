@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { Combobox } from "@headlessui/react";
-import { classNames } from "../../App";
+import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { useAtom } from "jotai";
-import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
+import { useState } from "react";
 import { components } from "../../infraops";
+import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
+import { classNames } from "../../utils/common";
 
 interface Props {
   filter: components["schemas"]["FilterSchema"];

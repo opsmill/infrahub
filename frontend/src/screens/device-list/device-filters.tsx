@@ -1,11 +1,11 @@
-import { Fragment } from "react";
 import { Popover, Transition } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import { classNames } from "../../App";
+import { Fragment } from "react";
+import { classNames } from "../../utils/common";
 import FilterBranch from "./filters/filter-branch";
-import FilterTime from "./filters/filter-time";
-import FilterTags from "./filters/filter-tags";
 import FilterStatus from "./filters/filter-status";
+import FilterTags from "./filters/filter-tags";
+import FilterTime from "./filters/filter-time";
 
 export default function DeviceFilters() {
   return (

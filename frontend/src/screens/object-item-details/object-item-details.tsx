@@ -14,11 +14,11 @@ import { useAtom } from "jotai";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { graphQLClient } from "../..";
-import { classNames } from "../../App";
 import { branchState } from "../../state/atoms/branch.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { timeState } from "../../state/atoms/time.atom";
+import { classNames } from "../../utils/common";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -177,7 +177,7 @@ export default function ObjectItemDetails() {
           </div>
         </div>
         <button
-          onClick={() => navigateToObjectEditPage()}
+          onClick={navigateToObjectEditPage}
           type="button"
           className="mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-white  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >

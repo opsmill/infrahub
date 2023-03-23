@@ -11,11 +11,11 @@ import "react-datetime/css/react-datetime.css";
 
 import { useAtom } from "jotai";
 import { graphQLClient } from "../..";
-import { classNames } from "../../App";
 import BranchSelector from "../../components/branch-selector/branch-selector";
 import { CONFIG } from "../../config/config";
 import { branchState } from "../../state/atoms/branch.atom";
 import { timeState } from "../../state/atoms/time.atom";
+import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
 
 interface Props {

@@ -1,4 +1,4 @@
-import errorimage from "./error.webp";
+import errorimage from "./images/error.webp";
 
 export default function ErrorScreen() {
   return (
@@ -12,4 +12,3 @@ export default function ErrorScreen() {
     </div>
   );
 }
-  

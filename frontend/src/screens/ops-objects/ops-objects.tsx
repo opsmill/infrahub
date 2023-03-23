@@ -1,7 +1,7 @@
 import { useAtom } from "jotai";
 import { useState } from "react";
-import { classNames } from "../../App";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { classNames } from "../../utils/common";
 import ObjectRows from "./object-rows";
 
 export default function OpsObjects() {
