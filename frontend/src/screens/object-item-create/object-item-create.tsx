@@ -3,10 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import createObject from "../../utility/createObject";
-import getDropdownOptionsForRelatedPeers from "../../utility/dropdownOptionsForRelatedPeers";
-import getFormStructureForCreateEdit from "../../utility/formStructureForCreateEdit";
-import getMutationDetailsFromFormData from "../../utility/mutationDetailsFromFormData";
+import createObject from "../../utils/createObject";
+import getDropdownOptionsForRelatedPeers from "../../utils/dropdownOptionsForRelatedPeers";
+import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
+import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 
