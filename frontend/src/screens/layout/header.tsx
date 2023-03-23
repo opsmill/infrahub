@@ -43,7 +43,7 @@ export default function Header(props: Props) {
         <Bars3BottomLeftIcon className="h-6 w-6" aria-hidden="true" />
       </button>
       <div className="flex flex-1 justify-between px-4">
-        <div className="flex flex-1">
+        <div className="flex flex-1 opacity-30">
           <form className="flex w-full md:ml-0" action="#" method="GET">
             <label htmlFor="search-field" className="sr-only">
               Search
@@ -55,7 +55,7 @@ export default function Header(props: Props) {
               <input
                 onChange={() => {}}
                 id="search-field"
-                className="block h-full w-full border-transparent py-2 pl-8 pr-3 text-gray-900 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-0 sm:text-sm"
+                className="block h-full w-full border-transparent py-2 pl-8 pr-3 text-gray-900 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-0 sm:text-sm cursor-not-allowed"
                 placeholder="Search"
                 type="search"
                 name="search"
@@ -115,7 +115,7 @@ export default function Header(props: Props) {
           <BranchSelector />
           <button
             type="button"
-            className="ml-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="ml-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-30 cursor-not-allowed"
           >
             <span className="sr-only">View notifications</span>
             <BellIcon className="h-6 w-6" aria-hidden="true" />
@@ -124,10 +124,10 @@ export default function Header(props: Props) {
           {/* Profile dropdown */}
           <Menu as="div" className="relative ml-3">
             <div>
-              <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+              <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-30">
                 <span className="sr-only">Open user menu</span>
                 <img
-                  className="h-10 w-10 rounded-full object-cover"
+                  className="h-10 w-10 rounded-full object-cover cursor-not-allowed"
                   src="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
                   alt=""
                 />
@@ -142,7 +142,7 @@ export default function Header(props: Props) {
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none opacity-30">
                 {userNavigation.map((item) => (
                   <Menu.Item key={item.name}>
                     {({ active }) => (
