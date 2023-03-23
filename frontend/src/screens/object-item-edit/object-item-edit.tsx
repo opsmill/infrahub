@@ -61,7 +61,7 @@ export default function ObjectItemEdit() {
     return <ErrorScreen />;
   }
 
-  if ((isLoading && !objectDetails) || !schema) {
+  if (isLoading || !schema) {
     return <LoadingScreen />;
   }
 
