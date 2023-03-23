@@ -5,6 +5,7 @@ import * as R from "ramda";
 import { Badge } from "../../components/badge";
 import { Button, BUTTON_TYPES } from "../../components/button";
 import { Pill } from "../../components/pill";
+import { Tooltip } from "../../components/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
 
 export const BranchesItems = () => {
@@ -44,37 +45,45 @@ export const BranchesItems = () => {
           (branch) => (
             <li key={branch.name} className="col-span-1 divide-y divide-gray-200 rounded-lg bg-white shadow">
               <div className="flex w-full items-center justify-between space-x-6 p-6">
-                <div className="flex-1 truncate">
+                <div className="flex-1">
                   <div className="flex items-center space-x-3">
                     {
                       branch.is_default
                       && (
-                        <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                        <Tooltip message={"Default branch"}>
+                          <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                        </Tooltip>
                       )
                     }
 
-                    <h3 className="truncate text-sm font-medium text-gray-900">{branch.name}</h3>
+                    <h3 className="text-sm font-medium text-gray-900">{branch.name}</h3>
                     {
                       !branch.is_default
                       && (
-                        <Badge>{branch.origin_branch}</Badge>
+                        <Tooltip message={"Origin branch"}>
+                          <Badge>{branch.origin_branch}</Badge>
+                        </Tooltip>
                       )
                     }
 
-                    <Pill>{formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}</Pill>
+                    <Tooltip message={"Branched"}>
+                      <Pill>{formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}</Pill>
+                    </Tooltip>
 
                     {
                       !branch.is_default
                       && (
                         <>
                           <ArrowRightIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          <Pill>{formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}</Pill>
+                          <Tooltip message={"Created"}>
+                            <Pill>{formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}</Pill>
+                          </Tooltip>
                         </>
                       )
                     }
                   </div>
 
-                  <p className="mt-1 truncate text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-gray-500">
                     {branch.description || "-"}
                   </p>
                 </div>
