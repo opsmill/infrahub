@@ -1,8 +1,8 @@
 import { useState } from "react";
-import MobileMenu from "./mobile-menu";
+import { Outlet } from "react-router-dom";
 import DesktopMenu from "./desktop-menu";
 import Header from "./header";
-import { Outlet } from "react-router-dom";
+import MobileMenu from "./mobile-menu";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,7 +13,7 @@ export default function Layout() {
         <MobileMenu sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <DesktopMenu />
 
-        <div className="flex flex-1 flex-col md:pl-64 overflow-auto">
+        <div className="flex flex-1 flex-col md:pl-64 overflow-auto bg-gray-100">
           <Header setSidebarOpen={setSidebarOpen} />
           <Outlet />
         </div>
