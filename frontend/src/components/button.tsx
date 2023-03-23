@@ -1,6 +1,6 @@
 // type ButtonProps = {};
 
-import { classNames } from "../../utils/common";
+import { classNames } from "../utils/common";
 
 export enum BUTTON_TYPES {
   VALIDATE,
@@ -16,7 +16,7 @@ const DEFAULT_CLASS = `
   shadow-sm ring-1 ring-inset ring-gray-300
 `;
 
-const getButtonClasseName = (type: BUTTON_TYPES) => {
+const getClasseName = (type: BUTTON_TYPES) => {
   switch(type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
@@ -52,7 +52,7 @@ const getButtonClasseName = (type: BUTTON_TYPES) => {
 export const Button = (props: any) => {
   const { type, className, ...propsToPass } = props;
 
-  const customClassName = getButtonClasseName(type);
+  const customClassName = getClasseName(type);
 
   return (
     <button
