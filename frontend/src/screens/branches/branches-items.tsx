@@ -1,4 +1,4 @@
-import { ArrowPathRoundedSquareIcon, CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
@@ -63,27 +63,10 @@ export const BranchesItems = () => {
                             className="mr-3"
                             onClick={() => mergeBranch(branch.id)}
                             type={BUTTON_TYPES.VALIDATE}
-                          >
-                            Merge
-                            <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <Button
-                            className="mr-3"
-                            onClick={() => mergeBranch(branch.id)}
-                            type={BUTTON_TYPES.VALIDATE}
                             disabled
                           >
                             Merge
                             <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <Button
-                            className="mr-3"
-                            onClick={() => rebaseBranch(branch.id)}
-                          >
-                            Pull request
-                            <ArrowPathRoundedSquareIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                           </Button>
 
                           <Button
@@ -97,29 +80,19 @@ export const BranchesItems = () => {
 
                           <Button
                             className="mr-3"
-                            onClick={() => validateBranch(branch.id)}
-                            type={BUTTON_TYPES.WARNING}
-                          >
-                            Validate
-                            <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <Button
-                            className="mr-3"
-                            onClick={() => validateBranch(branch.id)}
-                            type={BUTTON_TYPES.WARNING}
+                            onClick={() => rebaseBranch(branch.id)}
                             disabled
                           >
-                            Validate
-                            <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                            Rebase
+                            <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                           </Button>
 
                           <Button
                             className="mr-3"
                             onClick={() => validateBranch(branch.id)}
-                            type={BUTTON_TYPES.CANCEL}
+                            type={BUTTON_TYPES.WARNING}
                           >
-                            Delete
+                            Validate
                             <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                           </Button>
 
