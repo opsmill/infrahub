@@ -1,3 +1,4 @@
 export function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
+  // Replcaa tabs and spaces to have multiline in code, but one ligne in output
+  return classes.filter(Boolean).join(" ").replaceAll(/(\t|\s)+/g, " ").trim();
 }

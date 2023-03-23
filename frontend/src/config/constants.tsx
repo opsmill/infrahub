@@ -1,4 +1,4 @@
-import { ListBranches } from "../screens/branches/list-branches"
+import { BranchesItems } from "../screens/branches/branches-items"
 import DeviceList from "../screens/device-list/device-list"
 import NotFoundScreen from "../screens/error-screen/not-found-screen"
 import Layout from "../screens/layout/layout"
@@ -35,7 +35,7 @@ export const MAIN_ROUTES = [
       },
       {
         path: "/branches/list",
-        element: <ListBranches />,
+        element: <BranchesItems />,
       },
     ],
   },

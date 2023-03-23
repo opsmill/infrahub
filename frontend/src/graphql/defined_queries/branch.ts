@@ -10,9 +10,12 @@ export const BRANCH_QUERY = gql`
     branch {
       id
       name
+      description
+      origin_branch
+      branched_from
       created_at
       is_data_only
       is_default
-    }
+      }
   }
 `;
