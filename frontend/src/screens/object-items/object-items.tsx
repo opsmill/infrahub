@@ -147,7 +147,7 @@ export default function ObjectItems() {
   // }
 
   return (
-    <div className="flex-1 pt-0 px-4 sm:px-0 md:px-0 overflow-x-auto flex flex-col">
+    <div className="bg-white flex-1 overflow-x-auto flex flex-col">
       <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
         {
           schema
