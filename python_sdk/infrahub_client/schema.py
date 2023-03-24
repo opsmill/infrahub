@@ -65,6 +65,19 @@ class NodeSchema(BaseNodeSchema):
     filters: List[FilterSchema] = Field(default_factory=list)
 
 
+class NodeExtensionSchema(BaseModel):
+    name: Optional[str]
+    kind: str
+    description: Optional[str]
+    label: Optional[str]
+    inherit_from: Optional[List[str]] = Field(default_factory=list)
+    groups: Optional[List[str]] = Field(default_factory=list)
+    branch: Optional[bool]
+    default_filter: Optional[str]
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+
 class GroupSchema(BaseModel):
     name: str
     kind: str
@@ -76,6 +89,7 @@ class SchemaRoot(BaseModel):
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
+    # node_extensions: List[NodeExtensionSchema] = Field(default_factory=list)
 
 
 class InfrahubSchema:
@@ -93,6 +107,9 @@ class InfrahubSchema:
 
     def validate(self, data):
         SchemaRoot(**data)
+
+        # Add additional validation to ensure that all nodes references in relationships and extensions are present in the schema
+
         return True
 
     async def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> NodeSchema:
