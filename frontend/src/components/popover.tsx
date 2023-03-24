@@ -2,8 +2,9 @@
 
 import { Popover, Transition } from "@headlessui/react"
 import { Fragment } from "react"
+import { classNames } from "../utils/common"
 
-export const PopOver = ({label, children}: any) => {
+export const PopOver = ({label, children, className}: any) => {
   return (
     <Popover className="relative">
       <Popover.Button>
@@ -19,7 +20,7 @@ export const PopOver = ({label, children}: any) => {
         leaveFrom="opacity-100 translate-y-0"
         leaveTo="opacity-0 translate-y-1"
       >
-        <Popover.Panel className="absolute rounded-md right-0 mt-3 p-2 bg-white">
+        <Popover.Panel className={classNames("absolute rounded-md right-0 mt-3 p-2 bg-white", className)}>
           {children}
         </Popover.Panel>
       </Transition>
