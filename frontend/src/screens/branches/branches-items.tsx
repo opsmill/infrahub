@@ -57,7 +57,7 @@ export const BranchesItems = () => {
                           )
                       }
 
-                      <h3 className="text-sm font-medium text-gray-900 py-0.5">{branch.name}</h3>
+                      <h3 className="text-sm font-medium text-gray-900 py-0.5">{branch.test.nothing}</h3>
 
                       {
                         !branch.is_default

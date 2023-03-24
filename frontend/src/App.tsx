@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/react";
+import { BrowserTracing } from "@sentry/tracing";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -16,6 +18,27 @@ import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 type APIResponse = components["schemas"]["SchemaAPI"];
 
 const router = createBrowserRouter(MAIN_ROUTES);
+
+Sentry.init({
+  dsn: "https://c271c704fe5a43b3b08c83919f0d8e01@o4504893920247808.ingest.sentry.io/4504893931520000",
+  integrations: [
+    new BrowserTracing(
+    //   {
+    //   tracePropagationTargets: ["localhost"],
+    //   // ... other options
+    // }
+    ),
+    new Sentry.Replay()
+  ],
+});
+
+Sentry.setContext("character", {
+  name: "Mighty Fighter",
+  age: 19,
+  attack_type: "melee",
+});
+
+Sentry.configureScope(scope => scope.setTransactionName("MainApp"));
 
 function App() {
   const [, setSchema] = useAtom(schemaState);
