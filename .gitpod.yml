@@ -46,6 +46,24 @@ ports:
     name: GraphQL
     description: GraphQL playground
     visibility: public
+  - port: 7474
+    onOpen: ignore
+    name: Neo4j-ui
+    description: Graphical interface for Neo4j
+    visibility: private
+  - port: 7687
+    onOpen: ignore
+    name: Neo4j-api
+    description: API for Neo4j
+    visibility: private
+  - port: 15672
+    onOpen: ignore
+    name: rabbitmq-1
+    visibility: private
+  - port: 42987
+    onOpen: ignore
+    name: rabbitmq-1
+    visibility: private
 
 vscode:
   extensions:
