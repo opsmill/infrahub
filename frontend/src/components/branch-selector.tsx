@@ -4,13 +4,13 @@ import { CircleStackIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { Fragment } from "react";
-import { graphQLClient } from "../..";
-import { CONFIG } from "../../config/config";
-import { Branch } from "../../generated/graphql";
-import { branchState } from "../../state/atoms/branch.atom";
-import { branchesState } from "../../state/atoms/branches.atom";
-import { timeState } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
+import { graphQLClient } from "..";
+import { CONFIG } from "../config/config";
+import { Branch } from "../generated/graphql";
+import { branchState } from "../state/atoms/branch.atom";
+import { branchesState } from "../state/atoms/branches.atom";
+import { timeState } from "../state/atoms/time.atom";
+import { classNames } from "../utils/common";
 
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
