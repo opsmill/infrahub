@@ -1,6 +1,6 @@
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { graphQLClient } from "..";
@@ -11,6 +11,7 @@ import { branchesState } from "../state/atoms/branches.atom";
 import { timeState } from "../state/atoms/time.atom";
 import { classNames } from "../utils/common";
 import { Button, BUTTON_TYPES } from "./button";
+import Enum from "./enum";
 import { PopOver } from "./popover";
 import { RoundedButton } from "./rounded-button";
 import Select from "./select";
@@ -18,8 +19,19 @@ import Select from "./select";
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
+
+  const branchesOptions = branches.map(
+    (branch) => ({
+      name: branch.name 
+    })
+  );
+  console.log("branchesOptions: ", branchesOptions);
+
   const [date] = useAtom(timeState);
-  const [newBranch, setNewBranch] = useState("")
+  const [newBranchName, setNewBranchName] = useState("");
+  const [branchedFrom, setBranchedFrom] = useState();
+  console.log("branchedFrom: ", branchedFrom);
+  const [branchedAt] = useState(new Date());
 
   /**
    * Update GraphQL client endpoint whenever branch changes
@@ -40,14 +52,16 @@ export default function BranchSelector() {
     </>
   );
 
-  const popoverLabel = (
+  const PopOverButton = (
     <RoundedButton className="ml-2 bg-blue-500 text-sm hover:bg-blue-600 focus:ring-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
       <PlusIcon
         className="h-5 w-5 text-white"
         aria-hidden="true"
       />
     </RoundedButton>
-  )
+  );
+
+  const handleBranchedFrom = (newBranch: any) => setBranchedFrom(newBranch);
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
@@ -108,11 +122,11 @@ export default function BranchSelector() {
         </p>
       )}
     </div>
-  )
-  
+  );
+
   const createBranch = () => {
 
-  }
+  };
 
   /**
    * There's always a main branch present at least.
@@ -120,6 +134,8 @@ export default function BranchSelector() {
   if (!branches.length) {
     return null;
   }
+
+  console.log("branchedFrom ?? branchesOptions[0]?.name: ", branchedFrom ?? branchesOptions[0]?.name);
 
   return (
     <>
@@ -130,13 +146,26 @@ export default function BranchSelector() {
         options={branches}
         renderOption={renderOption}
       />
-      <PopOver label={popoverLabel} className="w-200">
+      <PopOver buttonComponent={PopOverButton} className="right-0">
         Branch name:
         <input
           className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-2"
-          value={newBranch}
-          onChange={(e) => setNewBranch(e.target.value)}
+          value={newBranchName}
+          onChange={(e) => setNewBranchName(e.target.value)}
         />
+
+        Branched from:
+        <Enum disabled options={branchesOptions} value={branchedFrom ?? branchesOptions[0]?.name} onChange={handleBranchedFrom} />
+
+
+        Branched at:
+        <input
+          className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-2"
+          value={format(branchedAt, "MM/dd/yyy HH:mm")}
+          // onChange={(e) => setBranchedAt(e.target.value)}
+          disabled
+        />
+
 
         <Button type={BUTTON_TYPES.VALIDATE} onClick={createBranch} className="mt-2">Create</Button>
       </PopOver>
