@@ -225,7 +225,7 @@ export default function ObjectItems() {
                                 navigate(`/objects/${schema.name}/${row.id}`);
                               }}
                               key={index}
-                              className="hover:bg-gray-50"
+                              className="hover:bg-gray-50 cursor-pointer"
                             >
                               {columns?.map((attribute) => (
                                 <td

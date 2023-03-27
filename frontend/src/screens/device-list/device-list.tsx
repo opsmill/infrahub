@@ -150,7 +150,7 @@ export default function DeviceList() {
                 </thead>
                 <tbody className="bg-white">
                   {objectRows.map((device, deviceIdx) => (
-                    <tr key={deviceIdx} className="hover:bg-gray-50">
+                    <tr key={deviceIdx} className="hover:bg-gray-50 cursor-pointer">
                       <td
                         className={classNames(
                           deviceIdx !== sampleDeviceList.length - 1
