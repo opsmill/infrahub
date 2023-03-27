@@ -120,9 +120,7 @@ class ConfigAPI(BaseModel):
 
 
 @app.get("/config/")
-async def get_config(
-    session: AsyncSession = Depends(get_session),
-) -> ConfigAPI:
+async def get_config() -> ConfigAPI:
     return ConfigAPI(main=config.SETTINGS.main, logging=config.SETTINGS.logging, analytics=config.SETTINGS.analytics)
 
 
