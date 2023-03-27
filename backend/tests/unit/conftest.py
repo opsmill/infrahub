@@ -9,6 +9,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
+    create_root_node,
     first_time_initialization,
     initialization,
 )
@@ -75,7 +76,8 @@ def neo4j_factory():
 
 @pytest.fixture
 async def simple_dataset_01(session, empty_database):
-    await create_default_branch(session)
+    await create_root_node(session=session)
+    await create_default_branch(session=session)
 
     params = {
         "branch": "main",
@@ -972,6 +974,7 @@ async def init_db(empty_database, session):
 
 @pytest.fixture
 async def default_branch(reset_registry, empty_database, session) -> Branch:
+    await create_root_node(session=session)
     return await create_default_branch(session=session)
 
 

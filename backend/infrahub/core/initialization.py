@@ -70,6 +70,8 @@ async def create_root_node(session: AsyncSession) -> Root:
     await root.save(session=session)
     LOGGER.info(f"Generated instance ID : {root.uuid}")
 
+    registry.id = root.id
+
     return root
 
 
@@ -107,8 +109,7 @@ async def first_time_initialization(session: AsyncSession):
     # Create the default Branch
     # --------------------------------------------------
 
-    root = await create_root_node(session=session)
-    registry.id = root.id
+    await create_root_node(session=session)
     await create_default_branch(session=session)
 
     # --------------------------------------------------
