@@ -422,11 +422,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return changed
 
     async def render_display_label(self, session: AsyncSession):  # pylint: disable=unused-argument
-        if not self._schema.display_label:
+        if not self._schema.display_labels:
             return repr(self)
 
         display_elements = []
-        for item in self._schema.display_label:
+        for item in self._schema.display_labels:
             item_elements = item.split("__")
             if len(item_elements) != 2:
                 raise ValidationError("Display Label can only have one level")

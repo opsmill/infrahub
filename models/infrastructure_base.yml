@@ -4,7 +4,7 @@ nodes:
   - name: device
     kind: Device
     default_filter: name__value
-    display_label:
+    display_labels:
       - name__value
     branch: true
     attributes:
@@ -49,7 +49,7 @@ nodes:
         kind: Attribute
   - name: interface
     kind: Interface
-    display_label:
+    display_labels:
       - name__value
     branch: true
     attributes:
@@ -100,7 +100,7 @@ nodes:
   - name: ipaddress
     kind: IPAddress
     default_filter: address__value
-    display_label:
+    display_labels:
       - address__value
     branch: true
     attributes:
@@ -118,7 +118,7 @@ nodes:
   - name: circuit
     kind: Circuit
     default_filter: circuit_id__value
-    display_label:
+    display_labels:
       - circuit_id__value
     branch: true
     attributes:
@@ -177,7 +177,7 @@ nodes:
   - name: autonomous_system
     kind: AutonomousSystem
     default_filter: name__value
-    display_label:
+    display_labels:
       - name__value
       - asn__value
     branch: true
@@ -200,7 +200,7 @@ nodes:
   - name: bgp_peer_group
     kind: BGPPeerGroup
     default_filter: name__value
-    display_label:
+    display_labels:
       - name__value
     branch: true
     attributes:
