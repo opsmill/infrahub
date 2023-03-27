@@ -16,6 +16,7 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 import infrahub.config as config
 from infrahub import __version__
 from infrahub.auth import BaseTokenAuth
+from infrahub.config import AnalyticsSettings, LoggingSettings, MainSettings
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
@@ -111,6 +112,17 @@ async def get_schema(
     return SchemaAPI(
         nodes=[value for value in registry.get_full_schema(branch=branch).values() if isinstance(value, NodeSchema)]
     )
+
+
+class ConfigAPI(BaseModel):
+    main: MainSettings
+    logging: LoggingSettings
+    analytics: AnalyticsSettings
+
+
+@app.get("/config/")
+async def get_config() -> ConfigAPI:
+    return ConfigAPI(main=config.SETTINGS.main, logging=config.SETTINGS.logging, analytics=config.SETTINGS.analytics)
 
 
 class InfoAPI(BaseModel):
