@@ -14,6 +14,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
+from infrahub import __version__
 from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
@@ -110,6 +111,16 @@ async def get_schema(
     return SchemaAPI(
         nodes=[value for value in registry.get_full_schema(branch=branch).values() if isinstance(value, NodeSchema)]
     )
+
+
+class InfoAPI(BaseModel):
+    deployment_id: str
+    version: str
+
+
+@app.get("/info/")
+async def get_info() -> InfoAPI:
+    return InfoAPI(deployment_id=str(registry.id), version=__version__)
 
 
 @app.get("/rfile/{rfile_id}", response_class=PlainTextResponse)
