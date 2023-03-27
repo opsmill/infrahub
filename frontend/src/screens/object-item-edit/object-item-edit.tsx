@@ -70,11 +70,10 @@ export default function ObjectItemEdit() {
   }
 
   async function onSubmit(data: any, error: any) {
-    const mutationArgs = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
-    
-    if (mutationArgs.length) {
+    const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
+    if (Object.keys(updateObject).length) {
       try {
-        await updateObjectWithId(objectid!, schema, mutationArgs);
+        await updateObjectWithId(objectid!, schema, updateObject);
       } catch {
         console.error("Something went wrong while updating the object");
       }
@@ -85,7 +84,7 @@ export default function ObjectItemEdit() {
   }
 
   return (
-    <div className="p-4 flex-1 overflow-auto flex">
+    <div className="p-4 bg-white flex-1 overflow-auto flex">
       {formStructure && (
         <div className="flex-1">
           <EditFormHookComponent onSubmit={onSubmit} fields={formStructure} />

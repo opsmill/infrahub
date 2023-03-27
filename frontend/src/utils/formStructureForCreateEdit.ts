@@ -17,7 +17,7 @@ const getFormStructureForCreateEdit = (
   }
   return [
     ...(schema.attributes || []).map((attribute) => ({
-      fieldName: attribute.name,
+      fieldName: attribute.name + ".value",
       inputType: attribute.enum ? "select" : ("text" as ControlType),
       label: attribute.label ? attribute.label : attribute.name,
       options: attribute.enum?.map((row: any) => ({
@@ -32,7 +32,7 @@ const getFormStructureForCreateEdit = (
     ...(schema.relationships || [])
     .filter((relationship) => relationship.kind === "Attribute")
     .map((relationship) => ({
-      fieldName: relationship.name,
+      fieldName: relationship.cardinality === "one" ? relationship.name + ".id" : relationship.name,
       inputType:
           relationship.cardinality === "many"
             ? ("multiselect" as ControlType)
