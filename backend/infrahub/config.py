@@ -3,7 +3,7 @@ import os
 import os.path
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import toml
 from pydantic import BaseSettings, Field, ValidationError
@@ -15,14 +15,10 @@ VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 
 class MainSettings(BaseSettings):
     default_branch: str = "main"
-    default_account: str = "default"
-    default_account_perm: str = "CAN_READ"
+    # default_account: str = "default"
+    # default_account_perm: str = "CAN_READ"
 
     internal_address: str = "http://localhost:8000"
-
-    print_query_details: bool = False
-
-    repositories_directory: str = "repositories"
 
     class Config:
         """Additional parameters to automatically map environment variable to some settings."""
@@ -43,7 +39,7 @@ class DatabaseSettings(BaseSettings):
     )
 
     class Config:
-        """Additional parameters to automatically map environment variable to some settings."""
+        """Additional parameters to automatically map environment variables to some settings."""
 
         fields = {
             "protocol": {"env": "NEO4J_PROTOCOL"},
@@ -64,7 +60,7 @@ class BrokerSettings(BaseSettings):
     namespace: str = "infrahub"
 
     class Config:
-        """Additional parameters to automatically map environment variable to some settings."""
+        """Additional parameters to automatically map environment variables to some settings."""
 
         fields = {
             "username": {"env": "INFRAHUB_BROKER_USERNAME"},
@@ -81,13 +77,61 @@ class ApiSettings(BaseSettings):
     cors_allow_headers: List[str] = ["*"]
 
 
+class GitSettings(BaseSettings):
+    repositories_directory: str = "repositories"
+
+
+class MiscellaneousSettings(BaseSettings):
+    print_query_details: bool = False
+
+
+class RemoteLoggingSettings(BaseSettings):
+    enable: bool = False
+    frontend_dsn: Optional[str]
+    api_server_dsn: Optional[str]
+    git_agent_dsn: Optional[str]
+
+    class Config:
+        """Additional parameters to automatically map environment variables to some settings."""
+
+        fields = {
+            "enable": {"env": "INFRAHUB_LOGGING_REMOTE_ENABLE"},
+            "frontend_dsn": {"env": "INFRAHUB_LOGGING_REMOTE_FRONTEND_DSN"},
+            "api_server_dsn": {"env": "INFRAHUB_LOGGING_REMOTE_API_SERVER_DSN"},
+            "git_agent_dsn": {"env": "INFRAHUB_LOGGING_REMOTE_GIT_AGENT_DSN"},
+        }
+
+
+class LoggingSettings(BaseSettings):
+    remote: RemoteLoggingSettings = RemoteLoggingSettings()
+
+
+class AnalyticsSettings(BaseSettings):
+    enable: bool = True
+    address: Optional[str]
+    api_key: Optional[str]
+
+    class Config:
+        """Additional parameters to automatically map environment variables to some settings."""
+
+        fields = {
+            "enable": {"env": "INFRAHUB_ANALYTICS_ENABLE"},
+            "address": {"env": "INFRAHUB_ANALYTICS_ADDRESS"},
+            "api_key": {"env": "INFRAHUB_ANALYTICS_API_KEY"},
+        }
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     main: MainSettings = MainSettings()
     api: ApiSettings = ApiSettings()
+    git: GitSettings = GitSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
+    miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
+    logging: LoggingSettings = LoggingSettings()
+    analytics: AnalyticsSettings = AnalyticsSettings()
 
 
 def load(config_file_name="infrahub.toml", config_data=None):
