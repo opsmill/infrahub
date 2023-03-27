@@ -4,6 +4,7 @@ extends: default
 ignore: |
   /examples
   /repositories
+  /frontend/node_modules
 
 rules:
   new-lines: disable
