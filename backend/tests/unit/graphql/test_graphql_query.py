@@ -44,7 +44,7 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
-        "display_label": ["label__value"],
+        "display_labels": ["label__value"],
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
@@ -84,7 +84,7 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
-        "display_label": ["name__value", "level__value"],
+        "display_labels": ["name__value", "level__value"],
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},

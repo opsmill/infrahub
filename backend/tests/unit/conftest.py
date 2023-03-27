@@ -638,7 +638,7 @@ async def car_person_schema(session, data_schema):
                 "name": "car",
                 "kind": "Car",
                 "default_filter": "name__value",
-                "display_label": ["name__value", "color__value"],
+                "display_labels": ["name__value", "color__value"],
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "String", "unique": True},
@@ -654,7 +654,7 @@ async def car_person_schema(session, data_schema):
                 "name": "person",
                 "kind": "Person",
                 "default_filter": "name__value",
-                "display_label": ["name__value"],
+                "display_labels": ["name__value"],
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "String", "unique": True},
@@ -735,7 +735,7 @@ async def criticality_schema(session, data_schema):
         "name": "criticality",
         "kind": "Criticality",
         "default_filter": "name__value",
-        "display_label": ["label__value"],
+        "display_labels": ["label__value"],
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
