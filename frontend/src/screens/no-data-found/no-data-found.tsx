@@ -4,5 +4,5 @@ export default function NoDataFound() {
       <img alt="No data" className="h-28 w-auto" src="https://thesuccessfinder.com/images/data-not-found-icon.png" />
       <div className="pt-2">Sorry, no data found.</div>
     </div>
-  )
+  );
 }

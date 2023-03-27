@@ -27,7 +27,7 @@ const getClasseName = (type: BADGE_TYPES) => {
       return "bg-gray-100 text-gray-900";
     }
   }
-}
+};
 
 export const Badge = (props: any) => {
   const customClassName = getClasseName(props.type);
@@ -40,6 +40,6 @@ export const Badge = (props: any) => {
         props.className
       )
     }>{props.children}</span>
-  )
+  );
 
-}
+};

@@ -19,6 +19,6 @@ const updateObjectWithId = async (id: string, schema: iNodeSchema, mutationArgs:
     arguments: mutationArgs.join(","),
   });
   return graphQLClient.request(updateMutation);
-}
+};
 
 export default updateObjectWithId;

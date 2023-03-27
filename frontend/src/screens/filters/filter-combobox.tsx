@@ -74,7 +74,7 @@ export default function FilterCombobox(props: Props) {
   if (hasError) {
     return (
       <div className="text-red-500">{filter.name} {schema.name}</div>
-    )
+    );
     // return <ErrorScreen />;
   }
 

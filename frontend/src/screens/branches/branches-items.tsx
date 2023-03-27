@@ -18,23 +18,23 @@ export const BranchesItems = () => {
   const branches = [
     ...storedBranches.filter(b => b.name === "main"),
     ...sortedBranches
-  ]
+  ];
 
   const mergeBranch = (id: string) => {
     console.log("id: ", id);
-  }
+  };
 
   const rebaseBranch = (id: string) => {
     console.log("id: ", id);
-  }
+  };
 
   const validateBranch = (id: string) => {
     console.log("id: ", id);
-  }
+  };
 
   const createPulRequest = (id: string) => {
     console.log("id: ", id);
-  }
+  };
 
   console.log("branches: ", branches);
 
@@ -150,5 +150,5 @@ export const BranchesItems = () => {
         )
       }
     </ul>
-  )
-}
+  );
+};

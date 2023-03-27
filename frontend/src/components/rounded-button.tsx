@@ -51,7 +51,7 @@ const getClasseName = (type: BUTTON_TYPES) => {
       return "";
     }
   }
-}
+};
 
 export const RoundedButton = (props: any) => {
   const { type, className, ...propsToPass } = props;
@@ -68,5 +68,5 @@ export const RoundedButton = (props: any) => {
     >
       {props.children}
     </button>
-  )
-}
+  );
+};

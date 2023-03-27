@@ -50,8 +50,8 @@ const getItemsColumn = (schema: any) => {
       }
       return -1;
     }
-  )
-}
+  );
+};
 
 const getObjectItemDisplayValue = (row: any, attribute: any) => {
   // Get "value" or "display_name" depending on the kind (attribute or relationship)
@@ -70,7 +70,7 @@ const getObjectItemDisplayValue = (row: any, attribute: any) => {
   }
 
   return value;
-}
+};
 
 export default function ObjectItems() {
   let { objectname } = useParams();
@@ -123,7 +123,7 @@ export default function ObjectItems() {
             setIsLoading(false);
           };
         }
-      }
+      };
 
       loadData();
     },

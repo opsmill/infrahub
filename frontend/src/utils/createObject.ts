@@ -18,6 +18,6 @@ const createObject = async (schema: iNodeSchema, mutationArgs: any[]) => {
     arguments: mutationArgs.join(","),
   });
   return graphQLClient.request(createMutation);
-}
+};
 
 export default createObject;

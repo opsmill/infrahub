@@ -53,7 +53,7 @@ function App() {
       }
     },
     [branch]
-  )
+  );
 
   /**
    * Set schema in state atom
