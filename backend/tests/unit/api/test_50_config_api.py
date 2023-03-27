@@ -10,5 +10,4 @@ async def test_config_endpoint(session, client, client_headers, default_branch):
 
     config = response.json()
 
-    assert "logging" in config
-    assert "analytics" in config
+    assert sorted(config.keys()) == ["analytics", "logging", "main"]
