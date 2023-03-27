@@ -1,5 +1,6 @@
 import { graphQLClient } from "..";
 import { iNodeSchema } from "../state/atoms/schema.atom";
+import { getStringJSONWithoutQuotes } from "./getStringJSONWithoutQuotes";
 
 declare var Handlebars: any;
 
@@ -13,9 +14,7 @@ const mutationTemplate = Handlebars.compile(`mutation {{kind.value}}Create {
 const createObject = async (schema: iNodeSchema, updateObject: any[]) => {
   const createMutation = mutationTemplate({
     name: schema.name,
-    data: JSON.stringify({
-      ...updateObject,
-    }).replace(/"([^"]+)":/g, "$1:"),
+    data: getStringJSONWithoutQuotes(updateObject),
   });
   return graphQLClient.request(createMutation);
 }
