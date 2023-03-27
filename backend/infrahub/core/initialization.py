@@ -6,13 +6,24 @@ import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import SchemaManager
+from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 
 LOGGER = logging.getLogger("infrahub")
 
 
 async def initialization(session: AsyncSession):
-    # pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel,broad-exception-raised
+
+    # ---------------------------------------------------
+    # Load the Root node
+    # ---------------------------------------------------
+    roots = await Root.get_list(session=session)
+    if len(roots) == 0:
+        raise Exception("Database hasn't been initialized yet. please run infrahub db init")
+    if len(roots) > 1:
+        raise Exception("Database is corrupted, more than 1 root node found.")
+    registry.id = roots[0].uuid
 
     # ---------------------------------------------------
     # Load all existing branches into the registry
@@ -54,6 +65,16 @@ async def initialization(session: AsyncSession):
     #     registry.attr_group[group.name.value] = group
 
 
+async def create_root_node(session: AsyncSession) -> Root:
+    root = Root()
+    await root.save(session=session)
+    LOGGER.info(f"Generated instance ID : {root.uuid}")
+
+    registry.id = root.id
+
+    return root
+
+
 async def create_default_branch(session: AsyncSession) -> Branch:
     default_branch = Branch(
         name=config.SETTINGS.main.default_branch,
@@ -87,6 +108,8 @@ async def first_time_initialization(session: AsyncSession):
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
+
+    await create_root_node(session=session)
     await create_default_branch(session=session)
 
     # --------------------------------------------------

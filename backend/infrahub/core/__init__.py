@@ -138,6 +138,7 @@ def get_account_by_id(id: str):  # pylint: disable=unused-argument
 
 @dataclass
 class Registry:
+    id: Optional[str] = None
     branch: dict = field(default_factory=dict)
     node: dict = field(default_factory=dict)
     schema: dict = field(default_factory=lambda: defaultdict(dict))
