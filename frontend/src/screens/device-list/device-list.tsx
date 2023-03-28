@@ -68,7 +68,7 @@ export default function DeviceList() {
   }, []);
 
   if(hasError) {
-    return <ErrorScreen />
+    return <ErrorScreen />;
   }
 
   if (isLoading) {

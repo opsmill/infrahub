@@ -71,7 +71,7 @@ export default function ObjectItemEdit() {
 
   async function onSubmit(data: any, error: any) {
     const mutationArgs = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
-    
+
     if (mutationArgs.length) {
       try {
         await updateObjectWithId(objectid!, schema, mutationArgs);

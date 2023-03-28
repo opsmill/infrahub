@@ -47,7 +47,7 @@ const getClasseName = (type: BUTTON_TYPES) => {
       `;
     }
   }
-}
+};
 
 export const Button = (props: any) => {
   const { type, className, ...propsToPass } = props;
@@ -68,5 +68,5 @@ export const Button = (props: any) => {
     >
       {props.children}
     </button>
-  )
-}
+  );
+};

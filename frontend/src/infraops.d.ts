@@ -48,22 +48,22 @@ export interface components {
       /** Min Length */
       min_length?: number;
       /**
-       * Inherited 
+       * Inherited
        * @default false
        */
       inherited?: boolean;
       /**
-       * Unique 
+       * Unique
        * @default false
        */
       unique?: boolean;
       /**
-       * Branch 
+       * Branch
        * @default true
        */
       branch?: boolean;
       /**
-       * Optional 
+       * Optional
        * @default false
        */
       optional?: boolean;
@@ -81,8 +81,8 @@ export interface components {
       description?: string;
     };
     /**
-     * FilterSchemaKind 
-     * @description An enumeration. 
+     * FilterSchemaKind
+     * @description An enumeration.
      * @enum {string}
      */
     FilterSchemaKind: "String" | "Integer" | "Boolean" | "Object" | "MultiObject" | "Enum";
@@ -110,7 +110,7 @@ export interface components {
       /** Groups */
       groups?: (string)[];
       /**
-       * Branch 
+       * Branch
        * @default true
        */
       branch?: boolean;
@@ -128,7 +128,7 @@ export interface components {
       /** Peer */
       peer: string;
       /**
-       * Kind 
+       * Kind
        * @default Generic
        */
       kind?: string;
@@ -139,22 +139,22 @@ export interface components {
       /** Identifier */
       identifier?: string;
       /**
-       * Inherited 
+       * Inherited
        * @default false
        */
       inherited?: boolean;
       /**
-       * Cardinality 
+       * Cardinality
        * @default many
        */
       cardinality?: string;
       /**
-       * Branch 
+       * Branch
        * @default true
        */
       branch?: boolean;
       /**
-       * Optional 
+       * Optional
        * @default true
        */
       optional?: boolean;
