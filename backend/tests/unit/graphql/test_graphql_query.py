@@ -443,7 +443,7 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert result.data["person"][0]["__typename"] == "Person"
-    assert result.data["person"][0]["name"]["__typename"] == "StrAttribute"
+    assert result.data["person"][0]["name"]["__typename"] == "TextAttribute"
     assert result_per_name["John"]["cars"][0]["__typename"] == "RelatedCar"
 
 

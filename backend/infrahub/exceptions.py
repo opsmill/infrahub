@@ -21,6 +21,13 @@ class CommitNotFoundError(Error):
         super().__init__(self.message)
 
 
+class DataTypeNotFound(Error):
+    def __init__(self, name, message=None):
+        self.name = name
+        self.message = message or f"Unable to find the DataType '{name}'."
+        super().__init__(self.message)
+
+
 class FileNotFound(Error):
     def __init__(self, repository_name, location, commit, message=None):
         self.repository_name = repository_name

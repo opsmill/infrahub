@@ -6,13 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field, root_validator, validator
 
 from infrahub.core import registry
-from infrahub.core.attribute import (
-    AnyAttribute,
-    Boolean,
-    Integer,
-    ListAttribute,
-    String,
-)
+import infrahub.types
+
 from infrahub.core.relationship import Relationship
 from infrahub.utils import BaseEnum, duplicates
 
@@ -24,13 +19,37 @@ if TYPE_CHECKING:
 
 # pylint: disable=no-self-argument,redefined-builtin
 
-ATTRIBUTES_MAPPING = {
-    "Any": AnyAttribute,
-    "String": String,
-    "Integer": Integer,
-    "Boolean": Boolean,
-    "List": ListAttribute,
-}
+# ATTRIBUTES_MAPPING = {
+#     "Any": AnyAttribute,
+#     "String": String,
+#     "Integer": Integer,
+#     "Boolean": Boolean,
+#     "List": ListAttribute,
+# }
+
+
+ATTRIBUTE_KINDS = [
+    "Any",
+    "Bandwidth",
+    "Boolean",
+    "Checkbox",
+    "Color",
+    "DateTime",
+    "Email",
+    "File",
+    "ID",
+    "IPHost",
+    "IPNetwork",
+    "Integer",
+    "List",
+    "MacAddress",
+    "Number",
+    "Password",
+    "String",
+    "Text",
+    "TextArea",
+    "URL",
+]
 
 RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
@@ -89,12 +108,12 @@ class AttributeSchema(BaseModel):
         cls,
         v,
     ):
-        if v not in ATTRIBUTES_MAPPING:
-            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTES_MAPPING.keys()} ")
+        if v not in ATTRIBUTE_KINDS:
+            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KINDS} ")
         return v
 
     def get_class(self):
-        return ATTRIBUTES_MAPPING.get(self.kind, None)
+        return registry.get_data_type(self.kind)
 
     async def get_query_filter(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=unused-argument
         return self.get_class().get_query_filter(*args, **kwargs)
@@ -434,19 +453,34 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "String",
+                    "description": "Node name, must be unique and must be a all lowercase.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": 3,
                     "max_length": 32,
                 },
-                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {
+                    "name": "kind",
+                    "kind": "String",
+                    "description": "Node kind, must be unique and must be in CamelCase",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": 3,
+                    "max_length": 32,
+                },
                 {
                     "name": "label",
                     "kind": "String",
+                    "description": "Human friendly representation of the name/kind",
                     "optional": True,
                     "max_length": 32,
                 },
-                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
+                {
+                    "name": "description",
+                    "kind": "String",
+                    #  "description": "",
+                    "optional": True,
+                    "max_length": 128,
+                },
                 {
                     "name": "branch",
                     "kind": "Boolean",
@@ -456,21 +490,25 @@ internal_schema = {
                 {
                     "name": "default_filter",
                     "kind": "String",
+                    "description": "Default filter used to search for a node in addition to its ID.",
                     "optional": True,
                 },
                 {
                     "name": "display_labels",
                     "kind": "List",
+                    "description": "List of attributes to use to generate the display label",
                     "optional": True,
                 },
                 {
                     "name": "inherit_from",
                     "kind": "List",
+                    "description": "List of Generic Kind that this node is inheriting from",
                     "optional": True,
                 },
                 {
                     "name": "groups",
                     "kind": "List",
+                    "description": "List of Group that this node is part of",
                     "optional": True,
                 },
             ],
@@ -506,7 +544,7 @@ internal_schema = {
                 {
                     "name": "kind",
                     "kind": "String",
-                    "enum": list(ATTRIBUTES_MAPPING.keys()),
+                    "enum": ATTRIBUTE_KINDS,
                     "min_length": 3,
                     "max_length": 32,
                 },

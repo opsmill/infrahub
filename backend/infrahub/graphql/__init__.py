@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import graphene
 from graphql import GraphQLSchema, graphql
 
+
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
 from infrahub_client.timestamp import Timestamp
