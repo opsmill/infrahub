@@ -6,7 +6,6 @@ from uuid import UUID
 from infrahub.core import get_branch, registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import (
-    ATTRIBUTES_MAPPING,
     AttributeSchema,
     NodeSchema,
     RelationshipSchema,
@@ -216,7 +215,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _generate_attribute_default(
         self, session: AsyncSession, name: str, schema: AttributeSchema, data: Any  # pylint: disable=unused-argument
     ) -> BaseAttribute:
-        attr_class = ATTRIBUTES_MAPPING[schema.kind]
+        attr_class = registry.get_data_type(schema.kind).get_infrahub_class()
         attr = attr_class(
             data=data,
             name=name,
