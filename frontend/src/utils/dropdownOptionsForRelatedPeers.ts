@@ -48,6 +48,9 @@ const template = Handlebars.compile(`query DropdownFormOptions {
 const getDropdownOptionsForRelatedPeers = async (
   peers: string[]
 ): Promise<iPeerDropdownOptions> => {
+  if(!peers.length) {
+    return {};
+  }
   const queryString = template({
     peers,
   });

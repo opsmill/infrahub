@@ -28,13 +28,15 @@ const getFormStructureForCreateEdit = (
         value: row,
       }));
     }
+
     formFields.push({
       fieldName: attribute.name,
+      type: attribute.kind,
       isAttribute: true,
       isRelationship: false,
       inputType: attribute.enum ? "select" : attribute.kind === "String" ? "text" : "number",
       label: attribute.label ? attribute.label : attribute.name,
-      defaultValue: row[attribute.name] ? row[attribute.name] : "",
+      defaultValue: row && row[attribute.name] ? row[attribute.name] : "",
       options: {
         values: options,
       },
@@ -58,6 +60,7 @@ const getFormStructureForCreateEdit = (
     }
     formFields.push({
       fieldName: relationship.name,
+      type: "String",
       isAttribute: false,
       isRelationship: true,
       relationshipCardinality: relationship.cardinality as RelationshipCardinality,

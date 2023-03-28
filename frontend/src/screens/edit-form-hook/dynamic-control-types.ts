@@ -12,6 +12,7 @@ export interface DynamicFieldData {
   label: string;
   inputType: ControlType;
   fieldName: string;
+  type: string;
   defaultValue: any;
   isAttribute: boolean;
   isRelationship: boolean;
