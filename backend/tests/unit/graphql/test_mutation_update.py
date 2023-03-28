@@ -88,12 +88,12 @@ async def test_update_object_with_node_property(
     db, session, default_branch, car_person_schema, first_account, second_account
 ):
     obj = await Node.init(session=session, schema="Person")
-    await obj.new(session=session, name="John", height=180, _source=first_account)
+    await obj.new(session=session, name={"value": "John", "source": first_account}, height=180)
     await obj.save(session=session)
 
     query = """
     mutation {
-        person_update(data: {id: "%s", name: { source: "%s" } }) {
+        person_update(data: {id: "%s", name: { source: "%s" }, height: { source: "%s" } }) {
             ok
             object {
                 id
@@ -102,6 +102,7 @@ async def test_update_object_with_node_property(
     }
     """ % (
         obj.id,
+        second_account.id,
         second_account.id,
     )
     result = await graphql(
@@ -117,7 +118,7 @@ async def test_update_object_with_node_property(
 
     obj1 = await NodeManager.get_one(session=session, id=obj.id, include_source=True)
     assert obj1.name.source_id == second_account.id
-    assert obj1.height.source_id == first_account.id
+    assert obj1.height.source_id == second_account.id
 
 
 async def test_update_invalid_object(db, session, default_branch, car_person_schema):

@@ -408,7 +408,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
                     elif field_name in NODE_FIELDS:
                         attr = getattr(self, key)
-
                         # Right now we assume that the UUID is provided from GraphQL
                         # so we compare the value with <node>_id
                         if getattr(attr, f"{field_name}_id") != value.get(field_name):
@@ -417,7 +416,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel = getattr(self, key)
-                changed = await rel.update(session=session, data=value)
+                changed |= await rel.update(session=session, data=value)
 
         return changed
 
