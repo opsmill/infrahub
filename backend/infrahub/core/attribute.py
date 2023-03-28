@@ -6,6 +6,7 @@ from uuid import UUID
 
 import ujson
 
+from infrahub.core import registry
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.query.attribute import (
@@ -89,6 +90,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if self.is_visible is None:
             self.is_visible = True
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        registry.attribute[cls.__name__] = cls
 
     def get_kind(self) -> str:
         return self.schema.kind
