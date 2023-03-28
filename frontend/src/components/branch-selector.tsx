@@ -3,6 +3,7 @@ import { CircleStackIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/
 import { format, formatDistanceToNow, formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useState } from "react";
+import { toast } from "react-toastify";
 import { graphQLClient } from "..";
 import { CONFIG } from "../config/config";
 import { Branch } from "../generated/graphql";
@@ -11,8 +12,9 @@ import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
 import { timeState } from "../state/atoms/time.atom";
 import { classNames } from "../utils/common";
+import { Alert, ALERT_TYPES } from "./alert";
 import { Button, BUTTON_TYPES } from "./button";
-import Enum from "./enum";
+import { Enum } from "./enum";
 import { Input } from "./input";
 import { PopOver } from "./popover";
 import { RoundedButton } from "./rounded-button";
@@ -65,31 +67,38 @@ export default function BranchSelector() {
     graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
     setBranch(branch);
   };
+
   const handleBranchedFrom = (newBranch: any) => setOriginBranch(newBranch);
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
-      {option.is_data_only && (
-        <div className="absolute bottom-0 right-0">
-          <CircleStackIcon
-            className={classNames(
-              "h-4 w-4",
-              active ? "text-white" : "text-gray-500"
-            )}
-          />
-        </div>
-      )}
+      {
+        option.is_data_only
+        && (
+          <div className="absolute bottom-0 right-0">
+            <CircleStackIcon
+              className={classNames(
+                "h-4 w-4",
+                active ? "text-white" : "text-gray-500"
+              )}
+            />
+          </div>
+        )
+      }
 
-      {option.is_default && (
-        <div className="absolute bottom-0 right-0">
-          <ShieldCheckIcon
-            className={classNames(
-              "h-4 w-4",
-              active ? "text-white" : "text-gray-500"
-            )}
-          />
-        </div>
-      )}
+      {
+        option.is_default
+        && (
+          <div className="absolute bottom-0 right-0">
+            <ShieldCheckIcon
+              className={classNames(
+                "h-4 w-4",
+                active ? "text-white" : "text-gray-500"
+              )}
+            />
+          </div>
+        )
+      }
 
       <div className="flex justify-between">
         <p
@@ -99,38 +108,45 @@ export default function BranchSelector() {
         >
           {option.name}
         </p>
-        {selected ? (
-          <span
-            className={
-              active ? "text-white" : "text-blue-500"
-            }
-          >
-            <CheckIcon
-              className="h-5 w-5"
-              aria-hidden="true"
-            />
-          </span>
-        ) : null}
+        {
+          selected
+            ? (
+              <span
+                className={
+                  active ? "text-white" : "text-blue-500"
+                }
+              >
+                <CheckIcon
+                  className="h-5 w-5"
+                  aria-hidden="true"
+                />
+              </span>
+            )
+            : null
+        }
       </div>
-      {option?.created_at && (
-        <p
-          className={classNames(
-            active ? "text-blue-200" : "text-gray-500",
-            "mt-2"
-          )}
-        >
-          {formatDistanceToNow(
-            new Date(option?.created_at),
-            { addSuffix: true }
-          )}
-        </p>
-      )}
+      {
+        option?.created_at
+        && (
+          <p
+            className={classNames(
+              active ? "text-blue-200" : "text-gray-500",
+              "mt-2"
+            )}
+          >
+            {formatDistanceToNow(
+              new Date(option?.created_at),
+              { addSuffix: true }
+            )}
+          </p>
+        )
+      }
     </div>
   );
 
   const handleSubmit = async () => {
     try {
-      const result = await createBranch({
+      await createBranch({
         name: newBranchName,
         description: newBranchDescription,
         // origin_branch: originBranch ?? branches[0]?.name,
@@ -138,9 +154,10 @@ export default function BranchSelector() {
         is_data_only: isDataOnly
       });
 
-      console.log("result: ", result);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
     } catch (e) {
-      console.error("e: ", e);
+      console.error("error: ", e);
+      toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} />);
     }
   };
 

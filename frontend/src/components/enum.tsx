@@ -8,7 +8,7 @@ import { Input } from "./input";
 
 // type Props = {}
 
-export default function Enum(props: any) {
+export const Enum = (props: any) => {
   const { options, value, onChange, disabled } = props;
 
   const [query, setQuery] = useState("");
@@ -100,4 +100,4 @@ export default function Enum(props: any) {
       </div>
     </Combobox>
   );
-}
+};
