@@ -2,6 +2,8 @@ import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
+import { toast } from "react-toastify";
+import { Alert, ALERT_TYPES } from "../../components/alert";
 import { Badge } from "../../components/badge";
 import { Button, BUTTON_TYPES } from "../../components/button";
 import { Pill } from "../../components/pill";
@@ -21,19 +23,23 @@ export const BranchesItems = () => {
   ];
 
   const mergeBranch = (id: string) => {
-    console.log("id: ", id);
+    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Super relevant message here"} />);
   };
 
   const rebaseBranch = (id: string) => {
-    console.log("id: ", id);
+    toast(<Alert type={ALERT_TYPES.INFO} message={"Super relevant message here"} />);
   };
 
   const validateBranch = (id: string) => {
-    console.log("id: ", id);
+    toast(<Alert type={ALERT_TYPES.WARNING} message={"Super relevant message here"} />);
   };
 
-  const createPulRequest = (id: string) => {
-    console.log("id: ", id);
+  const createPullRequest = (id: string) => {
+    toast(<Alert message={"Super relevant message here"} />);
+  };
+
+  const deleteBranch = (id: string) => {
+    toast(<Alert type={ALERT_TYPES.ERROR} message={"Super relevant message here"} />);
   };
 
   return (
@@ -103,7 +109,7 @@ export const BranchesItems = () => {
 
                           <Button
                             className="mr-0 md:mr-3"
-                            onClick={() => createPulRequest(branch.id)}
+                            onClick={() => createPullRequest(branch.id)}
                             disabled
                           >
                             Pull request
@@ -130,7 +136,7 @@ export const BranchesItems = () => {
 
                           <Button
                             className="mr-0 md:mr-3"
-                            onClick={() => validateBranch(branch.id)}
+                            onClick={() => deleteBranch(branch.id)}
                             type={BUTTON_TYPES.CANCEL}
                             disabled
                           >

@@ -1,76 +1,109 @@
-import { Listbox, Transition } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { Fragment } from "react";
+import { Combobox } from "@headlessui/react";
+import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { useState } from "react";
 import { classNames } from "../utils/common";
+import { Input } from "./input";
 
-// type SelectProps = {};
+// type Option = {} // Object with name property
 
-export default function Select(props: any) {
-  const {
-    label,
-    value,
-    valueLabel,
-    onChange,
-    options,
-    renderOption
-  } = props;
+// type SelectProps = {
+//   value: string
+// }
+
+// interface SelectProps {
+//   value: string
+// }
+
+export const Select = (props: any) => {
+  const { options, value, onChange, disabled } = props;
+
+  const [query, setQuery] = useState("");
+
+  const filteredOptions =
+    query === ""
+      ? options
+      : options
+      .filter(
+        (option: any) => option?.name.toLowerCase().includes(query.toLowerCase())
+      );
 
   return (
-    <Listbox
+    <Combobox
+      as="div"
       value={value}
       onChange={onChange}
+      disabled={disabled}
     >
-      {
-        ({ open }) => (
-          <>
-            <Listbox.Label className="sr-only">{label}</Listbox.Label>
-            <div className="relative">
-              <div className="inline-flex divide-x divide-blue-600 rounded-md shadow-sm">
-                <div className="inline-flex divide-x divide-blue-600 rounded-md shadow-sm">
-                  <div className="inline-flex items-center rounded-l-md border border-transparent bg-blue-500 py-2 pl-3 pr-4 text-white shadow-sm">
-                    {valueLabel}
-                  </div>
-                  <Listbox.Button className="inline-flex items-center rounded-l-none rounded-r-md bg-blue-500 p-2 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50">
-                    <ChevronDownIcon
-                      className="h-5 w-5 text-white"
-                      aria-hidden="true"
-                    />
-                  </Listbox.Button>
-                </div>
-              </div>
-              <Transition
-                show={open}
-                as={Fragment}
-                leave="transition ease-in duration-100"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <Listbox.Options className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  {
-                    options
-                    .map(
-                      (option: any) => (
-                        <Listbox.Option
-                          key={option.name}
-                          className={({ active }) =>
-                            classNames(
-                              active ? "text-white bg-blue-500" : "text-gray-900",
-                              "cursor-default select-none p-4 text-sm"
-                            )
-                          }
-                          value={option}
-                        >
-                          {(attributes) => renderOption({ option, ...attributes })}
-                        </Listbox.Option>
-                      )
-                    )
-                  }
-                </Listbox.Options>
-              </Transition>
-            </div>
-          </>
-        )
-      }
-    </Listbox>
+      <div className="relative mt-1">
+        <Combobox.Input
+          as={Input}
+          value={value}
+          onChange={(event) => setQuery(event.target.value)}
+          disabled={disabled}
+        />
+        <Combobox.Button
+          className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
+          disabled={disabled}
+        >
+          <ChevronUpDownIcon
+            className="h-5 w-5 text-gray-400"
+            aria-hidden="true"
+          />
+        </Combobox.Button>
+
+        {
+          filteredOptions.length > 0
+          && (
+            <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+              {
+                filteredOptions
+                .map(
+                  (option: any) => (
+                    <Combobox.Option
+                      key={option}
+                      value={option}
+                      className={({ active }) =>
+                        classNames(
+                          "relative cursor-default select-none py-2 pl-3 pr-9",
+                          active ? "bg-indigo-600 text-white" : "text-gray-900"
+                        )
+                      }
+                    >
+                      {
+                        ({ active, selected }) => (
+                          <>
+                            <span
+                              className={classNames(
+                                "block truncate",
+                                selected ? "font-semibold" : ""
+                              )}
+                            >
+                              {option.name}
+                            </span>
+
+                            {
+                              selected
+                              && (
+                                <span
+                                  className={classNames(
+                                    "absolute inset-y-0 right-0 flex items-center pr-4",
+                                    active ? "text-white" : "text-indigo-600"
+                                  )}
+                                >
+                                  <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                </span>
+                              )}
+                          </>
+                        )
+                      }
+                    </Combobox.Option>
+                  )
+                )
+              }
+            </Combobox.Options>
+          )
+        }
+      </div>
+    </Combobox>
   );
-}
+};

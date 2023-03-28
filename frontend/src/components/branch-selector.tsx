@@ -1,6 +1,6 @@
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import { format, formatDistanceToNow, formatISO } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
@@ -14,11 +14,11 @@ import { timeState } from "../state/atoms/time.atom";
 import { classNames } from "../utils/common";
 import { Alert, ALERT_TYPES } from "./alert";
 import { Button, BUTTON_TYPES } from "./button";
-import { Enum } from "./enum";
 import { Input } from "./input";
 import { PopOver } from "./popover";
 import { RoundedButton } from "./rounded-button";
-import Select from "./select";
+import { Select } from "./select";
+import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 
 export default function BranchSelector() {
@@ -150,7 +150,7 @@ export default function BranchSelector() {
         name: newBranchName,
         description: newBranchDescription,
         // origin_branch: originBranch ?? branches[0]?.name,
-        branched_from: formatISO(branchedFrom ?? new Date()),
+        // branched_from: formatISO(branchedFrom ?? new Date()),
         is_data_only: isDataOnly
       });
 
@@ -170,7 +170,7 @@ export default function BranchSelector() {
 
   return (
     <>
-      <Select
+      <SelectButton
         value={branch ? branch : branches.filter((b) => b.name === "main")[0]}
         valueLabel={valueLabel}
         onChange={onBranchChange}
@@ -186,7 +186,7 @@ export default function BranchSelector() {
           <Input value={newBranchDescription} onChange={setNewBranchDescription} />
 
           Branched from:
-          <Enum disabled options={branchesOptions} value={originBranch ?? defaultBranch} onChange={handleBranchedFrom} />
+          <Select disabled options={branchesOptions} value={originBranch ?? defaultBranch} onChange={handleBranchedFrom} />
 
           Branched at:
           <Input value={format(branchedFrom ?? new Date(), "MM/dd/yyy HH:mm")} onChange={setNewBranchName} disabled />
