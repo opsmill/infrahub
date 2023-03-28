@@ -2,8 +2,10 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import { graphQLClient } from ".";
-import "./App.css";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
@@ -12,7 +14,6 @@ import { branchState } from "./state/atoms/branch.atom";
 import { branchesState } from "./state/atoms/branches.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
-
 type APIResponse = components["schemas"]["SchemaAPI"];
 
 const router = createBrowserRouter(MAIN_ROUTES);
@@ -97,7 +98,12 @@ function App() {
     [setSchemaInState, branch]
   );
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastContainer />
+    </>
+  );
 }
 
 export default App;

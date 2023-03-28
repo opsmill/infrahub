@@ -4,8 +4,8 @@ import { iNodeSchema } from "../state/atoms/schema.atom";
 declare var Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`mutation {{kind.value}}Update {
-  {{name}}_update (data: { 
-    id: "{{id}}", {{{arguments}}} 
+  {{name}}_update (data: {
+    id: "{{id}}", {{{arguments}}}
   }) {
       ok
   }

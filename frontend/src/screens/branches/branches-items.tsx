@@ -36,10 +36,8 @@ export const BranchesItems = () => {
     console.log("id: ", id);
   };
 
-  console.log("branches: ", branches);
-
   return (
-    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 p-6">
+    <ul className="grid gap-6 grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 p-6">
       {
         branches.map(
           (branch) => (
@@ -88,13 +86,13 @@ export const BranchesItems = () => {
               </div>
               <div>
                 <div className="-mt-px px-3 py-3 flex divide-x divide-gray-200">
-                  <div className="flex w-0 flex-1">
+                  <div className="flex w-0 flex-1 flex-col md:flex-row">
                     {
                       !branch.is_default
                       && (
                         <>
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => mergeBranch(branch.id)}
                             type={BUTTON_TYPES.VALIDATE}
                             disabled
@@ -104,7 +102,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => createPulRequest(branch.id)}
                             disabled
                           >
@@ -113,7 +111,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => rebaseBranch(branch.id)}
                             disabled
                           >
@@ -122,7 +120,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => validateBranch(branch.id)}
                             type={BUTTON_TYPES.WARNING}
                           >
@@ -131,7 +129,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => validateBranch(branch.id)}
                             type={BUTTON_TYPES.CANCEL}
                             disabled
