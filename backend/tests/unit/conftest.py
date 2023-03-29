@@ -9,6 +9,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
+    create_root_node,
     first_time_initialization,
     initialization,
 )
@@ -75,7 +76,8 @@ def neo4j_factory():
 
 @pytest.fixture
 async def simple_dataset_01(session, empty_database):
-    await create_default_branch(session)
+    await create_root_node(session=session)
+    await create_default_branch(session=session)
 
     params = {
         "branch": "main",
@@ -638,7 +640,7 @@ async def car_person_schema(session, data_schema):
                 "name": "car",
                 "kind": "Car",
                 "default_filter": "name__value",
-                "display_label": ["name__value", "color__value"],
+                "display_labels": ["name__value", "color__value"],
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "String", "unique": True},
@@ -654,7 +656,7 @@ async def car_person_schema(session, data_schema):
                 "name": "person",
                 "kind": "Person",
                 "default_filter": "name__value",
-                "display_label": ["name__value"],
+                "display_labels": ["name__value"],
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "String", "unique": True},
@@ -735,7 +737,7 @@ async def criticality_schema(session, data_schema):
         "name": "criticality",
         "kind": "Criticality",
         "default_filter": "name__value",
-        "display_label": ["label__value"],
+        "display_labels": ["label__value"],
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
@@ -972,6 +974,7 @@ async def init_db(empty_database, session):
 
 @pytest.fixture
 async def default_branch(reset_registry, empty_database, session) -> Branch:
+    await create_root_node(session=session)
     return await create_default_branch(session=session)
 
 

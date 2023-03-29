@@ -33,21 +33,21 @@ export default function ObjectItemCreate() {
   }, [schema, initForm]);
 
   async function onSubmit(data: any, error: any) {
-    const mutationArgs = getMutationDetailsFromFormData(schema, data, "create");
-    if (mutationArgs.length) {
+    const newObject = getMutationDetailsFromFormData(schema, data, "create");
+    if (Object.keys(newObject).length) {
       try {
-        await createObject(schema, mutationArgs);
-      } catch {
-        console.error("Something went wrong while updating the object");
+        await createObject(schema, newObject);
+      } catch(err) {
+        console.error("Something went wrong while creating the object: ", err);
       }
       navigate(-1);
     } else {
-      console.info("Nothing to update");
+      console.info("Nothing to create");
     }
   }
 
   return (
-    <div className="p-4 flex-1 overflow-auto flex">
+    <div className="p-4 bg-white flex-1 overflow-auto flex">
       {schema && formStructure && (
         <div className="flex-1">
           <EditFormHookComponent onSubmit={onSubmit} fields={formStructure} />

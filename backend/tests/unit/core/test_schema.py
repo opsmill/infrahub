@@ -103,7 +103,7 @@ async def test_node_schema_generate_fields_for_display_label():
         "name": "criticality",
         "kind": "Criticality",
         "default_filter": "name__value",
-        "display_label": ["name__value", "level__value"],
+        "display_labels": ["name__value", "level__value"],
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
@@ -117,7 +117,7 @@ async def test_node_schema_generate_fields_for_display_label():
     schema = NodeSchema(**SCHEMA)
     assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
 
-    SCHEMA["display_label"] = ["name__value__third"]
+    SCHEMA["display_labels"] = ["name__value__third"]
     schema = NodeSchema(**SCHEMA)
     with pytest.raises(ValueError):
         schema.generate_fields_for_display_label()

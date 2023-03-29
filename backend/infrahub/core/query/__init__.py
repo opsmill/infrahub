@@ -219,7 +219,7 @@ class Query(ABC):
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
-        if config.SETTINGS.main.print_query_details:
+        if config.SETTINGS.miscellaneous.print_query_details:
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
