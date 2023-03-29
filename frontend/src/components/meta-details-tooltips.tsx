@@ -65,10 +65,10 @@ export default function MetaDetailsTooltip(props: Props) {
               {item.type === "text" && <div>
                 {item.value}
               </div>}
-            </div>
+            </div>;
           })}
         </div>
       </Popover.Panel>
     </Transition>
-  </Popover>
+  </Popover>;
 }

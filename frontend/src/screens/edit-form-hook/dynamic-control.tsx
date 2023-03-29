@@ -41,9 +41,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
     if(isAttribute) {
       value = defaultValue.value;
     } else if(relationshipCardinality === "many") {
-      value = defaultValue.map((item: any) => item.id)
+      value = defaultValue.map((item: any) => item.id);
     } else {
-      value = defaultValue.id
+      value = defaultValue.id;
     }
   }
 
@@ -59,11 +59,11 @@ export const DynamicControl = (props: DynamicFieldData) => {
       );
       break;
     case "select": {
-      let selectConfig = {}
+      let selectConfig = {};
       if(type === "Integer") {
         selectConfig = {
           valueAsNumber: true,
-        }
+        };
       }
       input = (
         <select
@@ -158,7 +158,7 @@ export const SourceOwnerField = (props: iSourceOwnerFieldProps) => {
   }).map(schema => ({
     label: schema.kind,
     value: schema.name,
-  }))]
+  }))];
 
   const [relatedItemOptions, setRelatedItemOptions] = useState<iPeerDropdownOption[]>([]);
 
@@ -184,7 +184,7 @@ export const SourceOwnerField = (props: iSourceOwnerFieldProps) => {
   return <>
     <div className="sm:col-span-1"></div>
     <div className="sm:col-span-6">
-      <label 
+      <label
         className="block text-sm font-medium leading-6 text-gray-900 capitalize mt-4 mb-2">
         {metaFieldName.split("_").filter(r => !!r).join(" ")}
       </label>
@@ -218,8 +218,8 @@ export const SourceOwnerField = (props: iSourceOwnerFieldProps) => {
         ))}
       </select>}
     </div>
-    
-  </>
+
+  </>;
 };
 
 export const MetaDataFields = (props: DynamicFieldData) => {
@@ -231,5 +231,5 @@ export const MetaDataFields = (props: DynamicFieldData) => {
 
   return <>
     {sourceOwnerFields.map(sourceOwnerField => <SourceOwnerField field={props} metaFieldName={sourceOwnerField} key={sourceOwnerField} />)}
-  </>
+  </>;
 };

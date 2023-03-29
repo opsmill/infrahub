@@ -37,7 +37,7 @@ export const Form = ({ fields, onSubmit }: FormProps) => {
         <div className="text-red-500 text-xs">
           <ErrorMessage errors={errors} name={field.fieldName} />
         </div>
-        <label 
+        <label
           htmlFor={field.fieldName} className="block text-sm font-medium leading-6 text-gray-900 mt-6">
           {field.label}
         </label>
@@ -53,7 +53,7 @@ export const Form = ({ fields, onSubmit }: FormProps) => {
         <MetaDataFields {...field} />
       </>
       }
-    </>
+    </>;
   };
 
   return <form onSubmit={handleSubmit(onSubmit)}>
@@ -81,6 +81,6 @@ export const Form = ({ fields, onSubmit }: FormProps) => {
         </button>
       </div>
     </FormProvider>
-  </form>
+  </form>;
 
 };

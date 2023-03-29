@@ -40,7 +40,7 @@ export default function ObjectItemDetails() {
   };
 
   interface iRelationDetailsProps {
-    relationship: iNodeSchema["relationships"]; 
+    relationship: iNodeSchema["relationships"];
     row: any;
   }
 
@@ -165,8 +165,8 @@ export default function ObjectItemDetails() {
         )}
         {!row[relationship.name] && <>-</>}
       </div>
-    </>
-  }
+    </>;
+  };
 
   const fetchObjectDetails = useCallback(async () => {
     setHasError(false);
@@ -338,10 +338,10 @@ export default function ObjectItemDetails() {
                 </div>
               );
             })}
-            
+
             {schema.relationships
             ?.filter((relationship) => relationship.kind === "Attribute").map(relationship => <RelationshipDetails key={relationship.name} relationship={[relationship]} row={row} />)}
-            
+
 
 
           </dl>
