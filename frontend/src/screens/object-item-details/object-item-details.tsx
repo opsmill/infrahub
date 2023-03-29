@@ -272,7 +272,7 @@ export default function ObjectItemDetails() {
               </dd>
             </div>
             {schema.attributes?.map((attribute) => {
-              if (!row[attribute.name]) {
+              if (!row[attribute.name] || !row[attribute.name].is_visible) {
                 return null;
               }
 
@@ -329,10 +329,6 @@ export default function ObjectItemDetails() {
 
                     {row[attribute.name].is_protected && (
                       <LockClosedIcon className="h-5 w-5 ml-2" />
-                    )}
-
-                    {row[attribute.name].is_visible === false && (
-                      <EyeSlashIcon className="h-5 w-5 ml-2" />
                     )}
                   </div>
                 </div>
