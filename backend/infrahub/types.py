@@ -1,7 +1,16 @@
+from __future__ import annotations
+
+import importlib
+from typing import Dict
+
 import graphene
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
+
+DEFAULT_MODULE_ATTRIBUTE = "infrahub.core.attribute"
+DEFAULT_MODULE_GRAPHQL_INPUT = "infrahub.graphql.mutations"
+DEFAULT_MODULE_GRAPHQL_QUERY = "infrahub.graphql.types"
 
 
 class InfrahubDataType:
@@ -22,19 +31,23 @@ class InfrahubDataType:
 
     @classmethod
     def get_infrahub_class(cls):
-        return registry.attribute[cls.infrahub]
+        module = importlib.import_module(DEFAULT_MODULE_ATTRIBUTE)
+        return getattr(module, cls.infrahub)
 
     @classmethod
     def get_graphql_input(cls):
-        return registry.input_type[cls.graphql_input]
+        module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_INPUT)
+        return getattr(module, cls.graphql_input)
 
     @classmethod
     def get_graphql_type(cls):
-        return registry.default_graphql_type[cls.graphql_input]
+        module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_QUERY)
+        return getattr(module, cls.graphql_query)
 
     @classmethod
     def get_graphql_type_name(cls):
-        return registry.default_graphql_type[cls.graphql_input].__name__
+        module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_QUERY)
+        return getattr(module, cls.graphql_query).__name__
 
 
 class ID(InfrahubDataType):
@@ -218,3 +231,27 @@ class Boolean(InfrahubDataType):
     graphql_input = "CheckboxAttributeInput"
     graphql_filter = graphene.Boolean
     infrahub = "Boolean"
+
+
+ATTRIBUTE_TYPES: Dict[str, InfrahubDataType] = {
+    "ID": ID,
+    "Text": Text,
+    "TextArea": TextArea,
+    "DateTime": DateTime,
+    "Email": Email,
+    "Password": Password,
+    "URL": URL,
+    "File": File,
+    "MacAddress": MacAddress,
+    "Color": Color,
+    "Number": Number,
+    "Bandwidth": Bandwidth,
+    "IPHost": IPHost,
+    "IPNetwork": IPNetwork,
+    "Checkbox": Checkbox,
+    "List": List,
+    "Any": Any,
+    "String": String,
+    "Integer": Integer,
+    "Boolean": Boolean,
+}

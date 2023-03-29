@@ -5,12 +5,9 @@ from uuid import UUID
 
 from infrahub.core import get_branch, registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import (
-    AttributeSchema,
-    NodeSchema,
-    RelationshipSchema,
-)
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.exceptions import ValidationError
+from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client.timestamp import Timestamp
 
 from ..attribute import BaseAttribute
@@ -33,7 +30,6 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------------
 
 # pylint: disable=redefined-builtin,too-many-branches
-
 
 SelfNode = TypeVar("SelfNode", bound="Node")
 
@@ -215,7 +211,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _generate_attribute_default(
         self, session: AsyncSession, name: str, schema: AttributeSchema, data: Any  # pylint: disable=unused-argument
     ) -> BaseAttribute:
-        attr_class = registry.get_data_type(schema.kind).get_infrahub_class()
+        attr_class = ATTRIBUTE_TYPES[schema.kind].get_infrahub_class()
         attr = attr_class(
             data=data,
             name=name,

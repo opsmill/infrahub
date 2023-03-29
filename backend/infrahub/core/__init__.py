@@ -10,12 +10,12 @@ from infrahub.exceptions import BranchNotFound, DataTypeNotFound
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
-    from infrahub.core.branch import Branch
     from infrahub.core.attribute import BaseAttribute
+    from infrahub.core.branch import Branch
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+    from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
     from infrahub.types import InfrahubDataType
-    from infrahub.graphql.mutations import BaseAttributeInput
 
 # pylint: disable=redefined-builtin
 

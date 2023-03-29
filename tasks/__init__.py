@@ -1,10 +1,11 @@
 """Replacement for Makefile."""
 import os
+
 from invoke import (  # type: ignore  # pylint: disable=import-error
     Collection,
     Context,
+    Exit,
     task,
-    Exit
 )
 
 from . import backend, ctl, demo, main, performance, sdk
@@ -32,9 +33,11 @@ def yamllint(context: Context):
 def generate_schema_doc(context: Context):
     """Generate documentation for the schema"""
 
-    from infrahub.core.schema import internal_schema
-    import jinja2
     from pathlib import Path
+
+    import jinja2
+
+    from infrahub.core.schema import internal_schema
 
     here = os.path.abspath(os.path.dirname(__file__))
     template_file = os.path.join(here, "../docs/15_schema/readme.j2")
@@ -48,7 +51,7 @@ def generate_schema_doc(context: Context):
     template = environment.from_string(template_text)
     rendered_file = template.render(schema=internal_schema)
 
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         f.write(rendered_file)
 
     print(f"Schema documentation generated")

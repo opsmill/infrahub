@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field, root_validator, validator
 
 from infrahub.core import registry
-import infrahub.types
-
 from infrahub.core.relationship import Relationship
+from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import BaseEnum, duplicates
 
 if TYPE_CHECKING:
@@ -19,37 +18,7 @@ if TYPE_CHECKING:
 
 # pylint: disable=no-self-argument,redefined-builtin
 
-# ATTRIBUTES_MAPPING = {
-#     "Any": AnyAttribute,
-#     "String": String,
-#     "Integer": Integer,
-#     "Boolean": Boolean,
-#     "List": ListAttribute,
-# }
-
-
-ATTRIBUTE_KINDS = [
-    "Any",
-    "Bandwidth",
-    "Boolean",
-    "Checkbox",
-    "Color",
-    "DateTime",
-    "Email",
-    "File",
-    "ID",
-    "IPHost",
-    "IPNetwork",
-    "Integer",
-    "List",
-    "MacAddress",
-    "Number",
-    "Password",
-    "String",
-    "Text",
-    "TextArea",
-    "URL",
-]
+ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
 
 RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
@@ -108,12 +77,12 @@ class AttributeSchema(BaseModel):
         cls,
         v,
     ):
-        if v not in ATTRIBUTE_KINDS:
-            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KINDS} ")
+        if v not in ATTRIBUTE_KIND_LABELS:
+            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KIND_LABELS} ")
         return v
 
     def get_class(self):
-        return registry.get_data_type(self.kind)
+        return ATTRIBUTE_TYPES[self.kind].get_graphql_type()
 
     async def get_query_filter(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=unused-argument
         return self.get_class().get_query_filter(*args, **kwargs)
@@ -544,7 +513,7 @@ internal_schema = {
                 {
                     "name": "kind",
                     "kind": "String",
-                    "enum": ATTRIBUTE_KINDS,
+                    "enum": ATTRIBUTE_KIND_LABELS,
                     "min_length": 3,
                     "max_length": 32,
                 },
