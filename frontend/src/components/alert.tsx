@@ -2,6 +2,7 @@
 
 import { CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, LightBulbIcon, XCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { classNames } from "../utils/common";
+import Accordion from "./accordion";
 
 export enum ALERT_TYPES {
   SUCCESS,
@@ -18,6 +19,7 @@ export const Alert = (props: any) => {
     // toastProps,
     // Custom props
     message,
+    details,
     onDismiss,
     type
   } = props;
@@ -104,6 +106,24 @@ export const Alert = (props: any) => {
 
   const alertClasses = getClassName();
 
+  const alertMessage = (
+    <p className={
+      classNames(
+        "text-sm ",
+        alertClasses.text
+      )
+    }>{message}</p>
+  );
+
+  const alertDetails = (
+    <p className={
+      classNames(
+        "text-sm",
+        alertClasses.text
+      )
+    }>{details}</p>
+  );
+
   return (
     <div className={
       classNames(
@@ -112,16 +132,19 @@ export const Alert = (props: any) => {
       )
     }>
       <div className="flex">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex items-start pt-1">
           {getIcon()}
         </div>
         <div className="ml-3">
-          <p className={
-            classNames(
-              "text-sm font-mediu",
-              alertClasses.text
-            )
-          }>{message}</p>
+          {
+            details
+              ? (
+                <Accordion title={alertMessage}>
+                  {alertDetails}
+                </ Accordion>
+              )
+              : alertMessage
+          }
         </div>
         <div className="ml-auto pl-3">
           <div className="-mx-1.5 -my-1.5">

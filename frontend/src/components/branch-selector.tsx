@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import { graphQLClient } from "..";
 import { CONFIG } from "../config/config";
 import { Branch } from "../generated/graphql";
-import createBranch from "../graphql/mutations/createBranch";
 import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
 import { timeState } from "../state/atoms/time.atom";
@@ -146,15 +145,15 @@ export default function BranchSelector() {
 
   const handleSubmit = async () => {
     try {
-      await createBranch({
-        name: newBranchName,
-        description: newBranchDescription,
-        // origin_branch: originBranch ?? branches[0]?.name,
-        // branched_from: formatISO(branchedFrom ?? new Date()),
-        is_data_only: isDataOnly
-      });
+      // await createBranch({
+      //   name: newBranchName,
+      //   description: newBranchDescription,
+      //   // origin_branch: originBranch ?? branches[0]?.name,
+      //   // branched_from: formatISO(branchedFrom ?? new Date()),
+      //   is_data_only: isDataOnly
+      // });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} details={"yes cool here"} />, { autoClose: false });
     } catch (e) {
       console.error("error: ", e);
       toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} />);

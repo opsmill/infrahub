@@ -101,7 +101,7 @@ function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <ToastContainer />
+      <ToastContainer closeOnClick={false} />
     </>
   );
 }
