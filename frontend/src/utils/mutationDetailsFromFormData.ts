@@ -26,7 +26,7 @@ const getMutationDetailsFromFormData = (
 
     const isOneToMany =
       relationship.kind === "Attribute" && relationship.cardinality === "many";
-    
+
     if (mode === "update") {
       if (isOneToOne) {
         const existingValue = existingObject[relationship.name].id;
