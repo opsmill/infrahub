@@ -170,9 +170,9 @@ export default function ObjectItemDetails() {
                     </dd>
 
                     {row[attribute.name] &&
-                      row[attribute.name].source &&
-                      row[attribute.name].owner &&
-                      row[attribute.name].updated_at && (
+                      (row[attribute.name].source ||
+                      row[attribute.name].owner ||
+                      row[attribute.name].updated_at) && (
                       <Popover className="relative mt-1.5 ml-2">
                         <Popover.Button>
                           <InformationCircleIcon className="w-5 h-5" />
@@ -199,7 +199,7 @@ export default function ObjectItemDetails() {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex justify-between w-full py-4">
+                              {row[attribute.name].source && <div className="flex justify-between w-full py-4">
                                 <div>Source: </div>
                                 <div
                                   className="underline cursor-pointer"
@@ -211,8 +211,9 @@ export default function ObjectItemDetails() {
                                 >
                                   {row[attribute.name].source.display_label}
                                 </div>
-                              </div>
-                              <div className="flex justify-between w-full py-4">
+                              </div>}
+                              
+                              {row[attribute.name].owner && <div className="flex justify-between w-full py-4">
                                 <div>Owner: </div>
                                 <div
                                   className="underline cursor-pointer"
@@ -224,7 +225,8 @@ export default function ObjectItemDetails() {
                                 >
                                   {row[attribute.name].owner.display_label}
                                 </div>
-                              </div>
+                              </div>}
+                              
                             </div>
                           </Popover.Panel>
                         </Transition>

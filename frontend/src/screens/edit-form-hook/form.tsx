@@ -3,9 +3,9 @@ import {
   FieldValues,
   FormProvider,
   SubmitHandler,
-  useForm,
+  useForm
 } from "react-hook-form";
-import { DynamicControl } from "./dynamic-control";
+import { DynamicControl, DynamicControlMetadata } from "./dynamic-control";
 import { DynamicFieldData } from "./dynamic-control-types";
 
 interface FormProps {
@@ -27,7 +27,7 @@ export const Form = ({ fields, onSubmit }: FormProps) => {
         <div className="text-red-500 text-xs">
           <ErrorMessage errors={errors} name={d.fieldName} />
         </div>
-        <div key={i} className="sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+        <div key={i} className="sm:grid sm:grid-cols-5 sm:items-start sm:gap-4">
           <label
             htmlFor={d.fieldName}
             className="block text-sm font-medium leading-6 text-gray-900 sm:pt-1.5"
@@ -39,13 +39,18 @@ export const Form = ({ fields, onSubmit }: FormProps) => {
               <DynamicControl {...d} />
             </div>
           </div>
+          <div className="mt-2 sm:col-span-2 sm:mt-0">
+            <div className="flex max-w-lg rounded-md shadow-sm">
+              <DynamicControlMetadata {...d} />
+            </div>
+          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <form className="space-y-8 pb-4 max-w-xl" onSubmit={handleSubmit(onSubmit)}>
+    <form className="space-y-8 pb-4" onSubmit={handleSubmit(onSubmit)}>
       <FormProvider {...formMethods}>
         <div className="space-y-8 divide-y divide-gray-200 sm:space-y-5">
           <div className="space-y-6 sm:space-y-5">

@@ -70,7 +70,9 @@ export default function ObjectItemEdit() {
   }
 
   async function onSubmit(data: any, error: any) {
+    console.log("Submit: ", data);
     const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
+    console.log(updateObject);
     if (Object.keys(updateObject).length) {
       try {
         await updateObjectWithId(objectid!, schema, updateObject);

@@ -4,8 +4,8 @@ import { graphQLClient } from "..";
 declare var Handlebars: any;
 
 export interface iPeerDropdownOption {
-  label: string;
-  value: string;
+  id: string;
+  display_label: string;
 }
 
 export interface iPeerDropdownOptions {

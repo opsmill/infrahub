@@ -19,6 +19,7 @@ const updateObjectWithId = async (id: string, schema: iNodeSchema, updateObject:
       ...updateObject,
     }),
   });
+  console.log(updateMutation);
   return graphQLClient.request(updateMutation);
 };
 
