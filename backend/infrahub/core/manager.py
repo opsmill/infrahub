@@ -305,14 +305,14 @@ class SchemaManager(NodeManager):
             filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
 
         else:
-            filters.append(FilterSchema(name="id", kind=FilterSchemaKind.STRING))
+            filters.append(FilterSchema(name="id", kind=FilterSchemaKind.TEXT))
 
         for attr in schema.attributes:
-            if attr.kind == "String":
-                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.STRING)
-            elif attr.kind == "Integer":
-                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.INTEGER)
-            elif attr.kind == "Boolean":
+            if attr.kind in ["Text", "String"]:
+                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.TEXT)
+            elif attr.kind in ["Number", "Integer"]:
+                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.NUMBER)
+            elif attr.kind in ["Boolean", "Checkbox"]:
                 filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.BOOLEAN)
             else:
                 continue

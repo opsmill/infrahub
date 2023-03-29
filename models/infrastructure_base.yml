@@ -9,13 +9,13 @@ nodes:
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
         unique: true
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: type
-        kind: String
+        kind: Text
     relationships:
       - name: site
         peer: Location
@@ -54,12 +54,12 @@ nodes:
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: speed
-        kind: Integer
+        kind: Number
       - name: enabled
         kind: Boolean
         default_value: true
@@ -105,9 +105,9 @@ nodes:
     branch: true
     attributes:
       - name: address
-        kind: String
+        kind: Text
       - name: description
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: interface
@@ -123,13 +123,13 @@ nodes:
     branch: true
     attributes:
       - name: circuit_id
-        kind: String
+        kind: Text
         unique: true
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: vendor_id
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: status
@@ -157,7 +157,7 @@ nodes:
     branch: true
     attributes:
       - name: description
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: site
@@ -183,13 +183,13 @@ nodes:
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
         unique: true
       - name: asn
-        kind: Integer
+        kind: Number
         unique: true
       - name: description
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: organization
@@ -205,15 +205,15 @@ nodes:
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: import_policies
-        kind: String
+        kind: Text
         optional: true
       - name: export_policies
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: local_as
@@ -233,18 +233,18 @@ nodes:
     branch: true
     attributes:
       - name: type
-        kind: String
+        kind: Text
         enum:
           - EXTERNAL
           - INTERNAL
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: import_policies
-        kind: String
+        kind: Text
         optional: true
       - name: export_policies
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: status

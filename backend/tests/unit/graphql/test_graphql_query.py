@@ -47,8 +47,8 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
         "display_labels": ["label__value"],
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "label", "kind": "String", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "label", "kind": "Text", "optional": True},
         ],
     }
 
@@ -87,8 +87,8 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
         "display_labels": ["name__value", "level__value"],
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "level", "kind": "Integer", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number", "optional": True},
         ],
     }
 
@@ -129,8 +129,8 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
         "kind": "Criticality",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "level", "kind": "Integer", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number", "optional": True},
         ],
     }
 
@@ -1234,7 +1234,7 @@ async def test_union_relationship(
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
@@ -1319,7 +1319,7 @@ async def test_union_root(
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
