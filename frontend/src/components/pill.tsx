@@ -28,7 +28,7 @@ const getClasseName = (type: PILL_TYPES) => {
       return "bg-gray-100";
     }
   }
-}
+};
 
 export const Pill = (props: any) => {
   const customClassName = getClasseName(props.type);
@@ -41,6 +41,6 @@ export const Pill = (props: any) => {
         props.className
       )
     }>{props.children}</span>
-  )
+  );
 
-}
+};

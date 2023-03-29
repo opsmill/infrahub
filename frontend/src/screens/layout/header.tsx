@@ -11,7 +11,7 @@ import "react-datetime/css/react-datetime.css";
 
 import { useAtom } from "jotai";
 import { graphQLClient } from "../..";
-import BranchSelector from "../../components/branch-selector/branch-selector";
+import BranchSelector from "../../components/branch-selector";
 import { CONFIG } from "../../config/config";
 import { branchState } from "../../state/atoms/branch.atom";
 import { timeState } from "../../state/atoms/time.atom";

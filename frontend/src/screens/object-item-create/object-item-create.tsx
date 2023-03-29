@@ -54,6 +54,6 @@ export default function ObjectItemCreate() {
         </div>
       )}
     </div>
-  )
+  );
 
 }

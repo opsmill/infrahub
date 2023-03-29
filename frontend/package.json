@@ -38,6 +38,7 @@
         "react-router-dom": "^6.8.1",
         "react-scripts": "5.0.1",
         "react-select": "^5.7.0",
+        "react-toastify": "^9.1.2",
         "typescript": "^4.9.5",
         "web-vitals": "^2.1.4"
     },
@@ -116,7 +117,9 @@
             ],
             "react/react-in-jsx-scope": "off",
             "@typescript-eslint/no-unused-vars": "error",
-            "unused-imports/no-unused-imports-ts": 2
+            "unused-imports/no-unused-imports-ts": 2,
+            "semi": "error",
+            "no-trailing-spaces": "error"
         }
     },
     "browserslist": {

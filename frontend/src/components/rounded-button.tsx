@@ -3,14 +3,15 @@
 import { classNames } from "../utils/common";
 
 export enum BUTTON_TYPES {
+  DEFAULT,
   VALIDATE,
   CANCEL,
   WARNING,
 }
 
 const DEFAULT_CLASS = `
-  py-1.5 px-2.5
-  inline-flex items-center gap-x-1.5 rounded-md
+  p-2
+  inline-flex items-center gap-x-1.5 rounded-full
   text-sm font-semibold
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
   shadow-sm ring-1 ring-inset ring-gray-300
@@ -39,17 +40,20 @@ const getClasseName = (type: BUTTON_TYPES) => {
         disabled:cursor-not-allowed disabled:bg-yellow-200 disabled:text-gray-600 disabled:border-slate-200 disabled:shadow-none
       `;
     }
-    default: {
+    case BUTTON_TYPES.DEFAULT: {
       return `
-        bg-gray-100 text-gray-900
-        hover:bg-gray-200
-        disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-200 disabled:shadow-none
-      `;
+      bg-gray-100 text-gray-900
+      hover:bg-gray-200
+      disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-200 disabled:shadow-none
+    `;
+    }
+    default: {
+      return "";
     }
   }
 };
 
-export const Button = (props: any) => {
+export const RoundedButton = (props: any) => {
   const { type, className, ...propsToPass } = props;
 
   const customClassName = getClasseName(type);
@@ -58,11 +62,7 @@ export const Button = (props: any) => {
     <button
       type="button"
       className={
-        classNames(
-          DEFAULT_CLASS,
-          customClassName,
-          className
-        )
+        classNames(DEFAULT_CLASS,customClassName,className)
       }
       {...propsToPass}
     >

@@ -20,6 +20,6 @@ const updateObjectWithId = async (id: string, schema: iNodeSchema, updateObject:
     }),
   });
   return graphQLClient.request(updateMutation);
-}
+};
 
 export default updateObjectWithId;

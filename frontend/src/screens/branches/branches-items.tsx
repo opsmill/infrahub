@@ -2,6 +2,8 @@ import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
+import { toast } from "react-toastify";
+import { Alert, ALERT_TYPES } from "../../components/alert";
 import { Badge } from "../../components/badge";
 import { Button, BUTTON_TYPES } from "../../components/button";
 import { Pill } from "../../components/pill";
@@ -18,28 +20,30 @@ export const BranchesItems = () => {
   const branches = [
     ...storedBranches.filter(b => b.name === "main"),
     ...sortedBranches
-  ]
+  ];
 
   const mergeBranch = (id: string) => {
-    console.log("id: ", id);
-  }
+    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Super relevant message here"} />);
+  };
 
   const rebaseBranch = (id: string) => {
-    console.log("id: ", id);
-  }
+    toast(<Alert type={ALERT_TYPES.INFO} message={"Super relevant message here"} />);
+  };
 
   const validateBranch = (id: string) => {
-    console.log("id: ", id);
-  }
+    toast(<Alert type={ALERT_TYPES.WARNING} message={"Super relevant message here"} />);
+  };
 
-  const createPulRequest = (id: string) => {
-    console.log("id: ", id);
-  }
+  const createPullRequest = (id: string) => {
+    toast(<Alert message={"Super relevant message here"} />);
+  };
 
-  console.log("branches: ", branches);
+  const deleteBranch = (id: string) => {
+    toast(<Alert type={ALERT_TYPES.ERROR} message={"Super relevant message here"} />);
+  };
 
   return (
-    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 p-6">
+    <ul className="grid gap-6 grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 p-6">
       {
         branches.map(
           (branch) => (
@@ -88,13 +92,13 @@ export const BranchesItems = () => {
               </div>
               <div>
                 <div className="-mt-px px-3 py-3 flex divide-x divide-gray-200">
-                  <div className="flex w-0 flex-1">
+                  <div className="flex w-0 flex-1 flex-col md:flex-row">
                     {
                       !branch.is_default
                       && (
                         <>
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => mergeBranch(branch.id)}
                             type={BUTTON_TYPES.VALIDATE}
                             disabled
@@ -104,8 +108,8 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
-                            onClick={() => createPulRequest(branch.id)}
+                            className="mr-0 md:mr-3"
+                            onClick={() => createPullRequest(branch.id)}
                             disabled
                           >
                             Pull request
@@ -113,7 +117,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => rebaseBranch(branch.id)}
                             disabled
                           >
@@ -122,7 +126,7 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
+                            className="mr-0 md:mr-3"
                             onClick={() => validateBranch(branch.id)}
                             type={BUTTON_TYPES.WARNING}
                           >
@@ -131,8 +135,8 @@ export const BranchesItems = () => {
                           </Button>
 
                           <Button
-                            className="mr-3"
-                            onClick={() => validateBranch(branch.id)}
+                            className="mr-0 md:mr-3"
+                            onClick={() => deleteBranch(branch.id)}
                             type={BUTTON_TYPES.CANCEL}
                             disabled
                           >
@@ -150,5 +154,5 @@ export const BranchesItems = () => {
         )
       }
     </ul>
-  )
-}
+  );
+};

@@ -17,6 +17,6 @@ const createObject = async (schema: iNodeSchema, updateObject: any[]) => {
     data: getStringJSONWithoutQuotes(updateObject),
   });
   return graphQLClient.request(createMutation);
-}
+};
 
 export default createObject;
