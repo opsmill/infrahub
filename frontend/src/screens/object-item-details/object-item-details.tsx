@@ -75,6 +75,11 @@ export default function ObjectItemDetails() {
                       type: "date",
                     },
                     {
+                      label: "Update time",
+                      value: `${new Date(row[relationship.name]._updated_at).toLocaleDateString()} ${new Date(row[relationship.name]._updated_at).toLocaleTimeString()}`,
+                      type: "text",
+                    },
+                    {
                       label: "Source",
                       value: row[relationship.name]._relation__source,
                       type: "link"
@@ -83,6 +88,11 @@ export default function ObjectItemDetails() {
                       label: "Owner",
                       value: row[relationship.name]._relation__owner,
                       type: "link"
+                    },
+                    {
+                      label: "Is protected",
+                      value: row[relationship.name]._relation__is_protected ? "True" : "False",
+                      type: "text"
                     },
                   ]} />
                 )}
@@ -118,6 +128,11 @@ export default function ObjectItemDetails() {
                           type: "date",
                         },
                         {
+                          label: "Update time",
+                          value: `${new Date(item._updated_at).toLocaleDateString()} ${new Date(item._updated_at).toLocaleTimeString()}`,
+                          type: "text",
+                        },
+                        {
                           label: "Source",
                           value: item._relation__source,
                           type: "link"
@@ -126,6 +141,11 @@ export default function ObjectItemDetails() {
                           label: "Owner",
                           value: item._relation__owner,
                           type: "link"
+                        },
+                        {
+                          label: "Is protected",
+                          value: item._relation__is_protected ? "True" : "False",
+                          type: "text"
                         },
                       ]} />
                     )}
@@ -280,6 +300,11 @@ export default function ObjectItemDetails() {
                           type: "date",
                         },
                         {
+                          label: "Update time",
+                          value: `${new Date(row[attribute.name].updated_at).toLocaleDateString()} ${new Date(row[attribute.name].updated_at).toLocaleTimeString()}`,
+                          type: "text",
+                        },
+                        {
                           label: "Source",
                           value: row[attribute.name].source,
                           type: "link"
@@ -288,6 +313,16 @@ export default function ObjectItemDetails() {
                           label: "Owner",
                           value: row[attribute.name].owner,
                           type: "link"
+                        },
+                        {
+                          label: "Is protected",
+                          value: row[attribute.name].is_protected ? "True" : "False",
+                          type: "text"
+                        },
+                        {
+                          label: "Is inherited",
+                          value: row[attribute.name].is_inherited ? "True" : "False",
+                          type: "text"
                         },
                       ]} />
                     )}

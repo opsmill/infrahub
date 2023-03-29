@@ -139,10 +139,23 @@ export const SourceOwnerField = (props: iSourceOwnerFieldProps) => {
   const { register } = useFormContext();
   const [schemaList] = useAtom(schemaState);
 
+  const relatedObjects: { [key: string]: string; } = {
+    "source": "DataSource",
+    "owner": "DataOwner",
+    "_relation__source": "DataSource",
+    "_relation__owner": "DataOwner",
+  };
+
   const schemaOptions: SelectOption[] = [{
     label: "",
     value: "",
-  }, ...schemaList.map(schema => ({
+  }, ...schemaList.filter(schema => {
+    if((schema.inherit_from || []).indexOf(relatedObjects[metaFieldName]) > -1) {
+      return true;
+    } else {
+      return false;
+    }
+  }).map(schema => ({
     label: schema.kind,
     value: schema.name,
   }))]

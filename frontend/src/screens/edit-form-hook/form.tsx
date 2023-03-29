@@ -7,6 +7,7 @@ import {
   SubmitHandler,
   useForm
 } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { DynamicControl, MetaDataFields } from "./dynamic-control";
 import { DynamicFieldData } from "./dynamic-control-types";
 
@@ -21,6 +22,7 @@ interface FormFieldProps {
 
 export const Form = ({ fields, onSubmit }: FormProps) => {
   const formMethods = useForm();
+  const navigate = useNavigate();
 
   const {
     handleSubmit,
@@ -68,7 +70,7 @@ export const Form = ({ fields, onSubmit }: FormProps) => {
         </div>
       </div>
       <div className="mt-6 flex items-center justify-end gap-x-6 pb-5 max-w-lg pr-3">
-        <button type="button" className="text-sm font-semibold leading-6 text-gray-900">
+        <button type="button" className="text-sm font-semibold leading-6 text-gray-900" onClick={() => navigate(-1)}>
           Cancel
         </button>
         <button

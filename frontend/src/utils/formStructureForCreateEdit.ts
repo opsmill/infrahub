@@ -69,7 +69,7 @@ const getFormStructureForCreateEdit = (
             ? ("multiselect" as ControlType)
             : ("select" as ControlType),
       label: relationship.label ? relationship.label : relationship.name,
-      defaultValue: row[relationship.name],
+      defaultValue: row ? row[relationship.name] : "",
       options: {
         values: options,
       },

@@ -61,6 +61,10 @@ export default function MetaDetailsTooltip(props: Props) {
               >
                 {item.value?.display_label}
               </div>}
+
+              {item.type === "text" && <div>
+                {item.value}
+              </div>}
             </div>
           })}
         </div>
