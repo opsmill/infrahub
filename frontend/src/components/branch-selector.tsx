@@ -154,10 +154,10 @@ export default function BranchSelector() {
         is_data_only: isDataOnly
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} details={"yes cool here"} />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
     } catch (e) {
-      console.error("error: ", e);
-      toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} />);
+      const details = "An error occured while creating the branch";
+      toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={details} />);
     }
   };
 

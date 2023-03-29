@@ -14,7 +14,6 @@ mutation branchCreate {
 `);
 
 const createBranch = async (data: any) => {
-  console.log("data: ", data);
   const createMutation = mutationTemplate({
     data: objectToString(data)
   });

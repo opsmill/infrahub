@@ -11,7 +11,7 @@ export default function Accordion(props: any) {
       {({ open }) => (
         <>
           <dt>
-            <Disclosure.Button className="flex w-full items-center text-left text-gray-900">
+            <Disclosure.Button className="flex w-full items-center text-left">
               <span className="flex h-7 items-center mr-2 relative">
                 {
                   open

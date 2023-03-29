@@ -12,7 +12,6 @@ export enum ALERT_TYPES {
 }
 
 export const Alert = (props: any) => {
-  console.log("props: ", props);
   const {
     // Toast props
     closeToast,
@@ -58,7 +57,7 @@ export const Alert = (props: any) => {
     switch (type) {
       case ALERT_TYPES.SUCCESS: {
         return {
-          container: "bg-green-50",
+          container: "bg-green-50 text-green-800",
           bg: "",
           text: "text-green-800",
           button: "bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:ring-green-600 focus:ring-offset-green-50",
@@ -66,7 +65,7 @@ export const Alert = (props: any) => {
       }
       case ALERT_TYPES.INFO: {
         return {
-          container: "bg-blue-50",
+          container: "bg-blue-50 text-blue-800",
           bg: "",
           text: "text-blue-800",
           button: "bg-blue-50 p-1.5 text-blue-500 hover:bg-blue-100 focus:ring-blue-600 focus:ring-offset-blue-50",
@@ -74,7 +73,7 @@ export const Alert = (props: any) => {
       }
       case ALERT_TYPES.WARNING: {
         return {
-          container: "bg-yellow-50",
+          container: "bg-yellow-50 text-yellow-800",
           bg: "",
           text: "text-yellow-800",
           button: "bg-yellow-50 p-1.5 text-yellow-500 hover:bg-yellow-100 focus:ring-yellow-600 focus:ring-offset-yellow-50",
@@ -82,7 +81,7 @@ export const Alert = (props: any) => {
       }
       case ALERT_TYPES.ERROR: {
         return {
-          container: "bg-red-50",
+          container: "bg-red-50 text-red-800",
           bg: "",
           text: "text-red-800",
           button: "bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:ring-red-600 focus:ring-offset-red-50",
@@ -90,7 +89,7 @@ export const Alert = (props: any) => {
       }
       default: {
         return {
-          container: "bg-gray-50",
+          container: "bg-gray-50 text-gray-800",
           bg: "",
           text: "text-gray-800",
           button: "bg-gray-50 p-1.5 text-gray-500 hover:bg-gray-100 focus:ring-gray-600 focus:ring-offset-gray-50",
