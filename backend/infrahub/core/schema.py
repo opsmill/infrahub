@@ -82,7 +82,7 @@ class AttributeSchema(BaseModel):
         return v
 
     def get_class(self):
-        return ATTRIBUTE_TYPES[self.kind].get_graphql_type()
+        return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
     async def get_query_filter(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=unused-argument
         return self.get_class().get_query_filter(*args, **kwargs)

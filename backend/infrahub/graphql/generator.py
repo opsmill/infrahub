@@ -11,10 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.types import ATTRIBUTE_TYPES
 
-from .mutations import (
-    InfrahubMutation,
-    InfrahubRepositoryMutation,
-)
+from .mutations import InfrahubMutation, InfrahubRepositoryMutation
 from .schema import default_list_resolver
 from .types import (
     InfrahubInterface,
@@ -561,7 +558,7 @@ async def generate_filters(
         return filters
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
+        attr_type = ATTRIBUTE_TYPES[attr.kind].graphql_filter
         filters[f"{attr.name}__value"] = attr_type()
 
     if not top_level:
