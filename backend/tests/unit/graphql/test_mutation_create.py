@@ -223,7 +223,7 @@ async def test_create_object_with_single_relationship(db, session, default_branc
     assert len(result.data["car_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 
-async def test_create_object_with_single_relationship_flap_property(db, session, default_branch, car_person_schema):
+async def test_create_object_with_single_relationship_flag_property(db, session, default_branch, car_person_schema):
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -259,6 +259,51 @@ async def test_create_object_with_single_relationship_flap_property(db, session,
     car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
     rm = await car.owner.get(session=session)
     assert rm.is_protected is True
+
+
+async def test_create_object_with_single_relationship_node_property(
+    db, session, default_branch, car_person_schema, first_account, second_account
+):
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    query = (
+        """
+    mutation {
+        car_create(data: {
+            name: { value: "Accord" },
+            nbr_seats: { value: 5 },
+            is_electric: { value: false },
+            owner: { id: "John", _relation__owner: "%s" }
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+        % first_account.id
+    )
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["car_create"]["ok"] is True
+    assert len(result.data["car_create"]["object"]["id"]) == 36
+
+    car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
+    rm = await car.owner.get(session=session)
+    owner = await rm.get_owner(session=session)
+    assert isinstance(owner, Node)
+    assert owner.id == first_account.id
 
 
 async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
@@ -300,6 +345,79 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
 
     fruit = await NodeManager.get_one(session=session, id=result.data["fruit_create"]["object"]["id"])
     assert len(await fruit.tags.get(session=session)) == 3
+
+
+async def test_create_object_with_multiple_relationships_with_node_property(
+    db, session, default_branch, fruit_tag_schema, first_account, second_account
+):
+    t1 = await Node.init(session=session, schema="Tag")
+    await t1.new(session=session, name="tag1")
+    await t1.save(session=session)
+    t2 = await Node.init(session=session, schema="Tag")
+    await t2.new(session=session, name="tag2")
+    await t2.save(session=session)
+    t3 = await Node.init(session=session, schema="Tag")
+    await t3.new(session=session, name="tag3")
+    await t3.save(session=session)
+
+    query = """
+    mutation {
+        fruit_create(data: {
+            name: { value: "apple" },
+            tags: [
+                {id: "tag1", _relation__source: "%s" },
+                {id: "tag2", _relation__owner: "%s" },
+                {id: "tag3", _relation__source: "%s",  _relation__owner: "%s" }
+            ]
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """ % (
+        first_account.id,
+        second_account.id,
+        first_account.id,
+        second_account.id,
+    )
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["fruit_create"]["ok"] is True
+    assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
+
+    fruit = await NodeManager.get_one(
+        session=session, id=result.data["fruit_create"]["object"]["id"], include_owner=True, include_source=True
+    )
+    tags = {tag.peer_id: tag for tag in await fruit.tags.get(session=session)}
+    assert len(tags) == 3
+
+    t1_source = await tags[t1.id].get_source(session=session)
+    t1_owner = await tags[t1.id].get_owner(session=session)
+    t2_source = await tags[t2.id].get_source(session=session)
+    t2_owner = await tags[t2.id].get_owner(session=session)
+    t3_source = await tags[t3.id].get_source(session=session)
+    t3_owner = await tags[t3.id].get_owner(session=session)
+
+    assert isinstance(t1_source, Node)
+    assert t1_source.id == first_account.id
+    assert t1_owner is None
+    assert t2_source is None
+    assert isinstance(t2_owner, Node)
+    assert t3_owner.id == second_account.id
+    assert isinstance(t3_source, Node)
+    assert t3_source.id == first_account.id
+    assert isinstance(t3_owner, Node)
+    assert t3_owner.id == second_account.id
 
 
 async def test_create_object_with_multiple_relationships_flag_property(db, session, default_branch, fruit_tag_schema):

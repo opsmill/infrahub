@@ -309,12 +309,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         # ---------- Update the Node Properties ----------
         for prop in self._node_properties:
-            if (
-                getattr(self, f"{prop}_id")
-                and current_attr.get(
-                    prop,
-                )
-                and current_attr.get(prop).get("uuid") != getattr(self, f"{prop}_id")
+            if getattr(self, f"{prop}_id") and not (
+                current_attr.get(prop) and current_attr.get(prop).get("uuid") == getattr(self, f"{prop}_id")
             ):
                 query = await AttributeUpdateNodePropertyQuery.init(
                     session=session, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
@@ -322,7 +318,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 await query.execute(session=session)
 
                 rel = current_attr.get(f"rel_{prop}")
-                if rel.get("branch") == self.branch.name:
+                if rel and rel.get("branch") == self.branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, session=session)
 
         return True

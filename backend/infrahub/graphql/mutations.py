@@ -91,7 +91,11 @@ class InfrahubMutationMixin:
     async def mutate_update(cls, root, info, data, branch=None, at=None):
         session: AsyncSession = info.context.get("infrahub_session")
 
-        if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
+        if not (
+            obj := await NodeManager.get_one(
+                session=session, id=data.get("id"), branch=branch, at=at, include_owner=True, include_source=True
+            )
+        ):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
         try:
