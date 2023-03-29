@@ -1,19 +1,17 @@
-import { Popover, Transition } from "@headlessui/react";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   CheckIcon,
   EyeSlashIcon,
-  InformationCircleIcon,
   LockClosedIcon,
   PencilIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline";
-import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { branchState } from "../../state/atoms/branch.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
+import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
@@ -37,13 +35,118 @@ export default function ObjectItemDetails() {
 
   const navigate = useNavigate();
 
-  const navigateToObjectDetailsPage = (obj: any) => {
-    navigate(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`);
-  };
-
   const navigateToObjectEditPage = () => {
     navigate(`/objects/${objectname}/${objectid}/edit`);
   };
+
+  interface iRelationDetailsProps {
+    relationship: iNodeSchema["relationships"]; 
+    row: any;
+  }
+
+  const RelationshipDetails = (props: iRelationDetailsProps) => {
+    const { row, relationship: relationships } = props;
+    const relationship = relationships![0];
+    return <>
+      <div
+        className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
+        key={relationship.name}
+      >
+        <dt className="text-sm font-medium text-gray-500">
+          {relationship.label}
+        </dt>
+        {row[relationship.name] && (
+          <>
+            {relationship.cardinality === "one" && (
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
+                <Link
+                  to={`/objects/${
+                    schemaKindName[relationship.peer]
+                  }/${row[relationship.name].id}`}
+                >
+                  {row[relationship.name].display_label}
+                </Link>
+
+                {row[relationship.name] && (
+                  <MetaDetailsTooltip items={[
+                    {
+                      label: "Updated at",
+                      value: row[relationship.name]._updated_at,
+                      type: "date",
+                    },
+                    {
+                      label: "Source",
+                      value: row[relationship.name]._relation__source,
+                      type: "link"
+                    },
+                    {
+                      label: "Owner",
+                      value: row[relationship.name]._relation__owner,
+                      type: "link"
+                    },
+                  ]} />
+                )}
+
+                {row[relationship.name]._relation__is_protected && (
+                  <LockClosedIcon className="h-5 w-5 ml-2" />
+                )}
+
+                {row[relationship.name]._relation__is_visible ===
+                            false && <EyeSlashIcon className="h-5 w-5 ml-2" />}
+              </dd>
+            )}
+            {relationship.cardinality === "many" && (
+              <div className="sm:col-span-2 space-y-4">
+                {row[relationship.name].map((item: any) => (
+                  <dd
+                    className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
+                    key={item.id}
+                  >
+                    <Link
+                      to={`/objects/${
+                        schemaKindName[relationship.peer]
+                      }/${item.id}`}
+                    >
+                      {item.display_label}
+                    </Link>
+
+                    {item && (
+                      <MetaDetailsTooltip items={[
+                        {
+                          label: "Updated at",
+                          value: item._updated_at,
+                          type: "date",
+                        },
+                        {
+                          label: "Source",
+                          value: item._relation__source,
+                          type: "link"
+                        },
+                        {
+                          label: "Owner",
+                          value: item._relation__owner,
+                          type: "link"
+                        },
+                      ]} />
+                    )}
+
+                    {item._relation__is_protected && (
+                      <LockClosedIcon className="h-5 w-5 ml-2" />
+                    )}
+
+                    {item._relation__is_visible === false && (
+                      <EyeSlashIcon className="h-5 w-5 ml-2" />
+                    )}
+                  </dd>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {!row[relationship.name] && <>-</>}
+      </div>
+    </>
+  }
 
   const fetchObjectDetails = useCallback(async () => {
     setHasError(false);
@@ -164,73 +267,29 @@ export default function ObjectItemDetails() {
 
                   <div className="flex items-center">
                     <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                      {(row[attribute.name]?.value !== false && row[attribute.name]?.value) ?? "-"}
+                      {(row[attribute.name]?.value !== false && row[attribute.name].value) ? row[attribute.name].value : "-"}
                       {row[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
                       {row[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
                     </dd>
 
-                    {row[attribute.name] &&
-                      (row[attribute.name].source ||
-                      row[attribute.name].owner ||
-                      row[attribute.name].updated_at) && (
-                      <Popover className="relative mt-1.5 ml-2">
-                        <Popover.Button>
-                          <InformationCircleIcon className="w-5 h-5" />
-                        </Popover.Button>
-                        <Transition
-                          as={Fragment}
-                          enter="transition ease-out duration-200"
-                          enterFrom="opacity-0 translate-y-1"
-                          enterTo="opacity-100 translate-y-0"
-                          leave="transition ease-in duration-150"
-                          leaveFrom="opacity-100 translate-y-0"
-                          leaveTo="opacity-0 translate-y-1"
-                        >
-                          <Popover.Panel className="absolute z-10 bg-white rounded-lg border shadow-xl">
-                            <div className="w-80 text-sm divide-y px-4">
-                              <div className="flex justify-between w-full py-4">
-                                <div>Updated at: </div>
-
-                                <div>
-                                  {formatDistance(
-                                    new Date(row[attribute.name].updated_at),
-                                    new Date(),
-                                    { addSuffix: true }
-                                  )}
-                                </div>
-                              </div>
-                              {row[attribute.name].source && <div className="flex justify-between w-full py-4">
-                                <div>Source: </div>
-                                <div
-                                  className="underline cursor-pointer"
-                                  onClick={() =>
-                                    navigateToObjectDetailsPage(
-                                      row[attribute.name].source
-                                    )
-                                  }
-                                >
-                                  {row[attribute.name].source.display_label}
-                                </div>
-                              </div>}
-                              
-                              {row[attribute.name].owner && <div className="flex justify-between w-full py-4">
-                                <div>Owner: </div>
-                                <div
-                                  className="underline cursor-pointer"
-                                  onClick={() =>
-                                    navigateToObjectDetailsPage(
-                                      row[attribute.name].owner
-                                    )
-                                  }
-                                >
-                                  {row[attribute.name].owner.display_label}
-                                </div>
-                              </div>}
-                              
-                            </div>
-                          </Popover.Panel>
-                        </Transition>
-                      </Popover>
+                    {row[attribute.name] && (
+                      <MetaDetailsTooltip items={[
+                        {
+                          label: "Updated at",
+                          value: row[attribute.name].updated_at,
+                          type: "date",
+                        },
+                        {
+                          label: "Source",
+                          value: row[attribute.name].source,
+                          type: "link"
+                        },
+                        {
+                          label: "Owner",
+                          value: row[attribute.name].owner,
+                          type: "link"
+                        },
+                      ]} />
                     )}
 
                     {row[attribute.name].is_protected && (
@@ -244,65 +303,12 @@ export default function ObjectItemDetails() {
                 </div>
               );
             })}
+            
             {schema.relationships
-            ?.filter((relationship) => relationship.kind === "Attribute")
-            .map((relationship) => (
-              <div
-                className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
-                key={relationship.name}
-              >
-                <dt className="text-sm font-medium text-gray-500">
-                  {relationship.label}
-                </dt>
-                {row[relationship.name] && (
-                  <>
-                    {relationship.cardinality === "one" && (
-                      <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
-                        <Link
-                          to={`/objects/${
-                            schemaKindName[relationship.peer]
-                          }/${row[relationship.name].id}`}
-                        >
-                          {row[relationship.name].display_label}
-                        </Link>
-                        {row[relationship.name]._relation__is_protected && (
-                          <LockClosedIcon className="h-5 w-5 ml-2" />
-                        )}
+            ?.filter((relationship) => relationship.kind === "Attribute").map(relationship => <RelationshipDetails key={relationship.name} relationship={[relationship]} row={row} />)}
+            
 
-                        {row[relationship.name]._relation__is_visible ===
-                            false && <EyeSlashIcon className="h-5 w-5 ml-2" />}
-                      </dd>
-                    )}
-                    {relationship.cardinality === "many" && (
-                      <div className="sm:col-span-2 space-y-4">
-                        {row[relationship.name].map((item: any) => (
-                          <dd
-                            className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
-                            key={item.id}
-                          >
-                            <Link
-                              to={`/objects/${
-                                schemaKindName[relationship.peer]
-                              }/${item.id}`}
-                            >
-                              {item.display_label}
-                            </Link>
-                            {item._relation__is_protected && (
-                              <LockClosedIcon className="h-5 w-5 ml-2" />
-                            )}
 
-                            {item._relation__is_visible === false && (
-                              <EyeSlashIcon className="h-5 w-5 ml-2" />
-                            )}
-                          </dd>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-                {!row[relationship.name] && <>-</>}
-              </div>
-            ))}
           </dl>
         </div>
       )}
@@ -312,48 +318,7 @@ export default function ObjectItemDetails() {
             {schema.relationships
             ?.filter((relationship) => relationship.name === selectedTab)
             .map((relationship) => (
-              <div
-                className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
-                key={relationship.name}
-              >
-                <dt className="text-sm font-medium text-gray-500">
-                  {relationship.label}
-                </dt>
-                {row[relationship.name] && (
-                  <>
-                    {relationship.cardinality === "one" && (
-                      <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline">
-                        <Link
-                          to={`/objects/${
-                            schemaKindName[relationship.peer]
-                          }/${row[relationship.name].id}`}
-                        >
-                          {row[relationship.name].display_label}
-                        </Link>
-                      </dd>
-                    )}
-                    {relationship.cardinality === "many" && (
-                      <div className="sm:col-span-2 space-y-4">
-                        {row[relationship.name].map((item: any) => (
-                          <dd
-                            className="mt-1 text-sm text-gray-900 sm:mt-0 underline"
-                            key={item.id}
-                          >
-                            <Link
-                              to={`/objects/${
-                                schemaKindName[relationship.peer]
-                              }/${item.id}`}
-                            >
-                              {item.display_label}
-                            </Link>
-                          </dd>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-                {!row[relationship.name] && <>-</>}
-              </div>
+              <RelationshipDetails key={relationship.name} relationship={[relationship]} row={row} />
             ))}
           </dl>
         </div>

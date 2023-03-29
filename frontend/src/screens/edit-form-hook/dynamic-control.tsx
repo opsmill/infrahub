@@ -116,11 +116,15 @@ export const DynamicControl = (props: DynamicFieldData) => {
   return input;
 };
 
-export const DynamicControlMetadata = (props: DynamicFieldData) => {
+interface iSourceOwnerFieldProps {
+  field: DynamicFieldData;
+  metaFieldName: string;
+}
+
+export const SourceOwnerField = (props: iSourceOwnerFieldProps) => {
   const {
-    fieldName,
-    isAttribute,
-    defaultValue,
+    field,
+    metaFieldName,
   } = props;
   const { register } = useFormContext();
   const [schemaList] = useAtom(schemaState);
@@ -135,18 +139,10 @@ export const DynamicControlMetadata = (props: DynamicFieldData) => {
 
   const [relatedItemOptions, setRelatedItemOptions] = useState<iPeerDropdownOption[]>([]);
 
-  let metaAttribute;
+  const name = field.fieldName + "." + metaFieldName;
+  const metaFieldObject = field.defaultValue[metaFieldName];
 
-  if(isAttribute) {
-    metaAttribute = "owner";
-  } else {
-    metaAttribute = "_relation__owner";
-  }
-
-  const name = fieldName + "." + metaAttribute;
-  const metaField = defaultValue[metaAttribute];
-
-  const [objectKindname, setObjectKindName] = useState(metaField ? metaField.__typename : "");
+  const [objectKindname, setObjectKindName] = useState(metaFieldObject ? metaFieldObject.__typename : "");
 
   const setDropdownOptions = useCallback(async () => {
     const schema = schemaList.filter(schema => schema.kind === objectKindname);
@@ -162,11 +158,20 @@ export const DynamicControlMetadata = (props: DynamicFieldData) => {
     setDropdownOptions();
   }, [objectKindname, setDropdownOptions]);
 
-  return <div className="flex">
-    <div>
+  return <>
+    <div className="sm:col-span-1"></div>
+    <div className="sm:col-span-6">
+      <label 
+        className="block text-sm font-medium leading-6 text-gray-900 capitalize mt-4 mb-2">
+        {metaFieldName.split("_").filter(r => !!r).join(" ")}
+      </label>
+    </div>
+    <div className="sm:col-span-1"></div>
+    <div className="sm:col-span-3">
       <select
-        className="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
         defaultValue={objectKindname}
+        placeholder="Choose Type"
         onChange={(e) => setObjectKindName(e.target.value)}
       >
         {schemaOptions.map((o, index) => (
@@ -176,19 +181,32 @@ export const DynamicControlMetadata = (props: DynamicFieldData) => {
         ))}
       </select>
     </div>
-    <div>
+    <div className="sm:col-span-3">
       {relatedItemOptions.length > 0 && <select
-        className="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
         {...register(name, {
-          value: metaField ? metaField.id : "",
+          value: metaFieldObject ? metaFieldObject.id : "",
         })}
       >
         {relatedItemOptions.map((o, index) => (
           <option key={index} value={o.id}>
-            {o.id.slice(0, 10)} {o.display_label}
+            {o.display_label}
           </option>
         ))}
       </select>}
     </div>
-  </div>
+    
+  </>
+};
+
+export const MetaDataFields = (props: DynamicFieldData) => {
+  const {
+    isAttribute,
+  } = props;
+
+  const sourceOwnerFields = isAttribute ? ["owner", "source"] : ["_relation__owner", "_relation__source"];
+
+  return <>
+    {sourceOwnerFields.map(sourceOwnerField => <SourceOwnerField field={props} metaFieldName={sourceOwnerField} key={sourceOwnerField} />)}
+  </>
 };
