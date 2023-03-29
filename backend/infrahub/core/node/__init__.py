@@ -415,7 +415,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                             changed = True
 
             if key in self._relationships:
-                rel = getattr(self, key)
+                rel: RelationshipManager = getattr(self, key)
                 changed |= await rel.update(session=session, data=value)
 
         return changed
