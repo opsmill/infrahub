@@ -1,7 +1,7 @@
 ---
 # yamllint disable rule:line-length
 tasks:
-  - name: Run Frontend
+  - name: Frontend
     before: cd frontend
     init: npm install
     command: |
@@ -9,7 +9,7 @@ tasks:
       URL_8000=`gp url 8000`
       export REACT_APP_INFRAHUB_API_SERVER_URL=$URL_8000
       npm start
-  - name: Setup Python Environment
+  - name: CLI
     init: |
       pip install toml invoke
       curl -sSL https://install.python-poetry.org | python3 -
@@ -23,13 +23,13 @@ tasks:
       invoke demo.dev-start
       gp sync-done python-setup
 
-  - name: Run API Server
+  - name: Backend API
     command: |
       gp ports await 5672
       gp sync-await python-setup
       poetry run gunicorn infrahub.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 
-  - name: Run Git Server
+  - name: Git Agent
     command: |
       gp ports await 8000
       poetry run infrahub git-agent start --debug
@@ -48,23 +48,30 @@ ports:
     visibility: public
   - port: 7474
     onOpen: ignore
-    name: Neo4j-ui
+    name: neo4j-ui
     description: Graphical interface for Neo4j
     visibility: private
   - port: 7687
     onOpen: ignore
-    name: Neo4j-api
+    name: neo4j-api
     description: API for Neo4j
     visibility: private
   - port: 15672
     onOpen: ignore
     name: rabbitmq-1
     visibility: private
+  - port: 5672
+    onOpen: ignore
+    name: rabbitmq-2
+    visibility: private
   - port: 42987
     onOpen: ignore
-    name: rabbitmq-1
+    name: rabbitmq-3
     visibility: private
-
+  - port: 44845
+    onOpen: ignore
+    name: rabbitmq-4
+    visibility: private
 vscode:
   extensions:
     - pomdtr.excalidraw-editor
