@@ -101,8 +101,7 @@ export const BrancheItemDetails = () => {
                   }
                 })}
                 type={BUTTON_TYPES.VALIDATE}
-                // disabled={branch.is_default}
-                disabled
+                disabled={branch.is_default}
               >
                 Merge
                 <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
@@ -135,8 +134,7 @@ export const BrancheItemDetails = () => {
                     name: branch.name
                   }
                 })}
-                // disabled={branch.is_default}
-                disabled
+                disabled={branch.is_default}
               >
                 Rebase
                 <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
