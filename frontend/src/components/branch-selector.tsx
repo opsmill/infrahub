@@ -2,8 +2,9 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "..";
 import { CONFIG } from "../config/config";
 import { Branch } from "../generated/graphql";
@@ -24,6 +25,7 @@ import { Switch } from "./switch";
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
+  const [qsBranch, setQsBranch] = useQueryParam("branch", StringParam);
 
   const [date] = useAtom(timeState);
   const [newBranchName, setNewBranchName] = useState("");
@@ -32,13 +34,27 @@ export default function BranchSelector() {
   const [branchedFrom] = useState(); // TODO: Add camendar component
   const [isDataOnly, setIsDataOnly] = useState(false);
 
+  const getCurrentBranch = useCallback(() :Branch => {
+    if(branch) {
+      return branch;
+    }
+
+    if(qsBranch) {
+      return branches.filter((b) => b.name === qsBranch.trim())[0];
+    } else {
+      return branches.filter(b => b.is_default)[0];
+    }
+  }, [branch, branches, qsBranch]);
+
+  useEffect(() => {
+    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(getCurrentBranch()?.name, date));
+  }, [date, getCurrentBranch, qsBranch]);
+
   const valueLabel = (
     <>
       <CheckIcon className="h-5 w-5" aria-hidden="true" />
       <p className="ml-2.5 text-sm font-medium">
-        {branch
-          ? branch?.name
-          : branches.filter((b) => b.name === "main")[0]?.name}
+        {getCurrentBranch()?.name}
       </p>
     </>
   );
@@ -65,6 +81,7 @@ export default function BranchSelector() {
    */
   const onBranchChange = (branch: Branch) => {
     graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
+    setQsBranch(branch.name);
     setBranch(branch);
   };
 

@@ -10,6 +10,7 @@ import Datetime from "react-datetime";
 import "react-datetime/css/react-datetime.css";
 
 import { useAtom } from "jotai";
+import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "../..";
 import BranchSelector from "../../components/branch-selector";
 import { CONFIG } from "../../config/config";
@@ -24,13 +25,14 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
+  const [qsDate, setQsDate] = useQueryParam("date", StringParam);
   const [branch] = useAtom(branchState);
-  const [isDateDefault, setIsDateDefault] = useState(true);
+  const [isDateDefault, setIsDateDefault] = useState(qsDate ? false : true);
   const { setSidebarOpen } = props;
 
   useEffect(() => {
     graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
-  }, [date, branch]);
+  }, [date, branch, qsDate]);
 
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-white shadow">
@@ -80,10 +82,11 @@ export default function Header(props: Props) {
 
           {!isDateDefault && (
             <Datetime
-              initialValue={date}
+              initialValue={qsDate ? new Date(qsDate) : date}
               onChange={(a: any) => {
                 if (a.toDate) {
                   setDate(a.toDate());
+                  setQsDate(a.toDate());
                 }
               }}
               className="mr-5"
