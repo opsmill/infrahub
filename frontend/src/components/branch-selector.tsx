@@ -156,8 +156,8 @@ export default function BranchSelector() {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
     } catch (e) {
-      console.error("error: ", e);
-      toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} />);
+      const details = "An error occured while creating the branch";
+      toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={details} />);
     }
   };
 
