@@ -1,3 +1,4 @@
+import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
 import DeviceList from "../screens/device-list/device-list";
 import Layout from "../screens/layout/layout";
@@ -38,8 +39,12 @@ export const MAIN_ROUTES = [
         element: <DeviceList />,
       },
       {
-        path: "/branches/list",
+        path: "/branches",
         element: <BranchesItems />,
+      },
+      {
+        path: "/branches/:branchid",
+        element: <BrancheItemDetails />,
       },
     ],
   },
@@ -54,7 +59,7 @@ export const ADMIN_MENU_ITEMS = [
 
 export const BRANCHES_MENU_ITEMS = [
   {
-    path: "/branches/list",
+    path: "/branches",
     label: "List"
   }
 ];

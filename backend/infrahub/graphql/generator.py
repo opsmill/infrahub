@@ -4,34 +4,21 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Tuple, Type, Union
 
 import graphene
-from graphene.types.generic import GenericScalar
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+from infrahub.types import ATTRIBUTE_TYPES
 
-from .mutations import (
-    AnyAttributeInput,
-    BoolAttributeInput,
-    InfrahubMutation,
-    InfrahubRepositoryMutation,
-    IntAttributeInput,
-    ListAttributeInput,
-    StringAttributeInput,
-)
+from .mutations import InfrahubMutation, InfrahubRepositoryMutation
 from .schema import default_list_resolver
 from .types import (
-    AnyAttributeType,
-    BoolAttributeType,
     InfrahubInterface,
     InfrahubObject,
     InfrahubUnion,
-    IntAttributeType,
-    ListAttributeType,
     RelatedNodeInput,
     RelatedNodeInterface,
-    StrAttributeType,
 )
 from .utils import extract_fields
 
@@ -41,38 +28,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
 
 # pylint: disable=protected-access,too-many-locals
-
-TYPES_MAPPING_INFRAHUB_GRAPHQL = {
-    "String": StrAttributeType,
-    "Integer": IntAttributeType,
-    "Boolean": BoolAttributeType,
-    "List": ListAttributeType,
-    "Any": AnyAttributeType,
-}
-
-TYPES_MAPPING_INFRAHUB_GRAPHQL_STR = {
-    "String": "StrAttributeType",
-    "Integer": "IntAttributeType",
-    "Boolean": "BoolAttributeType",
-    "List": "ListAttributeType",
-    "Any": "AnyAttributeType",
-}
-
-INPUT_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
-    "String": StringAttributeInput,
-    "Integer": IntAttributeInput,
-    "Boolean": BoolAttributeInput,
-    "List": ListAttributeInput,
-    "Any": AnyAttributeInput,
-}
-
-FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL = {
-    "String": graphene.String,
-    "Integer": graphene.Int,
-    "Boolean": graphene.Boolean,
-    "List": GenericScalar,
-    "Any": GenericScalar,
-}
 
 
 class DeleteInput(graphene.InputObjectType):
@@ -156,8 +111,10 @@ async def default_resolver(*args, **kwargs):
 
 
 def load_attribute_types_in_registry(branch: Branch):
-    for attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.values():
-        registry.set_graphql_type(name=attr_class.__name__, graphql_type=attr_class, branch=branch.name)
+    for data_type in ATTRIBUTE_TYPES.values():
+        registry.set_graphql_type(
+            name=data_type.get_graphql_type_name(), graphql_type=data_type.get_graphql_type(), branch=branch.name
+        )
 
 
 async def generate_object_types(
@@ -185,8 +142,8 @@ async def generate_object_types(
     # Define DataOwner and DataOwner
     data_source = registry.get_graphql_type(name="DataSource", branch=branch)
     data_owner = registry.get_graphql_type(name="DataOwner", branch=branch)
-    for attr_class in TYPES_MAPPING_INFRAHUB_GRAPHQL.values():
-        gql_type = registry.get_graphql_type(name=attr_class.__name__, branch=branch)
+    for data_type in ATTRIBUTE_TYPES.values():
+        gql_type = registry.get_graphql_type(name=data_type.get_graphql_type_name(), branch=branch)
         gql_type._meta.fields["source"] = graphene.Field(data_source)
         gql_type._meta.fields["owner"] = graphene.Field(data_owner)
 
@@ -320,7 +277,9 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
     }
 
     for attr in schema.local_attributes:
-        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
+        attr_type = registry.get_graphql_type(
+            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+        )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(schema.kind, (InfrahubObject,), main_attrs)
@@ -362,7 +321,9 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
     }
 
     for attr in schema.attributes:
-        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
+        attr_type = registry.get_graphql_type(
+            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+        )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
@@ -382,7 +343,9 @@ def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> 
     }
 
     for attr in schema.attributes:
-        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
+        attr_type = registry.get_graphql_type(
+            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+        )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
@@ -417,7 +380,9 @@ def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[
         "Meta": type("Meta", (object,), meta_attrs),
     }
     for attr in schema.attributes:
-        attr_type = registry.get_graphql_type(name=TYPES_MAPPING_INFRAHUB_GRAPHQL_STR[attr.kind], branch=branch.name)
+        attr_type = registry.get_graphql_type(
+            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+        )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(f"Related{schema.kind}", (InfrahubObject,), main_attrs)
@@ -446,7 +411,7 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> graphene.Input
     attrs = {"id": graphene.String(required=False)}
 
     for attr in schema.attributes:
-        attr_type = INPUT_TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
 
         # A Field is not required if explicitely indicated or if a default value has been provided
         required = not attr.optional if not attr.default_value else False
@@ -479,7 +444,7 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.Input
     attrs = {"id": graphene.String(required=True)}
 
     for attr in schema.attributes:
-        attr_type = INPUT_TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
         attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
     for rel in schema.relationships:
@@ -592,7 +557,7 @@ async def generate_filters(
         return filters
 
     for attr in schema.attributes:
-        attr_type = FILTER_TYPES_MAPPING_INFRAHUB_GRAPHQL[attr.kind]
+        attr_type = ATTRIBUTE_TYPES[attr.kind].graphql_filter
         filters[f"{attr.name}__value"] = attr_type()
 
     if not top_level:

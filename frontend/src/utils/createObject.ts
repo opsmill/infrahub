@@ -12,11 +12,11 @@ const mutationTemplate = Handlebars.compile(`mutation {{kind.value}}Create {
 `);
 
 const createObject = async (schema: iNodeSchema, updateObject: any[]) => {
-  const createMutation = mutationTemplate({
+  const mutation = mutationTemplate({
     name: schema.name,
     data: getStringJSONWithoutQuotes(updateObject),
   });
-  return graphQLClient.request(createMutation);
+  return graphQLClient.request(mutation);
 };
 
 export default createObject;

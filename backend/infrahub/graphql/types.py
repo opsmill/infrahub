@@ -264,6 +264,38 @@ class AttributeInterface(InfrahubInterface):
 class BaseAttribute(ObjectType):
     id = Field(String)
 
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        registry.default_graphql_type[cls.__name__] = cls
+
+
+class TextAttributeType(BaseAttribute):
+    value = Field(String)
+
+    class Meta:
+        description = "Attribute of type Text"
+        name = "TextAttribute"
+        interfaces = {AttributeInterface}
+
+
+class NumberAttributeType(BaseAttribute):
+    value = Field(Int)
+
+    class Meta:
+        description = "Attribute of type Number"
+        name = "NumberAttribute"
+        interfaces = {AttributeInterface}
+
+
+class CheckboxAttributeType(BaseAttribute):
+    value = Field(Boolean)
+
+    class Meta:
+        description = "Attribute of type Checkbox"
+        name = "CheckboxAttribute"
+        interfaces = {AttributeInterface}
+
 
 class StrAttributeType(BaseAttribute):
     value = Field(String)

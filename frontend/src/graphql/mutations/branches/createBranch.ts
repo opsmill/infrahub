@@ -1,10 +1,10 @@
-import { graphQLClient } from "../..";
-import { objectToString } from "../../utils/common";
+import { graphQLClient } from "../../..";
+import { objectToString } from "../../../utils/common";
 
 declare var Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`
-mutation branchCreate {
+mutation {
   branch_create (
     data: { {{{data}}} }
   ) {
@@ -14,11 +14,11 @@ mutation branchCreate {
 `);
 
 const createBranch = async (data: any) => {
-  const createMutation = mutationTemplate({
+  const mutation = mutationTemplate({
     data: objectToString(data)
   });
 
-  return graphQLClient.request(createMutation);
+  return graphQLClient.request(mutation);
 };
 
 export default createBranch;

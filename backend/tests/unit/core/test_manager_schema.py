@@ -22,10 +22,10 @@ async def test_register_schema_to_registry(session, default_branch):
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "level", "kind": "Integer"},
-                    {"name": "color", "kind": "String", "default_value": "#444444"},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "level", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
             }
         ],
@@ -35,7 +35,7 @@ async def test_register_schema_to_registry(session, default_branch):
                 "kind": "GenericInterface",
                 "branch": True,
                 "attributes": [
-                    {"name": "my_generic_name", "kind": "String"},
+                    {"name": "my_generic_name", "kind": "Text"},
                 ],
             },
         ],
@@ -64,10 +64,10 @@ async def test_load_node_to_db_node_schema(session, default_branch):
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "level", "kind": "Integer"},
-            {"name": "color", "kind": "String", "default_value": "#444444"},
-            {"name": "description", "kind": "String", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number"},
+            {"name": "color", "kind": "Text", "default_value": "#444444"},
+            {"name": "description", "kind": "Text", "optional": True},
         ],
     }
     node = NodeSchema(**SCHEMA)
@@ -85,7 +85,7 @@ async def test_load_node_to_db_generic_schema(session, default_branch):
         "kind": "GenericInterface",
         "branch": True,
         "attributes": [
-            {"name": "my_generic_name", "kind": "String"},
+            {"name": "my_generic_name", "kind": "Text"},
         ],
     }
     node = GenericSchema(**SCHEMA)
@@ -141,10 +141,10 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "label": "Criticality",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "label": "Name", "unique": True},
-                    {"name": "level", "kind": "Integer", "label": "Level"},
-                    {"name": "color", "kind": "String", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "String", "label": "Description", "optional": True},
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
                     {"name": "tags", "peer": "Tag", "label": "Tags", "optional": True, "cardinality": "many"},
@@ -165,8 +165,8 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "String", "label": "Description", "optional": True},
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
             },
         ],
@@ -177,7 +177,7 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "label": "Generic Interface",
                 "branch": True,
                 "attributes": [
-                    {"name": "my_generic_name", "kind": "String", "label": "My Generic String"},
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
                 ],
             },
         ],
@@ -211,34 +211,35 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
         schema1.groups[0].dict(exclude={"filters"}), schema2.groups[0].dict(exclude={"filters"}), ignore_order=True
     )
 
+    # breakpoint()
     criticality_dict = schema_criticality.dict()
 
     expected_filters = [
         {"name": "ids", "kind": FilterSchemaKind.LIST, "enum": None, "object_kind": None, "description": None},
         {
             "name": "level__value",
-            "kind": FilterSchemaKind.INTEGER,
+            "kind": FilterSchemaKind.NUMBER,
             "enum": None,
             "object_kind": None,
             "description": None,
         },
         {
             "name": "color__value",
-            "kind": FilterSchemaKind.STRING,
+            "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
         },
         {
             "name": "name__value",
-            "kind": FilterSchemaKind.STRING,
+            "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
         },
         {
             "name": "description__value",
-            "kind": FilterSchemaKind.STRING,
+            "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
@@ -258,17 +259,17 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
             "branch": True,
             "optional": True,
             "filters": [
-                {"name": "id", "kind": FilterSchemaKind.STRING, "enum": None, "object_kind": None, "description": None},
+                {"name": "id", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
                 {
                     "name": "description__value",
-                    "kind": FilterSchemaKind.STRING,
+                    "kind": FilterSchemaKind.TEXT,
                     "enum": None,
                     "object_kind": None,
                     "description": None,
                 },
                 {
                     "name": "name__value",
-                    "kind": FilterSchemaKind.STRING,
+                    "kind": FilterSchemaKind.TEXT,
                     "enum": None,
                     "object_kind": None,
                     "description": None,
@@ -287,17 +288,17 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
             "branch": True,
             "optional": True,
             "filters": [
-                {"name": "id", "kind": FilterSchemaKind.STRING, "enum": None, "object_kind": None, "description": None},
+                {"name": "id", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
                 {
                     "name": "description__value",
-                    "kind": FilterSchemaKind.STRING,
+                    "kind": FilterSchemaKind.TEXT,
                     "enum": None,
                     "object_kind": None,
                     "description": None,
                 },
                 {
                     "name": "name__value",
-                    "kind": FilterSchemaKind.STRING,
+                    "kind": FilterSchemaKind.TEXT,
                     "enum": None,
                     "object_kind": None,
                     "description": None,

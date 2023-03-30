@@ -73,7 +73,7 @@ const getObjectItemDisplayValue = (row: any, attribute: any) => {
 };
 
 export default function ObjectItems() {
-  let { objectname } = useParams();
+  const { objectname } = useParams();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [objectRows, setObjectRows] = useState<any[] | undefined>();
