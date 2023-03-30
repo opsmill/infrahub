@@ -30,7 +30,7 @@ export default function BranchSelector() {
   const [newBranchDescription, setNewBranchDescription] = useState("");
   const [originBranch, setOriginBranch] = useState();
   const [branchedFrom] = useState(); // TODO: Add camendar component
-  const [isDataOnly, setIsDataOnly] = useState(false);
+  const [isDataOnly, setIsDataOnly] = useState(true);
 
   const valueLabel = (
     <>
