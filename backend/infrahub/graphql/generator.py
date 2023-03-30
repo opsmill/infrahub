@@ -118,7 +118,6 @@ async def default_resolver(*args, **kwargs):
     at = info.context.get("infrahub_at")
     branch = info.context.get("infrahub_branch")
     account = info.context.get("infrahub_account", None)
-    session = info.context.get("infrahub_session")
     db = info.context.get("infrahub_database")
 
     # Extract the name of the fields in the GQL query
@@ -146,14 +145,14 @@ async def default_resolver(*args, **kwargs):
             include_owner=True,
         )
 
-    if node_rel.cardinality == "many":
-        return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
+        if node_rel.cardinality == "many":
+            return [await obj.to_graphql(session=new_session, fields=fields) for obj in objs]
 
-    # If cardinality is one
-    if not objs:
-        return None
+        # If cardinality is one
+        if not objs:
+            return None
 
-    return await objs[0].to_graphql(session=session, fields=fields)
+        return await objs[0].to_graphql(session=new_session, fields=fields)
 
 
 def load_attribute_types_in_registry(branch: Branch):
