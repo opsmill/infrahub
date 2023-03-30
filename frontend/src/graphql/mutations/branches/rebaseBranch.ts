@@ -4,8 +4,8 @@ import { objectToString } from "../../../utils/common";
 declare var Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`
-mutation branchCreate {
-  branch_create (
+mutation {
+  branch_rebase (
     data: { {{{data}}} }
   ) {
       ok
