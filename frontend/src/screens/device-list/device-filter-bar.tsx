@@ -162,9 +162,9 @@ export default function DeviceFilterBar(props: Props) {
                   (filter) => {
                     if (filter.kind === "Object") {
                       return <FilterCombobox filter={filter} key={filter.name} />;
-                    } else if (filter.kind === "String" && !filter.enum) {
+                    } else if (filter.kind === "Text" && !filter.enum) {
                       return <FilterTextField filter={filter} key={filter.name} />;
-                    } else if (filter.kind === "String" && filter.enum) {
+                    } else if (filter.kind === "Text" && filter.enum) {
                       return <FilterComboEnum filter={filter} key={filter.name} />;
                     } else {
                       return null;
