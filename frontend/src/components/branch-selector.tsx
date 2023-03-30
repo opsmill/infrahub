@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 import { graphQLClient } from "..";
 import { CONFIG } from "../config/config";
 import { Branch } from "../generated/graphql";
-import createBranch from "../graphql/mutations/createBranch";
+import createBranch from "../graphql/mutations/branches/createBranch";
 import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
 import { timeState } from "../state/atoms/time.atom";
