@@ -36,15 +36,15 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     /**
-     * AnalyticsSettings 
+     * AnalyticsSettings
      * @description Base class for settings, allowing values to be overridden by environment variables.
-     * 
+     *
      * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
      * Heroku and any 12 factor app design.
      */
     AnalyticsSettings: {
       /**
-       * Enable 
+       * Enable
        * @default true
        */
       enable?: boolean;
@@ -74,22 +74,22 @@ export interface components {
       /** Min Length */
       min_length?: number;
       /**
-       * Inherited 
+       * Inherited
        * @default false
        */
       inherited?: boolean;
       /**
-       * Unique 
+       * Unique
        * @default false
        */
       unique?: boolean;
       /**
-       * Branch 
+       * Branch
        * @default true
        */
       branch?: boolean;
       /**
-       * Optional 
+       * Optional
        * @default false
        */
       optional?: boolean;
@@ -113,8 +113,8 @@ export interface components {
       description?: string;
     };
     /**
-     * FilterSchemaKind 
-     * @description An enumeration. 
+     * FilterSchemaKind
+     * @description An enumeration.
      * @enum {string}
      */
     FilterSchemaKind: "Text" | "Number" | "Boolean" | "Object" | "MultiObject" | "Enum";
@@ -131,15 +131,15 @@ export interface components {
       version: string;
     };
     /**
-     * LoggingSettings 
+     * LoggingSettings
      * @description Base class for settings, allowing values to be overridden by environment variables.
-     * 
+     *
      * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
      * Heroku and any 12 factor app design.
      */
     LoggingSettings: {
       /**
-       * Remote 
+       * Remote
        * @default {
        *   "enable": false
        * }
@@ -147,20 +147,20 @@ export interface components {
       remote?: components["schemas"]["RemoteLoggingSettings"];
     };
     /**
-     * MainSettings 
+     * MainSettings
      * @description Base class for settings, allowing values to be overridden by environment variables.
-     * 
+     *
      * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
      * Heroku and any 12 factor app design.
      */
     MainSettings: {
       /**
-       * Default Branch 
+       * Default Branch
        * @default main
        */
       default_branch?: string;
       /**
-       * Internal Address 
+       * Internal Address
        * @default http://localhost:8000
        */
       internal_address?: string;
@@ -184,7 +184,7 @@ export interface components {
       /** Groups */
       groups?: (string)[];
       /**
-       * Branch 
+       * Branch
        * @default true
        */
       branch?: boolean;
@@ -196,14 +196,14 @@ export interface components {
       filters?: (components["schemas"]["FilterSchema"])[];
     };
     /**
-     * RelationshipCardinality 
-     * @description An enumeration. 
+     * RelationshipCardinality
+     * @description An enumeration.
      * @enum {string}
      */
     RelationshipCardinality: "one" | "many";
     /**
-     * RelationshipKind 
-     * @description An enumeration. 
+     * RelationshipKind
+     * @description An enumeration.
      * @enum {string}
      */
     RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent";
@@ -222,19 +222,19 @@ export interface components {
       /** Identifier */
       identifier?: string;
       /**
-       * Inherited 
+       * Inherited
        * @default false
        */
       inherited?: boolean;
       /** @default many */
       cardinality?: components["schemas"]["RelationshipCardinality"];
       /**
-       * Branch 
+       * Branch
        * @default true
        */
       branch?: boolean;
       /**
-       * Optional 
+       * Optional
        * @default true
        */
       optional?: boolean;
@@ -242,15 +242,15 @@ export interface components {
       filters?: (components["schemas"]["FilterSchema"])[];
     };
     /**
-     * RemoteLoggingSettings 
+     * RemoteLoggingSettings
      * @description Base class for settings, allowing values to be overridden by environment variables.
-     * 
+     *
      * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
      * Heroku and any 12 factor app design.
      */
     RemoteLoggingSettings: {
       /**
-       * Enable 
+       * Enable
        * @default false
        */
       enable?: boolean;
