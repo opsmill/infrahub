@@ -534,7 +534,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                     if prop_node := result.get(prop):
                         data.properties[prop] = NodePropertyData(
                             name=prop,
-                            prop_db_id=prop_node.id,
+                            prop_db_id=prop_node.element_id,
                             rel=RelData.from_db(result.get(f"rel_{prop}")),
                             value=prop_node.get("uuid"),
                         )
