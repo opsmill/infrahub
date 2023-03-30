@@ -41,6 +41,7 @@ const getBranchDetails = async (id: string) => {
   `;
 
   const data = await graphQLClient.request(query);
+  console.log("data: ", data);
 
   const currentBranch = data?.branch?.filter((branch: any) => branch.id === id)[0];
 

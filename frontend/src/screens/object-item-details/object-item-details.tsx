@@ -206,9 +206,7 @@ export default function ObjectItemDetails() {
     <div className="bg-white flex-1 overflow-auto">
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
-          onClick={() => {
-            navigate(-1);
-          }}
+          onClick={() => navigate(`/objects/${objectname}`)}
           className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
         >
           {schema.kind}
