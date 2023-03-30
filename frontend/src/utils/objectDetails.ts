@@ -31,6 +31,15 @@ const template = Handlebars.compile(`query {{kind.value}} {
             display_label
             _relation__is_visible
             _relation__is_protected
+            _updated_at
+            _relation__owner {
+              id
+              display_label
+            }
+            _relation__source {
+              id
+              display_label
+            }
         }
         {{/each}}
     }
