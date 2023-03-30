@@ -50,9 +50,14 @@ const getClasseName = (type: BUTTON_TYPES) => {
 };
 
 export const Button = (props: any) => {
-  const { type, className, ...propsToPass } = props;
+  const { type, className, onClick, ...propsToPass } = props;
 
   const customClassName = getClasseName(type);
+
+  const handleClick = (event: any) => {
+    event.stopPropagation();
+    onClick && onClick(event);
+  };
 
   return (
     <button
@@ -65,6 +70,7 @@ export const Button = (props: any) => {
         )
       }
       {...propsToPass}
+      onClick={handleClick}
     >
       {props.children}
     </button>
