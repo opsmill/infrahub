@@ -9,6 +9,14 @@ export interface paths {
     /** Get Schema */
     get: operations["get_schema_schema__get"];
   };
+  "/config/": {
+    /** Get Config */
+    get: operations["get_config_config__get"];
+  };
+  "/info/": {
+    /** Get Info */
+    get: operations["get_info_info__get"];
+  };
   "/rfile/{rfile_id}": {
     /** Generate Rfile */
     get: operations["generate_rfile_rfile__rfile_id__get"];
@@ -27,6 +35,24 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /**
+     * AnalyticsSettings 
+     * @description Base class for settings, allowing values to be overridden by environment variables.
+     * 
+     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
+     * Heroku and any 12 factor app design.
+     */
+    AnalyticsSettings: {
+      /**
+       * Enable 
+       * @default true
+       */
+      enable?: boolean;
+      /** Address */
+      address?: string;
+      /** Api Key */
+      api_key?: string;
+    };
     /** AttributeSchema */
     AttributeSchema: {
       /** Name */
@@ -48,25 +74,31 @@ export interface components {
       /** Min Length */
       min_length?: number;
       /**
-       * Inherited
+       * Inherited 
        * @default false
        */
       inherited?: boolean;
       /**
-       * Unique
+       * Unique 
        * @default false
        */
       unique?: boolean;
       /**
-       * Branch
+       * Branch 
        * @default true
        */
       branch?: boolean;
       /**
-       * Optional
+       * Optional 
        * @default false
        */
       optional?: boolean;
+    };
+    /** ConfigAPI */
+    ConfigAPI: {
+      main: components["schemas"]["MainSettings"];
+      logging: components["schemas"]["LoggingSettings"];
+      analytics: components["schemas"]["AnalyticsSettings"];
     };
     /** FilterSchema */
     FilterSchema: {
@@ -81,15 +113,57 @@ export interface components {
       description?: string;
     };
     /**
-     * FilterSchemaKind
-     * @description An enumeration.
+     * FilterSchemaKind 
+     * @description An enumeration. 
      * @enum {string}
      */
-    FilterSchemaKind: "String" | "Integer" | "Boolean" | "Object" | "MultiObject" | "Enum";
+    FilterSchemaKind: "Text" | "Number" | "Boolean" | "Object" | "MultiObject" | "Enum";
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
       detail?: (components["schemas"]["ValidationError"])[];
+    };
+    /** InfoAPI */
+    InfoAPI: {
+      /** Deployment Id */
+      deployment_id: string;
+      /** Version */
+      version: string;
+    };
+    /**
+     * LoggingSettings 
+     * @description Base class for settings, allowing values to be overridden by environment variables.
+     * 
+     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
+     * Heroku and any 12 factor app design.
+     */
+    LoggingSettings: {
+      /**
+       * Remote 
+       * @default {
+       *   "enable": false
+       * }
+       */
+      remote?: components["schemas"]["RemoteLoggingSettings"];
+    };
+    /**
+     * MainSettings 
+     * @description Base class for settings, allowing values to be overridden by environment variables.
+     * 
+     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
+     * Heroku and any 12 factor app design.
+     */
+    MainSettings: {
+      /**
+       * Default Branch 
+       * @default main
+       */
+      default_branch?: string;
+      /**
+       * Internal Address 
+       * @default http://localhost:8000
+       */
+      internal_address?: string;
     };
     /** NodeSchema */
     NodeSchema: {
@@ -110,28 +184,37 @@ export interface components {
       /** Groups */
       groups?: (string)[];
       /**
-       * Branch
+       * Branch 
        * @default true
        */
       branch?: boolean;
       /** Default Filter */
       default_filter?: string;
-      /** Display Label */
-      display_label?: (string)[];
+      /** Display Labels */
+      display_labels?: (string)[];
       /** Filters */
       filters?: (components["schemas"]["FilterSchema"])[];
     };
+    /**
+     * RelationshipCardinality 
+     * @description An enumeration. 
+     * @enum {string}
+     */
+    RelationshipCardinality: "one" | "many";
+    /**
+     * RelationshipKind 
+     * @description An enumeration. 
+     * @enum {string}
+     */
+    RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent";
     /** RelationshipSchema */
     RelationshipSchema: {
       /** Name */
       name: string;
       /** Peer */
       peer: string;
-      /**
-       * Kind
-       * @default Generic
-       */
-      kind?: string;
+      /** @default Generic */
+      kind?: components["schemas"]["RelationshipKind"];
       /** Label */
       label?: string;
       /** Description */
@@ -139,27 +222,44 @@ export interface components {
       /** Identifier */
       identifier?: string;
       /**
-       * Inherited
+       * Inherited 
        * @default false
        */
       inherited?: boolean;
+      /** @default many */
+      cardinality?: components["schemas"]["RelationshipCardinality"];
       /**
-       * Cardinality
-       * @default many
-       */
-      cardinality?: string;
-      /**
-       * Branch
+       * Branch 
        * @default true
        */
       branch?: boolean;
       /**
-       * Optional
+       * Optional 
        * @default true
        */
       optional?: boolean;
       /** Filters */
       filters?: (components["schemas"]["FilterSchema"])[];
+    };
+    /**
+     * RemoteLoggingSettings 
+     * @description Base class for settings, allowing values to be overridden by environment variables.
+     * 
+     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
+     * Heroku and any 12 factor app design.
+     */
+    RemoteLoggingSettings: {
+      /**
+       * Enable 
+       * @default false
+       */
+      enable?: boolean;
+      /** Frontend Dsn */
+      frontend_dsn?: string;
+      /** Api Server Dsn */
+      api_server_dsn?: string;
+      /** Git Agent Dsn */
+      git_agent_dsn?: string;
     };
     /** SchemaAPI */
     SchemaAPI: {
@@ -187,8 +287,8 @@ export type external = Record<string, never>;
 
 export interface operations {
 
+  /** Get Schema */
   get_schema_schema__get: {
-    /** Get Schema */
     parameters: {
       query: {
         branch?: string;
@@ -209,8 +309,30 @@ export interface operations {
       };
     };
   };
+  /** Get Config */
+  get_config_config__get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ConfigAPI"];
+        };
+      };
+    };
+  };
+  /** Get Info */
+  get_info_info__get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["InfoAPI"];
+        };
+      };
+    };
+  };
+  /** Generate Rfile */
   generate_rfile_rfile__rfile_id__get: {
-    /** Generate Rfile */
     parameters: {
       query: {
         branch?: string;
@@ -236,8 +358,8 @@ export interface operations {
       };
     };
   };
+  /** Graphql Query */
   graphql_query_query__query_id__get: {
-    /** Graphql Query */
     parameters: {
       query: {
         branch?: string;
@@ -263,8 +385,8 @@ export interface operations {
       };
     };
   };
+  /** Transform Python */
   transform_python_transform__transform_url__get: {
-    /** Transform Python */
     parameters: {
       query: {
         branch?: string;
