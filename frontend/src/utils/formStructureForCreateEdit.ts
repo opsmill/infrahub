@@ -1,7 +1,9 @@
 import {
   ControlType,
   DynamicFieldData,
+  getFormInputControlTypeFromSchemaAttributeKind,
   RelationshipCardinality,
+  SchemaAttributeType,
   SelectOption
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iNodeSchema } from "../state/atoms/schema.atom";
@@ -34,7 +36,7 @@ const getFormStructureForCreateEdit = (
       type: attribute.kind,
       isAttribute: true,
       isRelationship: false,
-      inputType: attribute.enum ? "select" : attribute.kind === "String" ? "text" : "number",
+      inputType: attribute.enum ? "select" : getFormInputControlTypeFromSchemaAttributeKind(attribute.kind as SchemaAttributeType),
       label: attribute.label ? attribute.label : attribute.name,
       defaultValue: row && row[attribute.name] ? row[attribute.name] : "",
       options: {
