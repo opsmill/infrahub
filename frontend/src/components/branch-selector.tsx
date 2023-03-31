@@ -25,7 +25,6 @@ export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
   const [branchInQueryString, setBranchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
-  console.log("branchInQueryString: ", branchInQueryString);
 
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");
