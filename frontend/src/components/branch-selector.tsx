@@ -24,7 +24,7 @@ import { Switch } from "./switch";
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
-  const [branchInQueryString, setBranchInQueryString] = useQueryParam("branch", StringParam);
+  const [branchInQueryString, setBranchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
 
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");
@@ -77,7 +77,7 @@ export default function BranchSelector() {
    */
   const onBranchChange = useCallback((branch: Branch) => {
     if(branch) {
-      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch.name, undefined));
+      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch.name));
     }
 
     setBranch(branch);

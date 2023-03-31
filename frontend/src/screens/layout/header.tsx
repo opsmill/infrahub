@@ -5,6 +5,7 @@ import {
   BellIcon,
   ClockIcon
 } from "@heroicons/react/24/outline";
+import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { Fragment, useEffect, useState } from "react";
 import Datetime from "react-datetime";
@@ -23,14 +24,12 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
-  const [qsDate, setQsDate] = useQueryParam("date", StringParam);
-  const [isDateDefault, setIsDateDefault] = useState(qsDate ? false : true);
+  const [qspDate, setQspDate] = useQueryParam("at", StringParam);
+  const [isDateDefault, setIsDateDefault] = useState(qspDate ? false : true);
   const { setSidebarOpen } = props;
 
   useEffect(() => {
-    if(date) {
-      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
-    }
+    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
   }, [date]);
 
   return (
@@ -81,13 +80,13 @@ export default function Header(props: Props) {
 
           {!isDateDefault && (
             <Datetime
-              initialValue={qsDate ? new Date(qsDate) : date}
+              initialValue={qspDate ? new Date(qspDate) : date}
               onChange={(a: any) => {
                 if (a.toDate) {
                   setDate(a.toDate());
-                  setQsDate(a.toDate());
+                  setQspDate(formatISO(a.toDate()));
                 } else {
-                  setQsDate(undefined);
+                  setQspDate(undefined);
                 }
               }}
               className="mr-5"
@@ -106,7 +105,7 @@ export default function Header(props: Props) {
                       <button onClick={() => {
                         setIsDateDefault(true);
                         setDate(null);
-                        setQsDate(undefined);
+                        setQspDate(undefined);
                       }}>
                         Now
                       </button>

@@ -22,7 +22,7 @@ function App() {
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
-  const [branchInQueryString] = useQueryParam("branch", StringParam);
+  const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
 
   /**
    * Fetch branches from the backend, sort, and return them
@@ -45,7 +45,7 @@ function App() {
     async () => {
       const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
       try {
-        const rawResponse = await fetch(CONFIG.SCHEMA_URL(branchInQueryString ? branchInQueryString : branch?.name));
+        const rawResponse = await fetch(CONFIG.SCHEMA_URL(branchInQueryString ?? branch?.name));
         const data = await rawResponse.json();
         return sortByName(data.nodes || []);
       } catch(err) {
@@ -53,7 +53,7 @@ function App() {
         return [];
       }
     },
-    [branch]
+    [branch?.name, branchInQueryString]
   );
 
   /**
