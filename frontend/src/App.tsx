@@ -1,13 +1,15 @@
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import { ApolloProvider } from "@apollo/client";
 import { graphQLClient } from ".";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
+import graphqlClient from "./config/graphqlClient";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import { components } from "./infraops";
 import { branchState } from "./state/atoms/branch.atom";
@@ -99,10 +101,10 @@ function App() {
   );
 
   return (
-    <>
+    <ApolloProvider client={graphqlClient}>
       <RouterProvider router={router} />
       <ToastContainer closeOnClick={false} />
-    </>
+    </ApolloProvider>
   );
 }
 

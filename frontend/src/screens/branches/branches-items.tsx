@@ -6,11 +6,18 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "../../components/badge";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
+import useQuery from "../../graphql/hooks/useQuery";
+import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
 import { branchesState } from "../../state/atoms/branches.atom";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
+
+  const { loading, error, data } = useQuery(GET_BRANCHES);
+  console.log("error: ", error);
+  console.log("loading: ", loading);
+  console.log("data: ", data);
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 

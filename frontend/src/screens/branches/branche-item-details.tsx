@@ -72,10 +72,6 @@ export const BrancheItemDetails = () => {
     [fetchBranchDetails]
   );
 
-  console.log("branch: ", branch);
-  console.log("isLoadingBranch: ", isLoadingBranch);
-
-
   return (
     <div className="">
       <div className="bg-white sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
