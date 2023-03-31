@@ -1,7 +1,6 @@
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
 import DeviceList from "../screens/device-list/device-list";
-import Layout from "../screens/layout/layout";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
 import ObjectItemEdit from "../screens/object-item-edit/object-item-edit";
@@ -10,43 +9,36 @@ import OpsObjects from "../screens/ops-objects/ops-objects";
 
 export const MAIN_ROUTES = [
   {
-    path: "/",
-    element: <Layout />,
-    // errorElement: <NotFoundScreen />,
-    children: [
-      {
-        path: "/objects/:objectname/:objectid/edit",
-        element: <ObjectItemEdit />,
-      },
-      {
-        path: "/objects/:objectname/new",
-        element: <ObjectItemCreate />,
-      },
-      {
-        path: "/objects/:objectname/:objectid",
-        element: <ObjectItemDetails />,
-      },
-      {
-        path: "/objects/:objectname",
-        element: <ObjectItems />,
-      },
-      {
-        path: "/schema",
-        element: <OpsObjects />,
-      },
-      {
-        path: "/devices",
-        element: <DeviceList />,
-      },
-      {
-        path: "/branches",
-        element: <BranchesItems />,
-      },
-      {
-        path: "/branches/:branchid",
-        element: <BrancheItemDetails />,
-      },
-    ],
+    path: "/objects/:objectname/:objectid/edit",
+    element: <ObjectItemEdit />,
+  },
+  {
+    path: "/objects/:objectname/new",
+    element: <ObjectItemCreate />,
+  },
+  {
+    path: "/objects/:objectname/:objectid",
+    element: <ObjectItemDetails />,
+  },
+  {
+    path: "/objects/:objectname",
+    element: <ObjectItems />,
+  },
+  {
+    path: "/schema",
+    element: <OpsObjects />,
+  },
+  {
+    path: "/devices",
+    element: <DeviceList />,
+  },
+  {
+    path: "/branches",
+    element: <BranchesItems />,
+  },
+  {
+    path: "/branches/:branchid",
+    element: <BrancheItemDetails />,
   },
 ];
 
