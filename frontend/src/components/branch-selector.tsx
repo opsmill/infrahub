@@ -12,8 +12,8 @@ import createBranch from "../graphql/mutations/branches/createBranch";
 import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
-import { Alert, ALERT_TYPES } from "./alert";
-import { Button, BUTTON_TYPES } from "./button";
+import { ALERT_TYPES, Alert } from "./alert";
+import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
 import { PopOver } from "./popover";
 import { RoundedButton } from "./rounded-button";
@@ -165,15 +165,21 @@ export default function BranchSelector() {
     </div>
   );
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (close: any) => {
     try {
-      await createBranch({
+      const newBranch = {
         name: newBranchName,
         description: newBranchDescription,
         // origin_branch: originBranch ?? branches[0]?.name,
         // branched_from: formatISO(branchedFrom ?? new Date()),
         is_data_only: isDataOnly
-      });
+      } as Branch;
+
+      await createBranch(newBranch);
+
+      close();
+
+      onBranchChange(newBranch);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
     } catch (e) {
@@ -199,26 +205,32 @@ export default function BranchSelector() {
         renderOption={renderOption}
       />
       <PopOver buttonComponent={PopOverButton} className="right-0" title={"Create a new branch"}>
-        <div className="flex flex-col">
-          Branch name:
-          <Input value={newBranchName} onChange={setNewBranchName} />
+        {
+          ({ close }: any) => (
+            <>
+              <div className="flex flex-col">
+                Branch name:
+                <Input value={newBranchName} onChange={setNewBranchName} />
 
-          Branch description:
-          <Input value={newBranchDescription} onChange={setNewBranchDescription} />
+                Branch description:
+                <Input value={newBranchDescription} onChange={setNewBranchDescription} />
 
-          Branched from:
-          <Select disabled options={branchesOptions} value={originBranch ?? defaultBranch} onChange={handleBranchedFrom} />
+                Branched from:
+                <Select disabled options={branchesOptions} value={originBranch ?? defaultBranch} onChange={handleBranchedFrom} />
 
-          Branched at:
-          <Input value={format(branchedFrom ?? new Date(), "MM/dd/yyy HH:mm")} onChange={setNewBranchName} disabled />
+                Branched at:
+                <Input value={format(branchedFrom ?? new Date(), "MM/dd/yyy HH:mm")} onChange={setNewBranchName} disabled />
 
-          Is data only:
-          <Switch enabled={isDataOnly} onChange={setIsDataOnly} />
-        </div>
+                Is data only:
+                <Switch enabled={isDataOnly} onChange={setIsDataOnly} />
+              </div>
 
-        <div className="flex justify-center">
-          <Button type={BUTTON_TYPES.VALIDATE} onClick={handleSubmit} className="mt-2">Create</Button>
-        </div>
+              <div className="flex justify-center">
+                <Button type={BUTTON_TYPES.VALIDATE} onClick={() => handleSubmit(close)} className="mt-2">Create</Button>
+              </div>
+            </>
+          )
+        }
       </PopOver>
     </>
   );

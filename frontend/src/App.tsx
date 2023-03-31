@@ -107,7 +107,7 @@ function App() {
           ))}
         </Route>
       </Routes>
-      <ToastContainer closeOnClick={false} />
+      <ToastContainer closeOnClick={false} newestOnTop position="bottom-right" />
     </>
   );
 }
