@@ -25,6 +25,7 @@ export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
   const [branchInQueryString, setBranchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
+  console.log("branchInQueryString: ", branchInQueryString);
 
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");
@@ -177,10 +178,9 @@ export default function BranchSelector() {
 
       await createBranch(newBranch);
 
-      setBranchInQueryString(newBranch.name);
-
-      console.log("close: ", close);
       close();
+
+      onBranchChange(newBranch);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
     } catch (e) {
