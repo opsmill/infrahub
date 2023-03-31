@@ -5,15 +5,15 @@ import {
   BellIcon,
   ClockIcon
 } from "@heroicons/react/24/outline";
+import { formatISO } from "date-fns";
+import { useAtom } from "jotai";
 import { Fragment, useEffect, useState } from "react";
 import Datetime from "react-datetime";
 import "react-datetime/css/react-datetime.css";
-
-import { useAtom } from "jotai";
+import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "../..";
 import BranchSelector from "../../components/branch-selector";
 import { CONFIG } from "../../config/config";
-import { branchState } from "../../state/atoms/branch.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
@@ -24,13 +24,13 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
-  const [branch] = useAtom(branchState);
-  const [isDateDefault, setIsDateDefault] = useState(true);
+  const [qspDate, setQspDate] = useQueryParam("at", StringParam);
+  const [isDateDefault, setIsDateDefault] = useState(qspDate ? false : true);
   const { setSidebarOpen } = props;
 
   useEffect(() => {
-    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
-  }, [date, branch]);
+    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
+  }, [date]);
 
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-white shadow">
@@ -80,10 +80,13 @@ export default function Header(props: Props) {
 
           {!isDateDefault && (
             <Datetime
-              initialValue={date}
+              initialValue={qspDate ? new Date(qspDate) : date}
               onChange={(a: any) => {
                 if (a.toDate) {
                   setDate(a.toDate());
+                  setQspDate(formatISO(a.toDate()));
+                } else {
+                  setQspDate(undefined);
                 }
               }}
               className="mr-5"
@@ -102,6 +105,7 @@ export default function Header(props: Props) {
                       <button onClick={() => {
                         setIsDateDefault(true);
                         setDate(null);
+                        setQspDate(undefined);
                       }}>
                         Now
                       </button>

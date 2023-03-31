@@ -2,16 +2,15 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
-import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "..";
 import { CONFIG } from "../config/config";
 import { Branch } from "../generated/graphql";
 import createBranch from "../graphql/mutations/branches/createBranch";
 import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
-import { timeState } from "../state/atoms/time.atom";
 import { classNames } from "../utils/common";
 import { Alert, ALERT_TYPES } from "./alert";
 import { Button, BUTTON_TYPES } from "./button";
@@ -25,23 +24,32 @@ import { Switch } from "./switch";
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [branchInQueryString, setBranchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
 
-  const [date] = useAtom(timeState);
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");
   const [originBranch, setOriginBranch] = useState();
   const [branchedFrom] = useState(); // TODO: Add camendar component
   const [isDataOnly, setIsDataOnly] = useState(true);
 
+  const getCurrentBranch = useCallback(() :Branch => {
+    if(branch) {
+      return branch;
+    }
+
+    if(branchInQueryString) {
+      return branches.filter((b) => b.name === branchInQueryString.trim())[0];
+    } else {
+      return branches.filter(b => b.is_default)[0];
+    }
+  }, [branch, branchInQueryString, branches]);
+
   const valueLabel = (
     <>
       <CheckIcon className="h-5 w-5" aria-hidden="true" />
       <p className="ml-2.5 text-sm font-medium">
         {
-          branch
-            ? branch?.name
-            : branches.filter((b) => b.is_default)[0]?.name
+          getCurrentBranch()?.name
         }
       </p>
     </>
@@ -67,20 +75,19 @@ export default function BranchSelector() {
   /**
    * Update GraphQL client endpoint whenever branch changes
    */
-  const onBranchChange = (branch: Branch) => {
-    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
+  const onBranchChange = useCallback((branch: Branch) => {
+    if(branch) {
+      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch.name));
+    }
 
     setBranch(branch);
 
     if (branch?.is_default) {
-      searchParams.delete("branch");
-      return setSearchParams(searchParams);
+      setBranchInQueryString(undefined);
+    } else {
+      setBranchInQueryString(branch.name);
     }
-
-    return setSearchParams({
-      branch: branch?.name
-    });
-  };
+  }, [setBranch, setBranchInQueryString]);
 
   const handleBranchedFrom = (newBranch: any) => setOriginBranch(newBranch);
 
@@ -185,7 +192,7 @@ export default function BranchSelector() {
   return (
     <>
       <SelectButton
-        value={branch ? branch : branches.filter((b) => b.is_default)[0]}
+        value={getCurrentBranch()}
         valueLabel={valueLabel}
         onChange={onBranchChange}
         options={branches}
