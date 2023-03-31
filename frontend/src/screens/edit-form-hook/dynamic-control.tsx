@@ -253,7 +253,7 @@ export const MetaDataFields = (props: DynamicFieldData) => {
   } = props;
 
   const sourceOwnerFields = isAttribute ? ["owner", "source"] : ["_relation__owner", "_relation__source"];
-  const booleanFields = ["is_visible", "is_protected"];
+  const booleanFields = isAttribute ? ["is_visible", "is_protected"] : ["_relation__is_visible", "_relation__is_protected"];
 
   return <>
     {booleanFields.map(field => <MetaToggleField field={props} metaFieldName={field} key={field} />)}
