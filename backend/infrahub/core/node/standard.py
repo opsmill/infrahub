@@ -31,6 +31,9 @@ class StandardNode(BaseModel):
         for field_name in fields.keys():
             if field_name in ["id"]:
                 continue
+            if field_name == "__typename":
+                response[field_name] = self.get_type()
+                continue
             field = getattr(self, field_name)
             if field is None:
                 response[field_name] = None

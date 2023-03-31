@@ -1,5 +1,6 @@
 import { LinkIcon, Square3Stack3DIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useLocation } from "react-router-dom";
 import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS } from "../../config/constants";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -11,14 +12,14 @@ import logo from "./logo.png";
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
   const [, setCurrentFilters] = useAtom(comboxBoxFilterState);
-
+  const { search } = useLocation();
   const onClinkMenuItem = () => setCurrentFilters([]);
 
   const schemaItems = schema.map(
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={`/objects/${item.name}`}
+        path={`/objects/${item.name}/${search}`}
         label={item.label}
         onClick={onClinkMenuItem}
       />
@@ -29,7 +30,7 @@ export default function DesktopMenu() {
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={item.path}
+        path={item.path + `/${search}`}
         label={item.label}
         onClick={onClinkMenuItem}
       />
@@ -40,7 +41,7 @@ export default function DesktopMenu() {
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={item.path}
+        path={item.path + `/${search}`}
         label={item.label}
         onClick={onClinkMenuItem}
       />
