@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { graphQLClient } from "../..";
+import { HIDDEN_FIELDS_IN_LIST_VIEW } from "../../config/config";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -201,6 +202,7 @@ export default function ObjectItems() {
                       <tr>
                         {
                           columns
+                          ?.filter(column => HIDDEN_FIELDS_IN_LIST_VIEW.indexOf(column.kind) === -1)
                           ?.map(
                             (attribute) => (
                               <th
@@ -227,7 +229,7 @@ export default function ObjectItems() {
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer"
                             >
-                              {columns?.map((attribute) => (
+                              {columns?.filter(column => HIDDEN_FIELDS_IN_LIST_VIEW.indexOf(column.kind) === -1).map((attribute) => (
                                 <td
                                   key={row.id + "-" + attribute.name}
                                   className={classNames(

@@ -12,3 +12,9 @@ export const CONFIG = {
     ? `${INFRAHUB_API_SERVER_URL}/schema/?branch=${branch}`
     : `${INFRAHUB_API_SERVER_URL}/schema/`
 };
+
+export const HIDDEN_FIELDS_IN_LIST_VIEW = [
+  "TextArea",
+  "Password",
+  "Any",
+];
