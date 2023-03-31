@@ -2,7 +2,7 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "..";
@@ -11,7 +11,6 @@ import { Branch } from "../generated/graphql";
 import createBranch from "../graphql/mutations/branches/createBranch";
 import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
-import { timeState } from "../state/atoms/time.atom";
 import { classNames } from "../utils/common";
 import { Alert, ALERT_TYPES } from "./alert";
 import { Button, BUTTON_TYPES } from "./button";
@@ -27,7 +26,6 @@ export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
   const [branchInQueryString, setBranchInQueryString] = useQueryParam("branch", StringParam);
 
-  const [date] = useAtom(timeState);
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");
   const [originBranch, setOriginBranch] = useState();
@@ -78,8 +76,9 @@ export default function BranchSelector() {
    * Update GraphQL client endpoint whenever branch changes
    */
   const onBranchChange = useCallback((branch: Branch) => {
-    console.log("Updatunf to: ", branch.name, date);
-    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
+    if(branch) {
+      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch.name, undefined));
+    }
 
     setBranch(branch);
 
@@ -88,14 +87,7 @@ export default function BranchSelector() {
     } else {
       setBranchInQueryString(branch.name);
     }
-  }, [date, setBranch, setBranchInQueryString]);
-
-  useEffect(() => {
-    const currentBranch = getCurrentBranch();
-    if(currentBranch) {
-      onBranchChange(currentBranch);
-    }
-  }, [branchInQueryString, getCurrentBranch, onBranchChange]);
+  }, [setBranch, setBranchInQueryString]);
 
   const handleBranchedFrom = (newBranch: any) => setOriginBranch(newBranch);
 

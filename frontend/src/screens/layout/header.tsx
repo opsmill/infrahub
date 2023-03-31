@@ -13,7 +13,6 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "../..";
 import BranchSelector from "../../components/branch-selector";
 import { CONFIG } from "../../config/config";
-import { branchState } from "../../state/atoms/branch.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
@@ -25,21 +24,14 @@ interface Props {
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
   const [qsDate, setQsDate] = useQueryParam("date", StringParam);
-  const [branch] = useAtom(branchState);
   const [isDateDefault, setIsDateDefault] = useState(qsDate ? false : true);
   const { setSidebarOpen } = props;
 
   useEffect(() => {
-    if(branch && date) {
-      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch?.name, date));
+    if(date) {
+      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
     }
-  }, [date, branch]);
-
-  useEffect(() => {
-    if(qsDate) {
-      setDate(new Date(qsDate));
-    }
-  }, [qsDate, setDate]);
+  }, [date]);
 
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-white shadow">
