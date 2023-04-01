@@ -32,10 +32,7 @@ function App() {
   /**
    * Sentry configuration
    */
-
-  if (config?.analytics?.enable) {
-    SentryClient(config);
-  }
+  SentryClient(config);
 
   // Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));
 

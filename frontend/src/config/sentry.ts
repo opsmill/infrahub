@@ -13,7 +13,7 @@ const REPLAY_INSTANCE = new Sentry.Replay();
 let isInitialised = false;
 
 const SentryClient = (config?: Config) => {
-  if (!config?.analytics?.enable) {
+  if (!config?.logging?.remote?.enable) {
     return;
   }
 
@@ -24,7 +24,7 @@ const SentryClient = (config?: Config) => {
   isInitialised = true;
 
   Sentry.init({
-    dsn: config?.analytics?.address ?? DEFAULT_DSN,
+    dsn: config?.logging?.remote?.frontend_dsn ?? DEFAULT_DSN,
     integrations: [
       TRACING_INSTANCE,
       REPLAY_INSTANCE,
