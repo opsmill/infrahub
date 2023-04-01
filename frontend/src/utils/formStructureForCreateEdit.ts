@@ -33,7 +33,7 @@ const getFormStructureForCreateEdit = (
 
     formFields.push({
       fieldName: attribute.name,
-      type: attribute.kind,
+      type: attribute.kind as SchemaAttributeType,
       isAttribute: true,
       isRelationship: false,
       inputType: attribute.enum ? "select" : getFormInputControlTypeFromSchemaAttributeKind(attribute.kind as SchemaAttributeType),

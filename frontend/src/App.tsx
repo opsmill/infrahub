@@ -37,7 +37,7 @@ function App() {
   // Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));
 
   /**
-   * Fetch branches from the backend, sort, and return them
+   * Fetch config from the backend and return it
    */
   const fetchConfig = async () => {
     try {
