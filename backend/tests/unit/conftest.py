@@ -1020,6 +1020,13 @@ async def schema_file_infra_w_generics_01() -> dict:
 
 
 @pytest.fixture
+async def schema_file_infra_w_extensions_01() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_w_extensions_01.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
 async def schema_file_infra_simple_01() -> dict:
     file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_simple_01.json")).read_text()
 
@@ -1036,6 +1043,13 @@ async def schema_file_not_valid_simple_02() -> dict:
 @pytest.fixture
 async def schema_file_not_valid_simple_03() -> dict:
     file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_03.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
+async def schema_file_not_valid_simple_04() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_04.json")).read_text()
 
     return ujson.loads(file_content)
 

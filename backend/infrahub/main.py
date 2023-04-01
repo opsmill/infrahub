@@ -117,6 +117,7 @@ async def get_schema(
 class SchemaLoadAPI(SchemaRoot):
     version: str
 
+
 @app.post("/schema/load/")
 async def load_schema(
     schema: SchemaLoadAPI,

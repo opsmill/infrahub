@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
 from infrahub.core.relationship import Relationship
@@ -72,6 +72,9 @@ class AttributeSchema(BaseModel):
     branch: bool = True
     optional: bool = False
 
+    class Config:
+        extra = Extra.forbid
+
     @validator("kind")
     def kind_options(
         cls,
@@ -100,6 +103,9 @@ class RelationshipSchema(BaseModel):
     branch: bool = True
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
 
     @validator("kind")
     def kind_options(
@@ -225,6 +231,9 @@ class BaseNodeSchema(BaseModel):
     display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -378,11 +387,43 @@ class GroupSchema(BaseModel):
     kind: str
     description: Optional[str]
 
+    class Config:
+        extra = Extra.forbid
+
+
+# -----------------------------------------------------
+# Extensions
+#  For the initial implementation its possible to add attribute and relationships on Node
+#  Later on we'll consider adding support for other Node attributes like inherited_from etc ...
+#  And we'll look into adding support for Generic as well
+class BaseNodeExtensionSchema(BaseModel):
+    kind: str
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
+
+
+class NodeExtensionSchema(BaseNodeExtensionSchema):
+    pass
+
+
+class SchemaExtension(BaseModel):
+    nodes: List[NodeExtensionSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
+
 
 class SchemaRoot(BaseModel):
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
+    extensions: SchemaExtension = SchemaExtension()
+
+    class Config:
+        extra = Extra.forbid
 
     @classmethod
     def has_schema(cls, values, name: str) -> bool:

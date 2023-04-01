@@ -17,6 +17,7 @@ from infrahub.core.schema import (
     FilterSchemaKind,
     GenericSchema,
     GroupSchema,
+    NodeExtensionSchema,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
 
 SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
-
+SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 # pylint: disable=redefined-builtin
 
 
@@ -276,6 +277,9 @@ class SchemaManager(NodeManager):
         for item in schema.generics + schema.nodes + schema.groups:
             await cls.load_node_to_db(node=item, branch=branch, session=session)
 
+        for item in schema.extensions.nodes:
+            await cls.load_extension_to_db(node=item, branch=branch, session=session)
+
         return True
 
     @staticmethod
@@ -352,6 +356,30 @@ class SchemaManager(NodeManager):
                 rel = await Node.init(schema=relationship_schema, branch=branch, session=session)
                 await rel.new(**item.dict(exclude={"filters"}), node=obj, session=session)
                 await rel.save(session=session)
+
+    @classmethod
+    async def load_extension_to_db(
+        cls,
+        session: AsyncSession,
+        node: NodeExtensionSchema,
+        branch: Union[str, Branch] = None,
+    ) -> None:
+        """Load an Extension with its attributes and its relationships to the database."""
+        branch = await get_branch(branch=branch, session=session)
+
+        # First, find the node and check if inherit_from and groups includes the information from the extension
+        obj = await NodeManager.query(schema="NodeSchema", filters={"kind__value": node.kind}, session=session)[0]
+
+        # Create the Attributes and the relationships
+        for item in node.attributes:
+            attr = await Node.init(schema="AttributeSchema", branch=branch, session=session)
+            await attr.new(**item.dict(exclude={"filters"}), node=obj, session=session)
+            await attr.save(session=session)
+
+        for item in node.relationships:
+            rel = await Node.init(schema="RelationshipSchema", branch=branch, session=session)
+            await rel.new(**item.dict(exclude={"filters"}), node=obj, session=session)
+            await rel.save(session=session)
 
     @classmethod
     async def load_schema_from_db(

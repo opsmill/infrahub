@@ -87,6 +87,21 @@ async def test_schema_load_endpoint_valid_with_generics(
     assert response.status_code == 202
 
 
+async def test_schema_load_endpoint_valid_with_extensions(
+    session,
+    client: TestClient,
+    client_headers,
+    default_branch,
+    register_core_models_schema,
+    schema_file_infra_w_extensions_01,
+):
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post("/schema/load", headers=client_headers, json=schema_file_infra_w_extensions_01)
+
+    assert response.status_code == 202
+
+
 async def test_schema_load_endpoint_not_valid_simple_02(
     session,
     client: TestClient,
@@ -113,6 +128,21 @@ async def test_schema_load_endpoint_not_valid_simple_03(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_simple_03)
+
+    assert response.status_code == 422
+
+
+async def test_schema_load_endpoint_not_valid_simple_04(
+    session,
+    client: TestClient,
+    client_headers,
+    default_branch,
+    register_core_models_schema,
+    schema_file_not_valid_simple_04,
+):
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_simple_04)
 
     assert response.status_code == 422
 
