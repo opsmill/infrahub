@@ -221,6 +221,8 @@ class BaseNodeSchema(BaseModel):
     name: str
     kind: str
     description: Optional[str] = Field(max_length=128)
+    default_filter: Optional[str]
+    display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
@@ -298,6 +300,20 @@ class BaseNodeSchema(BaseModel):
     def local_relationships(self) -> List[RelationshipSchema]:
         return [item for item in self.relationships if not item.inherited]
 
+    def generate_fields_for_display_label(self) -> Dict:
+        fields = {}
+
+        for item in self.display_labels:
+            elements = item.split("__")
+            if len(elements) == 1:
+                fields[elements[0]] = None
+            elif len(elements) == 2:
+                fields[elements[0]] = {elements[1]: None}
+            else:
+                raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
+
+        return fields
+
 
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
@@ -310,8 +326,6 @@ class NodeSchema(BaseNodeSchema):
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
-    default_filter: Optional[str]
-    display_labels: Optional[List[str]]
     filters: List[FilterSchema] = Field(default_factory=list)
 
     # TODO add validation to ensure that 2 attributes can't have the same name
@@ -357,20 +371,6 @@ class NodeSchema(BaseNodeSchema):
                 self.attributes.append(new_item)
             elif isinstance(item, RelationshipSchema):
                 self.relationships.append(new_item)
-
-    def generate_fields_for_display_label(self) -> Dict:
-        fields = {}
-
-        for item in self.display_labels:
-            elements = item.split("__")
-            if len(elements) == 1:
-                fields[elements[0]] = None
-            elif len(elements) == 2:
-                fields[elements[0]] = {elements[1]: None}
-            else:
-                raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
-
-        return fields
 
 
 class GroupSchema(BaseModel):
@@ -610,6 +610,18 @@ internal_schema = {
                     "kind": "Text",
                     "optional": True,
                     "max_length": 32,
+                },
+                {
+                    "name": "default_filter",
+                    "kind": "Text",
+                    "description": "Default filter used to search for a node in addition to its ID.",
+                    "optional": True,
+                },
+                {
+                    "name": "display_labels",
+                    "kind": "List",
+                    "description": "List of attributes to use to generate the display label",
+                    "optional": True,
                 },
                 {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
             ],
