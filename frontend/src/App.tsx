@@ -48,7 +48,6 @@ function App() {
   const setConfigInState = useCallback(
     async () => {
       const config: Config = await fetchConfig();
-      console.log("config: ", config);
       setConfig(config);
     },
     [setConfig]
