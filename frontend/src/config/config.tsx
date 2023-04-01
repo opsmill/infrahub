@@ -20,5 +20,6 @@ export const CONFIG = {
   })(),
   SCHEMA_URL: (branch?: string) => branch
     ? `${INFRAHUB_API_SERVER_URL}/schema/?branch=${branch}`
-    : `${INFRAHUB_API_SERVER_URL}/schema/`
+    : `${INFRAHUB_API_SERVER_URL}/schema/`,
+  CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/config`
 };

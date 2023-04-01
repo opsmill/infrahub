@@ -4,10 +4,11 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from ".";
+import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
@@ -15,6 +16,7 @@ import { components } from "./infraops";
 import Layout from "./screens/layout/layout";
 import { branchState } from "./state/atoms/branch.atom";
 import { branchesState } from "./state/atoms/branches.atom";
+import { Config, configState } from "./state/atoms/config.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 type APIResponse = components["schemas"]["SchemaAPI"];
@@ -45,7 +47,41 @@ function App() {
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
+  const [, setConfig] = useAtom(configState);
   const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
+
+  /**
+   * Fetch branches from the backend, sort, and return them
+   */
+  const fetchConfig = async () => {
+    try {
+      const rawResponse = await fetch(CONFIG.CONFIG_URL);
+      const data = await rawResponse.json();
+      return data;
+    } catch (err) {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />);
+      console.error("err: ", err);
+      return undefined;
+    }
+  };
+
+  /**
+   * Set config in state atom
+   */
+  const setConfigInState = useCallback(
+    async () => {
+      const config: Config = await fetchConfig();
+      setConfig(config);
+    },
+    [setConfig]
+  );
+
+  useEffect(
+    () => {
+      setConfigInState();
+    },
+    [setConfigInState]
+  );
 
   /**
    * Fetch branches from the backend, sort, and return them
@@ -56,10 +92,29 @@ function App() {
       const data: iBranchData = await graphQLClient.request(BRANCH_QUERY);
       return sortByName(data.branch || []);
     } catch (err) {
-      console.error("Something went wrong when fetching the branch details");
+      toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the branch details"} />);
+      console.error("err: ", err);
       return [];
     }
   };
+
+  /**
+   * Set branches in state atom
+   */
+  const setBranchesInState = useCallback(
+    async () => {
+      const branches = await fetchBranches();
+      setBranches(branches);
+    },
+    [setBranches]
+  );
+
+  useEffect(
+    () => {
+      setBranchesInState();
+    },
+    [setBranchesInState]
+  );
 
   /**
    * Fetch schema from the backend, sort, and return them
@@ -72,7 +127,8 @@ function App() {
         const data = await rawResponse.json();
         return sortByName(data.nodes || []);
       } catch(err) {
-        console.error("Something went wrong when fetching the schema details");
+        toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema details"} />);
+        console.error("err: ", err);
         return [];
       }
     },
@@ -94,24 +150,6 @@ function App() {
       setSchemaKindNameState(schemaKindNameMap);
     },
     [fetchSchema, setSchema, setSchemaKindNameState]
-  );
-
-  /**
-   * Set branches in state atom
-   */
-  const setBranchesInState = useCallback(
-    async () => {
-      const branches = await fetchBranches();
-      setBranches(branches);
-    },
-    [setBranches]
-  );
-
-  useEffect(
-    () => {
-      setBranchesInState();
-    },
-    [setBranchesInState]
   );
 
   useEffect(
