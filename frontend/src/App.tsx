@@ -28,7 +28,7 @@ function App() {
   const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
 
   /**
-   * Fetch branches from the backend, sort, and return them
+   * Fetch config from the backend and return it
    */
   const fetchConfig = async () => {
     try {
