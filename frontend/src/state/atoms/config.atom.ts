@@ -1,26 +1,26 @@
 import { atom } from "jotai";
 
-export interface RemoteConfig {
+export type RemoteConfig = {
   api_server_dsn: string,
   enable: boolean,
   frontend_dsn: string,
   git_agent_dsn: string,
 }
 
-export interface AnalyticsConfig {
-  addres: string,
+export type AnalyticsConfig = {
+  address: string,
   api_key: string,
   enable: boolean,
 }
-export interface LoggingConfig {
+export type LoggingConfig = {
   remote: RemoteConfig
 }
-export interface MainConfig {
+export type MainConfig = {
   default_branch: string,
   internal_address: string,
 }
 
-export interface Config {
+export type Config = {
   analytics: AnalyticsConfig,
   logging: LoggingConfig,
   main: MainConfig,

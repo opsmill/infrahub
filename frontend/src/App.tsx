@@ -1,5 +1,4 @@
-import * as Sentry from "@sentry/react";
-import { BrowserTracing } from "@sentry/tracing";
+
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -11,6 +10,7 @@ import { graphQLClient } from ".";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
+import SentryClient from "./config/sentry";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import { components } from "./infraops";
 import Layout from "./screens/layout/layout";
@@ -21,34 +21,23 @@ import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 type APIResponse = components["schemas"]["SchemaAPI"];
 
-Sentry.init({
-  dsn: "https://c271c704fe5a43b3b08c83919f0d8e01@o4504893920247808.ingest.sentry.io/4504893931520000",
-  integrations: [
-    new BrowserTracing(
-    //   {
-    //   tracePropagationTargets: ["localhost"],
-    //   // ... other options
-    // }
-    ),
-    new Sentry.Replay()
-  ],
-});
-
-Sentry.setContext("character", {
-  name: "Mighty Fighter",
-  age: 19,
-  attack_type: "melee",
-});
-
-Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));
-
 function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
-  const [, setConfig] = useAtom(configState);
+  const [config, setConfig] = useAtom(configState);
   const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
+
+  /**
+   * Sentry configuration
+   */
+
+  if (config?.analytics?.enable) {
+    SentryClient(config);
+  }
+
+  // Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));
 
   /**
    * Fetch branches from the backend, sort, and return them
