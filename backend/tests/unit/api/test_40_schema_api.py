@@ -1,7 +1,11 @@
+from fastapi.testclient import TestClient
+
 from infrahub.core.initialization import create_branch
 
 
-async def test_schema_endpoint_default_branch(session, client, client_headers, default_branch, car_person_data):
+async def test_schema_read_endpoint_default_branch(
+    session, client: TestClient, client_headers, default_branch, car_person_data
+):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -18,7 +22,9 @@ async def test_schema_endpoint_default_branch(session, client, client_headers, d
     assert len(schema["nodes"]) == 21
 
 
-async def test_schema_endpoint_branch1(session, client, client_headers, default_branch, car_person_data):
+async def test_schema_read_endpoint_branch1(
+    session, client: TestClient, client_headers, default_branch, car_person_data
+):
     await create_branch(branch_name="branch1", session=session)
 
     # Must execute in a with block to execute the startup/shutdown events
@@ -37,7 +43,9 @@ async def test_schema_endpoint_branch1(session, client, client_headers, default_
     assert len(schema["nodes"]) == 21
 
 
-async def test_schema_endpoint_wrong_branch(session, client, client_headers, default_branch, car_person_data):
+async def test_schema_read_endpoint_wrong_branch(
+    session, client: TestClient, client_headers, default_branch, car_person_data
+):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -47,3 +55,18 @@ async def test_schema_endpoint_wrong_branch(session, client, client_headers, def
 
     assert response.status_code == 400
     assert response.json() is not None
+
+
+async def test_schema_load_endpoint(
+    session,
+    client: TestClient,
+    client_headers,
+    default_branch,
+    register_core_models_schema,
+    schema_file_infra_w_generics_01,
+):
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post("/schema/load", headers=client_headers, json=schema_file_infra_w_generics_01)
+
+    assert response.status_code == 202

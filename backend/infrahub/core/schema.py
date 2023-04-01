@@ -402,7 +402,6 @@ class SchemaRoot(BaseModel):
                 if generic_kind not in generics:
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
-
                 node.extend_with_interface(interface=generics[generic_kind])
 
         return self
@@ -541,7 +540,7 @@ internal_schema = {
                     "identifier": "schema__node__attributes",
                     "cardinality": "one",
                     "branch": True,
-                    "optional": True,
+                    "optional": False,
                 }
             ],
         },
@@ -586,7 +585,7 @@ internal_schema = {
                     "identifier": "schema__node__relationships",
                     "cardinality": "one",
                     "branch": True,
-                    "optional": True,
+                    "optional": False,
                 }
             ],
         },
@@ -618,7 +617,7 @@ internal_schema = {
                 {
                     "name": "attributes",
                     "peer": "AttributeSchema",
-                    "identifier": "schema__generic__attributes",
+                    "identifier": "schema__node__attributes",
                     "cardinality": "many",
                     "branch": True,
                     "optional": True,
@@ -626,7 +625,7 @@ internal_schema = {
                 {
                     "name": "relationships",
                     "peer": "RelationshipSchema",
-                    "identifier": "schema__generic__relationships",
+                    "identifier": "schema__node__relationships",
                     "cardinality": "many",
                     "branch": True,
                     "optional": True,

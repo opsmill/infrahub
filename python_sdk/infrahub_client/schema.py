@@ -150,6 +150,12 @@ class InfrahubSchema:
 
         return self.cache[branch]
 
+    async def load(self, schema, branch: Optional[str] = None) -> None:
+        branch = branch or self.client.default_branch
+        url = f"{self.client.address}/schema/load/?branch={branch}"
+        response = await self.client._post(url=url, timeout=30, payload=schema)
+        response.raise_for_status()
+
     async def fetch(self, branch: str) -> Dict[str, NodeSchema]:
         """Fetch the schema from the server for a given branch.
 

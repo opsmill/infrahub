@@ -322,7 +322,8 @@ class SchemaManager(NodeManager):
         session: AsyncSession,
         node: Union[NodeSchema, GenericSchema, GroupSchema],
         branch: Union[str, Branch] = None,
-    ):
+    ) -> None:
+        """Load a Node with its attributes and its relationships to the database."""
         branch = await get_branch(branch=branch, session=session)
 
         node_type = node.__class__.__name__
@@ -334,35 +335,23 @@ class SchemaManager(NodeManager):
         attribute_schema = registry.get_schema(name="AttributeSchema", branch=branch)
         relationship_schema = registry.get_schema(name="RelationshipSchema", branch=branch)
 
+        # Create the node first
+        schema_dict = node.dict(exclude={"filters", "relationships", "attributes"})
+        obj = await Node.init(schema=node_schema, branch=branch, session=session)
+        await obj.new(**schema_dict, session=session)
+        await obj.save(session=session)
+
+        # Then create the Attributes and the relationships
         if isinstance(node, (NodeSchema, GenericSchema)):
-            attrs = []
-            rels = []
             for item in node.local_attributes:
                 attr = await Node.init(schema=attribute_schema, branch=branch, session=session)
-                await attr.new(**item.dict(exclude={"filters"}), session=session)
+                await attr.new(**item.dict(exclude={"filters"}), node=obj, session=session)
                 await attr.save(session=session)
-                attrs.append(attr)
 
             for item in node.local_relationships:
                 rel = await Node.init(schema=relationship_schema, branch=branch, session=session)
-                await rel.new(**item.dict(exclude={"filters"}), session=session)
+                await rel.new(**item.dict(exclude={"filters"}), node=obj, session=session)
                 await rel.save(session=session)
-                rels.append(rel)
-
-            attribute_ids = [attr.id for attr in attrs] or None
-            relationship_ids = [rel.id for rel in rels] or None
-
-        schema_dict = node.dict(exclude={"filters"})
-
-        if isinstance(node, (NodeSchema, GenericSchema)):
-            schema_dict["relationships"] = relationship_ids
-            schema_dict["attributes"] = attribute_ids
-
-        node = await Node.init(schema=node_schema, branch=branch, session=session)
-        await node.new(**schema_dict, session=session)
-        await node.save(session=session)
-
-        return True
 
     @classmethod
     async def load_schema_from_db(
