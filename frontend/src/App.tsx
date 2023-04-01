@@ -1,3 +1,4 @@
+
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -9,6 +10,7 @@ import { graphQLClient } from ".";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
+import SentryClient from "./config/sentry";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import { components } from "./infraops";
 import Layout from "./screens/layout/layout";
@@ -24,8 +26,13 @@ function App() {
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
-  const [, setConfig] = useAtom(configState);
+  const [config, setConfig] = useAtom(configState);
   const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
+
+  /**
+   * Sentry configuration
+   */
+  SentryClient(config);
 
   /**
    * Fetch config from the backend and return it
