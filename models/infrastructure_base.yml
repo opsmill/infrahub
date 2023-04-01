@@ -29,6 +29,7 @@ generics:
         kind: Attribute
       - name: device
         peer: Device
+        identifier: "device__interface"
         optional: false
         cardinality: one
         kind: Parent
@@ -70,6 +71,7 @@ nodes:
         kind: Attribute
       - name: interfaces
         peer: Interface
+        identifier: "device__interface"
         optional: true
         cardinality: many
         kind: Component
