@@ -41,7 +41,13 @@ async def _load(schema: Path, log: logging.Logger):
             console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
         raise typer.Exit(2)
 
-    await client.schema.load(schema=schema_data)
+    ok, errors = await client.schema.load(schema=schema_data)
+
+    if errors:
+        console.print("[red]Unable to load the schema:")
+        for error in errors.get("detail"):
+            loc_str = [str(item) for item in error["loc"][1:]]
+            console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
 
 
 @app.command()

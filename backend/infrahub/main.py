@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.logger import logger
 from graphql import graphql
 from neo4j import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
@@ -20,7 +20,7 @@ from infrahub.config import AnalyticsSettings, LoggingSettings, MainSettings
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager, SchemaManager
-from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.database import get_db
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import get_gql_mutation, get_gql_query
@@ -114,12 +114,8 @@ async def get_schema(
     )
 
 
-class SchemaLoadAPI(BaseModel):
+class SchemaLoadAPI(SchemaRoot):
     version: str
-    generics: List[GenericSchema] = Field(default_factory=list)
-    nodes: List[NodeSchema] = Field(default_factory=list)
-    groups: List[GroupSchema] = Field(default_factory=list)
-
 
 @app.post("/schema/load/")
 async def load_schema(
@@ -132,10 +128,9 @@ async def load_schema(
     except BranchNotFound as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
 
-    schema_root = SchemaRoot(**schema.dict())
-    schema_root.extend_nodes_with_interfaces()
-    await SchemaManager.register_schema_to_registry(schema_root)
-    await SchemaManager.load_schema_to_db(schema_root, session=session)
+    schema.extend_nodes_with_interfaces()
+    await SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.load_schema_to_db(schema, session=session)
 
     return JSONResponse(status_code=202, content={})
 

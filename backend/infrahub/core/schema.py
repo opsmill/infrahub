@@ -384,6 +384,27 @@ class SchemaRoot(BaseModel):
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
 
+    @classmethod
+    def has_schema(cls, values, name: str) -> bool:
+        """Check if a schema exist locally as a node or as a generic."""
+
+        available_schemas = [item.kind for item in values.get("nodes", []) + values.get("generics", [])]
+        if name not in available_schemas:
+            return False
+
+        return True
+
+    @root_validator
+    def check_relationships_peer_are_valid(cls, values):
+        for node in values.get("nodes", []) + values.get("generics", []):
+            for relationship in node.relationships:
+                if not cls.has_schema(values, relationship.peer) and not registry.has_schema(name=relationship.peer):
+                    raise ValueError(
+                        f"Unable to find the schema {relationship.peer} to build the relationship with {node.kind}"
+                    )
+
+        return values
+
     def extend_nodes_with_interfaces(self) -> SchemaRoot:
         """Extend all the nodes with the attributes and relationships
         from the Interface objects defined in inherited_from.
