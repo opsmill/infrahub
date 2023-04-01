@@ -22,13 +22,19 @@ export const PopOver = ({children, className, buttonComponent, title}: any) => {
       >
         <Popover.Panel className={classNames("absolute bg-white z-10 rounded-lg border shadow-xl mt-3 w-screen max-w-sm grid grid-cols-1 divide-y divide-gray-200", className)}>
           {
-            title
-            && <div className="font-semibold text-center p-4">{title}</div>
-          }
+            ({ close }) => (
+              <>
+                {
+                  title
+                  && <div className="font-semibold text-center p-4">{title}</div>
+                }
 
-          <div className="p-4">
-            {children}
-          </div>
+                <div className="p-4">
+                  {children({ close })}
+                </div>
+              </>
+            )
+          }
         </Popover.Panel>
       </Transition>
     </Popover>
