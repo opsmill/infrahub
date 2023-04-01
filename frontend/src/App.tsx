@@ -2,10 +2,11 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from ".";
+import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
@@ -35,7 +36,7 @@ function App() {
       const data = await rawResponse.json();
       return data;
     } catch (err) {
-      console.error("Something went wrong when fetching the config");
+      toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />);
       console.error("err: ", err);
       return undefined;
     }
@@ -69,7 +70,7 @@ function App() {
       const data: iBranchData = await graphQLClient.request(BRANCH_QUERY);
       return sortByName(data.branch || []);
     } catch (err) {
-      console.error("Something went wrong when fetching the branch details");
+      toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the branch details"} />);
       console.error("err: ", err);
       return [];
     }
@@ -104,7 +105,7 @@ function App() {
         const data = await rawResponse.json();
         return sortByName(data.nodes || []);
       } catch(err) {
-        console.error("Something went wrong when fetching the schema details");
+        toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema details"} />);
         console.error("err: ", err);
         return [];
       }
