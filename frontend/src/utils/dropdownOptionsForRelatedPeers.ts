@@ -4,8 +4,8 @@ import { graphQLClient } from "..";
 declare var Handlebars: any;
 
 export interface iPeerDropdownOption {
-  label: string;
-  value: string;
+  id: string;
+  display_label: string;
 }
 
 export interface iPeerDropdownOptions {
@@ -48,6 +48,9 @@ const template = Handlebars.compile(`query DropdownFormOptions {
 const getDropdownOptionsForRelatedPeers = async (
   peers: string[]
 ): Promise<iPeerDropdownOptions> => {
+  if(!peers.length) {
+    return {};
+  }
   const queryString = template({
     peers,
   });

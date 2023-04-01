@@ -11,7 +11,7 @@ export default function FilterTextField(props: Props) {
   const { filter } = props;
   const [filters, setFilters] = useAtom(comboxBoxFilterState);
   const [value, setValue] = useState("");
-  
+
   const updateFilter = () => {
     if (value) {
       setFilters([

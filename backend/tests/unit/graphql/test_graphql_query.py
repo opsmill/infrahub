@@ -44,11 +44,11 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
-        "display_label": ["label__value"],
+        "display_labels": ["label__value"],
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "label", "kind": "String", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "label", "kind": "Text", "optional": True},
         ],
     }
 
@@ -84,11 +84,11 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
-        "display_label": ["name__value", "level__value"],
+        "display_labels": ["name__value", "level__value"],
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "level", "kind": "Integer", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number", "optional": True},
         ],
     }
 
@@ -129,8 +129,8 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
         "kind": "Criticality",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "level", "kind": "Integer", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number", "optional": True},
         ],
     }
 
@@ -443,7 +443,7 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert result.data["person"][0]["__typename"] == "Person"
-    assert result.data["person"][0]["name"]["__typename"] == "StrAttribute"
+    assert result.data["person"][0]["name"]["__typename"] == "TextAttribute"
     assert result_per_name["John"]["cars"][0]["__typename"] == "RelatedCar"
 
 
@@ -889,7 +889,7 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
 
-async def test_query_node_property_source(
+async def test_query_attribute_node_property_source(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
     p1 = await Node.init(session=session, schema="Person")
@@ -924,7 +924,7 @@ async def test_query_node_property_source(
     assert result1.data["person"][0]["firstname"]["source"]["name"]["value"] == first_account.name.value
 
 
-async def test_query_node_property_owner(
+async def test_query_attribute_node_property_owner(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
     p1 = await Node.init(session=session, schema="Person")
@@ -957,6 +957,66 @@ async def test_query_node_property_owner(
     assert result1.errors is None
     assert result1.data["person"][0]["firstname"]["owner"]
     assert result1.data["person"][0]["firstname"]["owner"]["name"]["value"] == first_account.name.value
+
+
+async def test_query_relationship_node_property(db, session, default_branch: Branch, car_person_schema, first_account):
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(
+        session=session,
+        name="volt",
+        nbr_seats=4,
+        is_electric=True,
+        owner={"id": p1, "_relation__owner": first_account.id},
+    )
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=car)
+    await c2.new(
+        session=session,
+        name="bolt",
+        nbr_seats=4,
+        is_electric=True,
+        owner={"id": p2, "_relation__source": first_account.id},
+    )
+    await c2.save(session=session)
+
+    query = """
+    query {
+        person {
+            name {
+                value
+            }
+            cars {
+                _relation__owner {
+                    id
+                }
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["person"]) == 2
 
 
 async def test_query_attribute_flag_property(
@@ -1234,7 +1294,7 @@ async def test_union_relationship(
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
@@ -1319,7 +1379,7 @@ async def test_union_root(
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}

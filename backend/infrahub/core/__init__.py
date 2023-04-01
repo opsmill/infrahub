@@ -5,14 +5,17 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
 import infrahub.config as config
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import BranchNotFound, DataTypeNotFound
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
+    from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+    from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
+    from infrahub.types import InfrahubDataType
 
 # pylint: disable=redefined-builtin
 
@@ -138,10 +141,15 @@ def get_account_by_id(id: str):  # pylint: disable=unused-argument
 
 @dataclass
 class Registry:
+    id: Optional[str] = None
+    attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
     branch: dict = field(default_factory=dict)
     node: dict = field(default_factory=dict)
     schema: dict = field(default_factory=lambda: defaultdict(dict))
+    default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
+    data_type: Dict[str, InfrahubDataType] = field(default_factory=dict)
+    input_type: Dict[str, BaseAttributeInput] = field(default_factory=dict)
     account: dict = field(default_factory=dict)
     account_id: dict = field(default_factory=dict)
     node_group: dict = field(default_factory=dict)
@@ -199,6 +207,14 @@ class Registry:
     ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
         return self.get_item(kind="schema", name=name, branch=branch)
 
+    def get_data_type(
+        self,
+        name: str,
+    ) -> InfrahubDataType:
+        if name not in self.data_type:
+            raise DataTypeNotFound(name=name)
+        return self.data_type[name]
+
     def get_full_schema(
         self, branch: Optional[Union[Branch, str]] = None
     ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
@@ -229,6 +245,9 @@ class Registry:
         self.account_id = {}
         self.node_group = {}
         self.attr_group = {}
+        self.data_type = {}
+        self.attribute = {}
+        self.input_type = {}
 
 
 registry = Registry()

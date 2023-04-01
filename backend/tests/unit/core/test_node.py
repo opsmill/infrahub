@@ -87,13 +87,13 @@ async def test_node_init_invalid_value(session, default_branch: Branch, critical
     with pytest.raises(ValidationError) as exc:
         await obj.new(session=session, name="low", level="notanint")
 
-    assert "not of type Integer" in str(exc.value)
+    assert "not of type Number" in str(exc.value)
 
     obj = await Node.init(session=session, schema=criticality_schema)
     with pytest.raises(ValidationError) as exc:
         await obj.new(session=session, name=False, level=3)
 
-    assert "not of type String" in str(exc.value)
+    assert "not of type Text" in str(exc.value)
 
 
 async def test_node_default_value(session, default_branch):
@@ -103,11 +103,11 @@ async def test_node_default_value(session, default_branch):
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "myint", "kind": "Integer"},
-            {"name": "myint_default", "kind": "Integer", "default_value": 10},
-            {"name": "mystr", "kind": "String"},
-            {"name": "mystr_default", "kind": "String", "default_value": "test"},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "myint", "kind": "Number"},
+            {"name": "myint_default", "kind": "Number", "default_value": 10},
+            {"name": "mystr", "kind": "Text"},
+            {"name": "mystr_default", "kind": "Text", "default_value": "test"},
             {"name": "mybool", "kind": "Boolean"},
             {"name": "mybool_default", "kind": "Boolean", "default_value": True},
             {"name": "mybool_default_false", "kind": "Boolean", "default_value": False},
@@ -469,8 +469,8 @@ async def test_update_related_node(db, session, default_branch, data_schema):
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
                     {"name": "person", "peer": "Person", "cardinality": "one"},
@@ -482,8 +482,8 @@ async def test_update_related_node(db, session, default_branch, data_schema):
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "firstname", "kind": "String"},
-                    {"name": "lastname", "kind": "String"},
+                    {"name": "firstname", "kind": "Text"},
+                    {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
                     {"name": "tags", "peer": "Tag", "cardinality": "many"},
@@ -714,7 +714,7 @@ async def test_union(db, session, default_branch, generic_vehicule_schema, car_s
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}

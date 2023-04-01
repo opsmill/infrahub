@@ -34,7 +34,7 @@ def git_repos_dir(tmp_path) -> str:
 
     os.mkdir(repos_dir)
 
-    config.SETTINGS.main.repositories_directory = repos_dir
+    config.SETTINGS.git.repositories_directory = repos_dir
 
     return repos_dir
 

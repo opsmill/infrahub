@@ -16,6 +16,10 @@ from infrahub.graphql.generator import (
 from infrahub.graphql.types import InfrahubObject
 
 
+async def test_input_type_registration():
+    assert registry.input_type is not {}
+
+
 async def test_generate_interface_object(session, default_branch: Branch, generic_vehicule_schema):
     load_attribute_types_in_registry(branch=default_branch)
 

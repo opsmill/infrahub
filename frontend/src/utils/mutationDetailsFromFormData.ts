@@ -1,3 +1,4 @@
+import * as R from "ramda";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
@@ -8,59 +9,57 @@ const getMutationDetailsFromFormData = (
   mode: MutationMode,
   existingObject?: any
 ) => {
-  const mutationArgs: any[] = [];
+  const updateObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {
-    const updatedValue = formData[attribute.name];
+    const updatedValue = updateObject[attribute.name].value;
     if (mode === "update") {
-      const existingValue = existingObject[attribute.name].value;
-      if (mode === "update" && (!updatedValue || updatedValue === existingValue))
-        return false;
-    }
-
-    if (attribute.kind === "String") {
-      mutationArgs.push(`\n\t${attribute.name}: { value: "${updatedValue}" }`);
-    } else {
-      mutationArgs.push(`\n\t${attribute.name}: { value: ${updatedValue} }`);
+      const existingValue = JSON.stringify(existingObject[attribute.name]);
+      if (mode === "update" && (!updatedValue || JSON.stringify(updatedValue) === existingValue))
+        delete updateObject[attribute.name];
     }
   });
 
-  schema.relationships?.forEach((relationship) => {
-    const updatedValue = formData[relationship.name];
-    if (!updatedValue) return false;
-
+  schema.relationships?.filter((relationship) => relationship.kind === "Attribute").forEach((relationship) => {
     const isOneToOne =
       relationship.kind === "Attribute" && relationship.cardinality === "one";
+
     const isOneToMany =
       relationship.kind === "Attribute" && relationship.cardinality === "many";
 
-    let existingValue;
     if (mode === "update") {
       if (isOneToOne) {
-        existingValue = existingObject[relationship.name].id;
+        const existingValue = JSON.stringify(existingObject[relationship.name]);
+        const updatedValue = JSON.stringify(updateObject[relationship.name]);
         if (updatedValue === existingValue) {
-          return false;
+          delete updateObject[relationship.name];
         }
       } else {
-        existingValue = existingObject[relationship.name].map((r: any) => r.id);
-        const updatedIds = updatedValue.map((value: any) => value.value).sort();
-        if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
-          return false;
-        }
+        // const existingValue = existingObject[relationship.name].map((r: any) => r.id).sort();
+        // const updatedIds = updateObject[relationship.name].list.map((value: any) => value.value).sort();
+        // if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
+        //   delete updateObject[relationship.name];
+        // }
       }
     }
 
-    if (isOneToOne) {
-      mutationArgs.push(`\n\t${relationship.name}: { id: "${updatedValue}" }`);
-    } else if (isOneToMany) {
-      const values = updatedValue
-      .map((value: any) => `{ id: "${value.value}" }`)
-      .join(",");
-      mutationArgs.push(`\n\t${relationship.name}: [${values}]`);
+    if(isOneToMany && updateObject[relationship.name] && updateObject[relationship.name].list) {
+      const fieldKeys = Object.keys(updateObject[relationship.name]).filter(key => key !== "list");
+
+      updateObject[relationship.name] = updateObject[relationship.name].list.map((row: any) => {
+        const objWithMetaFields: any =  {
+          id: row.value
+        };
+
+        fieldKeys.forEach(key => {
+          objWithMetaFields[key] = updateObject[relationship.name][key];
+        });
+        return objWithMetaFields;
+      });
     }
   });
 
-  return mutationArgs;
+  return updateObject;
 };
 
 export default getMutationDetailsFromFormData;

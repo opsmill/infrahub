@@ -33,6 +33,9 @@ SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
 SelfRelationshipManager = TypeVar("SelfRelationshipManager", bound="RelationshipManager")
 
 
+PREFIX_PROPERTY = "_relation__"
+
+
 class Relationship(FlagPropertyMixin, NodePropertyMixin):
     rel_type: str = "IS_RELATED"
 
@@ -71,8 +74,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]):
         self.data = data
 
-        prop_prefix = "_relation__"
-
         if isinstance(data, RelationshipPeerData):
             await self.set_peer(data.peer_id)
 
@@ -92,9 +93,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             for key, value in data.items():
                 if key in ["peer", "id"]:
                     await self.set_peer(value=data.get(key, None))
-                elif key.startswith(prop_prefix) and hasattr(self, key.replace(prop_prefix, "")):
-                    setattr(self, key.replace(prop_prefix, ""), value)
-
+                elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
+                    setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
+                elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
+                    setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
         else:
             await self.set_peer(value=data)
 
@@ -158,6 +160,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             filters={self.schema.default_filterr: self.node_id},
             branch=self.branch,
             at=self.at,
+            include_owner=True,
+            include_source=True,
         )
 
         if not results:
@@ -199,7 +203,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # pylint: disable=import-outside-toplevel
         from infrahub.core.manager import NodeManager
 
-        self._peer = await NodeManager.get_one(session=session, id=self.peer_id, branch=self.branch, at=self.at)
+        self._peer = await NodeManager.get_one(
+            session=session, id=self.peer_id, branch=self.branch, at=self.at, include_owner=True, include_source=True
+        )
 
         peer_schema = await self.get_peer_schema()
         results = None
@@ -210,6 +216,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 filters={peer_schema.default_filter: self.peer_id},
                 branch=self.branch,
                 at=self.at,
+                include_owner=True,
+                include_source=True,
             )
 
         if not results:
@@ -324,14 +332,33 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         """Generate GraphQL Payload for the associated Peer."""
 
         peer_fields = {
-            key: value for key, value in fields.items() if not key.startswith("_relation") or not key == "__typename"
+            key: value
+            for key, value in fields.items()
+            if not key.startswith(PREFIX_PROPERTY) or not key == "__typename"
+        }
+        rel_fields = {
+            key.replace(PREFIX_PROPERTY, ""): value for key, value in fields.items() if key.startswith(PREFIX_PROPERTY)
         }
 
         peer = await self.get_peer(session=session)
         response = await peer.to_graphql(fields=peer_fields, session=session)
 
-        if "_relation__updated_at" in fields:
-            response["_relation__updated_at"] = await self.updated_at.to_graphql(session=session)
+        for field_name in rel_fields.keys():
+            if field_name == "updated_at" in fields:
+                response[f"{PREFIX_PROPERTY}{field_name}"] = await self.updated_at.to_graphql(session=session)
+
+            if field_name in self._node_properties:
+                node_prop_getter = getattr(self, f"get_{field_name}")
+                node_prop = await node_prop_getter(session=session)
+                if not node_prop:
+                    response[f"{PREFIX_PROPERTY}{field_name}"] = None
+                else:
+                    response[f"{PREFIX_PROPERTY}{field_name}"] = await node_prop.to_graphql(
+                        session=session, fields=rel_fields[field_name]
+                    )
+            if field_name in self._flag_properties:
+                response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)
+
         if "__typename" in fields:
             response["__typename"] = f"Related{peer.get_kind()}"
 

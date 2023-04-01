@@ -1,6 +1,10 @@
 import {
   ControlType,
-  DynamicFieldData
+  DynamicFieldData,
+  getFormInputControlTypeFromSchemaAttributeKind,
+  RelationshipCardinality,
+  SchemaAttributeType,
+  SelectOption
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
@@ -12,45 +16,69 @@ const getFormStructureForCreateEdit = (
   schemaKindNameMap: iSchemaKindNameMap,
   row?: any
 ): DynamicFieldData[] => {
-  if(!schema) {
+  if (!schema) {
     return [];
   }
-  return [
-    ...(schema.attributes || []).map((attribute) => ({
-      fieldName: attribute.name,
-      inputType: attribute.enum ? "select" : ("text" as ControlType),
-      label: attribute.label ? attribute.label : attribute.name,
-      options: attribute.enum?.map((row: any) => ({
+
+  const formFields: DynamicFieldData[] = [];
+
+  schema.attributes?.forEach((attribute) => {
+    let options: SelectOption[] = [];
+    if (attribute.enum) {
+      options = attribute.enum?.map((row: any) => ({
         label: row,
         value: row,
-      })),
-      defaultValue: row && row[attribute.name] ? row[attribute.name].value : "",
+      }));
+    }
+
+    formFields.push({
+      fieldName: attribute.name,
+      type: attribute.kind,
+      isAttribute: true,
+      isRelationship: false,
+      inputType: attribute.enum ? "select" : getFormInputControlTypeFromSchemaAttributeKind(attribute.kind as SchemaAttributeType),
+      label: attribute.label ? attribute.label : attribute.name,
+      defaultValue: row && row[attribute.name] ? row[attribute.name] : "",
+      options: {
+        values: options,
+      },
       config: {
         required: attribute.optional === false ? "Required" : "",
       },
-    })),
-    ...(schema.relationships || [])
-    .filter((relationship) => relationship.kind === "Attribute")
-    .map((relationship) => ({
+    });
+  });
+
+  schema.relationships
+  ?.filter((relationship) => relationship.kind === "Attribute")
+  .forEach((relationship) => {
+    let options: SelectOption[] = [];
+    if (dropdownOptions[schemaKindNameMap[relationship.peer]]) {
+      options = dropdownOptions[schemaKindNameMap[relationship.peer]].map(
+        (row: any) => ({
+          label: row.display_label,
+          value: row.id,
+        })
+      );
+    }
+    formFields.push({
       fieldName: relationship.name,
+      type: "String",
+      isAttribute: false,
+      isRelationship: true,
+      relationshipCardinality: relationship.cardinality as RelationshipCardinality,
       inputType:
           relationship.cardinality === "many"
             ? ("multiselect" as ControlType)
             : ("select" as ControlType),
       label: relationship.label ? relationship.label : relationship.name,
-      options: dropdownOptions[schemaKindNameMap[relationship.peer]].map(
-        (row: any) => ({
-          label: row.display_label,
-          value: row.id,
-        })
-      ),
-      defaultValue: row
-        ? relationship.cardinality === "many"
-          ? row[relationship.name].map((item: any) => item.id)
-          : row[relationship.name].id
-        : "",
-    })),
-  ];
+      defaultValue: row ? row[relationship.name] : "",
+      options: {
+        values: options,
+      },
+    });
+  });
+
+  return formFields;
 };
 
 export default getFormStructureForCreateEdit;

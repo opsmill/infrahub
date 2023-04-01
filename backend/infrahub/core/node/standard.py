@@ -31,6 +31,9 @@ class StandardNode(BaseModel):
         for field_name in fields.keys():
             if field_name in ["id"]:
                 continue
+            if field_name == "__typename":
+                response[field_name] = self.get_type()
+                continue
             field = getattr(self, field_name)
             if field is None:
                 response[field_name] = None
@@ -69,13 +72,22 @@ class StandardNode(BaseModel):
                 continue
             attrs.append(f"{attr_name}: '{getattr(self, attr_name)}'")
 
-        query = """
-        CREATE (n:%s { uuid: $uuid, %s })
-        RETURN n
-        """ % (
-            node_type,
-            ", ".join(attrs),
-        )
+        if attrs:
+            query = """
+            CREATE (n:%s { uuid: $uuid, %s })
+            RETURN n
+            """ % (
+                node_type,
+                ", ".join(attrs),
+            )
+        else:
+            query = (
+                """
+            CREATE (n:%s { uuid: $uuid })
+            RETURN n
+            """
+                % node_type
+            )
 
         params = {"uuid": str(uuid.uuid4())}
 

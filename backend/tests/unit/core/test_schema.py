@@ -14,7 +14,7 @@ def test_schema_root_no_generic():
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
+                    {"name": "name", "kind": "Text", "unique": True},
                 ],
             }
         ]
@@ -30,8 +30,8 @@ def test_node_schema_unique_names():
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
     }
 
@@ -46,8 +46,8 @@ def test_node_schema_unique_names():
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "dupname", "kind": "String"},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "dupname", "kind": "Text"},
         ],
         "relationships": [
             {"name": "dupname", "peer": "Criticality", "cardinality": "one"},
@@ -67,7 +67,7 @@ def test_node_schema_unique_identifiers():
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "first", "peer": "Criticality", "cardinality": "one"},
@@ -86,7 +86,7 @@ def test_node_schema_unique_identifiers():
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "first", "peer": "Criticality", "cardinality": "one"},
@@ -103,11 +103,11 @@ async def test_node_schema_generate_fields_for_display_label():
         "name": "criticality",
         "kind": "Criticality",
         "default_filter": "name__value",
-        "display_label": ["name__value", "level__value"],
+        "display_labels": ["name__value", "level__value"],
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "level", "kind": "Integer"},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number"},
         ],
         "relationships": [
             {"name": "first", "peer": "Criticality", "cardinality": "one"},
@@ -117,7 +117,7 @@ async def test_node_schema_generate_fields_for_display_label():
     schema = NodeSchema(**SCHEMA)
     assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
 
-    SCHEMA["display_label"] = ["name__value__third"]
+    SCHEMA["display_labels"] = ["name__value__third"]
     schema = NodeSchema(**SCHEMA)
     with pytest.raises(ValueError):
         schema.generate_fields_for_display_label()
@@ -159,7 +159,7 @@ async def test_extend_node_with_interface(session, default_branch):
                 "kind": "GenericInterface",
                 "branch": True,
                 "attributes": [
-                    {"name": "my_generic_name", "kind": "String"},
+                    {"name": "my_generic_name", "kind": "Text"},
                 ],
             }
         ],
@@ -171,8 +171,8 @@ async def test_extend_node_with_interface(session, default_branch):
                 "inherit_from": ["GenericInterface"],
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
             }
         ],

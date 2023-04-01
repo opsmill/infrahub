@@ -6,14 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field, root_validator, validator
 
 from infrahub.core import registry
-from infrahub.core.attribute import (
-    AnyAttribute,
-    Boolean,
-    Integer,
-    ListAttribute,
-    String,
-)
 from infrahub.core.relationship import Relationship
+from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import BaseEnum, duplicates
 
 if TYPE_CHECKING:
@@ -24,13 +18,7 @@ if TYPE_CHECKING:
 
 # pylint: disable=no-self-argument,redefined-builtin
 
-ATTRIBUTES_MAPPING = {
-    "Any": AnyAttribute,
-    "String": String,
-    "Integer": Integer,
-    "Boolean": Boolean,
-    "List": ListAttribute,
-}
+ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
 
 RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
@@ -40,9 +28,9 @@ NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
 
 
 class FilterSchemaKind(str, BaseEnum):
-    STRING = "String"
-    LIST = "String"
-    INTEGER = "Integer"
+    TEXT = "Text"
+    LIST = "Text"
+    NUMBER = "Number"
     BOOLEAN = "Boolean"
     OBJECT = "Object"
     MULTIOBJECT = "MultiObject"
@@ -89,12 +77,12 @@ class AttributeSchema(BaseModel):
         cls,
         v,
     ):
-        if v not in ATTRIBUTES_MAPPING:
-            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTES_MAPPING.keys()} ")
+        if v not in ATTRIBUTE_KIND_LABELS:
+            raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KIND_LABELS} ")
         return v
 
     def get_class(self):
-        return ATTRIBUTES_MAPPING.get(self.kind, None)
+        return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
     async def get_query_filter(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=unused-argument
         return self.get_class().get_query_filter(*args, **kwargs)
@@ -323,7 +311,7 @@ class NodeSchema(BaseNodeSchema):
     groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
     default_filter: Optional[str]
-    display_label: Optional[List[str]]
+    display_labels: Optional[List[str]]
     filters: List[FilterSchema] = Field(default_factory=list)
 
     # TODO add validation to ensure that 2 attributes can't have the same name
@@ -373,14 +361,14 @@ class NodeSchema(BaseNodeSchema):
     def generate_fields_for_display_label(self) -> Dict:
         fields = {}
 
-        for item in self.display_label:
+        for item in self.display_labels:
             elements = item.split("__")
             if len(elements) == 1:
                 fields[elements[0]] = None
             elif len(elements) == 2:
                 fields[elements[0]] = {elements[1]: None}
             else:
-                raise ValueError(f"Unexpected value for display_label, {item} is not valid.")
+                raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
 
         return fields
 
@@ -429,24 +417,39 @@ internal_schema = {
             "kind": "NodeSchema",
             "branch": True,
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
+                    "description": "Node name, must be unique and must be a all lowercase.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": 3,
                     "max_length": 32,
                 },
-                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {
+                    "name": "kind",
+                    "kind": "Text",
+                    "description": "Node kind, must be unique and must be in CamelCase",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": 3,
+                    "max_length": 32,
+                },
                 {
                     "name": "label",
-                    "kind": "String",
+                    "kind": "Text",
+                    "description": "Human friendly representation of the name/kind",
                     "optional": True,
                     "max_length": 32,
                 },
-                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    #  "description": "",
+                    "optional": True,
+                    "max_length": 128,
+                },
                 {
                     "name": "branch",
                     "kind": "Boolean",
@@ -455,22 +458,26 @@ internal_schema = {
                 },
                 {
                     "name": "default_filter",
-                    "kind": "String",
+                    "kind": "Text",
+                    "description": "Default filter used to search for a node in addition to its ID.",
                     "optional": True,
                 },
                 {
-                    "name": "display_label",
+                    "name": "display_labels",
                     "kind": "List",
+                    "description": "List of attributes to use to generate the display label",
                     "optional": True,
                 },
                 {
                     "name": "inherit_from",
                     "kind": "List",
+                    "description": "List of Generic Kind that this node is inheriting from",
                     "optional": True,
                 },
                 {
                     "name": "groups",
                     "kind": "List",
+                    "description": "List of Group that this node is part of",
                     "optional": True,
                 },
             ],
@@ -500,22 +507,22 @@ internal_schema = {
             "kind": "AttributeSchema",
             "branch": True,
             "default_filter": None,
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "attributes": [
-                {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "name", "kind": "Text", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "kind",
-                    "kind": "String",
-                    "enum": list(ATTRIBUTES_MAPPING.keys()),
+                    "kind": "Text",
+                    "enum": ATTRIBUTE_KIND_LABELS,
                     "min_length": 3,
                     "max_length": 32,
                 },
                 {"name": "enum", "kind": "List", "optional": True},
-                {"name": "regex", "kind": "String", "optional": True},
-                {"name": "max_length", "kind": "Integer", "optional": True},
-                {"name": "min_length", "kind": "Integer", "optional": True},
-                {"name": "label", "kind": "String", "optional": True, "max_length": 32},
-                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
+                {"name": "regex", "kind": "Text", "optional": True},
+                {"name": "max_length", "kind": "Number", "optional": True},
+                {"name": "min_length", "kind": "Number", "optional": True},
+                {"name": "label", "kind": "Text", "optional": True, "max_length": 32},
+                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
                 {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
                 {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
                 {"name": "branch", "kind": "Boolean", "default_value": True, "optional": True},
@@ -543,15 +550,15 @@ internal_schema = {
             "kind": "RelationshipSchema",
             "branch": True,
             "default_filter": None,
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "attributes": [
-                {"name": "name", "kind": "String", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
-                {"name": "peer", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
-                {"name": "kind", "kind": "String", "enum": RELATIONSHIP_KINDS, "default_value": "Generic"},
-                {"name": "label", "kind": "String", "optional": True, "max_length": 32},
-                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
-                {"name": "identifier", "kind": "String", "max_length": 128, "optional": True},
-                {"name": "cardinality", "kind": "String", "enum": ["one", "many"]},
+                {"name": "name", "kind": "Text", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "peer", "kind": "Text", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "kind", "kind": "Text", "enum": RELATIONSHIP_KINDS, "default_value": "Generic"},
+                {"name": "label", "kind": "Text", "optional": True, "max_length": 32},
+                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
+                {"name": "identifier", "kind": "Text", "max_length": 128, "optional": True},
+                {"name": "cardinality", "kind": "Text", "enum": ["one", "many"]},
                 {
                     "name": "optional",
                     "kind": "Boolean",
@@ -588,24 +595,24 @@ internal_schema = {
             "kind": "GenericSchema",
             "branch": True,
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_labels": ["label__value"],
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": 3,
                     "max_length": 32,
                 },
-                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "kind", "kind": "Text", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
                 {
                     "name": "label",
-                    "kind": "String",
+                    "kind": "Text",
                     "optional": True,
                     "max_length": 32,
                 },
-                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
+                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
             ],
             "relationships": [
                 {
@@ -631,18 +638,18 @@ internal_schema = {
             "kind": "GroupSchema",
             "branch": True,
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": 3,
                     "max_length": 32,
                 },
-                {"name": "kind", "kind": "String", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
-                {"name": "description", "kind": "String", "optional": True, "max_length": 128},
+                {"name": "kind", "kind": "Text", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
             ],
         },
     ]
@@ -654,20 +661,20 @@ core_models = {
         {
             "name": "data_owner",
             "kind": "DataOwner",  # Account, Group, Script ?
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
         },
         {
             "name": "data_source",
             "description": "Any Entities that stores or produces data.",
             "kind": "DataSource",  # Repository, Account ...
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
         },
     ],
@@ -676,34 +683,34 @@ core_models = {
             "name": "criticality",
             "kind": "Criticality",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "level", "kind": "Integer", "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "level", "kind": "Number", "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
         },
         {
             "name": "tag",
             "kind": "Tag",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
         },
         {
             "name": "organization",
             "kind": "Organization",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
             "relationships": [
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
@@ -713,16 +720,16 @@ core_models = {
             "name": "account",
             "kind": "Account",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "label", "kind": "String", "optional": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "label", "kind": "Text", "optional": True},
+                {"name": "description", "kind": "Text", "optional": True},
                 {
                     "name": "type",
-                    "kind": "String",
+                    "kind": "Text",
                     "default_value": "User",
                     "enum": ["User", "Script", "Bot", "Git"],
                 },
@@ -736,11 +743,11 @@ core_models = {
             "name": "account_token",
             "kind": "AccountToken",
             "default_filter": "token__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "token", "kind": "String", "unique": True},
-                {"name": "expiration_date", "kind": "String", "optional": True},  # Should be date here
+                {"name": "token", "kind": "Text", "unique": True},
+                {"name": "expiration_date", "kind": "Text", "optional": True},  # Should be date here
             ],
             "relationships": [
                 {"name": "account", "peer": "Account", "optional": False, "cardinality": "one"},
@@ -751,11 +758,11 @@ core_models = {
             "kind": "Group",
             "default_filter": "name__value",
             "inherit_from": ["DataOwner"],
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
             "relationships": [
                 {"name": "members", "peer": "Account", "optional": True, "cardinality": "many"},
@@ -765,35 +772,35 @@ core_models = {
             "name": "status",
             "kind": "Status",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_labels": ["label__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "label", "kind": "String", "optional": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "label", "kind": "Text", "optional": True},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
         },
         {
             "name": "role",
             "kind": "Role",
             "default_filter": "name__value",
-            "display_label": ["label__value"],
+            "display_labels": ["label__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "label", "kind": "String", "optional": True},
-                {"name": "description", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "label", "kind": "Text", "optional": True},
+                {"name": "description", "kind": "Text", "optional": True},
             ],
         },
         {
             "name": "location",
             "kind": "Location",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
-                {"name": "type", "kind": "String"},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "type", "kind": "Text"},
             ],
             "relationships": [
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
@@ -803,18 +810,18 @@ core_models = {
             "name": "repository",
             "kind": "Repository",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
-                {"name": "location", "kind": "String"},
-                # {"name": "type", "kind": "String", "default_value": "LOCAL", "enum" },
-                {"name": "default_branch", "kind": "String", "default_value": "main"},
-                {"name": "commit", "kind": "String", "optional": True},
-                {"name": "username", "kind": "String", "optional": True},
-                {"name": "password", "kind": "String", "optional": True},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "location", "kind": "Text"},
+                # {"name": "type", "kind": "Text", "default_value": "LOCAL", "enum" },
+                {"name": "default_branch", "kind": "Text", "default_value": "main"},
+                {"name": "commit", "kind": "Text", "optional": True},
+                {"name": "username", "kind": "Text", "optional": True},
+                {"name": "password", "kind": "Text", "optional": True},
             ],
             "relationships": [
                 {"name": "account", "peer": "Account", "kind": "Attribute", "optional": True, "cardinality": "one"},
@@ -829,12 +836,12 @@ core_models = {
             "name": "rfile",
             "kind": "RFile",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
-                {"name": "template_path", "kind": "String"},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "template_path", "kind": "Text"},
             ],
             "relationships": [
                 {
@@ -853,14 +860,14 @@ core_models = {
             "name": "check",
             "kind": "Check",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
-                {"name": "file_path", "kind": "String"},
-                {"name": "class_name", "kind": "String"},
-                {"name": "timeout", "kind": "Integer", "default_value": 10},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "file_path", "kind": "Text"},
+                {"name": "class_name", "kind": "Text"},
+                {"name": "timeout", "kind": "Number", "default_value": 10},
                 {"name": "rebase", "kind": "Boolean", "default_value": False},
             ],
             "relationships": [
@@ -879,15 +886,15 @@ core_models = {
             "name": "transform_python",
             "kind": "TransformPython",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
-                {"name": "file_path", "kind": "String"},
-                {"name": "class_name", "kind": "String"},
-                {"name": "url", "kind": "String"},
-                {"name": "timeout", "kind": "Integer", "default_value": 10},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "file_path", "kind": "Text"},
+                {"name": "class_name", "kind": "Text"},
+                {"name": "url", "kind": "Text"},
+                {"name": "timeout", "kind": "Number", "default_value": 10},
                 {"name": "rebase", "kind": "Boolean", "default_value": False},
             ],
             "relationships": [
@@ -906,12 +913,12 @@ core_models = {
             "name": "graphql_query",
             "kind": "GraphQLQuery",
             "default_filter": "name__value",
-            "display_label": ["name__value"],
+            "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "String", "unique": True},
-                {"name": "description", "kind": "String", "optional": True},
-                {"name": "query", "kind": "String"},
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "query", "kind": "TextArea"},
             ],
             "relationships": [
                 {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},

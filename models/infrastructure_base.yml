@@ -4,18 +4,18 @@ nodes:
   - name: device
     kind: Device
     default_filter: name__value
-    display_label:
+    display_labels:
       - name__value
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
         unique: true
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: type
-        kind: String
+        kind: Text
     relationships:
       - name: site
         peer: Location
@@ -49,17 +49,17 @@ nodes:
         kind: Attribute
   - name: interface
     kind: Interface
-    display_label:
+    display_labels:
       - name__value
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: speed
-        kind: Integer
+        kind: Number
       - name: enabled
         kind: Boolean
         default_value: true
@@ -100,14 +100,14 @@ nodes:
   - name: ipaddress
     kind: IPAddress
     default_filter: address__value
-    display_label:
+    display_labels:
       - address__value
     branch: true
     attributes:
       - name: address
-        kind: String
+        kind: Text
       - name: description
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: interface
@@ -118,18 +118,18 @@ nodes:
   - name: circuit
     kind: Circuit
     default_filter: circuit_id__value
-    display_label:
+    display_labels:
       - circuit_id__value
     branch: true
     attributes:
       - name: circuit_id
-        kind: String
+        kind: Text
         unique: true
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: vendor_id
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: status
@@ -157,7 +157,7 @@ nodes:
     branch: true
     attributes:
       - name: description
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: site
@@ -177,19 +177,19 @@ nodes:
   - name: autonomous_system
     kind: AutonomousSystem
     default_filter: name__value
-    display_label:
+    display_labels:
       - name__value
       - asn__value
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
         unique: true
       - name: asn
-        kind: Integer
+        kind: Number
         unique: true
       - name: description
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: organization
@@ -200,20 +200,20 @@ nodes:
   - name: bgp_peer_group
     kind: BGPPeerGroup
     default_filter: name__value
-    display_label:
+    display_labels:
       - name__value
     branch: true
     attributes:
       - name: name
-        kind: String
+        kind: Text
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: import_policies
-        kind: String
+        kind: Text
         optional: true
       - name: export_policies
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: local_as
@@ -233,18 +233,18 @@ nodes:
     branch: true
     attributes:
       - name: type
-        kind: String
+        kind: Text
         enum:
           - EXTERNAL
           - INTERNAL
       - name: description
-        kind: String
+        kind: Text
         optional: true
       - name: import_policies
-        kind: String
+        kind: Text
         optional: true
       - name: export_policies
-        kind: String
+        kind: Text
         optional: true
     relationships:
       - name: status

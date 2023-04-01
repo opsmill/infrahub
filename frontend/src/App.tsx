@@ -3,21 +3,21 @@ import { BrowserTracing } from "@sentry/tracing";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from ".";
-import "./App.css";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import { components } from "./infraops";
+import Layout from "./screens/layout/layout";
 import { branchState } from "./state/atoms/branch.atom";
 import { branchesState } from "./state/atoms/branches.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
-
 type APIResponse = components["schemas"]["SchemaAPI"];
-
-const router = createBrowserRouter(MAIN_ROUTES);
 
 Sentry.init({
   dsn: "https://c271c704fe5a43b3b08c83919f0d8e01@o4504893920247808.ingest.sentry.io/4504893931520000",
@@ -38,13 +38,14 @@ Sentry.setContext("character", {
   attack_type: "melee",
 });
 
-Sentry.configureScope(scope => scope.setTransactionName("MainApp"));
+Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));
 
 function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
+  const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
 
   /**
    * Fetch branches from the backend, sort, and return them
@@ -67,7 +68,7 @@ function App() {
     async () => {
       const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
       try {
-        const rawResponse = await fetch(CONFIG.SCHEMA_URL(branch?.name));
+        const rawResponse = await fetch(CONFIG.SCHEMA_URL(branchInQueryString ?? branch?.name));
         const data = await rawResponse.json();
         return sortByName(data.nodes || []);
       } catch(err) {
@@ -75,8 +76,8 @@ function App() {
         return [];
       }
     },
-    [branch]
-  )
+    [branch?.name, branchInQueryString]
+  );
 
   /**
    * Set schema in state atom
@@ -120,7 +121,18 @@ function App() {
     [setSchemaInState, branch]
   );
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          {MAIN_ROUTES.map((route) => (
+            <Route index key={route.path} path={route.path} element={route.element} />
+          ))}
+        </Route>
+      </Routes>
+      <ToastContainer closeOnClick={false} newestOnTop position="bottom-right" />
+    </>
+  );
 }
 
 export default App;

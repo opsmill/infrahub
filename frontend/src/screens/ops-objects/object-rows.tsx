@@ -2,7 +2,7 @@ import {
   ChevronDoubleRightIcon,
   ChevronRightIcon,
   ShieldCheckIcon,
-  StarIcon,
+  StarIcon
 } from "@heroicons/react/24/outline";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 
@@ -12,7 +12,7 @@ interface Props {
 
 export default function ObjectRows(props: Props) {
   const { schema } = props;
-  
+
   return (
     <div className="p-4">
       <div>

@@ -5,13 +5,9 @@ from uuid import UUID
 
 from infrahub.core import get_branch, registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import (
-    ATTRIBUTES_MAPPING,
-    AttributeSchema,
-    NodeSchema,
-    RelationshipSchema,
-)
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.exceptions import ValidationError
+from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client.timestamp import Timestamp
 
 from ..attribute import BaseAttribute
@@ -34,7 +30,6 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------------
 
 # pylint: disable=redefined-builtin,too-many-branches
-
 
 SelfNode = TypeVar("SelfNode", bound="Node")
 
@@ -216,7 +211,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _generate_attribute_default(
         self, session: AsyncSession, name: str, schema: AttributeSchema, data: Any  # pylint: disable=unused-argument
     ) -> BaseAttribute:
-        attr_class = ATTRIBUTES_MAPPING[schema.kind]
+        attr_class = ATTRIBUTE_TYPES[schema.kind].get_infrahub_class()
         attr = attr_class(
             data=data,
             name=name,
@@ -408,7 +403,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
                     elif field_name in NODE_FIELDS:
                         attr = getattr(self, key)
-
                         # Right now we assume that the UUID is provided from GraphQL
                         # so we compare the value with <node>_id
                         if getattr(attr, f"{field_name}_id") != value.get(field_name):
@@ -416,17 +410,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                             changed = True
 
             if key in self._relationships:
-                rel = getattr(self, key)
-                changed = await rel.update(session=session, data=value)
+                rel: RelationshipManager = getattr(self, key)
+                changed |= await rel.update(session=session, data=value)
 
         return changed
 
     async def render_display_label(self, session: AsyncSession):  # pylint: disable=unused-argument
-        if not self._schema.display_label:
+        if not self._schema.display_labels:
             return repr(self)
 
         display_elements = []
-        for item in self._schema.display_label:
+        for item in self._schema.display_labels:
             item_elements = item.split("__")
             if len(item_elements) != 2:
                 raise ValidationError("Display Label can only have one level")

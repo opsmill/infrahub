@@ -184,10 +184,10 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
 
 def get_repositories_directory() -> str:
     """Return the absolute path to the main directory used for the repositories."""
-    repos_dir = config.SETTINGS.main.repositories_directory
+    repos_dir = config.SETTINGS.git.repositories_directory
     if not os.path.isabs(repos_dir):
         current_dir = os.getcwd()
-        repos_dir = os.path.join(current_dir, config.SETTINGS.main.repositories_directory)
+        repos_dir = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
 
     return str(repos_dir)
 
@@ -373,9 +373,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     def directory_root(self) -> str:
         """Return the path to the root directory for this repository."""
         current_dir = os.getcwd()
-        repositories_directory = config.SETTINGS.main.repositories_directory
+        repositories_directory = config.SETTINGS.git.repositories_directory
         if not os.path.isabs(repositories_directory):
-            repositories_directory = os.path.join(current_dir, config.SETTINGS.main.repositories_directory)
+            repositories_directory = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
 
         return os.path.join(repositories_directory, self.name)
 

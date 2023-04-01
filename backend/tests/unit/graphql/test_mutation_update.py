@@ -88,12 +88,12 @@ async def test_update_object_with_node_property(
     db, session, default_branch, car_person_schema, first_account, second_account
 ):
     obj = await Node.init(session=session, schema="Person")
-    await obj.new(session=session, name="John", height=180, _source=first_account)
+    await obj.new(session=session, name={"value": "John", "source": first_account}, height=180)
     await obj.save(session=session)
 
     query = """
     mutation {
-        person_update(data: {id: "%s", name: { source: "%s" } }) {
+        person_update(data: {id: "%s", name: { source: "%s" }, height: { source: "%s" } }) {
             ok
             object {
                 id
@@ -102,6 +102,7 @@ async def test_update_object_with_node_property(
     }
     """ % (
         obj.id,
+        second_account.id,
         second_account.id,
     )
     result = await graphql(
@@ -117,7 +118,7 @@ async def test_update_object_with_node_property(
 
     obj1 = await NodeManager.get_one(session=session, id=obj.id, include_source=True)
     assert obj1.name.source_id == second_account.id
-    assert obj1.height.source_id == first_account.id
+    assert obj1.height.source_id == second_account.id
 
 
 async def test_update_invalid_object(db, session, default_branch, car_person_schema):
@@ -322,6 +323,63 @@ async def test_update_existing_single_relationship_flag_property(db, session, de
     assert car_peer.id == p1.id
     rm = await car.owner.get(session=session)
     assert rm.is_protected is True
+
+
+async def test_update_existing_single_relationship_node_property(
+    db, session, default_branch, car_person_schema, first_account, second_account
+):
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    c1 = await Node.init(session=session, schema="Car")
+    await c1.new(
+        session=session,
+        name="accord",
+        nbr_seats=5,
+        is_electric=False,
+        owner={"id": p1.id, "_relation__source": first_account.id},
+    )
+    await c1.save(session=session)
+
+    query = """
+    mutation {
+        car_update(data: {id: "%s", owner: { id: "%s", _relation__source: "%s" }}) {
+            ok
+            object {
+                id
+                owner {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        c1.id,
+        p1.id,
+        second_account.id,
+    )
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["car_update"]["ok"] is True
+    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "John"
+
+    car = await NodeManager.get_one(session=session, id=c1.id)
+    car_peer = await car.owner.get_peer(session=session)
+    assert car_peer.id == p1.id
+    rm = await car.owner.get(session=session)
+    source = await rm.get_source(session=session)
+    assert isinstance(source, Node)
+    assert source.id == second_account.id
 
 
 async def test_update_relationship_many(db, session, default_branch, person_tag_schema):

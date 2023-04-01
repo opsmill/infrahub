@@ -9,6 +9,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
+    create_root_node,
     first_time_initialization,
     initialization,
 )
@@ -75,7 +76,8 @@ def neo4j_factory():
 
 @pytest.fixture
 async def simple_dataset_01(session, empty_database):
-    await create_default_branch(session)
+    await create_root_node(session=session)
+    await create_default_branch(session=session)
 
     params = {
         "branch": "main",
@@ -638,12 +640,12 @@ async def car_person_schema(session, data_schema):
                 "name": "car",
                 "kind": "Car",
                 "default_filter": "name__value",
-                "display_label": ["name__value", "color__value"],
+                "display_labels": ["name__value", "color__value"],
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "nbr_seats", "kind": "Integer"},
-                    {"name": "color", "kind": "String", "default_value": "#444444", "max_length": 7},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
                 "relationships": [
@@ -654,11 +656,11 @@ async def car_person_schema(session, data_schema):
                 "name": "person",
                 "kind": "Person",
                 "default_filter": "name__value",
-                "display_label": ["name__value"],
+                "display_labels": ["name__value"],
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "height", "kind": "Integer", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
                 ],
                 "relationships": [{"name": "cars", "peer": "Car", "cardinality": "many"}],
             },
@@ -682,8 +684,8 @@ async def person_tag_schema(session, data_schema):
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
             },
             {
@@ -692,8 +694,8 @@ async def person_tag_schema(session, data_schema):
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "firstname", "kind": "String"},
-                    {"name": "lastname", "kind": "String"},
+                    {"name": "firstname", "kind": "Text"},
+                    {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
                     {"name": "tags", "peer": "Tag", "cardinality": "many"},
@@ -717,10 +719,10 @@ async def all_attribute_types_schema(session, data_schema):
         "kind": "AllAttributeTypes",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "optional": True},
-            {"name": "mystring", "kind": "String", "optional": True},
+            {"name": "name", "kind": "Text", "optional": True},
+            {"name": "mystring", "kind": "Text", "optional": True},
             {"name": "mybool", "kind": "Boolean", "optional": True},
-            {"name": "myint", "kind": "Integer", "optional": True},
+            {"name": "myint", "kind": "Number", "optional": True},
             {"name": "mylist", "kind": "List", "optional": True},
         ],
     }
@@ -735,16 +737,16 @@ async def criticality_schema(session, data_schema):
         "name": "criticality",
         "kind": "Criticality",
         "default_filter": "name__value",
-        "display_label": ["label__value"],
+        "display_labels": ["label__value"],
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "label", "kind": "String", "optional": True},
-            {"name": "level", "kind": "Integer"},
-            {"name": "color", "kind": "String", "default_value": "#444444"},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "label", "kind": "Text", "optional": True},
+            {"name": "level", "kind": "Number"},
+            {"name": "color", "kind": "Text", "default_value": "#444444"},
             {"name": "is_true", "kind": "Boolean", "default_value": True},
             {"name": "is_false", "kind": "Boolean", "default_value": False},
-            {"name": "description", "kind": "String", "optional": True},
+            {"name": "description", "kind": "Text", "optional": True},
         ],
     }
 
@@ -760,8 +762,8 @@ async def generic_vehicule_schema(session):
         "name": "vehicule",
         "kind": "Vehicule",
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "description", "kind": "String", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "description", "kind": "Text", "optional": True},
         ],
     }
 
@@ -777,8 +779,8 @@ async def group_on_road_vehicule_schema(session):
         "name": "on_road",
         "kind": "OnRoad",
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "description", "kind": "String", "optional": True},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "description", "kind": "Text", "optional": True},
         ],
     }
 
@@ -795,7 +797,7 @@ async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_sc
         "kind": "Car",
         "inherit_from": ["Vehicule"],
         "attributes": [
-            {"name": "nbr_doors", "kind": "Integer"},
+            {"name": "nbr_doors", "kind": "Number"},
         ],
         "groups": ["OnRoad"],
     }
@@ -813,9 +815,9 @@ async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehi
         "name": "motorcycle",
         "kind": "Motorcycle",
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "description", "kind": "String", "optional": True},
-            {"name": "nbr_seats", "kind": "Integer"},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "description", "kind": "Text", "optional": True},
+            {"name": "nbr_seats", "kind": "Number"},
         ],
         "groups": ["OnRoad"],
     }
@@ -832,9 +834,9 @@ async def truck_schema(session, generic_vehicule_schema, group_on_road_vehicule_
         "name": "truck",
         "kind": "Truck",
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
-            {"name": "description", "kind": "String", "optional": True},
-            {"name": "nbr_axles", "kind": "Integer"},
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "description", "kind": "Text", "optional": True},
+            {"name": "nbr_axles", "kind": "Number"},
         ],
         "groups": ["OnRoad"],
     }
@@ -874,7 +876,7 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
-            {"name": "name", "kind": "String", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
             {"name": "vehicules", "peer": "Vehicule", "cardinality": "many", "identifier": "person__vehicule"}
@@ -897,9 +899,9 @@ async def fruit_tag_schema(session, data_schema):
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "color", "kind": "String", "default_value": "#444444"},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "color", "kind": "Text", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
             },
             {
@@ -908,8 +910,8 @@ async def fruit_tag_schema(session, data_schema):
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [{"name": "tags", "peer": "Tag", "cardinality": "many", "optional": False}],
             },
@@ -931,8 +933,8 @@ async def data_schema(session):
                 "name": "data_owner",
                 "kind": "DataOwner",
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
             },
             {
@@ -940,8 +942,8 @@ async def data_schema(session):
                 "description": "Any Entities that stores or produces data.",
                 "kind": "DataSource",
                 "attributes": [
-                    {"name": "name", "kind": "String", "unique": True},
-                    {"name": "description", "kind": "String", "optional": True},
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
                 ],
             },
         ]
@@ -972,6 +974,7 @@ async def init_db(empty_database, session):
 
 @pytest.fixture
 async def default_branch(reset_registry, empty_database, session) -> Branch:
+    await create_root_node(session=session)
     return await create_default_branch(session=session)
 
 

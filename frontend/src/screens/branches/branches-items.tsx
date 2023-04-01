@@ -1,15 +1,16 @@
-import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "../../components/badge";
-import { Button, BUTTON_TYPES } from "../../components/button";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
+  const navigate = useNavigate();
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 
@@ -18,32 +19,18 @@ export const BranchesItems = () => {
   const branches = [
     ...storedBranches.filter(b => b.name === "main"),
     ...sortedBranches
-  ]
-
-  const mergeBranch = (id: string) => {
-    console.log("id: ", id);
-  }
-
-  const rebaseBranch = (id: string) => {
-    console.log("id: ", id);
-  }
-
-  const validateBranch = (id: string) => {
-    console.log("id: ", id);
-  }
-
-  const createPulRequest = (id: string) => {
-    console.log("id: ", id);
-  }
-
-  console.log("branches: ", branches);
+  ];
 
   return (
-    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 p-6">
+    <ul className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 p-6">
       {
         branches.map(
           (branch) => (
-            <li key={branch.name} className="col-span-1 divide-y divide-gray-200 rounded-lg bg-white shadow">
+            <li
+              className="col-span-1 rounded-lg bg-white shadow cursor-pointer hover:bg-gray-50"
+              key={branch.name}
+              onClick={() => navigate(`/branches/${branch.id}`)}
+            >
               <div className="flex w-full items-center justify-between space-x-6 p-6">
                 <div className="flex flex-1">
                   <div className="flex flex-1 flex-col">
@@ -86,69 +73,10 @@ export const BranchesItems = () => {
                   </div>
                 </div>
               </div>
-              <div>
-                <div className="-mt-px px-3 py-3 flex divide-x divide-gray-200">
-                  <div className="flex w-0 flex-1">
-                    {
-                      !branch.is_default
-                      && (
-                        <>
-                          <Button
-                            className="mr-3"
-                            onClick={() => mergeBranch(branch.id)}
-                            type={BUTTON_TYPES.VALIDATE}
-                            disabled
-                          >
-                            Merge
-                            <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <Button
-                            className="mr-3"
-                            onClick={() => createPulRequest(branch.id)}
-                            disabled
-                          >
-                            Pull request
-                            <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <Button
-                            className="mr-3"
-                            onClick={() => rebaseBranch(branch.id)}
-                            disabled
-                          >
-                            Rebase
-                            <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <Button
-                            className="mr-3"
-                            onClick={() => validateBranch(branch.id)}
-                            type={BUTTON_TYPES.WARNING}
-                          >
-                            Validate
-                            <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-
-                          <Button
-                            className="mr-3"
-                            onClick={() => validateBranch(branch.id)}
-                            type={BUTTON_TYPES.CANCEL}
-                            disabled
-                          >
-                            Delete
-                            <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                          </Button>
-                        </>
-                      )
-                    }
-                  </div>
-                </div>
-              </div>
             </li>
           )
         )
       }
     </ul>
-  )
-}
+  );
+};

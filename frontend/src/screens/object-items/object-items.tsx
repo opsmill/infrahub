@@ -50,8 +50,8 @@ const getItemsColumn = (schema: any) => {
       }
       return -1;
     }
-  )
-}
+  );
+};
 
 const getObjectItemDisplayValue = (row: any, attribute: any) => {
   // Get "value" or "display_name" depending on the kind (attribute or relationship)
@@ -70,10 +70,10 @@ const getObjectItemDisplayValue = (row: any, attribute: any) => {
   }
 
   return value;
-}
+};
 
 export default function ObjectItems() {
-  let { objectname } = useParams();
+  const { objectname } = useParams();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [objectRows, setObjectRows] = useState<any[] | undefined>();
@@ -123,7 +123,7 @@ export default function ObjectItems() {
             setIsLoading(false);
           };
         }
-      }
+      };
 
       loadData();
     },
@@ -225,7 +225,7 @@ export default function ObjectItems() {
                                 navigate(`/objects/${schema.name}/${row.id}`);
                               }}
                               key={index}
-                              className="hover:bg-gray-50"
+                              className="hover:bg-gray-50 cursor-pointer"
                             >
                               {columns?.map((attribute) => (
                                 <td

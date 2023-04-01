@@ -1,19 +1,17 @@
-import { Menu, Transition } from "@headlessui/react";
-import { ChevronDownIcon, FunnelIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
 import { useAtom } from "jotai";
-import { Fragment } from "react";
+import { useState } from "react";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
-import { classNames } from "../../utils/common";
 import FilterCombobox from "../filters/filter-combobox";
 import FilterComboEnum from "../filters/filter-enum";
 import FilterTextField from "../filters/filter-textfield";
 
-const sortOptions = [
-  { name: "Name", href: "#", current: true },
-  { name: "Status", href: "#", current: false },
-  { name: "ASN", href: "#", current: false },
-];
+// const sortOptions = [
+//   { name: "Name", href: "#", current: true },
+//   { name: "Status", href: "#", current: false },
+//   { name: "ASN", href: "#", current: false },
+// ];
 
 interface Props {
   schema: iNodeSchema;
@@ -21,6 +19,7 @@ interface Props {
 
 export default function DeviceFilterBar(props: Props) {
   const [currentFilters, setCurrentFilters] = useAtom(comboxBoxFilterState);
+  const [showFilters, setShowFilters] = useState(false);
   return (
     <div className="bg-white">
       <div
@@ -95,7 +94,11 @@ export default function DeviceFilterBar(props: Props) {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            {!showFilters && <ChevronRightIcon onClick={() => setShowFilters(true)} className="w-6 h-6 cursor-pointer text-gray-500" />}
+            {showFilters && <ChevronDownIcon onClick={() => setShowFilters(false)}  className="w-6 h-6 cursor-pointer text-gray-500" />}
+
+            {/* Sort Options Dropdown */}
+            {/* <div className="flex justify-end">
               <Menu as="div" className="relative inline-block">
                 <div className="flex">
                   <Menu.Button className="group inline-flex justify-center text-sm font-medium text-gray-700 hover:text-gray-900">
@@ -147,21 +150,21 @@ export default function DeviceFilterBar(props: Props) {
                   </Menu.Items>
                 </Transition>
               </Menu>
-            </div>
+            </div> */}
           </div>
         </div>
-        <div className="border-t border-gray-200 pb-10">
-          <div className="mx-auto max-w-7xl px-4 text-sm sm:px-6">
-            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {showFilters && <div className="border-t border-gray-200 pb-10">
+          <div className="mx-auto px-4 text-sm sm:px-6">
+            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
               {
                 props.schema.filters
                 ?.map(
                   (filter) => {
                     if (filter.kind === "Object") {
                       return <FilterCombobox filter={filter} key={filter.name} />;
-                    } else if (filter.kind === "String" && !filter.enum) {
+                    } else if (filter.kind === "Text" && !filter.enum) {
                       return <FilterTextField filter={filter} key={filter.name} />;
-                    } else if (filter.kind === "String" && filter.enum) {
+                    } else if (filter.kind === "Text" && filter.enum) {
                       return <FilterComboEnum filter={filter} key={filter.name} />;
                     } else {
                       return null;
@@ -171,7 +174,7 @@ export default function DeviceFilterBar(props: Props) {
               }
             </div>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );
