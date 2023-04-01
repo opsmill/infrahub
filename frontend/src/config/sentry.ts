@@ -30,6 +30,8 @@ const SentryClient = (config?: Config) => {
       REPLAY_INSTANCE,
     ],
   });
+
+  // Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));
 };
 
 export default SentryClient;

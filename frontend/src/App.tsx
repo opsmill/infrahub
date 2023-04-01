@@ -34,8 +34,6 @@ function App() {
    */
   SentryClient(config);
 
-  // Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));
-
   /**
    * Fetch config from the backend and return it
    */
