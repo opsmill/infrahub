@@ -83,6 +83,7 @@ export default function BranchSelector() {
     setBranch(branch);
 
     if (branch?.is_default) {
+      // undefined is needed to remove a parameter from the QSP
       setBranchInQueryString(undefined);
     } else {
       setBranchInQueryString(branch.name);

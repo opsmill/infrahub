@@ -50,7 +50,7 @@ export interface DynamicFieldData {
   label: string;
   inputType: ControlType;
   fieldName: string;
-  type: string;
+  type: SchemaAttributeType;
   defaultValue: any;
   isAttribute: boolean;
   isRelationship: boolean;

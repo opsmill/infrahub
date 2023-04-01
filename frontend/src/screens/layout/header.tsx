@@ -24,7 +24,7 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
-  const [qspDate, setQspDate] = useQueryParam("at", StringParam);
+  const [qspDate, setQspDate] = useQueryParam(CONFIG.QSP_DATETIME, StringParam);
   const [isDateDefault, setIsDateDefault] = useState(qspDate ? false : true);
   const { setSidebarOpen } = props;
 
@@ -86,6 +86,7 @@ export default function Header(props: Props) {
                   setDate(a.toDate());
                   setQspDate(formatISO(a.toDate()));
                 } else {
+                  // undefined is needed to remove a parameter from the QSP
                   setQspDate(undefined);
                 }
               }}
@@ -105,6 +106,7 @@ export default function Header(props: Props) {
                       <button onClick={() => {
                         setIsDateDefault(true);
                         setDate(null);
+                        // undefined is needed to remove a parameter from the QSP
                         setQspDate(undefined);
                       }}>
                         Now

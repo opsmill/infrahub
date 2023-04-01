@@ -60,7 +60,10 @@ export const DynamicControl = (props: DynamicFieldData) => {
         );
       case "select": {
         let selectConfig = {};
-        if(type === "Integer") {
+
+        // In case of a relationship dropdown, inputType is "select".
+        // So we will have to use the 'type' to figure out, if the value is going to be a number
+        if(["Integer", "Number", "Bandwidth"].indexOf(type) > -1) {
           selectConfig = {
             valueAsNumber: true,
           };
