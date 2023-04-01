@@ -29,7 +29,9 @@ export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
   useEffect(() => {
-    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
+    if(date !== undefined) {
+      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
+    }
   }, [date]);
 
   return (
