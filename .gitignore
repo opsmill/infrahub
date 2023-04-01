@@ -6,3 +6,4 @@ script.py
 node_modules/*
 development/docker-compose.override.yml
 .DS_Store
+.python-version
