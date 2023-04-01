@@ -162,6 +162,7 @@ class InfrahubSchema:
             return False, response.json()
 
         response.raise_for_status()
+        return False, None
 
     async def fetch(self, branch: str) -> Dict[str, NodeSchema]:
         """Fetch the schema from the server for a given branch.

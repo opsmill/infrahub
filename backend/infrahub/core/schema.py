@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
 
 
-# pylint: disable=no-self-argument,redefined-builtin
+# pylint: disable=no-self-argument,redefined-builtin,too-many-lines
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
 
