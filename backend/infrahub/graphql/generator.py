@@ -72,7 +72,7 @@ async def default_resolver(*args, **kwargs):
     # Extract the contextual information from the request context
     at = info.context.get("infrahub_at")
     branch = info.context.get("infrahub_branch")
-    account = info.context.get("infrahub_account", None)
+    # account = info.context.get("infrahub_account", None)
     db = info.context.get("infrahub_database")
 
     # Extract the name of the fields in the GQL query
@@ -95,9 +95,6 @@ async def default_resolver(*args, **kwargs):
             fields=fields,
             at=at,
             branch=branch,
-            account=account,
-            include_source=True,
-            include_owner=True,
         )
 
         if node_rel.cardinality == "many":
