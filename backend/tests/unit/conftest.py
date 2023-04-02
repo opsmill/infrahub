@@ -1,7 +1,11 @@
 import asyncio
+import os
+from pathlib import Path
 
 import pendulum
 import pytest
+import ujson
+from neo4j import AsyncDriver, AsyncSession
 from neo4j._codec.hydration.v1 import HydrationHandler
 
 import infrahub.config as config
@@ -27,6 +31,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
+from infrahub.utils import get_fixtures_dir
 
 
 @pytest.fixture(scope="session")
@@ -39,7 +44,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db():
+async def db() -> AsyncDriver:
     driver = await get_db()
 
     yield driver
@@ -48,7 +53,7 @@ async def db():
 
 
 @pytest.fixture
-async def session(db):
+async def session(db: AsyncDriver) -> AsyncSession:
     session = db.session(database=config.SETTINGS.database.database)
 
     yield session
@@ -57,7 +62,7 @@ async def session(db):
 
 
 @pytest.fixture
-async def rpc_client():
+async def rpc_client() -> InfrahubRpcClientTesting:
     return InfrahubRpcClientTesting()
 
 
@@ -75,7 +80,7 @@ def neo4j_factory():
 
 
 @pytest.fixture
-async def simple_dataset_01(session, empty_database):
+async def simple_dataset_01(session: AsyncSession, empty_database) -> dict:
     await create_root_node(session=session)
     await create_default_branch(session=session)
 
@@ -107,9 +112,11 @@ async def simple_dataset_01(session, empty_database):
 
     await execute_write_query_async(session=session, query=query, params=params)
 
+    return params
+
 
 @pytest.fixture
-async def base_dataset_02(session, default_branch: Branch, car_person_schema):
+async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_person_schema) -> dict:
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
 
     To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
@@ -328,7 +335,7 @@ async def base_dataset_02(session, default_branch: Branch, car_person_schema):
 
 
 @pytest.fixture
-async def base_dataset_03(session, default_branch: Branch, person_tag_schema):
+async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_tag_schema) -> dict:
     """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships
 
     To recreate a deterministic timeline, there are 20 timestamps that are being created ahead of time:
@@ -633,7 +640,7 @@ async def base_dataset_03(session, default_branch: Branch, person_tag_schema):
 
 
 @pytest.fixture
-async def car_person_schema(session, data_schema):
+async def car_person_schema(session: AsyncSession, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -671,11 +678,72 @@ async def car_person_schema(session, data_schema):
     for node in schema.nodes:
         registry.set_schema(name=node.kind, schema=node)
 
-    return True
+
+@pytest.fixture
+async def car_person_schema_generics(session: AsyncSession, data_schema) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "car",
+                "kind": "Car",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "Person",
+                        "identifier": "person__car",
+                        "optional": False,
+                        "cardinality": "one",
+                    },
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "electric_car",
+                "kind": "ElectricCar",
+                "inherit_from": ["Car"],
+                "attributes": [
+                    {"name": "nbr_engine", "kind": "Number"},
+                ],
+            },
+            {
+                "name": "gaz_car",
+                "kind": "GazCar",
+                "inherit_from": ["Car"],
+                "attributes": [
+                    {"name": "mpg", "kind": "Number"},
+                ],
+            },
+            {
+                "name": "person",
+                "kind": "Person",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "Car", "identifier": "person__car", "cardinality": "many"}],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    schema.extend_nodes_with_interfaces()
+    for node in schema.nodes + schema.generics:
+        registry.set_schema(name=node.kind, schema=node)
 
 
 @pytest.fixture
-async def person_tag_schema(session, data_schema):
+async def person_tag_schema(session: AsyncSession, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -709,11 +777,9 @@ async def person_tag_schema(session, data_schema):
     for node in schema.nodes:
         registry.set_schema(name=node.kind, schema=node)
 
-    return True
-
 
 @pytest.fixture
-async def all_attribute_types_schema(session, data_schema):
+async def all_attribute_types_schema(session: AsyncSession, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "all_attribute_types",
         "kind": "AllAttributeTypes",
@@ -730,9 +796,11 @@ async def all_attribute_types_schema(session, data_schema):
     node_schema = NodeSchema(**SCHEMA)
     registry.set_schema(name=node_schema.kind, schema=node_schema)
 
+    return node_schema
+
 
 @pytest.fixture
-async def criticality_schema(session, data_schema):
+async def criticality_schema(session: AsyncSession, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
@@ -757,7 +825,7 @@ async def criticality_schema(session, data_schema):
 
 
 @pytest.fixture
-async def generic_vehicule_schema(session):
+async def generic_vehicule_schema(session) -> GenericSchema:
     SCHEMA = {
         "name": "vehicule",
         "kind": "Vehicule",
@@ -774,14 +842,10 @@ async def generic_vehicule_schema(session):
 
 
 @pytest.fixture
-async def group_on_road_vehicule_schema(session):
+async def group_on_road_vehicule_schema(session) -> GroupSchema:
     SCHEMA = {
         "name": "on_road",
         "kind": "OnRoad",
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "description", "kind": "Text", "optional": True},
-        ],
     }
 
     node = GroupSchema(**SCHEMA)
@@ -791,7 +855,9 @@ async def group_on_road_vehicule_schema(session):
 
 
 @pytest.fixture
-async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema):
+async def car_schema(
+    session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "car",
         "kind": "Car",
@@ -810,7 +876,9 @@ async def car_schema(session, generic_vehicule_schema, group_on_road_vehicule_sc
 
 
 @pytest.fixture
-async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+async def motorcycle_schema(
+    session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "motorcycle",
         "kind": "Motorcycle",
@@ -829,7 +897,7 @@ async def motorcycle_schema(session, generic_vehicule_schema, group_on_road_vehi
 
 
 @pytest.fixture
-async def truck_schema(session, generic_vehicule_schema, group_on_road_vehicule_schema):
+async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "truck",
         "kind": "Truck",
@@ -848,7 +916,7 @@ async def truck_schema(session, generic_vehicule_schema, group_on_road_vehicule_
 
 
 @pytest.fixture
-async def boat_schema(session, generic_vehicule_schema):
+async def boat_schema(session: AsyncSession, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "boat",
         "kind": "Boat",
@@ -869,7 +937,9 @@ async def boat_schema(session, generic_vehicule_schema):
 
 
 @pytest.fixture
-async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema):
+async def vehicule_person_schema(
+    session: AsyncSession, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "person",
         "kind": "Person",
@@ -890,7 +960,7 @@ async def vehicule_person_schema(session, generic_vehicule_schema, car_schema, b
 
 
 @pytest.fixture
-async def fruit_tag_schema(session, data_schema):
+async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
             {
@@ -922,11 +992,11 @@ async def fruit_tag_schema(session, data_schema):
     for node in schema.nodes:
         registry.set_schema(name=node.kind, schema=node)
 
-    return True
+    return schema
 
 
 @pytest.fixture
-async def data_schema(session):
+async def data_schema(session) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -953,21 +1023,19 @@ async def data_schema(session):
     for node in schema.generics:
         registry.set_schema(name=node.kind, schema=node)
 
-    return True
-
 
 @pytest.fixture
-async def reset_registry(session):
+async def reset_registry(session) -> None:
     registry.delete_all()
 
 
 @pytest.fixture
-async def empty_database(session):
+async def empty_database(session) -> None:
     await delete_all_nodes(session=session)
 
 
 @pytest.fixture
-async def init_db(empty_database, session):
+async def init_db(empty_database, session) -> None:
     await first_time_initialization(session=session)
     await initialization(session=session)
 
@@ -979,30 +1047,81 @@ async def default_branch(reset_registry, empty_database, session) -> Branch:
 
 
 @pytest.fixture
-async def register_internal_models_schema(default_branch):
+async def register_internal_models_schema(default_branch) -> SchemaRoot:
     schema = SchemaRoot(**internal_schema)
     await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
+    return schema
+
 
 @pytest.fixture
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema):
+async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaRoot:
     schema = SchemaRoot(**core_models)
     await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
+    return schema
+
 
 @pytest.fixture
-async def register_account_schema(session):
+async def register_account_schema(session) -> None:
     SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
 
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
     for schema in account_schemas:
         registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
 
-    return True
+
+@pytest.fixture
+async def schema_file_infra_w_generics_01() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_w_generics_01.json")).read_text()
+
+    return ujson.loads(file_content)
 
 
 @pytest.fixture
-async def first_account(session, register_account_schema):
+async def schema_file_infra_w_extensions_01() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_w_extensions_01.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
+async def schema_file_infra_simple_01() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_simple_01.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
+async def schema_file_not_valid_simple_02() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_02.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
+async def schema_file_not_valid_simple_03() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_03.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
+async def schema_file_not_valid_simple_04() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_04.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
+async def schema_file_not_valid_w_generics_02() -> dict:
+    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_w_generics_02.json")).read_text()
+
+    return ujson.loads(file_content)
+
+
+@pytest.fixture
+async def first_account(session: AsyncSession, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="First Account", type="Git")
     await obj.save(session=session)
@@ -1010,7 +1129,7 @@ async def first_account(session, register_account_schema):
 
 
 @pytest.fixture
-async def second_account(session, register_account_schema):
+async def second_account(session: AsyncSession, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="Second Account", type="Git")
     await obj.save(session=session)
@@ -1018,5 +1137,5 @@ async def second_account(session, register_account_schema):
 
 
 @pytest.fixture
-def dataset01(init_db):
+def dataset01(init_db) -> None:
     ds01.load_data()

@@ -65,9 +65,10 @@ except ImportError:
     GraphQLFormattedError = Dict[str, Any]
 
 import infrahub.config as config
-from infrahub.core import get_branch
+from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.exceptions import BranchNotFound
+from infrahub.graphql.generator import generate_object_types
 from infrahub_client.timestamp import Timestamp
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
@@ -129,10 +130,16 @@ class InfrahubGraphQLApp:
 
     async def _get_schema(self, session: AsyncSession):
         if not self._schema:
+            default_branch = config.SETTINGS.main.default_branch
+            await generate_object_types(session=session, branch=default_branch)
+            types_dict = registry.get_all_graphql_type(branch=default_branch)
+            types = list(types_dict.values())
+
             self._schema = graphene.Schema(
                 query=await get_gql_query(session=session),
                 mutation=await get_gql_mutation(session=session),
                 subscription=await get_gql_subscription(session=session),
+                types=types,
                 auto_camelcase=False,
             )
 

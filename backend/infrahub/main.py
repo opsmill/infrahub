@@ -19,8 +19,8 @@ from infrahub.auth import BaseTokenAuth
 from infrahub.config import AnalyticsSettings, LoggingSettings, MainSettings
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
-from infrahub.core.manager import NodeManager
-from infrahub.core.schema import NodeSchema
+from infrahub.core.manager import NodeManager, SchemaManager
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.database import get_db
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import get_gql_mutation, get_gql_query
@@ -95,7 +95,7 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
-class SchemaAPI(BaseModel):
+class SchemaReadAPI(BaseModel):
     nodes: List[NodeSchema]
 
 
@@ -103,15 +103,37 @@ class SchemaAPI(BaseModel):
 async def get_schema(
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
-) -> SchemaAPI:
+) -> SchemaReadAPI:
     try:
         branch = await get_branch(session=session, branch=branch)
     except BranchNotFound as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
 
-    return SchemaAPI(
+    return SchemaReadAPI(
         nodes=[value for value in registry.get_full_schema(branch=branch).values() if isinstance(value, NodeSchema)]
     )
+
+
+class SchemaLoadAPI(SchemaRoot):
+    version: str
+
+
+@app.post("/schema/load/")
+async def load_schema(
+    schema: SchemaLoadAPI,
+    session: AsyncSession = Depends(get_session),
+    branch: Optional[str] = None,
+):
+    try:
+        branch = await get_branch(session=session, branch=branch)
+    except BranchNotFound as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+
+    schema.extend_nodes_with_interfaces()
+    await SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.load_schema_to_db(schema, session=session)
+
+    return JSONResponse(status_code=202, content={})
 
 
 class ConfigAPI(BaseModel):

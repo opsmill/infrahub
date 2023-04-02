@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -149,6 +149,20 @@ class InfrahubSchema:
             self.cache[branch] = await self.fetch(branch=branch)
 
         return self.cache[branch]
+
+    async def load(self, schema, branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+        branch = branch or self.client.default_branch
+        url = f"{self.client.address}/schema/load/?branch={branch}"
+        response = await self.client._post(url=url, timeout=30, payload=schema)
+
+        if response.status_code == 202:
+            return True, None
+
+        if response.status_code == 422:
+            return False, response.json()
+
+        response.raise_for_status()
+        return False, None
 
     async def fetch(self, branch: str) -> Dict[str, NodeSchema]:
         """Fetch the schema from the server for a given branch.

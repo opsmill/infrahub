@@ -20,7 +20,6 @@ async def test_register_schema_to_registry(session, default_branch):
                 "name": "criticality",
                 "kind": "Criticality",
                 "default_filter": "name__value",
-                "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "level", "kind": "Number"},
@@ -33,7 +32,6 @@ async def test_register_schema_to_registry(session, default_branch):
             {
                 "name": "generic_interface",
                 "kind": "GenericInterface",
-                "branch": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
                 ],
@@ -62,7 +60,6 @@ async def test_load_node_to_db_node_schema(session, default_branch):
         "name": "criticality",
         "kind": "Criticality",
         "default_filter": "name__value",
-        "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "level", "kind": "Number"},
@@ -83,7 +80,6 @@ async def test_load_node_to_db_generic_schema(session, default_branch):
     SCHEMA = {
         "name": "generic_interface",
         "kind": "GenericInterface",
-        "branch": True,
         "attributes": [
             {"name": "my_generic_name", "kind": "Text"},
         ],
@@ -131,6 +127,30 @@ async def test_load_schema_to_db_core_models(session, default_branch, register_i
     assert len(results) > 1
 
 
+async def test_load_schema_to_db_simple_01(
+    session, default_branch, register_core_models_schema, schema_file_infra_simple_01
+):
+    schema = SchemaRoot(**schema_file_infra_simple_01)
+
+    schema.extend_nodes_with_interfaces()
+    await SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.load_schema_to_db(schema=schema, session=session)
+
+    assert True
+
+
+async def test_load_schema_to_db_w_generics_01(
+    session, default_branch, register_core_models_schema, schema_file_infra_w_generics_01
+):
+    schema = SchemaRoot(**schema_file_infra_w_generics_01)
+
+    schema.extend_nodes_with_interfaces()
+    await SchemaManager.register_schema_to_registry(schema)
+    await SchemaManager.load_schema_to_db(schema=schema, session=session)
+
+    assert True
+
+
 async def test_load_schema_from_db(session, reset_registry, default_branch, register_internal_models_schema):
     FULL_SCHEMA = {
         "nodes": [
@@ -139,7 +159,6 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "kind": "Criticality",
                 "default_filter": "name__value",
                 "label": "Criticality",
-                "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
@@ -163,7 +182,6 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "kind": "Tag",
                 "label": "Tag",
                 "default_filter": "name__value",
-                "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
@@ -175,7 +193,6 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "name": "generic_interface",
                 "kind": "GenericInterface",
                 "label": "Generic Interface",
-                "branch": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
                 ],
@@ -207,11 +224,11 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
     assert not DeepDiff(
         schema1.generics[0].dict(exclude={"filters"}), schema2.generics[0].dict(exclude={"filters"}), ignore_order=True
     )
+
     assert not DeepDiff(
         schema1.groups[0].dict(exclude={"filters"}), schema2.groups[0].dict(exclude={"filters"}), ignore_order=True
     )
 
-    # breakpoint()
     criticality_dict = schema_criticality.dict()
 
     expected_filters = [

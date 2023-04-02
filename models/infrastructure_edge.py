@@ -298,6 +298,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
                 status={"id": active_status.id, "owner": group_ops.id},
                 role={"id": roles_dict["loopback"].id, "source": account_pop.id, "is_protected": True},
                 speed=1000,
+                # source=pop_builder_account,
             )
             await intf.save()
 

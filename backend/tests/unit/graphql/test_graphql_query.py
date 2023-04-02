@@ -586,6 +586,57 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
 
 
+async def test_query_filter_relationships_with_generic(db, session, default_branch: Branch, car_person_schema_generics):
+    ecar = registry.get_schema(name="ElectricCar")
+    gcar = registry.get_schema(name="GazCar")
+    person = registry.get_schema(name="Person")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=ecar)
+    await c1.new(session=session, name="volt", nbr_seats=4, nbr_engine=4, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=ecar)
+    await c2.new(session=session, name="bolt", nbr_seats=4, nbr_engine=2, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=gcar)
+    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
+    await c3.save(session=session)
+
+    query = """
+    query {
+        person(name__value: "John") {
+            name {
+                value
+            }
+            cars(name__value: "volt") {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["person"]) == 1
+    assert result.data["person"][0]["name"]["value"] == "John"
+    assert len(result.data["person"][0]["cars"]) == 1
+    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+
+
 async def test_query_filter_relationship_id(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")

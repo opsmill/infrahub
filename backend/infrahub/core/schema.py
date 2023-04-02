@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
 from infrahub.core.relationship import Relationship
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
 
 
-# pylint: disable=no-self-argument,redefined-builtin
+# pylint: disable=no-self-argument,redefined-builtin,too-many-lines
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
 
@@ -49,6 +49,16 @@ class RelationshipKind(str, BaseEnum):
     PARENT = "Parent"
 
 
+def full_schema_to_schema_root(full_schema: Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]) -> SchemaRoot:
+    schema_root_dict = {
+        "nodes": [item for item in full_schema.values() if isinstance(item, NodeSchema)],
+        "generics": [item for item in full_schema.values() if isinstance(item, GenericSchema)],
+        "groups": [item for item in full_schema.values() if isinstance(item, GroupSchema)],
+    }
+
+    return SchemaRoot(**schema_root_dict)
+
+
 class FilterSchema(BaseModel):
     name: str
     kind: FilterSchemaKind
@@ -71,6 +81,9 @@ class AttributeSchema(BaseModel):
     unique: bool = False
     branch: bool = True
     optional: bool = False
+
+    class Config:
+        extra = Extra.forbid
 
     @validator("kind")
     def kind_options(
@@ -100,6 +113,9 @@ class RelationshipSchema(BaseModel):
     branch: bool = True
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
 
     @validator("kind")
     def kind_options(
@@ -147,14 +163,13 @@ class RelationshipSchema(BaseModel):
                 query_filter += "MATCH (n)"
 
             query_filter += (
-                "-[r%s:%s]-(Relationship { name: $%s_rel_name })-[r%s:%s]-(p:%s { uuid: $peer_node_id })"
+                "-[r%s:%s]-(Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node { uuid: $peer_node_id })"
                 % (
                     rels_offset + 1,
                     rel_type,
                     prefix,
                     rels_offset + 2,
                     rel_type,
-                    peer_schema.kind,
                 )
             )
 
@@ -183,13 +198,12 @@ class RelationshipSchema(BaseModel):
                 query_filter += "MATCH (n)"
 
             # TODO Validate if filters are valid
-            query_filter += "-[r%s:%s]-(rl:Relationship { name: $%s_rel_name })-[r%s:%s]-(p:%s)" % (
+            query_filter += "-[r%s:%s]-(rl:Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node)" % (
                 rels_offset + 1,
                 rel_type,
                 prefix,
                 rels_offset + 2,
                 rel_type,
-                peer_schema.kind,
             )
 
             field = peer_schema.get_field(field_name)
@@ -221,8 +235,13 @@ class BaseNodeSchema(BaseModel):
     name: str
     kind: str
     description: Optional[str] = Field(max_length=128)
+    default_filter: Optional[str]
+    display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -298,10 +317,25 @@ class BaseNodeSchema(BaseModel):
     def local_relationships(self) -> List[RelationshipSchema]:
         return [item for item in self.relationships if not item.inherited]
 
+    def generate_fields_for_display_label(self) -> Dict:
+        fields = {}
+
+        for item in self.display_labels:
+            elements = item.split("__")
+            if len(elements) == 1:
+                fields[elements[0]] = None
+            elif len(elements) == 2:
+                fields[elements[0]] = {elements[1]: None}
+            else:
+                raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
+
+        return fields
+
 
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
+    branch: bool = True
     label: Optional[str]
 
 
@@ -310,8 +344,6 @@ class NodeSchema(BaseNodeSchema):
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
-    default_filter: Optional[str]
-    display_labels: Optional[List[str]]
     filters: List[FilterSchema] = Field(default_factory=list)
 
     # TODO add validation to ensure that 2 attributes can't have the same name
@@ -358,31 +390,71 @@ class NodeSchema(BaseNodeSchema):
             elif isinstance(item, RelationshipSchema):
                 self.relationships.append(new_item)
 
-    def generate_fields_for_display_label(self) -> Dict:
-        fields = {}
-
-        for item in self.display_labels:
-            elements = item.split("__")
-            if len(elements) == 1:
-                fields[elements[0]] = None
-            elif len(elements) == 2:
-                fields[elements[0]] = {elements[1]: None}
-            else:
-                raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
-
-        return fields
-
 
 class GroupSchema(BaseModel):
     name: str
     kind: str
     description: Optional[str]
 
+    class Config:
+        extra = Extra.forbid
+
+
+# -----------------------------------------------------
+# Extensions
+#  For the initial implementation its possible to add attribute and relationships on Node
+#  Later on we'll consider adding support for other Node attributes like inherited_from etc ...
+#  And we'll look into adding support for Generic as well
+class BaseNodeExtensionSchema(BaseModel):
+    kind: str
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
+
+
+class NodeExtensionSchema(BaseNodeExtensionSchema):
+    pass
+
+
+class SchemaExtension(BaseModel):
+    nodes: List[NodeExtensionSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
+
 
 class SchemaRoot(BaseModel):
+    version: Optional[str]
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
+    extensions: SchemaExtension = SchemaExtension()
+
+    class Config:
+        extra = Extra.forbid
+
+    @classmethod
+    def has_schema(cls, values, name: str) -> bool:
+        """Check if a schema exist locally as a node or as a generic."""
+
+        available_schemas = [item.kind for item in values.get("nodes", []) + values.get("generics", [])]
+        if name not in available_schemas:
+            return False
+
+        return True
+
+    @root_validator
+    def check_relationships_peer_are_valid(cls, values):
+        for node in values.get("nodes", []) + values.get("generics", []):
+            for relationship in node.relationships:
+                if not cls.has_schema(values, relationship.peer) and not registry.has_schema(name=relationship.peer):
+                    raise ValueError(
+                        f"Unable to find the schema {relationship.peer} to build the relationship with {node.kind}"
+                    )
+
+        return values
 
     def extend_nodes_with_interfaces(self) -> SchemaRoot:
         """Extend all the nodes with the attributes and relationships
@@ -402,7 +474,6 @@ class SchemaRoot(BaseModel):
                 if generic_kind not in generics:
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
-
                 node.extend_with_interface(interface=generics[generic_kind])
 
         return self
@@ -541,7 +612,7 @@ internal_schema = {
                     "identifier": "schema__node__attributes",
                     "cardinality": "one",
                     "branch": True,
-                    "optional": True,
+                    "optional": False,
                 }
             ],
         },
@@ -586,7 +657,7 @@ internal_schema = {
                     "identifier": "schema__node__relationships",
                     "cardinality": "one",
                     "branch": True,
-                    "optional": True,
+                    "optional": False,
                 }
             ],
         },
@@ -612,13 +683,31 @@ internal_schema = {
                     "optional": True,
                     "max_length": 32,
                 },
+                {
+                    "name": "branch",
+                    "kind": "Boolean",
+                    "default_value": True,
+                    "optional": True,
+                },
+                {
+                    "name": "default_filter",
+                    "kind": "Text",
+                    "description": "Default filter used to search for a node in addition to its ID.",
+                    "optional": True,
+                },
+                {
+                    "name": "display_labels",
+                    "kind": "List",
+                    "description": "List of attributes to use to generate the display label",
+                    "optional": True,
+                },
                 {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
             ],
             "relationships": [
                 {
                     "name": "attributes",
                     "peer": "AttributeSchema",
-                    "identifier": "schema__generic__attributes",
+                    "identifier": "schema__node__attributes",
                     "cardinality": "many",
                     "branch": True,
                     "optional": True,
@@ -626,7 +715,7 @@ internal_schema = {
                 {
                     "name": "relationships",
                     "peer": "RelationshipSchema",
-                    "identifier": "schema__generic__relationships",
+                    "identifier": "schema__node__relationships",
                     "cardinality": "many",
                     "branch": True,
                     "optional": True,
