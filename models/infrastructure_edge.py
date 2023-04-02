@@ -116,6 +116,12 @@ ACCOUNTS = (
     ("David Palmer", "User", ("operator",)),
 )
 
+ACCOUNT_GROUPS = (
+    ("network_operation", "Operation Team"),
+    ("network_engineering", "Engineering Team"),
+    ("network_architecture", "Architecture Team"),
+)
+
 BGP_PEER_GROUPS = (
     ("POP_INTERNAL", "IMPORT_INTRA_POP", "EXPORT_INTRA_POP", "Duff", "Duff"),
     ("POP_GLOBAL", "IMPORT_POP_GLOBAL", "EXPORT_POP_GLOBLA", "Duff", None),
@@ -146,6 +152,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
     # Create User Accounts and Groups
     # ------------------------------------------
     accounts_dict: Dict[str, InfrahubNode] = {}
+    groups_dict: Dict[str, InfrahubNode] = {}
     tags_dict: Dict[str, InfrahubNode] = {}
     orgs_dict: Dict[str, InfrahubNode] = {}
     asn_dict: Dict[str, InfrahubNode] = {}
@@ -155,6 +162,13 @@ async def run(client: InfrahubClient, log: logging.Logger):
     statuses_dict: Dict[str, InfrahubNode] = {}
     roles_dict: Dict[str, InfrahubNode] = {}
 
+    for group in ACCOUNT_GROUPS:
+        obj = await client.create(kind="Group", data={"name": group[0], "label": group[1]})
+        await obj.save()
+        groups_dict[group[0]] = obj
+
+        log.info(f"Group Created: {obj.name.value}")
+
     for account in ACCOUNTS:
         obj = await client.create(kind="Account", data={"name": account[0], "type": account[1]})
         await obj.save()
@@ -162,6 +176,8 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
         log.info(f"Account Created: {obj.name.value}")
 
+    group_eng = groups_dict["network_engineering"]
+    group_ops = groups_dict["network_operation"]
     account_pop = accounts_dict["pop-builder"]
     account_cloe = accounts_dict["Chloe O'Brian"]
     account_crm = accounts_dict["CRM Synchronization"]
@@ -175,7 +191,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
             data={
                 "name": {"value": f"AS{org[1]}", "source": account_pop.id, "owner": account_cloe.id},
                 "asn": {"value": org[1], "source": account_pop.id, "owner": account_cloe.id},
-                "organization": {"id": obj.id},
+                "organization": {"id": obj.id, "source": account_pop.id},
             },
         )
         await asn.save()
@@ -260,12 +276,12 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
             obj = await client.create(
                 kind="Device",
-                site={"id": site.id, "source": account_pop.id},
-                name={"value": device_name, "source": account_pop.id},
-                status=status_id,
+                site={"id": site.id, "source": account_pop.id, "is_protected": True},
+                name={"value": device_name, "source": account_pop.id, "is_protected": True},
+                status={"id": status_id, "owner": group_ops.id},
                 type={"value": device[2], "source": account_pop.id},
-                role=role_id,
-                asn=asn_dict["Duff"].id,
+                role={"id": role_id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
+                asn={"id": asn_dict["Duff"].id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
                 tags=[tags_dict[tag_name].id for tag_name in device[5]],
             )
             await obj.save()
@@ -276,19 +292,18 @@ async def run(client: InfrahubClient, log: logging.Logger):
             # Loopback Interface
             intf = await client.create(
                 kind="Interface",
-                device=obj.id,
+                device={"id": obj.id, "is_protected": True},
                 name={"value": "Loopback0", "source": account_pop.id, "is_protected": True},
                 enabled=True,
-                status=active_status.id,
-                role=roles_dict["loopback"].id,
+                status={"id": active_status.id, "owner": group_ops.id},
+                role={"id": roles_dict["loopback"].id, "source": account_pop.id, "is_protected": True},
                 speed=1000,
-                # source=pop_builder_account,
             )
             await intf.save()
 
             ip = await client.create(
                 kind="IPAddress",
-                interface=intf.id,
+                interface={"id": intf.id, "source": account_pop.id},
                 address={"value": f"{str(next(LOOPBACK_POOL))}/32", "source": account_pop.id},
             )
             await ip.save()
@@ -298,13 +313,12 @@ async def run(client: InfrahubClient, log: logging.Logger):
             # Management Interface
             intf = await client.create(
                 kind="Interface",
-                device=obj.id,
-                name=INTERFACE_MGMT_NAME[device_type],
-                enabled=True,
-                status=active_status.id,
-                role=roles_dict["management"].id,
+                device={"id": obj.id, "is_protected": True},
+                name={"value": INTERFACE_MGMT_NAME[device_type], "source": account_pop.id},
+                enabled={"value": True, "owner": group_eng.id},
+                status={"id": active_status.id, "owner": group_eng.id},
+                role={"id": roles_dict["management"].id, "source": account_pop.id, "is_protected": True},
                 speed=1000,
-                # source=pop_builder_account,
             )
             await intf.save()
 
@@ -318,13 +332,12 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
                 intf = await client.create(
                     kind="Interface",
-                    device=obj.id,
+                    device={"id": obj.id, "is_protected": True},
                     name=intf_name,
                     speed=10000,
                     enabled=True,
-                    status=active_status.id,
-                    role=intf_role_id,
-                    # source=pop_builder_account,
+                    status={"id": active_status.id, "owner": group_ops.id},
+                    role={"id": intf_role_id, "source": account_pop.id},
                 )
                 await intf.save()
 
@@ -352,7 +365,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
                 ip = await client.create(
                     kind="IPAddress",
-                    interface=intf.id,
+                    interface={"id": intf.id, "source": account_pop.id},
                     address={"value": address, "source": account_pop.id},
                 )
                 await ip.save()
@@ -374,8 +387,8 @@ async def run(client: InfrahubClient, log: logging.Logger):
                         circuit_id=circuit_id,
                         vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
                         provider=provider.id,
-                        status=active_status.id,
-                        role=roles_dict[intf_role].id,
+                        status={"id": active_status.id, "owner": group_ops.id},
+                        role={"id": roles_dict[intf_role].id, "source": account_pop.id, "owner": group_eng.id},
                     )
                     await circuit.save()
 
@@ -394,7 +407,6 @@ async def run(client: InfrahubClient, log: logging.Logger):
                         peer_ip = await client.create(
                             kind="IPAddress",
                             address=peer_address,
-                            # source=pop_builder_account
                         )
                         await peer_ip.save()
 
@@ -422,7 +434,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
             intf1 = INTERFACE_OBJS[f"{site_name}-edge1"][idx]
             intf2 = INTERFACE_OBJS[f"{site_name}-edge2"][idx]
 
-            intf1.connected_interface = intf2
+            # intf1.connected_interface.add(intf2)
             intf1.description.value = f"Connected to {site_name}-edge2 {intf2.name.value}"
             await intf1.save()
 
