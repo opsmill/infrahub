@@ -247,6 +247,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
     log.info("Creating Site & Device")
 
+    # { "value": role, "source": account_pop.id },
     for site_idx, site_name in enumerate(SITES):
         site = await client.create(
             kind="Location",
@@ -297,6 +298,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
                 status={"id": active_status.id, "owner": group_ops.id},
                 role={"id": roles_dict["loopback"].id, "source": account_pop.id, "is_protected": True},
                 speed=1000,
+                # source=pop_builder_account,
             )
             await intf.save()
 
@@ -391,11 +393,10 @@ async def run(client: InfrahubClient, log: logging.Logger):
                     )
                     await circuit.save()
 
-                    # NOTE Disabling connected interface for now
-                    # endpoint1 = await client.create(
-                    #     kind="CircuitEndpoint", site=site, circuit=circuit.id, connected_interface=intf.id
-                    # )
-                    # await endpoint1.save()
+                    endpoint1 = await client.create(
+                        kind="CircuitEndpoint", site=site, circuit=circuit.id, connected_interface=intf.id
+                    )
+                    await endpoint1.save()
 
                     intf.description.value = f"Connected to {provider_name} via {circuit_id}"
 
@@ -513,18 +514,17 @@ async def run(client: InfrahubClient, log: logging.Logger):
         )
         await obj.save()
 
-        # NOTE Disabling connected interface for now
-        # endpoint1 = await client.create(kind="CircuitEndpoint", site=site1, circuit=obj, connected_interface=intf1)
-        # await endpoint1.save()
-        # endpoint2 = await client.create(kind="CircuitEndpoint", site=site2, circuit=obj, connected_interface=intf2)
-        # await endpoint2.save()
+        endpoint1 = await client.create(kind="CircuitEndpoint", site=site1, circuit=obj, connected_interface=intf1)
+        await endpoint1.save()
+        endpoint2 = await client.create(kind="CircuitEndpoint", site=site2, circuit=obj, connected_interface=intf2)
+        await endpoint2.save()
 
-        intf11 = await client.get(kind="InterfaceL3", id=intf1.id)
+        intf11 = await client.get(kind="Interface", id=intf1.id)
 
         intf11.description.value = f"Connected to {site2}-{device} via {circuit_id}"
         await intf11.save()
 
-        intf21 = await client.get(kind="InterfaceL3", id=intf2.id)
+        intf21 = await client.get(kind="Interface", id=intf2.id)
         intf21.description.value = f"Connected to {site1}-{device} via {circuit_id}"
         await intf21.save()
 
