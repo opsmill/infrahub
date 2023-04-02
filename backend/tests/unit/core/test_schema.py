@@ -135,7 +135,7 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     # Filter relationships by NAME__VALUE
     filters, params, nbr_rels = await rel.get_query_filter(session=session, filters={"name__value": "alice"})
     expected_response = [
-        "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Car)-[r3:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_name_name } )-[r4:HAS_VALUE]-(av { value: $attr_name_value })"
+        "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Node)-[r3:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_name_name } )-[r4:HAS_VALUE]-(av { value: $attr_name_value })"
     ]
     assert filters == expected_response
     assert params == {"attr_name_name": "name", "attr_name_value": "alice", "rel_cars_rel_name": "car__person"}
@@ -144,7 +144,7 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     # Filter relationship by ID
     filters, params, nbr_rels = await rel.get_query_filter(session=session, name="bob", filters={"id": "XXXX-YYYY"})
     expected_response = [
-        "MATCH (n)-[r1:IS_RELATED]-(Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Car { uuid: $peer_node_id })"
+        "MATCH (n)-[r1:IS_RELATED]-(Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Node { uuid: $peer_node_id })"
     ]
     assert filters == expected_response
     assert params == {"peer_node_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
