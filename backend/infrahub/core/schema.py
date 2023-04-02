@@ -706,10 +706,11 @@ core_models = {
             "name": "organization",
             "kind": "Organization",
             "default_filter": "name__value",
-            "display_labels": ["name__value"],
+            "display_labels": ["label_value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
+                {"name": "label", "kind": "Text", "optional": True},
                 {"name": "description", "kind": "Text", "optional": True},
             ],
             "relationships": [
@@ -720,7 +721,7 @@ core_models = {
             "name": "account",
             "kind": "Account",
             "default_filter": "name__value",
-            "display_labels": ["name__value"],
+            "display_labels": ["label__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
@@ -758,10 +759,11 @@ core_models = {
             "kind": "Group",
             "default_filter": "name__value",
             "inherit_from": ["DataOwner"],
-            "display_labels": ["name__value"],
+            "display_labels": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
+                {"name": "label", "kind": "Text", "optional": True},
                 {"name": "description", "kind": "Text", "optional": True},
             ],
             "relationships": [
