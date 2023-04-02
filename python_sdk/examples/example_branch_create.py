@@ -5,8 +5,8 @@ from infrahub_client import InfrahubClient
 
 async def main():
     client = await InfrahubClient.init(address="http://localhost:8000")
-    branch = await client.branch.create(branch_name="new_branch", description="description", data_only=True)
-    print(f"New branch created")
+    await client.branch.create(branch_name="new_branch", description="description", data_only=True)
+    print("New branch created")
 
 if __name__ == "__main__":
     aiorun(main())
