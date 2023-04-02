@@ -109,3 +109,38 @@ async def test_generate_input_data_with_relationships_02(client, rfile_schema):
             },
         }
     }
+
+
+async def test_generate_input_data_with_relationships_03(client, rfile_schema):
+    data = {
+        "id": "aaaaaaaaaaaaaa",
+        "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
+        "template_path": {"value": "mytemplate.j2"},
+        "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff", "is_protected": True},
+        "template_repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
+        "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
+    }
+    node = InfrahubNode(client=client, schema=rfile_schema, data=data)
+
+    assert node._generate_input_data() == {
+        "data": {
+            "name": {
+                "is_protected": True,
+                "source": "ffffffff",
+                "value": "rfile01",
+            },
+            "query": {
+                "_relation__is_protected": True,
+                "_relation__owner": "ffffffff",
+                "_relation__source": "ffffffff",
+                "id": "qqqqqqqq",
+            },
+            "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
+            "template_path": {"value": "mytemplate.j2"},
+            "template_repository": {
+                "_relation__owner": "ffffffff",
+                "_relation__source": "ffffffff",
+                "id": "rrrrrrrr",
+            },
+        }
+    }
