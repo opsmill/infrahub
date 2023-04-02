@@ -17,7 +17,7 @@
         }
     ],
     "extensions": {
-        "nodes": [ 
+        "nodes": [
             {
                 "kind": "Location",
                 "attributes": [
