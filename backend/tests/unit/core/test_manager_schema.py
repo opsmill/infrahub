@@ -20,7 +20,6 @@ async def test_register_schema_to_registry(session, default_branch):
                 "name": "criticality",
                 "kind": "Criticality",
                 "default_filter": "name__value",
-                "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "level", "kind": "Number"},
@@ -33,7 +32,6 @@ async def test_register_schema_to_registry(session, default_branch):
             {
                 "name": "generic_interface",
                 "kind": "GenericInterface",
-                "branch": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
                 ],
@@ -62,7 +60,6 @@ async def test_load_node_to_db_node_schema(session, default_branch):
         "name": "criticality",
         "kind": "Criticality",
         "default_filter": "name__value",
-        "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "level", "kind": "Number"},
@@ -83,7 +80,6 @@ async def test_load_node_to_db_generic_schema(session, default_branch):
     SCHEMA = {
         "name": "generic_interface",
         "kind": "GenericInterface",
-        "branch": True,
         "attributes": [
             {"name": "my_generic_name", "kind": "Text"},
         ],
@@ -163,7 +159,6 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "kind": "Criticality",
                 "default_filter": "name__value",
                 "label": "Criticality",
-                "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
@@ -187,7 +182,6 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "kind": "Tag",
                 "label": "Tag",
                 "default_filter": "name__value",
-                "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
@@ -199,7 +193,6 @@ async def test_load_schema_from_db(session, reset_registry, default_branch, regi
                 "name": "generic_interface",
                 "kind": "GenericInterface",
                 "label": "Generic Interface",
-                "branch": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
                 ],

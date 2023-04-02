@@ -157,7 +157,6 @@ async def test_extend_node_with_interface(session, default_branch):
             {
                 "name": "generic_interface",
                 "kind": "GenericInterface",
-                "branch": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
                 ],
@@ -169,7 +168,6 @@ async def test_extend_node_with_interface(session, default_branch):
                 "kind": "MYNode",
                 "default_filter": "name__value",
                 "inherit_from": ["GenericInterface"],
-                "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},

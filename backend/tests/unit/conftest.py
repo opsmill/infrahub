@@ -783,10 +783,6 @@ async def group_on_road_vehicule_schema(session) -> GroupSchema:
     SCHEMA = {
         "name": "on_road",
         "kind": "OnRoad",
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "description", "kind": "Text", "optional": True},
-        ],
     }
 
     node = GroupSchema(**SCHEMA)
