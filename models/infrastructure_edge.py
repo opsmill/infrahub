@@ -260,7 +260,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
             obj = await client.create(
                 kind="Device",
-                site=site.id,
+                site={"id": site.id, "source": account_pop.id},
                 name={"value": device_name, "source": account_pop.id},
                 status=status_id,
                 type={"value": device[2], "source": account_pop.id},

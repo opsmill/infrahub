@@ -992,11 +992,15 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     query = """
     query {
         person {
+            id
             name {
                 value
             }
             cars {
                 _relation__owner {
+                    id
+                }
+                _relation__source {
                     id
                 }
                 name {
@@ -1016,7 +1020,21 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     )
 
     assert result.errors is None
-    assert len(result.data["person"]) == 2
+
+    results = {item["name"]["value"]: item for item in result.data["person"]}
+    assert sorted(list(results.keys())) == ["Jane", "John"]
+    assert len(results["John"]["cars"]) == 1
+    assert len(results["Jane"]["cars"]) == 1
+
+    assert results["John"]["cars"][0]["name"]["value"] == "volt"
+    assert results["John"]["cars"][0]["_relation__owner"]
+    assert results["John"]["cars"][0]["_relation__owner"]["id"] == first_account.id
+    assert results["John"]["cars"][0]["_relation__source"] is None
+
+    assert results["Jane"]["cars"][0]["name"]["value"] == "bolt"
+    assert results["Jane"]["cars"][0]["_relation__owner"] is None
+    assert results["Jane"]["cars"][0]["_relation__source"]
+    assert results["Jane"]["cars"][0]["_relation__source"]["id"] == first_account.id
 
 
 async def test_query_attribute_flag_property(
