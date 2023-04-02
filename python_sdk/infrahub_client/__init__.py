@@ -172,10 +172,12 @@ class RelatedNode:
         self.display_label = data.get("display_label", None)
         self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
 
-        self.is_visible: Optional[bool] = data.get("_relation__is_visible", None)
-        self.is_protected: Optional[bool] = data.get("_relation__is_protected", None)
-        self.source: Optional[str] = data.get("source", None)
-        self.owner: Optional[str] = data.get("owner", None)
+        for prop in self._properties:
+            if value := data.get(prop, None):
+                setattr(self, prop, value)
+                continue
+
+            setattr(self, prop, data.get(f"_relation__{prop}", None))
 
     def _generate_input_data(self):
         data = {}
@@ -307,6 +309,7 @@ class InfrahubNode:
         mutation_query = {"ok": None, "object": {"id": None}}
         mutation_name = f"{self._schema.name}_create"
         query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
+
         response = await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
