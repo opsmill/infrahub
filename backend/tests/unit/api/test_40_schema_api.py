@@ -1,6 +1,9 @@
 from fastapi.testclient import TestClient
 
+from infrahub.core import registry
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import SchemaManager
+from infrahub.core.schema import full_schema_to_schema_root
 
 
 async def test_schema_read_endpoint_default_branch(
@@ -95,11 +98,25 @@ async def test_schema_load_endpoint_valid_with_extensions(
     register_core_models_schema,
     schema_file_infra_w_extensions_01,
 ):
+    # Load the schema into the database, by default it's only available in the registry
+    full_schema = full_schema_to_schema_root(registry.get_full_schema())
+    await SchemaManager.load_schema_to_db(full_schema, session=session)
+
+    org_schema = registry.get_schema(name="Organization")
+    initial_nbr_relationships = len(org_schema.relationships)
+
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post("/schema/load", headers=client_headers, json=schema_file_infra_w_extensions_01)
 
     assert response.status_code == 202
+
+    # Pull the schema from the db to validate that it has been properly updated
+    schema = await SchemaManager.load_schema_from_db(session=session)
+    await SchemaManager.register_schema_to_registry(schema=schema)
+
+    org_schema = registry.get_schema(name="Organization")
+    assert len(org_schema.relationships) == initial_nbr_relationships + 1
 
 
 async def test_schema_load_endpoint_not_valid_simple_02(

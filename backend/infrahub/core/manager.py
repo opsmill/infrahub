@@ -368,7 +368,11 @@ class SchemaManager(NodeManager):
         branch = await get_branch(branch=branch, session=session)
 
         # First, find the node and check if inherit_from and groups includes the information from the extension
-        obj = await NodeManager.query(schema="NodeSchema", filters={"kind__value": node.kind}, session=session)[0]
+        objs = await NodeManager.query(schema="NodeSchema", filters={"kind__value": node.kind}, session=session)
+        if not objs:
+            return None
+
+        obj = objs[0]
 
         # Create the Attributes and the relationships
         for item in node.attributes:

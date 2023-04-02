@@ -12,7 +12,7 @@
                 {"name": "enabled", "kind": "Boolean", "default_value": true}
             ],
             "relationships": [
-                {"name": "status", "peer": "NotValid", "optional": false, "cardinality": "one", "kind": "Attribute"},
+                {"name": "status", "peer": "NotValidStatus", "optional": false, "cardinality": "one", "kind": "Attribute"},
                 {"name": "role", "peer": "Role", "optional": false, "cardinality": "one", "kind": "Attribute"},
                 {"name": "device", "peer": "Device", "optional": false, "cardinality": "one", "kind": "Parent"},
                 {"name": "tags", "peer": "Tag", "optional": true, "cardinality": "many", "kind": "Attribute"}

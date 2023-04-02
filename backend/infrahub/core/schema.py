@@ -49,6 +49,16 @@ class RelationshipKind(str, BaseEnum):
     PARENT = "Parent"
 
 
+def full_schema_to_schema_root(full_schema: Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]) -> SchemaRoot:
+    schema_root_dict = {
+        "nodes": [item for item in full_schema.values() if isinstance(item, NodeSchema)],
+        "generics": [item for item in full_schema.values() if isinstance(item, GenericSchema)],
+        "groups": [item for item in full_schema.values() if isinstance(item, GroupSchema)],
+    }
+
+    return SchemaRoot(**schema_root_dict)
+
+
 class FilterSchema(BaseModel):
     name: str
     kind: FilterSchemaKind
@@ -417,6 +427,7 @@ class SchemaExtension(BaseModel):
 
 
 class SchemaRoot(BaseModel):
+    version: Optional[str]
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
