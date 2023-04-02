@@ -21,7 +21,7 @@ def callback():
     """
 
 
-async def _load(schema: Path, log: logging.Logger):
+async def _load(schema: Path, log: logging.Logger):  # pylint: disable=unused-variable
     console = Console()
 
     try:
@@ -41,7 +41,7 @@ async def _load(schema: Path, log: logging.Logger):
             console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
         raise typer.Exit(2)
 
-    ok, errors = await client.schema.load(schema=schema_data)
+    _, errors = await client.schema.load(schema=schema_data)
 
     if errors:
         console.print("[red]Unable to load the schema:")
