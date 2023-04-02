@@ -108,9 +108,6 @@ class NodeManager:
         limit: int = 100,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
-        include_source: bool = False,
-        include_owner: bool = False,
-        account=None,
     ) -> List[Relationship]:
         branch = await get_branch(branch=branch, session=session)
         at = Timestamp(at)
@@ -123,7 +120,6 @@ class NodeManager:
         await query.execute(session=session)
 
         peers_info = list(query.get_peers())
-        peer_ids = [peer.peer_id for peer in peers_info]
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
@@ -135,24 +131,13 @@ class NodeManager:
         if not peers_info:
             return []
 
-        peers = await cls.get_many(
-            ids=peer_ids,
-            branch=branch,
-            account=account,
-            fields=fields,
-            at=at,
-            include_source=include_source,
-            include_owner=include_owner,
-            session=session,
-        )
-
         return [
             await Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
                 session=session,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
                 updated_at=peer.updated_at,
-                data={"peer": peers[peer.peer_id]},
+                data=peer,
             )
             for peer in peers_info
         ]
