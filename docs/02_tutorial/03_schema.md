@@ -25,7 +25,7 @@ In order to model a simple network, we need to extend the current models to capt
 A schema extension with these type of models and more is available in the `models/` directory
 
 ==- Infrastructure Base Schema
-:::code source="../../models/infrastructure_base.json" :::
+:::code source="../../models/infrastructure_base.yml" :::
 ==-
 
 Use the following command to load these new models into Infrahub
