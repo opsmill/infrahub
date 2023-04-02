@@ -21,7 +21,7 @@ def callback():
     """
 
 
-async def _load(schema: Path, log: logging.Logger):  # pylint: disable=unused-variable
+async def _load(schema: Path, log: logging.Logger):  # pylint: disable=unused-argument
     console = Console()
 
     try:
