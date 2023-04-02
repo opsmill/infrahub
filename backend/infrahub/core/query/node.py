@@ -448,6 +448,8 @@ class NodeGetListQuery(Query):
         # if Filters are provided
         #  Go over all the fields, remove the first part of the query to identify the field
         #  { "name__name": value }
+
+        filter_cnt = 0
         for field_name in self.schema.valid_input_names:
             attr_filters = {
                 key.replace(f"{field_name}__", ""): value
@@ -457,10 +459,16 @@ class NodeGetListQuery(Query):
             if not attr_filters:
                 continue
 
+            filter_cnt += 1
+
             field = self.schema.get_field(field_name)
 
             field_filters, field_params, nbr_rels = await field.get_query_filter(
-                session=session, name=field_name, filters=attr_filters, branch=self.branch
+                session=session,
+                name=field_name,
+                filters=attr_filters,
+                branch=self.branch,
+                param_prefix=f"filter{filter_cnt}",
             )
             self.params.update(field_params)
 

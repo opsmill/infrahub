@@ -163,18 +163,12 @@ class RelationshipSchema(BaseModel):
                 query_filter += "MATCH (n)"
 
             query_filter += (
-                "-[r%s:%s]-(Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node { uuid: $peer_node_id })"
-                % (
-                    rels_offset + 1,
-                    rel_type,
-                    prefix,
-                    rels_offset + 2,
-                    rel_type,
-                )
+                "-[r%s:%s]-(Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node { uuid: $%s_peer_id })"
+                % (rels_offset + 1, rel_type, prefix, rels_offset + 2, rel_type, prefix)
             )
 
             query_filters.append(query_filter)
-            query_params["peer_node_id"] = filters["id"]
+            query_params[f"{prefix}_peer_id"] = filters["id"]
 
         # -------------------------------------------------------------------
         # Check if any of the filters are matching an existing field
@@ -215,6 +209,7 @@ class RelationshipSchema(BaseModel):
                 branch=branch,
                 rels_offset=2,
                 include_match=False,
+                param_prefix=prefix if param_prefix else None,
             )
 
             if field_nbr_rels > max_field_nbr_rels:
