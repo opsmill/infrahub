@@ -163,14 +163,13 @@ class RelationshipSchema(BaseModel):
                 query_filter += "MATCH (n)"
 
             query_filter += (
-                "-[r%s:%s]-(Relationship { name: $%s_rel_name })-[r%s:%s]-(p:%s { uuid: $peer_node_id })"
+                "-[r%s:%s]-(Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node { uuid: $peer_node_id })"
                 % (
                     rels_offset + 1,
                     rel_type,
                     prefix,
                     rels_offset + 2,
                     rel_type,
-                    peer_schema.kind,
                 )
             )
 
@@ -199,13 +198,12 @@ class RelationshipSchema(BaseModel):
                 query_filter += "MATCH (n)"
 
             # TODO Validate if filters are valid
-            query_filter += "-[r%s:%s]-(rl:Relationship { name: $%s_rel_name })-[r%s:%s]-(p:%s)" % (
+            query_filter += "-[r%s:%s]-(rl:Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node)" % (
                 rels_offset + 1,
                 rel_type,
                 prefix,
                 rels_offset + 2,
                 rel_type,
-                peer_schema.kind,
             )
 
             field = peer_schema.get_field(field_name)
@@ -337,6 +335,7 @@ class BaseNodeSchema(BaseModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
+    branch: bool = True
     label: Optional[str]
 
 
@@ -683,6 +682,12 @@ internal_schema = {
                     "kind": "Text",
                     "optional": True,
                     "max_length": 32,
+                },
+                {
+                    "name": "branch",
+                    "kind": "Boolean",
+                    "default_value": True,
+                    "optional": True,
                 },
                 {
                     "name": "default_filter",
