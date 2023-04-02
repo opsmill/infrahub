@@ -278,6 +278,8 @@ class InfrahubNode:
         self._branch = branch or self._client.default_branch
 
         self.id: Optional[str] = data.get("id", None) if isinstance(data, dict) else None
+        self.display_label: Optional[str] = data.get("display_label", None) if isinstance(data, dict) else None
+
         self._attributes = [item.name for item in self._schema.attributes]
         self._relationships = [item.name for item in self._schema.relationships]
 
@@ -296,6 +298,14 @@ class InfrahubNode:
                 setattr(self, rel_name, rel_data)
             else:
                 setattr(self, rel_name, RelationshipManager(name=rel_name, schema=rel_schema, data=rel_data))
+
+    def __repr__(self) -> str:
+        if self.display_label:
+            return self.display_label
+        if not self.id:
+            return f"{self._schema.kind} (no id yet)"
+
+        return f"{self._schema.kind} ({self.id})"
 
     async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)

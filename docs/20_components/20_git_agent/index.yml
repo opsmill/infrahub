@@ -1,4 +1,5 @@
 ---
 label: Git Agent
-icon: "git-compare"
+# icon: "git-compare"
+icon: alert
 order: 800
