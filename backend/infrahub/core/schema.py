@@ -790,7 +790,7 @@ core_models = {
             "name": "organization",
             "kind": "Organization",
             "default_filter": "name__value",
-            "display_labels": ["label_value"],
+            "display_labels": ["label__value"],
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
