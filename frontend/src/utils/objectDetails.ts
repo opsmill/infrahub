@@ -35,10 +35,12 @@ const template = Handlebars.compile(`query {{kind.value}} {
             _relation__owner {
               id
               display_label
+              __typename
             }
             _relation__source {
               id
               display_label
+              __typename
             }
         }
         {{/each}}
