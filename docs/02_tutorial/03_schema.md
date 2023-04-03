@@ -10,7 +10,7 @@ Infrahub can be easily extended by providing your own schema (or models), curren
 ## Visualize the active Schema
 
 
-The default schema is composed of 19 models that are either mandatory for Infrahub to fonction like `Account`, `Group`, `Repository` or that are very generic like `Status`, `Role`, `Location`.
+The default schema is composed of 19 models that are either mandatory for Infrahub to function like `Account`, `Group`, `Repository` or that are very generic like `Status`, `Role`, `Location`.
 
 You can explore the current schema by visiting the schema page at the bottom of the left menu.
 
