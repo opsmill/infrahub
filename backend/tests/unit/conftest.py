@@ -680,6 +680,59 @@ async def car_person_schema(session: AsyncSession, data_schema) -> None:
 
 
 @pytest.fixture
+async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> None:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "car",
+                "kind": "Car",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                    {"name": "is_electric", "kind": "Boolean"},
+                ],
+                "relationships": [
+                    {"name": "owner", "peer": "Person", "optional": False, "cardinality": "one"},
+                    {"name": "manufacturer", "peer": "Manufacturer", "optional": False, "cardinality": "one"},
+                ],
+            },
+            {
+                "name": "person",
+                "kind": "Person",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "Car", "cardinality": "many"}],
+            },
+            {
+                "name": "manufacturer",
+                "kind": "Manufacturer",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "Car", "cardinality": "many"}],
+            },
+        ]
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    for node in schema.nodes:
+        registry.set_schema(name=node.kind, schema=node)
+
+
+@pytest.fixture
 async def car_person_schema_generics(session: AsyncSession, data_schema) -> None:
     SCHEMA = {
         "generics": [
