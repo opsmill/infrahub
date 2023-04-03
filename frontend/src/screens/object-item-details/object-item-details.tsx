@@ -47,6 +47,11 @@ export default function ObjectItemDetails() {
   const RelationshipDetails = (props: iRelationDetailsProps) => {
     const { row, relationship: relationships } = props;
     const relationship = relationships![0];
+
+    if(row[relationship.name]._relation__is_visible === false) {
+      return null;
+    }
+
     return <>
       <div
         className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
