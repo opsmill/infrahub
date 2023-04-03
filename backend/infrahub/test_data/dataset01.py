@@ -146,7 +146,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
 
         # Add a special interface for spine1
         if device[0] == "spine1":
-            intf = await Node.init(session=session, schema="Interface")
+            intf = await Node.init(session=session, schema="InterfaceL3")
             await intf.new(
                 session=session,
                 device="spine1",
@@ -175,7 +175,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
             if intf_idx in [0, 1]:
                 enabled = False
 
-            intf = await Node.init(session=session, schema="Interface")
+            intf = await Node.init(session=session, schema="InterfaceL3")
             await intf.new(
                 session=session,
                 device=obj,

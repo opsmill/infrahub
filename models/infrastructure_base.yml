@@ -1,12 +1,49 @@
 ---
 version: '1.0'
+generics:
+  - name: interface
+    kind: Interface
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: speed
+        kind: Number
+      - name: enabled
+        kind: Boolean
+        default_value: true
+    relationships:
+      - name: status
+        peer: Status
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: Role
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: device
+        peer: Device
+        identifier: "device__interface"
+        optional: false
+        cardinality: one
+        kind: Parent
+      - name: tags
+        peer: Tag
+        optional: true
+        cardinality: many
+        kind: Attribute
 nodes:
   - name: device
     kind: Device
     default_filter: name__value
     display_labels:
       - name__value
-    branch: true
     attributes:
       - name: name
         kind: Text
@@ -34,6 +71,7 @@ nodes:
         kind: Attribute
       - name: interfaces
         peer: Interface
+        identifier: "device__interface"
         optional: true
         cardinality: many
         kind: Component
@@ -47,62 +85,22 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: interface
-    kind: Interface
+  - name: interface_l3
+    kind: InterfaceL3
     display_labels:
       - name__value
-    branch: true
-    attributes:
-      - name: name
-        kind: Text
-      - name: description
-        kind: Text
-        optional: true
-      - name: speed
-        kind: Number
-      - name: enabled
-        kind: Boolean
-        default_value: true
+    inherit_from: ["Interface"]
     relationships:
-      - name: status
-        peer: Status
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: Role
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: device
-        peer: Device
-        optional: false
-        cardinality: one
-        kind: Parent
-      - name: tags
-        peer: Tag
-        optional: true
-        cardinality: many
-        kind: Attribute
       - name: ip_addresses
         peer: IPAddress
         optional: true
         cardinality: many
         kind: Component
-      - name: connected_circuit
-        peer: CircuitEndpoint
-        optional: true
-        cardinality: one
-      - name: connected_interface
-        peer: Interface
-        optional: true
-        cardinality: one
   - name: ipaddress
     kind: IPAddress
     default_filter: address__value
     display_labels:
       - address__value
-    branch: true
     attributes:
       - name: address
         kind: Text
@@ -115,12 +113,40 @@ nodes:
         optional: true
         cardinality: one
         kind: Parent
+  - name: vlan
+    kind: VLAN
+    default_filter: name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: site
+        peer: Location
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: status
+        peer: Status
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: Role
+        optional: false
+        cardinality: one
+        kind: Attribute
   - name: circuit
     kind: Circuit
     default_filter: circuit_id__value
     display_labels:
       - circuit_id__value
-    branch: true
     attributes:
       - name: circuit_id
         kind: Text
@@ -154,7 +180,6 @@ nodes:
         kind: Component
   - name: circuit_endpoint
     kind: CircuitEndpoint
-    branch: true
     attributes:
       - name: description
         kind: Text
@@ -180,7 +205,6 @@ nodes:
     display_labels:
       - name__value
       - asn__value
-    branch: true
     attributes:
       - name: name
         kind: Text
@@ -202,7 +226,6 @@ nodes:
     default_filter: name__value
     display_labels:
       - name__value
-    branch: true
     attributes:
       - name: name
         kind: Text
@@ -230,7 +253,6 @@ nodes:
         kind: Attribute
   - name: bgp_session
     kind: BGPSession
-    branch: true
     attributes:
       - name: type
         kind: Text
