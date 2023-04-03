@@ -307,6 +307,18 @@ class InfrahubNode:
 
         return f"{self._schema.kind} ({self.id})"
 
+    async def delete(self, at: Optional[Timestamp] = None) -> None:
+        at = Timestamp(at)
+        input_data = {"data": {"id": self.id}}
+        mutation_query = {"ok": None}
+        query = Mutation(mutation=f"{self._schema.name}_delete", input_data=input_data, query=mutation_query)
+        await self._client.execute_graphql(
+            query=query.render(),
+            branch_name=self._branch,
+            at=at,
+            tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
+        )
+
     async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if not self.id:

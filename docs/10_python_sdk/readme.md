@@ -35,6 +35,4 @@ _If this is a big show-stopper for you, please let us know so that we can priori
 
 ### Delete an object
 
-!!!
-Not supported yet
-!!!
+:::code source="../../python_sdk/examples/example_delete.py" :::
