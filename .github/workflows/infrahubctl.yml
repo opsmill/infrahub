@@ -4,7 +4,9 @@ name: "infrahubctl"
 on:
   pull_request:
     paths:
+      - ".github/**"
       - "infrahub_ctl/**"
+      - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
       - "tasks/**"
