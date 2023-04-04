@@ -11,6 +11,7 @@ import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
+import { getSchemaObjectColumns, getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -35,23 +36,6 @@ const template = Handlebars.compile(`query {{kind}} {
         }
     }
 `);
-
-const getRelationshipsColumns = (schema: any) => schema?.relationships?.filter((relationship: any) => relationship?.cardinality === "one");
-
-const getItemsColumn = (schema: any) => {
-  return [
-    ...(schema?.attributes ?? []),
-    ...(getRelationshipsColumns(schema) ?? [])
-  ]
-  .sort(
-    (a, b) => {
-      if (a.label && b.label) {
-        return a.label.localeCompare(b.label);
-      }
-      return -1;
-    }
-  );
-};
 
 const getObjectItemDisplayValue = (row: any, attribute: any) => {
   // Get "value" or "display_name" depending on the kind (attribute or relationship)
@@ -88,7 +72,7 @@ export default function ObjectItems() {
   .join(",");
 
   // Get all teh needed columns (attributes + relationships with a cardinality of "one")
-  const columns = getItemsColumn(schema);
+  const columns = getSchemaObjectColumns(schema);
 
   const navigate = useNavigate();
 
@@ -105,7 +89,7 @@ export default function ObjectItems() {
             const queryString = template({
               ...schema,
               filterString,
-              relationships: getRelationshipsColumns(schema)
+              relationships: getSchemaRelationshipColumns(schema)
             });
 
             const query = gql`
