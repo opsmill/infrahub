@@ -119,6 +119,12 @@ export const DynamicControl = (props: DynamicFieldData) => {
             defaultValue={value}
           />
         );
+      case "checkbox":
+        return <input
+          type="checkbox"
+          {...register(name)}
+          defaultValue={value}
+        />;
       default:
         return <input type="text" />;
     }
