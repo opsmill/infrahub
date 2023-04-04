@@ -8,7 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { branchState } from "../../state/atoms/branch.atom";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -34,9 +34,10 @@ export default function ObjectItemDetails() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   const navigate = useNavigate();
+  const { search } = useLocation();
 
   const navigateToObjectEditPage = () => {
-    navigate(`/objects/${objectname}/${objectid}/edit`);
+    navigate(`/objects/${objectname}/${objectid}/edit/${search}`);
   };
 
   interface iRelationDetailsProps {
@@ -48,7 +49,7 @@ export default function ObjectItemDetails() {
     const { row, relationship: relationships } = props;
     const relationship = relationships![0];
 
-    if(row[relationship.name]._relation__is_visible === false) {
+    if(!row || !row[relationship.name] || row[relationship.name]._relation__is_visible === false) {
       return null;
     }
 
@@ -211,7 +212,7 @@ export default function ObjectItemDetails() {
     <div className="bg-white flex-1 overflow-auto">
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
-          onClick={() => navigate(`/objects/${objectname}`)}
+          onClick={() => navigate(`/objects/${objectname}/${search}`)}
           className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
         >
           {schema.kind}
