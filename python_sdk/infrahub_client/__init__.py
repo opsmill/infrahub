@@ -179,7 +179,7 @@ class RelatedNode:
 
             setattr(self, prop, data.get(f"_relation__{prop}", None))
 
-    def _generate_input_data(self):
+    def _generate_input_data(self) -> Dict[str, Any]:
         data = {}
 
         if self.id is not None:
@@ -221,7 +221,7 @@ class RelationshipManager:
         for item in data:
             self.peers.append(RelatedNode(name=name, schema=schema, data=item))
 
-    def add(self, data: Union[str, RelatedNode, dict]):
+    def add(self, data: Union[str, RelatedNode, dict]) -> None:
         """Add a new peer to this relationship.
         Need to check if the peer is already present
         """
@@ -230,7 +230,7 @@ class RelationshipManager:
         # that we are not adding a node that already exist
         self.peers.append(RelatedNode(schema=self.schema, data=data))
 
-    def remove(self, data):
+    def remove(self, data: Any) -> None:
         pass
 
     def _generate_input_data(self) -> List[Dict]:
@@ -421,10 +421,12 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
             self.address = ""
 
     @classmethod
-    async def init(cls, *args, **kwargs):
+    async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
         return cls(*args, **kwargs)
 
-    async def create(self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs):
+    async def create(
+        self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs: Any
+    ) -> InfrahubNode:
         branch = branch or self.default_branch
         schema = await self.schema.get(kind=kind, branch=branch)
 
@@ -439,7 +441,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> InfrahubNode:
         branch = branch or self.default_branch
         schema = await self.schema.get(kind=kind, branch=branch)
@@ -493,7 +495,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
 
     async def filters(
-        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs
+        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs: Any
     ) -> List[InfrahubNode]:
         schema = await self.schema.get(kind=kind)
 
@@ -893,7 +895,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         description: str = "",
         timeout: int = 10,
         rebase: bool = False,
-    ):
+    ) -> bool:
         variables = {
             "id": id,
             "name": name,
@@ -955,7 +957,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         description: str = "",
         timeout: int = 10,
         rebase: bool = False,
-    ):
+    ) -> bool:
         variables = {
             "id": id,
             "name": name,
@@ -976,7 +978,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def repository_update_commit(self, branch_name, repository_id: str, commit: str) -> bool:
+    async def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
         await self.execute_graphql(
             query=MUTATION_COMMIT_UPDATE,
