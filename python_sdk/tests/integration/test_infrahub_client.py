@@ -143,7 +143,7 @@ class TestInfrahubClient:
 
         await client.create_rfile(
             branch_name=branch_name,
-            name="rfile1",
+            name="rfile2",
             description="test rfile2",
             template_path="mytemplate.j2",
             template_repository=str(repositories[0].id),

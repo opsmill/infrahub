@@ -67,7 +67,7 @@ class TestInfrahubNode:
         first_account: Node,
     ):
         data = {
-            "name": {"value": "rfile01", "is_protected": True, "source": first_account.id, "owner": first_account.id},
+            "name": {"value": "rfile02", "is_protected": True, "source": first_account.id, "owner": first_account.id},
             "template_path": {"value": "mytemplate.j2"},
             "query": {"id": gqlquery01.id},  # "source": first_account.id, "owner": first_account.id},
             "template_repository": {"id": repo01.id},  # "source": first_account.id, "owner": first_account.id},
