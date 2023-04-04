@@ -27,6 +27,22 @@ class TestInfrahubNode:
 
         assert node.id is not None
 
+    async def test_node_delete(self, session, client: InfrahubClient, init_db_base, location_schema):
+        data = {"name": {"value": "ARN"}, "description": {"value": "Arlanda Airport"}, "type": {"value": "SITE"}}
+        node = InfrahubNode(client=client, schema=location_schema, data=data)
+        await node.save()
+        nodedb_pre_delete = await NodeManager.get_one(
+            id=node.id, session=session, include_owner=True, include_source=True
+        )
+
+        await node.delete()
+        nodedb_post_delete = await NodeManager.get_one(
+            id=node.id, session=session, include_owner=True, include_source=True
+        )
+        assert nodedb_pre_delete
+        assert nodedb_pre_delete.id
+        assert not nodedb_post_delete
+
     async def test_node_create_with_relationships(
         self,
         session,

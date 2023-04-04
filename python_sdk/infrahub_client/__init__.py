@@ -43,6 +43,7 @@ from infrahub_client.schema import (
 from infrahub_client.timestamp import Timestamp
 
 # pylint: disable=redefined-builtin
+# pylint: disable=too-many-lines
 
 
 class BranchData(BaseModel):
