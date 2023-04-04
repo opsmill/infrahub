@@ -13,6 +13,6 @@ Using the time selection menu, next to the branch selection drop down, select a 
 
 ![](../media/tutorial_time_selection.png)
 
-!!!success
-When playing with the time around the time when the branch `cr1234` was merged into `main` you should be able to see the value changing in `main`
+!!!success Validate that everything is correct
+When playing with the time around the time when the branch `cr1234` was merged into `main` you should be able to see the value changing in `main`.
 !!!
