@@ -69,14 +69,11 @@ Go back to the detailed page for the Account `Admin` and try to switch branches 
 Now that we have modify some data in a controled environment, and after validating that everything is right, we can integrate these changes in the `main` branch by merging the branch `cr1234` into main.
 
 To merge a branch you need to :
-1. Navigate to the branch menu at the very bottom of the menu on the left (or [follow this lin](http://localhost:3000/branches/))
+1. Navigate to the branch menu at the very bottom of the menu on the left (or [follow this link](http://localhost:3000/branches/))
 2. Select the branch `cr1234` in the list of available branches.
 3. Click the `merge` button
 
-![Branch list page](../media/tutorial_branch_list.png)
-
-![Branch detailed page](../media/tutorial_branch_detail.png)
-
+![Branch merge](../media/tutorial_branch_merge.gif)
 
 
 ##### Other options available
@@ -109,6 +106,8 @@ mutation {
 }
 ```
 ==-
+
+![](../media/video1.mov)
 
 !!!success Validate that everything is correct
 Go back to the detailed page for the Account `Admin`.<br>

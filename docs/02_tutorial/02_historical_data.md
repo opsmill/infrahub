@@ -11,8 +11,9 @@ Infrahub is built around a immutable storage engine which means that all past va
 
 Using the time selection menu, next to the branch selection drop down, select a time (in UTC) before the branch `cr1234` has been merged.
 
-![](../media/tutorial_time_selection.png)
+![Change Time](../media/tutorial_branch_change_time.gif)
 
 !!!success Validate that everything is correct
 When playing with the time around the time when the branch `cr1234` was merged into `main` you should be able to see the value changing in `main`.
 !!!
+

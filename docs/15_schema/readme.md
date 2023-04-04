@@ -111,3 +111,7 @@ A schema file can be loaded into Infrahub with the `infrahubctl` command
 infrahubctl schema load <path to schema file>
 ```
 
+!!!warning
+Currently it's mandatory to reload the `API Server` after all modifications of the schema.<br>
+Simply stop and restart the `gunicorn` process to see the latest changes in the schema
+!!!
