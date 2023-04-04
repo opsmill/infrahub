@@ -4,10 +4,18 @@ name: "Python SDK"
 on:
   pull_request:
     paths:
+      - ".github/**"
       - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
       - "tasks/**"
+
+env:
+  NEO4J_USERNAME: neo4j
+  NEO4J_PASSWORD: admin
+  NEO4J_ADDRESS: localhost
+  NEO4J_PORT: 7687
+  NEO4J_PROTOCOL: neo4j
 
 jobs:
   python-tests:
@@ -22,6 +30,10 @@ jobs:
           git config --global --add safe.directory '*'
           git config --global user.email "infrahub@example.com"
           git config --global user.name "Infrahub"
+      - name: "Setup Docker-Compose"
+        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      - name: "Start database"
+        run: "invoke demo.dev-start"
       - name: "Install project"
         run: "poetry install --only=main,dev,sdk,server"
       - name: "Flake8 Tests"
@@ -32,3 +44,5 @@ jobs:
         run: "poetry run invoke sdk.mypy"
       - name: "Unit Tests"
         run: "poetry run pytest -v --cov=infrahub_client --cov-report term-missing python_sdk/tests/unit"
+      - name: "Integration Tests"
+        run: "poetry run pytest -v --cov=infrahub_client --cov-report term-missing python_sdk/tests/integration"
