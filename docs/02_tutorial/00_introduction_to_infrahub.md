@@ -13,7 +13,7 @@ Before starting this tutorial, let's take a moment to explore how Infrahub is or
 
 During this tutorial we'll mainly use the Frontend, the `infrahubctl` CLI and GraphQL via the API Server.
 
-| Name | Description | Demo Environment |
+| Name | Description | Demo Environment | { class="compact" }
 |---|---|---|
 | **infrahubctl** | Command line utility to interact with Infrahub and manage some core objects like the branches or the schema. | `invoke demo.cli-git` |
 | **Frontend** | Main User interface |  [http://localhost:3000](http://localhost:3000) |

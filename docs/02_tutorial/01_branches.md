@@ -12,6 +12,9 @@ The default branch is called `main`.
 
 ## Create a new Branch
 
+==- Create a new Branch using the Frontend
+
+
 ==- Create a new Branch with `infrahubctl`
 
 Use the command line below to create a new branch named `cr1234`
@@ -41,10 +44,7 @@ mutation {
 ```
 
 
-==- Create a new Branch using the Frontend
-!!!warning
-It's not yet possible to create a branch via the frontend
-!!!
+
 ==-
 
 

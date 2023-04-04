@@ -1,12 +1,13 @@
 
-# Build a local Sandbox Environment
+# Build a local Environment
 
-The project includes a local sandbox environment that can be used to experiment and/or demo Infrahub.
-The main requirements to run the Sandbox environment are :
-- Invoke 2.x
+The project includes a local demo environment that can be used to experiment and/or demo Infrahub.
+
+The main requirements to run the Sandbox environment are:
+- Invoke (version 2 minimum)
 - Docker & Docker Compose
 
-## Prepare the Sandbox Environment
+## Prepare the Local Environment
 
 ```
 invoke demo.build
@@ -19,8 +20,9 @@ You can then start all the services with
 invoke demo.start
 ```
 
-The Web interface will be available at [http://localhost:3000](http://localhost:3000)
-The GraphQL interface will be available at [http://localhost:8000/graphql](http://localhost:8000/graphql)
+[!ref Access the Web interface](http://localhost:3000)
+[!ref Access the GraphQL interface](http://localhost:8000/graphql)
+
 
 # Explore Infrahub with some Infrastructure Data
 
@@ -32,4 +34,7 @@ invoke demo.load-infra-schema
 invoke demo.load-infra-data
 ```
 
-To explore further, [a tutorial](../02_tutorial/readme.md) is available to guide you through the application and the graphQL interface.
+To explore further, [a tutorial](../02_tutorial/readme.md) is available to guide you through the application and the GraphQL interface.
+
+
+[!ref Check the documentation of the demo environment for more information](../20_knowledge_base/80_local_demo_environment.md)
