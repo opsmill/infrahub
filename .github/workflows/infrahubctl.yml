@@ -31,4 +31,4 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run invoke ctl.mypy"
       - name: "Unit Tests"
-        run: "poetry run pytest -v infrahub_ctl/tests/unit"
+        run: "poetry run pytest -v --cov=infrahub_ctl --cov-report term-missing infrahub_ctl/tests/unit"

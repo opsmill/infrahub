@@ -62,6 +62,7 @@ types-toml = "^0.10.8"
 types-ujson = "^5.7.0.1"
 types-pyyaml = "^6.0.12.8"
 typer-cli = "^0.0.13"
+pytest-cov = "^4.0.0"
 
 
 [tool.poetry.group.sync.dependencies]

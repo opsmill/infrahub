@@ -31,4 +31,4 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run invoke sdk.mypy"
       - name: "Unit Tests"
-        run: "poetry run pytest -v python_sdk/tests/unit"
+        run: "poetry run pytest -v --cov=infrahub_client --cov-report term-missing python_sdk/tests/unit"
