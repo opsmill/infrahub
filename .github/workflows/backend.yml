@@ -8,7 +8,7 @@ on:
       - "development/**"
       - pyproject.toml
       - poetry.lock
-      - tasks.py
+      - "tasks/**"
 
 env:
   NEO4J_USERNAME: neo4j
