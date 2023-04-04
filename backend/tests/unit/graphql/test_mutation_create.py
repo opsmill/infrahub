@@ -29,6 +29,34 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 
+async def test_create_check_unique(db, session, default_branch, car_person_schema):
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    query = """
+    mutation {
+        person_create(data: {name: { value: "John"}, height: {value: 182}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "An object already exist" in result.errors[0].message
+
+
 async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
     query = """
     mutation {

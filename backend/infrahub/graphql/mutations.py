@@ -78,7 +78,20 @@ class InfrahubMutationMixin:
         try:
             obj = await node_class.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(session=session, **data)
+
+            # Check if the new object is conform with the uniqueness constraints
+            for unique_attr in cls._meta.schema.unique_attributes:
+                attr = getattr(obj, unique_attr.name)
+                nodes = await NodeManager.query(
+                    cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, session=session
+                )
+                if nodes:
+                    raise ValidationError(
+                        {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
+                    )
+
             await obj.save(session=session)
+
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -100,6 +113,18 @@ class InfrahubMutationMixin:
 
         try:
             await obj.from_graphql(session=session, data=data)
+
+            # Check if the new object is conform with the uniqueness constraints
+            for unique_attr in cls._meta.schema.unique_attributes:
+                attr = getattr(obj, unique_attr.name)
+                nodes = await NodeManager.query(
+                    cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, session=session
+                )
+                if [node for node in nodes if node.id != obj.id]:
+                    raise ValidationError(
+                        {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
+                    )
+
             await obj.save(session=session)
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
