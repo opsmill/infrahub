@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client.exceptions import NodeNotFound
 
 # pylint: disable=unused-argument
 
@@ -27,7 +28,7 @@ class TestInfrahubNode:
 
         assert node.id is not None
 
-    async def test_node_delete(self, session, client: InfrahubClient, init_db_base, location_schema):
+    async def test_node_delete_client(self, session, client: InfrahubClient, init_db_base, location_schema):
         data = {"name": {"value": "ARN"}, "description": {"value": "Arlanda Airport"}, "type": {"value": "SITE"}}
         node = InfrahubNode(client=client, schema=location_schema, data=data)
         await node.save()
@@ -42,6 +43,17 @@ class TestInfrahubNode:
         assert nodedb_pre_delete
         assert nodedb_pre_delete.id
         assert not nodedb_post_delete
+
+    async def test_node_delete_node(self, session, client: InfrahubClient, init_db_base, location_schema):
+        obj = await Node.init(session=session, schema="Account")
+        await obj.new(session=session, name="delete-my-account", type="Git")
+        await obj.save(session=session)
+        node_pre_delete = await client.get(kind="Account", name__value="delete-my-account")
+        assert node_pre_delete
+        assert node_pre_delete.id
+        await node_pre_delete.delete()
+        with pytest.raises(NodeNotFound):
+            await client.get(kind="Account", name__value="delete-my-account")
 
     async def test_node_create_with_relationships(
         self,
