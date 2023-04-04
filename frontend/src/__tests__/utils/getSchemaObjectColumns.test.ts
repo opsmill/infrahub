@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { C_deviceAttributeColumns, C_deviceObjectColumns, C_deviceRelationshipColumns, C_deviceSchema } from "../testData/deviceSchema";
-import { getSchemaAttributeColumns, getSchemaObjectColumns, getSchemaRelationshipColumns } from "./getSchemaObjectColumns";
+import { C_deviceAttributeColumns, C_deviceObjectColumns, C_deviceRelationshipColumns, C_deviceSchema } from "../data/deviceSchema";
+import { getSchemaAttributeColumns, getSchemaObjectColumns, getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 
 describe("Schema object columns for list view", () => {
   it("should return correct attribute columns", () => {

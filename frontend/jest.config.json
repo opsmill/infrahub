@@ -1,0 +1,8 @@
+{
+    "testPathIgnorePatterns": [
+        "node_modules",
+        "<rootDir>/src/__tests__/data/deviceSchema.ts",
+        "src/__tests__/data/deviceSchema.ts",
+        "/src/__tests__/data/deviceSchema.ts"
+    ]
+}
