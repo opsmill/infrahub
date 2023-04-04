@@ -2,7 +2,7 @@ import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Badge } from "../../components/badge";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
@@ -11,6 +11,7 @@ import { branchesState } from "../../state/atoms/branches.atom";
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
+  const { search } = useLocation();
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 
@@ -29,7 +30,7 @@ export const BranchesItems = () => {
             <li
               className="col-span-1 rounded-lg bg-white shadow cursor-pointer hover:bg-gray-50"
               key={branch.name}
-              onClick={() => navigate(`/branches/${branch.id}`)}
+              onClick={() => navigate(`/branches/${branch.id}/${search}`)}
             >
               <div className="flex w-full items-center justify-between space-x-6 p-6">
                 <div className="flex flex-1">
