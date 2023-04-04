@@ -142,7 +142,7 @@ class InfrahubMutationMixin:
         if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
-        await obj.delete(session=session)
+        await obj.delete(session=session, at=at)
         ok = True
 
         return obj, cls(ok=ok)
