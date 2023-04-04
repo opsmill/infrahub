@@ -16,6 +16,7 @@ tasks:
       pip install toml invoke
       curl -sSL https://install.python-poetry.org | python3 -
       poetry config virtualenvs.create false
+      source ~/.bashrc
       poetry install
       cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       invoke demo.dev-start
