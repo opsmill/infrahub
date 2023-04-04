@@ -60,6 +60,23 @@ def test_node_schema_unique_names():
     assert "Names of attributes and relationships must be unique" in str(exc.value)
 
 
+def test_node_schema_property_unique_attributes():
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "description", "kind": "Text"},
+        ],
+    }
+
+    schema = NodeSchema(**SCHEMA)
+    assert len(schema.unique_attributes) == 1
+    assert schema.unique_attributes[0].name == "name"
+
+
 def test_node_schema_unique_identifiers():
     SCHEMA = {
         "name": "criticality",

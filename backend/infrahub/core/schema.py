@@ -312,6 +312,10 @@ class BaseNodeSchema(BaseModel):
     def local_relationships(self) -> List[RelationshipSchema]:
         return [item for item in self.relationships if not item.inherited]
 
+    @property
+    def unique_attributes(self) -> List[str]:
+        return [item for item in self.attributes if item.unique]
+
     def generate_fields_for_display_label(self) -> Dict:
         fields = {}
 
