@@ -6,7 +6,6 @@ nodes:
     default_filter: name__value
     display_labels:
       - name__value
-    branch: true
     attributes:
       - name: name
         kind: Text
@@ -51,7 +50,6 @@ nodes:
     kind: Interface
     display_labels:
       - name__value
-    branch: true
     attributes:
       - name: name
         kind: Text
@@ -102,7 +100,6 @@ nodes:
     default_filter: address__value
     display_labels:
       - address__value
-    branch: true
     attributes:
       - name: address
         kind: Text
@@ -120,7 +117,6 @@ nodes:
     default_filter: circuit_id__value
     display_labels:
       - circuit_id__value
-    branch: true
     attributes:
       - name: circuit_id
         kind: Text
@@ -154,7 +150,6 @@ nodes:
         kind: Component
   - name: circuit_endpoint
     kind: CircuitEndpoint
-    branch: true
     attributes:
       - name: description
         kind: Text
@@ -180,7 +175,6 @@ nodes:
     display_labels:
       - name__value
       - asn__value
-    branch: true
     attributes:
       - name: name
         kind: Text
@@ -202,7 +196,6 @@ nodes:
     default_filter: name__value
     display_labels:
       - name__value
-    branch: true
     attributes:
       - name: name
         kind: Text
@@ -230,7 +223,6 @@ nodes:
         kind: Attribute
   - name: bgp_session
     kind: BGPSession
-    branch: true
     attributes:
       - name: type
         kind: Text
