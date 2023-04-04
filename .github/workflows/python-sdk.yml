@@ -7,7 +7,7 @@ on:
       - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
-      - tasks.py
+      - "tasks/**"
 
 jobs:
   python-tests:

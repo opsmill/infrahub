@@ -7,7 +7,7 @@ on:
       - "infrahub_ctl/**"
       - pyproject.toml
       - poetry.lock
-      - tasks.py
+      - "tasks/**"
 
 jobs:
   python-tests:
