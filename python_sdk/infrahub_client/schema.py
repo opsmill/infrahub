@@ -105,7 +105,7 @@ class InfrahubSchema:
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    def validate(self, data):
+    def validate(self, data: dict[str, Any]) -> bool:
         SchemaRoot(**data)
 
         # Add additional validation to ensure that all nodes references in relationships and extensions are present in the schema
@@ -150,7 +150,7 @@ class InfrahubSchema:
 
         return self.cache[branch]
 
-    async def load(self, schema, branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+    async def load(self, schema: dict, branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/schema/load/?branch={branch}"
         response = await self.client._post(url=url, timeout=30, payload=schema)

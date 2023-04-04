@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
@@ -13,7 +14,7 @@ REGEX_MAPPING = {
 
 
 class Timestamp:
-    def __init__(self, value=None):
+    def __init__(self, value: Optional[Union[str, DateTime, Timestamp]] = None):
         if value and isinstance(value, DateTime):
             self.obj = value
         elif value and isinstance(value, self.__class__):
@@ -24,7 +25,7 @@ class Timestamp:
             self.obj = DateTime.now(tz="UTC")
 
     @classmethod
-    def _parse_string(cls, value):
+    def _parse_string(cls, value: str):
         try:
             return pendulum.parse(value)
         except pendulum.parsing.exceptions.ParserError:
@@ -44,26 +45,36 @@ class Timestamp:
     def __repr__(self) -> str:
         return f"Timestamp: {self.to_string()}"
 
-    def to_string(self):
+    def to_string(self) -> str:
         return self.obj.to_iso8601_string()
 
-    def to_timestamp(self):
+    def to_timestamp(self) -> str:
         return self.obj.int_timestamp
 
     async def to_graphql(self, *args, **kwargs):  # pylint: disable=unused-argument
         return self.obj
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Timestamp):
+            return NotImplemented
         return self.obj == other.obj
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Timestamp):
+            return NotImplemented
         return self.obj < other.obj
 
-    def __gt__(self, other):
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, Timestamp):
+            return NotImplemented
         return self.obj > other.obj
 
-    def __le__(self, other):
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, Timestamp):
+            return NotImplemented
         return self.obj <= other.obj
 
-    def __ge__(self, other):
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, Timestamp):
+            return NotImplemented
         return self.obj >= other.obj

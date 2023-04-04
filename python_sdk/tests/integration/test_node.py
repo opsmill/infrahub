@@ -51,9 +51,9 @@ class TestInfrahubNode:
         assert node.id is not None
 
         nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
-        assert nodedb.name.value == node.name.value
+        assert nodedb.name.value == node.name.value  # type: ignore[attr-defined]
         querydb = await nodedb.query.get_peer(session=session)
-        assert node.query.id == querydb.id
+        assert node.query.id == querydb.id  # type: ignore[attr-defined]
 
     async def test_node_create_with_properties(
         self,
@@ -80,7 +80,7 @@ class TestInfrahubNode:
         assert node.id is not None
 
         nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
-        assert nodedb.name.value == node.name.value
+        assert nodedb.name.value == node.name.value  # type: ignore[attr-defined]
         assert nodedb.name.is_protected is True
 
     async def test_node_update(
