@@ -1,10 +1,41 @@
+import inspect
+
 import pytest
 from pytest_httpx import HTTPXMock
 
-from infrahub_client import InfrahubClient
+from infrahub_client import InfrahubClient, InfrahubClientSync
 from infrahub_client.data import RepositoryData
 from infrahub_client.exceptions import FilterNotFound, NodeNotFound
 from infrahub_client.node import InfrahubNode
+
+async_client_methods = [method for method in dir(InfrahubClient) if not method.startswith("_")]
+sync_client_methods = [method for method in dir(InfrahubClientSync) if not method.startswith("_")]
+
+
+def replace_sync_return_annotation(annotation: str) -> str:
+    """Allows for comparison between async and async return annotations."""
+    replacements = {
+        "InfrahubClientSync": "InfrahubClient",
+        "InfrahubNodeSync": "InfrahubNode",
+        "List[InfrahubNodeSync]": "List[InfrahubNode]",
+    }
+    return replacements.get(annotation) or annotation
+
+
+async def test_method_sanity():
+    """Validate that there is at least one public method and that both clients look the same."""
+    assert async_client_methods
+    assert async_client_methods == sync_client_methods
+
+
+@pytest.mark.parametrize("method", async_client_methods)
+async def test_validate_method_signature(method):
+    async_method = getattr(InfrahubClient, method)
+    sync_method = getattr(InfrahubClientSync, method)
+    async_sig = inspect.signature(async_method)
+    sync_sig = inspect.signature(sync_method)
+    assert async_sig.parameters == sync_sig.parameters
+    assert async_sig.return_annotation == replace_sync_return_annotation(sync_sig.return_annotation)
 
 
 async def test_init_client():

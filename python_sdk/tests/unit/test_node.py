@@ -1,6 +1,34 @@
-from infrahub_client.node import InfrahubNode, RelatedNode, RelationshipManager
+import inspect
+
+import pytest
+
+from infrahub_client.node import (
+    InfrahubNode,
+    InfrahubNodeSync,
+    RelatedNode,
+    RelationshipManager,
+)
 
 # pylint: disable=no-member
+
+async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_")]
+sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.startswith("_")]
+
+
+async def test_method_sanity():
+    """Validate that there is at least one public method and that both clients look the same."""
+    assert async_node_methods
+    assert async_node_methods == sync_node_methods
+
+
+@pytest.mark.parametrize("method", async_node_methods)
+async def test_validate_method_signature(method):
+    async_method = getattr(InfrahubNode, method)
+    sync_method = getattr(InfrahubNodeSync, method)
+    async_sig = inspect.signature(async_method)
+    sync_sig = inspect.signature(sync_method)
+    assert async_sig.parameters == sync_sig.parameters
+    assert async_sig.return_annotation == sync_sig.return_annotation
 
 
 async def test_init_node_no_data(client, location_schema):
