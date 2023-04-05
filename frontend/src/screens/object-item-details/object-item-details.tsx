@@ -12,7 +12,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { branchState } from "../../state/atoms/branch.atom";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import getObjectDetails from "../../utils/objectDetails";
@@ -45,6 +45,14 @@ export default function ObjectItemDetails() {
     row: any;
   }
 
+  const getObjectDetailsUrl = (row: {__typename: string}, schemaKindName: iSchemaKindNameMap, schema: iNodeSchema, relatedNodeId: string) :string => {
+    const regex = /^Related/; // starts with Related
+    const peerKind: string = row.__typename.replace(regex, "");
+    const peerName = schemaKindName[peerKind];
+    const url = `/objects/${peerName}/${relatedNodeId}`;
+    return url;
+  };
+
   const RelationshipDetails = (props: iRelationDetailsProps) => {
     const { row, relationship: relationships } = props;
     const relationship = relationships![0];
@@ -66,9 +74,7 @@ export default function ObjectItemDetails() {
             {relationship.cardinality === "one" && (
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                 <Link
-                  to={`/objects/${
-                    schemaKindName[relationship.peer]
-                  }/${row[relationship.name].id}`}
+                  to={getObjectDetailsUrl(row[relationship.name], schemaKindName, schema, row[relationship.name].id)}
                 >
                   {row[relationship.name].display_label}
                 </Link>
@@ -119,9 +125,7 @@ export default function ObjectItemDetails() {
                     key={item.id}
                   >
                     <Link
-                      to={`/objects/${
-                        schemaKindName[relationship.peer]
-                      }/${item.id}`}
+                      to={getObjectDetailsUrl(item, schemaKindName, schema, item.id)}
                     >
                       {item.display_label}
                     </Link>
