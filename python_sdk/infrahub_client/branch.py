@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from pydantic import BaseModel
 
@@ -107,7 +107,7 @@ class InfrahubBranchManager:
         branch_only: bool = True,
         diff_from: Optional[str] = None,
         diff_to: Optional[str] = None,
-    ):
+    ) -> Dict[Any, Any]:
         variables = {"branch_name": branch_name, "branch_only": branch_only, "diff_from": diff_from, "diff_to": diff_to}
         response = await self.client.execute_graphql(
             query=QUERY_BRANCH_DIFF, variables=variables, tracker="query-branch-diff"

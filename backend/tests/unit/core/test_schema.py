@@ -60,6 +60,23 @@ def test_node_schema_unique_names():
     assert "Names of attributes and relationships must be unique" in str(exc.value)
 
 
+def test_node_schema_property_unique_attributes():
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "description", "kind": "Text"},
+        ],
+    }
+
+    schema = NodeSchema(**SCHEMA)
+    assert len(schema.unique_attributes) == 1
+    assert schema.unique_attributes[0].name == "name"
+
+
 def test_node_schema_unique_identifiers():
     SCHEMA = {
         "name": "criticality",
@@ -144,10 +161,10 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     # Filter relationship by ID
     filters, params, nbr_rels = await rel.get_query_filter(session=session, name="bob", filters={"id": "XXXX-YYYY"})
     expected_response = [
-        "MATCH (n)-[r1:IS_RELATED]-(Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Node { uuid: $peer_node_id })"
+        "MATCH (n)-[r1:IS_RELATED]-(Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Node { uuid: $rel_cars_peer_id })"
     ]
     assert filters == expected_response
-    assert params == {"peer_node_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
+    assert params == {"rel_cars_peer_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
     assert nbr_rels == 2
 
 

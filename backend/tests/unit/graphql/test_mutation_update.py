@@ -43,6 +43,44 @@ async def test_update_simple_object(db, session, default_branch, car_person_sche
     assert obj1.height.value == 180
 
 
+async def test_update_check_unique(db, session, default_branch, car_person_schema):
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    p2 = await Node.init(session=session, schema="Person")
+    await p2.new(session=session, name="Jim", height=170)
+    await p2.save(session=session)
+
+    query = (
+        """
+    mutation {
+        person_update(data: {id: "%s", name: { value: "Jim"}}) {
+            ok
+            object {
+                id
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+        % p1.id
+    )
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "An object already exist" in result.errors[0].message
+
+
 async def test_update_object_with_flag_property(db, session, default_branch, car_person_schema):
     obj = await Node.init(session=session, schema="Person")
     await obj.new(session=session, name="John", height=180)

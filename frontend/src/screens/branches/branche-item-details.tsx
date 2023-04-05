@@ -1,7 +1,7 @@
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "../../components/alert";
 import { Badge } from "../../components/badge";
@@ -24,6 +24,7 @@ export const BrancheItemDetails = () => {
   const [detailsContent, setDetailsContent] = useState({});
 
   const navigate = useNavigate();
+  const { search } = useLocation();
 
   const branchAction = async ({
     successMessage,
@@ -81,7 +82,7 @@ export const BrancheItemDetails = () => {
       <div className="bg-white sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
         <div className="sm:flex-auto flex items-center">
           <div
-            onClick={() => navigate("/branches")}
+            onClick={() => navigate(`/branches/${search}`)}
             className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
           >
             <h1 className="text-xl font-semibold text-gray-900 mr-2">Branches</h1>

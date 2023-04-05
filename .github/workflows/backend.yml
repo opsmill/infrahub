@@ -4,11 +4,13 @@ name: "Backend"
 on:
   pull_request:
     paths:
+      - ".github/**"
       - "backend/**"
       - "development/**"
+      - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
-      - tasks.py
+      - "tasks/**"
 
 env:
   NEO4J_USERNAME: neo4j
@@ -41,6 +43,6 @@ jobs:
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
       - name: "Unit Tests"
-        run: "poetry run pytest -v backend/tests/unit"
+        run: "poetry run pytest -v --cov=infrahub --cov-report term-missing backend/tests/unit"
       - name: "Integration Tests : User Workflows"
-        run: "poetry run pytest -v backend/tests/integration/user_workflows/"
+        run: "poetry run pytest -v --cov=infrahub --cov-report term-missing backend/tests/integration/user_workflows/"

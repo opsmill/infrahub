@@ -4,10 +4,12 @@ name: "infrahubctl"
 on:
   pull_request:
     paths:
+      - ".github/**"
       - "infrahub_ctl/**"
+      - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
-      - tasks.py
+      - "tasks/**"
 
 jobs:
   python-tests:
@@ -31,4 +33,4 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run invoke ctl.mypy"
       - name: "Unit Tests"
-        run: "poetry run pytest -v infrahub_ctl/tests/unit"
+        run: "poetry run pytest -v --cov=infrahub_ctl --cov-report term-missing infrahub_ctl/tests/unit"

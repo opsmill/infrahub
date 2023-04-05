@@ -26,6 +26,5 @@ invoke demo.init
 invoke demo.start
 ```
 
-
-[!ref Access the Web interface](http://localhost:3000).  
+[!ref Access the Web interface](http://localhost:3000)
 [!ref Access the GraphQL interface](http://localhost:8000/graphql)

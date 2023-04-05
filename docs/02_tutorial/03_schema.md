@@ -1,5 +1,5 @@
 ---
-label: Schema
+label: Extend the Schema
 # icon: file-directory
 tags: [tutorial]
 order: 650
@@ -10,13 +10,15 @@ Infrahub can be easily extended by providing your own schema (or models), curren
 ## Visualize the active Schema
 
 
-The default schema is composed of 19 models that are either mandatory for Infrahub to fonction like `Account`, `Group`, `Repository` or that are very generic like `Status`, `Role`, `Location`.
+The default schema is composed of 18+ models that are either mandatory for Infrahub to function like `Account`, `Group`, `Repository` or that are very generic like `Status`, `Role`, `Location`.
 
 You can explore the current schema by visiting the schema page at the bottom of the left menu.
 
 [!ref Explore the current schema](http://localhost:3000/schema)
 
 ![](../media/tutorial_show_schema.png)
+
+[!ref Check the schema documentation for more information](../15_schema/readme.md)
 
 ## Extend the schema with some network related models
 
@@ -32,7 +34,6 @@ Use the following command to load these new models into Infrahub
 ```
 invoke demo.load-infra-schema
 ```
-
 
 ==- Expected Results
 ```
@@ -59,8 +60,8 @@ invoke demo.load-infra-schema
 ==-
 
 
-!!!success
-Reload the frontend to see the new menus corresponding to the new models we just added to the schema.
+!!!success Validate that everything is correct
+**Reload the frontend** to see the new menu corresponding to the new models we just added to the schema.
 !!!
 
 ## Load some real data into the database
@@ -232,6 +233,6 @@ invoke demo.load-infra-data
 ```
 ==-
 
-!!!success
+!!!success Validate that everything is correct
 You should now be able to see 6 devices when you visit the list of devices at [http://localhost:3000/objects/device](http://localhost:3000/objects/device)
 !!!

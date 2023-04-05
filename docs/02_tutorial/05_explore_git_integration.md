@@ -5,10 +5,20 @@ tags: [tutorial]
 order: 500
 ---
 
-### Fork & Clone the repository for the demo
+One of the 3 pillar Infrahub is built on is the idea of having **Unified Version Control for Data and Files** at the same time.
+The data being stored in the Graph Database and the files in Git.
+
+When integrating a Git repository with Infrahub the Git Agent will ensure that both systems will stay in sync at any time.
+
+
+
+# Fork & Clone the repository for the demo
 
 Create a fork of the repository https://github.com/opsmill/infrahub-demo-edge
+
+!!!info
 The goal is to have a copy of this repo under your name this way your demo won't influence others.
+!!!
 
 Once you have created a fork in Github, you'll need a Personal Access Token to authorize Infrahub to access this repository.
 
@@ -23,8 +33,10 @@ Once you have created a fork in Github, you'll need a Personal Access Token to a
 ==-
 
 
-> If you already cloned the repo in the past, ensure there only the main branch is present in Github.
+!!!
+If you already cloned the repo in the past, ensure there only the main branch is present in Github.
 If you other branches are present, it's recommanded to delete them for now.
+!!!
 
 ==- How to Delete a branch in Github
 
@@ -36,11 +48,17 @@ If you other branches are present, it's recommanded to delete them for now.
 
 ==-
 
+## Integrate the Git Repository with Infrahub
 
-## Integrate the Git Repository with the data in the Graph
+Currently the easiest way to add a repository is to use the GraphQL interface.
 
+!!!info
+Before moving to the next step, you'll need your personal access tokken previously generated in Github.
+!!!
 
-```graphql
+[!ref Open the GraphQL Interface](http://127.0.0.1:8000/graphql/main)
+
+```graphqls
 # Endpoint : http://127.0.0.1:8000/graphql/main
 mutation {
   repository_create(
@@ -59,7 +77,14 @@ mutation {
 }
 ```
 
-### Validate that all resources included in the Git repository are working properly
+!!!success Validate that everything is correct
+In the UI, new objects that have been imported from the Git Repository should now be available:
+- The repository should be visible under [Objects / Repository](http://localhost:3000/objects/repository/)
+- 2 Rfile under [Objects / RFile](http://localhost:3000/objects/rfile/)
+- 5 GraphQL Queries under [Objects / Graphql Query](http://localhost:3000/objects/graphql_query/)
+!!!
 
-[!ref Full config for the device `ord1-edge1` should render properly](http://localhost:8000/rfile/device_startup?device=ord1-edge1)
-[!ref The Data Transformation endpoint in the **Openconfig Interface** format should be operational](http://localhost:8000/transform/openconfig/interfaces?device=ord1-edge1)
+!!!secondary Troubleshooting
+If you are not seeing additional objects under `Rfile` or `GraphQL Queries`, it's possible that the `Git Agent` might not be running anymore<br>
+In this case the recommended approach is to run `invoke demo.start` first to ensure that everything is working.
+!!!
