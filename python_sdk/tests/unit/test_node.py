@@ -1,4 +1,4 @@
-from infrahub_client import InfrahubNode, RelatedNode, RelationshipManager
+from infrahub_client.node import InfrahubNode, RelatedNode, RelationshipManager
 
 # pylint: disable=no-member
 

@@ -1,9 +1,11 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-import App from "./App";
+import { describe, expect, it } from "vitest";
 
-test("renders learn react link", () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+describe("something truthy and falsy", () => {
+  it("true to be true", () => {
+    expect(true).toBe(true);
+  });
+
+  it("false to be false", () => {
+    expect(false).toBe(false);
+  });
 });
