@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import copy
 import logging
 from logging import Logger
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import httpx
 
@@ -42,6 +44,9 @@ from infrahub_client.queries import (
 from infrahub_client.schema import InfrahubSchema
 from infrahub_client.timestamp import Timestamp
 
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
 # pylint: disable=redefined-builtin
 
 
@@ -55,7 +60,7 @@ class InfrahubClient:  # pylint: disable=too-many-public-methods
         retry_on_failure: bool = False,
         retry_delay: int = 5,
         log: Optional[Logger] = None,
-        test_client=None,
+        test_client: Optional[TestClient] = None,
         default_branch: str = "main",
         insert_tracker: bool = False,
     ):
