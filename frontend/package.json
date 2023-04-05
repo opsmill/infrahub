@@ -5,7 +5,7 @@
     "scripts": {
         "start": "react-scripts start",
         "build": "react-scripts build",
-        "test": "react-scripts test --config jest.config.json",
+        "test": "react-scripts test",
         "eject": "react-scripts eject",
         "codegen": "graphql-codegen --config codegen.yml",
         "eslint": "eslint .*",
