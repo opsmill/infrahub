@@ -18,7 +18,7 @@ import { branchesState } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
-import "./index.css";
+import "./styles/index.css";
 
 type APIResponse = components["schemas"]["SchemaAPI"];
 
