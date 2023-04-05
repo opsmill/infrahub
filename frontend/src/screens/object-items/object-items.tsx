@@ -1,4 +1,3 @@
-import Handlebars from "handlebars";
 import { gql } from "@apollo/client";
 import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
@@ -17,6 +16,8 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import { graphQLClient } from "../../graphql/graphqlClient";
+
+declare const Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind}} {
         {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {

@@ -1,6 +1,7 @@
-import Handlebars from "handlebars";
 import { gql } from "graphql-request";
 import { graphQLClient } from "../../graphqlClient";
+
+declare const Handlebars: any;
 
 // const template = Handlebars.compile(`query {
 //     branch (id: "{{objectid}}") {

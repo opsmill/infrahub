@@ -1,7 +1,8 @@
-import Handlebars from "handlebars";
 import { gql } from "graphql-request";
 import { graphQLClient } from "../graphql/graphqlClient";
 import { iNodeSchema } from "../state/atoms/schema.atom";
+
+declare const Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind.value}} {
     {{name}} (ids: ["{{objectid}}"]) {

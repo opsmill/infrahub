@@ -1,4 +1,3 @@
-import Handlebars from "handlebars";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { gql } from "graphql-request";
@@ -10,6 +9,8 @@ import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
+
+declare const Handlebars: any;
 
 interface Props {
   filter: components["schemas"]["FilterSchema"];

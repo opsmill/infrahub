@@ -1,6 +1,7 @@
-import Handlebars from "handlebars";
 import { graphQLClient } from "../../graphqlClient";
 import { objectToString } from "../../../utils/common";
+
+declare const Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`
 mutation {
