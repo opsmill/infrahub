@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client import InfrahubClient
+from infrahub_client.node import InfrahubNode
 
 # pylint: disable=unused-argument
 
@@ -143,7 +144,7 @@ class TestInfrahubClient:
 
         await client.create_rfile(
             branch_name=branch_name,
-            name="rfile1",
+            name="rfile2",
             description="test rfile2",
             template_path="mytemplate.j2",
             template_repository=str(repositories[0].id),

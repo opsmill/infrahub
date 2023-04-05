@@ -4,8 +4,10 @@ name: "Backend"
 on:
   pull_request:
     paths:
+      - ".github/**"
       - "backend/**"
       - "development/**"
+      - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
       - "tasks/**"
@@ -36,6 +38,10 @@ jobs:
         run: "invoke demo.dev-start"
       - name: "Install project"
         run: "poetry install --only=main,dev,server"
+      - name: "Black Tests"
+        run: "poetry run invoke backend.black"
+      - name: "Isort Tests"
+        run: "poetry run invoke backend.isort"
       - name: "Flake8 Tests"
         run: "poetry run invoke backend.flake8"
       - name: "Pylint Tests"

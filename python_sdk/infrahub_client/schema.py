@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from infrahub_client.exceptions import SchemaNotFound
 
 if TYPE_CHECKING:
-    from infrahub_client import InfrahubClient
+    from infrahub_client.client import InfrahubClient
 
 
 class FilterSchema(BaseModel):

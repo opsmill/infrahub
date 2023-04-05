@@ -3,7 +3,7 @@ import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
@@ -67,14 +67,17 @@ export default function ObjectItems() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [currentFilters] = useAtom(comboxBoxFilterState);
 
+  // All the fiter values are being sent out as strings inside quotes.
+  // This will not work if the type of filter value is not string.
   const filterString = currentFilters
   .map((row) => `${row.name}: "${row.value}"`)
   .join(",");
 
-  // Get all teh needed columns (attributes + relationships with a cardinality of "one")
+  // Get all the needed columns (attributes + relationships with a cardinality of "one")
   const columns = getSchemaObjectColumns(schema);
 
   const navigate = useNavigate();
+  const { search } = useLocation();
 
   useEffect(
     () => {
@@ -149,7 +152,7 @@ export default function ObjectItems() {
 
         <button
           onClick={() => {
-            navigate(`/objects/${schema.name}/new`);
+            navigate(`/objects/${schema.name}/new/${search}`);
           }}
           type="button"
           className="rounded-full bg-blue-600 p-1.5 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
@@ -206,7 +209,7 @@ export default function ObjectItems() {
                           (row, index) => (
                             <tr
                               onClick={() => {
-                                navigate(`/objects/${schema.name}/${row.id}`);
+                                navigate(`/objects/${schema.name}/${row.id}/${search}`);
                               }}
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer"
