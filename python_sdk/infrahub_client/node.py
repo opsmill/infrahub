@@ -287,17 +287,17 @@ class RelationshipManager:
         return data
 
 
-def generate_relationship_property(name):
+def generate_relationship_property(name: str):  # type: ignore
     """Return a property that stores values under a private non-public name."""
     internal_name = "_" + name.lower()
     external_name = name
 
-    @property
-    def prop(self):
+    @property  # type: ignore
+    def prop(self):  # type: ignore
         return getattr(self, internal_name)
 
     @prop.setter
-    def prop(self, value):
+    def prop(self, value):  # type: ignore
         if isinstance(value, RelatedNode) or value is None:
             setattr(self, internal_name, value)
         else:

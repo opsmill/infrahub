@@ -161,6 +161,11 @@ filterwarnings = [
 pretty = true
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "infrahub_client.*"
+disallow_untyped_defs = true
+
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
