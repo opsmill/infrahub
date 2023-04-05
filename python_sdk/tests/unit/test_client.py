@@ -1,8 +1,10 @@
 import pytest
 from pytest_httpx import HTTPXMock
 
-from infrahub_client import InfrahubClient, InfrahubNode, RepositoryData
+from infrahub_client import InfrahubClient
+from infrahub_client.data import RepositoryData
 from infrahub_client.exceptions import FilterNotFound, NodeNotFound
+from infrahub_client.node import InfrahubNode
 
 
 async def test_init_client():

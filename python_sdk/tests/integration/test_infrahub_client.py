@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client import InfrahubClient
+from infrahub_client.node import InfrahubNode
 
 # pylint: disable=unused-argument
 
