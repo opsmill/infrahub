@@ -6,7 +6,6 @@ import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { graphQLClient } from "../..";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -17,6 +16,7 @@ import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import { graphQLClient } from "../../graphql/graphqlClient";
 
 const template = Handlebars.compile(`query {{kind}} {
         {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {

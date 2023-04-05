@@ -1,5 +1,5 @@
 import Handlebars from "handlebars";
-import { graphQLClient } from "../../../graphqlClient";
+import { graphQLClient } from "../../graphqlClient";
 import { objectToString } from "../../../utils/common";
 
 const mutationTemplate = Handlebars.compile(`

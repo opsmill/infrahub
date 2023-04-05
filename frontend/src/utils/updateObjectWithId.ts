@@ -1,5 +1,5 @@
 import Handlebars from "handlebars";
-import { graphQLClient } from "../graphqlClient";
+import { graphQLClient } from "../graphql/graphqlClient";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 import { getStringJSONWithoutQuotes } from "./getStringJSONWithoutQuotes";
 

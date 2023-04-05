@@ -1,12 +1,13 @@
 import { gql } from "@apollo/client";
 import { useEffect, useState } from "react";
-import { graphQLClient } from "../..";
+
 import { Device } from "../../generated/graphql";
 import { classNames } from "../../utils/common";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DeviceFilters from "./device-filters";
 import { sampleDeviceList } from "./sample-devices.data";
+import { graphQLClient } from "../../graphql/graphqlClient";
 
 const GET_DEVICES_QUERY = gql`
   query DeviceList {

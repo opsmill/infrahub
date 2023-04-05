@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 import { gql } from "graphql-request";
-import { graphQLClient } from "../graphqlClient";
+import { graphQLClient } from "../graphql/graphqlClient";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 
 const template = Handlebars.compile(`query {{kind.value}} {

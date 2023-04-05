@@ -5,7 +5,7 @@ import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { graphQLClient } from "./graphqlClient";
+import { graphQLClient } from "./graphql/graphqlClient";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
