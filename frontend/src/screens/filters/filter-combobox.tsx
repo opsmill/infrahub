@@ -1,9 +1,10 @@
+import Handlebars from "handlebars";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { graphQLClient } from "../..";
+import { graphQLClient } from "../../graphqlClient";
 import { components } from "../../infraops";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -14,7 +15,6 @@ interface Props {
   filter: components["schemas"]["FilterSchema"];
 }
 
-declare var Handlebars: any;
 const template = Handlebars.compile(`query {{kind.value}} {
     {{name}} {
         id

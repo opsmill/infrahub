@@ -4,9 +4,8 @@ import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
-import { graphQLClient } from ".";
+import { graphQLClient } from "./graphqlClient";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { MAIN_ROUTES } from "./config/constants";
@@ -19,6 +18,8 @@ import { branchesState } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 import { schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
+import "./index.css";
+
 type APIResponse = components["schemas"]["SchemaAPI"];
 
 function App() {

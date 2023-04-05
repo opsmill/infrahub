@@ -1,8 +1,7 @@
-import { graphQLClient } from "..";
+import Handlebars from "handlebars";
+import { graphQLClient } from "../graphqlClient";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 import { getStringJSONWithoutQuotes } from "./getStringJSONWithoutQuotes";
-
-declare var Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`mutation {{kind.value}}Update {
   {{name}}_update (data: {{{data}}}) {

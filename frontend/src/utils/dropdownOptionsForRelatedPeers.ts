@@ -1,7 +1,6 @@
+import Handlebars from "handlebars";
 import { gql } from "graphql-request";
-import { graphQLClient } from "..";
-
-declare var Handlebars: any;
+import { graphQLClient } from "../graphqlClient";
 
 export interface iPeerDropdownOption {
   id: string;
