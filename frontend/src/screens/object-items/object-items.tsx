@@ -67,11 +67,13 @@ export default function ObjectItems() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [currentFilters] = useAtom(comboxBoxFilterState);
 
+  // All the fiter values are being sent out as strings inside quotes.
+  // This will not work if the type of filter value is not string.
   const filterString = currentFilters
   .map((row) => `${row.name}: "${row.value}"`)
   .join(",");
 
-  // Get all teh needed columns (attributes + relationships with a cardinality of "one")
+  // Get all the needed columns (attributes + relationships with a cardinality of "one")
   const columns = getSchemaObjectColumns(schema);
 
   const navigate = useNavigate();
