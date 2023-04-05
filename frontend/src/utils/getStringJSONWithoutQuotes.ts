@@ -11,5 +11,5 @@
  */
 
 export const getStringJSONWithoutQuotes = (obj: object): string => {
-  return JSON.stringify(obj).replace(/"([^"]+)":/g, "$1:");
+  return JSON.stringify(obj, null, 4).replace(/"([^"]+)":/g, "$1:");
 };
