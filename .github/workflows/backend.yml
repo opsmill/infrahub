@@ -48,5 +48,13 @@ jobs:
         run: "poetry run invoke backend.pylint"
       - name: "Unit Tests"
         run: "poetry run pytest -v --cov=infrahub --cov-report term-missing backend/tests/unit"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        with:
+          flag-name: backend-unit
       - name: "Integration Tests : User Workflows"
         run: "poetry run pytest -v --cov=infrahub --cov-report term-missing backend/tests/integration/user_workflows/"
+      - name: "Coveralls : Integration Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        with:
+          flag-name: backend-integration
