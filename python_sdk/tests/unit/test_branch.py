@@ -11,6 +11,8 @@ from infrahub_client.branch import (
 async_branch_methods = [method for method in dir(InfrahubBranchManager) if not method.startswith("_")]
 sync_branch_methods = [method for method in dir(InfrahubBranchManagerSync) if not method.startswith("_")]
 
+client_types = ["standard", "sync"]
+
 
 def test_method_sanity():
     """Validate that there is at least one public method and that both clients look the same."""
@@ -28,8 +30,12 @@ def test_validate_method_signature(method):
     assert async_sig.return_annotation == sync_sig.return_annotation
 
 
-async def test_get_branches(client, mock_branches_list_query):  # pylint: disable=unused-argument
-    branches = await client.branch.all()
+@pytest.mark.parametrize("client_type", client_types)
+async def test_get_branches(clients, mock_branches_list_query, client_type):  # pylint: disable=unused-argument
+    if client_type == "standard":
+        branches = await clients.standard.branch.all()
+    else:
+        branches = clients.sync.branch.all()
 
     assert len(branches) == 2
     assert isinstance(branches["main"], BranchData)
