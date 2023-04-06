@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import time
@@ -20,7 +21,7 @@ from infrahub.config import AnalyticsSettings, LoggingSettings, MainSettings
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager, SchemaManager
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.database import get_db
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import get_gql_mutation, get_gql_query
@@ -97,6 +98,7 @@ async def add_process_time_header(request: Request, call_next):
 
 class SchemaReadAPI(BaseModel):
     nodes: List[NodeSchema]
+    generics: List[GenericSchema]
 
 
 @app.get("/schema/")
@@ -109,8 +111,26 @@ async def get_schema(
     except BranchNotFound as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
 
+    # Make a local copy of the schema to ensure that any modification won't touch the objects in the registry
+    full_schema = copy.deepcopy(registry.get_full_schema(branch=branch))
+
+    # Populate the used_by field on all the generics objects
+    # ideally we should populate this value directly in the registry
+    # but this will require a bigger refactoring so for now it's best to do it here
+    for kind, item in full_schema.items():
+        if not isinstance(item, NodeSchema):
+            continue
+
+        for generic in item.inherit_from:
+            if generic not in full_schema:
+                logger.warning(f"Unable to find the Generic Object {generic}, referenced by {kind}")
+                continue
+            if kind not in full_schema[generic].used_by:
+                full_schema[generic].used_by.append(kind)
+
     return SchemaReadAPI(
-        nodes=[value for value in registry.get_full_schema(branch=branch).values() if isinstance(value, NodeSchema)]
+        nodes=[value for value in full_schema.values() if isinstance(value, NodeSchema)],
+        generics=[value for value in full_schema.values() if isinstance(value, GenericSchema)],
     )
 
 
