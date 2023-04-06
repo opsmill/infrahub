@@ -1,4 +1,10 @@
 import React from "react";
+import { mount } from "cypress/react18";
+import { MountOptions, MountReturn } from "cypress/react";
+import { BrowserRouter, MemoryRouterProps } from "react-router-dom";
+import { QueryParamProvider } from "use-query-params";
+import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
+import queryString from "query-string";
 
 // ***********************************************************
 // This example support/component.ts is processed and
@@ -23,10 +29,6 @@ import "../../src/styles/index.css";
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
 
-import { mount } from "cypress/react18";
-import { MountOptions, MountReturn } from "cypress/react";
-import { MemoryRouter, MemoryRouterProps } from "react-router-dom";
-
 // Augment the Cypress namespace to include type definitions for
 // your custom command.
 // Alternatively, can be defined in cypress/support/component.d.ts
@@ -47,16 +49,24 @@ declare global {
   }
 }
 
-Cypress.Commands.add("mount", mount);
-
 Cypress.Commands.add("mount", (component, options = {}) => {
-  const { routerProps = { initialEntries: ["/"] }, ...mountOptions } = options;
-
   const wrapped = (
-    <MemoryRouter {...routerProps}>{component}</MemoryRouter>
+    <React.StrictMode>
+      <BrowserRouter basename="/">
+        <QueryParamProvider
+          adapter={ReactRouter6Adapter}
+          options={{
+            searchStringToObject: queryString.parse,
+            objectToSearchString: queryString.stringify,
+          }}
+        >
+          {component}
+        </QueryParamProvider>
+      </BrowserRouter>
+    </React.StrictMode>
   );
 
-  return mount(wrapped, mountOptions);
+  return mount(wrapped);
 });
 
 
