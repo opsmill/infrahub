@@ -24,7 +24,7 @@ def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
 
     if debug:
         uvicorn.run(
-            "infrahub.main:app",
+            "infrahub.api.main:app",
             host=listen,
             port=port,
             log_level="info",
@@ -32,7 +32,7 @@ def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
             reload_excludes=["examples", "repositories"],
         )
     else:
-        uvicorn.run("infrahub.main:app", host=listen, port=port, log_level="info")
+        uvicorn.run("infrahub.api.main:app", host=listen, port=port, log_level="info")
 
 
-# gunicorn infrahub.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+# gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000

@@ -14,7 +14,7 @@ class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def test_client(self):
         # pylint: disable=import-outside-toplevel
-        from infrahub.main import app
+        from infrahub.api.main import app
 
         return TestClient(app)
 
