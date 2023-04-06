@@ -7,11 +7,11 @@ from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
-
-# if TYPE_CHECKING:
 from infrahub.core.branch import Branch, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
 from infrahub.exceptions import BranchNotFound
+
+# pylint    : disable=too-many-branches
 
 router = APIRouter(prefix="/diff")
 
@@ -130,12 +130,12 @@ async def get_diff_data(
 
     # Check if all nodes associated with a relationship have been accounted for
     # If a node is missing it means its changes are only related to its relationships
-    for node_in_rel in rels_per_node.keys():
+    for node_in_rel, rels in rels_per_node.items():
         if node_in_rel in nodes_in_diff:
             continue
 
         node_diff = None
-        for rel in rels_per_node[node_in_rel]:
+        for rel in rels:
             schema = registry.get_schema(name=rel.nodes[node_in_rel].kind, branch=rel.branch)
             if rel_schema := schema.get_relationship_by_identifier(id=rel.name, raise_on_error=False):
                 if not node_diff:
@@ -148,6 +148,6 @@ async def get_diff_data(
                 )
 
         if node_diff:
-            response[branch_name].append(node_diff)
+            response[rel.branch].append(node_diff)
 
     return response
