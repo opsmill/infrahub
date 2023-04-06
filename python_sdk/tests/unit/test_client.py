@@ -8,15 +8,24 @@ from infrahub_client.data import RepositoryData
 from infrahub_client.exceptions import FilterNotFound, NodeNotFound
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 
-
 async_client_methods = [method for method in dir(InfrahubClient) if not method.startswith("_")]
 sync_client_methods = [method for method in dir(InfrahubClientSync) if not method.startswith("_")]
 
 client_types = ["standard", "sync"]
 
 
+def replace_async_return_annotation(annotation: str) -> str:
+    """Allows for comparison between sync and async return annotations."""
+    replacements = {
+        "InfrahubClient": "InfrahubClientSync",
+        "InfrahubNode": "InfrahubNodeSync",
+        "List[InfrahubNode]": "List[InfrahubNodeSync]",
+    }
+    return replacements.get(annotation) or annotation
+
+
 def replace_sync_return_annotation(annotation: str) -> str:
-    """Allows for comparison between async and async return annotations."""
+    """Allows for comparison between sync and async return annotations."""
     replacements = {
         "InfrahubClientSync": "InfrahubClient",
         "InfrahubNodeSync": "InfrahubNode",
@@ -39,6 +48,7 @@ async def test_validate_method_signature(method):
     sync_sig = inspect.signature(sync_method)
     assert async_sig.parameters == sync_sig.parameters
     assert async_sig.return_annotation == replace_sync_return_annotation(sync_sig.return_annotation)
+    assert replace_async_return_annotation(async_sig.return_annotation) == sync_sig.return_annotation
 
 
 async def test_init_client():

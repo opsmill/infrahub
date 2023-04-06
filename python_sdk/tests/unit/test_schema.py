@@ -2,11 +2,13 @@ import inspect
 
 import pytest
 
-from infrahub_client import InfrahubClient
+from infrahub_client import InfrahubClient, InfrahubClientSync
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 
 async_schema_methods = [method for method in dir(InfrahubSchema) if not method.startswith("_")]
 sync_schema_methods = [method for method in dir(InfrahubSchemaSync) if not method.startswith("_")]
+
+client_types = ["standard", "sync"]
 
 
 async def test_method_sanity():
@@ -25,9 +27,14 @@ async def test_validate_method_signature(method):
     assert async_sig.return_annotation == sync_sig.return_annotation
 
 
-async def test_fetch_schema(mock_schema_query_01):  # pylint: disable=unused-argument
-    client = await InfrahubClient.init(address="http://mock", insert_tracker=True)
-    nodes = await client.schema.fetch(branch="main")
+@pytest.mark.parametrize("client_type", client_types)
+async def test_fetch_schema(mock_schema_query_01, client_type):  # pylint: disable=unused-argument
+    if client_type == "standard":
+        client = await InfrahubClient.init(address="http://mock", insert_tracker=True)
+        nodes = await client.schema.fetch(branch="main")
+    else:
+        client = InfrahubClientSync.init(address="http://mock", insert_tracker=True)
+        nodes = client.schema.fetch(branch="main")
 
     assert len(nodes) == 3
     assert sorted(nodes.keys()) == ["GraphQLQuery", "Repository", "Tag"]

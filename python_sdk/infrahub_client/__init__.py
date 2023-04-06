@@ -10,6 +10,7 @@ from infrahub_client.exceptions import (
     ServerNotResponsiveError,
 )
 from infrahub_client.graphql import Mutation, Query
+from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 from infrahub_client.schema import (
     AttributeSchema,
     InfrahubSchema,
@@ -23,8 +24,10 @@ __all__ = [
     "InfrahubBranchManager",
     "InfrahubBranchManagerSync",
     "InfrahubClient",
-    "InfrahubSchema",
     "InfrahubClientSync",
+    "InfrahubNode",
+    "InfrahubNodeSync",
+    "InfrahubSchema",
     "FilterNotFound",
     "GraphQLError",
     "NodeNotFound",

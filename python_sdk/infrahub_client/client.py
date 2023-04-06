@@ -950,84 +950,29 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
 
     def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
-        data = self.execute_graphql(query=QUERY_ALL_CHECKS, branch_name=branch_name, tracker="query-check-all")
-
-        items = {
-            item["name"]["value"]: CheckData(
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                file_path=item["file_path"]["value"],
-                class_name=item["class_name"]["value"],
-                query=item["query"]["name"]["value"],
-                repository=item["repository"]["id"],
-                timeout=item["timeout"]["value"],
-                rebase=item["rebase"]["value"],
-            )
-            for item in data["check"]
-        }
-
-        return items
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
+        )
 
     def get_list_graphql_queries(self, branch_name: str) -> Dict[str, GraphQLQueryData]:
-        data = self.execute_graphql(
-            query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name, tracker="query-graphqlquery-all"
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
         )
-
-        items = {
-            item["name"]["value"]: GraphQLQueryData(
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                query=item["query"]["value"],
-            )
-            for item in data["graphql_query"]
-        }
-
-        return items
 
     def get_list_repositories(self, branches: Optional[Dict[str, BranchData]] = None) -> Dict[str, RepositoryData]:
-        raise NotImplementedError("The get_list_repositories is not yet implemented in the synchronous SDK.")
-
-    def get_list_rfiles(self, branch_name: str) -> Dict[str, RFileData]:
-        data = self.execute_graphql(query=QUERY_ALL_RFILES, branch_name=branch_name, tracker="query-rfile-all")
-
-        items = {
-            item["name"]["value"]: RFileData(
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                template_path=item["template_path"]["value"],
-                template_repository=item["template_repository"]["id"],
-                query=item["query"]["name"]["value"],
-            )
-            for item in data["rfile"]
-        }
-
-        return items
-
-    def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
-        data = self.execute_graphql(
-            query=QUERY_ALL_TRANSFORM_PYTHON, branch_name=branch_name, tracker="query-transformpython-all"
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
-        items = {
-            item["name"]["value"]: TransformPythonData(
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                file_path=item["file_path"]["value"],
-                url=item["url"]["value"],
-                class_name=item["class_name"]["value"],
-                query=item["query"]["name"]["value"],
-                repository=item["repository"]["id"],
-                timeout=item["timeout"]["value"],
-                rebase=item["rebase"]["value"],
-            )
-            for item in data["transform_python"]
-        }
+    def get_list_rfiles(self, branch_name: str) -> Dict[str, RFileData]:
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
+        )
 
-        return items
+    def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
+        )
 
     def query_gql_query(
         self,
@@ -1039,45 +984,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
     ) -> Dict:
-        url = f"{self.address}/query/{name}"
-        url_params = copy.deepcopy(params or {})
-
-        if branch_name:
-            url_params["branch"] = branch_name
-        if at:
-            url_params["at"] = at
-        if rebase:
-            url_params["rebase"] = "true"
-
-        if url_params:
-            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
-
-        if not self.test_client:
-            with httpx.Client() as client:
-                resp = client.get(
-                    url=url,
-                    timeout=timeout or self.default_timeout,
-                )
-
-        else:
-            with self.test_client as client:
-                resp = client.post(url=url)
-
-        if raise_for_error:
-            resp.raise_for_status()
-
-        return resp.json()
-
-    def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
-        variables = {"repository_id": str(repository_id), "commit": str(commit)}
-        self.execute_graphql(
-            query=MUTATION_COMMIT_UPDATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-repository-update-commit",
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
-        return True
+    def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
+        )
 
     def update_check(
         self,
@@ -1091,40 +1005,19 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: int = 10,
         rebase: bool = False,
     ) -> bool:
-        variables = {
-            "id": id,
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        self.execute_graphql(
-            query=MUTATION_CHECK_UPDATE, variables=variables, branch_name=branch_name, tracker="mutation-check-update"
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
         )
-
-        return True
 
     def update_rfile(self, branch_name: str, id: str, name: str, template_path: str, description: str = "") -> bool:
-        variables = {"id": id, "name": name, "description": description, "template_path": template_path}
-        self.execute_graphql(
-            query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name, tracker="mutation-rfile-update"
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
         )
-
-        return True
 
     def update_graphql_query(self, branch_name: str, id: str, name: str, query: str, description: str = "") -> bool:
-        variables = {"id": id, "name": name, "description": description, "query": query}
-        self.execute_graphql(
-            query=MUTATION_GRAPHQL_QUERY_UPDATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-graphqlquery-update",
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
         )
-
-        return True
 
     def update_transform_python(
         self,
@@ -1139,25 +1032,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: int = 10,
         rebase: bool = False,
     ) -> bool:
-        variables = {
-            "id": id,
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "url": url,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        self.execute_graphql(
-            query=MUTATION_TRANSFORM_PYTHON_UPDATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-transformpython-update",
+        raise NotImplementedError(
+            "This method is deprecated in the async client and won't be implemented in the sync client."
         )
-
-        return True
 
     def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
