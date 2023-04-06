@@ -22,7 +22,10 @@ async def test_schema_read_endpoint_default_branch(
     schema = response.json()
 
     assert "nodes" in schema
-    assert len(schema["nodes"]) == 21
+    assert "generics" in schema
+    assert len(schema["nodes"]) == 22
+    assert len(schema["generics"]) == 3
+    assert schema["generics"][0]["used_by"]
 
 
 async def test_schema_read_endpoint_branch1(
@@ -43,7 +46,7 @@ async def test_schema_read_endpoint_branch1(
     schema = response.json()
 
     assert "nodes" in schema
-    assert len(schema["nodes"]) == 21
+    assert len(schema["nodes"]) == 22
 
 
 async def test_schema_read_endpoint_wrong_branch(
