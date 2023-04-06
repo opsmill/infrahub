@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
@@ -25,9 +25,11 @@ class Timestamp:
             self.obj = DateTime.now(tz="UTC")
 
     @classmethod
-    def _parse_string(cls, value: str):
+    def _parse_string(cls, value: str) -> DateTime:
         try:
-            return pendulum.parse(value)
+            parsed_date = pendulum.parse(value)
+            if isinstance(parsed_date, DateTime):
+                return parsed_date
         except pendulum.parsing.exceptions.ParserError:
             pass
 
@@ -51,7 +53,7 @@ class Timestamp:
     def to_timestamp(self) -> str:
         return self.obj.int_timestamp
 
-    async def to_graphql(self, *args, **kwargs):  # pylint: disable=unused-argument
+    async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # pylint: disable=unused-argument
         return self.obj
 
     def __eq__(self, other: object) -> bool:
