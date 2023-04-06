@@ -1,7 +1,7 @@
 import React from "react";
 import { mount } from "cypress/react18";
 import { MountOptions, MountReturn } from "cypress/react";
-import { BrowserRouter, MemoryRouterProps } from "react-router-dom";
+import { MemoryRouter, MemoryRouterProps } from "react-router-dom";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import queryString from "query-string";
@@ -50,9 +50,11 @@ declare global {
 }
 
 Cypress.Commands.add("mount", (component, options = {}) => {
+  const { routerProps = { initialEntries: ["/"] }, ...mountOptions } = options;
+
   const wrapped = (
     <React.StrictMode>
-      <BrowserRouter basename="/">
+      <MemoryRouter {...routerProps} basename="/">
         <QueryParamProvider
           adapter={ReactRouter6Adapter}
           options={{
@@ -62,11 +64,11 @@ Cypress.Commands.add("mount", (component, options = {}) => {
         >
           {component}
         </QueryParamProvider>
-      </BrowserRouter>
+      </MemoryRouter>
     </React.StrictMode>
   );
 
-  return mount(wrapped);
+  return mount(wrapped, mountOptions);
 });
 
 
