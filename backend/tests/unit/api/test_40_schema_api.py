@@ -7,7 +7,7 @@ from infrahub.core.schema import full_schema_to_schema_root
 
 
 async def test_schema_read_endpoint_default_branch(
-    session, client: TestClient, client_headers, default_branch, car_person_data
+    session, client: TestClient, client_headers, default_branch, car_person_data_generic
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -29,7 +29,7 @@ async def test_schema_read_endpoint_default_branch(
 
 
 async def test_schema_read_endpoint_branch1(
-    session, client: TestClient, client_headers, default_branch, car_person_data
+    session, client: TestClient, client_headers, default_branch, car_person_data_generic
 ):
     await create_branch(branch_name="branch1", session=session)
 
@@ -50,7 +50,7 @@ async def test_schema_read_endpoint_branch1(
 
 
 async def test_schema_read_endpoint_wrong_branch(
-    session, client: TestClient, client_headers, default_branch, car_person_data
+    session, client: TestClient, client_headers, default_branch, car_person_data_generic
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
