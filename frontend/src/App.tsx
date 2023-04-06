@@ -9,7 +9,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from ".";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
-import { MAIN_ROUTES } from "./config/constants";
+import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
 import SentryClient from "./config/sentry";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import { components } from "./infraops";
@@ -148,6 +148,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           {MAIN_ROUTES.map((route) => (
+            <Route index key={route.path} path={route.path} element={route.element} />
+          ))}
+          {CUSTOM_COMPONENT_ROUTES.map((route) => (
             <Route index key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>
