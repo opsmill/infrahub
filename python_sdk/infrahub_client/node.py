@@ -8,18 +8,13 @@ from infrahub_client.schema import AttributeSchema, NodeSchema, RelationshipSche
 from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from infrahub_client.client import InfrahubClient
+    from infrahub_client.client import InfrahubClient, InfrahubClientSync
 
 
-class InfrahubNode:
-    def __init__(
-        self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
-    ) -> None:
-        self._client = client
+class InfrahubNodeBase:
+    def __init__(self, schema: NodeSchema, data: Optional[dict] = None) -> None:
         self._schema = schema
         self._data = data
-
-        self._branch = branch or self._client.default_branch
 
         self.id: Optional[str] = data.get("id", None) if isinstance(data, dict) else None
         self.display_label: Optional[str] = data.get("display_label", None) if isinstance(data, dict) else None
@@ -50,51 +45,6 @@ class InfrahubNode:
             return f"{self._schema.kind} (no id yet)"
 
         return f"{self._schema.kind} ({self.id})"
-
-    async def delete(self, at: Optional[Timestamp] = None) -> None:
-        at = Timestamp(at)
-        input_data = {"data": {"id": self.id}}
-        mutation_query = {"ok": None}
-        query = Mutation(mutation=f"{self._schema.name}_delete", input_data=input_data, query=mutation_query)
-        await self._client.execute_graphql(
-            query=query.render(),
-            branch_name=self._branch,
-            at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
-        )
-
-    async def save(self, at: Optional[Timestamp] = None) -> None:
-        at = Timestamp(at)
-        if not self.id:
-            await self._create(at=at)
-        else:
-            await self._update(at=at)
-
-    async def _create(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data()
-        mutation_query = {"ok": None, "object": {"id": None}}
-        mutation_name = f"{self._schema.name}_create"
-        query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
-
-        response = await self._client.execute_graphql(
-            query=query.render(),
-            branch_name=self._branch,
-            at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
-        )
-        self.id = response[mutation_name]["object"]["id"]
-
-    async def _update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data()
-        input_data["data"]["id"] = self.id
-        mutation_query = {"ok": None, "object": {"id": None}}
-        query = Mutation(mutation=f"{self._schema.name}_update", input_data=input_data, query=mutation_query)
-        await self._client.execute_graphql(
-            query=query.render(),
-            branch_name=self._branch,
-            at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-update",
-        )
 
     def _generate_input_data(self) -> Dict[str, Dict]:
         """Generate a dictionnary that represent the input data required by a mutation.
@@ -142,6 +92,114 @@ class InfrahubNode:
                 raise FilterNotFound(identifier=filter_name, kind=self._schema.kind)
 
         return True
+
+
+class InfrahubNode(InfrahubNodeBase):
+    def __init__(
+        self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
+    ) -> None:
+        self._client = client
+        self._branch = branch or self._client.default_branch
+        super().__init__(schema=schema, data=data)
+
+    async def delete(self, at: Optional[Timestamp] = None) -> None:
+        at = Timestamp(at)
+        input_data = {"data": {"id": self.id}}
+        mutation_query = {"ok": None}
+        query = Mutation(mutation=f"{self._schema.name}_delete", input_data=input_data, query=mutation_query)
+        await self._client.execute_graphql(
+            query=query.render(),
+            branch_name=self._branch,
+            at=at,
+            tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
+        )
+
+    async def save(self, at: Optional[Timestamp] = None) -> None:
+        at = Timestamp(at)
+        if not self.id:
+            await self._create(at=at)
+        else:
+            await self._update(at=at)
+
+    async def _create(self, at: Timestamp) -> None:
+        input_data = self._generate_input_data()
+        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_name = f"{self._schema.name}_create"
+        query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
+
+        response = await self._client.execute_graphql(
+            query=query.render(),
+            branch_name=self._branch,
+            at=at,
+            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+        )
+        self.id = response[mutation_name]["object"]["id"]
+
+    async def _update(self, at: Timestamp) -> None:
+        input_data = self._generate_input_data()
+        input_data["data"]["id"] = self.id
+        mutation_query = {"ok": None, "object": {"id": None}}
+        query = Mutation(mutation=f"{self._schema.name}_update", input_data=input_data, query=mutation_query)
+        await self._client.execute_graphql(
+            query=query.render(),
+            branch_name=self._branch,
+            at=at,
+            tracker=f"mutation-{str(self._schema.kind).lower()}-update",
+        )
+
+
+class InfrahubNodeSync(InfrahubNodeBase):
+    def __init__(
+        self, client: InfrahubClientSync, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
+    ) -> None:
+        self._client = client
+        self._branch = branch or self._client.default_branch
+        super().__init__(schema=schema, data=data)
+
+    def delete(self, at: Optional[Timestamp] = None) -> None:
+        at = Timestamp(at)
+        input_data = {"data": {"id": self.id}}
+        mutation_query = {"ok": None}
+        query = Mutation(mutation=f"{self._schema.name}_delete", input_data=input_data, query=mutation_query)
+        self._client.execute_graphql(
+            query=query.render(),
+            branch_name=self._branch,
+            at=at,
+            tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
+        )
+
+    def save(self, at: Optional[Timestamp] = None) -> None:
+        at = Timestamp(at)
+        if not self.id:
+            self._create(at=at)
+        else:
+            self._update(at=at)
+
+    def _create(self, at: Timestamp) -> None:
+        input_data = self._generate_input_data()
+        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_name = f"{self._schema.name}_create"
+        query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
+
+        response = self._client.execute_graphql(
+            query=query.render(),
+            branch_name=self._branch,
+            at=at,
+            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+        )
+        self.id = response[mutation_name]["object"]["id"]
+
+    def _update(self, at: Timestamp) -> None:
+        input_data = self._generate_input_data()
+        input_data["data"]["id"] = self.id
+        mutation_query = {"ok": None, "object": {"id": None}}
+        query = Mutation(mutation=f"{self._schema.name}_update", input_data=input_data, query=mutation_query)
+        self._client.execute_graphql(
+            query=query.render(),
+            branch_name=self._branch,
+            at=at,
+            tracker=f"mutation-{str(self._schema.kind).lower()}-update",
+        )
 
 
 class Attribute:

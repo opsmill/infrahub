@@ -7,22 +7,21 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "./graphql/graphqlClient";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
-import { MAIN_ROUTES } from "./config/constants";
+import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
 import SentryClient from "./config/sentry";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
-import { components } from "./infraops";
 import Layout from "./screens/layout/layout";
 import { branchState } from "./state/atoms/branch.atom";
 import { branchesState } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
-import { schemaState } from "./state/atoms/schema.atom";
+import { genericSchemaState, iGenericSchemaMapping, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 
-type APIResponse = components["schemas"]["SchemaAPI"];
-
 function App() {
   const [, setSchema] = useAtom(schemaState);
+  const [, setGenericSchema] = useAtom(genericSchemaState);
+
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
@@ -124,7 +123,7 @@ function App() {
    */
   const setSchemaInState = useCallback(
     async () => {
-      const schema: APIResponse["nodes"] = await fetchSchema();
+      const schema: iNodeSchema[] = await fetchSchema();
       setSchema(schema);
 
       const schemaNames = R.map(R.prop("name"), schema);
@@ -132,8 +131,17 @@ function App() {
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
       setSchemaKindNameState(schemaKindNameMap);
+
+
+      const genericSchemaMapping: iGenericSchemaMapping = {};
+      schema.forEach((schemaNode: any) => {
+        if(schemaNode.used_by?.length) {
+          genericSchemaMapping[schemaNode.name] = schemaNode.used_by;
+        }
+      });
+      setGenericSchema(genericSchemaMapping);
     },
-    [fetchSchema, setSchema, setSchemaKindNameState]
+    [fetchSchema, setGenericSchema, setSchema, setSchemaKindNameState]
   );
 
   useEffect(
@@ -148,6 +156,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           {MAIN_ROUTES.map((route) => (
+            <Route index key={route.path} path={route.path} element={route.element} />
+          ))}
+          {CUSTOM_COMPONENT_ROUTES.map((route) => (
             <Route index key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>

@@ -2,7 +2,7 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { branchState } from "../../state/atoms/branch.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
+import { genericSchemaState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import getDropdownOptionsForRelatedPeers from "../../utils/dropdownOptionsForRelatedPeers";
@@ -28,14 +28,15 @@ export default function ObjectItemEdit() {
 
   const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
+  const [genericSchemaMap] = useAtom(genericSchemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   const initForm = useCallback(async (row: any) => {
     const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
     const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
-    const formStructure = getFormStructureForCreateEdit(schema, peerDropdownOptions, schemaKindNameMap, row);
+    const formStructure = getFormStructureForCreateEdit(schema, peerDropdownOptions, schemaKindNameMap, genericSchemaMap, row);
     setFormStructure(formStructure);
-  }, [schema, schemaKindNameMap]);
+  }, [genericSchemaMap, schema, schemaKindNameMap]);
 
   const fetchItemDetails = useCallback(async () => {
     setHasError(false);
