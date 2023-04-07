@@ -119,6 +119,23 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
 
         return response
 
+    async def diff_data(
+        self,
+        branch_name: str,
+        branch_only: bool = True,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+    ) -> Dict[Any, Any]:
+        url = f"{self.client.address}/diff/data?branch={branch_name}"
+        url += f"&branch_only={str(branch_only).lower()}"
+        if time_from:
+            url += f"&time_from={time_from}"
+        if time_to:
+            url += f"&time_to={time_to}"
+
+        response = await self.client._get(url=url, headers=self.client.headers)
+        return response
+
 
 class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
     def __init__(self, client: InfrahubClientSync):

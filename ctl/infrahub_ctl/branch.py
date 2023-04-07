@@ -3,10 +3,12 @@ import sys
 from asyncio import run as aiorun
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+from typing import Dict, List, Optional, Union
 
 import typer
 from rich.console import Console
+from rich.console import group as rich_group
+from rich.panel import Panel
 from rich.table import Table
 
 import infrahub_ctl.config as config
@@ -179,7 +181,7 @@ def merge(
     branch_name: str,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
-    """Merge a Branch with main (NOT IMPLEMENTED YET)."""
+    """Merge a Branch with main."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
@@ -215,58 +217,85 @@ def validate(
     aiorun(_validate(branch_name=branch_name))
 
 
-async def _diff(branch_name: str, diff_from: Union[str, datetime], diff_to: Union[str, datetime], branch_only: bool):
+@rich_group()
+def node_panel_generator(nodes: List[Dict]):
+    for node in nodes:
+        lines = []
+
+        for attr in node["attributes"]:
+            attr_header = "{:10}{:10}  {:<20}".format(
+                "",
+                render_action_rich(attr["action"]),
+                attr["name"],
+            )
+            lines.append(attr_header)
+
+            for prop in attr["properties"]:
+                clean_prop_name = prop["type"].replace("HAS_", "").replace("IS_", "").lower()
+
+                property_string = "{:>20}[magenta]{:>20}[blue]{:>4}[magenta]{:20}[green]{:>20}[/green]{:>20}".format(
+                    clean_prop_name,
+                    f"{prop['value']['previous']}",
+                    " >> ",
+                    f"{prop['value']['new']}",
+                    f"{prop['changed_at']}",
+                    f"({calculate_time_diff(prop['changed_at'])})",
+                )
+
+            lines.append(property_string)
+
+        for rel in node["relationships"]:
+            rel_header = "{:10}{:10}  {:<20} Node {:>20} {:>20}".format(
+                "",
+                render_action_rich(attr["action"]),
+                rel["name"],
+                rel["peer"]["kind"],
+                rel["peer"]["id"],
+            )
+
+            lines.append(rel_header)
+
+            for prop in rel["properties"]:
+                clean_prop_name = prop["type"].replace("HAS_", "").replace("IS_", "").lower()
+
+                property_string = "{:>20}[magenta]{:>20}[blue]{:>4}[magenta]{:20}[green]{:>20}[/green]{:>20}".format(
+                    clean_prop_name,
+                    f"{prop['value']['previous']}",
+                    " >> ",
+                    f"{prop['value']['new']}",
+                    f"{prop['changed_at']}",
+                    f"({calculate_time_diff(prop['changed_at'])})",
+                )
+
+            lines.append(property_string)
+
+        yield Panel("\n".join(lines), title=f"Node {node['kind']} '{node['id']}'", title_align="left")
+
+
+async def _diff(branch_name: str, time_from: Union[str, datetime], time_to: Union[str, datetime], branch_only: bool):
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
-        response = await client.get_branch_diff(
-            branch_name=branch_name, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
+        response = await client.branch.diff_data(
+            branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
         )
     except ServerNotReacheableError as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
-    except GraphQLError as exc:
-        for error in exc.errors:
-            console.print(f"[red]{error['message']}")
-        sys.exit(1)
 
-    attr_padding = " " * 2
-
-    for node in response["diff"]["nodes"]:
-        console.print(f"Node {node['kind']} '{node['id']}'")
-        for attr in node["attributes"]:
-            console.print(f"{attr_padding}{attr['name']} {render_action_rich(attr['action'])} ")
-
-            grid = Table.grid(expand=True)
-            grid.add_column(justify="right")
-            grid.add_column(justify="right")
-            grid.add_column(justify="center", width=4)
-            grid.add_column(justify="left")
-            grid.add_column()
-            # grid.add_column(justify="right")
-
-            for prop in attr["properties"]:
-                clean_prop_name = prop["type"].replace("HAS_", "").replace("IS_", "").lower()
-                grid.add_row(
-                    clean_prop_name,
-                    f"[magenta]{prop['value']['previous']}",
-                    "[blue] >> ",
-                    f"[magenta]{prop['value']['new']}",
-                    f"[green]{prop['changed_at']}[/green] ({calculate_time_diff(prop['changed_at'])})",
-                )
-
-            console.print(grid)
+    for branch, nodes in response.json().items():
+        console.print(Panel(node_panel_generator(nodes), title=f"Branch: [green]{branch}", title_align="left"))
 
 
 @app.command()
 def diff(
     branch_name: str,
-    diff_from: Optional[datetime] = typer.Option(
+    time_from: Optional[datetime] = typer.Option(
         None, "--from", help="Start Time used to calculate the Diff, Default: from the start of the branch"
     ),
-    diff_to: Optional[datetime] = typer.Option(None, "--to", help="End Time used to calculate the Diff, Default: now"),
+    time_to: Optional[datetime] = typer.Option(None, "--to", help="End Time used to calculate the Diff, Default: now"),
     branch_only: bool = True,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ):
@@ -275,4 +304,4 @@ def diff(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    aiorun(_diff(branch_name=branch_name, diff_from=diff_from or "", diff_to=diff_to or "", branch_only=branch_only))
+    aiorun(_diff(branch_name=branch_name, time_from=time_from or "", time_to=time_to or "", branch_only=branch_only))
