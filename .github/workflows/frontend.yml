@@ -30,8 +30,11 @@ jobs:
         run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       - name: "Start backend"
         run: "invoke demo.build demo.init demo.start"
-      - name: "Run cypress"
-        working-directory: ./frontend
+      - name: "Install cypress"
         uses: cypress-io/github-action@v5
-        with:
-          start: "npm run cypress:run"
+      - name: "Run integration tests"
+        working-directory: ./frontend
+        run: "npm run cypress:run"
+      - name: "Run unit tests"
+        working-directory: ./frontend
+        run: "npm run test"
