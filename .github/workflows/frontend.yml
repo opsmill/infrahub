@@ -30,6 +30,9 @@ jobs:
         run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       - name: "Start backend"
         run: "invoke demo.build demo.init demo.start"
+      - name: "Install frontend"
+        working-directory: ./frontend
+        run: npm i
       - name: "Run integration tests"
         working-directory: ./frontend
         run: "npm run cypress:run"
