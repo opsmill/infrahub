@@ -18,18 +18,18 @@ tasks:
       poetry config virtualenvs.create false
       poetry install
       cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      peotry run invoke demo.dev-start
+      poetry run invoke demo.dev-start
       gp ports await 5672
       sleep 45
-      peotry run infrahub db init
+      poetry run infrahub db init
     command: |
-      peotry run invoke demo.dev-start
+      poetry run invoke demo.dev-start
       gp sync-done python-setup
   - name: Backend API
     command: |
       gp ports await 5672
       gp sync-await python-setup
-      peotry run gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+      poetry run gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
   - name: Git Agent
     command: |
       gp ports await 8000
