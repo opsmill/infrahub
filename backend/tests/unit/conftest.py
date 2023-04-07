@@ -1191,5 +1191,18 @@ async def second_account(session: AsyncSession, register_account_schema) -> Node
 
 
 @pytest.fixture
+async def repos_in_main(session, register_core_models_schema):
+    repo01 = await Node.init(session=session, schema="Repository")
+    await repo01.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaaaa")
+    await repo01.save(session=session)
+
+    repo02 = await Node.init(session=session, schema="Repository")
+    await repo02.new(session=session, name="repo02", location="git@github.com:user/repo02.git", commit="bbbbbbbbbbb")
+    await repo02.save(session=session)
+
+    return {"repo01": repo01, "repo02": repo02}
+
+
+@pytest.fixture
 def dataset01(init_db) -> None:
     ds01.load_data()

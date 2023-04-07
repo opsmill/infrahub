@@ -1,6 +1,23 @@
+import pytest
+
+from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.message_bus.events import (
+    GitMessageAction,
+    InfrahubRPCResponse,
+    MessageType,
+    RPCStatusCode,
+)
+from infrahub.message_bus.rpc import InfrahubRpcClientTesting
+
+
+@pytest.fixture
+def patch_rpc_client():
+    import infrahub.message_bus.rpc
+
+    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
 async def test_diff_data_endpoint(session, client, client_headers, default_branch, car_person_data):
@@ -42,4 +59,41 @@ async def test_diff_data_endpoint(session, client, client_headers, default_branc
     assert response.status_code == 200
     assert response.json() is not None
 
-    breakpoint()
+
+async def test_diff_files_endpoint(
+    session, patch_rpc_client, default_branch: Branch, client, client_headers, repos_in_main
+):
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos = {repo.name.value: repo for repo in repos_list}
+
+    repo01 = repos["repo01"]
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(session=session)
+
+    repo02 = repos["repo02"]
+    repo02.commit.value = "eeeeeeeeee"
+    await repo02.save(session=session)
+
+    with client:
+        mock_response = InfrahubRPCResponse(
+            status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+        )
+        await client.app.state.rpc_client.add_response(
+            response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF
+        )
+        mock_response = InfrahubRPCResponse(
+            status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]}
+        )
+        await client.app.state.rpc_client.add_response(
+            response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF
+        )
+
+        response = client.get(
+            "/diff/files?branch=branch2",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json() is not None

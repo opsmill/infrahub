@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from neo4j import AsyncSession
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,7 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
 from infrahub.exceptions import BranchNotFound
+from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint    : disable=too-many-branches
 
@@ -62,6 +63,19 @@ class BranchDiffNode(BaseModel):
     action: DiffAction
     attributes: List[BranchDiffAttribute] = Field(default_factory=list)
     relationships: List[BranchDiffRelationship] = Field(default_factory=list)
+
+
+class BranchDiffFile(BaseModel):
+    branch: str
+    location: str
+    action: DiffAction
+
+
+class BranchDiffRepository(BaseModel):
+    branch: str
+    id: str
+    display_name: Optional[str]
+    files: List[BranchDiffFile] = Field(default_factory=list)
 
 
 def extract_diff_relationship(node_id: str, name: str, rel: RelationshipDiffElement) -> BranchDiffRelationship:
@@ -149,5 +163,36 @@ async def get_diff_data(
 
         if node_diff:
             response[rel.branch].append(node_diff)
+
+    return response
+
+
+@router.get("/files")
+async def get_diff_files(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    branch: Optional[str] = None,
+    time_from: Optional[str] = None,
+    time_to: Optional[str] = None,
+    branch_only: bool = True,
+) -> Dict[str, Dict[str, BranchDiffRepository]]:
+    try:
+        branch: Branch = await get_branch(session=session, branch=branch)
+    except BranchNotFound as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+
+    response = defaultdict(lambda: defaultdict(list))
+    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
+
+    # Query the Diff for all files and repository from the database
+    diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+    diff_files = await diff.get_files(session=session, rpc_client=rpc_client)
+
+    for branch_name, items in diff_files.items():
+        for item in items:
+            if item.repository not in response[branch_name]:
+                response[branch_name][item.repository] = BranchDiffRepository(id=item.repository, branch=branch_name)
+
+            response[branch_name][item.repository].files.append(BranchDiffFile(**item.to_graphql()))
 
     return response
