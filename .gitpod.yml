@@ -15,31 +15,27 @@ tasks:
       pyenv local 3.10
       pip install toml invoke
       curl -sSL https://install.python-poetry.org | python3 -
-      source ~/.bashrc
+      poetry config virtualenvs.create false
       poetry install
       cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      poetry shell
-      invoke demo.dev-start
+      peotry run invoke demo.dev-start
       gp ports await 5672
       sleep 45
-      infrahub db init
+      peotry run infrahub db init
     command: |
-      poetry shell
-      invoke demo.dev-start
+      peotry run invoke demo.dev-start
       gp sync-done python-setup
   - name: Backend API
     command: |
       gp ports await 5672
       gp sync-await python-setup
-      poetry shell
-      gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+      peotry run gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
   - name: Git Agent
     command: |
       gp ports await 8000
-      poetry shell
       mkdir -p /workspace/.infrahub/repositories
       export INFRAHUB_CONFIG=/workspace/infrahub/development/gitpod.infrahub.toml
-      infrahub git-agent start --debug
+      poetry run infrahub git-agent start --debug
 
 # Ports to expose on workspace startup
 ports:
