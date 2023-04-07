@@ -1,23 +1,25 @@
+import copy
 from typing import List, Optional
 
-import copy
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
-from fastapi.logger import logger
 
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import SchemaManager
-from infrahub.core.schema import NodeSchema, SchemaRoot, GenericSchema
+from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.exceptions import BranchNotFound
 
 router = APIRouter(prefix="/schema")
 
+
 class SchemaReadAPI(BaseModel):
     nodes: List[NodeSchema]
     generics: List[GenericSchema]
+
 
 class SchemaLoadAPI(SchemaRoot):
     version: str
