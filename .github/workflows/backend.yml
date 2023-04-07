@@ -12,6 +12,10 @@ on:
       - pyproject.toml
       - poetry.lock
       - "tasks/**"
+  push:
+    branches:
+      - develop
+      - stable
 
 env:
   NEO4J_USERNAME: neo4j
