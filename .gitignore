@@ -1,4 +1,5 @@
 .coverage
+coverage.xml
 *.pyc
 *.env
 script.py
