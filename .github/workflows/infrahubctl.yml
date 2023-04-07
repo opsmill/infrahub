@@ -11,6 +11,10 @@ on:
       - pyproject.toml
       - poetry.lock
       - "tasks/**"
+  push:
+    branches:
+      - develop
+      - stable
 
 jobs:
   python-tests:
