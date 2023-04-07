@@ -1,11 +1,21 @@
 import { useState } from "react";
-import { Select2Step, iTwoStepDropdownData, iTwoStepSelectOption } from "../components/select-2-step";
-import { C_PEER_DROPDOWN_OPTIONS } from "../testData/peerDropdownOptionsFromApi";
-import { C_SchemaKindNameMap } from "../testData/schemaKindNameMap";
-import { convertPeerDropdownOptionsToSelect2StepOptions } from "../utils/convertPeerDropdownOptionsToSelect2StepOptions";
+import { Select2Step, iTwoStepDropdownData } from "../components/select-2-step";
+import { SelectOption } from "../screens/edit-form-hook/dynamic-control-types";
 
-
-const options: iTwoStepSelectOption[] = convertPeerDropdownOptionsToSelect2StepOptions(C_PEER_DROPDOWN_OPTIONS, C_SchemaKindNameMap);
+const optionsLeft: SelectOption[] = [
+  {
+    label: "Account",
+    value: "account"
+  },
+  {
+    label: "Group",
+    value: "group"
+  },
+  {
+    label: "Repository",
+    value: "repository"
+  }
+];
 
 export const Select2StepPreview = () => {
   const [value, setValue] = useState<iTwoStepDropdownData>();
@@ -39,7 +49,7 @@ export const Select2StepPreview = () => {
             </h1>
             <div className="relative rounded-xl bg-gray-900 px-6 pb-9 shadow-2xl sm:px-12 lg:px-8 lg:py-8 xl:px-10 xl:py-10 h-96 overflow-auto">
               <pre className="text-sm text-white">
-                const options = {JSON.stringify(options, null, 4)}
+                const options = {JSON.stringify(optionsLeft, null, 4)}
               </pre>
             </div>
             <h1 className="mt-16 text-xl font-bold tracking-tight text-gray-900 pb-2">
@@ -49,9 +59,8 @@ export const Select2StepPreview = () => {
               <Select2Step
                 defaultValue={{ parent: "group", child: "0831f2dd-4138-4b00-9fdc-c366abee2bd0" }}
                 label="Peer"
-                options={options}
+                optionsLeft={optionsLeft}
                 onChange={(value) => {
-                  console.log("Update value: ", value);
                   setValue(value);
                 }}
               />
