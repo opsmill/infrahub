@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:truthy
-name: "Backend"
+name: "Frontend"
 on:
   pull_request:
     paths:
@@ -30,6 +30,8 @@ jobs:
         run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       - name: "Start backend"
         run: "invoke demo.build demo.init demo.start"
+      - name: "Install Cypress"
+        run: "npm i -D cypress"
       - name: "Run cypress"
         uses: cypress-io/github-action@v5
         with:
