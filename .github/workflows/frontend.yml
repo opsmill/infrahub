@@ -2,7 +2,7 @@
 # yamllint disable rule:truthy
 name: "Backend"
 on:
-  push:
+  pull_request:
     paths:
       - "frontend/**"
 
