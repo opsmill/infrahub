@@ -1,0 +1,25 @@
+---
+name: ✅ Task
+description: Create a task for minor issues that isn't a feature or a bug
+title: 'task: '
+body:
+  - type: dropdown
+    attributes:
+      label: Component
+      description: Please indicate which component(s) this task is associated with (leave blank if unknown)
+      multiple: true
+      options:
+        - Frontend UI
+        - API Server / GraphQL
+        - Git Integration
+        - Python SDK
+        - infrahubctl CLI
+        - CI/CD
+        - Documentation & Examples
+        - Not Sure
+  - type: textarea
+    attributes:
+      label: Task Description
+      description: A clear description of what it is you think should be done.
+    validations:
+      required: true

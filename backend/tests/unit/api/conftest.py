@@ -7,7 +7,7 @@ from infrahub.core.node import Node
 @pytest.fixture
 def client():
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
-    from infrahub.main import app
+    from infrahub.api.main import app
 
     return TestClient(app)
 

@@ -1,20 +1,36 @@
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 import ujson
 from pytest_httpx import HTTPXMock
 
-from infrahub_client import InfrahubClient
+from infrahub_client import InfrahubClient, InfrahubClientSync
 from infrahub_client.schema import NodeSchema
 from infrahub_client.utils import get_fixtures_dir
 
 # pylint: disable=redefined-outer-name,unused-argument
 
 
+@dataclass
+class BothClients:
+    sync: InfrahubClientSync
+    standard: InfrahubClient
+
+
 @pytest.fixture
 async def client() -> InfrahubClient:
     return await InfrahubClient.init(address="http://mock", insert_tracker=True)
+
+
+@pytest.fixture
+async def clients() -> BothClients:
+    both = BothClients(
+        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True),
+        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True),
+    )
+    return both
 
 
 @pytest.fixture
