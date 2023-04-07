@@ -36,7 +36,7 @@ export default function ObjectItemEdit() {
     const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
     const formStructure = getFormStructureForCreateEdit(schema, peerDropdownOptions, schemaKindNameMap, genericSchemaMap, row);
     setFormStructure(formStructure);
-  }, [schema, schemaKindNameMap]);
+  }, [genericSchemaMap, schema, schemaKindNameMap]);
 
   const fetchItemDetails = useCallback(async () => {
     setHasError(false);

@@ -142,7 +142,7 @@ function App() {
       });
       setGenericSchema(genericSchemaMapping);
     },
-    [fetchSchema, setSchema, setSchemaKindNameState]
+    [fetchSchema, setGenericSchema, setSchema, setSchemaKindNameState]
   );
 
   useEffect(
