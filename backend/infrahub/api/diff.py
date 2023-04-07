@@ -9,6 +9,7 @@ from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
+from infrahub.core.manager import NodeManager
 from infrahub.exceptions import BranchNotFound
 from infrahub.message_bus.rpc import InfrahubRpcClient
 
@@ -59,6 +60,7 @@ class BranchDiffNode(BaseModel):
     branch: str
     kind: str
     id: str
+    display_label: str
     changed_at: Optional[str]
     action: DiffAction
     attributes: List[BranchDiffAttribute] = Field(default_factory=list)
@@ -76,6 +78,25 @@ class BranchDiffRepository(BaseModel):
     id: str
     display_name: Optional[str]
     files: List[BranchDiffFile] = Field(default_factory=list)
+
+
+async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: str, session: AsyncSession):
+    branch = get_branch(branch=branch_name, session=session)
+    schema = registry.get_schema(name=kind, branch=branch)
+    fields = schema.generate_fields_for_display_label()
+    nodes = await NodeManager.get_many(ids=ids, fields=fields, session=session, branch=branch)
+
+    return {node_id: await node.render_display_label(session=session) for node_id, node in nodes.items()}
+
+
+async def get_display_labels(nodes: Dict[str, List[str]], session: AsyncSession):
+    response = {}
+    for branch_name, items in nodes.items():
+        for kind, ids in items.items():
+            labels = await get_display_labels_per_kind(kind=kind, ids=ids, session=session, branch_name=branch_name)
+            response.update(labels)
+
+    return response
 
 
 def extract_diff_relationship(node_id: str, name: str, rel: RelationshipDiffElement) -> BranchDiffRelationship:
@@ -118,26 +139,40 @@ async def get_diff_data(
     nodes = await diff.get_nodes(session=session)
     rels = await diff.get_relationships(session=session)
 
+    # Node IDs organized per Branch and per Kind
+    node_ids = defaultdict(lambda: defaultdict(list))
+
     # Organize the Relationships data per node in order to simplify the association with the nodes Later on.
     rels_per_node: Dict[str, List[RelationshipDiffElement]] = defaultdict(list)
-
-    for items in rels.values():
+    for branch_name, items in rels.items():
         for item in items.values():
             for sub_item in item.values():
-                for node_id in sub_item.nodes.keys():
+                for node_id, node in sub_item.nodes.items():
                     rels_per_node[node_id].append(sub_item)
+                    if node_id not in node_ids[branch_name][node.kind]:
+                        node_ids[branch_name][node.kind].append(node_id)
+
+    # Extract the id of all nodes ahead of time in order to query all display labels
+    for branch_name, items in nodes.items():
+        for item in items.values():
+            if item.id not in node_ids[branch_name][item.kind]:
+                node_ids[branch_name][item.kind].append(item.id)
+
+    display_labels = await get_display_labels(nodes=node_ids, session=session)
+
+    breakpoint()
 
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
     for branch_name, items in nodes.items():
         for item in items.values():
-            node_diff = BranchDiffNode(**item.to_graphql())
+            node_diff = BranchDiffNode(**item.to_graphql(), display_label=display_labels[item.id])
             schema = registry.get_schema(name=node_diff.kind, branch=node_diff.branch)
 
             for rel in rels_per_node.get(item.id, []):
                 if rel_schema := schema.get_relationship_by_identifier(id=rel.name, raise_on_error=False):
-                    node_diff.relationships.append(
-                        extract_diff_relationship(node_id=item.id, name=rel_schema.name, rel=rel)
-                    )
+                    diff_rel = extract_diff_relationship(node_id=item.id, name=rel_schema.name, rel=rel)
+                    diff_rel.peer.display_label = display_labels[diff_rel.peer.id]
+                    node_diff.relationships.append(diff_rel)
 
             response[branch_name].append(node_diff)
             nodes_in_diff.append(node_diff.id)
@@ -154,12 +189,16 @@ async def get_diff_data(
             if rel_schema := schema.get_relationship_by_identifier(id=rel.name, raise_on_error=False):
                 if not node_diff:
                     node_diff = BranchDiffNode(
-                        branch=rel.branch, id=node_in_rel, kind=rel.nodes[node_in_rel].kind, action=DiffAction.UPDATED
+                        branch=rel.branch,
+                        id=node_in_rel,
+                        kind=rel.nodes[node_in_rel].kind,
+                        action=DiffAction.UPDATED,
+                        display_label=display_labels[node_in_rel],
                     )
 
-                node_diff.relationships.append(
-                    extract_diff_relationship(node_id=node_in_rel, name=rel_schema.name, rel=rel)
-                )
+                diff_rel = extract_diff_relationship(node_id=node_in_rel, name=rel_schema.name, rel=rel)
+                diff_rel.peer.display_label = display_labels[diff_rel.peer.id]
+                node_diff.relationships.append(diff_rel)
 
         if node_diff:
             response[rel.branch].append(node_diff)
