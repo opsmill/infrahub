@@ -52,7 +52,7 @@ const getDropdownOptionsForRelatedPeers = async (
     return {};
   }
   const queryString = template({
-    peers,
+    peers: peers.filter(peer => !!peer),
   });
   const query = gql`
     ${queryString}
