@@ -228,7 +228,7 @@ nodes:
       - name: description
         kind: Text
         optional: true
-    inherit_from: [ Endpoint ]
+    inherit_from: [Endpoint]
     relationships:
       - name: site
         peer: Location
@@ -297,7 +297,7 @@ nodes:
     attributes:
       - name: type
         kind: Text
-        enum: [ EXTERNAL, INTERNAL ]
+        enum: [EXTERNAL, INTERNAL]
       - name: description
         kind: Text
         optional: true
