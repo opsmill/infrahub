@@ -14,7 +14,7 @@ env:
   NEO4J_PROTOCOL: neo4j
 
 jobs:
-  cypress-tests:
+  frontend-tests:
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
