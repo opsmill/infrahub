@@ -10,6 +10,7 @@ tasks:
       export REACT_APP_INFRAHUB_API_SERVER_URL=$URL_8000
       npm start
   - name: CLI
+    before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc && exit
     init: |
       pyenv install 3.10
       pyenv local 3.10
@@ -26,11 +27,13 @@ tasks:
       poetry run invoke demo.dev-start
       gp sync-done python-setup
   - name: Backend API
+    before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc && exit
     command: |
       gp ports await 5672
       gp sync-await python-setup
       poetry run gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
   - name: Git Agent
+    before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc && exit
     command: |
       gp ports await 8000
       mkdir -p /workspace/.infrahub/repositories
