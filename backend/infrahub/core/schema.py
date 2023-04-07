@@ -336,6 +336,7 @@ class GenericSchema(BaseNodeSchema):
 
     branch: bool = True
     label: Optional[str]
+    used_by: List[str] = Field(default_factory=list)
 
 
 class NodeSchema(BaseNodeSchema):
@@ -701,6 +702,12 @@ internal_schema = {
                     "optional": True,
                 },
                 {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
+                {
+                    "name": "used_by",
+                    "kind": "List",
+                    "description": "List of Nodes that are referencing this Generic",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {

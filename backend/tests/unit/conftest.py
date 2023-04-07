@@ -1110,6 +1110,7 @@ async def register_internal_models_schema(default_branch) -> SchemaRoot:
 @pytest.fixture
 async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaRoot:
     schema = SchemaRoot(**core_models)
+    schema.extend_nodes_with_interfaces()
     await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
 
     return schema

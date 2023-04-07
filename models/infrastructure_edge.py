@@ -291,7 +291,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
             # Loopback Interface
             intf = await client.create(
-                kind="Interface",
+                kind="InterfaceL3",
                 device={"id": obj.id, "is_protected": True},
                 name={"value": "Loopback0", "source": account_pop.id, "is_protected": True},
                 enabled=True,
@@ -313,7 +313,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
 
             # Management Interface
             intf = await client.create(
-                kind="Interface",
+                kind="InterfaceL3",
                 device={"id": obj.id, "is_protected": True},
                 name={"value": INTERFACE_MGMT_NAME[device_type], "source": account_pop.id},
                 enabled={"value": True, "owner": group_eng.id},
@@ -332,7 +332,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
                 intf_role_id = roles_dict[intf_role].id
 
                 intf = await client.create(
-                    kind="Interface",
+                    kind="InterfaceL3",
                     device={"id": obj.id, "is_protected": True},
                     name=intf_name,
                     speed=10000,
@@ -519,12 +519,12 @@ async def run(client: InfrahubClient, log: logging.Logger):
         endpoint2 = await client.create(kind="CircuitEndpoint", site=site2, circuit=obj, connected_interface=intf2)
         await endpoint2.save()
 
-        intf11 = await client.get(kind="Interface", id=intf1.id)
+        intf11 = await client.get(kind="InterfaceL3", id=intf1.id)
 
         intf11.description.value = f"Connected to {site2}-{device} via {circuit_id}"
         await intf11.save()
 
-        intf21 = await client.get(kind="Interface", id=intf2.id)
+        intf21 = await client.get(kind="InterfaceL3", id=intf2.id)
         intf21.description.value = f"Connected to {site1}-{device} via {circuit_id}"
         await intf21.save()
 
