@@ -51,6 +51,7 @@ async def _load(schema: Path, log: logging.Logger):  # pylint: disable=unused-ar
     else:
         console.print("[green]Schema loaded successfully!")
 
+
 @app.command()
 def load(
     schema: Path,

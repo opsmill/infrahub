@@ -13,6 +13,10 @@ generics:
         optional: true
       - name: speed
         kind: Number
+      - name: mtu
+        label: MTU
+        default_value: 1500
+        kind: Number
       - name: enabled
         kind: Boolean
         default_value: true
@@ -38,6 +42,8 @@ generics:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: endpoint
+    kind: Endpoint
 nodes:
   - name: device
     kind: Device
@@ -89,13 +95,48 @@ nodes:
     kind: InterfaceL3
     display_labels:
       - name__value
-    inherit_from: ["Interface"]
+    inherit_from: ["Interface", "Endpoint"]
     relationships:
       - name: ip_addresses
         peer: IPAddress
         optional: true
         cardinality: many
         kind: Component
+      - name: connected_endpoint
+        peer: Endpoint
+        optional: true
+        cardinality: one
+        identifier: connected__endpoint
+  - name: interface_l2
+    kind: InterfaceL2
+    display_labels:
+      - name__value
+    inherit_from: ["Interface", "Endpoint"]
+    attributes:
+      - name: l2_mode
+        label: Layer2 Mode
+        kind: Text
+        enum: ["Access", "Trunk"]
+    relationships:
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: VLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__untagged_vlan
+      - name: tagged_vlan
+        label: Tagged VLANs
+        peer: VLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__tagged_vlan
+      - name: connected_endpoint
+        peer: Endpoint
+        optional: true
+        cardinality: one
+        identifier: connected__endpoint
   - name: ipaddress
     kind: IPAddress
     default_filter: address__value
@@ -109,7 +150,7 @@ nodes:
         optional: true
     relationships:
       - name: interface
-        peer: Interface
+        peer: InterfaceL3
         optional: true
         cardinality: one
         kind: Parent
@@ -140,6 +181,12 @@ nodes:
       - name: role
         peer: Role
         optional: false
+        cardinality: one
+        kind: Attribute
+      - name: gateway
+        label: L3 Gateway
+        peer: InterfaceL3
+        optional: true
         cardinality: one
         kind: Attribute
   - name: circuit
@@ -195,10 +242,11 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
-      - name: connected_interface
-        peer: Interface
+      - name: connected_endpoint
+        peer: Endpoint
         optional: true
         cardinality: one
+        identifier: connected__endpoint
   - name: autonomous_system
     kind: AutonomousSystem
     default_filter: name__value
@@ -256,9 +304,7 @@ nodes:
     attributes:
       - name: type
         kind: Text
-        enum:
-          - EXTERNAL
-          - INTERNAL
+        enum: [ EXTERNAL, INTERNAL ]
       - name: description
         kind: Text
         optional: true

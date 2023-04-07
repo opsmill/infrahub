@@ -16,6 +16,8 @@ from infrahub_client import InfrahubClient, InfrahubNode
 
 DEVICE_ROLES = ["edge"]
 INTF_ROLES = ["backbone", "transit", "peering", "peer", "loopback", "management", "spare"]
+VLAN_ROLES = ["server"]
+
 SITES = ["atl1", "ord1", "jfk1"]
 
 DEVICES = (
@@ -82,9 +84,13 @@ EXTERNAL_CIRCUIT_IDS_GEN = (cid for cid in EXTERNAL_CIRCUIT_IDS)
 
 INTERFACE_MGMT_NAME = {"7280R3": "Management0"}
 
-INTERFACE_NAMES = {
-    "7280R3": ["Ethernet1", "Ethernet2", "Ethernet3", "Ethernet4", "Ethernet5", "Ethernet6", "Ethernet7", "Ethernet8"],
+INTERFACE_L3_NAMES = {
+    "7280R3": ["Ethernet1", "Ethernet2", "Ethernet3", "Ethernet4", "Ethernet5", "Ethernet6", "Ethernet7"],
 }
+INTERFACE_L2_NAMES = {
+    "7280R3": ["Ethernet8"],
+}
+
 
 INTERFACE_ROLES_MAPPING = {
     "edge": ["peer", "peer", "backbone", "backbone", "transit", "transit", "peering", "spare"],
@@ -130,6 +136,11 @@ BGP_PEER_GROUPS = (
     ("IX_DEFAULT", "IMPORT_IX", "EXPORT_PUBLIC_PREFIX", "Duff", None),
 )
 
+VLANS = (
+    ("200", "server"),
+    ("400", "management"),
+)
+
 
 LOGGER = logging.getLogger("infrahub")
 
@@ -161,6 +172,7 @@ async def run(client: InfrahubClient, log: logging.Logger):
     device_dict: Dict[str, InfrahubNode] = {}
     statuses_dict: Dict[str, InfrahubNode] = {}
     roles_dict: Dict[str, InfrahubNode] = {}
+    vlans_dict: Dict[str, InfrahubNode] = {}
 
     for group in ACCOUNT_GROUPS:
         obj = await client.create(kind="Group", data={"name": group[0], "label": group[1]})
@@ -182,6 +194,9 @@ async def run(client: InfrahubClient, log: logging.Logger):
     account_cloe = accounts_dict["Chloe O'Brian"]
     account_crm = accounts_dict["CRM Synchronization"]
 
+    # ------------------------------------------
+    # Create Organizations, BGP PEER Groups
+    # ------------------------------------------
     for org in ORGANIZATIONS:
         obj = await client.create(kind="Organization", data={"name": {"value": org[0], "is_protected": True}})
         await obj.save()
@@ -220,11 +235,10 @@ async def run(client: InfrahubClient, log: logging.Logger):
         log.info(f"Peer Group Created: {obj.name.value}")
 
     # ------------------------------------------
-    # Create Status, Role & DeviceProfile
+    # Create Status, Role & Tags
     # ------------------------------------------
-
     log.info("Creating Roles, Status & Tag")
-    for role in DEVICE_ROLES + INTF_ROLES:
+    for role in DEVICE_ROLES + INTF_ROLES + VLAN_ROLES:
         obj = await client.create(kind="Role", name={"value": role, "source": account_pop.id})
         await obj.save()
         roles_dict[role] = obj
@@ -245,9 +259,11 @@ async def run(client: InfrahubClient, log: logging.Logger):
     active_status = statuses_dict["active"]
     internal_as = asn_dict["Duff"]
 
+    # ------------------------------------------
+    # Create Site & Device
+    # ------------------------------------------
     log.info("Creating Site & Device")
 
-    # { "value": role, "source": account_pop.id },
     for site_idx, site_name in enumerate(SITES):
         site = await client.create(
             kind="Location",
@@ -257,11 +273,25 @@ async def run(client: InfrahubClient, log: logging.Logger):
         await site.save()
         log.info(f"Created Site: {site_name}")
 
-        # site_networks = next(NETWORKS_POOL_INTERNAL).subnets(new_prefix=24)
         peer_networks = {
             0: next(P2P_NETWORK_POOL).hosts(),
             1: next(P2P_NETWORK_POOL).hosts(),
         }
+
+        for vlan in VLANS:
+            status_id = statuses_dict["active"].id
+            role_id = roles_dict[vlan[1]].id
+            vlan_name = f"{site_name}_{vlan[1]}"
+            obj = await client.create(
+                kind="VLAN",
+                name={"value": f"{site_name}_{vlan[1]}", "is_protected": True, "source": account_pop.id},
+                vlan_id={"value": int(vlan[0]), "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
+                status={"id": status_id, "owner": group_ops.id},
+                role={"id": role_id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
+            )
+            await obj.save()
+
+            vlans_dict[vlan_name] = obj
 
         # Build a new list with the names of the other sites for later
         other_sites = copy.copy(SITES)
@@ -298,7 +328,6 @@ async def run(client: InfrahubClient, log: logging.Logger):
                 status={"id": active_status.id, "owner": group_ops.id},
                 role={"id": roles_dict["loopback"].id, "source": account_pop.id, "is_protected": True},
                 speed=1000,
-                # source=pop_builder_account,
             )
             await intf.save()
 
@@ -326,8 +355,8 @@ async def run(client: InfrahubClient, log: logging.Logger):
             ip = await client.create(kind="IPAddress", interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24")
             await ip.save()
 
-            # Other Interfaces
-            for intf_idx, intf_name in enumerate(INTERFACE_NAMES[device_type]):
+            # L3 Interfaces
+            for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device_type]):
                 intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
                 intf_role_id = roles_dict[intf_role].id
 
@@ -429,6 +458,24 @@ async def run(client: InfrahubClient, log: logging.Logger):
                         log.info(
                             f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                         )
+
+            # L2 Interfaces
+            for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device_type]):
+                # intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
+                intf_role_id = roles_dict["server"].id
+
+                intf = await client.create(
+                    kind="InterfaceL2",
+                    device={"id": obj.id, "is_protected": True},
+                    name=intf_name,
+                    speed=10000,
+                    enabled=True,
+                    status={"id": active_status.id, "owner": group_ops.id},
+                    role={"id": intf_role_id, "source": account_pop.id},
+                    l2_mode="Access",
+                    untagged_vlan={"id": vlans_dict[f"{site_name}_server"].id},
+                )
+                await intf.save()
 
         # Connect pair within a site together
         for idx in range(0, 2):
