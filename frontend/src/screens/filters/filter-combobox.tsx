@@ -45,7 +45,7 @@ export default function FilterCombobox(props: Props) {
         ${queryString}
       `;
         try {
-          const data = await graphQLClient.request(query);
+          const data: any = await graphQLClient.request(query);
           const rows = data[schema.name];
           setObjectRows(rows);
           setIsLoading(false);

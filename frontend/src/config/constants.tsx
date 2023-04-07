@@ -1,6 +1,5 @@
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
-import DeviceList from "../screens/device-list/device-list";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
 import ObjectItemEdit from "../screens/object-item-edit/object-item-edit";
@@ -27,10 +26,6 @@ export const MAIN_ROUTES = [
   {
     path: "/schema",
     element: <OpsObjects />,
-  },
-  {
-    path: "/devices",
-    element: <DeviceList />,
   },
   {
     path: "/branches",

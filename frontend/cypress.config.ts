@@ -6,6 +6,7 @@ export default defineConfig({
       framework: "create-react-app",
       bundler: "webpack",
     },
+    video: true,
   },
 
   e2e: {

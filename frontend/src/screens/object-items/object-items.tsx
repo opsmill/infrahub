@@ -99,7 +99,7 @@ export default function ObjectItems() {
             ${queryString}
             `;
 
-            const data = await graphQLClient.request(query);
+            const data: any = await graphQLClient.request(query);
             const rows = data[schema.name];
             setObjectRows(rows);
             setIsLoading(false);

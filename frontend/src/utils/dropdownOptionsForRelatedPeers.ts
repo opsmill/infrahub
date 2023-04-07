@@ -58,8 +58,7 @@ const getDropdownOptionsForRelatedPeers = async (
     ${queryString}
   `;
   try {
-    const data = await graphQLClient.request(query);
-    return data;
+    return graphQLClient.request(query);
   } catch {
     console.error(
       "Something went wrong while fetching form dropdown option list"
