@@ -24,6 +24,7 @@ function App() {
 
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branch] = useAtom(branchState);
+  console.log("branch: ", branch);
   const [, setBranches] = useAtom(branchesState);
   const [config, setConfig] = useAtom(configState);
   const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
