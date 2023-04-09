@@ -5,8 +5,9 @@ from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import registry
 from infrahub.core.schema import (
-    NodeSchemaData,
-    RelationshipSchemaData,
+    NodeSchema,
+    AttributeSchema,
+    RelationshipSchema,
     SchemaRoot,
     core_models,
     internal_schema,
@@ -44,7 +45,7 @@ def test_node_schema_unique_names():
     }
 
     with pytest.raises(ValidationError) as exc:
-        NodeSchemaData(**SCHEMA)
+        NodeSchema(**SCHEMA)
 
     assert "Names of attributes and relationships must be unique" in str(exc.value)
 
@@ -63,7 +64,7 @@ def test_node_schema_unique_names():
     }
 
     with pytest.raises(ValidationError) as exc:
-        NodeSchemaData(**SCHEMA)
+        NodeSchema(**SCHEMA)
 
     assert "Names of attributes and relationships must be unique" in str(exc.value)
 
@@ -80,7 +81,7 @@ def test_node_schema_property_unique_attributes():
         ],
     }
 
-    schema = NodeSchemaData(**SCHEMA)
+    schema = NodeSchema(**SCHEMA)
     assert len(schema.unique_attributes) == 1
     assert schema.unique_attributes[0].name == "name"
 
@@ -101,7 +102,7 @@ def test_node_schema_unique_identifiers():
     }
 
     with pytest.raises(ValidationError) as exc:
-        schema = NodeSchemaData(**SCHEMA)
+        schema = NodeSchema(**SCHEMA)
 
     assert "Identifier of relationships must be unique" in str(exc.value)
 
@@ -118,7 +119,7 @@ def test_node_schema_unique_identifiers():
             {"name": "second", "identifier": "something_unique", "peer": "Criticality", "cardinality": "one"},
         ],
     }
-    schema = NodeSchemaData(**SCHEMA)
+    schema = NodeSchema(**SCHEMA)
     assert schema.relationships[0].identifier == "criticality__criticality"
     assert schema.relationships[1].identifier == "something_unique"
 
@@ -137,18 +138,26 @@ async def test_node_schema_hashable():
             {"name": "second", "identifier": "something_unique", "peer": "Criticality", "cardinality": "one"},
         ],
     }
-    schema = NodeSchemaData(**SCHEMA)
+    schema = NodeSchema(**SCHEMA)
 
     assert isinstance(schema, Hashable)
+    assert hash(schema)
 
+async def test_attribute_schema_hashable():
+    SCHEMA = {"name": "name", "kind": "Text", "unique": True}
+
+    schema = AttributeSchema(**SCHEMA)
+
+    assert isinstance(schema, Hashable)
+    assert hash(schema)
 
 async def test_relationship_schema_hashable():
     SCHEMA = {"name": "first", "peer": "Criticality", "identifier": "cardinality__peer", "cardinality": "one"}
 
-    relschema = RelationshipSchemaData(**SCHEMA)
+    schema = RelationshipSchema(**SCHEMA)
 
-    assert isinstance(relschema, Hashable)
-
+    assert isinstance(schema, Hashable)
+    assert hash(schema)
 
 async def test_node_schema_generate_fields_for_display_label():
     SCHEMA = {
@@ -166,11 +175,11 @@ async def test_node_schema_generate_fields_for_display_label():
         ],
     }
 
-    schema = NodeSchemaData(**SCHEMA)
+    schema = NodeSchema(**SCHEMA)
     assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
 
     SCHEMA["display_labels"] = ["name__value__third"]
-    schema = NodeSchemaData(**SCHEMA)
+    schema = NodeSchema(**SCHEMA)
     with pytest.raises(ValueError):
         schema.generate_fields_for_display_label()
 

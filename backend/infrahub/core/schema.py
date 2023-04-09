@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator, PrivateAttr
 
 from infrahub.core import registry
 from infrahub.core.relationship import Relationship
@@ -59,7 +59,38 @@ def full_schema_to_schema_root(full_schema: Dict[str, Union[NodeSchema, GenericS
     return SchemaRoot(**schema_root_dict)
 
 
-class FilterSchema(BaseModel):
+
+class BaseSchemaModel(BaseModel):
+
+    _exclude_from_hash: List[str] = []
+
+    class Config:
+        extra = Extra.forbid
+        underscore_attrs_are_private = True
+
+    def __hash__(self):
+        """Generate a hash for the object.
+
+        Calculating a hash can be very complicated if the data that we are storing is dynamic
+        In order for this function to work, it's recommended to exclude all objects or list of objects with _exclude_from_hash
+        List of hashable elements are fine and they will be converted automatically to Tuple.
+        """
+
+        values = []
+
+        for field_name, field in sorted(self.__fields__.items()):
+            if field_name.startswith("_") or field_name in self._exclude_from_hash:
+                continue
+
+            value = getattr(self, field_name)
+            if isinstance(value, list):
+                values.append(tuple(value))
+            else:
+                values.append(value)
+
+        return hash(tuple(values))
+
+class FilterSchema(BaseSchemaModel):
     name: str
     kind: FilterSchemaKind
     enum: Optional[List]
@@ -67,7 +98,7 @@ class FilterSchema(BaseModel):
     description: Optional[str]
 
 
-class AttributeSchemaData(BaseModel):
+class AttributeSchema(BaseSchemaModel):
     name: str
     kind: str
     label: Optional[str]
@@ -81,10 +112,6 @@ class AttributeSchemaData(BaseModel):
     unique: bool = False
     branch: bool = True
     optional: bool = False
-
-    class Config:
-        extra = Extra.forbid
-        frozen = True
 
     @validator("kind")
     def kind_options(
@@ -102,7 +129,7 @@ class AttributeSchemaData(BaseModel):
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
-class RelationshipSchemaData(BaseModel):
+class RelationshipSchema(BaseSchemaModel):
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
@@ -113,22 +140,9 @@ class RelationshipSchemaData(BaseModel):
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
     optional: bool = True
-
-    class Config:
-        extra = Extra.forbid
-        frozen = True
-
-
-class AttributeSchema(AttributeSchemaData):
-    class Config:
-        frozen = False
-
-
-class RelationshipSchema(RelationshipSchemaData):
     filters: List[FilterSchema] = Field(default_factory=list)
 
-    class Config:
-        frozen = False
+    _exclude_from_hash: List[str] = ["filters"]
 
     def get_class(self):
         return Relationship
@@ -230,18 +244,25 @@ class RelationshipSchema(RelationshipSchemaData):
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class BaseNodeSchema(BaseModel):
+class BaseNodeSchema(BaseSchemaModel):
     name: str
     kind: str
     description: Optional[str]
     default_filter: Optional[str]
     display_labels: Optional[List[str]]
-    attributes: List[AttributeSchemaData] = Field(default_factory=list)
-    relationships: List[RelationshipSchemaData] = Field(default_factory=list)
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    class Config:
-        extra = Extra.forbid
-        frozen = True
+    _exclude_from_hash = ["attributes", "relationships", "filters"]
+
+    def __hash__(self):
+        """Extend the Hash Calculation to account for attributes and relationships."""
+        super_hash = [super().__hash__()]
+
+        for item in self.attributes + self.relationships:
+            super_hash.append(hash(item))
+
+        return hash(tuple(super_hash))
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -336,7 +357,7 @@ class BaseNodeSchema(BaseModel):
         return fields
 
 
-class GenericSchemaData(BaseNodeSchema):
+class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
     branch: bool = True
@@ -344,11 +365,12 @@ class GenericSchemaData(BaseNodeSchema):
     used_by: List[str] = Field(default_factory=list)
 
 
-class NodeSchemaData(BaseNodeSchema):
+class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     @root_validator
     def unique_names(cls, values):
@@ -398,30 +420,10 @@ class NodeSchemaData(BaseNodeSchema):
                 self.relationships.append(new_item)
 
 
-class NodeSchema(NodeSchemaData):
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
-    filters: List[FilterSchema] = Field(default_factory=list)
-
-    class Config:
-        frozen = False
-
-
-class GenericSchema(GenericSchemaData):
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
-
-    class Config:
-        frozen = False
-
-
-class GroupSchema(BaseModel):
+class GroupSchema(BaseSchemaModel):
     name: str
     kind: str
     description: Optional[str]
-
-    class Config:
-        extra = Extra.forbid
 
 
 # -----------------------------------------------------
@@ -429,24 +431,18 @@ class GroupSchema(BaseModel):
 #  For the initial implementation its possible to add attribute and relationships on Node
 #  Later on we'll consider adding support for other Node attributes like inherited_from etc ...
 #  And we'll look into adding support for Generic as well
-class BaseNodeExtensionSchema(BaseModel):
+class BaseNodeExtensionSchema(BaseSchemaModel):
     kind: str
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
-
-    class Config:
-        extra = Extra.forbid
 
 
 class NodeExtensionSchema(BaseNodeExtensionSchema):
     pass
 
 
-class SchemaExtension(BaseModel):
+class SchemaExtension(BaseSchemaModel):
     nodes: List[NodeExtensionSchema] = Field(default_factory=list)
-
-    class Config:
-        extra = Extra.forbid
 
 
 class SchemaRoot(BaseModel):
