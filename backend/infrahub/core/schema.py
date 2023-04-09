@@ -67,7 +67,7 @@ class FilterSchema(BaseModel):
     description: Optional[str]
 
 
-class AttributeSchema(BaseModel):
+class AttributeSchemaData(BaseModel):
     name: str
     kind: str
     label: Optional[str]
@@ -84,6 +84,7 @@ class AttributeSchema(BaseModel):
 
     class Config:
         extra = Extra.forbid
+        frozen = True
 
     @validator("kind")
     def kind_options(
@@ -101,30 +102,33 @@ class AttributeSchema(BaseModel):
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
-class RelationshipSchema(BaseModel):
+class RelationshipSchemaData(BaseModel):
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
     description: Optional[str]
-    identifier: Optional[str]
+    identifier: str
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
     optional: bool = True
-    filters: List[FilterSchema] = Field(default_factory=list)
 
     class Config:
         extra = Extra.forbid
+        frozen = True
 
-    @validator("kind")
-    def kind_options(
-        cls,
-        v,
-    ):
-        if v not in RELATIONSHIP_KINDS:
-            raise ValueError(f"Only valid Relationship Kind are : {RELATIONSHIP_KINDS} ")
-        return v
+
+class AttributeSchema(AttributeSchemaData):
+    class Config:
+        frozen = False
+
+
+class RelationshipSchema(RelationshipSchemaData):
+    filters: List[FilterSchema] = Field(default_factory=list)
+
+    class Config:
+        frozen = False
 
     def get_class(self):
         return Relationship
@@ -229,14 +233,15 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 class BaseNodeSchema(BaseModel):
     name: str
     kind: str
-    description: Optional[str] = Field(max_length=128)
+    description: Optional[str]
     default_filter: Optional[str]
     display_labels: Optional[List[str]]
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
+    attributes: List[AttributeSchemaData] = Field(default_factory=list)
+    relationships: List[RelationshipSchemaData] = Field(default_factory=list)
 
     class Config:
         extra = Extra.forbid
+        frozen = True
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -331,7 +336,7 @@ class BaseNodeSchema(BaseModel):
         return fields
 
 
-class GenericSchema(BaseNodeSchema):
+class GenericSchemaData(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
     branch: bool = True
@@ -339,14 +344,11 @@ class GenericSchema(BaseNodeSchema):
     used_by: List[str] = Field(default_factory=list)
 
 
-class NodeSchema(BaseNodeSchema):
+class NodeSchemaData(BaseNodeSchema):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
     branch: bool = True
-    filters: List[FilterSchema] = Field(default_factory=list)
-
-    # TODO add validation to ensure that 2 attributes can't have the same name
 
     @root_validator
     def unique_names(cls, values):
@@ -357,22 +359,27 @@ class NodeSchema(BaseNodeSchema):
             raise ValueError(f"Names of attributes and relationships must be unique : {names_dup}")
         return values
 
-    @root_validator
+    @root_validator(pre=True)
     def generate_identifier(
         cls,
         values,
     ):
-        identifiers = []
-
         for rel in values.get("relationships", []):
-            if not rel.identifier:
-                identifier = "__".join(sorted([values.get("kind"), rel.peer]))
-                rel.identifier = identifier.lower()
+            if not rel.get("identifier", None) and values.get("kind") and rel.get("peer"):
+                identifier = "__".join(sorted([values.get("kind"), rel.get("peer")]))
+                rel["identifier"] = identifier.lower()
 
-            identifiers.append(rel.identifier)
+        return values
 
+    @root_validator(pre=False)
+    def unique_identifiers(
+        cls,
+        values,
+    ):
+        identifiers = [rel.identifier for rel in values.get("relationships", [])]
         if identifier_dup := duplicates(identifiers):
             raise ValueError(f"Identifier of relationships must be unique : {identifier_dup}")
+
         return values
 
     def extend_with_interface(self, interface: GenericSchema) -> NodeSchema:
@@ -389,6 +396,23 @@ class NodeSchema(BaseNodeSchema):
                 self.attributes.append(new_item)
             elif isinstance(item, RelationshipSchema):
                 self.relationships.append(new_item)
+
+
+class NodeSchema(NodeSchemaData):
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+    filters: List[FilterSchema] = Field(default_factory=list)
+
+    class Config:
+        frozen = False
+
+
+class GenericSchema(GenericSchemaData):
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    class Config:
+        frozen = False
 
 
 class GroupSchema(BaseModel):
