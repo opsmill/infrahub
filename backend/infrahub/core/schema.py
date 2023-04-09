@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Extra, Field, root_validator, validator, PrivateAttr
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
 from infrahub.core.relationship import Relationship
@@ -59,9 +59,7 @@ def full_schema_to_schema_root(full_schema: Dict[str, Union[NodeSchema, GenericS
     return SchemaRoot(**schema_root_dict)
 
 
-
 class BaseSchemaModel(BaseModel):
-
     _exclude_from_hash: List[str] = []
 
     class Config:
@@ -89,6 +87,7 @@ class BaseSchemaModel(BaseModel):
                 values.append(value)
 
         return hash(tuple(values))
+
 
 class FilterSchema(BaseSchemaModel):
     name: str

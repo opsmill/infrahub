@@ -5,8 +5,8 @@ from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import registry
 from infrahub.core.schema import (
-    NodeSchema,
     AttributeSchema,
+    NodeSchema,
     RelationshipSchema,
     SchemaRoot,
     core_models,
@@ -143,6 +143,7 @@ async def test_node_schema_hashable():
     assert isinstance(schema, Hashable)
     assert hash(schema)
 
+
 async def test_attribute_schema_hashable():
     SCHEMA = {"name": "name", "kind": "Text", "unique": True}
 
@@ -151,6 +152,7 @@ async def test_attribute_schema_hashable():
     assert isinstance(schema, Hashable)
     assert hash(schema)
 
+
 async def test_relationship_schema_hashable():
     SCHEMA = {"name": "first", "peer": "Criticality", "identifier": "cardinality__peer", "cardinality": "one"}
 
@@ -158,6 +160,7 @@ async def test_relationship_schema_hashable():
 
     assert isinstance(schema, Hashable)
     assert hash(schema)
+
 
 async def test_node_schema_generate_fields_for_display_label():
     SCHEMA = {
