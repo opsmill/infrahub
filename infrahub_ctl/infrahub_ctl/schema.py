@@ -48,6 +48,8 @@ async def _load(schema: Path, log: logging.Logger):  # pylint: disable=unused-ar
         for error in errors.get("detail"):
             loc_str = [str(item) for item in error["loc"][1:]]
             console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
+    else:
+        console.print("[green]Schema loaded successfully!")
 
 
 @app.command()

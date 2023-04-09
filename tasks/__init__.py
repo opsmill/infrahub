@@ -39,7 +39,7 @@ def generate_schema_doc(context: Context):
 
     from infrahub.core.schema import internal_schema
 
-    schemas_to_generate = ["10_node", "20_attribute", "30_relationship"]
+    schemas_to_generate = ["10_node", "20_attribute", "30_relationship", "40_generic"]
     here = os.path.abspath(os.path.dirname(__file__))
 
     for schema_name in schemas_to_generate:
