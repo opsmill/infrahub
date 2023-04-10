@@ -62,7 +62,12 @@ async def load_schema(
 ):
     branch = await get_branch(session=session, branch=branch)
 
-    schema.extend_nodes_with_interfaces()
+    branch_schema = registry.schema.get_branch(name=branch.name)
+    tmp_schema = branch_schema.copy()
+    tmp_schema.load(schema)
+    tmp_schema.process()
+    tmp_schema.diff(branch_schema)
+
     await SchemaManager.register_schema_to_registry(schema)
     await SchemaManager.load_schema_to_db(schema, session=session)
 

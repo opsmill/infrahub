@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import Dict, Optional, TYPE_CHECKING, Union
+
 
 import infrahub.config as config
 from infrahub.exceptions import BranchNotFound, DataTypeNotFound
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
+    from infrahub.core.manager import SchemaManager
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
     from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
@@ -92,7 +94,7 @@ class Registry:
     attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
     branch: dict = field(default_factory=dict)
     node: dict = field(default_factory=dict)
-    schema: dict = field(default_factory=lambda: defaultdict(dict))
+    schema: Optional[SchemaManager] = None
     default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     data_type: Dict[str, InfrahubDataType] = field(default_factory=dict)
@@ -143,16 +145,16 @@ class Registry:
 
     def set_schema(
         self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema], branch: Optional[str] = None
-    ) -> bool:
-        return self.set_item(kind="schema", name=name, item=schema, branch=branch)
+    ) -> int:
+        return self.schema.set(name=name, schema=schema, branch=branch)
 
     def has_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
-        return self.has_item(kind="schema", name=name, branch=branch)
+        return self.schema.has(name=name, branch=branch)
 
     def get_schema(
         self, name: str, branch: Optional[Union[Branch, str]] = None
     ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
-        return self.get_item(kind="schema", name=name, branch=branch)
+        return self.schema.get(name=name, branch=branch)
 
     def get_data_type(
         self,
@@ -165,10 +167,8 @@ class Registry:
     def get_full_schema(
         self, branch: Optional[Union[Branch, str]] = None
     ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
-        """Return all the nodes in the schema for a given branch.
-
-        The current implementation is a bit simplistic, will need to re-evaluate."""
-        return self.get_all_item(kind="schema", branch=branch)
+        """Return all the nodes in the schema for a given branch."""
+        self.schema.get_full(branch=branch)
 
     def set_graphql_type(self, name: str, graphql_type: InfrahubObject, branch: Optional[str] = None) -> bool:
         return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
@@ -186,7 +186,7 @@ class Registry:
     def delete_all(self):
         self.branch = {}
         self.node = {}
-        self.schema = defaultdict(dict)
+        self.schema = None
         self.graphql_type = defaultdict(dict)
         self.account = {}
         self.account_id = {}

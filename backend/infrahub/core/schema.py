@@ -98,6 +98,7 @@ class FilterSchema(BaseSchemaModel):
 
 
 class AttributeSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     kind: str
     label: Optional[str]
@@ -111,6 +112,8 @@ class AttributeSchema(BaseSchemaModel):
     unique: bool = False
     branch: bool = True
     optional: bool = False
+
+    _exclude_from_hash: List[str] = ["id"]
 
     @validator("kind")
     def kind_options(
@@ -129,6 +132,7 @@ class AttributeSchema(BaseSchemaModel):
 
 
 class RelationshipSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
@@ -141,7 +145,7 @@ class RelationshipSchema(BaseSchemaModel):
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
 
-    _exclude_from_hash: List[str] = ["filters"]
+    _exclude_from_hash: List[str] = ["id", "filters"]
 
     def get_class(self):
         return Relationship
@@ -244,6 +248,7 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     kind: str
     description: Optional[str]
@@ -252,7 +257,7 @@ class BaseNodeSchema(BaseSchemaModel):
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    _exclude_from_hash = ["attributes", "relationships", "filters"]
+    _exclude_from_hash = ["id", "attributes", "relationships", "filters"]
 
     def __hash__(self):
         """Extend the Hash Calculation to account for attributes and relationships."""
@@ -403,20 +408,38 @@ class NodeSchema(BaseNodeSchema):
 
         return values
 
-    def extend_with_interface(self, interface: GenericSchema) -> NodeSchema:
-        existing_node_names = self.valid_input_names
+    def duplicate(self):
+        return self.__class__(**self.dict())
+
+    def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
+        existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
+        existing_inherited_relationships = {
+            item.name: idx for idx, item in enumerate(self.relationships) if item.inherited
+        }
+        existing_inherited_fields = list(existing_inherited_attributes.keys()) + list(
+            existing_inherited_relationships.keys()
+        )
 
         for item in interface.attributes + interface.relationships:
-            if item.name in existing_node_names:
+            if item.name in self.valid_input_names:
                 continue
 
             new_item = copy.deepcopy(item)
             new_item.inherited = True
 
-            if isinstance(item, AttributeSchema):
+            if isinstance(item, AttributeSchema) and item.name not in existing_inherited_fields:
                 self.attributes.append(new_item)
-            elif isinstance(item, RelationshipSchema):
+            elif isinstance(item, AttributeSchema) and item.name in existing_inherited_fields:
+                item_idx = existing_inherited_attributes[item.name]
+                self.attributes[item_idx] = new_item
+            elif isinstance(item, RelationshipSchema) and item.name not in existing_inherited_fields:
                 self.relationships.append(new_item)
+            elif isinstance(item, RelationshipSchema) and item.name in existing_inherited_fields:
+                item_idx = existing_inherited_relationships[item.name]
+                self.relationships[item_idx] = new_item
+
+    def extend_with_interface(self, interface: GenericSchema) -> NodeSchema:
+        return self.inherit_from_interface(interface=interface)
 
 
 class GroupSchema(BaseSchemaModel):

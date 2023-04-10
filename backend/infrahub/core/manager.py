@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+import copy
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from infrahub.core import get_branch, registry
+from deepdiff import DeepDiff
+
+import infrahub.config as config
+from infrahub.core import get_branch, get_branch_from_registry, registry
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeGetListQuery,
@@ -17,7 +21,6 @@ from infrahub.core.schema import (
     FilterSchemaKind,
     GenericSchema,
     GroupSchema,
-    NodeExtensionSchema,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
@@ -259,31 +262,112 @@ class NodeManager:
         return nodes
 
 
-class SchemaManager(NodeManager):
-    @classmethod
-    async def register_schema_to_registry(cls, schema: SchemaRoot, branch: str = None):
-        """Register all nodes & generics from a SchemaRoot object into the registry."""
-        for item in schema.generics + schema.nodes + schema.groups:
-            registry.set_schema(name=item.kind, schema=item, branch=branch)
+class SchemaRegistryBranch:
+    def __init__(self, cache: Dict, name: Optional[str] = None, data: Optional[Dict[str, int]] = None):
+        self._cache: Dict[int, Union[NodeSchema, GenericSchema]] = cache
+        self.name: str = name
+        self.nodes: Dict[str, int] = {}
+        self.generics: Dict[str, int] = {}
+
+        if data:
+            self.nodes = data.get("nodes", {})
+        if data:
+            self.generics = data.get("generics", {})
+
+    def __hash__(self):
+        return hash(tuple(self.nodes.items()) + tuple(self.generics.items()))
+
+    def to_dict(self):
+        # TODO need to implement a flag to return the real objects if needed
+        return {"nodes": self.nodes, "generics": self.generics}
+
+    def diff(self, obj: SchemaRegistryBranch):
+        return DeepDiff(self.to_dict(), obj.to_dict(), ignore_order=True)
+
+    def copy(self, name: Optional[str] = None):
+        return self.__class__(name=name, data=copy.copy(self.to_dict()), cache=self._cache)
+
+    def set(self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema]) -> int:
+        schema_hash = hash(schema)
+        if schema_hash not in self._cache:
+            self._cache[schema_hash] = schema
+
+        if "Node" in schema.__class__.__name__:
+            self.nodes[name] = schema_hash
+        elif "Generic" in schema.__class__.__name__:
+            self.generics[name] = schema_hash
+
+        return schema_hash
+
+    def get(self, name: str):
+        key = None
+        if name in self.nodes:
+            key = self.nodes[name]
+        elif name in self.generics:
+            key = self.generics[name]
+
+        if key:
+            return self._cache[key]
+
+        raise ValueError(f"Unable to find the schema '{name}' for the branch {self.name} in the registry")
+
+    def get_all(self):
+        return {name: self._cache[cache_key] for name, cache_key in self._data.items()}
+
+    def load(self, schema: SchemaRoot):
+        for item in schema.nodes + schema.generics:
+            self.set(name=item.kind, schema=item)
+
+        for node_extension in schema.extensions.nodes:
+            node = self.get(name=node_extension.kind)
+
+            for item in node_extension.attributes:
+                node.attributes.append(item)
+            for item in node_extension.relationships:
+                node.relationships.append(item)
 
         return True
 
-    @classmethod
-    async def load_schema_to_db(cls, schema: SchemaRoot, session: AsyncSession, branch: Union[str, Branch] = None):
-        """Load all nodes, generics and groups from a SchemaRoot object into the database."""
+    def process(self):
+        self.calculate_inheritance()
 
-        branch = await get_branch(branch=branch, session=session)
+        # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
+        for node_name in self.nodes:
+            node_schema = self.get(name=node_name)
+            new_node = node_schema.duplicate()
+            new_node.filters = self.generate_filters(schema=new_node, top_level=True, include_relationships=True)
 
-        for item in schema.generics + schema.nodes + schema.groups:
-            await cls.load_node_to_db(node=item, branch=branch, session=session)
+            for rel in new_node.relationships:
+                peer_schema = self.get(name=rel.peer)
+                if not peer_schema:
+                    continue
 
-        for item in schema.extensions.nodes:
-            await cls.load_extension_to_db(node=item, branch=branch, session=session)
+                rel.filters = self.generate_filters(schema=peer_schema, top_level=False, include_relationships=False)
+            self.set(name=node_name, schema=new_node)
 
-        return True
+    def calculate_inheritance(self) -> None:
+        """Extend all the nodes with the attributes and relationships
+        from the Interface objects defined in inherited_from.
+        """
+
+        # For all node_schema, add the attributes & relationships from the generic / interface
+        for name, node_hash in self.nodes.items():
+            node = self._cache[node_hash]
+            if not node.inherit_from:
+                continue
+
+            new_node = node.duplicate()
+            for generic_kind in node.inherit_from:
+                if generic_kind not in self.generics.keys():
+                    # TODO add a proper exception for all schema related issue
+                    raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
+
+                new_node.inherit_from_interface(interface=self.get(name=generic_kind))
+
+            self.set(name=name, schema=new_node)
 
     @staticmethod
-    async def generate_filters(
+    def generate_filters(
         schema: NodeSchema, top_level: bool = False, include_relationships: bool = False
     ) -> List[FilterSchema]:
         """Generate the FilterSchema for a given NodeSchema object."""
@@ -320,6 +404,89 @@ class SchemaManager(NodeManager):
 
         return filters
 
+
+class SchemaManager(NodeManager):
+    def __init__(self):
+        self._cache: Dict[int, Any] = {}
+        self._branches: Dict[str, SchemaRegistryBranch] = {}
+
+    def _get_from_cache(self, key):
+        return self._cache[key]
+
+    def set(
+        self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema], branch: Optional[str] = None
+    ) -> int:
+        branch = branch or config.SETTINGS.main.default_branch
+
+        if branch not in self._branches:
+            self._branches[branch] = SchemaRegistryBranch(cache=self._cache, name=branch)
+
+        return self._branches[branch].set(name=name, schema=schema)
+
+    def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
+        try:
+            self.get(name=name, branch=branch)
+            return True
+        except ValueError:
+            return False
+
+    def get(
+        self, name: str, branch: Optional[Union[Branch, str]] = None
+    ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
+        # For now we assume that all branches are present, will see how we need to pull new branches later.
+        branch = get_branch_from_registry(branch=branch)
+
+        if branch.name in self._branches:
+            try:
+                return self._branches[branch.name].get(name=name)
+            except ValueError:
+                pass
+
+        default_branch = config.SETTINGS.main.default_branch
+        return self._branches[default_branch].get(name=name)
+
+    def get_full(
+        self, branch: Optional[Union[Branch, str]] = None
+    ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+        branch = get_branch_from_registry(branch=branch)
+
+        branch_name = None
+        if branch.name in self._branches:
+            branch_name = branch.name
+        else:
+            branch_name = config.SETTINGS.main.default_branch
+
+        return self._branches[branch_name].get_all()
+
+    def get_schema_branch(self, name: str) -> SchemaRegistryBranch:
+        if name in self._branches:
+            return self._branches[name]
+
+        self._branches[name] = SchemaRegistryBranch(cache=self._cache, name=name)
+        return self._branches[name]
+
+    async def register_schema(self, schema: SchemaRoot, branch: str = None):
+        """Register all nodes & generics from a SchemaRoot object into the registry."""
+
+        schema_branch = self.get_schema_branch(name=branch)
+        schema_branch.load(schema=schema)
+        schema_branch.process()
+
+        return schema_branch
+
+    async def load_schema_to_db(
+        self, schema: SchemaRegistryBranch, session: AsyncSession, branch: Union[str, Branch] = None
+    ):
+        """Load all nodes, generics and groups from a SchemaRoot object into the database."""
+
+        branch = await get_branch(branch=branch, session=session)
+
+        for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()):
+            item = schema.get(name=item_kind)
+            await self.load_node_to_db(node=item, branch=branch, session=session)
+
+        return True
+
     @classmethod
     async def load_node_to_db(
         cls,
@@ -327,7 +494,10 @@ class SchemaManager(NodeManager):
         node: Union[NodeSchema, GenericSchema, GroupSchema],
         branch: Union[str, Branch] = None,
     ) -> None:
-        """Load a Node with its attributes and its relationships to the database."""
+        """Load a Node with its attributes and its relationships to the database.
+
+        FIXME Currently this function only support adding new node, we need to update it to update existing nodes as well.
+        """
         branch = await get_branch(branch=branch, session=session)
 
         node_type = node.__class__.__name__
@@ -340,7 +510,7 @@ class SchemaManager(NodeManager):
         relationship_schema = registry.get_schema(name="RelationshipSchema", branch=branch)
 
         # Create the node first
-        schema_dict = node.dict(exclude={"filters", "relationships", "attributes"})
+        schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
         obj = await Node.init(schema=node_schema, branch=branch, session=session)
         await obj.new(**schema_dict, session=session)
         await obj.save(session=session)
@@ -349,80 +519,47 @@ class SchemaManager(NodeManager):
         if isinstance(node, (NodeSchema, GenericSchema)):
             for item in node.local_attributes:
                 attr = await Node.init(schema=attribute_schema, branch=branch, session=session)
-                await attr.new(**item.dict(exclude={"filters"}), node=obj, session=session)
+                await attr.new(**item.dict(exclude={"id", "filters"}), node=obj, session=session)
                 await attr.save(session=session)
 
             for item in node.local_relationships:
                 rel = await Node.init(schema=relationship_schema, branch=branch, session=session)
-                await rel.new(**item.dict(exclude={"filters"}), node=obj, session=session)
+                await rel.new(**item.dict(exclude={"id", "filters"}), node=obj, session=session)
                 await rel.save(session=session)
 
-    @classmethod
-    async def load_extension_to_db(
-        cls,
-        session: AsyncSession,
-        node: NodeExtensionSchema,
-        branch: Union[str, Branch] = None,
-    ) -> None:
-        """Load an Extension with its attributes and its relationships to the database."""
-        branch = await get_branch(branch=branch, session=session)
-
-        # First, find the node and check if inherit_from and groups includes the information from the extension
-        objs = await NodeManager.query(schema="NodeSchema", filters={"kind__value": node.kind}, session=session)
-        if not objs:
-            return None
-
-        obj = objs[0]
-
-        # Create the Attributes and the relationships
-        for item in node.attributes:
-            attr = await Node.init(schema="AttributeSchema", branch=branch, session=session)
-            await attr.new(**item.dict(exclude={"filters"}), node=obj, session=session)
-            await attr.save(session=session)
-
-        for item in node.relationships:
-            rel = await Node.init(schema="RelationshipSchema", branch=branch, session=session)
-            await rel.new(**item.dict(exclude={"filters"}), node=obj, session=session)
-            await rel.save(session=session)
-
-    @classmethod
     async def load_schema_from_db(
-        cls,
+        self,
         session: AsyncSession,
         branch: Union[str, Branch] = None,
-    ) -> SchemaRoot:
-        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type."""
+    ) -> SchemaRegistryBranch:
+        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type.
+
+        FIXME This implementation is inefficient because we are querying the relationships for each ndoe independantly.
+        It would be much faster to query all AttributeSchema and all RelationshipSchema at once."""
 
         branch = await get_branch(branch=branch, session=session)
+        schema = SchemaRegistryBranch(cache=self._cache, name=branch.name)
 
-        schema = SchemaRoot()
+        # group_schema = self.get(name="GroupSchema", branch=branch)
+        # for schema_node in await self.query(schema=group_schema, branch=branch, session=session):
+        #     schema.set(name=schema_node.kind.value, schema=await self.convert_group_schema_to_schema(schema_node=schema_node))
 
-        group_schema = registry.get_schema(name="GroupSchema", branch=branch)
-        for schema_node in await cls.query(schema=group_schema, branch=branch, session=session):
-            schema.groups.append(await cls.convert_group_schema_to_schema(schema_node=schema_node))
+        generic_schema = registry.get(name="GenericSchema", branch=branch)
+        for schema_node in await self.query(schema=generic_schema, branch=branch, session=session):
+            schema.set(
+                name=schema_node.kind.value,
+                schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, session=session),
+            )
 
-        generic_schema = registry.get_schema(name="GenericSchema", branch=branch)
-        for schema_node in await cls.query(schema=generic_schema, branch=branch, session=session):
-            schema.generics.append(await cls.convert_generic_schema_to_schema(schema_node=schema_node, session=session))
+        node_schema = registry.get(name="NodeSchema", branch=branch)
+        for schema_node in await self.query(schema=node_schema, branch=branch, session=session):
+            schema.set(
+                name=schema_node.kind.value,
+                schema=await self.convert_node_schema_to_schema(schema_node=schema_node, session=session),
+            )
 
-        node_schema = registry.get_schema(name="NodeSchema", branch=branch)
-        for schema_node in await cls.query(schema=node_schema, branch=branch, session=session):
-            schema.nodes.append(await cls.convert_node_schema_to_schema(schema_node=schema_node, session=session))
-
-        schema.extend_nodes_with_interfaces()
-
-        # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
-        for node in schema.nodes:
-            node.filters = await SchemaManager.generate_filters(schema=node, top_level=True, include_relationships=True)
-
-            for rel in node.relationships:
-                peer_schema = [node for node in schema.nodes if node.kind == rel.peer]
-                if not peer_schema:
-                    continue
-
-                rel.filters = await SchemaManager.generate_filters(
-                    schema=peer_schema[0], top_level=False, include_relationships=False
-                )
+        schema.process()
+        self._branches[branch.name] = schema
 
         return schema
 
@@ -430,7 +567,7 @@ class SchemaManager(NodeManager):
     async def convert_node_schema_to_schema(schema_node: Node, session: AsyncSession) -> NodeSchema:
         """Convert a schema_node object loaded from the database into NodeSchema object."""
 
-        node_data = {}
+        node_data = {"id": schema_node.id}
 
         # First pull all the local attributes at the top level, then convert all the local relationships
         #  for a standard node_schema, the relationships will be attributes and relationships
@@ -456,7 +593,7 @@ class SchemaManager(NodeManager):
     async def convert_generic_schema_to_schema(schema_node: Node, session: AsyncSession) -> GenericSchema:
         """Convert a schema_node object loaded from the database into GenericSchema object."""
 
-        node_data = {}
+        node_data = {"id": schema_node.id}
 
         # First pull all the attributes at the top level, then convert all the relationships
         #  for a standard node_schema, the relationships will be attributes and relationships
@@ -482,24 +619,11 @@ class SchemaManager(NodeManager):
     async def convert_group_schema_to_schema(schema_node: Node) -> GroupSchema:
         """Convert a schema_node object loaded from the database into GroupSchema object."""
 
-        node_data = {}
+        node_data = {"id": schema_node.id}
 
         # First pull all the attributes at the top level, then convert all the relationships
         #  for a standard node_schema, the relationships will be attributes and relationships
         for attr_name in schema_node._attributes:
             node_data[attr_name] = getattr(schema_node, attr_name).value
-
-        # for rel_name in schema_node._relationships:
-
-        #     if rel_name not in node_data:
-        #         node_data[rel_name] = []
-
-        #     for rel in getattr(schema_node, rel_name):
-        #         item_data = {}
-        #         item = await rel.get_peer(session=session)
-        #         for item_name in item._attributes:
-        #             item_data[item_name] = getattr(item, item_name).value
-
-        #         node_data[rel_name].append(item_data)
 
         return GroupSchema(**node_data)
