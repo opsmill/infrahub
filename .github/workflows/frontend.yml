@@ -1,0 +1,41 @@
+---
+# yamllint disable rule:truthy
+name: "Frontend"
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+
+env:
+  NEO4J_USERNAME: neo4j
+  NEO4J_PASSWORD: admin
+  NEO4J_ADDRESS: localhost
+  NEO4J_PORT: 7687
+  NEO4J_PROTOCOL: neo4j
+
+jobs:
+  frontend-tests:
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v2"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.3.2 toml invoke"
+      - name: "Setup Git"
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
+      - name: "Setup Docker-Compose"
+        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      - name: "Start backend"
+        run: "invoke demo.build demo.init demo.start"
+      - name: "Install frontend"
+        working-directory: ./frontend
+        run: npm i
+      - name: "Run integration tests"
+        working-directory: ./frontend
+        run: "npm run cypress:run"
+      - name: "Run unit tests"
+        working-directory: ./frontend
+        run: "npm run test"

@@ -1,7 +1,12 @@
 import { gql } from "graphql-request";
-import { graphQLClient } from "../../..";
+import { graphQLClient } from "../../graphqlClient";
+import { Branch } from "../../../generated/graphql";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
+
+type BranchResult = {
+  branch: Branch[]
+}
 
 // const template = Handlebars.compile(`query {
 //     branch (id: "{{objectid}}") {
@@ -40,8 +45,7 @@ const getBranchDetails = async (id: string) => {
     ${queryString}
   `;
 
-  const data = await graphQLClient.request(query);
-  console.log("data: ", data);
+  const data: BranchResult = await graphQLClient.request(query);
 
   const currentBranch = data?.branch?.filter((branch: any) => branch.id === id)[0];
 

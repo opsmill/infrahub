@@ -1,26 +1,18 @@
-import { GraphQLClient } from "graphql-request";
 import queryString from "query-string";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
-import App from "./App";
-import { CONFIG } from "./config/config";
-import "./index.css";
 import reportWebVitals from "./reportWebVitals";
+import App from "./App";
 
 const root = ReactDOM.createRoot(
-  document.getElementById("root") as HTMLElement
+  (
+    document.getElementById("root")
+    || document.createElement("div")
+  ) as HTMLElement
 );
-
-// Checking if there's a branch specified in the URL QSP
-// If it's present, use that instead of "main"
-// Need to do the same for date
-const params = new URL(window.location.toString()).searchParams;
-const branchInQsp = params.get(CONFIG.QSP_BRANCH);
-const dateInQsp = params.get(CONFIG.QSP_DATETIME);
-export const graphQLClient = new GraphQLClient(CONFIG.GRAPHQL_URL(branchInQsp ? branchInQsp : "main", dateInQsp ? new Date(dateInQsp) : undefined));
 
 root.render(
   <React.StrictMode>
