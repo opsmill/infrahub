@@ -1,6 +1,6 @@
 import { gql } from "graphql-request";
-import { graphQLClient } from "../graphql/graphqlClient";
-import { iNodeSchema } from "../state/atoms/schema.atom";
+import { graphQLClient } from "../../graphqlClient";
+import { iNodeSchema } from "../../../state/atoms/schema.atom";
 
 declare const Handlebars: any;
 
@@ -50,10 +50,15 @@ const template = Handlebars.compile(`query {{kind.value}} {
 `);
 
 const getObjectDetails = async (schema: iNodeSchema, id: string) => {
+  // Get only a specific set of relationshisp (attribute ones)
+  const relationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute");
+
   const queryString = template({
     ...schema,
+    relationships,
     objectid: id,
   });
+  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;

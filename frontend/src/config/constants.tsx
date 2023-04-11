@@ -58,3 +58,9 @@ export const BRANCHES_MENU_ITEMS = [
     label: "List"
   }
 ];
+
+export const QSP = {
+  BRANCH: "branch",
+  DATETIME: "at",
+  TAB: "tab",
+};

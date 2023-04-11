@@ -40,6 +40,7 @@ export default function FilterCombobox(props: Props) {
       if (schema && !filter.enum) {
         setHasError(false);
         setIsLoading(true);
+        // TODO: Extract GQL function in the graphql/ fodler
         const queryString = template(schema);
         const query = gql`
         ${queryString}

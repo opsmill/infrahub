@@ -18,6 +18,7 @@ import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
 import { graphQLClient } from "../../graphql/graphqlClient";
+import { QSP } from "../../config/constants";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -25,7 +26,7 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
-  const [qspDate, setQspDate] = useQueryParam(CONFIG.QSP_DATETIME, StringParam);
+  const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const [isDateDefault, setIsDateDefault] = useState(qspDate ? false : true);
   const { setSidebarOpen } = props;
 
