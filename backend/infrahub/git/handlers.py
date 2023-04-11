@@ -12,17 +12,55 @@ from infrahub.exceptions import (
 from infrahub.git.repository import InfrahubRepository
 from infrahub.lock import registry as lock_registry
 from infrahub.message_bus.events import (
+    CheckMessageAction,
     GitMessageAction,
     InfrahubCheckRPC,
     InfrahubGitRPC,
+    InfrahubRPC,
     InfrahubRPCResponse,
     InfrahubTransformRPC,
+    MessageType,
     RPCStatusCode,
     TransformMessageAction,
 )
 from infrahub_client import InfrahubClient
 
 LOGGER = logging.getLogger("infrahub.git")
+
+
+async def handle_bad_request(  # pylint: disable=unused-argument
+    message: InfrahubGitRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
+
+
+async def handle_not_found(  # pylint: disable=unused-argument
+    message: InfrahubGitRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+
+
+async def handle_transform_message_action_python(
+    message: InfrahubGitRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+
+    try:
+        check = await repo.execute_python_check(
+            branch_name=message.branch_name,
+            commit=message.commit,
+            location=message.check_location,
+            class_name=message.check_name,
+            client=client,
+        )
+
+        return InfrahubRPCResponse(
+            status=RPCStatusCode.OK.value,
+            response={"passed": check.passed, "logs": check.logs, "errors": check.errors},
+        )
+
+    except (CheckError, FileNotFound) as exc:
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
 
 async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
@@ -131,25 +169,14 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
     LOGGER.debug(
         f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
     )
+    handler_map = {
+        CheckMessageAction.PYTHON.value: handle_transform_message_action_python,
+    }
+    handler = handler_map.get(message.action) or handle_bad_request
+    return await handler(message=message, client=client)
 
-    if message.action == TransformMessageAction.PYTHON.value:
-        repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
-        try:
-            check = await repo.execute_python_check(
-                branch_name=message.branch_name,
-                commit=message.commit,
-                location=message.check_location,
-                class_name=message.check_name,
-                client=client,
-            )
-
-            return InfrahubRPCResponse(
-                status=RPCStatusCode.OK.value,
-                response={"passed": check.passed, "logs": check.logs, "errors": check.errors},
-            )
-
-        except (CheckError, FileNotFound) as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
-
-    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
+async def handle_message(message: InfrahubRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+    message_type_map = {MessageType.CHECK: handle_git_check_message}
+    handler = message_type_map.get(message.type) or handle_not_found
+    return await handler(message=message, client=client)

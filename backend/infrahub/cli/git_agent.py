@@ -12,9 +12,9 @@ import infrahub.config as config
 from infrahub.exceptions import RepositoryError
 from infrahub.git import (
     InfrahubRepository,
-    handle_git_check_message,
     handle_git_rpc_message,
     handle_git_transform_message,
+    handle_message,
     initialize_repositories_directory,
 )
 from infrahub.lock import registry as lock_registry
@@ -73,11 +73,8 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                         elif rpc.type == MessageType.TRANSFORMATION:
                             response = await handle_git_transform_message(message=rpc, client=client)
 
-                        elif rpc.type == MessageType.CHECK:
-                            response = await handle_git_check_message(message=rpc, client=client)
-
                         else:
-                            response = InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+                            response = await handle_message(message=rpc, client=client)
 
                         log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
                     except Exception as exc:  # pylint: disable=broad-except
