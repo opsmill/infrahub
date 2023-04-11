@@ -21,9 +21,6 @@ from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub_client.timestamp import Timestamp
 
 
-
-
-
 async def test_branch_name_validator(session):
     assert Branch(name="new-branch")
     assert Branch(name="cr1234")

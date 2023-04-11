@@ -245,11 +245,12 @@ def node_panel_generator(nodes: List[Dict]):
             lines.append(property_string)
 
         for rel in node["relationships"]:
-            rel_header = "{:10}{:10}  {:<20} Node {:>20} {:>20}".format(
+            rel_header = "{:10}{:10}  {:<20} Node {:>20}{:>20} {:>20}".format(
                 "",
                 render_action_rich(attr["action"]),
                 rel["name"],
                 rel["peer"]["kind"],
+                rel["peer"]["display_label"],
                 rel["peer"]["id"],
             )
 
@@ -269,7 +270,9 @@ def node_panel_generator(nodes: List[Dict]):
 
             lines.append(property_string)
 
-        yield Panel("\n".join(lines), title=f"Node {node['kind']} '{node['id']}'", title_align="left")
+        yield Panel(
+            "\n".join(lines), title=f"Node {node['kind']} {node['display_label']} ({node['id']})", title_align="left"
+        )
 
 
 async def _diff(branch_name: str, time_from: Union[str, datetime], time_to: Union[str, datetime], branch_only: bool):

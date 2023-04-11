@@ -81,11 +81,11 @@ class BranchDiffRepository(BaseModel):
 
 
 async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: str, session: AsyncSession):
-    branch = get_branch(branch=branch_name, session=session)
+    """Return the display_labels of a list of nodes of specific kind."""
+    branch = await get_branch(branch=branch_name, session=session)
     schema = registry.get_schema(name=kind, branch=branch)
     fields = schema.generate_fields_for_display_label()
     nodes = await NodeManager.get_many(ids=ids, fields=fields, session=session, branch=branch)
-
     return {node_id: await node.render_display_label(session=session) for node_id, node in nodes.items()}
 
 
@@ -159,8 +159,6 @@ async def get_diff_data(
                 node_ids[branch_name][item.kind].append(item.id)
 
     display_labels = await get_display_labels(nodes=node_ids, session=session)
-
-    breakpoint()
 
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
     for branch_name, items in nodes.items():
