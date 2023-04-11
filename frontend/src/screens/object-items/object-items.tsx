@@ -5,7 +5,6 @@ import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-import { graphQLClient } from "../..";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -16,8 +15,9 @@ import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import { graphQLClient } from "../../graphql/graphqlClient";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind}} {
         {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
@@ -99,7 +99,7 @@ export default function ObjectItems() {
             ${queryString}
             `;
 
-            const data = await graphQLClient.request(query);
+            const data: any = await graphQLClient.request(query);
             const rows = data[schema.name];
             setObjectRows(rows);
             setIsLoading(false);

@@ -1,8 +1,8 @@
 import { gql } from "graphql-request";
-import { graphQLClient } from "..";
+import { graphQLClient } from "../graphql/graphqlClient";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind.value}} {
     {{name}} (ids: ["{{objectid}}"]) {
@@ -57,7 +57,7 @@ const getObjectDetails = async (schema: iNodeSchema, id: string) => {
   const query = gql`
     ${queryString}
   `;
-  const data = await graphQLClient.request(query);
+  const data: any = await graphQLClient.request(query);
   const rows = data[schema.name];
   if (rows.length) {
     return rows[0];
