@@ -58,12 +58,15 @@ const getObjectDetails = async (schema: iNodeSchema, id: string) => {
     relationships,
     objectid: id,
   });
-  console.log("queryString: ", queryString);
+
   const query = gql`
     ${queryString}
   `;
+
   const data: any = await graphQLClient.request(query);
+
   const rows = data[schema.name];
+
   if (rows.length) {
     return rows[0];
   } else {

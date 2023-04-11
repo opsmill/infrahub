@@ -10,7 +10,6 @@ import { QSP } from "../../config/constants";
 import RelationshipDetails from "./relationship-details";
 
 export default function RelationshipsDetails() {
-
   const { objectname, objectid } = useParams();
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
 

@@ -11,7 +11,7 @@ type iRelationDetailsProps = {
 
 const getObjectDetailsUrl = (relationshipsData: {__typename: string}, schemaKindName: iSchemaKindNameMap, relatedNodeId: string) :string => {
   const regex = /^Related/; // starts with Related
-  const peerKind: string = relationshipsData.__typename.replace(regex, "");
+  const peerKind: string = relationshipsData?.__typename?.replace(regex, "");
   const peerName = schemaKindName[peerKind];
   const url = `/objects/${peerName}/${relatedNodeId}`;
   return url;

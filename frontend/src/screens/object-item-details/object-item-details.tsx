@@ -35,7 +35,8 @@ export default function ObjectItemDetails() {
   const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const relationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute") ?? [];
+  const atttributeRelationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute") ?? [];
+  const otherRelationships = schema?.relationships?.filter((relationship) => relationship.kind !== "Attribute") ?? [];
 
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -106,11 +107,7 @@ export default function ObjectItemDetails() {
                 {schema.label}
               </div>
               {
-                schema
-                .relationships
-                ?.filter(
-                  (relationship) => relationship.kind !== "Attribute"
-                )
+                otherRelationships
                 .map(
                   (relationship) => (
                     <div
@@ -131,6 +128,7 @@ export default function ObjectItemDetails() {
             </nav>
           </div>
         </div>
+
         <Button onClick={navigateToObjectEditPage} className="mr-4">
           Edit
           <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
@@ -224,7 +222,7 @@ export default function ObjectItemDetails() {
                 )}
 
               {
-                relationships
+                atttributeRelationships
                 ?.map(
                   (relationshipSchema: any) => <RelationshipDetails key={relationshipSchema.name} relationshipsData={objectDetails[relationshipSchema.name]} relationshipSchema={relationshipSchema} />
                 )
