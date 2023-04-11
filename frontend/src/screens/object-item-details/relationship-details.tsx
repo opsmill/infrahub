@@ -29,17 +29,17 @@ export  default function RelationshipDetails(props: iRelationDetailsProps) {
   return <>
     <div
       className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
-      key={relationshipSchema.name}
+      key={relationshipSchema?.name}
     >
       <dt className="text-sm font-medium text-gray-500">
-        {relationshipSchema.label}
+        {relationshipSchema?.label}
       </dt>
       {
         relationshipsData
         && (
           <>
             {
-              relationshipSchema.cardinality === "one"
+              relationshipSchema?.cardinality === "one"
               && (
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                   <Link
@@ -96,7 +96,7 @@ export  default function RelationshipDetails(props: iRelationDetailsProps) {
             }
 
             {
-              relationshipSchema.cardinality === "many"
+              relationshipSchema?.cardinality === "many"
               && (
                 <div className="sm:col-span-2 space-y-4">
                   {
