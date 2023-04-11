@@ -12,7 +12,7 @@ tasks:
   - name: CLI
     before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
     init: |
-      pyenv install 3.10
+      pyenv install 3.10 --skip-existing
       pyenv local 3.10
       pip install toml invoke
       curl -sSL https://install.python-poetry.org | python3 -
