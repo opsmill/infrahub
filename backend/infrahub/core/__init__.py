@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, Optional, TYPE_CHECKING, Union
-
+from typing import TYPE_CHECKING, Dict, Optional, Union
 
 import infrahub.config as config
 from infrahub.exceptions import BranchNotFound, DataTypeNotFound

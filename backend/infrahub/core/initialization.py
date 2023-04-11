@@ -108,28 +108,18 @@ async def first_time_initialization(session: AsyncSession):
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
-
     await create_root_node(session=session)
     default_branch = await create_default_branch(session=session)
 
     # --------------------------------------------------
-    # Load the internal schema in the database
+    # Load the internal and core schema in the database
     # --------------------------------------------------
     registry.schema = SchemaManager()
     schema = SchemaRoot(**internal_schema)
-
     schema_branch = await registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch.load(schema=SchemaRoot(**core_models))
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, session=session)
-    LOGGER.info("Created the internal Schema in the database")
-
-    # --------------------------------------------------
-    # Load the schema for the common models in the database
-    # --------------------------------------------------
-    schema = SchemaRoot(**core_models)
-    schema_branch = await registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, session=session)
-
-    LOGGER.info("Created the core models in the database")
+    LOGGER.info("Created the Schema in the database")
 
     # --------------------------------------------------
     # Create Default Users and Groups

@@ -1096,14 +1096,15 @@ async def init_db(empty_database, session) -> None:
 @pytest.fixture
 async def default_branch(reset_registry, empty_database, session) -> Branch:
     await create_root_node(session=session)
-    return await create_default_branch(session=session)
+    branch = await create_default_branch(session=session)
+    registry.schema = SchemaManager()
+    return branch
 
 
 @pytest.fixture
 async def register_internal_models_schema(default_branch) -> SchemaRoot:
     schema = SchemaRoot(**internal_schema)
-    await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
-
+    await registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
 

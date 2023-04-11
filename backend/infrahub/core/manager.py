@@ -264,18 +264,19 @@ class NodeManager:
 
 class SchemaRegistryBranch:
     def __init__(self, cache: Dict, name: Optional[str] = None, data: Optional[Dict[str, int]] = None):
-        self._cache: Dict[int, Union[NodeSchema, GenericSchema]] = cache
-        self.name: str = name
+        self._cache: Dict[int, Union[NodeSchema, GenericSchema, GroupSchema]] = cache
+        self.name: Optional[str] = name
         self.nodes: Dict[str, int] = {}
         self.generics: Dict[str, int] = {}
+        self.groups: Dict[str, int] = {}
 
         if data:
             self.nodes = data.get("nodes", {})
-        if data:
             self.generics = data.get("generics", {})
+            self.groups = data.get("groups", {})
 
     def __hash__(self):
-        return hash(tuple(self.nodes.items()) + tuple(self.generics.items()))
+        return hash(tuple(self.nodes.items()) + tuple(self.generics.items()) + tuple(self.groups.items()))
 
     def to_dict(self):
         # TODO need to implement a flag to return the real objects if needed
@@ -296,15 +297,20 @@ class SchemaRegistryBranch:
             self.nodes[name] = schema_hash
         elif "Generic" in schema.__class__.__name__:
             self.generics[name] = schema_hash
+        elif "Group" in schema.__class__.__name__:
+            self.groups[name] = schema_hash
 
         return schema_hash
 
-    def get(self, name: str):
+    def get(self, name: str) -> Union[NodeSchema, GenericSchema, GroupSchema]:
+        """Access a specific NodeSchema, GenericSchema or GroupSchema, defined by its kind."""
         key = None
         if name in self.nodes:
             key = self.nodes[name]
         elif name in self.generics:
             key = self.generics[name]
+        elif name in self.groups:
+            key = self.groups[name]
 
         if key:
             return self._cache[key]
@@ -312,10 +318,18 @@ class SchemaRegistryBranch:
         raise ValueError(f"Unable to find the schema '{name}' for the branch {self.name} in the registry")
 
     def get_all(self):
-        return {name: self._cache[cache_key] for name, cache_key in self._data.items()}
+        """Retrive everything in a single dictionary."""
+        return {
+            self._cache[cache_key].kind: self._cache[cache_key]
+            for cache_key in list(self.nodes.values()) + list(self.generics.values()) + list(self.groups.values())
+        }
 
-    def load(self, schema: SchemaRoot):
-        for item in schema.nodes + schema.generics:
+    def load_schema(self, schema: SchemaRoot) -> None:
+        """Load a SchemaRoot object and store all NodeSchema, GenericSchema or GroupSchema.
+
+        In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
+        """
+        for item in schema.nodes + schema.generics + schema.groups:
             self.set(name=item.kind, schema=item)
 
         for node_extension in schema.extensions.nodes:
@@ -326,26 +340,11 @@ class SchemaRegistryBranch:
             for item in node_extension.relationships:
                 node.relationships.append(item)
 
-        return True
+    def process(self) -> None:
+        self.process_inheritance()
+        self.process_filters()
 
-    def process(self):
-        self.calculate_inheritance()
-
-        # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
-        for node_name in self.nodes:
-            node_schema = self.get(name=node_name)
-            new_node = node_schema.duplicate()
-            new_node.filters = self.generate_filters(schema=new_node, top_level=True, include_relationships=True)
-
-            for rel in new_node.relationships:
-                peer_schema = self.get(name=rel.peer)
-                if not peer_schema:
-                    continue
-
-                rel.filters = self.generate_filters(schema=peer_schema, top_level=False, include_relationships=False)
-            self.set(name=node_name, schema=new_node)
-
-    def calculate_inheritance(self) -> None:
+    def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
         from the Interface objects defined in inherited_from.
         """
@@ -365,6 +364,21 @@ class SchemaRegistryBranch:
                 new_node.inherit_from_interface(interface=self.get(name=generic_kind))
 
             self.set(name=name, schema=new_node)
+
+    def process_filters(self) -> Node:
+        # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
+        for node_name in self.nodes:
+            node_schema = self.get(name=node_name)
+            new_node = node_schema.duplicate()
+            new_node.filters = self.generate_filters(schema=new_node, top_level=True, include_relationships=True)
+
+            for rel in new_node.relationships:
+                peer_schema = self.get(name=rel.peer)
+                if not peer_schema:
+                    continue
+
+                rel.filters = self.generate_filters(schema=peer_schema, top_level=False, include_relationships=False)
+            self.set(name=node_name, schema=new_node)
 
     @staticmethod
     def generate_filters(
@@ -468,8 +482,9 @@ class SchemaManager(NodeManager):
     async def register_schema(self, schema: SchemaRoot, branch: str = None):
         """Register all nodes & generics from a SchemaRoot object into the registry."""
 
+        branch = branch or config.SETTINGS.main.default_branch
         schema_branch = self.get_schema_branch(name=branch)
-        schema_branch.load(schema=schema)
+        schema_branch.load_schema(schema=schema)
         schema_branch.process()
 
         return schema_branch
@@ -544,14 +559,14 @@ class SchemaManager(NodeManager):
         # for schema_node in await self.query(schema=group_schema, branch=branch, session=session):
         #     schema.set(name=schema_node.kind.value, schema=await self.convert_group_schema_to_schema(schema_node=schema_node))
 
-        generic_schema = registry.get(name="GenericSchema", branch=branch)
+        generic_schema = self.get(name="GenericSchema", branch=branch)
         for schema_node in await self.query(schema=generic_schema, branch=branch, session=session):
             schema.set(
                 name=schema_node.kind.value,
                 schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, session=session),
             )
 
-        node_schema = registry.get(name="NodeSchema", branch=branch)
+        node_schema = self.get(name="NodeSchema", branch=branch)
         for schema_node in await self.query(schema=node_schema, branch=branch, session=session):
             schema.set(
                 name=schema_node.kind.value,
