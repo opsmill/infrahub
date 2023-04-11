@@ -12,6 +12,7 @@ from infrahub.exceptions import (
 from infrahub.git.repository import InfrahubRepository
 from infrahub.lock import registry as lock_registry
 from infrahub.message_bus.events import (
+    CheckMessageAction,
     GitMessageAction,
     InfrahubCheckRPC,
     InfrahubGitRPC,
@@ -169,7 +170,7 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
         f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
     )
     handler_map = {
-        TransformMessageAction.PYTHON.value: handle_transform_message_action_python,
+        CheckMessageAction.PYTHON.value: handle_transform_message_action_python,
     }
     handler = handler_map.get(message.action) or handle_bad_request
     return await handler(message=message, client=client)
