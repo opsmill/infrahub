@@ -13,17 +13,19 @@ export const DropDownMenuItem = (props: Props) =>  (
     to={props.path}
     onClick={() => props.onClick()}
   >
-    {({ isActive }) => (
-      <div
-        className={classNames(
-          "group flex w-full items-center rounded-md py-2 pl-11 pr-2 text-sm font-medium text-gray-600",
-          isActive
-            ? "bg-gray-300"
-            : "hover:bg-gray-50 hover:text-gray-900"
-        )}
-      >
-        {props.label}
-      </div>
-    )}
+    {({ isActive }) => {
+      return (
+        <div
+          className={classNames(
+            "group flex w-full items-center rounded-md py-2 pl-11 pr-2 text-sm font-medium text-gray-600",
+            isActive
+              ? "bg-gray-300"
+              : "hover:bg-gray-50 hover:text-gray-900"
+          )}
+        >
+          {props.label}
+        </div>
+      );}
+    }
   </NavLink>
 );
