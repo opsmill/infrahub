@@ -7,7 +7,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "./graphql/graphqlClient";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
-import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
+import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES, QSP } from "./config/constants";
 import SentryClient from "./config/sentry";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import Layout from "./screens/layout/layout";
@@ -26,7 +26,7 @@ function App() {
   const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
   const [config, setConfig] = useAtom(configState);
-  const [branchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
+  const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   /**
    * Sentry configuration

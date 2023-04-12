@@ -1,12 +1,13 @@
 import { gql } from "graphql-request";
-import { graphQLClient } from "../graphql/graphqlClient";
-import { iNodeSchema } from "../state/atoms/schema.atom";
+import { graphQLClient } from "../../graphqlClient";
+import { iNodeSchema } from "../../../state/atoms/schema.atom";
 
 declare const Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind.value}} {
     {{name}} (ids: ["{{objectid}}"]) {
         id
+        display_label
         {{#each attributes}}
         {{this.name}} {
             value
@@ -50,15 +51,23 @@ const template = Handlebars.compile(`query {{kind.value}} {
 `);
 
 const getObjectDetails = async (schema: iNodeSchema, id: string) => {
+  // Get only a specific set of relationshisp (attribute ones)
+  const relationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute");
+
   const queryString = template({
     ...schema,
+    relationships,
     objectid: id,
   });
+
   const query = gql`
     ${queryString}
   `;
+
   const data: any = await graphQLClient.request(query);
+
   const rows = data[schema.name];
+
   if (rows.length) {
     return rows[0];
   } else {

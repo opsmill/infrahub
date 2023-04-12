@@ -1,8 +1,6 @@
 export const INFRAHUB_API_SERVER_URL = process.env.REACT_APP_INFRAHUB_API_SERVER_URL || "http://localhost:8000";
 
 export const CONFIG = {
-  QSP_BRANCH: "branch",
-  QSP_DATETIME: "at",
   GRAPHQL_URL: (() => {
     let lastUpdatedBranch = "main";
     let lastUpdatedTime: Date | undefined | null = undefined;
