@@ -50,15 +50,23 @@ jobs:
         run: "poetry run invoke backend.flake8"
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
+      - name: "Await healthy containers"
+        run: "poetry run invoke demo.wait-healthy"
       - name: "Unit Tests"
         run: "poetry run pytest --cov=infrahub backend/tests/unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: backend-unit
+          parallel: true
       - name: "Integration Tests : User Workflows"
         run: "poetry run pytest --cov=infrahub backend/tests/integration/user_workflows/"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: backend-integration
+          parallel: true

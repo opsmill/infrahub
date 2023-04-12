@@ -5,6 +5,8 @@ import infrahub.config as config
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import InfrahubMessage, get_event_exchange
 
+from .query import execute_query
+
 # pylint: disable=
 
 
@@ -25,9 +27,6 @@ class InfrahubBaseSubscription(ObjectType):
         name,
         params=None,
     ):
-        # pylint: disable=import-outside-toplevel
-        from . import execute_query
-
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
         session = info.context.get("infrahub_session")

@@ -1,24 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 import graphene
-from graphql import GraphQLSchema, graphql
+from graphql import GraphQLSchema
 
-from infrahub.core import get_branch, registry
-from infrahub.core.manager import NodeManager
-from infrahub_client.timestamp import Timestamp
+from infrahub.core import registry
 
-from .generator import (
-    generate_mutation_mixin,
-    generate_object_types,
-    generate_query_mixin,
-)
-from .schema import InfrahubBaseMutation, InfrahubBaseQuery
+from .generator import generate_mutation_mixin, generate_object_types
+from .query import get_gql_query
+from .schema import InfrahubBaseMutation
 from .subscription import InfrahubBaseSubscription
 
 if TYPE_CHECKING:
-    from graphql.execution import ExecutionResult
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
@@ -49,15 +43,6 @@ async def generate_graphql_schema(
     return graphene_schema.graphql_schema
 
 
-async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None) -> type[InfrahubBaseQuery]:
-    QueryMixin = await generate_query_mixin(session=session, branch=branch)
-
-    class Query(InfrahubBaseQuery, QueryMixin):
-        pass
-
-    return Query
-
-
 async def get_gql_mutation(session: AsyncSession, branch: Union[Branch, str] = None) -> type[InfrahubBaseMutation]:
     MutationMixin = await generate_mutation_mixin(session=session, branch=branch)
 
@@ -74,35 +59,3 @@ async def get_gql_subscription(
         pass
 
     return Subscription
-
-
-async def execute_query(
-    name: str,
-    session: AsyncSession,
-    params: Optional[dict] = None,
-    branch: Union[Branch, str] = None,
-    at: Union[Timestamp, str] = None,
-) -> ExecutionResult:
-    """Helper function to Execute a GraphQL Query."""
-
-    branch = branch or await get_branch(session=session, branch=branch)
-    at = Timestamp(at)
-
-    items = await NodeManager.query(session=session, schema="GraphQLQuery", filters={name: name}, branch=branch, at=at)
-    if not items:
-        raise ValueError(f"Unable to find the GraphQLQuery {name}")
-
-    graphql_query = items[0]
-
-    result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session, branch=branch), auto_camelcase=False).graphql_schema,
-        source=graphql_query.query.value,
-        context_value={
-            "infrahub_branch": branch,
-            "infrahub_at": at,
-        },
-        root_value=None,
-        variable_values=params or {},
-    )
-
-    return result
