@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/**"
-      - "infrahub_ctl/**"
+      - "ctl/**"
       - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
@@ -41,7 +41,7 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run invoke ctl.mypy"
       - name: "Unit Tests"
-        run: "poetry run pytest --cov=infrahub_ctl infrahub_ctl/tests/unit"
+        run: "poetry run pytest --cov=infrahub_ctl ctl/tests/unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
