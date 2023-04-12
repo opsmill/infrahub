@@ -137,36 +137,7 @@ async def test_get_display_labels_with_branch(session, default_branch, car_perso
     assert len(display_labels) == len(car_ids) + len(person_ids)
 
 
-async def test_diff_data_endpoint_branch_only(session, client, client_headers, default_branch, car_person_data):
-    branch2 = await create_branch(branch_name="branch2", session=session)
-
-    persons_list = await NodeManager.query(session=session, schema="Person", branch=branch2)
-    persons = {item.name.value: item for item in persons_list}
-
-    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
-    repos = {item.name.value: item for item in repos_list}
-
-    cars_list = await NodeManager.query(session=session, schema="Car", branch=branch2)
-    cars = {item.name.value: item for item in cars_list}
-
-    # Add a new Person
-    p3 = await Node.init(session=session, schema="Person", branch=branch2)
-    await p3.new(session=session, name="Bill", height=160)
-    await p3.save(session=session)
-    persons["Bill"] = p3
-
-    await cars["volt"].owner.update(data=p3, session=session)
-    await cars["volt"].save(session=session)
-
-    repo01 = repos["repo01"]
-    repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
-
-    # Update P1 height in main
-    p1 = await NodeManager.get_one(id=persons["John"].id, session=session)
-    p1.height.value = 120
-    await p1.save(session=session)
-
+async def test_diff_data_endpoint_branch_only_default(session, client, client_headers, car_person_data_diff):
     with client:
         response = client.get(
             "/diff/data?branch=branch2&branch_only=true",
@@ -180,36 +151,42 @@ async def test_diff_data_endpoint_branch_only(session, client, client_headers, d
     assert len(data["branch2"]) == 3
 
 
-async def test_diff_data_endpoint_with_main(session, client, client_headers, default_branch, car_person_data):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_diff_data_endpoint_branch_time_from(session, client, client_headers, car_person_data_diff):
+    time1 = car_person_data_diff["time1"]
 
-    persons_list = await NodeManager.query(session=session, schema="Person", branch=branch2)
-    persons = {item.name.value: item for item in persons_list}
+    with client:
+        response = client.get(
+            f"/diff/data?branch=branch2&branch_only=true&time_from={time1.to_iso8601_string()}",
+            headers=client_headers,
+        )
 
-    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
-    repos = {item.name.value: item for item in repos_list}
+    assert response.status_code == 200
+    data = response.json()
+    assert data is not None
+    assert list(data.keys()) == ["branch2"]
+    assert len(data["branch2"]) == 1
+    assert data["branch2"][0]["kind"] == "Repository"
 
-    # Add a new Person
-    p3 = await Node.init(session=session, schema="Person", branch=branch2)
-    await p3.new(session=session, name="Bill", height=160)
-    await p3.save(session=session)
-    persons["Bill"] = p3
 
-    repo01 = repos["repo01"]
-    repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
+async def test_diff_data_endpoint_branch_time_from_to(session, client, client_headers, car_person_data_diff):
+    time0 = car_person_data_diff["time0"]
+    time1 = car_person_data_diff["time1"]
 
-    # Update P1 height and C1 in main
-    p1 = await NodeManager.get_one(id=persons["John"].id, session=session)
-    p1.height.value = 120
-    await p1.save(session=session)
+    with client:
+        response = client.get(
+            f"/diff/data?branch=branch2&branch_only=true&time_from={time0.to_iso8601_string()}&time_to={time1.to_iso8601_string()}",
+            headers=client_headers,
+        )
 
-    cars_list = await NodeManager.query(session=session, schema="Car", branch=default_branch)
-    cars = {item.name.value: item for item in cars_list}
+    assert response.status_code == 200
+    data = response.json()
+    assert data is not None
+    assert list(data.keys()) == ["branch2"]
+    assert len(data["branch2"]) == 2
+    assert sorted([item["kind"] for item in data["branch2"]]) == ["Car", "Person"]
 
-    await cars["volt"].owner.update(data=persons["Jane"].id, session=session)
-    await cars["volt"].save(session=session)
 
+async def test_diff_data_endpoint_with_main_default(session, client, client_headers, car_person_data_diff):
     with client:
         response = client.get(
             "/diff/data?branch=branch2&branch_only=false",
@@ -220,5 +197,44 @@ async def test_diff_data_endpoint_with_main(session, client, client_headers, def
     data = response.json()
     assert data is not None
     assert sorted(data.keys()) == ["branch2", "main"]
+    assert len(data["branch2"]) == 3
+    assert len(data["main"]) == 2
+    assert sorted([item["kind"] for item in data["branch2"]]) == ["Car", "Person", "Repository"]
+    assert sorted([item["kind"] for item in data["main"]]) == ["Car", "Person"]
+
+
+async def test_diff_data_endpoint_with_main_time_from(session, client, client_headers, car_person_data_diff):
+    time1 = car_person_data_diff["time1"]
+
+    with client:
+        response = client.get(
+            f"/diff/data?branch=branch2&branch_only=false&time_from={time1.to_iso8601_string()}",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data is not None
+    assert sorted(data.keys()) == ["branch2", "main"]
+    assert len(data["branch2"]) == 1
+    assert len(data["main"]) == 1
+
+
+async def test_diff_data_endpoint_with_main_time_from_to(session, client, client_headers, car_person_data_diff):
+    time0 = car_person_data_diff["time0"]
+    time1 = car_person_data_diff["time1"]
+
+    with client:
+        response = client.get(
+            f"/diff/data?branch=branch2&branch_only=false&time_from={time0.to_iso8601_string()}&time_to={time1.to_iso8601_string()}",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data is not None
+    assert sorted(data.keys()) == ["branch2", "main"]
     assert len(data["branch2"]) == 2
-    assert len(data["main"]) == 3
+    assert len(data["main"]) == 1
+    assert sorted([item["kind"] for item in data["branch2"]]) == ["Car", "Person"]
+    assert sorted([item["kind"] for item in data["main"]]) == ["Person"]
