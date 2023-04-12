@@ -81,7 +81,7 @@ class BranchDiffRepository(BaseModel):
 
 
 async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: str, session: AsyncSession):
-    """Return the display_labels of a list of nodes of specific kind."""
+    """Return the display_labels of a list of nodes of a specific kind."""
     branch = await get_branch(branch=branch_name, session=session)
     schema = registry.get_schema(name=kind, branch=branch)
     fields = schema.generate_fields_for_display_label()
@@ -89,8 +89,9 @@ async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: st
     return {node_id: await node.render_display_label(session=session) for node_id, node in nodes.items()}
 
 
-async def get_display_labels(nodes: Dict[str, List[str]], session: AsyncSession):
-    response = {}
+async def get_display_labels(nodes: Dict[str, List[str]], session: AsyncSession) -> Dict[str, str]:
+    """Query the display_labels of a group of nodes organized per branch and per kind."""
+    response: Dict[str, str] = {}
     for branch_name, items in nodes.items():
         for kind, ids in items.items():
             labels = await get_display_labels_per_kind(kind=kind, ids=ids, session=session, branch_name=branch_name)
@@ -100,6 +101,7 @@ async def get_display_labels(nodes: Dict[str, List[str]], session: AsyncSession)
 
 
 def extract_diff_relationship(node_id: str, name: str, rel: RelationshipDiffElement) -> BranchDiffRelationship:
+    """Extract a BranchDiffRelationship object from a RelationshipDiffElement."""
     peer = [rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id][0]
 
     changed_at = None
@@ -119,7 +121,7 @@ def extract_diff_relationship(node_id: str, name: str, rel: RelationshipDiffElem
 
 
 @router.get("/data")
-async def get_diff_data(
+async def get_diff_data(  # pylint: disable=too-many-branches
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
     time_from: Optional[str] = None,

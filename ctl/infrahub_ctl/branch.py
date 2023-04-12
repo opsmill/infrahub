@@ -247,7 +247,7 @@ def node_panel_generator(nodes: List[Dict]):
         for rel in node["relationships"]:
             rel_header = "{:10}{:10}  {:<20} Node {:>20}{:>20} {:>20}".format(
                 "",
-                render_action_rich(attr["action"]),
+                render_action_rich(rel["action"]),
                 rel["name"],
                 rel["peer"]["kind"],
                 rel["peer"]["display_label"],
