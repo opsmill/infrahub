@@ -7,6 +7,7 @@ declare const Handlebars: any;
 const template = Handlebars.compile(`query {{kind.value}} {
     {{name}} (ids: ["{{objectid}}"]) {
         id
+        display_label
         {{#each attributes}}
         {{this.name}} {
             value

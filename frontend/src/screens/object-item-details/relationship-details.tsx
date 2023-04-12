@@ -17,12 +17,16 @@ const getObjectDetailsUrl = (relationshipsData: {__typename: string}, schemaKind
   return url;
 };
 
-export  default function RelationshipDetails(props: iRelationDetailsProps) {
+export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { relationshipsData, relationshipSchema } = props;
 
   const [schemaKindName] = useAtom(schemaKindNameState);
 
   if(relationshipsData && relationshipsData._relation__is_visible === false) {
+    return null;
+  }
+
+  if (relationshipSchema?.cardinality === "many" && !Array.isArray(relationshipsData)) {
     return null;
   }
 
@@ -100,7 +104,7 @@ export  default function RelationshipDetails(props: iRelationDetailsProps) {
               && (
                 <div className="sm:col-span-2 space-y-4">
                   {
-                    relationshipsData.map(
+                    relationshipsData?.map(
                       (item: any) => (
                         <dd
                           className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
