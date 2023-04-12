@@ -1,5 +1,6 @@
 """Replacement for Makefile."""
 import os
+from time import sleep
 
 from invoke import (  # type: ignore  # pylint: disable=import-error
     Collection,
@@ -199,3 +200,17 @@ def dev_stop(context: Context):
 
     exec_cmd = f"{ENV_VARS} docker compose  {DEV_COMPOSE_FILES_CMD} -p {BUILD_NAME} down"
     return context.run(exec_cmd, pty=True)
+
+
+@task(optional=["expected"])
+def wait_healthy(context: Context, expected: int = 2):
+    """Wait until containers are healthy before continuing."""
+    missing_healthy = True
+    while missing_healthy:
+        output = context.run("docker ps --filter 'health=healthy' --format '{{ .Names}}'", hide=True)
+        containers = output.stdout.splitlines()
+        if len(containers) >= expected:
+            missing_healthy = False
+        else:
+            print(f"Expected {expected} healthy containers only saw: {', '.join(containers)}")
+            sleep(1)
