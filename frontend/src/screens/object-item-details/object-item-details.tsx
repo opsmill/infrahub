@@ -14,7 +14,6 @@ import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { branchState } from "../../state/atoms/branch.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -23,10 +22,11 @@ import RelationshipDetails from "./relationship-details";
 import { QSP } from "../../config/constants";
 import { Button } from "../../components/button";
 import RelationshipsDetails from "./relationships-details";
+import { Tabs } from "../../components/tabs";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
-  const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [date] = useAtom(timeState);
@@ -37,6 +37,13 @@ export default function ObjectItemDetails() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const atttributeRelationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute") ?? [];
   const otherRelationships = schema?.relationships?.filter((relationship) => relationship.kind !== "Attribute") ?? [];
+  const tabs = [
+    {
+      label: schema.label,
+      name: schema.label
+    },
+    ...otherRelationships.map((relationship) => ({ label: relationship.label, name: relationship.name}))
+  ];
 
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -91,49 +98,13 @@ export default function ObjectItemDetails() {
         />
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetails.display_label}</p>
       </div>
-      <div className="flex items-center">
-        <div className="flex-1">
-          <div className="">
-            <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
-              <div
-                onClick={() => setQspTab(undefined)}
-                className={classNames(
-                  !qspTab
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                  "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
-                )}
-              >
-                {schema.label}
-              </div>
-              {
-                otherRelationships
-                .map(
-                  (relationship) => (
-                    <div
-                      key={relationship.name}
-                      onClick={() => setQspTab(relationship.name)}
-                      className={classNames(
-                        qspTab && qspTab === relationship.name
-                          ? "border-indigo-500 text-indigo-600"
-                          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                        "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
-                      )}
-                    >
-                      {relationship.label}
-                    </div>
-                  )
-                )
-              }
-            </nav>
-          </div>
-        </div>
 
-        <Button onClick={navigateToObjectEditPage} className="mr-4">
+      <Tabs tabs={tabs} />
+
+      <Button onClick={navigateToObjectEditPage} className="mr-4">
           Edit
-          <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-        </Button>
-      </div>
+        <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+      </Button>
 
       {
         !qspTab

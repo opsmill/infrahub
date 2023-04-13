@@ -1,13 +1,12 @@
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "../../components/alert";
 import { Badge } from "../../components/badge";
 import { Button, BUTTON_TYPES } from "../../components/button";
 import { Pill } from "../../components/pill";
-import createPullRequest from "../../graphql/mutations/branches/createPullRequest";
 import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
 import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
 import rebaseBranch from "../../graphql/mutations/branches/rebaseBranch";
@@ -16,7 +15,7 @@ import getBranchDetails from "../../graphql/queries/branches/getBranchDetails";
 import LoadingScreen from "../loading-screen/loading-screen";
 
 export const BrancheItemDetails = () => {
-  const { branchid } = useParams();
+  const { branchname } = useParams();
 
   const [branch, setBranch] = useState({} as any);
   const [isLoadingBranch, setIsLoadingBranch] = useState(true);
@@ -24,7 +23,6 @@ export const BrancheItemDetails = () => {
   const [detailsContent, setDetailsContent] = useState({});
 
   const navigate = useNavigate();
-  const { search } = useLocation();
 
   const branchAction = async ({
     successMessage,
@@ -32,7 +30,7 @@ export const BrancheItemDetails = () => {
     request,
     options
   }: any) => {
-    if (!branchid) return;
+    if (!branchname) return;
 
     try {
       setIsLoadingRequest(true);
@@ -51,10 +49,10 @@ export const BrancheItemDetails = () => {
 
   const fetchBranchDetails = useCallback(
     async () => {
-      if (!branchid) return;
+      if (!branchname) return;
 
       try {
-        const branchDetails = await getBranchDetails(branchid);
+        const branchDetails = await getBranchDetails(branchname);
         console.log("branchDetails: ", branchDetails);
 
         setBranch(branchDetails);
@@ -63,7 +61,7 @@ export const BrancheItemDetails = () => {
         console.error("err: ", err);
         setIsLoadingBranch(false);
       }
-    }, [branchid]
+    }, [branchname]
   );
 
   useEffect(
@@ -73,16 +71,12 @@ export const BrancheItemDetails = () => {
     [fetchBranchDetails]
   );
 
-  console.log("branch: ", branch);
-  console.log("isLoadingBranch: ", isLoadingBranch);
-
-
   return (
     <div className="">
       <div className="bg-white sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
         <div className="sm:flex-auto flex items-center">
           <div
-            onClick={() => navigate(`/branches/${search}`)}
+            onClick={() => navigate("/branches")}
             className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
           >
             <h1 className="text-xl font-semibold text-gray-900 mr-2">Branches</h1>
@@ -143,16 +137,8 @@ export const BrancheItemDetails = () => {
 
                 <Button
                   className="mr-0 md:mr-3"
-                  onClick={() => branchAction({
-                    successMessage: "Pull request created successfuly!",
-                    errorMessage: "An error occured while creating the pull request",
-                    request: createPullRequest,
-                    options: {
-                      name: branch.name
-                    }
-                  })}
-                  // disabled={branch.is_default}
-                  disabled
+                  onClick={() => navigate(`/branches/${branch.name}/pull-request`)}
+                  disabled={branch.is_default}
                 >
                 Pull request
                   <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
