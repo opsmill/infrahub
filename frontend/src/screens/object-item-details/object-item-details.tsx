@@ -7,7 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
@@ -46,10 +46,9 @@ export default function ObjectItemDetails() {
   ];
 
   const navigate = useNavigate();
-  const { search } = useLocation();
 
   const navigateToObjectEditPage = () => {
-    navigate(`/objects/${objectname}/${objectid}/edit/${search}`);
+    navigate(`/objects/${objectname}/${objectid}/edit`);
   };
 
   const fetchObjectDetails = useCallback(async () => {
@@ -87,7 +86,7 @@ export default function ObjectItemDetails() {
     <div className="bg-white flex-1 overflow-auto">
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
-          onClick={() => navigate(`/objects/${objectname}/${search}`)}
+          onClick={() => navigate(`/objects/${objectname}`)}
           className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
         >
           {schema.kind}
