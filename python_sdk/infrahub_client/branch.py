@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from pydantic import BaseModel
 
 from infrahub_client.graphql import Mutation
-from infrahub_client.queries import QUERY_ALL_BRANCHES, QUERY_BRANCH_DIFF
+from infrahub_client.queries import QUERY_ALL_BRANCHES
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
@@ -36,7 +36,24 @@ MUTATION_QUERY_DATA = {
 
 
 class InfraHubBranchManagerBase:
-    pass
+    @classmethod
+    def generate_diff_data_url(
+        cls,
+        client: Union[InfrahubClient, InfrahubClientSync],
+        branch_name: str,
+        branch_only: bool = True,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+    ) -> str:
+        """Generate the URL for the diff_data function."""
+        url = f"{client.address}/diff/data?branch={branch_name}"
+        url += f"&branch_only={str(branch_only).lower()}"
+        if time_from:
+            url += f"&time_from={time_from}"
+        if time_to:
+            url += f"&time_to={time_to}"
+
+        return url
 
 
 class InfrahubBranchManager(InfraHubBranchManagerBase):
@@ -105,19 +122,18 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
 
         return branches
 
-    async def diff(
+    async def diff_data(
         self,
         branch_name: str,
         branch_only: bool = True,
-        diff_from: Optional[str] = None,
-        diff_to: Optional[str] = None,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
     ) -> Dict[Any, Any]:
-        variables = {"branch_name": branch_name, "branch_only": branch_only, "diff_from": diff_from, "diff_to": diff_to}
-        response = await self.client.execute_graphql(
-            query=QUERY_BRANCH_DIFF, variables=variables, tracker="query-branch-diff"
+        url = self.generate_diff_data_url(
+            client=self.client, branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
         )
-
-        return response
+        response = await self.client._get(url=url, headers=self.client.headers)
+        return response.json()
 
 
 class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
@@ -144,19 +160,18 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
 
         return BranchData(**response["branch_create"]["object"])
 
-    def diff(
+    def diff_data(
         self,
         branch_name: str,
         branch_only: bool = True,
-        diff_from: Optional[str] = None,
-        diff_to: Optional[str] = None,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
     ) -> Dict[Any, Any]:
-        variables = {"branch_name": branch_name, "branch_only": branch_only, "diff_from": diff_from, "diff_to": diff_to}
-        response = self.client.execute_graphql(
-            query=QUERY_BRANCH_DIFF, variables=variables, tracker="query-branch-diff"
+        url = self.generate_diff_data_url(
+            client=self.client, branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
         )
-
-        return response
+        response = self.client._get(url=url, headers=self.client.headers)
+        return response.json()
 
     def merge(self, branch_name: str) -> BranchData:
         input_data = {
