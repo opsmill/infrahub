@@ -5,12 +5,11 @@ import { Form } from "./form";
 interface Props {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
+  onCancel?: Function;
 }
 
 export default function EditFormHookComponent(props: Props) {
   return (
-    <div>
-      <Form onSubmit={props.onSubmit} fields={props.fields} />
-    </div>
+    <Form onCancel={props.onCancel} onSubmit={props.onSubmit} fields={props.fields} />
   );
 }

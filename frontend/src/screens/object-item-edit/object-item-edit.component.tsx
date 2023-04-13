@@ -1,6 +1,5 @@
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import { branchState } from "../../state/atoms/branch.atom";
 import { genericSchemaState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -16,15 +15,22 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 
-export default function ObjectItemEdit() {
-  let { objectname, objectid } = useParams();
+interface Props {
+  objectname: string;
+  objectid: string;
+  closeDrawer: Function;
+  onUpdateComplete: Function;
+}
+
+export default function ObjectItemEditComponent(props: Props) {
+  let { objectname, objectid } = props;
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [date] = useAtom(timeState);
   const [branch] = useAtom(branchState);
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
   const [formStructure, setFormStructure] = useState<DynamicFieldData[]>();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
@@ -56,7 +62,7 @@ export default function ObjectItemEdit() {
     if(schema) {
       fetchItemDetails();
     }
-  }, [objectname, objectid, schemaList, schema, date, branch, fetchItemDetails]);
+  }, [objectname, objectid, schemaList, date, branch, schema, fetchItemDetails]);
 
   if (hasError) {
     return <ErrorScreen />;
@@ -71,30 +77,25 @@ export default function ObjectItemEdit() {
   }
 
   async function onSubmit(data: any, error: any) {
+    props.closeDrawer();
     const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
-    console.log({
-      data,
-      updateObject,
-    });
-    return false;
     if (Object.keys(updateObject).length) {
       try {
         await updateObjectWithId(objectid!, schema, updateObject);
       } catch {
         console.error("Something went wrong while updating the object");
       }
-      navigate(-1);
+      props.onUpdateComplete();
     } else {
       console.info("Nothing to update");
+      props.onUpdateComplete();
     }
   }
 
   return (
-    <div className="p-4 bg-white flex-1 overflow-auto flex">
+    <div className="bg-white flex-1 overflow-auto flex flex-col">
       {formStructure && (
-        <div className="flex-1">
-          <EditFormHookComponent onSubmit={onSubmit} fields={formStructure} />
-        </div>
+        <EditFormHookComponent onCancel={props.closeDrawer} onSubmit={onSubmit} fields={formStructure} />
       )}
     </div>
   );

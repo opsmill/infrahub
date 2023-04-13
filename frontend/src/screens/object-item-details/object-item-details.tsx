@@ -4,12 +4,14 @@ import {
   EyeSlashIcon,
   LockClosedIcon,
   PencilIcon,
+  PencilSquareIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
+import SlideOver from "../../components/slide-over";
 import { branchState } from "../../state/atoms/branch.atom";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -19,6 +21,8 @@ import getObjectDetails from "../../utils/objectDetails";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
+import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 
 export default function ObjectItemDetails() {
   let { objectname, objectid } = useParams();
@@ -28,6 +32,12 @@ export default function ObjectItemDetails() {
   const [branch] = useAtom(branchState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [selectedTab, setSelectedTab] = useState<string | undefined>();
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [showMetaEditModal, setShowMetaEditModal] = useState(false);
+  const [metaEditFieldDetails, setMetaEditFieldDetails] = useState<{
+    type: "attribute" | "relationship",
+  attributeOrRelationshipName: any;
+  }>();
 
   const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
@@ -66,7 +76,7 @@ export default function ObjectItemDetails() {
         className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
         key={relationship.name}
       >
-        <dt className="text-sm font-medium text-gray-500">
+        <dt className="text-sm font-medium text-gray-500 flex items-center">
           {relationship.label}
         </dt>
         {row[relationship.name] && (
@@ -80,33 +90,47 @@ export default function ObjectItemDetails() {
                 </Link>
 
                 {row[relationship.name] && (
-                  <MetaDetailsTooltip items={[
-                    {
-                      label: "Updated at",
-                      value: row[relationship.name]._updated_at,
-                      type: "date",
-                    },
-                    {
-                      label: "Update time",
-                      value: `${new Date(row[relationship.name]._updated_at).toLocaleDateString()} ${new Date(row[relationship.name]._updated_at).toLocaleTimeString()}`,
-                      type: "text",
-                    },
-                    {
-                      label: "Source",
-                      value: row[relationship.name]._relation__source,
-                      type: "link"
-                    },
-                    {
-                      label: "Owner",
-                      value: row[relationship.name]._relation__owner,
-                      type: "link"
-                    },
-                    {
-                      label: "Is protected",
-                      value: row[relationship.name]._relation__is_protected ? "True" : "False",
-                      type: "text"
-                    },
-                  ]} />
+                  <MetaDetailsTooltip
+                    header={(<div className="flex justify-between w-full py-4">
+                      <div className="font-semibold">{relationship.label}</div>
+                      <div className="cursor-pointer" onClick={() => {
+                        setMetaEditFieldDetails({
+                          type: "relationship",
+                          attributeOrRelationshipName: relationship.name,
+                        });
+                        setShowMetaEditModal(true);
+                      }}>
+                        <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                      </div>
+                    </div>
+                    )}
+                    items={[
+                      {
+                        label: "Updated at",
+                        value: row[relationship.name]._updated_at,
+                        type: "date",
+                      },
+                      {
+                        label: "Update time",
+                        value: `${new Date(row[relationship.name]._updated_at).toLocaleDateString()} ${new Date(row[relationship.name]._updated_at).toLocaleTimeString()}`,
+                        type: "text",
+                      },
+                      {
+                        label: "Source",
+                        value: row[relationship.name]._relation__source,
+                        type: "link"
+                      },
+                      {
+                        label: "Owner",
+                        value: row[relationship.name]._relation__owner,
+                        type: "link"
+                      },
+                      {
+                        label: "Is protected",
+                        value: row[relationship.name]._relation__is_protected ? "True" : "False",
+                        type: "text"
+                      },
+                    ]} />
                 )}
 
                 {row[relationship.name]._relation__is_protected && (
@@ -262,7 +286,12 @@ export default function ObjectItemDetails() {
           </div>
         </div>
         <button
-          onClick={navigateToObjectEditPage}
+          // onClick={navigateToObjectEditPage}
+          onClick={() => {
+            setShowEditDrawer(true);
+            return false;
+            navigateToObjectEditPage();
+          }}
           type="button"
           className="mr-3 inline-flex items-center gap-x-1.5 rounded-md py-1.5 px-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 bg-white  text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >
@@ -274,7 +303,7 @@ export default function ObjectItemDetails() {
         <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">ID</dt>
+              <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {row.id}
               </dd>
@@ -289,7 +318,7 @@ export default function ObjectItemDetails() {
                   className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
                   key={attribute.name}
                 >
-                  <dt className="text-sm font-medium text-gray-500">
+                  <dt className="text-sm font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>
 
@@ -301,38 +330,52 @@ export default function ObjectItemDetails() {
                     </dd>
 
                     {row[attribute.name] && (
-                      <MetaDetailsTooltip items={[
-                        {
-                          label: "Updated at",
-                          value: row[attribute.name].updated_at,
-                          type: "date",
-                        },
-                        {
-                          label: "Update time",
-                          value: `${new Date(row[attribute.name].updated_at).toLocaleDateString()} ${new Date(row[attribute.name].updated_at).toLocaleTimeString()}`,
-                          type: "text",
-                        },
-                        {
-                          label: "Source",
-                          value: row[attribute.name].source,
-                          type: "link"
-                        },
-                        {
-                          label: "Owner",
-                          value: row[attribute.name].owner,
-                          type: "link"
-                        },
-                        {
-                          label: "Is protected",
-                          value: row[attribute.name].is_protected ? "True" : "False",
-                          type: "text"
-                        },
-                        {
-                          label: "Is inherited",
-                          value: row[attribute.name].is_inherited ? "True" : "False",
-                          type: "text"
-                        },
-                      ]} />
+                      <MetaDetailsTooltip
+                        header={(<div className="flex justify-between w-full py-4">
+                          <div className="font-semibold">{attribute.label}</div>
+                          <div className="cursor-pointer" onClick={() => {
+                            setMetaEditFieldDetails({
+                              type: "attribute",
+                              attributeOrRelationshipName: attribute.name,
+                            });
+                            setShowMetaEditModal(true);
+                          }}>
+                            <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                          </div>
+                        </div>
+                        )}
+                        items={[
+                          {
+                            label: "Updated at",
+                            value: row[attribute.name].updated_at,
+                            type: "date",
+                          },
+                          {
+                            label: "Update time",
+                            value: `${new Date(row[attribute.name].updated_at).toLocaleDateString()} ${new Date(row[attribute.name].updated_at).toLocaleTimeString()}`,
+                            type: "text",
+                          },
+                          {
+                            label: "Source",
+                            value: row[attribute.name].source,
+                            type: "link"
+                          },
+                          {
+                            label: "Owner",
+                            value: row[attribute.name].owner,
+                            type: "link"
+                          },
+                          {
+                            label: "Is protected",
+                            value: row[attribute.name].is_protected ? "True" : "False",
+                            type: "text"
+                          },
+                          {
+                            label: "Is inherited",
+                            value: row[attribute.name].is_inherited ? "True" : "False",
+                            type: "text"
+                          },
+                        ]} />
                     )}
 
                     {row[attribute.name].is_protected && (
@@ -362,6 +405,21 @@ export default function ObjectItemDetails() {
           </dl>
         </div>
       )}
+      <SlideOver title="Edit" subtitle="Update Account details by filling in the information below" open={showEditDrawer} setOpen={setShowEditDrawer}>
+        <ObjectItemEditComponent closeDrawer={() => {
+          setShowEditDrawer(false);
+        }}  onUpdateComplete={() => {
+          fetchObjectDetails();
+        }} objectid={objectid!} objectname={objectname!} />
+      </SlideOver>
+      <SlideOver title={`${metaEditFieldDetails?.attributeOrRelationshipName} > Meta-details`} subtitle="Update meta details" open={showMetaEditModal} setOpen={setShowMetaEditModal}>
+        <ObjectItemMetaEdit closeDrawer={() => {
+          setShowMetaEditModal(false);
+        }}  onUpdateComplete={() => {
+          setShowMetaEditModal(false);
+          fetchObjectDetails();
+        }} schemaList={schemaList} schema={schema} attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName} type={metaEditFieldDetails?.type!} row={objectDetails}  />
+      </SlideOver>
     </div>
   );
 }

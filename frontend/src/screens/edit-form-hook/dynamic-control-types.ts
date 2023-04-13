@@ -1,10 +1,11 @@
 import { RegisterOptions } from "react-hook-form";
+import { HasNameAndID } from "../../components-form/select";
 
 // Different values for "kind" property of each attribute in the schema
 export type SchemaAttributeType = "ID" | "Text" | "Number" | "TextArea" | "DateTime" | "Email" | "Password" | "URL" | "File" | "MacAddress" | "Color" | "Bandwidth" | "IPHost" | "IPNetwork" | "Checkbox" | "List" | "Any" | "String" | "Integer" | "Boolean";
 
-// Different values for the type of "Form input types" when in the create/edit forms
-export type ControlType = "text" | "select" | "multiselect" | "number" | "checkbox";
+// Different kind of form inputs
+export type ControlType = "text" | "select" | "select2step" | "multiselect" | "number" | "checkbox";
 
 export type RelationshipCardinality = "one" | "many";
 
@@ -46,17 +47,15 @@ export interface SelectOption {
   value: string;
 }
 
+// Interface for every field in a create/edit form
 export interface DynamicFieldData {
   label: string;
-  inputType: ControlType;
-  fieldName: string;
-  type: SchemaAttributeType;
-  defaultValue: any;
-  isAttribute: boolean;
-  isRelationship: boolean;
-  relationshipCardinality?: RelationshipCardinality;
+  type: ControlType;
+  name: string;
+  kind: SchemaAttributeType;
+  value: any;
   options: {
-    values: SelectOption[];
+    values: HasNameAndID[];
   };
   config?: RegisterOptions;
 }
