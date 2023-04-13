@@ -13,7 +13,7 @@ from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
-from infrahub.api import internal, schema, transformation
+from infrahub.api import diff, internal, schema, transformation
 from infrahub.api.dependencies import get_session
 from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
@@ -46,6 +46,7 @@ logger.handlers = gunicorn_logger.handlers
 app.include_router(schema.router)
 app.include_router(transformation.router)
 app.include_router(internal.router)
+app.include_router(diff.router)
 
 
 @app.on_event("startup")
