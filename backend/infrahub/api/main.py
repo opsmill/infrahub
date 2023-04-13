@@ -6,6 +6,7 @@ from typing import Optional
 import graphene
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.logger import logger
+from fastapi.responses import JSONResponse
 from graphql import graphql
 from neo4j import AsyncSession
 from starlette.middleware.authentication import AuthenticationMiddleware
@@ -85,6 +86,13 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
+@app.exception_handler(BranchNotFound)
+async def api_exception_handler(_: Request, exc: BranchNotFound) -> JSONResponse:
+    """Generic API Exception handler."""
+    error_code, error = exc.api_response()
+    return JSONResponse(status_code=error_code, content=error)
+
+
 @app.get("/query/{query_id}")
 async def graphql_query(
     request: Request,
@@ -95,10 +103,7 @@ async def graphql_query(
     at: Optional[str] = None,
     rebase: bool = False,
 ):
-    try:
-        branch = await get_branch(session=session, branch=branch)
-    except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+    branch = await get_branch(session=session, branch=branch)
 
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)

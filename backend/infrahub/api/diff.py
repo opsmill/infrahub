@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from neo4j import AsyncSession
 from pydantic import BaseModel, Field
 
@@ -10,7 +10,6 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import BranchNotFound
 from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint    : disable=too-many-branches
@@ -128,10 +127,7 @@ async def get_diff_data(  # pylint: disable=too-many-branches
     time_to: Optional[str] = None,
     branch_only: bool = True,
 ) -> Dict[str, List[BranchDiffNode]]:
-    try:
-        branch: Branch = await get_branch(session=session, branch=branch)
-    except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+    branch: Branch = await get_branch(session=session, branch=branch)
 
     response = defaultdict(list)
     nodes_in_diff = []
@@ -215,10 +211,7 @@ async def get_diff_files(
     time_to: Optional[str] = None,
     branch_only: bool = True,
 ) -> Dict[str, Dict[str, BranchDiffRepository]]:
-    try:
-        branch: Branch = await get_branch(session=session, branch=branch)
-    except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+    branch: Branch = await get_branch(session=session, branch=branch)
 
     response = defaultdict(lambda: defaultdict(list))
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
