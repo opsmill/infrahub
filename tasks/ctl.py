@@ -6,7 +6,7 @@ from invoke import (  # type: ignore  # pylint: disable=import-error
 
 # flake8: noqa: W605
 
-MAIN_DIRECTORY = "infrahub_ctl"
+MAIN_DIRECTORY = "ctl"
 NAMESPACE = "CTL"
 
 

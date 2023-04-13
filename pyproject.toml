@@ -6,7 +6,7 @@ authors = ["Damien Garros <damien@opsmill.com>"]
 
 packages = [
     { include = "infrahub", from = "backend" },
-    { include = "infrahub_ctl", from = "infrahub_ctl" },
+    { include = "infrahub_ctl", from = "ctl" },
     { include = "infrahub_client", from = "python_sdk"},
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
     { include = "diffsync", from = "sync/diffsync"},
@@ -154,8 +154,11 @@ testpaths = [
 ]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
-    "ignore:the imp module is deprecated"
+    "ignore:the imp module is deprecated",
+    "ignore:Deprecated call to",
 ]
+addopts = "-vs --cov-report term-missing --cov-report xml"
+
 
 [tool.mypy]
 pretty = true

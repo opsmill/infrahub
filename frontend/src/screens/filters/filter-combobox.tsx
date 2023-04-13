@@ -3,18 +3,19 @@ import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { graphQLClient } from "../..";
+import { graphQLClient } from "../../graphql/graphqlClient";
 import { components } from "../../infraops";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
 
+declare const Handlebars: any;
+
 interface Props {
   filter: components["schemas"]["FilterSchema"];
 }
 
-declare var Handlebars: any;
 const template = Handlebars.compile(`query {{kind.value}} {
     {{name}} {
         id
@@ -39,12 +40,13 @@ export default function FilterCombobox(props: Props) {
       if (schema && !filter.enum) {
         setHasError(false);
         setIsLoading(true);
+        // TODO: Extract GQL function in the graphql/ fodler
         const queryString = template(schema);
         const query = gql`
         ${queryString}
       `;
         try {
-          const data = await graphQLClient.request(query);
+          const data: any = await graphQLClient.request(query);
           const rows = data[schema.name];
           setObjectRows(rows);
           setIsLoading(false);

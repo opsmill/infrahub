@@ -1,6 +1,7 @@
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { genericSchemaState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -8,7 +9,6 @@ import { timeState } from "../../state/atoms/time.atom";
 import getDropdownOptionsForRelatedPeers from "../../utils/dropdownOptionsForRelatedPeers";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
-import getObjectDetails from "../../utils/objectDetails";
 import updateObjectWithId from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -72,11 +72,6 @@ export default function ObjectItemEdit() {
 
   async function onSubmit(data: any, error: any) {
     const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
-    console.log({
-      data,
-      updateObject,
-    });
-    return false;
     if (Object.keys(updateObject).length) {
       try {
         await updateObjectWithId(objectid!, schema, updateObject);

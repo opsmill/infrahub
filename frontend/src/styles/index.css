@@ -16,5 +16,5 @@ code {
 @tailwind components;
 @tailwind utilities;
 
-@import './styles/App.css';
-@import './styles/Alert.css';
+@import './App.css';
+@import './Alert.css';

@@ -5,7 +5,7 @@ import { useAtom } from "jotai";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { graphQLClient } from "..";
+
 import { CONFIG } from "../config/config";
 import { Branch } from "../generated/graphql";
 import createBranch from "../graphql/mutations/branches/createBranch";
@@ -20,11 +20,13 @@ import { RoundedButton } from "./rounded-button";
 import { Select } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
+import { graphQLClient } from "../graphql/graphqlClient";
+import { QSP } from "../config/constants";
 
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
-  const [branchInQueryString, setBranchInQueryString] = useQueryParam(CONFIG.QSP_BRANCH, StringParam);
+  const [branchInQueryString, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");

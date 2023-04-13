@@ -1,6 +1,5 @@
 ---
 # yamllint disable rule:truthy
-# yamllint disable rule:line-length
 name: "Python SDK"
 on:
   pull_request:
@@ -51,15 +50,23 @@ jobs:
         run: "poetry run invoke sdk.pylint"
       - name: "Mypy Tests"
         run: "poetry run invoke sdk.mypy"
+      - name: "Await healthy containers"
+        run: "poetry run invoke demo.wait-healthy"
       - name: "Unit Tests"
-        run: "poetry run pytest -v --cov=infrahub_client --cov-report term-missing --cov-report xml python_sdk/tests/unit"
+        run: "poetry run pytest --cov=infrahub_client python_sdk/tests/unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: python-sdk-unit
+          parallel: true
       - name: "Integration Tests"
-        run: "poetry run pytest -v --cov=infrahub_client --cov-report term-missing --cov-report xml python_sdk/tests/integration"
+        run: "poetry run pytest --cov=infrahub_client python_sdk/tests/integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: python-sdk-integration
+          parallel: true

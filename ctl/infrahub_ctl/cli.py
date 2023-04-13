@@ -91,6 +91,7 @@ async def _run(
     script: Path,
     method: str,
     log: logging.Logger,
+    branch: str,
 ):
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
@@ -109,7 +110,7 @@ async def _run(
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
     func = getattr(module, method)
-    await func(client=client, log=log)
+    await func(client=client, log=log, branch=branch)
 
 
 @app.command()
@@ -130,6 +131,7 @@ def run(
     method: str = "run",
     debug: bool = False,
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    branch: str = typer.Option("main"),
 ):
     """Execute a script."""
     config.load_and_exit(config_file=config_file)
@@ -141,4 +143,4 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    aiorun(_run(script=script, method=method, log=log))
+    aiorun(_run(script=script, method=method, log=log, branch=branch))
