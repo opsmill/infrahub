@@ -38,40 +38,11 @@ query {
       }
       __typename
   	}
-    files {
-      repository
-      location
-      action
-      __typename
-    }
-    relationships {
-      id
-      name
-      nodes {
-        id
-        kind
-        __typename
-      }
-      properties {
-        type
-        changed_at
-        action
-        value {
-          new
-          previous
-          __typename
-        }
-        __typename
-      }
-      changed_at
-      action
-      __typename
-    }
   }
 }
 `);
 
-const getDiff = async (options: DiffOptions) => {
+const getDataDiff = async (options: DiffOptions) => {
   const query = queryTemplate({
     options: objectToString(options)
   });
@@ -81,4 +52,4 @@ const getDiff = async (options: DiffOptions) => {
   return result?.diff;
 };
 
-export default getDiff;
+export default getDataDiff;

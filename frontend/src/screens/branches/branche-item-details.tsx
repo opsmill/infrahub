@@ -53,7 +53,6 @@ export const BrancheItemDetails = () => {
 
       try {
         const branchDetails = await getBranchDetails(branchname);
-        console.log("branchDetails: ", branchDetails);
 
         setBranch(branchDetails);
         setIsLoadingBranch(false);
