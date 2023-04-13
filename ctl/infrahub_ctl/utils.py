@@ -46,7 +46,7 @@ def execute_query(
     return response.json()
 
 
-def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> Optional[str]:
+def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> str:
     for query_file in glob.glob(f"{directory}/**/*.gql", recursive=True):
         filename = os.path.basename(query_file)
         query_name = os.path.splitext(filename)[0]
@@ -58,7 +58,7 @@ def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> Optional
 
         return query_string
 
-    return None
+    return ""
 
 
 def find_files(

@@ -6,8 +6,6 @@ import toml
 import typer
 from pydantic import BaseSettings, ValidationError, root_validator
 
-SETTINGS = None
-
 
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
@@ -72,3 +70,6 @@ def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_dat
             loc_str = [str(item) for item in error["loc"]]
             print(f"  {'/'.join(loc_str)} | {error['msg']} ({error['type']})")
         raise typer.Abort()
+
+
+SETTINGS = Settings()
