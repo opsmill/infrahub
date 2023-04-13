@@ -97,19 +97,21 @@ export const getFormStructureForMetaEdit = (
 
   const sourceOwnerFormFields: DynamicFieldData[] = sourceOwnerFields.map(f => {
     const metaFieldName = attributeOrRelationshipName + "." + f;
-    const schemaOptions: HasNameAndID[] = [{
-      name: "",
-      id: "",
-    }, ...schemaList.filter(schema => {
-      if((schema.inherit_from || []).indexOf(relatedObjects[f]) > -1) {
-        return true;
-      } else {
-        return false;
-      }
-    }).map(schema => ({
-      name: schema.kind,
-      id: schema.name,
-    }))];
+    const schemaOptions: HasNameAndID[] = [
+    //   {
+    //   name: "",
+    //   id: "",
+    // },
+      ...schemaList.filter(schema => {
+        if((schema.inherit_from || []).indexOf(relatedObjects[f]) > -1) {
+          return true;
+        } else {
+          return false;
+        }
+      }).map(schema => ({
+        name: schema.kind,
+        id: schema.name,
+      }))];
 
     return {
       name: metaFieldName,
