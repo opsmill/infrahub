@@ -9,13 +9,14 @@ type Tab = {
 
 type TabsProps = {
   tabs: Tab[];
+  rightItems?: any
 }
 
 export const Tabs = (props: TabsProps) => {
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
 
   return (
-    <div className="bg-white flex items-center">
+    <div className="bg-white flex items-center border-b border-gray-200">
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
@@ -42,6 +43,9 @@ export const Tabs = (props: TabsProps) => {
             }
           </nav>
         </div>
+      </div>
+      <div>
+        {props.rightItems}
       </div>
     </div>
   );

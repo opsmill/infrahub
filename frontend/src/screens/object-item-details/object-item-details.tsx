@@ -98,17 +98,22 @@ export default function ObjectItemDetails() {
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetails.display_label}</p>
       </div>
 
-      <Tabs tabs={tabs} />
-
-      <Button onClick={navigateToObjectEditPage} className="mr-4">
-          Edit
-        <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-      </Button>
+      <Tabs
+        tabs={tabs}
+        rightItems={
+          (
+            <Button onClick={navigateToObjectEditPage} className="mr-4">
+                Edit
+              <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+            </Button>
+          )
+        }
+      />
 
       {
         !qspTab
         && (
-          <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <div className="px-4 py-5 sm:p-0">
             <dl className="sm:divide-y sm:divide-gray-200">
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">ID</dt>
