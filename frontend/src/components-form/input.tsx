@@ -21,11 +21,10 @@ export const OpsInput = (props: Props) => {
   return (
     <>
       <label
-        className="block text-sm font-medium leading-6 text-gray-900 mt-6">
+        className="block text-sm font-medium leading-6 text-gray-900">
         {label}
       </label>
       <input
-        placeholder="YOLO"
         onChange={onChange}
         defaultValue={value ?? ""}
         className={classNames(DEFAULT_CLASSNAME, className ?? "")}

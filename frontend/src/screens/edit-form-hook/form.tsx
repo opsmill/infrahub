@@ -1,4 +1,3 @@
-import { ErrorMessage } from "@hookform/error-message";
 import {
   FieldValues,
   FormProvider,
@@ -22,7 +21,7 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
   const formMethods = useForm();
   const {
     handleSubmit,
-    formState: { errors },
+    // formState: { errors },
   } = formMethods;
 
   const FormField = (props: FormFieldProps) => {
@@ -30,21 +29,21 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
     // const [showMetaDetailFields, setShowMetaDetailFields] = useState(false);
     return <>
       <div className="sm:col-span-7">
-        <div className="text-red-500 text-xs">
+        {/* <div className="text-red-500 text-xs">
           <ErrorMessage errors={errors} name={field.name} />
-        </div>
+        </div> */}
         {/* <label
           htmlFor={field.name} className="block text-sm font-medium leading-6 text-gray-900 mt-6">
           {field.label}
         </label> */}
-        <div className="mt-2">
-          <DynamicControl {...field} />
-        </div>
+        <DynamicControl {...field} />
+        {/* <div className="mt-2">
+        </div> */}
       </div>
-      <div className="sm:col-span-1 flex items-end">
-        {/* {!showMetaDetailFields && <ChevronRightIcon onClick={() => setShowMetaDetailFields(true)} className="w-6 h-6 mb-1.5 cursor-pointer text-gray-500" />}
+      {/* <div className="sm:col-span-1 flex items-end"> */}
+      {/* {!showMetaDetailFields && <ChevronRightIcon onClick={() => setShowMetaDetailFields(true)} className="w-6 h-6 mb-1.5 cursor-pointer text-gray-500" />}
         {showMetaDetailFields && <ChevronDownIcon onClick={() => setShowMetaDetailFields(false)}  className="w-6 h-6 mb-1.5 cursor-pointer text-gray-500" />} */}
-      </div>
+      {/* </div> */}
       {/* {showMetaDetailFields && <>
         <MetaDataFields {...field} />
       </>
@@ -58,7 +57,7 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
         <div className="pb-12">
           {/* <h2 className="text-base font-semibold leading-7 text-gray-900">Object Information</h2>
           <p className="mt-1 text-sm leading-6 text-gray-600">Put in all the object details below.</p> */}
-          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-7">
+          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-7 gap-y-4 py-6">
             {fields.map((d, i) => (
               <FormField key={i} field={d} />
             ))}

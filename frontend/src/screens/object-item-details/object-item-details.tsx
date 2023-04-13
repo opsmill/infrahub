@@ -405,7 +405,7 @@ export default function ObjectItemDetails() {
           </dl>
         </div>
       )}
-      <SlideOver title="Edit" subtitle="Update Account details by filling in the information below" open={showEditDrawer} setOpen={setShowEditDrawer}>
+      <SlideOver title={`Edit ${schema.label}`} subtitle={row.display_label} open={showEditDrawer} setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent closeDrawer={() => {
           setShowEditDrawer(false);
         }}  onUpdateComplete={() => {

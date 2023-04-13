@@ -40,7 +40,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
         if(["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
           config.valueAsNumber = true;
         }
-        return <OpsSelectRegister options={options.values} config={config} register={register} setValue={setValue} name={name} value={value} />;
+        return <OpsSelectRegister label={label} options={options.values} config={config} register={register} setValue={setValue} name={name} value={value} />;
       }
       case "multiselect": {
         const multiSelectOptions = options.values.map(o => ({
