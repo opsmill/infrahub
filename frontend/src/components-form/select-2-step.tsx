@@ -61,11 +61,11 @@ export const OpsSelect2Step = (props: Props) => {
   return (
     <div className="grid grid-cols-6">
       <div className="sm:col-span-6">
-        <label className="block text-sm font-medium leading-6 text-gray-900 capitalize mt-4 mb-2">
+        <label className="block text-sm font-medium leading-6 text-gray-900 capitalize">
           {label}
         </label>
       </div>
-      <div className="sm:col-span-3 mr-2">
+      <div className="sm:col-span-3 mr-2 mt-1">
         <select
           className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
           value={selectedLeft ? selectedLeft.value : value.parent}
@@ -104,7 +104,7 @@ export const OpsSelect2Step = (props: Props) => {
             <option value=""></option>
             {optionsRight.map((o, index) => (
               <option key={index} value={o.value}>
-                {o.label} {o.value.slice(0,5)}
+                {o.label}
               </option>
             ))}
           </select>
