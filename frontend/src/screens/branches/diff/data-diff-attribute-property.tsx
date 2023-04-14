@@ -1,4 +1,3 @@
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { getBadgeType, tDataDiffNodeAttributeProperty } from "./data-diff-node";
@@ -28,90 +27,37 @@ export const DataDiffAttributeProperty = (props: tDataDiffNodeAttributeProps) =>
 
   const { new: newValue, previous } = value;
 
-  return (
-    <div className="ml-4 p-2 border-l border-gray-200 flex">
-      <div className="">
-        <Badge className="ml-4 mr-4" type={getBadgeType(action)}>
-          {action?.toUpperCase()}
-        </Badge>
-      </div>
-
-      <div className="">
-        <span className="mr-4">
-          {type}
-        </span>
-      </div>
-
-      <div className="flex">
-        <div className="">
-          <Tooltip message="Previous value">
-            <Badge type={BADGE_TYPES.CANCEL}>
-              {displayValue(previous)}
-            </Badge>
-          </Tooltip>
-        </div>
-
-        <div className="">
-          <ChevronRightIcon className="h-5 w-5 mr-2" aria-hidden="true"/>
-        </div>
-
-        <div className="flex flex-1 justify-start items-center">
-          <Tooltip message="New value">
-            <Badge type={BADGE_TYPES.VALIDATE}>
-              {displayValue(newValue)}
-            </Badge>
-          </Tooltip>
-        </div>
-      </div>
-
-      <div className="">
-        {
-          changed_at
-          && (
-            <DateDisplay date={changed_at} hideDefault />
-          )
-        }
-      </div>
-    </div>
-  );
-
   // return (
-  //   <div className="ml-4 p-2 border-l border-gray-200 grid grid-cols-4 gap-4">
-  //     <div className="flex items-center justify-center">
+  //   <div className="ml-4 p-2 border-l border-gray-200 flex">
+  //     <div className="">
   //       <Badge className="ml-4 mr-4" type={getBadgeType(action)}>
   //         {action?.toUpperCase()}
   //       </Badge>
   //     </div>
 
-  //     <div className="flex items-center justify-center">
+  //     <div className="">
   //       <span className="mr-4">
   //         {type}
   //       </span>
   //     </div>
 
-  //     <div className="flex">
-  //       <div className="flex flex-1 justify-end items-center">
-  //         <Tooltip message="Previous value">
-  //           <Badge type={BADGE_TYPES.CANCEL}>
-  //             {displayValue(previous)}
-  //           </Badge>
-  //         </Tooltip>
-  //       </div>
-
-  //       <div className="flex items-center justify-center">
-  //         <ChevronRightIcon className="h-5 w-5 mr-2" aria-hidden="true"/>
-  //       </div>
-
-  //       <div className="flex flex-1 justify-start items-center">
-  //         <Tooltip message="New value">
-  //           <Badge type={BADGE_TYPES.VALIDATE}>
-  //             {displayValue(newValue)}
-  //           </Badge>
-  //         </Tooltip>
-  //       </div>
+  //     <div className="">
+  //       <Tooltip message="Previous value">
+  //         <Badge type={BADGE_TYPES.CANCEL}>
+  //           {displayValue(previous)}
+  //         </Badge>
+  //       </Tooltip>
   //     </div>
 
-  //     <div className="flex items-center justify-center">
+  //     <div className="">
+  //       <Tooltip message="New value">
+  //         <Badge type={BADGE_TYPES.VALIDATE}>
+  //           {displayValue(newValue)}
+  //         </Badge>
+  //       </Tooltip>
+  //     </div>
+
+  //     <div className="">
   //       {
   //         changed_at
   //         && (
@@ -121,4 +67,45 @@ export const DataDiffAttributeProperty = (props: tDataDiffNodeAttributeProps) =>
   //     </div>
   //   </div>
   // );
+
+  return (
+    <div className="ml-4 p-2 border-l border-gray-200 grid grid-cols-5 gap-4">
+      <div className="flex items-center">
+        <Badge className="ml-4 mr-4" type={getBadgeType(action)}>
+          {action?.toUpperCase()}
+        </Badge>
+      </div>
+
+      <div className="flex items-center">
+        <span className="mr-4">
+          {type}
+        </span>
+      </div>
+
+      <div className="flex">
+        <Tooltip message="Previous value">
+          <Badge type={BADGE_TYPES.CANCEL}>
+            {displayValue(previous)}
+          </Badge>
+        </Tooltip>
+      </div>
+
+      <div className="flex">
+        <Tooltip message="New value">
+          <Badge type={BADGE_TYPES.VALIDATE}>
+            {displayValue(newValue)}
+          </Badge>
+        </Tooltip>
+      </div>
+
+      <div className="flex items-center">
+        {
+          changed_at
+          && (
+            <DateDisplay date={changed_at} hideDefault />
+          )
+        }
+      </div>
+    </div>
+  );
 };
