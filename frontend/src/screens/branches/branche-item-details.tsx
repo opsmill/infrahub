@@ -1,51 +1,65 @@
-import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "../../components/alert";
 import { Badge } from "../../components/badge";
-import { Button, BUTTON_TYPES } from "../../components/button";
 import { Pill } from "../../components/pill";
-import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
-import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
-import rebaseBranch from "../../graphql/mutations/branches/rebaseBranch";
-import validateBranch from "../../graphql/mutations/branches/validateBranch";
 import getBranchDetails from "../../graphql/queries/branches/getBranchDetails";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { DataDiff } from "./diff/data-diff";
+import { Tabs } from "../../components/tabs";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "../../config/constants";
+import { BRANCH_TABS, BranchAction } from "./actions/branch-action";
+
+const tabs = [
+  {
+    label: "Diff",
+    name: BRANCH_TABS.DIFF
+  },
+  {
+    label: "Merge",
+    name: BRANCH_TABS.MERGE
+  },
+  {
+    label: "Pull Request",
+    name: BRANCH_TABS.PR
+  },
+  {
+    label: "Pull Request",
+    name: BRANCH_TABS.REBASE
+  },
+  {
+    label: "Validate",
+    name: BRANCH_TABS.VALIDATE
+  },
+  {
+    label: "Delete",
+    name: BRANCH_TABS.DELETE
+  },
+];
+
+const renderContent = (tab: string | null | undefined, branch: any) => {
+  switch(tab) {
+    case BRANCH_TABS.MERGE:
+    case BRANCH_TABS.PR:
+    case BRANCH_TABS.VALIDATE:
+    case BRANCH_TABS.REBASE:
+    case BRANCH_TABS.DELETE: {
+      return <BranchAction branch={branch} />;
+    }
+    default: {
+      return <DataDiff />;
+    }
+  }
+};
 
 export const BrancheItemDetails = () => {
   const { branchname } = useParams();
 
   const [branch, setBranch] = useState({} as any);
   const [isLoadingBranch, setIsLoadingBranch] = useState(true);
-  const [isLoadingRequest, setIsLoadingRequest] = useState(false);
-  const [detailsContent, setDetailsContent] = useState({});
-
+  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const navigate = useNavigate();
-
-  const branchAction = async ({
-    successMessage,
-    errorMessage,
-    request,
-    options
-  }: any) => {
-    if (!branchname) return;
-
-    try {
-      setIsLoadingRequest(true);
-      const result = await request(options);
-      setDetailsContent(result);
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />);
-    } catch (error: any) {
-      setDetailsContent(error);
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
-    }
-
-    setIsLoadingRequest(false);
-  };
 
   const fetchBranchDetails = useCallback(
     async () => {
@@ -75,8 +89,8 @@ export const BrancheItemDetails = () => {
   );
 
   return (
-    <div className="">
-      <div className="bg-white sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
+    <>
+      <div className="bg-white sm:flex sm:items-center py-4 px-4 pb-0 sm:px-6 lg:px-8 w-full">
         <div className="sm:flex-auto flex items-center">
           <div
             onClick={() => navigate("/branches")}
@@ -89,7 +103,7 @@ export const BrancheItemDetails = () => {
         </div>
       </div>
 
-      <div className="bg-white p-6 mb-6">
+      <div className="bg-white p-6">
         {
           isLoadingBranch
           && <LoadingScreen />
@@ -121,118 +135,16 @@ export const BrancheItemDetails = () => {
                 </dl>
               </div>
 
-              <div className="flex flex-1 flex-col md:flex-row">
-                <Button
-                  className="mr-0 md:mr-3"
-                  onClick={() => branchAction({
-                    successMessage: "Branch merged successfuly!",
-                    errorMessage: "An error occured while merging the branch",
-                    request: mergeBranch,
-                    options: {
-                      name: branch.name
-                    }
-                  })}
-                  type={BUTTON_TYPES.VALIDATE}
-                  disabled={branch.is_default}
-                >
-                  Merge
-                  <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
-
-                <Button
-                  className="mr-0 md:mr-3"
-                  onClick={() => navigate(`/branches/${branch.name}/pull-request`)}
-                  disabled={branch.is_default}
-                >
-                  Pull request
-                  <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
-
-                <Button
-                  className="mr-0 md:mr-3"
-                  onClick={() => navigate(`/branches/${branch.name}/pull-request`)}
-                  disabled={branch.is_default}
-                >
-                  Diff
-                  <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
-
-                <Button
-                  className="mr-0 md:mr-3"
-                  onClick={() => branchAction({
-                    successMessage: "Branch rebased successfuly!",
-                    errorMessage: "An error occured while rebasing the branch",
-                    request: rebaseBranch,
-                    options: {
-                      name: branch.name
-                    }
-                  })}
-                  disabled={branch.is_default}
-                >
-                  Rebase
-                  <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
-
-                <Button
-                  className="mr-0 md:mr-3"
-                  onClick={() => branchAction({
-                    successMessage: "The branch is valid!",
-                    errorMessage: "An error occured while validating the branch",
-                    request: validateBranch,
-                    options: {
-                      name: branch.name
-                    }
-                  })}
-                  type={BUTTON_TYPES.WARNING}
-                  disabled={branch.is_default}
-                >
-                  Validate
-                  <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
-
-                <Button
-                  className="mr-0 md:mr-3"
-                  onClick={() => branchAction({
-                    successMessage: "Branch deleted successfuly!",
-                    errorMessage: "An error occured while deleting the branch",
-                    request: deleteBranch,
-                    options: {
-                      name: branch.name
-                    }
-                  })}
-                  type={BUTTON_TYPES.CANCEL}
-                  // disabled={branch.is_default}
-                  disabled
-                >
-                  Delete
-                  <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
             </>
           )
         }
       </div>
 
-      {
-        isLoadingRequest
-          && (
-            <div className="rounded-lg bg-white shadow p-6 m-6">
-              <LoadingScreen />
-            </div>
-          )
-      }
+      <Tabs tabs={tabs} />
 
       {
-        detailsContent
-        && !isLoadingRequest
-          && (
-            <div className="rounded-lg bg-white shadow p-6 m-6">
-              <pre>
-                {JSON.stringify(detailsContent, null, 2)}
-              </pre>
-            </div>
-          )
+        renderContent(qspTab, branch)
       }
-    </div>
+    </>
   );
 };

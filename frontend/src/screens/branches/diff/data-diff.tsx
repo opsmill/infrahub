@@ -30,10 +30,16 @@ export const DataDiff = () => {
   );
 
   return (
-    <div>
-      {
-        diff?.map((node: any, index: number) => <DataDiffNode key={index} node={node} />)
-      }
-    </div>
+    <>
+      <div className="bg-white p-6">
+        More content here to go back in time...
+      </div>
+
+      <div>
+        {
+          diff?.map((node: any, index: number) => <DataDiffNode key={index} node={node} />)
+        }
+      </div>
+    </>
   );
 };
