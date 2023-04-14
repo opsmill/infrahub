@@ -16,8 +16,8 @@ export const DataDiffAttribute = (props: tDataDiffNodeAttributeProps) => {
   } = attribute;
 
   return (
-    <div className="ml-4 p-2 pb-0 flex flex-col border-l border-gray-200">
-      <div className="ml-4">
+    <div className="flex flex-col">
+      <div className="">
         <span className="mr-2 font-semibold">
           {name}
         </span>
@@ -30,7 +30,7 @@ export const DataDiffAttribute = (props: tDataDiffNodeAttributeProps) => {
         }
       </div>
 
-      <div className="">
+      <div className="divide-y border">
         {
           properties
           ?.map(

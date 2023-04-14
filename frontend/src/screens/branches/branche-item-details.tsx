@@ -135,7 +135,7 @@ export const BrancheItemDetails = () => {
                   type={BUTTON_TYPES.VALIDATE}
                   disabled={branch.is_default}
                 >
-                Merge
+                  Merge
                   <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 
@@ -144,7 +144,16 @@ export const BrancheItemDetails = () => {
                   onClick={() => navigate(`/branches/${branch.name}/pull-request`)}
                   disabled={branch.is_default}
                 >
-                Pull request
+                  Pull request
+                  <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                </Button>
+
+                <Button
+                  className="mr-0 md:mr-3"
+                  onClick={() => navigate(`/branches/${branch.name}/pull-request`)}
+                  disabled={branch.is_default}
+                >
+                  Diff
                   <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 
@@ -160,7 +169,7 @@ export const BrancheItemDetails = () => {
                   })}
                   disabled={branch.is_default}
                 >
-                Rebase
+                  Rebase
                   <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 
@@ -177,7 +186,7 @@ export const BrancheItemDetails = () => {
                   type={BUTTON_TYPES.WARNING}
                   disabled={branch.is_default}
                 >
-                Validate
+                  Validate
                   <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 
@@ -195,7 +204,7 @@ export const BrancheItemDetails = () => {
                   // disabled={branch.is_default}
                   disabled
                 >
-                Delete
+                  Delete
                   <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>

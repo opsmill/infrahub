@@ -69,9 +69,9 @@ export const DataDiffAttributeProperty = (props: tDataDiffNodeAttributeProps) =>
   // );
 
   return (
-    <div className="ml-4 p-2 border-l border-gray-200 grid grid-cols-5 gap-4">
+    <div className="p-2 bg-gray-100 grid grid-cols-5 gap-4">
       <div className="flex items-center">
-        <Badge className="ml-4 mr-4" type={getBadgeType(action)}>
+        <Badge className="" type={getBadgeType(action)}>
           {action?.toUpperCase()}
         </Badge>
       </div>
