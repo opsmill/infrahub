@@ -346,7 +346,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
         await query.execute(session=session)
 
-    async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
+    async def to_graphql(self, session: AsyncSession, fields: dict) -> dict:
         """Generate GraphQL Payload for all attributes
 
         Returns:
