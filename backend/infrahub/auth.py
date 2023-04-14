@@ -7,8 +7,7 @@ from starlette.authentication import AuthenticationError
 from starlette.requests import HTTPConnection
 
 import infrahub.config as config
-from infrahub.core import get_account
-from infrahub.core.account import validate_token
+from infrahub.core.account import get_account, validate_token
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
