@@ -40,9 +40,7 @@ async def handle_not_found(  # pylint: disable=unused-argument
     return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
 
 
-async def handle_transform_message_action_python(
-    message: InfrahubGitRPC, client: InfrahubClient
-) -> InfrahubRPCResponse:
+async def handle_check_message_action_python(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
     try:
@@ -60,6 +58,44 @@ async def handle_transform_message_action_python(
         )
 
     except (CheckError, FileNotFound) as exc:
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
+
+
+async def handle_transform_message_action_jinja2(
+    message: InfrahubTransformRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+
+    try:
+        rendered_template = await repo.render_jinja2_template(
+            commit=message.commit, location=message.transform_location, data={"data": message.data} or {}
+        )
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
+
+    except (TransformError, FileNotFound) as exc:
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
+
+
+async def handle_transform_message_action_python(
+    message: InfrahubTransformRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+
+    try:
+        data = None
+        if message.data:
+            data = message.data
+
+        transformed_data = await repo.execute_python_transform(
+            branch_name=message.branch_name,
+            commit=message.commit,
+            location=message.transform_location,
+            data=data,
+            client=client,
+        )
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"transformed_data": transformed_data})
+
+    except (TransformError, FileNotFound) as exc:
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
 
 
@@ -130,39 +166,12 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
         f"Will process Transform RPC message : {message.action}, {message.repository_name} : {message.transform_location}"
     )
 
-    if message.action == TransformMessageAction.JINJA2.value:
-        repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-
-        try:
-            rendered_template = await repo.render_jinja2_template(
-                commit=message.commit, location=message.transform_location, data={"data": message.data} or {}
-            )
-            return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
-
-        except (TransformError, FileNotFound) as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
-
-    elif message.action == TransformMessageAction.PYTHON.value:
-        repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-
-        try:
-            data = None
-            if message.data:
-                data = message.data
-
-            transformed_data = await repo.execute_python_transform(
-                branch_name=message.branch_name,
-                commit=message.commit,
-                location=message.transform_location,
-                data=data,
-                client=client,
-            )
-            return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"transformed_data": transformed_data})
-
-        except (TransformError, FileNotFound) as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
-
-    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
+    handler_map = {
+        TransformMessageAction.JINJA2.value: handle_transform_message_action_jinja2,
+        TransformMessageAction.PYTHON.value: handle_transform_message_action_python,
+    }
+    handler = handler_map.get(message.action) or handle_bad_request
+    return await handler(message=message, client=client)
 
 
 async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -170,13 +179,16 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
         f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
     )
     handler_map = {
-        CheckMessageAction.PYTHON.value: handle_transform_message_action_python,
+        CheckMessageAction.PYTHON.value: handle_check_message_action_python,
     }
     handler = handler_map.get(message.action) or handle_bad_request
     return await handler(message=message, client=client)
 
 
 async def handle_message(message: InfrahubRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    message_type_map = {MessageType.CHECK: handle_git_check_message}
+    message_type_map = {
+        MessageType.CHECK: handle_git_check_message,
+        MessageType.TRANSFORMATION: handle_git_transform_message,
+    }
     handler = message_type_map.get(message.type) or handle_not_found
     return await handler(message=message, client=client)
