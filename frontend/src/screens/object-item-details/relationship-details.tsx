@@ -1,8 +1,10 @@
-import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { useAtom } from "jotai";
 import { Link } from "react-router-dom";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
-import { useAtom } from "jotai";
+import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 
 type iRelationDetailsProps = {
   relationshipsData: any;
@@ -21,6 +23,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { relationshipsData, relationshipSchema } = props;
 
   const [schemaKindName] = useAtom(schemaKindNameState);
+
+  const [, setShowMetaEditModal] = useAtom(showMetaEditState);
+  const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
   if(relationshipsData && relationshipsData._relation__is_visible === false) {
     return null;
@@ -79,7 +84,21 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         value: relationshipsData._relation__is_protected ? "True" : "False",
                         type: "text"
                       },
-                    ]} />
+                    ]}
+                    header={(<div className="flex justify-between w-full py-4">
+                      <div className="font-semibold">{relationshipSchema.label}</div>
+                      <div className="cursor-pointer" onClick={() => {
+                        setMetaEditFieldDetails({
+                          type: "relationship",
+                          attributeOrRelationshipName: relationshipSchema.name,
+                        });
+                        setShowMetaEditModal(true);
+                      }}>
+                        <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                      </div>
+                    </div>
+                    )}
+                    />
                   )}
 
                   {
