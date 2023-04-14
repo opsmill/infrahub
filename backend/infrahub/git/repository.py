@@ -869,12 +869,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def import_objects_rfiles(self, branch_name: str, data: dict):
         LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ")
 
-        # For now we query all repositories and we filter down to this one
-        # We'll need to revisit that once we have a better client library
-        rfiles_in_graph = await self.client.get_list_rfiles(branch_name=branch_name)
-        rfiles_in_repo = {
-            key: value for key, value in rfiles_in_graph.items() if value.template_repository == str(self.id)
-        }
+        rfiles_in_repo = await self.client.filters(kind="RFile", template_repository__id=str(self.id))
 
         for rfile_name, rfile in data.items():
             # Insert the UUID of the repository in case they are referencing the local repo
@@ -883,7 +878,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     if rfile[key] == "self":
                         rfile[key] = self.id
 
-            if rfile_name not in rfiles_in_repo:
+            current_names = [rfile.name.value for rfile in rfiles_in_repo]
+            if rfile_name not in current_names:
                 LOGGER.info(f"{self.name}: New RFile '{rfile_name}' found on branch {branch_name}, creating")
                 await self.client.create_rfile(
                     branch_name=branch_name,
@@ -895,25 +891,28 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 )
                 continue
 
-            rfile_in_repo = rfiles_in_repo[rfile_name]
+            rfile_in_repo = [rfile for rfile in rfiles_in_repo if rfile.name.value == rfile_name][0]
 
-            need_to_update = False
-            for field_name in ["template_path", "description"]:
-                attr = getattr(rfile_in_repo, field_name)
-                if field_name in rfile and rfile[field_name] != attr:
-                    need_to_update = True
+            description = (
+                rfile.get("description") if rfile.get("description") is not None else rfile_in_repo.description.value
+            )
+            template_path = (
+                rfile.get("template_path")
+                if rfile.get("template_path") is not None
+                else rfile_in_repo.template_path.value
+            )
 
-                if need_to_update:
-                    LOGGER.info(
-                        f"{self.name}: New version of the RFile '{rfile_name}' found on branch {branch_name}, updating"
-                    )
-                    await self.client.update_rfile(
-                        branch_name=branch_name,
-                        id=str(rfile_in_repo.id),
-                        name=rfile_name,
-                        description=rfile["description"],
-                        template_path=rfile["template_path"],
-                    )
+            if description != rfile_in_repo.description.value or template_path != rfile_in_repo.template_path.value:
+                LOGGER.info(
+                    f"{self.name}: New version of the RFile '{rfile_name}' found on branch {branch_name}, updating"
+                )
+                await self.client.update_rfile(
+                    branch_name=branch_name,
+                    id=str(rfile_in_repo.id),
+                    name=rfile_name,
+                    description=description,
+                    template_path=template_path,
+                )
 
     async def import_all_graphql_query(self, branch_name: str):
         """Search for all .gql file and import them as GraphQL query."""
