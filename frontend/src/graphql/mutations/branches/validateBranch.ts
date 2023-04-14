@@ -14,7 +14,6 @@ mutation {
 `);
 
 const validateBranch = async (data: any) => {
-  console.log("data: ", data);
   const mutation = mutationTemplate({
     data: objectToString(data)
   });
