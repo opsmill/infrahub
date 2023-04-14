@@ -14,13 +14,14 @@ import Layout from "./screens/layout/layout";
 import { branchState } from "./state/atoms/branch.atom";
 import { branchesState } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
-import { genericSchemaState, iGenericSchemaMapping, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
+import { genericSchemaState, genericsState, iGenericSchema, iGenericSchemaMapping, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { fetchUrl } from "./utils/fetch";
 
 function App() {
   const [, setSchema] = useAtom(schemaState);
+  const [, setGenerics] = useAtom(genericsState);
   const [, setGenericSchema] = useAtom(genericSchemaState);
 
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
@@ -106,11 +107,18 @@ function App() {
       const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
       try {
         const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString ?? branch?.name));
-        return sortByName(data.nodes || []);
+
+        return {
+          schema: sortByName(data.nodes || []),
+          generics: sortByName(data.generics || [])
+        };
       } catch(err) {
         toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema details"} />);
         console.error("err: ", err);
-        return [];
+        return {
+          schema: [],
+          generics: [],
+        };
       }
     },
     [branch?.name, branchInQueryString]
@@ -121,8 +129,9 @@ function App() {
    */
   const setSchemaInState = useCallback(
     async () => {
-      const schema: iNodeSchema[] = await fetchSchema();
+      const {schema, generics}: { schema: iNodeSchema[], generics: iGenericSchema[]} = await fetchSchema();
       setSchema(schema);
+      setGenerics(generics);
 
       const schemaNames = R.map(R.prop("name"), schema);
       const schemaKinds = R.map(R.prop("kind"), schema);

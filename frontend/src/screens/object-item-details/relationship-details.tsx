@@ -1,9 +1,11 @@
-import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import MetaDetailsTooltip from "../../components/meta-details-tooltips";
+import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import MetaDetailsTooltip from "../../components/meta-details-tooltips";
+import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { Link } from "../../components/link";
 import { useNavigate } from "react-router-dom";
+import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 
 type iRelationDetailsProps = {
   relationshipsData: any;
@@ -23,6 +25,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const [schemaKindName] = useAtom(schemaKindNameState);
   const navigate = useNavigate();
+
+  const [, setShowMetaEditModal] = useAtom(showMetaEditState);
+  const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
   if(relationshipsData && relationshipsData._relation__is_visible === false) {
     return null;
@@ -81,7 +86,21 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         value: relationshipsData._relation__is_protected ? "True" : "False",
                         type: "text"
                       },
-                    ]} />
+                    ]}
+                    header={(<div className="flex justify-between w-full py-4">
+                      <div className="font-semibold">{relationshipSchema.label}</div>
+                      <div className="cursor-pointer" onClick={() => {
+                        setMetaEditFieldDetails({
+                          type: "relationship",
+                          attributeOrRelationshipName: relationshipSchema.name,
+                        });
+                        setShowMetaEditModal(true);
+                      }}>
+                        <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                      </div>
+                    </div>
+                    )}
+                    />
                   )}
 
                   {

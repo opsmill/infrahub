@@ -1,16 +1,18 @@
-import { Controller, Control, FieldValues } from "react-hook-form";
+import { Control, Controller, FieldValues } from "react-hook-form";
 import Select, { StylesConfig } from "react-select";
 import makeAnimated from "react-select/animated";
+import { SelectOption } from "./dynamic-control-types";
 
 const animatedComponents = makeAnimated();
 
 interface Props {
   fieldName: string;
-  defaultValue: string[];
-  options: { label: string; value: string }[];
+  defaultValue: string[]; // List of IDs
+  options: SelectOption[];
   onChange: Function;
   control: Control<FieldValues, any>;
 }
+
 
 const styles: StylesConfig<{ label: string; value: string }, true> = {
   container: (styles) => ({ ...styles, width: "100%" }),
@@ -26,22 +28,29 @@ const styles: StylesConfig<{ label: string; value: string }, true> = {
 
 export default function MultiSelect(props: Props) {
   const { control, fieldName, defaultValue, options } = props;
-  const def = options.filter(
+  const value = options.filter(
     (option) => (defaultValue || []).indexOf(option.value) > -1
   );
+
+  console.log("Selected value: ", value);
+
+  console.log({
+    props,
+    value,
+  });
 
   return (
     <Controller
       name={fieldName}
       control={control}
-      defaultValue={def}
+      defaultValue={value}
       render={({ field }) => (
         <Select
+          value={value}
           styles={styles}
           isSearchable={false}
           isClearable={false}
           components={animatedComponents}
-          {...field}
           isMulti
           options={options}
         />

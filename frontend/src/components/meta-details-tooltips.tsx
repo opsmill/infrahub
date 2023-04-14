@@ -16,6 +16,7 @@ interface TooltipListItem {
 
 interface Props {
     items: TooltipListItem[];
+    header?: React.ReactNode;
 }
 
 export default function MetaDetailsTooltip(props: Props) {
@@ -41,6 +42,7 @@ export default function MetaDetailsTooltip(props: Props) {
     >
       <Popover.Panel className="absolute z-10 bg-white rounded-lg border shadow-xl">
         <div className="w-80 text-sm divide-y px-4">
+          {!!props.header && (props.header)}
           {props.items.map(item => {
             return <div key={item.label} className="flex justify-between w-full py-4">
               <div>{item.label}: </div>
