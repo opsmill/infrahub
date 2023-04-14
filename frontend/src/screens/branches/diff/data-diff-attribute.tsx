@@ -1,4 +1,3 @@
-import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttributeProperty } from "./data-diff-attribute-property";
 import { tDataDiffNodeAttribute, tDataDiffNodeAttributeProperty } from "./data-diff-node";
@@ -19,9 +18,9 @@ export const DataDiffAttribute = (props: tDataDiffNodeAttributeProps) => {
   return (
     <div className="ml-4 p-2 pb-0 flex flex-col border-l border-gray-200">
       <div className="ml-4">
-        <Badge className="mr-2">
+        <span className="mr-2 font-semibold">
           {name}
-        </Badge>
+        </span>
 
         {
           changed_at

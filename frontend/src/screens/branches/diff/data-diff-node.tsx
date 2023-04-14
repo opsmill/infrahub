@@ -67,12 +67,12 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
   const title = (
     <div>
-      <Badge className="mr-2">
-        {kind}
-      </Badge>
-
       <Badge className="mr-2" type={getBadgeType(node?.action)}>
         {action?.toUpperCase()}
+      </Badge>
+
+      <Badge className="mr-2">
+        {kind}
       </Badge>
 
       <span className="mr-2">
@@ -91,9 +91,11 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   return (
     <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
       <Accordion title={title}>
-        <Link onClick={() => navigate(getObjectUrl({ kind, id, branch: branchname }))}>
+        <div className="m-4 flex">
+          <Link onClick={() => navigate(getObjectUrl({ kind, id, branch: branchname }))}>
           ID: {id}
-        </Link>
+          </Link>
+        </div>
 
         <div>
           {
