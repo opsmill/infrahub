@@ -54,13 +54,17 @@ export const BrancheItemDetails = () => {
       try {
         const branchDetails = await getBranchDetails(branchname);
 
+        if (!branchDetails?.name) {
+          navigate("/branches");
+        }
+
         setBranch(branchDetails);
         setIsLoadingBranch(false);
       } catch(err) {
         console.error("err: ", err);
         setIsLoadingBranch(false);
       }
-    }, [branchname]
+    }, [branchname, navigate]
   );
 
   useEffect(
@@ -93,6 +97,7 @@ export const BrancheItemDetails = () => {
 
         {
           !isLoadingBranch
+          && branch?.name
           && (
             <>
               <div className="border-t border-b border-gray-200 px-4 py-5 sm:p-0 mb-6">

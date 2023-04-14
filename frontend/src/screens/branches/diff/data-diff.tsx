@@ -1,25 +1,21 @@
 import { useParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import getDataDiff from "../../../graphql/queries/branches/getDataDiff";
 import { DataDiffNode } from "./data-diff-node";
+import { CONFIG } from "../../../config/config";
+import { fetchUrl } from "../../../utils/fetch";
 
 export const DataDiff = () => {
   const { branchname } = useParams();
-  const [diff, setDiff] = useState({} as any);
-  console.log("diff: ", diff);
+  const [diff, setDiff] = useState([]);
 
   const fetchDiffDetails = useCallback(
     async () => {
       if (!branchname) return;
 
       try {
-        const options = {
-          branch: branchname
-        };
+        const diffDetails = await fetchUrl(CONFIG.DIFF_URL(branchname));
 
-        const diffDetails = await getDataDiff(options);
-
-        setDiff(diffDetails);
+        setDiff(diffDetails[branchname] ?? []);
       } catch(err) {
         console.error("err: ", err);
       }
@@ -36,7 +32,7 @@ export const DataDiff = () => {
   return (
     <div>
       {
-        diff?.nodes?.map((node: any, index: number) => <DataDiffNode key={index} node={node} />)
+        diff?.map((node: any, index: number) => <DataDiffNode key={index} node={node} />)
       }
     </div>
   );

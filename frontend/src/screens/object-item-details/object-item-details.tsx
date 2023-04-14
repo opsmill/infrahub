@@ -39,8 +39,8 @@ export default function ObjectItemDetails() {
   const otherRelationships = schema?.relationships?.filter((relationship) => relationship.kind !== "Attribute") ?? [];
   const tabs = [
     {
-      label: schema.label,
-      name: schema.label
+      label: schema?.label,
+      name: schema?.label
     },
     ...otherRelationships.map((relationship) => ({ label: relationship.label, name: relationship.name}))
   ];

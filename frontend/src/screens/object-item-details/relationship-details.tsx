@@ -1,8 +1,9 @@
 import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Link } from "react-router-dom";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { useAtom } from "jotai";
 import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { Link } from "../../components/link";
+import { useNavigate } from "react-router-dom";
 
 type iRelationDetailsProps = {
   relationshipsData: any;
@@ -21,6 +22,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { relationshipsData, relationshipSchema } = props;
 
   const [schemaKindName] = useAtom(schemaKindNameState);
+  const navigate = useNavigate();
 
   if(relationshipsData && relationshipsData._relation__is_visible === false) {
     return null;
@@ -47,7 +49,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               && (
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                   <Link
-                    to={getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id)}
+                    onClick={() => navigate(getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id))}
                   >
                     {relationshipsData.display_label}
                   </Link>
@@ -110,7 +112,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
                           key={item.id}
                         >
-                          <Link to={getObjectDetailsUrl(item, schemaKindName, item.id)}>
+                          <Link onClick={() => navigate(getObjectDetailsUrl(item, schemaKindName, item.id))}>
                             {item.display_label}
                           </Link>
 

@@ -1,14 +1,41 @@
+import { useNavigate, useParams } from "react-router-dom";
 import Accordion from "../../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
+import { DateDisplay } from "../../../components/date-display";
+import { DataDiffAttribute } from "./data-diff-attribute";
+import { getObjectUrl } from "../../../utils/objects";
+import { Link } from "../../../components/link";
 
-type Node = {
-  id: string;
-  action?: string;
-  kind?: string;
+export type tDataDiffNodeAttributePropertyValue = {
+  new: string;
+  previous: string;
 }
 
-type NodeProps = {
-  node: Node,
+export type tDataDiffNodeAttributeProperty = {
+  type: string;
+  changed_at: number;
+  action: string;
+  value: tDataDiffNodeAttributePropertyValue;
+}
+
+export type tDataDiffNodeAttribute = {
+  name?: string;
+  changed_at?: number;
+  action?: string;
+  properties?: tDataDiffNodeAttributeProperty[];
+}
+
+export type tDataDiffNode = {
+  display_label: string;
+  id: string;
+  action: string;
+  kind: string;
+  changed_at?: number;
+  attributes: tDataDiffNodeAttribute[];
+}
+
+export type tDataDiffNodeProps = {
+  node: tDataDiffNode,
 }
 
 const badgeTypes: { [key: string]: BADGE_TYPES } = {
@@ -17,39 +44,66 @@ const badgeTypes: { [key: string]: BADGE_TYPES } = {
   deleted: BADGE_TYPES.CANCEL,
 };
 
-const getBadgeType = (action?: string) => {
+export const getBadgeType = (action?: string) => {
   if (!action) return null;
 
   return badgeTypes[action];
 };
 
-export const DataDiffNode = (props: NodeProps) => {
+export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { node } = props;
-  console.log("node: ", node);
+
+  const { branchname } = useParams();
+  const navigate = useNavigate();
+
+  const {
+    id,
+    display_label,
+    action,
+    kind,
+    changed_at,
+    attributes = [],
+  } = node;
 
   const title = (
     <div>
-      <Badge className="mr-2" type={getBadgeType(node?.action)}>
-        {node.action?.toUpperCase()}
+      <Badge className="mr-2">
+        {kind}
       </Badge>
 
-      <Badge className="mr-2">
-        {node.kind}
+      <Badge className="mr-2" type={getBadgeType(node?.action)}>
+        {action?.toUpperCase()}
       </Badge>
 
       <span className="mr-2">
-        {node.id}
+        {display_label}
       </span>
+
+      {
+        changed_at
+        && (
+          <DateDisplay date={changed_at} hideDefault />
+        )
+      }
     </div>
   );
 
   return (
-    <div className={"rounded-lg shadow p-6 m-6 bg-white"}>
+    <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
       <Accordion title={title}>
-        <div className="bg-white">
-          <pre>
-            {JSON.stringify(node, null, 2)}
-          </pre>
+        <Link onClick={() => navigate(getObjectUrl({ kind, id, branch: branchname }))}>
+          ID: {id}
+        </Link>
+
+        <div>
+          {
+            attributes
+            ?.map(
+              (attribute: tDataDiffNodeAttribute, index: number) => (
+                <DataDiffAttribute key={index} attribute={attribute} />
+              )
+            )
+          }
         </div>
       </Accordion>
     </div>

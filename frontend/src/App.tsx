@@ -17,6 +17,7 @@ import { Config, configState } from "./state/atoms/config.atom";
 import { genericSchemaState, iGenericSchemaMapping, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
+import { fetchUrl } from "./utils/fetch";
 
 function App() {
   const [, setSchema] = useAtom(schemaState);
@@ -38,9 +39,7 @@ function App() {
    */
   const fetchConfig = async () => {
     try {
-      const rawResponse = await fetch(CONFIG.CONFIG_URL);
-      const data = await rawResponse.json();
-      return data;
+      return fetchUrl(CONFIG.CONFIG_URL);
     } catch (err) {
       toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />);
       console.error("err: ", err);
@@ -106,8 +105,7 @@ function App() {
     async () => {
       const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
       try {
-        const rawResponse = await fetch(CONFIG.SCHEMA_URL(branchInQueryString ?? branch?.name));
-        const data = await rawResponse.json();
+        const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString ?? branch?.name));
         return sortByName(data.nodes || []);
       } catch(err) {
         toast(<Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema details"} />);
