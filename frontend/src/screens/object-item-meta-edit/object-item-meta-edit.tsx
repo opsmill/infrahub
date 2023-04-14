@@ -62,6 +62,7 @@ export default function ObjectItemMetaEdit(props: Props) {
   const formStructure = getFormStructureForMetaEdit(row, type, attributeOrRelationshipName, schemaList);
 
   async function onSubmit(data: any, error: any) {
+    data[attributeOrRelationshipName].id = props.row[attributeOrRelationshipName].id;
     if (Object.keys(data).length) {
       try {
         await updateObjectWithId(row.id!, schema, data);

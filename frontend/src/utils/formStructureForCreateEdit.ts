@@ -5,12 +5,14 @@ import {
   getFormInputControlTypeFromSchemaAttributeKind,
   SchemaAttributeType
 } from "../screens/edit-form-hook/dynamic-control-types";
-import { iGenericSchemaMapping, iNodeSchema } from "../state/atoms/schema.atom";
+import { iGenericSchema, iGenericSchemaMapping, iNodeSchema } from "../state/atoms/schema.atom";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 import { iPeerDropdownOptions } from "./dropdownOptionsForRelatedPeers";
 
 const getFormStructureForCreateEdit = (
   schema: iNodeSchema,
+  schemas: iNodeSchema[],
+  generics: iGenericSchema[],
   dropdownOptions: iPeerDropdownOptions,
   schemaKindNameMap: iSchemaKindNameMap,
   genericSchemaMap: iGenericSchemaMapping,
@@ -50,13 +52,29 @@ const getFormStructureForCreateEdit = (
   ?.filter((relationship) => relationship.kind === "Attribute")
   .forEach((relationship) => {
     let options: HasNameAndID[] = [];
-    if (dropdownOptions[schemaKindNameMap[relationship.peer]]) {
+
+    const isInherited = relationship.inherited;
+
+    if (!isInherited && dropdownOptions[schemaKindNameMap[relationship.peer]]) {
       options = dropdownOptions[schemaKindNameMap[relationship.peer]].map(
         (row: any) => ({
           name: row.display_label,
           id: row.id,
         })
       );
+    } else {
+      const generic = generics.find(g => g.kind === relationship.peer);
+      if(generic) {
+        (generic.used_by || []).forEach(name => {
+          const relatedSchema = schemas.find(s => s.kind === name);
+          if(relatedSchema) {
+            options.push({
+              id: relatedSchema.name,
+              name: name,
+            });
+          }
+        });
+      }
     }
     formFields.push({
       name: relationship.name + (relationship.cardinality === "one" ? ".id" : ".list"),
@@ -64,9 +82,24 @@ const getFormStructureForCreateEdit = (
       type:
           relationship.cardinality === "many"
             ? ("multiselect" as ControlType)
-            : ("select" as ControlType),
+            : isInherited ? "select2step" : ("select" as ControlType),
       label: relationship.label ? relationship.label : relationship.name,
-      value: row && row[relationship.name] ? relationship.cardinality === "one" ? row[relationship.name].id : row[relationship.name].map((item: any) => item.id) : "",
+      value: (() => {
+        if(!row || !row[relationship.name]) {
+          return "";
+        }
+
+        const value = row[relationship.name];
+
+        if(relationship.cardinality === "one" && !isInherited) {
+          return value.id;
+        } else if(relationship.cardinality === "one" && isInherited) {
+          return value;
+        } else {
+          return value.map((item: any) => item.id);
+        }
+
+      })(),
       options: {
         values: options,
       },

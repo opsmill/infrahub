@@ -34,7 +34,8 @@ export const DynamicControl = (props: DynamicFieldData) => {
           label: o.name,
           value: o.id,
         }));
-        return <OpsSelect2StepRegister register={register} name={name} config={config} options={selectOptions} value={{ parent: value?.__typename, child: value?.id}} label={label} setValue={setValue} />;
+        const regex = /^Related/; // starts with Related
+        return <OpsSelect2StepRegister register={register} name={name} config={config} options={selectOptions} value={{ parent: value?.__typename.replace(regex, ""), child: value?.id}} label={label} setValue={setValue} />;
       }
       case "select": {
         if(["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {

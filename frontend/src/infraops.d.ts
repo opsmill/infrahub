@@ -9,29 +9,29 @@ export interface paths {
     /** Get Schema */
     get: operations["get_schema_schema__get"];
   };
-  "/schema/load/": {
+  "/schema/load": {
     /** Load Schema */
-    post: operations["load_schema_schema_load__post"];
+    post: operations["load_schema_schema_load_post"];
   };
-  "/config/": {
-    /** Get Config */
-    get: operations["get_config_config__get"];
-  };
-  "/info/": {
-    /** Get Info */
-    get: operations["get_info_info__get"];
+  "/transform/{transform_url}": {
+    /** Transform Python */
+    get: operations["transform_python_transform__transform_url__get"];
   };
   "/rfile/{rfile_id}": {
     /** Generate Rfile */
     get: operations["generate_rfile_rfile__rfile_id__get"];
   };
+  "/config": {
+    /** Get Config */
+    get: operations["get_config_config_get"];
+  };
+  "/info": {
+    /** Get Info */
+    get: operations["get_info_info_get"];
+  };
   "/query/{query_id}": {
     /** Graphql Query */
     get: operations["graphql_query_query__query_id__get"];
-  };
-  "/transform/{transform_url}": {
-    /** Transform Python */
-    get: operations["transform_python_transform__transform_url__get"];
   };
 }
 
@@ -363,8 +363,8 @@ export type external = Record<string, never>;
 
 export interface operations {
 
+  /** Get Schema */
   get_schema_schema__get: {
-    /** Get Schema */
     parameters: {
       query: {
         branch?: string;
@@ -385,8 +385,8 @@ export interface operations {
       };
     };
   };
-  load_schema_schema_load__post: {
-    /** Load Schema */
+  /** Load Schema */
+  load_schema_schema_load_post: {
     parameters: {
       query: {
         branch?: string;
@@ -412,30 +412,35 @@ export interface operations {
       };
     };
   };
-  get_config_config__get: {
-    /** Get Config */
+  /** Transform Python */
+  transform_python_transform__transform_url__get: {
+    parameters: {
+      query: {
+        branch?: string;
+        at?: string;
+        rebase?: boolean;
+      };
+      path: {
+        transform_url: string;
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["ConfigAPI"];
+          "application/json": Record<string, never>;
         };
       };
-    };
-  };
-  get_info_info__get: {
-    /** Get Info */
-    responses: {
-      /** @description Successful Response */
-      200: {
+      /** @description Validation Error */
+      422: {
         content: {
-          "application/json": components["schemas"]["InfoAPI"];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
+  /** Generate Rfile */
   generate_rfile_rfile__rfile_id__get: {
-    /** Generate Rfile */
     parameters: {
       query: {
         branch?: string;
@@ -461,8 +466,30 @@ export interface operations {
       };
     };
   };
+  /** Get Config */
+  get_config_config_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ConfigAPI"];
+        };
+      };
+    };
+  };
+  /** Get Info */
+  get_info_info_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["InfoAPI"];
+        };
+      };
+    };
+  };
+  /** Graphql Query */
   graphql_query_query__query_id__get: {
-    /** Graphql Query */
     parameters: {
       query: {
         branch?: string;
@@ -471,33 +498,6 @@ export interface operations {
       };
       path: {
         query_id: string;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  transform_python_transform__transform_url__get: {
-    /** Transform Python */
-    parameters: {
-      query: {
-        branch?: string;
-        at?: string;
-        rebase?: boolean;
-      };
-      path: {
-        transform_url: string;
       };
     };
     responses: {
