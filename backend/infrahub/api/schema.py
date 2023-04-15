@@ -1,7 +1,7 @@
 import copy
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel
@@ -11,7 +11,6 @@ from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
-from infrahub.exceptions import BranchNotFound
 
 router = APIRouter(prefix="/schema")
 
@@ -30,10 +29,7 @@ async def get_schema(
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
 ) -> SchemaReadAPI:
-    try:
-        branch = await get_branch(session=session, branch=branch)
-    except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+    branch = await get_branch(session=session, branch=branch)
 
     # Make a local copy of the schema to ensure that any modification won't touch the objects in the registry
     full_schema = copy.deepcopy(registry.get_full_schema(branch=branch))
@@ -64,10 +60,7 @@ async def load_schema(
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
 ):
-    try:
-        branch = await get_branch(session=session, branch=branch)
-    except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+    branch = await get_branch(session=session, branch=branch)
 
     schema.extend_nodes_with_interfaces()
     await SchemaManager.register_schema_to_registry(schema)

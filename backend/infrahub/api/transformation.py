@@ -9,7 +9,6 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import get_gql_mutation, get_gql_query
 from infrahub.message_bus.events import (
     InfrahubRPCResponse,
@@ -32,10 +31,7 @@ async def transform_python(
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
 ):
-    try:
-        branch = await get_branch(session=session, branch=branch)
-    except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+    branch = await get_branch(session=session, branch=branch)
 
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
@@ -112,10 +108,7 @@ async def generate_rfile(
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
 ):
-    try:
-        branch = await get_branch(session=session, branch=branch)
-    except BranchNotFound as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
+    branch = await get_branch(session=session, branch=branch)
 
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)

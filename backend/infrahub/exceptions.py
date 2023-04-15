@@ -1,5 +1,16 @@
+from typing import Any, Dict, Tuple
+
+
 class Error(Exception):
-    pass
+    HTTP_CODE: int = 500
+    DESCRIPTION: str = "Unknown Error"
+    message: str = ""
+
+    def api_response(self) -> Tuple[int, Dict[str, Any]]:
+        """Return error code and response."""
+        return self.HTTP_CODE, {
+            "detail": str(self.message) or self.DESCRIPTION,
+        }
 
 
 class DatabaseError(Error):
@@ -70,6 +81,8 @@ class TransformNotFoundError(TransformError):
 
 
 class BranchNotFound(Error):
+    HTTP_CODE: int = 400
+
     def __init__(self, identifier, message=None):
         self.identifier = identifier
         self.message = message or f"Branch: {identifier} not found."
