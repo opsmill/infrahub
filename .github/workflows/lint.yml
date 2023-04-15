@@ -13,7 +13,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v3"
       - name: "Setup environment"
         run: "pip install yamllint==1.29.0"
       - name: "Linting: yamllint"
@@ -22,7 +22,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v3"
       - name: "Setup environment"
         run: "pip install black==23.1.0"
       - name: "Linting: BLACK"
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v3"
       - name: Install NodeJS
         uses: actions/setup-node@v2
         with:
