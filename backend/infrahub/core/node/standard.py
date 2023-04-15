@@ -25,7 +25,7 @@ class StandardNode(BaseModel):
     def get_type(cls) -> str:
         return cls.__name__
 
-    async def to_graphql(self, fields: dict = None) -> dict:
+    async def to_graphql(self, fields: dict) -> dict:
         response = {"id": self.uuid}
 
         for field_name in fields.keys():
