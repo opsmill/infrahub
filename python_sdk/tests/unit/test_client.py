@@ -192,11 +192,14 @@ async def test_method_get_found_many(
 async def test_method_get_invalid_filter(
     httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type
 ):  # pylint: disable=unused-argument
-    with pytest.raises(FilterNotFound):
+    with pytest.raises(FilterNotFound) as excinfo:
         if client_type == "standard":
             await clients.standard.get(kind="Repository", name__name="infrahub-demo-core")
         else:
             clients.sync.get(kind="Repository", name__name="infrahub-demo-core")
+    assert "'name__name' is not a valid filter for 'Repository'" in excinfo.value.message
+    assert "default_branch__value" in excinfo.value.message
+    assert "default_branch__value" in excinfo.value.filters
 
 
 @pytest.mark.parametrize("client_type", client_types)

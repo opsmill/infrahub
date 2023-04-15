@@ -89,7 +89,8 @@ class InfrahubNodeBase:
                     found = True
                     break
             if not found:
-                raise FilterNotFound(identifier=filter_name, kind=self._schema.kind)
+                valid_filters = [entry.name for entry in self._schema.filters]
+                raise FilterNotFound(identifier=filter_name, kind=self._schema.kind, filters=valid_filters)
 
         return True
 
