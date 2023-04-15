@@ -1,5 +1,7 @@
+import os
 import sys
 from distutils.util import strtobool
+from pathlib import Path
 from typing import Tuple
 
 from invoke import Context, task  # type: ignore  # pylint: disable=import-error
@@ -9,10 +11,14 @@ try:
 except ImportError:
     sys.exit("Please make sure to `pip install toml` or enable the Poetry shell and run `poetry install`.")
 
+path = Path(__file__)
+TASKS_DIR = str(path.parent)
+REPO_BASE = os.path.join(TASKS_DIR, "..")
+
 
 def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
-    with open("pyproject.toml", encoding="UTF-8") as file:
+    with open(f"{REPO_BASE}/pyproject.toml", encoding="UTF-8") as file:
         return toml.load(file)["tool"]["poetry"].get("version", "latest")
 
 
