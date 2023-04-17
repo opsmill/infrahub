@@ -7,6 +7,8 @@ import httpx
 import pendulum
 from pendulum.datetime import DateTime
 
+from infrahub_ctl.exceptions import QueryNotFoundError
+
 
 def calculate_time_diff(value: str) -> Optional[str]:
     """Calculate the time in human format between a timedate in string format and now."""
@@ -46,7 +48,7 @@ def execute_query(
     return response.json()
 
 
-def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> Optional[str]:
+def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> str:
     for query_file in glob.glob(f"{directory}/**/*.gql", recursive=True):
         filename = os.path.basename(query_file)
         query_name = os.path.splitext(filename)[0]
@@ -58,7 +60,7 @@ def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> Optional
 
         return query_string
 
-    return None
+    raise QueryNotFoundError(name=name)
 
 
 def find_files(
