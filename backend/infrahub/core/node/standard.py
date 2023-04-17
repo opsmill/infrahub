@@ -50,6 +50,18 @@ class StandardNode(BaseModel):
 
         return await self._create(session=session)
 
+    async def delete(self, session: AsyncSession):
+        """Delete the Node in the database."""
+        query = """
+        MATCH (n:%s {uuid: $uuid})
+        DETACH DELETE (n)
+        """ % (
+            self.get_type()
+        )
+        params = {"uuid": str(self.uuid)}
+
+        await execute_write_query_async(session=session, query=query, params=params)
+
     async def refresh(self, session: AsyncSession):
         """Pull the latest state of the object from the database."""
 

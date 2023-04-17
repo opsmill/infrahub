@@ -325,6 +325,21 @@ class BranchNameInput(InputObjectType):
     name = String(required=False)
 
 
+class BranchDelete(Mutation):
+    class Arguments:
+        data = BranchNameInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(cls, root, info, data):
+        session: AsyncSession = info.context.get("infrahub_session")
+
+        obj = await Branch.get_by_name(session=session, name=data["name"])
+        await obj.delete(session=session)
+        return cls(ok=True)
+
+
 class BranchRebase(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)

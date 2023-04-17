@@ -189,6 +189,11 @@ class Branch(StandardNode):
 
         return start, end
 
+    async def delete(self, session: AsyncSession) -> None:
+        if self.is_default:
+            raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
+        await super().delete(session=session)
+
     def get_query_filter_branch_to_node(
         self,
         rel_label: str = "r",
