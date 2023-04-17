@@ -17,6 +17,7 @@ import infrahub_ctl.config as config
 from infrahub_client import InfrahubClient
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
+from infrahub_ctl.exceptions import QueryNotFoundError
 from infrahub_ctl.schema import app as schema
 from infrahub_ctl.utils import execute_query, find_graphql_query
 from infrahub_ctl.validate import app as validate_app
@@ -70,7 +71,11 @@ async def _render(
 
     rfile_data = data["rfiles"][rfile]
 
-    query = find_graphql_query(rfile_data.get("query"))
+    try:
+        query = find_graphql_query(rfile_data.get("query"))
+    except QueryNotFoundError as exc:
+        log.error(f"Unable to find query : {exc}")
+        sys.exit(1)
 
     params_dict: dict = {item.split("=")[0]: item.split("=")[1] for item in params} if params else {}
 
