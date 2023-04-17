@@ -881,14 +881,16 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             current_names = [rfile.name.value for rfile in rfiles_in_repo]
             if rfile_name not in current_names:
                 LOGGER.info(f"{self.name}: New RFile '{rfile_name}' found on branch {branch_name}, creating")
-                await self.client.create_rfile(
-                    branch_name=branch_name,
+                obj = await self.client.create(
+                    kind="RFile",
+                    branch=branch_name,
                     name=rfile_name,
                     description=rfile.get("description", ""),
                     query=rfile.get("query"),
                     template_path=rfile.get("template_path"),
                     template_repository=str(rfile.get("template_repository")),
                 )
+                await obj.save()
                 continue
 
             rfile_in_repo = [rfile for rfile in rfiles_in_repo if rfile.name.value == rfile_name][0]
@@ -906,13 +908,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.info(
                     f"{self.name}: New version of the RFile '{rfile_name}' found on branch {branch_name}, updating"
                 )
-                await self.client.update_rfile(
-                    branch_name=branch_name,
-                    id=str(rfile_in_repo.id),
-                    name=rfile_name,
-                    description=description,
-                    template_path=template_path,
-                )
+                obj = await self.client.get(kind="RFile", branch=branch_name, id=str(rfile_in_repo.id))
+                obj.name.value = rfile_name
+                obj.description.value = description
+                obj.template_path.value = template_path
+                await obj.save()
 
     async def import_all_graphql_query(self, branch_name: str):
         """Search for all .gql file and import them as GraphQL query."""
