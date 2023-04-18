@@ -12,8 +12,8 @@ from .utils import project_ver
 
 # flake8: noqa: W605
 
-PYTHON_VER = os.getenv("PYTHON_VER", "3.9")
-IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/infrahub-py{PYTHON_VER}")
+PYTHON_VER = os.getenv("PYTHON_VER", "3.10")
+IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/infrahub-backend-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
 PWD = os.getcwd()
 
