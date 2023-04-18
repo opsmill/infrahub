@@ -45,14 +45,37 @@ export default function ObjectItemDetails() {
   const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const atttributeRelationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute") ?? [];
-  const otherRelationships = schema?.relationships?.filter((relationship) => relationship.kind !== "Attribute") ?? [];
+  const atttributeRelationships = schema?.relationships?.filter((relationship) => {
+    if(relationship.kind === "Generic" && relationship.cardinality === "one") {
+      return true;
+    }
+    if(relationship.kind === "Attribute") {
+      return true;
+    }
+    if(relationship.kind === "Component" && relationship.cardinality === "one") {
+      return true;
+    }
+    if(relationship.kind === "Parent") {
+      return true;
+    }
+    return false;
+  }) ?? [];
+
   const tabs = [
     {
       label: schema?.label,
       name: schema?.label
     },
-    ...otherRelationships.map((relationship) => ({ label: relationship.label, name: relationship.name}))
+    ...(schema?.relationships || []).filter(relationship => {
+      if(relationship.kind === "Generic" && relationship.cardinality === "many") {
+        return true;
+      }
+      if(relationship.kind === "Component" && relationship.cardinality === "many") {
+        return true;
+      }
+      return false;
+    })
+    .map((relationship) => ({ label: relationship.label, name: relationship.name}))
   ];
 
   const navigate = useNavigate();
@@ -149,9 +172,13 @@ export default function ObjectItemDetails() {
 
                         <div className="flex items-center">
                           <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            {(objectDetails[attribute.name]?.value !== false && objectDetails[attribute.name].value) ? objectDetails[attribute.name].value : "-"}
-                            {objectDetails[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
-                            {objectDetails[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
+                            {typeof objectDetails[attribute.name]?.value !== "boolean" ? objectDetails[attribute.name].value ? objectDetails[attribute.name].value : "-" : ""}
+                            { typeof objectDetails[attribute.name]?.value === "boolean" &&
+                              <span className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1.5 text-sm font-medium text-gray-800">
+                                {objectDetails[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
+                                {objectDetails[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
+                              </span>
+                            }
                           </dd>
 
                           {

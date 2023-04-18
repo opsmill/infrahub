@@ -9,15 +9,16 @@ interface iColumn {
 const getLabelAndName = R.pick(["label", "name"]);
 const sortByLabel = R.sortBy(R.compose(R.toLower, R.prop("label")));
 
-const hasCardinalityOne = (r: any) => r.cardinality === "one";
-
-export const getSchemaRelationshipColumns = (schema: iNodeSchema): iColumn[] => {
+export const getSchemaRelationshipColumns = (
+  schema: iNodeSchema
+): iColumn[] => {
   if (!schema) {
     return [];
   }
 
+  // Relationship kind to show in LIST VIEW - Attribute, Parent
   const relationships = (schema.relationships || [])
-  .filter(hasCardinalityOne)
+  .filter(relationship => relationship.kind === "Attribute" || relationship.kind === "Parent")
   .map(getLabelAndName);
   return sortByLabel(relationships);
 };
