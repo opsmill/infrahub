@@ -1,6 +1,7 @@
 import { Select2StepPreview } from "../component-preview/select-2-step.preview";
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
+import { Diff } from "../screens/branches/diff/diff";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
 import ObjectItemEdit from "../screens/object-item-edit/object-item-edit";
@@ -33,8 +34,12 @@ export const MAIN_ROUTES = [
     element: <BranchesItems />,
   },
   {
-    path: "/branches/:branchid",
+    path: "/branches/:branchname",
     element: <BrancheItemDetails />,
+  },
+  {
+    path: "/branches/:branchname/pull-request",
+    element: <Diff />,
   },
 ];
 
@@ -56,6 +61,10 @@ export const BRANCHES_MENU_ITEMS = [
   {
     path: "/branches",
     label: "List"
+  },
+  {
+    path: "/pull-requests",
+    label: "Pull requests"
   }
 ];
 

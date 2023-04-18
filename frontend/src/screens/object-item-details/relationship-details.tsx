@@ -1,9 +1,10 @@
 import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { Link } from "react-router-dom";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { Link } from "../../components/link";
+import { useNavigate } from "react-router-dom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 
 type iRelationDetailsProps = {
@@ -23,6 +24,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { relationshipsData, relationshipSchema } = props;
 
   const [schemaKindName] = useAtom(schemaKindNameState);
+  const navigate = useNavigate();
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
@@ -52,7 +54,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               && (
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                   <Link
-                    to={getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id)}
+                    onClick={() => navigate(getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id))}
                   >
                     {relationshipsData.display_label}
                   </Link>
@@ -129,7 +131,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
                           key={item.id}
                         >
-                          <Link to={getObjectDetailsUrl(item, schemaKindName, item.id)}>
+                          <Link onClick={() => navigate(getObjectDetailsUrl(item, schemaKindName, item.id))}>
                             {item.display_label}
                           </Link>
 

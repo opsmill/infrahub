@@ -3,7 +3,7 @@ import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
@@ -16,6 +16,8 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import { graphQLClient } from "../../graphql/graphqlClient";
+import { getObjectUrl } from "../../utils/objects";
+import { RoundedButton } from "../../components/rounded-button";
 
 declare const Handlebars: any;
 
@@ -77,7 +79,6 @@ export default function ObjectItems() {
   const columns = getSchemaObjectColumns(schema);
 
   const navigate = useNavigate();
-  const { search } = useLocation();
 
   useEffect(
     () => {
@@ -150,15 +151,9 @@ export default function ObjectItems() {
           )
         }
 
-        <button
-          onClick={() => {
-            navigate(`/objects/${schema.name}/new/${search}`);
-          }}
-          type="button"
-          className="rounded-full bg-blue-600 p-1.5 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-        >
+        <RoundedButton onClick={() => navigate(`/objects/${schema.name}/new`)}>
           <PlusIcon className="h-5 w-5" aria-hidden="true" />
-        </button>
+        </RoundedButton>
       </div>
 
       {
@@ -208,9 +203,7 @@ export default function ObjectItems() {
                         ?.map(
                           (row, index) => (
                             <tr
-                              onClick={() => {
-                                navigate(`/objects/${schema.name}/${row.id}/${search}`);
-                              }}
+                              onClick={() => navigate(getObjectUrl({ kind: schema.name, id: row.id }))}
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer"
                             >

@@ -8,7 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import { Button } from "../../components/button";
@@ -21,7 +21,6 @@ import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { timeState } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -29,10 +28,11 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit.compon
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
+import { Tabs } from "../../components/tabs";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
-  const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [date] = useAtom(timeState);
@@ -47,9 +47,15 @@ export default function ObjectItemDetails() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const atttributeRelationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute") ?? [];
   const otherRelationships = schema?.relationships?.filter((relationship) => relationship.kind !== "Attribute") ?? [];
+  const tabs = [
+    {
+      label: schema?.label,
+      name: schema?.label
+    },
+    ...otherRelationships.map((relationship) => ({ label: relationship.label, name: relationship.name}))
+  ];
 
   const navigate = useNavigate();
-  const { search } = useLocation();
 
   const fetchObjectDetails = useCallback(async () => {
     setHasError(false);
@@ -86,7 +92,7 @@ export default function ObjectItemDetails() {
     <div className="bg-white flex-1 overflow-auto">
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
-          onClick={() => navigate(`/objects/${objectname}/${search}`)}
+          onClick={() => navigate(`/objects/${objectname}`)}
           className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
         >
           {schema.kind}
@@ -97,56 +103,25 @@ export default function ObjectItemDetails() {
         />
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetails.display_label}</p>
       </div>
-      <div className="flex items-center">
-        <div className="flex-1">
-          <div className="">
-            <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
-              <div
-                onClick={() => setQspTab(undefined)}
-                className={classNames(
-                  !qspTab
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                  "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
-                )}
-              >
-                {schema.label}
-              </div>
-              {
-                otherRelationships
-                .map(
-                  (relationship) => (
-                    <div
-                      key={relationship.name}
-                      onClick={() => setQspTab(relationship.name)}
-                      className={classNames(
-                        qspTab && qspTab === relationship.name
-                          ? "border-indigo-500 text-indigo-600"
-                          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                        "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
-                      )}
-                    >
-                      {relationship.label}
-                    </div>
-                  )
-                )
-              }
-            </nav>
-          </div>
-        </div>
 
-        <Button onClick={() => {
-          setShowEditDrawer(true);
-        }} className="mr-4">
-          Edit
-          <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-        </Button>
-      </div>
+      <Tabs
+        tabs={tabs}
+        rightItems={
+          (
+            <Button onClick={() => {
+              setShowEditDrawer(true);
+            }} className="mr-4">
+              Edit
+              <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+            </Button>
+          )
+        }
+      />
 
       {
         !qspTab
         && (
-          <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <div className="px-4 py-5 sm:p-0">
             <dl className="sm:divide-y sm:divide-gray-200">
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>

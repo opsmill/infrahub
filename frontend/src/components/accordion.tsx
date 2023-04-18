@@ -28,7 +28,7 @@ export default function Accordion(props: any) {
             </Disclosure.Button>
           </dt>
 
-          <Disclosure.Panel as="dd" className="mt-2 pr-12">
+          <Disclosure.Panel as="dd" className="mt-2">
             {children}
           </Disclosure.Panel>
         </>
