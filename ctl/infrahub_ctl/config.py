@@ -49,7 +49,7 @@ def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Option
         SETTINGS = Settings(**config_tmp)
         return
 
-    SETTINGS = Settings()
+    SETTINGS = Settings()  # type: ignore
 
 
 def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None):
@@ -72,4 +72,4 @@ def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_dat
         raise typer.Abort()
 
 
-SETTINGS = Settings()
+SETTINGS = Settings()  # type: ignore

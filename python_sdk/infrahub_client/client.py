@@ -484,7 +484,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         data = await self.execute_graphql(query=QUERY_ALL_RFILES, branch_name=branch_name, tracker="query-rfile-all")
 
         items = {
-            item["name"]["value"]: RFileData(
+            item["name"]["value"]: RFileData(  # type: ignore
                 id=item["id"],
                 name=item["name"]["value"],
                 description=item["description"]["value"],

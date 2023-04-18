@@ -72,7 +72,7 @@ async def location_schema() -> NodeSchema:
             {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
         ],
     }
-    return NodeSchema(**data)
+    return NodeSchema(**data)  # type: ignore
 
 
 @pytest.fixture

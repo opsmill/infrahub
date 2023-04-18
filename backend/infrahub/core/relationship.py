@@ -345,7 +345,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         response = await peer.to_graphql(fields=peer_fields, session=session)
 
         for field_name in rel_fields.keys():
-            if field_name == "updated_at" in fields:
+            if field_name == "updated_at":
                 response[f"{PREFIX_PROPERTY}{field_name}"] = await self.updated_at.to_graphql(session=session)
 
             if field_name in self._node_properties:

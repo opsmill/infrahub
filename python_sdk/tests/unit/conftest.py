@@ -49,7 +49,7 @@ async def location_schema() -> NodeSchema:
             {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
         ],
     }
-    return NodeSchema(**data)
+    return NodeSchema(**data)  # type: ignore
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ async def rfile_schema() -> NodeSchema:
             {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
         ],
     }
-    return NodeSchema(**data)
+    return NodeSchema(**data)  # type: ignore
 
 
 @pytest.fixture

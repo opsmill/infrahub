@@ -16,5 +16,7 @@ COPY frontend/package.json  frontend/package-lock.json /source/
 WORKDIR /source
 
 RUN npm install
+COPY frontend/ /source/
 
-COPY frontend /source
+RUN  npm install serve
+RUN npm run build
