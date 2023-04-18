@@ -102,6 +102,11 @@ known_first_party = [ "infrahub" , "infrahub_client", "infrahub_ctl" ]
 [tool.coverage.run]
 branch = true
 
+[tool.coverage.report]
+exclude_lines = [
+    "if TYPE_CHECKING:"
+]
+
 [tool.pylint.general]
 extension-pkg-whitelist = [
     "pydantic",
