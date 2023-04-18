@@ -397,15 +397,15 @@ async def test_load_node_to_db_group_schema(session, default_branch: Branch):
     assert len(results) == 1
 
 
-# async def test_load_schema_to_db_internal_models(session, default_branch):
-#     schema = SchemaRoot(**internal_schema)
-#     await SchemaManager.register_schema_to_registry(schema=schema)
+async def test_load_schema_to_db_internal_models(session, default_branch):
+    schema = SchemaRoot(**internal_schema)
+    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-#     await SchemaManager.load_schema_to_db(schema=schema, session=session)
+    await registry.schema.load_schema_to_db(schema=new_schema, session=session)
 
-#     node_schema = registry.get_schema(name="NodeSchema")
-#     results = await SchemaManager.query(schema=node_schema, session=session)
-#     assert len(results) > 1
+    node_schema = registry.get_schema(name="NodeSchema")
+    results = await SchemaManager.query(schema=node_schema, session=session)
+    assert len(results) > 1
 
 
 async def test_load_schema_to_db_core_models(session, default_branch: Branch, register_internal_models_schema):
@@ -415,7 +415,7 @@ async def test_load_schema_to_db_core_models(session, default_branch: Branch, re
     await registry.schema.load_schema_to_db(schema=new_schema, session=session)
 
     node_schema = registry.get_schema(name="GenericSchema")
-    results = await registry.schema.query(schema=node_schema, session=session)
+    results = await SchemaManager.query(schema=node_schema, session=session)
     assert len(results) > 1
 
 
