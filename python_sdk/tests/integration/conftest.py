@@ -31,7 +31,7 @@ def execute_before_any_test():
     config.SETTINGS.main.internal_address = "http://mock"
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 async def db():
     driver = await get_db()
 
@@ -40,7 +40,7 @@ async def db():
     await driver.close()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 async def session(db):
     session = db.session(database=config.SETTINGS.database.database)
 
@@ -49,7 +49,7 @@ async def session(db):
     await session.close()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 async def init_db_base(session: AsyncSession):
     await delete_all_nodes(session=session)
     await first_time_initialization(session=session)
