@@ -387,6 +387,7 @@ export const C_deviceRelationshipColumns = [
   { label: "Role", name: "role" },
   { label: "Site", name: "site" },
   { label: "Status", name: "status" },
+  { label: "Tags", name: "tags" },
 ];
 export const C_deviceObjectColumns = [
   { label: "Asn", name: "asn" },
@@ -395,6 +396,6 @@ export const C_deviceObjectColumns = [
   { label: "Role", name: "role" },
   { label: "Site", name: "site" },
   { label: "Status", name: "status" },
+  { label: "Tags", name: "tags" },
   { label: "Type", name: "type" },
 ];
-
