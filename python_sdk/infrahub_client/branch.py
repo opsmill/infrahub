@@ -73,6 +73,16 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
 
         return BranchData(**response["branch_create"]["object"])
 
+    async def delete(self, branch_name: str) -> bool:
+        input_data = {
+            "data": {
+                "name": branch_name,
+            }
+        }
+        query = Mutation(mutation="branch_delete", input_data=input_data, query={"ok": None})
+        response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-delete")
+        return response["branch_delete"]["ok"]
+
     async def rebase(self, branch_name: str) -> BranchData:
         input_data = {
             "data": {
@@ -159,6 +169,16 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-create")
 
         return BranchData(**response["branch_create"]["object"])
+
+    def delete(self, branch_name: str) -> bool:
+        input_data = {
+            "data": {
+                "name": branch_name,
+            }
+        }
+        query = Mutation(mutation="branch_delete", input_data=input_data, query={"ok": None})
+        response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-delete")
+        return response["branch_delete"]["ok"]
 
     def diff_data(
         self,
