@@ -50,9 +50,9 @@ async def transform_python(
     query = await transform.query.get_peer(session=session)
     repository = await transform.repository.get_peer(session=session)
 
-    schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
+    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
     result = await graphql(
-        schema,
+        gql_schema,
         source=query.query.value,
         context_value={
             "infrahub_branch": branch,
@@ -127,9 +127,9 @@ async def generate_rfile(
     query = await rfile.query.get_peer(session=session)
     repository = await rfile.template_repository.get_peer(session=session)
 
-    schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
+    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
     result = await graphql(
-        schema,
+        gql_schema,
         source=query.query.value,
         context_value={
             "infrahub_branch": branch,

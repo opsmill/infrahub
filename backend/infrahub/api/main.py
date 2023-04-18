@@ -126,9 +126,9 @@ async def graphql_query(
     if not gql_query:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
+    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
     result = await graphql(
-        schema,
+        gql_schema,
         source=gql_query.query.value,
         context_value={
             "infrahub_branch": branch,
