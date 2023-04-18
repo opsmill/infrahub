@@ -28,7 +28,7 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import GraphQLError, InfrahubClient
+from infrahub_client import GraphQLError, InfrahubClient, ValidationError
 
 # pylint: disable=too-few-public-methods,too-many-lines
 
@@ -869,31 +869,34 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def import_objects_rfiles(self, branch_name: str, data: dict):
         LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ")
 
+        schema = await self.client.schema.get(kind="RFile", branch=branch_name)
+
         rfiles_in_repo = await self.client.filters(kind="RFile", template_repository__id=str(self.id))
 
-        for rfile_name, rfile in data.items():
+        for rfile in data:
             # Insert the UUID of the repository in case they are referencing the local repo
-            for key in rfile.keys():
-                if "repository" in key:
-                    if rfile[key] == "self":
-                        rfile[key] = self.id
+
+            try:
+                self.client.schema.validate_data_against_schema(schema=schema, data=rfile)
+            except ValidationError as exc:
+                LOGGER.error(exc.message)
+                continue
+
+            if ("repository" in rfile and rfile["repository"] == "self") or "repository" not in rfile:
+                rfile["repository"] = self.id
 
             current_names = [rfile.name.value for rfile in rfiles_in_repo]
-            if rfile_name not in current_names:
-                LOGGER.info(f"{self.name}: New RFile '{rfile_name}' found on branch {branch_name}, creating")
-                obj = await self.client.create(
-                    kind="RFile",
-                    branch=branch_name,
-                    name=rfile_name,
-                    description=rfile.get("description", ""),
-                    query=rfile.get("query"),
-                    template_path=rfile.get("template_path"),
-                    template_repository=str(rfile.get("template_repository")),
+            if rfile["name"] not in current_names:
+                LOGGER.info(f"{self.name}: New RFile {rfile['name']!r} found on branch {branch_name!r}, creating")
+
+                create_payload = self.client.schema.generate_payload_create(
+                    schema=schema, data=rfile, source=self.id, protected=True
                 )
+                obj = await self.client.create(kind="RFile", branch=branch_name, **create_payload)
                 await obj.save()
                 continue
 
-            rfile_in_repo = [rfile for rfile in rfiles_in_repo if rfile.name.value == rfile_name][0]
+            rfile_in_repo = [rfile for rfile in rfiles_in_repo if rfile.name.value == rfile["name"]][0]
 
             description = (
                 rfile.get("description") if rfile.get("description") is not None else rfile_in_repo.description.value

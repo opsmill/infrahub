@@ -73,3 +73,10 @@ class FilterNotFound(Error):
         self.filters = filters or []
         self.message = message or f"{identifier!r} is not a valid filter for {self.kind!r} ({', '.join(self.filters)})."
         super().__init__(self.message)
+
+
+class ValidationError(Error):
+    def __init__(self, identifier: str, message: str):
+        self.identifier = identifier
+        self.message = message
+        super().__init__(self.message)
