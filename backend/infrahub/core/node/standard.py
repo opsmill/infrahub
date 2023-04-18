@@ -54,7 +54,9 @@ class StandardNode(BaseModel):
     async def delete(self, session: AsyncSession):
         """Delete the Node in the database."""
 
-        query = await StandardNodeDeleteQuery.init(session=session, node_type=self.get_type(), uuid=str(self.uuid))
+        query = await StandardNodeDeleteQuery.init(
+            session=session, node_type=self.get_type(), identifier=str(self.uuid)
+        )
         await query.execute(session=session)
 
     async def refresh(self, session: AsyncSession):
@@ -204,9 +206,9 @@ class StandardNodeDeleteQuery(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, node_type: str, uuid: str, *args, **kwargs):
+    def __init__(self, node_type: str, identifier: str, *args, **kwargs):
         self.node_type = node_type
-        self.uuid = uuid
+        self.uuid = identifier
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
