@@ -257,7 +257,7 @@ class BaseNodeSchema(BaseSchemaModel):
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    _exclude_from_hash = ["id", "attributes", "relationships", "filters"]
+    _exclude_from_hash = ["id", "attributes", "relationships"]
 
     def __hash__(self):
         """Extend the Hash Calculation to account for attributes and relationships."""
@@ -409,7 +409,8 @@ class NodeSchema(BaseNodeSchema):
         return values
 
     def duplicate(self):
-        return self.__class__(**self.dict())
+        """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
+        return self.__class__(**copy.deepcopy(self.dict()))
 
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
