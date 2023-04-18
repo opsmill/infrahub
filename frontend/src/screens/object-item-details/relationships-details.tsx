@@ -1,15 +1,20 @@
-import { schemaState } from "../../state/atoms/schema.atom";
-import { useParams } from "react-router-dom";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import getObjectRelationshipDetails from "../../graphql/queries/objects/objectRelationshipDetails";
-import { timeState } from "../../state/atoms/time.atom";
-import { branchState } from "../../state/atoms/branch.atom";
+import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/constants";
+import getObjectRelationshipDetails from "../../graphql/queries/objects/objectRelationshipDetails";
+import { branchState } from "../../state/atoms/branch.atom";
+import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { timeState } from "../../state/atoms/time.atom";
 import RelationshipDetails from "./relationship-details";
 
-export default function RelationshipsDetails() {
+interface Props {
+  parentSchema: iNodeSchema;
+  refreshObject: Function;
+}
+
+export default function RelationshipsDetails(props: Props) {
   const { objectname, objectid } = useParams();
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
 
@@ -64,10 +69,8 @@ export default function RelationshipsDetails() {
   }
 
   return (
-    <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-      <dl className="sm:divide-y sm:divide-gray-200">
-        <RelationshipDetails relationshipsData={relationships} relationshipSchema={relationshipSchema} />
-      </dl>
+    <div className="border-t border-gray-200 flex-1 flex">
+      <RelationshipDetails parentSchema={schema} refreshObject={props.refreshObject} relationshipsData={relationships} relationshipSchema={relationshipSchema} />
     </div>
   );
 };
