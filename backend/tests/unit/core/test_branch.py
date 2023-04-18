@@ -809,11 +809,13 @@ async def test_delete_branch(session, rpc_client: InfrahubRpcClientTesting, defa
     branch_name = "delete-me"
     branch = await create_branch(branch_name=branch_name, session=session)
     found = await Branch.get_by_name(name=branch_name, session=session)
+
     fake_relationsship = """
     CREATE (n1:BranchRelation)-[r:HAS_ATTRIBUTE {branch: "delete-me"}]->(n2:BranchRelation)
     RETURN n1, r, n2
     """
     await execute_write_query_async(session=session, query=fake_relationsship)
+
     relationship_query = """
     MATCH ()-[r]-()
     WHERE r.branch = $branch_name
@@ -821,6 +823,7 @@ async def test_delete_branch(session, rpc_client: InfrahubRpcClientTesting, defa
     """
     params = {"branch_name": branch_name}
     pre_delete = await execute_read_query_async(session=session, query=relationship_query, params=params)
+
     await branch.delete(session=session)
     post_delete = await execute_read_query_async(session=session, query=relationship_query, params=params)
 
