@@ -78,7 +78,7 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   return (
     <div className="flex-1 bg-white flex">
-      <EditFormHookComponent onSubmit={onSubmit} fields={formStructure} />
+      <EditFormHookComponent onCancel={props.closeDrawer} onSubmit={onSubmit} fields={formStructure} />
     </div>
   );
   // return (

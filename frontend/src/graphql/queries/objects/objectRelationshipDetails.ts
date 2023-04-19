@@ -1,6 +1,7 @@
 import { gql } from "graphql-request";
+import { iGenericSchema, iNodeSchema } from "../../../state/atoms/schema.atom";
+import { getAttributeColumnsFromNodeOrGenericSchema } from "../../../utils/getSchemaObjectColumns";
 import { graphQLClient } from "../../graphqlClient";
-import { iNodeSchema } from "../../../state/atoms/schema.atom";
 
 declare const Handlebars: any;
 
@@ -9,6 +10,11 @@ const template = Handlebars.compile(`query {{kind.value}} {
     {{relationship}} {
       id
       display_label
+      {{#each columns}}
+      {{this.name}} {
+        value
+      }
+      {{/each}}
       __typename
       _relation__is_visible
       _relation__is_protected
@@ -28,11 +34,15 @@ const template = Handlebars.compile(`query {{kind.value}} {
 }
 `);
 
-const getObjectRelationshipsDetails = async (schema: iNodeSchema, id: string, relationship: string) => {
+const getObjectRelationshipsDetails = async (schema: iNodeSchema, schemaList: iNodeSchema[], generics: iGenericSchema[], id: string, relationship: string) => {
+  const relationshipSchema = schema.relationships?.find((r) => r?.name === relationship);
+  const columns = getAttributeColumnsFromNodeOrGenericSchema(schemaList, generics, relationshipSchema?.peer!);
+
   const queryString = template({
     ...schema,
     relationship,
     objectid: id,
+    columns,
   });
 
   const query = gql`

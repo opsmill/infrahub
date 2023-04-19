@@ -11,3 +11,5 @@ export interface iGenericSchemaMapping {
     [node: string]: string[];
 }
 export const genericSchemaState = atom<iGenericSchemaMapping>({});
+
+export type iRelationshipSchema = components["schemas"]["RelationshipSchema"];

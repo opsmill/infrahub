@@ -1,5 +1,5 @@
 import * as R from "ramda";
-import { iNodeSchema } from "../state/atoms/schema.atom";
+import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
 interface iColumn {
   label: string;
@@ -10,7 +10,7 @@ const getLabelAndName = R.pick(["label", "name"]);
 const sortByLabel = R.sortBy(R.compose(R.toLower, R.prop("label")));
 
 export const getSchemaRelationshipColumns = (
-  schema: iNodeSchema
+  schema: iNodeSchema | iGenericSchema
 ): iColumn[] => {
   if (!schema) {
     return [];
@@ -23,7 +23,7 @@ export const getSchemaRelationshipColumns = (
   return sortByLabel(relationships);
 };
 
-export const getSchemaAttributeColumns = (schema: iNodeSchema): iColumn[] => {
+export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
   if (!schema) {
     return [];
   }
@@ -32,7 +32,7 @@ export const getSchemaAttributeColumns = (schema: iNodeSchema): iColumn[] => {
   return sortByLabel(attributes);
 };
 
-export const getSchemaObjectColumns = (schema: iNodeSchema): iColumn[] => {
+export const getSchemaObjectColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
   if (!schema) {
     return [];
   }
@@ -42,4 +42,16 @@ export const getSchemaObjectColumns = (schema: iNodeSchema): iColumn[] => {
 
   const columns = R.concat(attributes, relationships);
   return sortByLabel(columns);
+};
+
+export const getAttributeColumnsFromNodeOrGenericSchema = (schemaList: iNodeSchema[], generics: iGenericSchema[], kind: String): iColumn[] => {
+  const generic = generics.find(g => g.kind === kind);
+  const peerSchema = schemaList.find(s => s.kind === kind);
+  if(generic) {
+    return getSchemaAttributeColumns(generic);
+  }
+  if(peerSchema) {
+    return getSchemaAttributeColumns(peerSchema);
+  }
+  return [];
 };
