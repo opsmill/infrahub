@@ -62,7 +62,7 @@ async def test_schema_branch_get(default_branch: Branch):
     assert schema11 == schema
 
 
-async def test_schema_branch_load_schema():
+async def test_schema_branch_load_schema_initial():
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -100,6 +100,23 @@ async def test_schema_branch_load_schema():
     assert isinstance(schema_branch.get(name="Criticality"), NodeSchema)
     assert isinstance(schema_branch.get(name="GenericGroup"), GroupSchema)
     assert isinstance(schema_branch.get(name="GenericInterface"), GenericSchema)
+
+
+async def test_schema_branch_load_schema_extension(session, default_branch, schema_file_infra_w_extensions_01):
+    schema = SchemaRoot(**core_models)
+
+    schema_branch = SchemaRegistryBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+    schema_branch.process()
+
+    org = schema_branch.get(name="Organization")
+    initial_nbr_relationships = len(org.relationships)
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_file_infra_w_extensions_01))
+
+    org = schema_branch.get(name="Organization")
+    assert len(org.relationships) == initial_nbr_relationships + 1
+    assert schema_branch.get(name="Device")
 
 
 async def test_schema_branch_process_filters(
@@ -283,8 +300,7 @@ async def test_schema_branch_diff(session, reset_registry, default_branch: Branc
     new_schema.set(name="Criticality", schema=node)
 
     diff = schema_branch.diff(obj=new_schema)
-
-    assert diff["values_changed"]["root['nodes']['Criticality']"]
+    assert diff.dict() == {"added": [], "changed": ["Criticality"], "removed": []}
 
 
 # -----------------------------------------------------------------
@@ -463,16 +479,17 @@ async def test_load_schema_to_db_core_models(session, default_branch: Branch, re
     assert len(results) > 1
 
 
-# async def test_load_schema_to_db_simple_01(
-#     session, default_branch, register_core_models_schema, schema_file_infra_simple_01
-# ):
-#     schema = SchemaRoot(**schema_file_infra_simple_01)
+async def test_load_schema_to_db_simple_01(
+    session, default_branch, register_core_models_schema, schema_file_infra_simple_01
+):
+    schema = SchemaRoot(**schema_file_infra_simple_01)
+    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-#     schema.extend_nodes_with_interfaces()
-#     await SchemaManager.register_schema_to_registry(schema)
-#     await SchemaManager.load_schema_to_db(schema=schema, session=session)
+    await registry.schema.load_schema_to_db(schema=new_schema, session=session)
 
-#     assert True
+    node_schema = registry.get_schema(name="Device")
+    results = await SchemaManager.query(schema=node_schema, session=session)
+    assert len(results) > 1
 
 
 # async def test_load_schema_to_db_w_generics_01(

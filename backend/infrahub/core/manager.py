@@ -4,7 +4,7 @@ import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from deepdiff import DeepDiff
+from pydantic import BaseModel, Field
 
 import infrahub.config as config
 from infrahub.core import get_branch, get_branch_from_registry, registry
@@ -26,7 +26,7 @@ from infrahub.core.schema import (
     SchemaRoot,
 )
 from infrahub.exceptions import SchemaNotFound
-from infrahub.utils import deep_merge_dict
+from infrahub.utils import deep_merge_dict, intersection
 from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -262,6 +262,16 @@ class NodeManager:
         return nodes
 
 
+class SchemaDiff(BaseModel):
+    added: List[str] = Field(default_factory=list)
+    changed: List[str] = Field(default_factory=list)
+    removed: List[str] = Field(default_factory=list)
+
+    @property
+    def all(self) -> List[str]:
+        return self.changed + self.added + self.removed
+
+
 class SchemaRegistryBranch:
     def __init__(self, cache: Dict, name: Optional[str] = None, data: Optional[Dict[str, int]] = None):
         self._cache: Dict[int, Union[NodeSchema, GenericSchema, GroupSchema]] = cache
@@ -286,8 +296,23 @@ class SchemaRegistryBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics, "groups": self.groups}
 
-    def diff(self, obj: SchemaRegistryBranch) -> DeepDiff:
-        return DeepDiff(self.to_dict(), obj.to_dict(), ignore_order=True)
+    def diff(self, obj: SchemaRegistryBranch) -> SchemaDiff:
+        local_keys = list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
+        other_keys = list(obj.nodes.keys()) + list(obj.generics.keys()) + list(obj.groups.keys())
+        present_both = intersection(local_keys, other_keys)
+        present_local_only = list(set(local_keys) - set(present_both))
+        present_other_only = list(set(other_keys) - set(present_both))
+
+        schema_diff = SchemaDiff(added=present_local_only, removed=present_other_only)
+        for key in present_both:
+            if key in self.nodes and key in obj.nodes and self.nodes[key] != obj.nodes[key]:
+                schema_diff.changed.append(key)
+            elif key in self.generics and key in obj.generics and self.generics[key] != obj.generics[key]:
+                schema_diff.changed.append(key)
+            elif key in self.groups and key in obj.groups and self.groups[key] != obj.groups[key]:
+                schema_diff.changed.append(key)
+
+        return schema_diff
 
     def duplicate(self, name: Optional[str] = None) -> SchemaRegistryBranch:
         """Duplicate the current object but conserve the same cache."""
@@ -313,7 +338,11 @@ class SchemaRegistryBranch:
         return schema_hash
 
     def get(self, name: str) -> Union[NodeSchema, GenericSchema, GroupSchema]:
-        """Access a specific NodeSchema, GenericSchema or GroupSchema, defined by its kind."""
+        """Access a specific NodeSchema, GenericSchema or GroupSchema, defined by its kind.
+
+        To ensure that noone will even change an object in the cache,
+        the function always return a copy of the object, not the object itself
+        """
         key = None
         if name in self.nodes:
             key = self.nodes[name]
@@ -323,7 +352,7 @@ class SchemaRegistryBranch:
             key = self.groups[name]
 
         if key:
-            return self._cache[key]
+            return self._cache[key].duplicate()
 
         raise ValueError(f"Unable to find the schema '{name}' for the branch {self.name} in the registry")
 
@@ -349,6 +378,8 @@ class SchemaRegistryBranch:
                 node.attributes.append(item)
             for item in node_extension.relationships:
                 node.relationships.append(item)
+
+            self.set(name=node.kind, schema=node)
 
     def process(self) -> None:
         self.process_inheritance()
@@ -495,11 +526,19 @@ class SchemaManager(NodeManager):
         schema: SchemaRegistryBranch,
         session: AsyncSession,
         branch: Optional[Union[Branch, str]] = None,
-        update_db: bool = False,
+        limit: Optional[List[str]] = None,
+        update_db: bool = True,
     ):
         branch = await get_branch(branch=branch, session=session)
-        current_schema = self.get_schema_branch(name=branch.name)
-        schema.diff(current_schema)
+
+        # TODO use the result of the diff to only update the relevant nodes
+        # current_schema = self.get_schema_branch(name=branch.name)
+        # schema.diff(current_schema)
+
+        if update_db:
+            self.load_schema_to_db(schema=schema, session=session, branch=branch, limit=limit)
+
+        self._branches[branch.name] = schema
 
     def register_schema(self, schema: SchemaRoot, branch: str = None) -> SchemaRegistryBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
@@ -511,18 +550,27 @@ class SchemaManager(NodeManager):
         return schema_branch
 
     async def load_schema_to_db(
-        self, schema: SchemaRegistryBranch, session: AsyncSession, branch: Union[str, Branch] = None
+        self,
+        schema: SchemaRegistryBranch,
+        session: AsyncSession,
+        branch: Union[str, Branch] = None,
+        limit: Optional[List[str]] = None,
     ) -> None:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
         branch = await get_branch(branch=branch, session=session)
 
         for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()) + list(schema.groups.keys()):
+            if limit and item_kind not in limit:
+                continue
+
             item = schema.get(name=item_kind)
             if item.id:
-                await self.load_node_to_db(node=item, branch=branch, session=session)
+                node = await self.load_node_to_db(node=item, branch=branch, session=session)
+                schema.set(name=item_kind, schema=node)
             else:
-                await self.update_node_in_db(node=item, branch=branch, session=session)
+                node = await self.update_node_in_db(node=item, branch=branch, session=session)
+                schema.set(name=item_kind, schema=node)
 
     async def load_node_to_db(
         self,
@@ -578,6 +626,7 @@ class SchemaManager(NodeManager):
 
         # Save back the node with the newly created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
+        return new_node
 
     async def update_node_in_db(
         self,
@@ -595,7 +644,14 @@ class SchemaManager(NodeManager):
 
         # Update the node First
         schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
-        obj = await self.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+        obj = await self.get_one(id=node.id, branch=branch, session=session, include_owner=True, include_source=True)
+
+        if not obj:
+            raise SchemaNotFound(
+                branch_name=branch.name,
+                identifier=node.id,
+                message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
+            )
 
         # Update all direct attributes attributes
         for key, value in schema_dict.items():
@@ -628,6 +684,8 @@ class SchemaManager(NodeManager):
                 for key, value in item_dict.items():
                     getattr(rel, key).value = value
                 await rel.save(session=session)
+
+        return node
 
     async def load_schema_from_db(
         self,

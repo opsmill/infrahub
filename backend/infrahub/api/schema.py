@@ -9,6 +9,7 @@ from starlette.responses import JSONResponse
 
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
+from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 
 router = APIRouter(prefix="/schema")
@@ -59,13 +60,19 @@ async def load_schema(
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
 ):
-    branch = await get_branch(session=session, branch=branch)
+    branch: Branch = await get_branch(session=session, branch=branch)
 
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
+
+    # We create a copy of the existing branch schema to do some validation before loading it.
     tmp_schema = branch_schema.duplicate()
     tmp_schema.load_schema(schema=schema)
     tmp_schema.process()
 
-    await registry.schema.update_schema_branch(schema=tmp_schema, branch=branch.name, update_db=True)
+    diff = tmp_schema.diff(branch_schema)
+
+    await registry.schema.update_schema_branch(
+        schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
+    )
 
     return JSONResponse(status_code=202, content={})

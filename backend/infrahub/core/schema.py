@@ -177,7 +177,7 @@ class RelationshipSchema(BaseSchemaModel):
     kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
     description: Optional[str]
-    identifier: str
+    identifier: Optional[str]
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
@@ -526,38 +526,38 @@ class SchemaRoot(BaseModel):
 
         return True
 
-    @root_validator
-    def check_relationships_peer_are_valid(cls, values):
-        for node in values.get("nodes", []) + values.get("generics", []):
-            for relationship in node.relationships:
-                if not cls.has_schema(values, relationship.peer) and not registry.has_schema(name=relationship.peer):
-                    raise ValueError(
-                        f"Unable to find the schema {relationship.peer} to build the relationship with {node.kind}"
-                    )
+    # @root_validator
+    # def check_relationships_peer_are_valid(cls, values):
+    #     for node in values.get("nodes", []) + values.get("generics", []):
+    #         for relationship in node.relationships:
+    #             if not cls.has_schema(values, relationship.peer) and not registry.has_schema(name=relationship.peer):
+    #                 raise ValueError(
+    #                     f"Unable to find the schema {relationship.peer} to build the relationship with {node.kind}"
+    #                 )
 
-        return values
+    #     return values
 
-    def extend_nodes_with_interfaces(self) -> SchemaRoot:
-        """Extend all the nodes with the attributes and relationships
-        from the Interface objects defined in inherited_from.
+    # def extend_nodes_with_interfaces(self) -> SchemaRoot:
+    #     """Extend all the nodes with the attributes and relationships
+    #     from the Interface objects defined in inherited_from.
 
-        In the current implementation, we are only looking for Generic/interface in the local object.
-        Pretty soon, we will mostlikely need to extend that to the registry/db to allow a model to use a generic he hasn't defined
-        """
+    #     In the current implementation, we are only looking for Generic/interface in the local object.
+    #     Pretty soon, we will mostlikely need to extend that to the registry/db to allow a model to use a generic he hasn't defined
+    #     """
 
-        generics = {item.kind: item for item in self.generics}
+    #     generics = {item.kind: item for item in self.generics}
 
-        # For all node_schema, add the attributes & relationships from the generic / interface
-        for node in self.nodes:
-            if not node.inherit_from:
-                continue
-            for generic_kind in node.inherit_from:
-                if generic_kind not in generics:
-                    # TODO add a proper exception for all schema related issue
-                    raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
-                node.extend_with_interface(interface=generics[generic_kind])
+    #     # For all node_schema, add the attributes & relationships from the generic / interface
+    #     for node in self.nodes:
+    #         if not node.inherit_from:
+    #             continue
+    #         for generic_kind in node.inherit_from:
+    #             if generic_kind not in generics:
+    #                 # TODO add a proper exception for all schema related issue
+    #                 raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
+    #             node.extend_with_interface(interface=generics[generic_kind])
 
-        return self
+    #     return self
 
 
 # TODO need to investigate how we could generate the internal schema
