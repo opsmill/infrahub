@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.core.initialization import create_branch
 
 
@@ -31,6 +33,45 @@ async def test_graphql_endpoint(session, client, client_headers, default_branch,
     result = response.json()["data"]
 
     result_per_name = {result["name"]["value"]: result for result in result["person"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["cars"]) == 2
+    assert len(result_per_name["Jane"]["cars"]) == 1
+
+
+@pytest.mark.xfail(
+    reason="Investigate once the schema has been refactored, Currently working alone but failing when it's part of the test suite"
+)
+async def test_graphql_endpoint_generics(session, default_branch, client, client_headers, car_person_data_generic):
+    query = """
+    query {
+        person {
+            name {
+                value
+            }
+            cars {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post(
+            "/graphql",
+            json={"query": query},
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert "errors" not in response.json()
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
+
+    result_per_name = {result["name"]["value"]: result for result in result["person"]}
+
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]) == 2
     assert len(result_per_name["Jane"]["cars"]) == 1

@@ -1,6 +1,5 @@
 from typing import Optional
 
-import graphene
 from fastapi import APIRouter, Depends, HTTPException, Request
 from graphql import graphql
 from neo4j import AsyncSession
@@ -9,7 +8,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
-from infrahub.graphql import get_gql_mutation, get_gql_query
+from infrahub.graphql import generate_graphql_schema
 from infrahub.message_bus.events import (
     InfrahubRPCResponse,
     InfrahubTransformRPC,
@@ -51,12 +50,9 @@ async def transform_python(
     query = await transform.query.get_peer(session=session)
     repository = await transform.repository.get_peer(session=session)
 
+    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session, branch=branch),
-            mutation=await get_gql_mutation(session=session, branch=branch),
-            auto_camelcase=False,
-        ).graphql_schema,
+        gql_schema,
         source=query.query.value,
         context_value={
             "infrahub_branch": branch,
@@ -131,12 +127,9 @@ async def generate_rfile(
     query = await rfile.query.get_peer(session=session)
     repository = await rfile.template_repository.get_peer(session=session)
 
+    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
     result = await graphql(
-        graphene.Schema(
-            query=await get_gql_query(session=session, branch=branch),
-            mutation=await get_gql_mutation(session=session, branch=branch),
-            auto_camelcase=False,
-        ).graphql_schema,
+        gql_schema,
         source=query.query.value,
         context_value={
             "infrahub_branch": branch,
