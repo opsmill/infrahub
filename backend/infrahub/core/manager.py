@@ -532,23 +532,39 @@ class SchemaManager(NodeManager):
         attribute_schema = self.get(name="AttributeSchema", branch=branch)
         relationship_schema = self.get(name="RelationshipSchema", branch=branch)
 
+        ## Duplicate the node in order to store the IDs after inserting them in the database
+        new_node = node.duplicate()
+
         # Create the node first
         schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
         obj = await Node.init(schema=node_schema, branch=branch, session=session)
         await obj.new(**schema_dict, session=session)
         await obj.save(session=session)
+        new_node.id = obj.id
 
         # Then create the Attributes and the relationships
         if isinstance(node, (NodeSchema, GenericSchema)):
+            new_node.relationships = []
+            new_node.attributes = []
+
             for item in node.local_attributes:
                 attr = await Node.init(schema=attribute_schema, branch=branch, session=session)
                 await attr.new(**item.dict(exclude={"id", "filters"}), node=obj, session=session)
                 await attr.save(session=session)
+                new_item = item.duplicate()
+                new_item.id = attr.id
+                new_node.attributes.append(new_item)
 
             for item in node.local_relationships:
                 rel = await Node.init(schema=relationship_schema, branch=branch, session=session)
                 await rel.new(**item.dict(exclude={"id", "filters"}), node=obj, session=session)
                 await rel.save(session=session)
+                new_item = item.duplicate()
+                new_item.id = rel.id
+                new_node.relationships.append(new_item)
+
+        # Save back the node with the newly created IDs in the SchemaManager
+        self.set(name=new_node.kind, schema=new_node, branch=branch.name)
 
     async def load_schema_from_db(
         self,
@@ -605,8 +621,8 @@ class SchemaManager(NodeManager):
 
             rm = getattr(schema_node, rel_name)
             for rel in await rm.get(session=session):
-                item_data = {}
                 item = await rel.get_peer(session=session)
+                item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_data[item_name] = getattr(item, item_name).value
 
