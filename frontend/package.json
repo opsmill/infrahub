@@ -18,8 +18,6 @@
     },
     "dependencies": {
         "@apollo/client": "^3.7.7",
-        "@graphql-codegen/cli": "^3.0.0",
-        "@graphql-codegen/typescript": "^3.0.0",
         "@headlessui/react": "^1.7.10",
         "@heroicons/react": "^2.0.15",
         "@hookform/error-message": "^2.0.1",
@@ -48,6 +46,8 @@
         "web-vitals": "^2.1.4"
     },
     "devDependencies": {
+        "@graphql-codegen/cli": "^3.0.0",
+        "@graphql-codegen/typescript": "^3.0.0",
         "@testing-library/jest-dom": "^5.16.5",
         "@testing-library/react": "^14.0.0",
         "@types/jest": "^29.5.0",
