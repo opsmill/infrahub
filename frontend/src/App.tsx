@@ -148,7 +148,7 @@ function App() {
       });
       setGenericSchema(genericSchemaMapping);
     },
-    [fetchSchema, setGenericSchema, setSchema, setSchemaKindNameState]
+    [fetchSchema, setGenericSchema, setSchema, setSchemaKindNameState, setGenerics]
   );
 
   useEffect(
