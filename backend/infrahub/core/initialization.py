@@ -38,7 +38,7 @@ async def initialization(session: AsyncSession):
     registry.schema = SchemaManager()
 
     schema = SchemaRoot(**internal_schema)
-    await registry.schema.register_schema(schema=schema)
+    registry.schema.register_schema(schema=schema)
     await registry.schema.load_schema_from_db(session=session)
 
     # ---------------------------------------------------
@@ -116,8 +116,8 @@ async def first_time_initialization(session: AsyncSession):
     # --------------------------------------------------
     registry.schema = SchemaManager()
     schema = SchemaRoot(**internal_schema)
-    schema_branch = await registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    schema_branch.load(schema=SchemaRoot(**core_models))
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, session=session)
     LOGGER.info("Created the Schema in the database")
 
