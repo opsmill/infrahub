@@ -2,4 +2,4 @@ import builtins
 
 from rich import print as rprint
 
-builtins.rprint = rprint # type: ignore
+builtins.rprint = rprint  # type: ignore
