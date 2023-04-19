@@ -197,13 +197,16 @@ class InfrahubSchemaBase:
         for key, value in data.items():
             obj_data[key] = {}
             if key in schema.attribute_names:
-                obj_data[key] = {"value": value}.update(item_metadata)
+                obj_data[key] = {"value": value}
+                obj_data[key].update(item_metadata)
             elif key in schema.relationship_names:
                 rel = schema.get_relationship(name=key)
                 if rel.cardinality == "one":
-                    obj_data[key] = {"id": str(value)}.update(item_metadata)
+                    obj_data[key] = {"id": str(value)}
+                    obj_data[key].update(item_metadata)
                 elif rel.cardinality == "many":
-                    obj_data[key] = [{"id": str(item)}.update(item_metadata) for item in value]
+                    obj_data[key] = [{"id": str(item)} for item in value]
+                    obj_data[key] = [item.update(item_metadata) for item in obj_data[key]]
 
         return obj_data
 

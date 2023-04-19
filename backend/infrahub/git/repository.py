@@ -882,8 +882,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.error(exc.message)
                 continue
 
-            if ("repository" in rfile and rfile["repository"] == "self") or "repository" not in rfile:
-                rfile["repository"] = self.id
+            if rfile.get("template_repository") == "self" or "template_repository" not in rfile:
+                rfile["template_repository"] = self.id
 
             current_names = [rfile.name.value for rfile in rfiles_in_repo]
             if rfile["name"] not in current_names:
@@ -896,7 +896,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 await obj.save()
                 continue
 
-            rfile_in_repo = [rfile for rfile in rfiles_in_repo if rfile.name.value == rfile["name"]][0]
+            rfile_in_repo = [item for item in rfiles_in_repo if item.name.value == rfile["name"]][0]
 
             description = (
                 rfile.get("description") if rfile.get("description") is not None else rfile_in_repo.description.value
@@ -909,10 +909,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
             if description != rfile_in_repo.description.value or template_path != rfile_in_repo.template_path.value:
                 LOGGER.info(
-                    f"{self.name}: New version of the RFile '{rfile_name}' found on branch {branch_name}, updating"
+                    f"{self.name}: New version of the RFile '{rfile['name']}' found on branch {branch_name}, updating"
                 )
                 obj = await self.client.get(kind="RFile", branch=branch_name, id=str(rfile_in_repo.id))
-                obj.name.value = rfile_name
+                obj.name.value = rfile["name"]
                 obj.description.value = description
                 obj.template_path.value = template_path
                 await obj.save()
