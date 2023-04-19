@@ -4,6 +4,7 @@ import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
+from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.relationship import Relationship
@@ -61,6 +62,7 @@ def full_schema_to_schema_root(full_schema: Dict[str, Union[NodeSchema, GenericS
 
 class BaseSchemaModel(BaseModel):
     _exclude_from_hash: List[str] = []
+    _sort_by: List[str] = []
 
     class Config:
         extra = Extra.forbid
@@ -82,11 +84,45 @@ class BaseSchemaModel(BaseModel):
 
             value = getattr(self, field_name)
             if isinstance(value, list):
-                values.append(tuple(value))
+                values.append(tuple(sorted(tuple(value))))
             else:
                 values.append(value)
 
         return hash(tuple(values))
+
+    def _sorting_keys(self, other: BaseSchemaModel):
+        if not self._sort_by:
+            raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
+
+        if not hasattr(other, "_sort_by") and not other._sort_by:
+            raise TypeError(
+                f"Sorting not supported between instance of {other.__class__.__name__} and {self.__class__.__name__}"
+            )
+
+        self_sort_keys = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
+        other_sort_keys = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
+
+        return self_sort_keys, other_sort_keys
+
+    def __lt__(self, other):
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) < tuple(other_sort_keys)
+
+    def __le__(self, other):
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) <= tuple(other_sort_keys)
+
+    def __gt__(self, other):
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) > tuple(other_sort_keys)
+
+    def __ge__(self, other):
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) >= tuple(other_sort_keys)
+
+    def duplicate(self) -> Self:
+        """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
+        return self.__class__(**copy.deepcopy(self.dict()))
 
 
 class FilterSchema(BaseSchemaModel):
@@ -95,6 +131,8 @@ class FilterSchema(BaseSchemaModel):
     enum: Optional[List]
     object_kind: Optional[str]
     description: Optional[str]
+
+    _sort_by: List[str] = ["name"]
 
 
 class AttributeSchema(BaseSchemaModel):
@@ -114,6 +152,7 @@ class AttributeSchema(BaseSchemaModel):
     optional: bool = False
 
     _exclude_from_hash: List[str] = ["id"]
+    _sort_by: List[str] = ["name"]
 
     @validator("kind")
     def kind_options(
@@ -146,6 +185,7 @@ class RelationshipSchema(BaseSchemaModel):
     filters: List[FilterSchema] = Field(default_factory=list)
 
     _exclude_from_hash: List[str] = ["id", "filters"]
+    _sort_by: List[str] = ["name"]
 
     def get_class(self):
         return Relationship
@@ -257,7 +297,8 @@ class BaseNodeSchema(BaseSchemaModel):
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    _exclude_from_hash = ["id", "attributes", "relationships"]
+    _exclude_from_hash: List[str] = ["id", "attributes", "relationships"]
+    _sort_by: List[str] = ["name"]
 
     def __hash__(self):
         """Extend the Hash Calculation to account for attributes and relationships."""
@@ -408,10 +449,6 @@ class NodeSchema(BaseNodeSchema):
 
         return values
 
-    def duplicate(self):
-        """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.__class__(**copy.deepcopy(self.dict()))
-
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
         existing_inherited_relationships = {
@@ -444,6 +481,7 @@ class NodeSchema(BaseNodeSchema):
 
 
 class GroupSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     kind: str
     description: Optional[str]

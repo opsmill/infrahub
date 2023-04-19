@@ -1,4 +1,4 @@
-from typing import Hashable
+from typing import Hashable, List
 
 import pytest
 from pydantic.error_wrappers import ValidationError
@@ -6,12 +6,50 @@ from pydantic.error_wrappers import ValidationError
 from infrahub.core import registry
 from infrahub.core.schema import (
     AttributeSchema,
+    BaseSchemaModel,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
     core_models,
     internal_schema,
 )
+
+
+def test_base_schema_model_sorting():
+    class MySchema(BaseSchemaModel):
+        _sort_by: List[str] = ["first_name", "last_name"]
+        first_name: str
+        last_name: str
+
+    my_list = [
+        MySchema(first_name="John", last_name="Doe"),
+        MySchema(first_name="David", last_name="Doe"),
+        MySchema(first_name="David", last_name="Smith"),
+    ]
+    sorted_list = sorted(my_list)
+
+    sorted_names = [(item.first_name, item.last_name) for item in sorted_list]
+    assert sorted_names == [("David", "Doe"), ("David", "Smith"), ("John", "Doe")]
+
+
+def test_base_schema_model_hashing():
+    class MySubElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+
+    class MyTopElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        subs: List[MySubElement]
+
+    node1 = MyTopElement(
+        name="node1", subs=[MySubElement(name="orange"), MySubElement(name="apple"), MySubElement(name="coconut")]
+    )
+    node2 = MyTopElement(
+        name="node1", subs=[MySubElement(name="apple"), MySubElement(name="orange"), MySubElement(name="coconut")]
+    )
+
+    assert hash(node1) == hash(node2)
 
 
 def test_schema_root_no_generic():
