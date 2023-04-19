@@ -406,6 +406,41 @@ async def test_load_node_to_db_group_schema(session, default_branch: Branch):
     assert len(results) == 1
 
 
+async def test_update_node_in_db_node_schema(session, default_branch: Branch):
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "default_filter": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number"},
+            {"name": "color", "kind": "Text", "default_value": "#444444"},
+            {"name": "description", "kind": "Text", "optional": True},
+        ],
+        "relationships": [
+            {"name": "others", "peer": "Criticality", "optional": True, "cardinality": "many"},
+        ],
+    }
+
+    registry.schema = SchemaManager()
+    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
+    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), session=session, branch=default_branch)
+
+    node = registry.schema.get(name="Criticality", branch=default_branch)
+
+    new_node = node.duplicate()
+
+    new_node.default_filter = "kind__value"
+    new_node.attributes[0].unique = False
+
+    await registry.schema.update_node_in_db(node=new_node, session=session, branch=default_branch)
+
+    results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], session=session)
+
+    assert results[new_node.id].default_filter.value == "kind__value"
+    assert results[new_node.attributes[0].id].unique.value is False
+
+
 async def test_load_schema_to_db_internal_models(session, default_branch):
     schema = SchemaRoot(**internal_schema)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)

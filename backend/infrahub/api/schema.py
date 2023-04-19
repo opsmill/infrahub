@@ -9,7 +9,6 @@ from starlette.responses import JSONResponse
 
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
-from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 
 router = APIRouter(prefix="/schema")
@@ -32,7 +31,7 @@ async def get_schema(
     branch = await get_branch(session=session, branch=branch)
 
     # Make a local copy of the schema to ensure that any modification won't touch the objects in the registry
-    full_schema = copy.deepcopy(registry.get_full_schema(branch=branch))
+    full_schema = copy.deepcopy(registry.schema.get_full(branch=branch))
 
     # Populate the used_by field on all the generics objects
     # ideally we should populate this value directly in the registry
@@ -62,13 +61,11 @@ async def load_schema(
 ):
     branch = await get_branch(session=session, branch=branch)
 
-    branch_schema = registry.schema.get_branch(name=branch.name)
-    tmp_schema = branch_schema.copy()
-    tmp_schema.load(schema)
+    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    tmp_schema = branch_schema.duplicate()
+    tmp_schema.load_schema(schema=schema)
     tmp_schema.process()
-    tmp_schema.diff(branch_schema)
 
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
+    await registry.schema.update_schema_branch(schema=tmp_schema, branch=branch.name, update_db=True)
 
     return JSONResponse(status_code=202, content={})

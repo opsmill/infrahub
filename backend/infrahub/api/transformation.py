@@ -37,7 +37,7 @@ async def transform_python(
 
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    transform_schema = registry.get_schema(name="TransformPython", branch=branch)
+    transform_schema = registry.schema.get(name="TransformPython", branch=branch)
     transforms = await NodeManager.query(
         session=session, schema=transform_schema, filters={"url__value": transform_url}, branch=branch, at=at
     )

@@ -167,7 +167,7 @@ class Registry:
         self, branch: Optional[Union[Branch, str]] = None
     ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
         """Return all the nodes in the schema for a given branch."""
-        self.schema.get_full(branch=branch)
+        return self.schema.get_full(branch=branch)
 
     def set_graphql_type(self, name: str, graphql_type: InfrahubObject, branch: Optional[str] = None) -> bool:
         return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)

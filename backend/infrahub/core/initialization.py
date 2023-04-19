@@ -34,12 +34,15 @@ async def initialization(session: AsyncSession):
 
     # ---------------------------------------------------
     # Load all schema in the database into the registry
+    #  ... Unless the schema has been initialized already
     # ---------------------------------------------------
-    registry.schema = SchemaManager()
+    if not registry.schema:
+        registry.schema = SchemaManager()
+        schema = SchemaRoot(**internal_schema)
+        registry.schema.register_schema(schema=schema)
 
-    schema = SchemaRoot(**internal_schema)
-    registry.schema.register_schema(schema=schema)
-    await registry.schema.load_schema_from_db(session=session)
+        for branch in branches:
+            await registry.schema.load_schema_from_db(session=session, branch=branch)
 
     # ---------------------------------------------------
     # Load internal models into the registry

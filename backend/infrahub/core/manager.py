@@ -490,6 +490,17 @@ class SchemaManager(NodeManager):
         self._branches[name] = SchemaRegistryBranch(cache=self._cache, name=name)
         return self._branches[name]
 
+    async def update_schema_branch(
+        self,
+        schema: SchemaRegistryBranch,
+        session: AsyncSession,
+        branch: Optional[Union[Branch, str]] = None,
+        update_db: bool = False,
+    ):
+        branch = await get_branch(branch=branch, session=session)
+        current_schema = self.get_schema_branch(name=branch.name)
+        schema.diff(current_schema)
+
     def register_schema(self, schema: SchemaRoot, branch: str = None) -> SchemaRegistryBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
 
@@ -497,7 +508,6 @@ class SchemaManager(NodeManager):
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
         schema_branch.process()
-
         return schema_branch
 
     async def load_schema_to_db(
@@ -509,7 +519,10 @@ class SchemaManager(NodeManager):
 
         for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()) + list(schema.groups.keys()):
             item = schema.get(name=item_kind)
-            await self.load_node_to_db(node=item, branch=branch, session=session)
+            if item.id:
+                await self.load_node_to_db(node=item, branch=branch, session=session)
+            else:
+                await self.update_node_in_db(node=item, branch=branch, session=session)
 
     async def load_node_to_db(
         self,
@@ -565,6 +578,56 @@ class SchemaManager(NodeManager):
 
         # Save back the node with the newly created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
+
+    async def update_node_in_db(
+        self,
+        session: AsyncSession,
+        node: Union[NodeSchema, GenericSchema, GroupSchema],
+        branch: Union[str, Branch] = None,
+    ) -> None:
+        """Update a Node with its attributes and its relationships in the database."""
+        branch = await get_branch(branch=branch, session=session)
+
+        node_type = node.__class__.__name__
+
+        if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
+            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported")
+
+        # Update the node First
+        schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
+        obj = await self.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+
+        # Update all direct attributes attributes
+        for key, value in schema_dict.items():
+            getattr(obj, key).value = value
+
+        # Update the attributes and the relationships nodes as well
+        await obj.attributes.update(session=session, data=[item.id for item in node.local_attributes])
+        await obj.relationships.update(session=session, data=[item.id for item in node.local_relationships])
+        await obj.save(session=session)
+
+        # Then Update the Attributes and the relationships
+        if isinstance(node, (NodeSchema, GenericSchema)):
+            items = await self.get_many(
+                ids=[item.id for item in node.local_attributes + node.local_relationships],
+                session=session,
+                include_owner=True,
+                include_source=True,
+            )
+
+            for item in node.local_attributes:
+                attr = items[item.id]
+                item_dict = item.dict(exclude={"id", "filters"})
+                for key, value in item_dict.items():
+                    getattr(attr, key).value = value
+                await attr.save(session=session)
+
+            for item in node.local_relationships:
+                rel = items[item.id]
+                item_dict = item.dict(exclude={"id", "filters"})
+                for key, value in item_dict.items():
+                    getattr(rel, key).value = value
+                await rel.save(session=session)
 
     async def load_schema_from_db(
         self,

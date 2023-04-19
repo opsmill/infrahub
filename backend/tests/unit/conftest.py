@@ -640,7 +640,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
 
 @pytest.fixture
-async def car_person_schema(session: AsyncSession, data_schema) -> None:
+async def car_person_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -675,6 +675,7 @@ async def car_person_schema(session: AsyncSession, data_schema) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
     for node in schema.nodes:
         registry.set_schema(name=node.kind, schema=node)
 
@@ -1049,7 +1050,7 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
 
 
 @pytest.fixture
-async def data_schema(session) -> None:
+async def data_schema(session, default_branch: Branch) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -1073,8 +1074,7 @@ async def data_schema(session) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.generics:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
