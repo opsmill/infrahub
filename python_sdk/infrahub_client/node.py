@@ -216,7 +216,7 @@ class NodeProperty:
             self.display_label = data.get("display_label", None)
             self.typename = data.get("__typename", None)
 
-    def _generate_input_data(self) -> str:
+    def _generate_input_data(self) -> Union[str, None]:
         return self.id
 
 

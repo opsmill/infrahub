@@ -911,11 +911,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.info(
                     f"{self.name}: New version of the RFile '{rfile['name']}' found on branch {branch_name}, updating"
                 )
-                obj = await self.client.get(kind="RFile", branch=branch_name, id=str(rfile_in_repo.id))
-                obj.name.value = rfile["name"]
-                obj.description.value = description
-                obj.template_path.value = template_path
-                await obj.save()
+                rfile_in_repo.name.value = rfile["name"]
+                rfile_in_repo.description.value = description
+                rfile_in_repo.template_path.value = template_path
+                await rfile_in_repo.save()
 
     async def import_all_graphql_query(self, branch_name: str):
         """Search for all .gql file and import them as GraphQL query."""

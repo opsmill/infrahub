@@ -10,6 +10,8 @@ from infrahub_client.exceptions import SchemaNotFound, ValidationError
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
 
+# pylint: disable=redefined-builtin
+
 
 class FilterSchema(BaseModel):
     name: str
@@ -49,19 +51,19 @@ class BaseNodeSchema(BaseModel):
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
-        if field := self.get_attribute(name, raise_on_error=False):
-            return field
+    def get_field(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, RelationshipSchema, None]:
+        if attribute_field := self.get_attribute(name, raise_on_error=False):
+            return attribute_field
 
-        if field := self.get_relationship(name, raise_on_error=False):
-            return field
+        if relationship_field := self.get_relationship(name, raise_on_error=False):
+            return relationship_field
 
         if not raise_on_error:
             return None
 
         raise ValueError(f"Unable to find the field {name}")
 
-    def get_attribute(self, name, raise_on_error=True) -> AttributeSchema:
+    def get_attribute(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, None]:
         for item in self.attributes:
             if item.name == name:
                 return item
@@ -71,7 +73,7 @@ class BaseNodeSchema(BaseModel):
 
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_relationship(self, name, raise_on_error=True) -> RelationshipSchema:
+    def get_relationship(self, name: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
         for item in self.relationships:
             if item.name == name:
                 return item
@@ -81,7 +83,7 @@ class BaseNodeSchema(BaseModel):
 
         raise ValueError(f"Unable to find the relationship {name}")
 
-    def get_relationship_by_identifier(self, id, raise_on_error=True) -> RelationshipSchema:
+    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -120,7 +122,7 @@ class BaseNodeSchema(BaseModel):
         return [item for item in self.relationships if not item.inherited]
 
     @property
-    def unique_attributes(self) -> List[str]:
+    def unique_attributes(self) -> List[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
 
@@ -174,8 +176,8 @@ class InfrahubSchemaBase:
 
         return True
 
-    def validate_data_against_schema(self, schema: Union[NodeSchema, GenericSchema], data: dict):
-        for key, value in data.items():
+    def validate_data_against_schema(self, schema: Union[NodeSchema, GenericSchema], data: dict) -> None:
+        for key in data.keys():
             if key not in schema.relationship_names + schema.attribute_names:
                 identifier = f"{schema.kind}"
                 raise ValidationError(identifier=identifier, message=f"{key} is not a valid value for {identifier}")
@@ -187,8 +189,8 @@ class InfrahubSchemaBase:
         source: Optional[str] = None,
         protected: Optional[bool] = None,
     ) -> Dict[str, Any]:
-        obj_data = {}
-        item_metadata = {}
+        obj_data: Dict[str, Any] = {}
+        item_metadata: Dict[str, Any] = {}
         if source:
             item_metadata["source"] = str(source)
         if protected is not None:
@@ -201,12 +203,13 @@ class InfrahubSchemaBase:
                 obj_data[key].update(item_metadata)
             elif key in schema.relationship_names:
                 rel = schema.get_relationship(name=key)
-                if rel.cardinality == "one":
-                    obj_data[key] = {"id": str(value)}
-                    obj_data[key].update(item_metadata)
-                elif rel.cardinality == "many":
-                    obj_data[key] = [{"id": str(item)} for item in value]
-                    obj_data[key] = [item.update(item_metadata) for item in obj_data[key]]
+                if rel:
+                    if rel.cardinality == "one":
+                        obj_data[key] = {"id": str(value)}
+                        obj_data[key].update(item_metadata)
+                    elif rel.cardinality == "many":
+                        obj_data[key] = [{"id": str(item)} for item in value]
+                        obj_data[key] = [item.update(item_metadata) for item in obj_data[key]]
 
         return obj_data
 
