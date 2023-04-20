@@ -563,9 +563,8 @@ class SchemaManager(NodeManager):
         for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()) + list(schema.groups.keys()):
             if limit and item_kind not in limit:
                 continue
-
             item = schema.get(name=item_kind)
-            if item.id:
+            if not item.id:
                 node = await self.load_node_to_db(node=item, branch=branch, session=session)
                 schema.set(name=item_kind, schema=node)
             else:
