@@ -15,9 +15,81 @@ from infrahub.core.schema import (
     internal_schema,
 )
 
+
 # -----------------------------------------------------------------
 # SchemaRegistryBranch
 # -----------------------------------------------------------------
+@pytest.fixture
+def schema_all_in_one():
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "criticality",
+                "kind": "Criticality",
+                "inherit_from": ["GenericInterface"],
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "level", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "tags", "peer": "Tag", "label": "Tags", "optional": True, "cardinality": "many"},
+                ],
+            },
+            {
+                "name": "tag",
+                "kind": "Tag",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+            {
+                "name": "status",
+                "kind": "Status",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
+        ],
+        "generics": [
+            {
+                "name": "generic_interface",
+                "kind": "GenericInterface",
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text"},
+                ],
+                "relationships": [
+                    {
+                        "name": "primary_tag",
+                        "peer": "Tag",
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                    {
+                        "name": "status",
+                        "peer": "Status",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+        ],
+        "groups": [
+            {
+                "name": "generic_group",
+                "kind": "GenericGroup",
+            },
+        ],
+    }
+
+    return FULL_SCHEMA
 
 
 async def test_schema_branch_set():
@@ -63,44 +135,83 @@ async def test_schema_branch_get(default_branch: Branch):
     assert schema11 == schema
 
 
-async def test_schema_branch_load_schema_initial():
-    FULL_SCHEMA = {
-        "nodes": [
-            {
-                "name": "criticality",
-                "kind": "Criticality",
-                "default_filter": "name__value",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "level", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            }
-        ],
-        "generics": [
-            {
-                "name": "generic_interface",
-                "kind": "GenericInterface",
-                "attributes": [
-                    {"name": "my_generic_name", "kind": "Text"},
-                ],
-            },
-        ],
-        "groups": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-            },
-        ],
-    }
+async def test_schema_branch_load_schema_initial(schema_all_in_one):
+    # FULL_SCHEMA = {
+    #     "nodes": [
+    #         {
+    #             "name": "criticality",
+    #             "kind": "Criticality",
+    #             "inherit_from": ["GenericInterface"],
+    #             "default_filter": "name__value",
+    #             "attributes": [
+    #                 {"name": "name", "kind": "Text", "unique": True},
+    #                 {"name": "level", "kind": "Number"},
+    #                 {"name": "color", "kind": "Text", "default_value": "#444444"},
+    #                 {"name": "description", "kind": "Text", "optional": True},
+    #             ],
+    #             "relationships": [
+    #                 {"name": "tags", "peer": "Tag", "label": "Tags", "optional": True, "cardinality": "many"},
+    #             ],
+    #         },
+    #         {
+    #             "name": "tag",
+    #             "kind": "Tag",
+    #             "label": "Tag",
+    #             "default_filter": "name__value",
+    #             "attributes": [
+    #                 {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+    #                 {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+    #             ],
+    #         },
+    #         {
+    #             "name": "status",
+    #             "kind": "Status",
+    #             "attributes": [
+    #                 {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+    #             ],
+    #         },
+    #     ],
+    #     "generics": [
+    #         {
+    #             "name": "generic_interface",
+    #             "kind": "GenericInterface",
+    #             "attributes": [
+    #                 {"name": "my_generic_name", "kind": "Text"},
+    #             ],
+    #             "relationships": [
+    #                 {
+    #                     "name": "primary_tag",
+    #                     "peer": "Tag",
+    #                     "label": "Primary Tag",
+    #                     "identifier": "primary_tag__criticality",
+    #                     "optional": True,
+    #                     "cardinality": "one",
+    #                 },
+    #                 {
+    #                     "name": "status",
+    #                     "peer": "Status",
+    #                     "optional": True,
+    #                     "cardinality": "one",
+    #                 }
+    #             ]
+    #         },
+    #     ],
+    #     "groups": [
+    #         {
+    #             "name": "generic_group",
+    #             "kind": "GenericGroup",
+    #         },
+    #     ],
+    # }
 
-    schema_branch = SchemaRegistryBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    schema = SchemaRegistryBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    assert isinstance(schema_branch.get(name="Criticality"), NodeSchema)
-    assert isinstance(schema_branch.get(name="GenericGroup"), GroupSchema)
-    assert isinstance(schema_branch.get(name="GenericInterface"), GenericSchema)
+    assert isinstance(schema.get(name="Criticality"), NodeSchema)
+    assert isinstance(schema.get(name="GenericGroup"), GroupSchema)
+    assert isinstance(schema.get(name="GenericInterface"), GenericSchema)
+
+    schema.process()
 
 
 async def test_schema_branch_load_schema_extension(

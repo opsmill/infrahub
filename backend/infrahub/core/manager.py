@@ -384,8 +384,22 @@ class SchemaRegistryBranch:
             self.set(name=node.kind, schema=node)
 
     def process(self) -> None:
+        self.generate_identifiers()
         self.process_inheritance()
         self.process_filters()
+
+    def generate_identifiers(self) -> None:
+        """Generate the identifier for all relationships if it's not already present."""
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            for rel in node.relationships:
+                if rel.identifier:
+                    continue
+
+                rel.identifier = str("__".join(sorted([node.kind, rel.peer]))).lower()
+
+            self.set(name=name, schema=node)
 
     def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
@@ -393,8 +407,8 @@ class SchemaRegistryBranch:
         """
 
         # For all node_schema, add the attributes & relationships from the generic / interface
-        for name, node_hash in self.nodes.items():
-            node = self._cache[node_hash]
+        for name in self.nodes.keys():
+            node = self.get(name=name)
             if not node.inherit_from:
                 continue
 
