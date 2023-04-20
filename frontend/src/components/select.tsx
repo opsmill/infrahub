@@ -3,24 +3,25 @@ import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { classNames } from "../utils/common";
 import { Input } from "./input";
-import { HasNameAndID } from "../components-form/select";
 
-// type Option = {} // Object with name property
+export type SelectOption = {
+  id: string;
+  name: string;
+}
 
-// type SelectProps = {
-//   value: string
-// }
+type SelectProps = {
+  value?: string;
+  options: SelectOption[];
+  onChange: (value: SelectOption) => void;
+  disabled?: boolean;
+}
 
-// interface SelectProps {
-//   value: string
-// }
-
-export const Select = (props: any) => {
+export const Select = (props: SelectProps) => {
   const { options, value, onChange, disabled } = props;
 
   const [query, setQuery] = useState("");
 
-  const [selectedOption, setSelectedOption] = useState<HasNameAndID>(options.filter((option: any) => option?.id === value)[0]);
+  const [selectedOption, setSelectedOption] = useState<SelectOption>(options.filter((option: any) => option?.id === value)[0]);
 
   const filteredOptions =
     query === ""

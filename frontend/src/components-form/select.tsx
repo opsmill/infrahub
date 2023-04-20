@@ -1,20 +1,16 @@
-import { Select } from "../components/select";
-
-export type HasNameAndID = {
-  id: string;
-  name: string;
-}
+import { Select, SelectOption } from "../components/select";
 
 type SelectProps = {
   label: string;
-  value: string | undefined;
-  options: Array<HasNameAndID>;
+  value?: string;
+  options: Array<SelectOption>;
   disabled: boolean;
-  onChange: (value: HasNameAndID) => void;
+  onChange: (value: SelectOption) => void;
 }
 
 export const OpsSelect = (props: SelectProps) => {
+  const { label, value, ...propsToPass } = props;
   return (
-    <Select {...props} />
+    <Select {...propsToPass} />
   );
 };

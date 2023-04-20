@@ -1,5 +1,5 @@
 import { RegisterOptions } from "react-hook-form";
-import { HasNameAndID } from "../../components-form/select";
+import { SelectOption } from "../../components/select";
 
 // Different values for "kind" property of each attribute in the schema
 export type SchemaAttributeType = "ID" | "Text" | "Number" | "TextArea" | "DateTime" | "Email" | "Password" | "URL" | "File" | "MacAddress" | "Color" | "Bandwidth" | "IPHost" | "IPNetwork" | "Checkbox" | "List" | "Any" | "String" | "Integer" | "Boolean";
@@ -42,11 +42,6 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (kind: SchemaAttri
   }
 };
 
-export interface SelectOption {
-  label: string;
-  value: string;
-}
-
 // Interface for every field in a create/edit form
 export interface DynamicFieldData {
   label: string;
@@ -55,7 +50,7 @@ export interface DynamicFieldData {
   kind: SchemaAttributeType;
   value: any;
   options: {
-    values: HasNameAndID[];
+    values: SelectOption[];
   };
   config?: RegisterOptions;
 }
