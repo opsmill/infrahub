@@ -594,7 +594,7 @@ class SchemaManager(NodeManager):
         attribute_schema = self.get(name="AttributeSchema", branch=branch)
         relationship_schema = self.get(name="RelationshipSchema", branch=branch)
 
-        ## Duplicate the node in order to store the IDs after inserting them in the database
+        # Duplicate the node in order to store the IDs after inserting them in the database
         new_node = node.duplicate()
 
         # Create the node first

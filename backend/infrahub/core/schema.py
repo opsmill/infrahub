@@ -78,7 +78,7 @@ class BaseSchemaModel(BaseModel):
 
         values = []
 
-        for field_name, field in sorted(self.__fields__.items()):
+        for field_name in sorted(self.__fields__.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
 
