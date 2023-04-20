@@ -84,6 +84,37 @@ class TestInfrahubNode:
         querydb = await nodedb.query.get_peer(session=session)
         assert node.query.id == querydb.id  # type: ignore[attr-defined]
 
+    async def test_node_update_payload_with_relationships(
+        self,
+        session,
+        client: InfrahubClient,
+        init_db_base,
+        tag_blue: Node,
+        tag_red: Node,
+        repo01: Node,
+        gqlquery01: Node,
+    ):
+        data = {
+            "name": "rfile10",
+            "template_path": "mytemplate.j2",
+            "query": gqlquery01.id,
+            "template_repository": repo01.id,
+        }
+        schema = await client.schema.get(kind="RFile", branch="main")
+        create_payload = client.schema.generate_payload_create(
+            schema=schema, data=data, source=repo01.id, protected=True
+        )
+        obj = await client.create(kind="RFile", branch="main", **create_payload)
+        await obj.save()
+
+        assert obj.id is not None
+        nodedb = await client.get(kind="RFile", id=str(obj.id))
+
+        input_data = nodedb._generate_input_data()["data"]
+        assert input_data["name"]["value"] == "rfile10"
+        # Validate that the source isn't a dictionary bit a reference to the repo
+        assert input_data["name"]["source"] == repo01.id
+
     async def test_node_create_with_properties(
         self,
         session,
