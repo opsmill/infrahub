@@ -136,74 +136,6 @@ async def test_schema_branch_get(default_branch: Branch):
 
 
 async def test_schema_branch_load_schema_initial(schema_all_in_one):
-    # FULL_SCHEMA = {
-    #     "nodes": [
-    #         {
-    #             "name": "criticality",
-    #             "kind": "Criticality",
-    #             "inherit_from": ["GenericInterface"],
-    #             "default_filter": "name__value",
-    #             "attributes": [
-    #                 {"name": "name", "kind": "Text", "unique": True},
-    #                 {"name": "level", "kind": "Number"},
-    #                 {"name": "color", "kind": "Text", "default_value": "#444444"},
-    #                 {"name": "description", "kind": "Text", "optional": True},
-    #             ],
-    #             "relationships": [
-    #                 {"name": "tags", "peer": "Tag", "label": "Tags", "optional": True, "cardinality": "many"},
-    #             ],
-    #         },
-    #         {
-    #             "name": "tag",
-    #             "kind": "Tag",
-    #             "label": "Tag",
-    #             "default_filter": "name__value",
-    #             "attributes": [
-    #                 {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-    #                 {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-    #             ],
-    #         },
-    #         {
-    #             "name": "status",
-    #             "kind": "Status",
-    #             "attributes": [
-    #                 {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-    #             ],
-    #         },
-    #     ],
-    #     "generics": [
-    #         {
-    #             "name": "generic_interface",
-    #             "kind": "GenericInterface",
-    #             "attributes": [
-    #                 {"name": "my_generic_name", "kind": "Text"},
-    #             ],
-    #             "relationships": [
-    #                 {
-    #                     "name": "primary_tag",
-    #                     "peer": "Tag",
-    #                     "label": "Primary Tag",
-    #                     "identifier": "primary_tag__criticality",
-    #                     "optional": True,
-    #                     "cardinality": "one",
-    #                 },
-    #                 {
-    #                     "name": "status",
-    #                     "peer": "Status",
-    #                     "optional": True,
-    #                     "cardinality": "one",
-    #                 }
-    #             ]
-    #         },
-    #     ],
-    #     "groups": [
-    #         {
-    #             "name": "generic_group",
-    #             "kind": "GenericGroup",
-    #         },
-    #     ],
-    # }
-
     schema = SchemaRegistryBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -211,7 +143,15 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one):
     assert isinstance(schema.get(name="GenericGroup"), GroupSchema)
     assert isinstance(schema.get(name="GenericInterface"), GenericSchema)
 
-    schema.process()
+
+async def test_schema_branch_generate_identifiers(schema_all_in_one):
+    schema = SchemaRegistryBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.generate_identifiers()
+
+    generic = schema.get(name="GenericInterface")
+    assert generic.relationships[1].identifier == "genericinterface__status"
 
 
 async def test_schema_branch_load_schema_extension(
