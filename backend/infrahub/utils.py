@@ -104,8 +104,8 @@ def str_to_bool(value: str) -> bool:
     }
     try:
         return MAP[value.lower()]
-    except KeyError:
-        raise ValueError(f"{value} can not be converted into a boolean")  # pylint: disable=raise-missing-from
+    except KeyError as exc:
+        raise ValueError(f"{value} can not be converted into a boolean") from exc
 
 
 class MetaEnum(EnumMeta):
