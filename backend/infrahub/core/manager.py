@@ -533,12 +533,8 @@ class SchemaManager(NodeManager):
     ):
         branch = await get_branch(branch=branch, session=session)
 
-        # TODO use the result of the diff to only update the relevant nodes
-        # current_schema = self.get_schema_branch(name=branch.name)
-        # schema.diff(current_schema)
-
         if update_db:
-            self.load_schema_to_db(schema=schema, session=session, branch=branch, limit=limit)
+            await self.load_schema_to_db(schema=schema, session=session, branch=branch, limit=limit)
 
         self._branches[branch.name] = schema
 
