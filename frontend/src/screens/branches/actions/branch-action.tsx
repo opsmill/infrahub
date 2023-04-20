@@ -67,7 +67,7 @@ export const BranchAction = (props: any) => {
                 name: branch.name
               }
             })}
-            type={BUTTON_TYPES.VALIDATE}
+            buttonType={BUTTON_TYPES.VALIDATE}
             disabled={branch.is_default}
           >
             Merge
@@ -118,7 +118,7 @@ export const BranchAction = (props: any) => {
                 name: branch.name
               }
             })}
-            type={BUTTON_TYPES.WARNING}
+            buttonType={BUTTON_TYPES.WARNING}
             disabled={branch.is_default}
           >
             Validate
@@ -138,7 +138,7 @@ export const BranchAction = (props: any) => {
                 name: branch.name
               }
             })}
-            type={BUTTON_TYPES.CANCEL}
+            buttonType={BUTTON_TYPES.CANCEL}
             // disabled={branch.is_default}
             disabled
           >

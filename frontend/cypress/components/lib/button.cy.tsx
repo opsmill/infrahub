@@ -6,7 +6,7 @@ declare const cy: any;
 describe("Button component", () => {
   it("should render VALIDATE button correctly", () => {
     cy.mount(
-      <Button type={BUTTON_TYPES.VALIDATE}>
+      <Button buttonType={BUTTON_TYPES.VALIDATE}>
         {"Validate"}
       </Button>
     );
@@ -14,7 +14,7 @@ describe("Button component", () => {
 
   it("should render WARNING button correctly", () => {
     cy.mount(
-      <Button type={BUTTON_TYPES.WARNING}>
+      <Button buttonType={BUTTON_TYPES.WARNING}>
         {"Warning"}
       </Button>
     );
@@ -22,7 +22,7 @@ describe("Button component", () => {
 
   it("should render CANCEL button correctly", () => {
     cy.mount(
-      <Button type={BUTTON_TYPES.CANCEL}>
+      <Button buttonType={BUTTON_TYPES.CANCEL}>
         {"Cancel"}
       </Button>
     );

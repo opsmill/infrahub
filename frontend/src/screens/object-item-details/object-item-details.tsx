@@ -108,9 +108,7 @@ export default function ObjectItemDetails() {
         tabs={tabs}
         rightItems={
           (
-            <Button onClick={() => {
-              setShowEditDrawer(true);
-            }} className="mr-4">
+            <Button onClick={() => setShowEditDrawer(true)} className="mr-4">
               Edit
               <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
             </Button>

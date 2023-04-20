@@ -229,7 +229,7 @@ export default function BranchSelector() {
               </div>
 
               <div className="flex justify-center">
-                <Button type={BUTTON_TYPES.VALIDATE} onClick={() => handleSubmit(close)} className="mt-2">Create</Button>
+                <Button buttonType={BUTTON_TYPES.VALIDATE} onClick={() => handleSubmit(close)} className="mt-2">Create</Button>
               </div>
             </>
           )
