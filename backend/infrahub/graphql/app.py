@@ -155,7 +155,7 @@ class InfrahubGraphQLApp:
                 try:
                     branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
                     branch = await get_branch(session=session, branch=branch_name)
-                    branch.ephemeral_rebase = bool(str_to_bool(str(request.query_params.get("rebase", False))))
+                    branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
