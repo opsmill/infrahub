@@ -1,23 +1,24 @@
 import { gql } from "@apollo/client";
-import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PlusIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { RoundedButton } from "../../components/rounded-button";
+import { graphQLClient } from "../../graphql/graphqlClient";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
+import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns, getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectUrl } from "../../utils/objects";
 import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import { graphQLClient } from "../../graphql/graphqlClient";
-import { getObjectUrl } from "../../utils/objects";
-import { RoundedButton } from "../../components/rounded-button";
 
 declare const Handlebars: any;
 
@@ -39,24 +40,7 @@ const template = Handlebars.compile(`query {{kind}} {
     }
 `);
 
-const getObjectItemDisplayValue = (row: any, attribute: any) => {
-  // Get "value" or "display_name" depending on the kind (attribute or relationship)
-  const value = row[attribute?.name]?.value ?? row[attribute?.name]?.display_label ?? "-";
 
-  if (row?.value === false) {
-    return (
-      <XMarkIcon className="h-4 w-4" />
-    );
-  }
-
-  if (row?.value === true) {
-    return (
-      <CheckIcon className="h-4 w-4" />
-    );
-  }
-
-  return value;
-};
 
 export default function ObjectItems() {
   const { objectname } = useParams();

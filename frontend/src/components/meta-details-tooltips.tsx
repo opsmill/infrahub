@@ -29,7 +29,7 @@ export default function MetaDetailsTooltip(props: Props) {
 
   return <Popover className="relative mt-1.5 ml-2">
     <Popover.Button>
-      <InformationCircleIcon className="w-5 h-5" />
+      <InformationCircleIcon className="w-5 h-5 text-gray-500" />
     </Popover.Button>
     <Transition
       as={Fragment}

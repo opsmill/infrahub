@@ -14,6 +14,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
+import { Tabs } from "../../components/tabs";
 import { QSP } from "../../config/constants";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
@@ -28,7 +29,6 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit.compon
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
-import { Tabs } from "../../components/tabs";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
@@ -45,14 +45,37 @@ export default function ObjectItemDetails() {
   const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const atttributeRelationships = schema?.relationships?.filter((relationship) => relationship.kind === "Attribute") ?? [];
-  const otherRelationships = schema?.relationships?.filter((relationship) => relationship.kind !== "Attribute") ?? [];
+  const atttributeRelationships = schema?.relationships?.filter((relationship) => {
+    if(relationship.kind === "Generic" && relationship.cardinality === "one") {
+      return true;
+    }
+    if(relationship.kind === "Attribute") {
+      return true;
+    }
+    if(relationship.kind === "Component" && relationship.cardinality === "one") {
+      return true;
+    }
+    if(relationship.kind === "Parent") {
+      return true;
+    }
+    return false;
+  }) ?? [];
+
   const tabs = [
     {
       label: schema?.label,
       name: schema?.label
     },
-    ...otherRelationships.map((relationship) => ({ label: relationship.label, name: relationship.name}))
+    ...(schema?.relationships || []).filter(relationship => {
+      if(relationship.kind === "Generic" && relationship.cardinality === "many") {
+        return true;
+      }
+      if(relationship.kind === "Component" && relationship.cardinality === "many") {
+        return true;
+      }
+      return false;
+    })
+    .map((relationship) => ({ label: relationship.label, name: relationship.name}))
   ];
 
   const navigate = useNavigate();
@@ -89,7 +112,7 @@ export default function ObjectItemDetails() {
   }
 
   return (
-    <div className="bg-white flex-1 overflow-auto">
+    <div className="bg-white flex-1 overflow-auto flex flex-col">
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
           onClick={() => navigate(`/objects/${objectname}`)}
@@ -121,7 +144,7 @@ export default function ObjectItemDetails() {
         && (
           <div className="px-4 py-5 sm:p-0">
             <dl className="sm:divide-y sm:divide-gray-200">
-              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                   {objectDetails.id}
@@ -138,7 +161,7 @@ export default function ObjectItemDetails() {
 
                     return (
                       <div
-                        className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6"
+                        className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6"
                         key={attribute.name}
                       >
                         <dt className="text-sm font-medium text-gray-500 flex items-center">
@@ -147,9 +170,13 @@ export default function ObjectItemDetails() {
 
                         <div className="flex items-center">
                           <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            {(objectDetails[attribute.name]?.value !== false && objectDetails[attribute.name].value) ? objectDetails[attribute.name].value : "-"}
-                            {objectDetails[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
-                            {objectDetails[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
+                            {typeof objectDetails[attribute.name]?.value !== "boolean" ? objectDetails[attribute.name].value ? objectDetails[attribute.name].value : "-" : ""}
+                            { typeof objectDetails[attribute.name]?.value === "boolean" &&
+                              <>
+                                {objectDetails[attribute.name]?.value === true && (<CheckIcon className="h-4 w-4" />)}
+                                {objectDetails[attribute.name]?.value === false && (<XMarkIcon className="h-4 w-4" />)}
+                              </>
+                            }
                           </dd>
 
                           {
@@ -219,7 +246,7 @@ export default function ObjectItemDetails() {
               {
                 atttributeRelationships
                 ?.map(
-                  (relationshipSchema: any) => <RelationshipDetails key={relationshipSchema.name} relationshipsData={objectDetails[relationshipSchema.name]} relationshipSchema={relationshipSchema} />
+                  (relationshipSchema: any) => <RelationshipDetails mode="DESCRIPTION-LIST" parentSchema={schema} refreshObject={fetchObjectDetails} key={relationshipSchema.name} relationshipsData={objectDetails[relationshipSchema.name]} relationshipSchema={relationshipSchema} />
                 )
               }
             </dl>
@@ -230,7 +257,7 @@ export default function ObjectItemDetails() {
       {
         qspTab
         && (
-          <RelationshipsDetails />
+          <RelationshipsDetails parentSchema={schema} refreshObject={fetchObjectDetails} />
         )
       }
 

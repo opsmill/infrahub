@@ -77,7 +77,7 @@ export const OpsSelect2Step = (props: Props) => {
           // setSelectedRight(null);
         }} />
       </div>
-      <div className="sm:col-span-3 ml-2">
+      <div className="sm:col-span-3 ml-2 mt-1">
         {!!selectedLeft && optionsRight.length > 0 && (
           <OpsSelect disabled={false} value={selectedRight ? selectedRight.value : value.child} options={optionsRight.map(o => ({
             name: o.label,
