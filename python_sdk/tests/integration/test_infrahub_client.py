@@ -80,6 +80,15 @@ class TestInfrahubClient:
 
         assert "test_query2" in queries
 
+    async def test_branch_delete(self, client: InfrahubClient, init_db_base, base_dataset, session):
+        async_branch = "async-delete-branch"
+        await create_branch(branch_name=async_branch, session=session)
+        pre_delete = await client.branch.all()
+        await client.branch.delete(async_branch)
+        post_delete = await client.branch.all()
+        assert async_branch in pre_delete.keys()
+        assert async_branch not in post_delete.keys()
+
     async def test_create_graphql_query_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
         query_string = """
         query {

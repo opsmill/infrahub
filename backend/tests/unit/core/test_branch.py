@@ -11,6 +11,8 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.database import execute_read_query_async
+from infrahub.exceptions import BranchNotFound
 from infrahub.message_bus.events import (
     GitMessageAction,
     InfrahubRPCResponse,
@@ -801,3 +803,33 @@ async def test_base_diff_element():
     obj = CL1(**data)
 
     assert obj.to_graphql() == expected_response
+
+
+async def test_delete_branch(
+    session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, car_person_schema
+):
+    branch_name = "delete-me"
+    branch = await create_branch(branch_name=branch_name, session=session)
+    found = await Branch.get_by_name(name=branch_name, session=session)
+
+    p1 = await Node.init(schema="Person", branch=branch_name, session=session)
+    await p1.new(name="Bobby", height=175, session=session)
+    await p1.save(session=session)
+
+    relationship_query = """
+    MATCH ()-[r]-()
+    WHERE r.branch = $branch_name
+    RETURN r
+    """
+    params = {"branch_name": branch_name}
+    pre_delete = await execute_read_query_async(session=session, query=relationship_query, params=params)
+
+    await branch.delete(session=session)
+    post_delete = await execute_read_query_async(session=session, query=relationship_query, params=params)
+
+    assert branch.id == found.id
+    with pytest.raises(BranchNotFound):
+        await Branch.get_by_name(name=branch_name, session=session)
+
+    assert pre_delete
+    assert not post_delete

@@ -5,6 +5,7 @@ from uuid import UUID
 from neo4j import AsyncSession
 from pydantic import BaseModel
 
+from infrahub.core.query import Query, QueryType
 from infrahub.database import execute_read_query_async, execute_write_query_async
 from infrahub.exceptions import QueryError
 
@@ -49,6 +50,14 @@ class StandardNode(BaseModel):
             return await self._update(session=session)
 
         return await self._create(session=session)
+
+    async def delete(self, session: AsyncSession):
+        """Delete the Node in the database."""
+
+        query = await StandardNodeDeleteQuery.init(
+            session=session, node_type=self.get_type(), identifier=str(self.uuid)
+        )
+        await query.execute(session=session)
 
     async def refresh(self, session: AsyncSession):
         """Pull the latest state of the object from the database."""
@@ -189,3 +198,26 @@ class StandardNode(BaseModel):
 
         results = await execute_read_query_async(session=session, query=query, params=params)
         return [cls._convert_node_to_obj(node.values()[0]) for node in results]
+
+
+class StandardNodeDeleteQuery(Query):
+    name: str = "standard_node_delete"
+    insert_return: bool = False
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(self, node_type: str, identifier: str, *args, **kwargs):
+        self.node_type = node_type
+        self.uuid = identifier
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        query = """
+        MATCH (n:%s {uuid: $uuid})
+        DETACH DELETE (n)
+        """ % (
+            self.node_type
+        )
+
+        self.params["uuid"] = self.uuid
+        self.add_to_query(query)

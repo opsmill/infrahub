@@ -71,6 +71,31 @@ class AddNodeToBranch(Query):
         self.add_to_query(query)
 
 
+class DeleteBranchRelationshipsQuery(Query):
+    name: str = "delete_branch_relationships"
+    insert_return: bool = False
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(self, branch_name: str, *args, **kwargs):
+        self.branch_name = branch_name
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        query = """
+        MATCH p = (s)-[r]-(d)
+        WHERE r.branch = $branch_name
+        DELETE r
+        WITH *
+        UNWIND nodes(p) AS n
+        MATCH (n)
+        WHERE NOT (n)--()
+        DELETE n
+        """
+        self.params["branch_name"] = self.branch_name
+        self.add_to_query(query)
+
+
 class Branch(StandardNode):
     name: str = Field(
         regex=r"^[a-z][a-z0-9\-]+$",
@@ -188,6 +213,13 @@ class Branch(StandardNode):
             end[self.origin_branch] = end_time.to_string()
 
         return start, end
+
+    async def delete(self, session: AsyncSession) -> None:
+        if self.is_default:
+            raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
+        await super().delete(session=session)
+        query = await DeleteBranchRelationshipsQuery.init(session=session, branch_name=self.name)
+        await query.execute(session=session)
 
     def get_query_filter_branch_to_node(
         self,
