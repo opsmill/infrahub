@@ -11,7 +11,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.database import execute_read_query_async, execute_write_query_async
+from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound
 from infrahub.message_bus.events import (
     GitMessageAction,
@@ -805,16 +805,16 @@ async def test_base_diff_element():
     assert obj.to_graphql() == expected_response
 
 
-async def test_delete_branch(session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main):
+async def test_delete_branch(
+    session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, car_person_schema
+):
     branch_name = "delete-me"
     branch = await create_branch(branch_name=branch_name, session=session)
     found = await Branch.get_by_name(name=branch_name, session=session)
 
-    fake_relationsship = """
-    CREATE (n1:BranchRelation)-[r:HAS_ATTRIBUTE {branch: "delete-me"}]->(n2:BranchRelation)
-    RETURN n1, r, n2
-    """
-    await execute_write_query_async(session=session, query=fake_relationsship)
+    p1 = await Node.init(schema="Person", branch=branch_name, session=session)
+    await p1.new(name="Bobby", height=175, session=session)
+    await p1.save(session=session)
 
     relationship_query = """
     MATCH ()-[r]-()
