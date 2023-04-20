@@ -85,10 +85,10 @@ export default function ObjectItemEdit() {
     if (Object.keys(updateObject).length) {
       try {
         await updateObjectWithId(objectid!, schema, updateObject);
+        navigate(`/objetcs/${objectname}`);
       } catch {
         console.error("Something went wrong while updating the object");
       }
-      navigate(-1);
     } else {
       console.info("Nothing to update");
     }

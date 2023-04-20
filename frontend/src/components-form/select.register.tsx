@@ -13,10 +13,13 @@ interface Props {
 
 export const OpsSelectRegister = (props: Props) => {
   const { name, value, register, setValue, config, options, label } = props;
-  const inputRegister = register(name, {
-    value: value ?? "",
-    ...config
-  });
+  const inputRegister = register(
+    name,
+    {
+      value: value ?? "",
+      ...config
+    }
+  );
 
   return (
     <OpsSelect
@@ -24,9 +27,7 @@ export const OpsSelectRegister = (props: Props) => {
       disabled={false}
       value={value}
       options={options}
-      onChange={(item) => {
-        setValue(inputRegister.name, item.id);
-      }}
+      onChange={(item) => setValue(inputRegister.name, item)}
     />
   );
 };

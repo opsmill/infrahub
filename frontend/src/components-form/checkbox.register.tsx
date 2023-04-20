@@ -1,16 +1,16 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { OpsInput } from "./input";
+import OpsCheckox from "./checkbox";
 
 interface Props {
   name: string;
   label: string;
-  value: string;
+  value: boolean;
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
 }
 
-export const OpsInputRegister = (props: Props) => {
+export const OpsCheckboxRegister = (props: Props) => {
   const { name, value, register, setValue, config, label } = props;
 
   const inputRegister = register(name, {
@@ -19,10 +19,12 @@ export const OpsInputRegister = (props: Props) => {
   });
 
   return (
-    <OpsInput
+    <OpsCheckox
       label={label}
       value={value}
-      onChange={(value) => setValue(inputRegister.name, value)}
+      onChange={(value) => {
+        setValue(inputRegister.name, value);
+      }}
     />
   );
 };

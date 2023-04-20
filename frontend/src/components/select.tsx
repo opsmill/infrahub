@@ -3,6 +3,7 @@ import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { classNames } from "../utils/common";
 import { Input } from "./input";
+import { HasNameAndID } from "../components-form/select";
 
 // type Option = {} // Object with name property
 
@@ -19,6 +20,9 @@ export const Select = (props: any) => {
 
   const [query, setQuery] = useState("");
 
+  const [selectedOption, setSelectedOption] = useState<HasNameAndID>(options.filter((option: any) => option?.id === value)[0]);
+  console.log("selectedOption: ", selectedOption);
+
   const filteredOptions =
     query === ""
       ? options
@@ -27,17 +31,25 @@ export const Select = (props: any) => {
         (option: any) => option?.name.toLowerCase().includes(query.toLowerCase())
       );
 
+  console.log("value: ", value);
+
   return (
     <Combobox
       as="div"
-      value={value}
-      onChange={onChange}
+      value={selectedOption}
+      onChange={
+        (item) => {
+          console.log("item: ", item);
+          setSelectedOption(item);
+          onChange(item);
+        }
+      }
       disabled={disabled}
     >
       <div className="relative mt-1">
         <Combobox.Input
           as={Input}
-          value={value}
+          value={selectedOption?.name ?? ""}
           onChange={(event) => setQuery(event.target.value)}
           disabled={disabled}
         />
@@ -59,7 +71,7 @@ export const Select = (props: any) => {
                 .map(
                   (option: any) => (
                     <Combobox.Option
-                      key={option}
+                      key={option.id}
                       value={option}
                       className={({ active }) =>
                         classNames(
@@ -91,7 +103,8 @@ export const Select = (props: any) => {
                                 >
                                   <CheckIcon className="h-5 w-5" aria-hidden="true" />
                                 </span>
-                              )}
+                              )
+                            }
                           </>
                         )
                       }
