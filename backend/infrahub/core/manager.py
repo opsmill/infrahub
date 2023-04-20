@@ -354,7 +354,9 @@ class SchemaRegistryBranch:
         if key:
             return self._cache[key].duplicate()
 
-        raise ValueError(f"Unable to find the schema '{name}' for the branch {self.name} in the registry")
+        raise SchemaNotFound(
+            branch_name=self.name, identifier=name, message=f"Unable to find the schema '{name}' in the registry"
+        )
 
     def get_all(self) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
         """Retrive everything in a single dictionary."""
@@ -483,7 +485,7 @@ class SchemaManager(NodeManager):
         try:
             self.get(name=name, branch=branch)
             return True
-        except ValueError:
+        except SchemaNotFound:
             return False
 
     def get(
@@ -495,7 +497,7 @@ class SchemaManager(NodeManager):
         if branch.name in self._branches:
             try:
                 return self._branches[branch.name].get(name=name)
-            except ValueError:
+            except SchemaNotFound:
                 pass
 
         default_branch = config.SETTINGS.main.default_branch

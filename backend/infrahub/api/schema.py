@@ -11,6 +11,7 @@ from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.exceptions import SchemaNotFound
 
 router = APIRouter(prefix="/schema")
 
@@ -66,8 +67,11 @@ async def load_schema(
 
     # We create a copy of the existing branch schema to do some validation before loading it.
     tmp_schema = branch_schema.duplicate()
-    tmp_schema.load_schema(schema=schema)
-    tmp_schema.process()
+    try:
+        tmp_schema.load_schema(schema=schema)
+        tmp_schema.process()
+    except SchemaNotFound as exc:
+        return JSONResponse(status_code=422, content={"error": exc.message})
 
     diff = tmp_schema.diff(branch_schema)
 
