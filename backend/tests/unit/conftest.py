@@ -734,7 +734,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
 
 
 @pytest.fixture
-async def car_person_schema_generics(session: AsyncSession, data_schema) -> None:
+async def car_person_schema_generics(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -791,13 +791,11 @@ async def car_person_schema_generics(session: AsyncSession, data_schema) -> None
     }
 
     schema = SchemaRoot(**SCHEMA)
-    schema.extend_nodes_with_interfaces()
-    for node in schema.nodes + schema.generics:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def person_tag_schema(session: AsyncSession, data_schema) -> None:
+async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -828,12 +826,11 @@ async def person_tag_schema(session: AsyncSession, data_schema) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.nodes:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def all_attribute_types_schema(session: AsyncSession, data_schema) -> NodeSchema:
+async def all_attribute_types_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "all_attribute_types",
         "kind": "AllAttributeTypes",
@@ -848,13 +845,13 @@ async def all_attribute_types_schema(session: AsyncSession, data_schema) -> Node
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node_schema.kind, schema=node_schema)
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
 
     return node_schema
 
 
 @pytest.fixture
-async def criticality_schema(session: AsyncSession, data_schema) -> NodeSchema:
+async def criticality_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
@@ -873,13 +870,13 @@ async def criticality_schema(session: AsyncSession, data_schema) -> NodeSchema:
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
     return node
 
 
 @pytest.fixture
-async def generic_vehicule_schema(session) -> GenericSchema:
+async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GenericSchema:
     SCHEMA = {
         "name": "vehicule",
         "kind": "Vehicule",
@@ -890,20 +887,20 @@ async def generic_vehicule_schema(session) -> GenericSchema:
     }
 
     node = GenericSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
     return node
 
 
 @pytest.fixture
-async def group_on_road_vehicule_schema(session) -> GroupSchema:
+async def group_on_road_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GroupSchema:
     SCHEMA = {
         "name": "on_road",
         "kind": "OnRoad",
     }
 
     node = GroupSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
     return node
 

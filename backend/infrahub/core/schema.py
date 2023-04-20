@@ -537,28 +537,6 @@ class SchemaRoot(BaseModel):
 
     #     return values
 
-    # def extend_nodes_with_interfaces(self) -> SchemaRoot:
-    #     """Extend all the nodes with the attributes and relationships
-    #     from the Interface objects defined in inherited_from.
-
-    #     In the current implementation, we are only looking for Generic/interface in the local object.
-    #     Pretty soon, we will mostlikely need to extend that to the registry/db to allow a model to use a generic he hasn't defined
-    #     """
-
-    #     generics = {item.kind: item for item in self.generics}
-
-    #     # For all node_schema, add the attributes & relationships from the generic / interface
-    #     for node in self.nodes:
-    #         if not node.inherit_from:
-    #             continue
-    #         for generic_kind in node.inherit_from:
-    #             if generic_kind not in generics:
-    #                 # TODO add a proper exception for all schema related issue
-    #                 raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
-    #             node.extend_with_interface(interface=generics[generic_kind])
-
-    #     return self
-
 
 # TODO need to investigate how we could generate the internal schema
 # directly from the Pydantic Models to avoid the duplication of effort

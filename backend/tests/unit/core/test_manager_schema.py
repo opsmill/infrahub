@@ -1,5 +1,6 @@
 import pytest
 from deepdiff import DeepDiff
+from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -102,7 +103,9 @@ async def test_schema_branch_load_schema_initial():
     assert isinstance(schema_branch.get(name="GenericInterface"), GenericSchema)
 
 
-async def test_schema_branch_load_schema_extension(session, default_branch, schema_file_infra_w_extensions_01):
+async def test_schema_branch_load_schema_extension(
+    session: AsyncSession, default_branch, schema_file_infra_w_extensions_01
+):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaRegistryBranch(cache={}, name="test")
@@ -202,7 +205,9 @@ async def test_schema_branch_process_filters(
     assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
 
 
-async def test_schema_branch_copy(session, reset_registry, default_branch: Branch, register_internal_models_schema):
+async def test_schema_branch_copy(
+    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+):
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -252,7 +257,9 @@ async def test_schema_branch_copy(session, reset_registry, default_branch: Branc
     assert hash(new_schema) != hash(schema_branch)
 
 
-async def test_schema_branch_diff(session, reset_registry, default_branch: Branch, register_internal_models_schema):
+async def test_schema_branch_diff(
+    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+):
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -351,7 +358,7 @@ async def test_schema_manager_get(default_branch: Branch):
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(session, default_branch: Branch):
+async def test_load_node_to_db_node_schema(session: AsyncSession, default_branch: Branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -384,7 +391,7 @@ async def test_load_node_to_db_node_schema(session, default_branch: Branch):
     assert len(results) == 1
 
 
-async def test_load_node_to_db_generic_schema(session, default_branch):
+async def test_load_node_to_db_generic_schema(session: AsyncSession, default_branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -404,7 +411,7 @@ async def test_load_node_to_db_generic_schema(session, default_branch):
     assert len(results) == 1
 
 
-async def test_load_node_to_db_group_schema(session, default_branch: Branch):
+async def test_load_node_to_db_group_schema(session: AsyncSession, default_branch: Branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -422,7 +429,7 @@ async def test_load_node_to_db_group_schema(session, default_branch: Branch):
     assert len(results) == 1
 
 
-async def test_update_node_in_db_node_schema(session, default_branch: Branch):
+async def test_update_node_in_db_node_schema(session: AsyncSession, default_branch: Branch):
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
@@ -457,18 +464,20 @@ async def test_update_node_in_db_node_schema(session, default_branch: Branch):
     assert results[new_node.attributes[0].id].unique.value is False
 
 
-async def test_load_schema_to_db_internal_models(session, default_branch):
+async def test_load_schema_to_db_internal_models(session: AsyncSession, default_branch: Branch):
     schema = SchemaRoot(**internal_schema)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session)
+    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch.name)
 
-    node_schema = registry.get_schema(name="NodeSchema")
+    node_schema = registry.schema.get(name="NodeSchema", branch=default_branch)
     results = await SchemaManager.query(schema=node_schema, session=session)
     assert len(results) > 1
 
 
-async def test_load_schema_to_db_core_models(session, default_branch: Branch, register_internal_models_schema):
+async def test_load_schema_to_db_core_models(
+    session: AsyncSession, default_branch: Branch, register_internal_models_schema
+):
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
@@ -480,34 +489,45 @@ async def test_load_schema_to_db_core_models(session, default_branch: Branch, re
 
 
 async def test_load_schema_to_db_simple_01(
-    session, default_branch, register_core_models_schema, schema_file_infra_simple_01
+    session: AsyncSession,
+    default_branch: Branch,
+    register_core_models_schema: SchemaRegistryBranch,
+    schema_file_infra_simple_01,
 ):
     schema = SchemaRoot(**schema_file_infra_simple_01)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session)
+    node_schema = registry.schema.get(name="NodeSchema")
+    results = await SchemaManager.query(
+        schema=node_schema, filters={"kind__value": "Device"}, session=session, branch=default_branch
+    )
+    assert len(results) == 1
 
-    node_schema = registry.get_schema(name="Device")
-    results = await SchemaManager.query(schema=node_schema, session=session)
-    assert len(results) > 1
 
+async def test_load_schema_to_db_w_generics_01(
+    session: AsyncSession,
+    default_branch: Branch,
+    register_core_models_schema: SchemaRegistryBranch,
+    schema_file_infra_w_generics_01,
+):
+    schema = SchemaRoot(**schema_file_infra_w_generics_01)
+    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
 
-# async def test_load_schema_to_db_w_generics_01(
-#     session, default_branch, register_core_models_schema, schema_file_infra_w_generics_01
-# ):
-#     schema = SchemaRoot(**schema_file_infra_w_generics_01)
-
-#     schema.extend_nodes_with_interfaces()
-#     await SchemaManager.register_schema_to_registry(schema)
-#     await SchemaManager.load_schema_to_db(schema=schema, session=session)
-
-#     assert True
+    node_schema = registry.schema.get(name="NodeSchema")
+    results = await SchemaManager.query(
+        schema=node_schema, filters={"kind__value": "InterfaceL3"}, session=session, branch=default_branch
+    )
+    assert len(results) == 1
 
 
 @pytest.mark.xfail(
     reason="FIXME: Hash before and after should match, it's working if Criticality only has 2 attributes but not more"
 )
-async def test_load_schema_from_db(session, reset_registry, default_branch: Branch, register_internal_models_schema):
+async def test_load_schema_from_db(
+    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+):
     FULL_SCHEMA = {
         "nodes": [
             {

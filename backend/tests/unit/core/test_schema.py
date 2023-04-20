@@ -253,37 +253,6 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     assert nbr_rels == 2
 
 
-async def test_extend_node_with_interface(session, default_branch):
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "generic_interface",
-                "kind": "GenericInterface",
-                "attributes": [
-                    {"name": "my_generic_name", "kind": "Text"},
-                ],
-            }
-        ],
-        "nodes": [
-            {
-                "name": "mynode",
-                "kind": "MYNode",
-                "default_filter": "name__value",
-                "inherit_from": ["GenericInterface"],
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            }
-        ],
-    }
-    schema = SchemaRoot(**SCHEMA)
-    schema.extend_nodes_with_interfaces()
-
-    assert "my_generic_name" in schema.nodes[0].valid_input_names
-    assert schema.nodes[0].get_attribute("my_generic_name").inherited
-
-
 def test_core_models():
     assert SchemaRoot(**core_models)
 
