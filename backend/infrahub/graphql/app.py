@@ -7,7 +7,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from distutils.util import strtobool
 from inspect import isawaitable
 from typing import (
     Any,
@@ -69,6 +68,7 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql.generator import generate_object_types
+from infrahub.utils import str_to_bool
 from infrahub_client.timestamp import Timestamp
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
@@ -155,7 +155,7 @@ class InfrahubGraphQLApp:
                 try:
                     branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
                     branch = await get_branch(session=session, branch=branch_name)
-                    branch.ephemeral_rebase = bool(strtobool(str(request.query_params.get("rebase", False))))
+                    branch.ephemeral_rebase = bool(str_to_bool(str(request.query_params.get("rebase", False))))
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 

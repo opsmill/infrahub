@@ -1,5 +1,4 @@
 import os
-from distutils.dir_util import copy_tree
 from enum import Enum, EnumMeta
 from itertools import groupby
 from typing import Any, List, Optional
@@ -67,12 +66,6 @@ def deep_merge_dict(dicta: dict, dictb: dict, path: Optional[List] = None):
     return dicta
 
 
-def copy_project_to_tmp_dir(project_name):
-    """Function used to copy data to isolated file system."""
-    fixtures_dir = get_fixtures_dir()
-    copy_tree(os.path.join(fixtures_dir, project_name), "./")
-
-
 def find_first_file_in_directory(directory: str) -> Optional[str]:
     top_level_files = os.listdir(directory)
     for filename in top_level_files:
@@ -81,6 +74,38 @@ def find_first_file_in_directory(directory: str) -> Optional[str]:
             return filename
 
     return None
+
+
+def str_to_bool(value: str) -> bool:
+    """Convert a String to a Boolean"""
+
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, int) and value in [0, 1]:
+        return bool(value)
+
+    if not isinstance(value, str):
+        raise TypeError(f"{value} must be a string")
+
+    MAP = {
+        "y": True,
+        "yes": True,
+        "t": True,
+        "true": True,
+        "on": True,
+        "1": True,
+        "n": False,
+        "no": False,
+        "f": False,
+        "false": False,
+        "off": False,
+        "0": False,
+    }
+    try:
+        return MAP[value.lower()]
+    except KeyError:
+        raise ValueError(f"{value} can not be converted into a boolean")  # pylint: disable=raise-missing-from
 
 
 class MetaEnum(EnumMeta):
