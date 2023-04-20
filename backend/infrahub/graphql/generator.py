@@ -186,7 +186,7 @@ async def generate_object_types(
 
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, NodeSchema):
+        if not isinstance(node_schema, (NodeSchema, GenericSchema)):
             continue
         node_type = registry.get_graphql_type(name=node_name, branch=branch.name)
         related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch.name)
