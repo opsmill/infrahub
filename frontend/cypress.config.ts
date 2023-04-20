@@ -6,11 +6,12 @@ export default defineConfig({
       framework: "create-react-app",
       bundler: "webpack",
     },
+    reporter: "spec",
   },
-
   e2e: {
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },
+    reporter: "spec",
   },
 });
