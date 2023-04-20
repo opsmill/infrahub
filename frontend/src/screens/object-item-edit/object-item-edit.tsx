@@ -32,12 +32,21 @@ export default function ObjectItemEdit() {
   const [genericSchemaMap] = useAtom(genericSchemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  const initForm = useCallback(async (row: any) => {
-    const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
-    const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
-    const formStructure = getFormStructureForCreateEdit(schema, schemaList, genericsList, peerDropdownOptions, schemaKindNameMap, genericSchemaMap, row);
-    setFormStructure(formStructure);
-  }, [genericSchemaMap, genericsList, schema, schemaKindNameMap]);
+  const initForm = useCallback(
+    async (row: any) => {
+      const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
+      const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
+      const formStructure = getFormStructureForCreateEdit(schema, schemaList, genericsList, peerDropdownOptions, schemaKindNameMap, genericSchemaMap, row);
+      setFormStructure(formStructure);
+    },
+    [
+      genericSchemaMap,
+      genericsList,
+      schema,
+      schemaKindNameMap,
+      schemaList
+    ]
+  );
 
   const fetchItemDetails = useCallback(async () => {
     setHasError(false);

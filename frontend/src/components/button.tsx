@@ -1,11 +1,20 @@
-// type ButtonProps = {};
-
+import { ReactNode } from "react";
 import { classNames } from "../utils/common";
+
+type ButtonProps = {
+  type?: "button" | "reset" | "submit";
+  buttonType?: BUTTON_TYPES;
+  className?: string;
+  onClick?: Function;
+  children?: ReactNode[] | string;
+  disabled?: boolean;
+};
 
 export enum BUTTON_TYPES {
   VALIDATE,
   CANCEL,
   WARNING,
+  MAIN
 }
 
 const DEFAULT_CLASS = `
@@ -16,7 +25,7 @@ const DEFAULT_CLASS = `
   shadow-sm ring-1 ring-inset ring-gray-300
 `;
 
-const getClasseName = (type: BUTTON_TYPES) => {
+const getClasseName = (type?: BUTTON_TYPES) => {
   switch(type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
@@ -39,6 +48,13 @@ const getClasseName = (type: BUTTON_TYPES) => {
         disabled:cursor-not-allowed disabled:bg-yellow-200 disabled:text-gray-600 disabled:border-slate-200 disabled:shadow-none
       `;
     }
+    case BUTTON_TYPES.MAIN: {
+      return `
+        bg-indigo-500 text-white
+        hover:bg-indigo-600
+        disabled:cursor-not-allowed disabled:bg-indigo-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
+      `;
+    }
     default: {
       return `
         bg-gray-100 text-gray-900
@@ -49,19 +65,28 @@ const getClasseName = (type: BUTTON_TYPES) => {
   }
 };
 
-export const Button = (props: any) => {
-  const { type, className, onClick, ...propsToPass } = props;
+export const Button = (props: ButtonProps) => {
+  const {
+    buttonType,
+    type,
+    className = "",
+    onClick,
+    ...propsToPass
+  } = props;
 
-  const customClassName = getClasseName(type);
+  const customClassName = getClasseName(buttonType);
 
   const handleClick = (event: any) => {
-    event.stopPropagation();
+    if (type !== "submit") {
+      event.stopPropagation();
+    }
+
     onClick && onClick(event);
   };
 
   return (
     <button
-      type="button"
+      type={type ?? "button"}
       className={
         classNames(
           DEFAULT_CLASS,

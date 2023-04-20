@@ -7,7 +7,7 @@ afterEach(cleanup);
 describe("Button component", () => {
   it("should create a button component", () => {
     render(
-      <Button type={BUTTON_TYPES.VALIDATE}>
+      <Button buttonType={BUTTON_TYPES.VALIDATE}>
         {
           "That's working"
         }

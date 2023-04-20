@@ -10,6 +10,6 @@ interface Props {
 
 export default function EditFormHookComponent(props: Props) {
   return (
-    <Form onCancel={props.onCancel} onSubmit={props.onSubmit} fields={props.fields} />
+    <Form {...props} />
   );
 }
