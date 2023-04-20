@@ -21,7 +21,6 @@ export const Select = (props: any) => {
   const [query, setQuery] = useState("");
 
   const [selectedOption, setSelectedOption] = useState<HasNameAndID>(options.filter((option: any) => option?.id === value)[0]);
-  console.log("selectedOption: ", selectedOption);
 
   const filteredOptions =
     query === ""
@@ -31,15 +30,12 @@ export const Select = (props: any) => {
         (option: any) => option?.name.toLowerCase().includes(query.toLowerCase())
       );
 
-  console.log("value: ", value);
-
   return (
     <Combobox
       as="div"
       value={selectedOption}
       onChange={
         (item) => {
-          console.log("item: ", item);
           setSelectedOption(item);
           onChange(item);
         }
