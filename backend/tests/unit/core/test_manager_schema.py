@@ -144,6 +144,23 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one):
     assert isinstance(schema.get(name="GenericInterface"), GenericSchema)
 
 
+async def test_schema_branch_process_inheritance(schema_all_in_one):
+    schema = SchemaRegistryBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.process_inheritance()
+
+    generic = schema.get(name="GenericInterface")
+    assert generic.used_by == ["Criticality"]
+
+    criticality = schema.get(name="Criticality")
+    assert criticality.get_relationship(name="status")
+    assert criticality.get_relationship(name="status").inherited
+
+    assert criticality.get_attribute(name="my_generic_name")
+    assert criticality.get_attribute(name="my_generic_name").inherited
+
+
 async def test_schema_branch_generate_identifiers(schema_all_in_one):
     schema = SchemaRegistryBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))

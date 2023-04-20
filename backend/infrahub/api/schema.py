@@ -1,8 +1,6 @@
-import copy
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends
-from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
@@ -32,22 +30,7 @@ async def get_schema(
 ) -> SchemaReadAPI:
     branch = await get_branch(session=session, branch=branch)
 
-    # Make a local copy of the schema to ensure that any modification won't touch the objects in the registry
-    full_schema = copy.deepcopy(registry.schema.get_full(branch=branch))
-
-    # Populate the used_by field on all the generics objects
-    # ideally we should populate this value directly in the registry
-    # but this will require a bigger refactoring so for now it's best to do it here
-    for kind, item in full_schema.items():
-        if not isinstance(item, NodeSchema):
-            continue
-
-        for generic in item.inherit_from:
-            if generic not in full_schema:
-                logger.warning(f"Unable to find the Generic Object {generic}, referenced by {kind}")
-                continue
-            if kind not in full_schema[generic].used_by:
-                full_schema[generic].used_by.append(kind)
+    full_schema = registry.schema.get_full(branch=branch)
 
     return SchemaReadAPI(
         nodes=[value for value in full_schema.values() if isinstance(value, NodeSchema)],
@@ -70,7 +53,7 @@ async def load_schema(
     try:
         tmp_schema.load_schema(schema=schema)
         tmp_schema.process()
-    except SchemaNotFound as exc:
+    except (SchemaNotFound, ValueError) as exc:
         return JSONResponse(status_code=422, content={"error": exc.message})
 
     diff = tmp_schema.diff(branch_schema)

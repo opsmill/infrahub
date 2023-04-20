@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import UUID
 
@@ -340,8 +341,8 @@ class SchemaRegistryBranch:
     def get(self, name: str) -> Union[NodeSchema, GenericSchema, GroupSchema]:
         """Access a specific NodeSchema, GenericSchema or GroupSchema, defined by its kind.
 
-        To ensure that noone will even change an object in the cache,
-        the function always return a copy of the object, not the object itself
+        To ensure that no-one will ever change an object in the cache,
+        the function always returns a copy of the object, not the object itself
         """
         key = None
         if name in self.nodes:
@@ -361,8 +362,8 @@ class SchemaRegistryBranch:
     def get_all(self) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
         """Retrive everything in a single dictionary."""
         return {
-            self._cache[cache_key].kind: self._cache[cache_key]
-            for cache_key in list(self.nodes.values()) + list(self.generics.values()) + list(self.groups.values())
+            name: self.get(name=name)
+            for name in list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
         }
 
     def load_schema(self, schema: SchemaRoot) -> None:
@@ -406,21 +407,35 @@ class SchemaRegistryBranch:
         from the Interface objects defined in inherited_from.
         """
 
+        generics_used_by = defaultdict(list)
+
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
             node = self.get(name=name)
             if not node.inherit_from:
                 continue
 
-            new_node = node.duplicate()
             for generic_kind in node.inherit_from:
                 if generic_kind not in self.generics.keys():
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
-                new_node.inherit_from_interface(interface=self.get(name=generic_kind))
+                # Store the list of node referencing a specific generics
+                generics_used_by[generic_kind].append(node.kind)
+                node.inherit_from_interface(interface=self.get(name=generic_kind))
 
-            self.set(name=name, schema=new_node)
+            self.set(name=name, schema=node)
+
+        # Update all generics with the list of nodes referrencing them.
+        for generic_name in self.generics.keys():
+            generic = self.get(name=generic_name)
+
+            if generic.kind in generics_used_by:
+                generic.used_by = generics_used_by[generic.kind]
+            else:
+                generic.used_by = []
+
+            self.set(name=generic_name, schema=generic)
 
     def process_filters(self) -> Node:
         # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
