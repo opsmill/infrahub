@@ -21,12 +21,21 @@ export default function ObjectItemCreate() {
 
   const navigate = useNavigate();
 
-  const initForm = useCallback(async () => {
-    const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
-    const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
-    const formStructure = getFormStructureForCreateEdit(schema, schemaList, genericsList, peerDropdownOptions, schemaKindNameMap,genericSchemaMap);
-    setFormStructure(formStructure);
-  }, [genericSchemaMap, genericsList, schema, schemaKindNameMap]);
+  const initForm = useCallback(
+    async () => {
+      const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
+      const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
+      const formStructure = getFormStructureForCreateEdit(schema, schemaList, genericsList, peerDropdownOptions, schemaKindNameMap,genericSchemaMap);
+      setFormStructure(formStructure);
+    },
+    [
+      genericSchemaMap,
+      genericsList,
+      schema,
+      schemaKindNameMap,
+      schemaList
+    ]
+  );
 
   useEffect(() => {
     if(schema) {
