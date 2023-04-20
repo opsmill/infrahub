@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
-from infrahub_client.exceptions import SchemaNotFound
+from infrahub_client.exceptions import SchemaNotFound, ValidationError
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
+
+# pylint: disable=redefined-builtin
 
 
 class FilterSchema(BaseModel):
@@ -48,6 +50,80 @@ class BaseNodeSchema(BaseModel):
     description: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    def get_field(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, RelationshipSchema, None]:
+        if attribute_field := self.get_attribute(name, raise_on_error=False):
+            return attribute_field
+
+        if relationship_field := self.get_relationship(name, raise_on_error=False):
+            return relationship_field
+
+        if not raise_on_error:
+            return None
+
+        raise ValueError(f"Unable to find the field {name}")
+
+    def get_attribute(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, None]:
+        for item in self.attributes:
+            if item.name == name:
+                return item
+
+        if not raise_on_error:
+            return None
+
+        raise ValueError(f"Unable to find the attribute {name}")
+
+    def get_relationship(self, name: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
+        for item in self.relationships:
+            if item.name == name:
+                return item
+
+        if not raise_on_error:
+            return None
+
+        raise ValueError(f"Unable to find the relationship {name}")
+
+    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
+        for item in self.relationships:
+            if item.identifier == id:
+                return item
+
+        if not raise_on_error:
+            return None
+
+        raise ValueError(f"Unable to find the relationship {id}")
+
+    @property
+    def attribute_names(self) -> List[str]:
+        return [item.name for item in self.attributes]
+
+    @property
+    def relationship_names(self) -> List[str]:
+        return [item.name for item in self.relationships]
+
+    @property
+    def mandatory_input_names(self) -> List[str]:
+        return self.mandatory_attribute_names + self.mandatory_relationship_names
+
+    @property
+    def mandatory_attribute_names(self) -> List[str]:
+        return [item.name for item in self.attributes if not item.optional and item.default_value is None]
+
+    @property
+    def mandatory_relationship_names(self) -> List[str]:
+        return [item.name for item in self.relationships if not item.optional]
+
+    @property
+    def local_attributes(self) -> List[AttributeSchema]:
+        return [item for item in self.attributes if not item.inherited]
+
+    @property
+    def local_relationships(self) -> List[RelationshipSchema]:
+        return [item for item in self.relationships if not item.inherited]
+
+    @property
+    def unique_attributes(self) -> List[AttributeSchema]:
+        return [item for item in self.attributes if item.unique]
 
 
 class GenericSchema(BaseNodeSchema):
@@ -99,6 +175,43 @@ class InfrahubSchemaBase:
         # Add additional validation to ensure that all nodes references in relationships and extensions are present in the schema
 
         return True
+
+    def validate_data_against_schema(self, schema: Union[NodeSchema, GenericSchema], data: dict) -> None:
+        for key in data.keys():
+            if key not in schema.relationship_names + schema.attribute_names:
+                identifier = f"{schema.kind}"
+                raise ValidationError(identifier=identifier, message=f"{key} is not a valid value for {identifier}")
+
+    def generate_payload_create(
+        self,
+        schema: Union[NodeSchema, GenericSchema],
+        data: dict,
+        source: Optional[str] = None,
+        protected: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        obj_data: Dict[str, Any] = {}
+        item_metadata: Dict[str, Any] = {}
+        if source:
+            item_metadata["source"] = str(source)
+        if protected is not None:
+            item_metadata["protected"] = protected
+
+        for key, value in data.items():
+            obj_data[key] = {}
+            if key in schema.attribute_names:
+                obj_data[key] = {"value": value}
+                obj_data[key].update(item_metadata)
+            elif key in schema.relationship_names:
+                rel = schema.get_relationship(name=key)
+                if rel:
+                    if rel.cardinality == "one":
+                        obj_data[key] = {"id": str(value)}
+                        obj_data[key].update(item_metadata)
+                    elif rel.cardinality == "many":
+                        obj_data[key] = [{"id": str(item)} for item in value]
+                        obj_data[key] = [item.update(item_metadata) for item in obj_data[key]]
+
+        return obj_data
 
 
 class InfrahubSchema(InfrahubSchemaBase):

@@ -203,6 +203,23 @@ class InfrahubNodeSync(InfrahubNodeBase):
         )
 
 
+class NodeProperty:
+    def __init__(self, data: Union[dict, str]):
+        self.id = None
+        self.display_label = None
+        self.typename = None
+
+        if isinstance(data, str):
+            self.id = data
+        elif isinstance(data, dict):
+            self.id = data.get("id", None)
+            self.display_label = data.get("display_label", None)
+            self.typename = data.get("__typename", None)
+
+    def _generate_input_data(self) -> Union[str, None]:
+        return self.id
+
+
 class Attribute:
     def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):  # pylint: disable=unused-argument
         self.name = name
@@ -224,8 +241,13 @@ class Attribute:
 
         self.is_visible: Optional[bool] = data.get("is_visible", None)
         self.is_protected: Optional[bool] = data.get("is_protected", None)
-        self.source: Optional[str] = data.get("source", None)
-        self.owner: Optional[str] = data.get("owner", None)
+
+        self.source: Optional[NodeProperty] = None
+        self.owner: Optional[NodeProperty] = None
+
+        for prop_name in self._properties_object:
+            if data.get(prop_name):
+                setattr(self, prop_name, NodeProperty(data=data.get(prop_name)))
 
     def _generate_input_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {}
@@ -233,9 +255,13 @@ class Attribute:
         if self.value is not None:
             data["value"] = self.value
 
-        for prop_name in self._properties:
+        for prop_name in self._properties_flag:
             if getattr(self, prop_name) is not None:
                 data[prop_name] = getattr(self, prop_name)
+
+        for prop_name in self._properties_object:
+            if getattr(self, prop_name) is not None:
+                data[prop_name] = getattr(self, prop_name)._generate_input_data()
 
         return data
 
@@ -245,7 +271,7 @@ class Attribute:
         for prop_name in self._properties_flag:
             data[prop_name] = None
         for prop_name in self._properties_object:
-            data[prop_name] = {"id": None, "display_label": None}
+            data[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         return data
 
@@ -291,12 +317,12 @@ class RelatedNode:
         return data
 
     def _generate_query_data(self) -> Optional[Dict]:
-        data: Dict[str, Any] = {"id": None, "display_label": None}
+        data: Dict[str, Any] = {"id": None, "display_label": None, "__typename": None}
 
         for prop_name in self._properties_flag:
             data[f"_relation__{prop_name}"] = None
         for prop_name in self._properties_object:
-            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None}
+            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None, "__typename": None}
 
         return data
 

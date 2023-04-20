@@ -8,6 +8,7 @@ from infrahub_client.exceptions import (
     NodeNotFound,
     ServerNotReacheableError,
     ServerNotResponsiveError,
+    ValidationError,
 )
 from infrahub_client.graphql import Mutation, Query
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
@@ -38,4 +39,5 @@ __all__ = [
     "ServerNotReacheableError",
     "ServerNotResponsiveError",
     "Timestamp",
+    "ValidationError",
 ]
