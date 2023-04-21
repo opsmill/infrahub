@@ -514,17 +514,6 @@ class SchemaRoot(BaseModel):
 
         return True
 
-    # @root_validator
-    # def check_relationships_peer_are_valid(cls, values):
-    #     for node in values.get("nodes", []) + values.get("generics", []):
-    #         for relationship in node.relationships:
-    #             if not cls.has_schema(values, relationship.peer) and not registry.has_schema(name=relationship.peer):
-    #                 raise ValueError(
-    #                     f"Unable to find the schema {relationship.peer} to build the relationship with {node.kind}"
-    #                 )
-
-    #     return values
-
 
 # TODO need to investigate how we could generate the internal schema
 # directly from the Pydantic Models to avoid the duplication of effort

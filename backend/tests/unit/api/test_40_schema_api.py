@@ -104,11 +104,6 @@ async def test_schema_load_endpoint_valid_with_extensions(
     register_core_models_schema,
     schema_file_infra_w_extensions_01,
 ):
-    # # Load the schema into the database, by default it's only available in the registry
-    # # full_schema = registry.schema.get_schema_branch(name=default_branch.name)
-    # full_schema = registry.schema.get_schema_branch(name=default_branch.name)
-    # await registry.schema.load_schema_to_db(schema=full_schema, session=session)
-
     org_schema = registry.schema.get(name="Organization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
 
@@ -117,9 +112,6 @@ async def test_schema_load_endpoint_valid_with_extensions(
         response = client.post("/schema/load", headers=client_headers, json=schema_file_infra_w_extensions_01)
 
     assert response.status_code == 202
-
-    # Pull the schema from the db to validate that it has been properly updated
-    # schema = await registry.schema.load_schema_from_db(session=session, branch=default_branch.name)
 
     org_schema = registry.schema.get(name="Organization")
     assert len(org_schema.relationships) == initial_nbr_relationships + 1
