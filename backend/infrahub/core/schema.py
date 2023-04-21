@@ -50,16 +50,6 @@ class RelationshipKind(str, BaseEnum):
     PARENT = "Parent"
 
 
-def full_schema_to_schema_root(full_schema: Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]) -> SchemaRoot:
-    schema_root_dict = {
-        "nodes": [item for item in full_schema.values() if isinstance(item, NodeSchema)],
-        "generics": [item for item in full_schema.values() if isinstance(item, GenericSchema)],
-        "groups": [item for item in full_schema.values() if isinstance(item, GroupSchema)],
-    }
-
-    return SchemaRoot(**schema_root_dict)
-
-
 class BaseSchemaModel(BaseModel):
     _exclude_from_hash: List[str] = []
     _sort_by: List[str] = []
@@ -90,7 +80,8 @@ class BaseSchemaModel(BaseModel):
 
         return hash(tuple(values))
 
-    def _sorting_keys(self, other: BaseSchemaModel):
+    def _sorting_keys(self, other: BaseSchemaModel) -> Tuple[List[Any], List[Any]]:
+        """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
         if not self._sort_by:
             raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
 
@@ -99,24 +90,24 @@ class BaseSchemaModel(BaseModel):
                 f"Sorting not supported between instance of {other.__class__.__name__} and {self.__class__.__name__}"
             )
 
-        self_sort_keys = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
-        other_sort_keys = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
+        self_sort_keys: List[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
+        other_sort_keys: List[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
 
         return self_sort_keys, other_sort_keys
 
-    def __lt__(self, other):
+    def __lt__(self, other: Self) -> bool:
         self_sort_keys, other_sort_keys = self._sorting_keys(other)
         return tuple(self_sort_keys) < tuple(other_sort_keys)
 
-    def __le__(self, other):
+    def __le__(self, other: Self) -> bool:
         self_sort_keys, other_sort_keys = self._sorting_keys(other)
         return tuple(self_sort_keys) <= tuple(other_sort_keys)
 
-    def __gt__(self, other):
+    def __gt__(self, other: Self) -> bool:
         self_sort_keys, other_sort_keys = self._sorting_keys(other)
         return tuple(self_sort_keys) > tuple(other_sort_keys)
 
-    def __ge__(self, other):
+    def __ge__(self, other: Self) -> bool:
         self_sort_keys, other_sort_keys = self._sorting_keys(other)
         return tuple(self_sort_keys) >= tuple(other_sort_keys)
 
