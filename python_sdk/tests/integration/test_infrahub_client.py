@@ -142,27 +142,6 @@ class TestInfrahubClient:
 
         assert "rfile1" in rfiles
 
-    async def test_create_rfile_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
-        branch_name = "main"
-
-        rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
-        repositories = await NodeManager.query("Repository", branch=branch_name, session=session)
-        queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
-
-        assert len(rfiles) == 1
-
-        await client.create_rfile(
-            branch_name=branch_name,
-            name="rfile2",
-            description="test rfile2",
-            template_path="mytemplate.j2",
-            template_repository=str(repositories[0].id),
-            query=str(queries[0].name.value),
-        )
-
-        rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
-        assert len(rfiles) == 2
-
     async def test_query_transform_python(self, client: InfrahubClient, init_db_base, base_dataset):
         transforms = await client.get_list_transform_python(branch_name="main")
 

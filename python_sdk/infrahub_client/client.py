@@ -32,8 +32,6 @@ from infrahub_client.queries import (
     MUTATION_COMMIT_UPDATE,
     MUTATION_GRAPHQL_QUERY_CREATE,
     MUTATION_GRAPHQL_QUERY_UPDATE,
-    MUTATION_RFILE_CREATE,
-    MUTATION_RFILE_UPDATE,
     MUTATION_TRANSFORM_PYTHON_CREATE,
     MUTATION_TRANSFORM_PYTHON_UPDATE,
     QUERY_ALL_CHECKS,
@@ -497,38 +495,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return items
 
-    async def create_rfile(
-        self,
-        branch_name: str,
-        name: str,
-        query: str,
-        template_path: str,
-        template_repository: str,
-        description: str = "",
-    ) -> bool:
-        variables = {
-            "name": name,
-            "description": description,
-            "template_path": template_path,
-            "template_repository": template_repository,
-            "query": query,
-        }
-        await self.execute_graphql(
-            query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name, tracker="mutation-rfile-create"
-        )
-
-        return True
-
-    async def update_rfile(
-        self, branch_name: str, id: str, name: str, template_path: str, description: str = ""
-    ) -> bool:
-        variables = {"id": id, "name": name, "description": description, "template_path": template_path}
-        await self.execute_graphql(
-            query=MUTATION_RFILE_UPDATE, variables=variables, branch_name=branch_name, tracker="mutation-rfile-update"
-        )
-
-        return True
-
     async def create_check(
         self,
         branch_name: str,
@@ -743,28 +709,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             variables=variables,
             branch_name=branch_name,
             tracker="mutation-graphqlquery-create",
-        )
-
-        return True
-
-    def create_rfile(
-        self,
-        branch_name: str,
-        name: str,
-        query: str,
-        template_path: str,
-        template_repository: str,
-        description: str = "",
-    ) -> bool:
-        variables = {
-            "name": name,
-            "description": description,
-            "template_path": template_path,
-            "template_repository": template_repository,
-            "query": query,
-        }
-        self.execute_graphql(
-            query=MUTATION_RFILE_CREATE, variables=variables, branch_name=branch_name, tracker="mutation-rfile-create"
         )
 
         return True
@@ -1005,11 +949,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: int = 10,
         rebase: bool = False,
     ) -> bool:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
-    def update_rfile(self, branch_name: str, id: str, name: str, template_path: str, description: str = "") -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
