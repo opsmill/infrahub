@@ -9,7 +9,7 @@ from typing import Dict, List
 import typer
 from rich.logging import RichHandler
 
-from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client import InfrahubClient, InfrahubNode, NodeNotFound
 
 # flake8: noqa
 # pylint: skip-file
@@ -141,23 +141,35 @@ VLANS = (
     ("400", "management"),
 )
 
+class NodeStore:
+    """Temporary Store for InfrahubNode objects.
+    Often while creating a lot of new object we end up creating a lot of objects
+    and we need to save them in order to reuse them later, to associate them with another node for example.
+    """
 
-LOGGER = logging.getLogger("infrahub")
+    def __init__(self):
+        self._store = defaultdict(dict)
 
+    def set(self, key: str, node: InfrahubNode):
+        if not isinstance(node, InfrahubNode):
+            raise TypeError(f"'node' must be of type InfrahubNode, not {type(InfrahubNode)!r}")
 
-def load_data():
-    aiorun(_load_data())
+        node_kind = node._schema.kind
+        self._store[node_kind][key] = node
 
+    def get(self, kind: str, key: str):
 
-async def _load_data():
-    FORMAT = "%(message)s"
-    logging.basicConfig(level="DEBUG", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger()
-    client = await InfrahubClient.init(insert_tracker=True)
+        if kind not in self._store or key not in self._store[kind]:
+            raise NodeNotFound(branch="n/a", node_type=kind, identifier=key, message="Unable to find the node in the Store")
 
-    await run(client=client, log=log)
+        return self._store[kind][key]
 
-
+# ---------------------------------------------------------------
+# Use the `infrahubctl run` command line to execute this script
+#
+#   infrahubctl run models/infrastructure_edge.py
+#
+# ---------------------------------------------------------------
 async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create User Accounts and Groups
@@ -540,7 +552,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             )
             await obj.save()
 
-            LOGGER.info(
+            log.info(
                 f" Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
             )
 
@@ -602,8 +614,5 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         intf21.description.value = f"Connected to {site1}-{device} via {circuit_id}"
         await intf21.save()
 
-        LOGGER.info(f"Connected  '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
+        log.info(f"Connected  '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
 
-
-if __name__ == "__main__":
-    typer.run(load_data)
