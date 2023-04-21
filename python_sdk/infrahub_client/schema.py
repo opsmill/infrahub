@@ -187,14 +187,20 @@ class InfrahubSchemaBase:
         schema: Union[NodeSchema, GenericSchema],
         data: dict,
         source: Optional[str] = None,
-        protected: Optional[bool] = None,
+        owner: Optional[str] = None,
+        is_protected: Optional[bool] = None,
+        is_visible: Optional[bool] = None,
     ) -> Dict[str, Any]:
         obj_data: Dict[str, Any] = {}
         item_metadata: Dict[str, Any] = {}
         if source:
             item_metadata["source"] = str(source)
-        if protected is not None:
-            item_metadata["protected"] = protected
+        if owner:
+            item_metadata["owner"] = str(owner)
+        if is_protected is not None:
+            item_metadata["is_protected"] = is_protected
+        if is_visible is not None:
+            item_metadata["is_visible"] = is_visible
 
         for key, value in data.items():
             obj_data[key] = {}
