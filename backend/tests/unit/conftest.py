@@ -17,7 +17,7 @@ from infrahub.core.initialization import (
     first_time_initialization,
     initialization,
 )
-from infrahub.core.manager import SchemaManager, SchemaBranch
+from infrahub.core.manager import SchemaBranch, SchemaManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
