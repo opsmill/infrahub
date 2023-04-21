@@ -40,23 +40,20 @@ export const DynamicControl = (props: DynamicFieldData) => {
       }
       case "select2step": {
         const selectOptions = options.values.map(o => ({
-          label: o.name,
-          value: o.id,
+          name: o.name,
+          id: o.id,
         }));
         const regex = /^Related/; // starts with Related
         return <OpsSelect2StepRegister register={register} name={name} config={config} options={selectOptions} value={{ parent: value?.__typename?.replace(regex, ""), child: value?.id}} label={label} setValue={setValue} />;
       }
       case "multiselect": {
-        const multiSelectOptions = options.values.map(o => ({
-          label: o.name,
-          value: o.id,
-        }));
-
-        const currentValue = multiSelectOptions.filter(
-          (option) => (value || []).indexOf(option.value) > -1
+        const currentValue = options
+        .values
+        .filter(
+          (option) => (value || []).indexOf(option.id) > -1
         );
 
-        return <OpsMultiSelectRegister label={label} config={config} register={register} setValue={setValue} options={multiSelectOptions} name={name} value={currentValue} />;
+        return <OpsMultiSelectRegister label={label} config={config} register={register} setValue={setValue} options={options.values} name={name} value={currentValue} />;
         // If user does not change anything in the multi-select dropdown, the field value in the form data remains undefined
         // Not a problem currently, as if nothing get's changed, we are not sending out that field in the update mutation
         // but something that we can look into later on

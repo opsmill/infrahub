@@ -1,7 +1,7 @@
 import { Control, Controller, FieldValues } from "react-hook-form";
 import Select, { StylesConfig } from "react-select";
 import makeAnimated from "react-select/animated";
-import { SelectOption } from "./dynamic-control-types";
+import { SelectOption } from "../../components/select";
 
 const animatedComponents = makeAnimated();
 
@@ -14,7 +14,7 @@ interface Props {
 }
 
 
-const styles: StylesConfig<{ label: string; value: string }, true> = {
+const styles: StylesConfig<SelectOption, true> = {
   container: (styles) => ({ ...styles, width: "100%" }),
   //   control: (styles) => ({ ...styles }),
   //   option: (styles) => ({ ...styles }),
@@ -29,10 +29,8 @@ const styles: StylesConfig<{ label: string; value: string }, true> = {
 export default function MultiSelect(props: Props) {
   const { control, fieldName, defaultValue, options } = props;
   const value = options.filter(
-    (option) => (defaultValue || []).indexOf(option.value) > -1
+    (option) => (defaultValue || []).indexOf(option.id) > -1
   );
-
-  console.log("Selected value: ", value);
 
   console.log({
     props,

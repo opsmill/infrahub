@@ -2,7 +2,7 @@ import { Combobox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { classNames } from "../utils/common";
-import { Input } from "./input";
+import { MultipleInput } from "./multiple-input";
 
 export type SelectOption = {
   id: string;
@@ -10,45 +10,41 @@ export type SelectOption = {
 }
 
 type SelectProps = {
-  value?: string;
+  value?: SelectOption[];
   options: SelectOption[];
-  onChange: (value: SelectOption) => void;
+  onChange: (value: SelectOption[]) => void;
   disabled?: boolean;
 }
 
-export const Select = (props: SelectProps) => {
+export const MultiSelect = (props: SelectProps) => {
   const { options, value, onChange, disabled } = props;
 
-  const [query, setQuery] = useState("");
-
-  const [selectedOption, setSelectedOption] = useState<SelectOption | undefined>(options.find((option: any) => option?.id === value));
-
-  const filteredOptions =
-    query === ""
-      ? options
-      : options
-      .filter(
-        (option: any) => option?.name.toLowerCase().includes(query.toLowerCase())
-      );
+  const [selectedOptions, setSelectedOption] = useState<SelectOption[] | undefined>(value);
 
   return (
     <Combobox
       as="div"
-      value={selectedOption}
+      value={selectedOptions}
       onChange={
-        (item) => {
+        (item: SelectOption[]) => {
+          console.log("item: ", item);
           setSelectedOption(item);
           onChange(item);
         }
       }
       disabled={disabled}
+      multiple
     >
       <div className="relative mt-1">
         <Combobox.Input
-          as={Input}
-          value={selectedOption?.name ?? ""}
-          onChange={(event) => setQuery(event.target.value)}
-          disabled={disabled}
+          as={MultipleInput}
+          value={selectedOptions}
+          onChange={
+            (item: any) => {
+              setSelectedOption(item);
+              onChange(item);
+            }
+          }
         />
         <Combobox.Button
           className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
@@ -60,11 +56,11 @@ export const Select = (props: SelectProps) => {
         </Combobox.Button>
 
         {
-          filteredOptions.length > 0
+          options.length > 0
           && (
             <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
               {
-                filteredOptions
+                options
                 .map(
                   (option: any) => (
                     <Combobox.Option

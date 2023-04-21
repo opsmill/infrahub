@@ -9,8 +9,15 @@ type SelectProps = {
 }
 
 export const OpsSelect = (props: SelectProps) => {
-  const { label, value, ...propsToPass } = props;
+  const { label, ...propsToPass } = props;
+
   return (
-    <Select {...propsToPass} />
+    <>
+      <label
+        className="block text-sm font-medium leading-6 text-gray-900">
+        {label}
+      </label>
+      <Select {...propsToPass} />
+    </>
   );
 };

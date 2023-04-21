@@ -1,6 +1,5 @@
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import { classNames } from "../utils/common";
-
-// type BadgeProps = {}
 
 export enum BADGE_TYPES {
   VALIDATE,
@@ -8,8 +7,10 @@ export enum BADGE_TYPES {
   WARNING,
 }
 
+// type BadgeProps = {}
+
 const DEFAULT_CLASS = `
-  text-sm font-medium mr-2 px-2.5 py-0.5 rounded
+  flex text-sm font-medium mr-2 px-2.5 py-0.5 rounded
 `;
 
 const getClasseName = (type: BADGE_TYPES) => {
@@ -30,16 +31,42 @@ const getClasseName = (type: BADGE_TYPES) => {
 };
 
 export const Badge = (props: any) => {
-  const customClassName = getClasseName(props.type);
+  const { type, className, children, onDelete, value} = props;
+
+  const customClassName = getClasseName(type);
+
+  const handleClick = (event: any) => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (!onDelete || !value) return;
+
+    return onDelete(value);
+  };
 
   return (
-    <span className={
-      classNames(
-        DEFAULT_CLASS,
-        customClassName,
-        props.className
-      )
-    }>{props.children}</span>
+    <span
+      className={
+        classNames(
+          DEFAULT_CLASS,
+          customClassName,
+          className,
+          onDelete ? "cursor-pointer" : ""
+        )
+      }
+      onClick={handleClick}
+    >
+      {children}
+
+      {
+        onDelete
+        && (
+          <div className="ml-2 flex flex-col justify-center">
+            <XMarkIcon className="h-4 w-4 text-gray-500" aria-hidden="true"/>
+          </div>
+        )
+      }
+    </span>
   );
 
 };

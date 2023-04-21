@@ -28,7 +28,7 @@ export const OpsSelectRegister = (props: SelectRegisterProps) => {
       disabled={false}
       value={value}
       options={options}
-      onChange={(item) => setValue(inputRegister.name, item)}
+      onChange={(item: SelectOption) => setValue(inputRegister.name, item.id)}
     />
   );
 };

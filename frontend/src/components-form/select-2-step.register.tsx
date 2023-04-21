@@ -1,6 +1,6 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { SelectOption } from "../screens/edit-form-hook/dynamic-control-types";
 import { OpsSelect2Step, iTwoStepDropdownData } from "./select-2-step";
+import { SelectOption } from "../components/select";
 
 interface Props {
   label: string;
