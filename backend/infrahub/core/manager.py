@@ -25,6 +25,7 @@ from infrahub.core.schema import (
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
+    internal_schema
 )
 from infrahub.exceptions import SchemaNotFound
 from infrahub.utils import deep_merge_dict, intersection
@@ -37,6 +38,8 @@ if TYPE_CHECKING:
 
 SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
+INTERNAL_SCHEMA_NODE_KINDS = [ node["kind"] for node in internal_schema["nodes"] ]
+
 # pylint: disable=redefined-builtin
 
 
@@ -359,11 +362,13 @@ class SchemaRegistryBranch:
             branch_name=self.name, identifier=name, message=f"Unable to find the schema '{name}' in the registry"
         )
 
-    def get_all(self) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+    def get_all(self, include_internal: bool = False) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
         """Retrive everything in a single dictionary."""
+
         return {
             name: self.get(name=name)
             for name in list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
+            if include_internal or name not in INTERNAL_SCHEMA_NODE_KINDS
         }
 
     def load_schema(self, schema: SchemaRoot) -> None:
