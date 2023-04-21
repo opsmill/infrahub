@@ -6,8 +6,8 @@ import pytest
 import yaml
 
 import infrahub.config as config
+from infrahub.core import registry
 from infrahub.core.initialization import first_time_initialization, initialization
-from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import get_db
@@ -46,12 +46,9 @@ async def load_infrastructure_schema(session):
 
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
     infra_schema = yaml.safe_load(schema_txt)
-
-    schema = SchemaRoot(**infra_schema)
-    schema.extend_nodes_with_interfaces()
-
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
+    schema = registry.schema.register_schema(schema=SchemaRoot(**infra_schema))
+    schema.process()  # SHOULDN'T HAVE TO DO THAT HERE
+    await registry.schema.update_schema_branch(schema=schema, session=session)
 
 
 @pytest.fixture(scope="module")
