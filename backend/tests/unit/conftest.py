@@ -17,7 +17,7 @@ from infrahub.core.initialization import (
     first_time_initialization,
     initialization,
 )
-from infrahub.core.manager import SchemaManager, SchemaRegistryBranch
+from infrahub.core.manager import SchemaManager, SchemaBranch
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
@@ -1099,13 +1099,13 @@ async def default_branch(reset_registry, empty_database, session) -> Branch:
 
 
 @pytest.fixture
-async def register_internal_models_schema(default_branch) -> SchemaRegistryBranch:
+async def register_internal_models_schema(default_branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
     return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaRegistryBranch:
+async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
     return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 

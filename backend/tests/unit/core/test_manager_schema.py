@@ -4,7 +4,7 @@ from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.manager import SchemaManager, SchemaRegistryBranch
+from infrahub.core.manager import SchemaManager, SchemaBranch
 from infrahub.core.schema import (
     FilterSchemaKind,
     GenericSchema,
@@ -17,7 +17,7 @@ from infrahub.core.schema import (
 
 
 # -----------------------------------------------------------------
-# SchemaRegistryBranch
+# SchemaBranch
 # -----------------------------------------------------------------
 @pytest.fixture
 def schema_all_in_one():
@@ -104,7 +104,7 @@ async def test_schema_branch_set():
     }
     schema = NodeSchema(**SCHEMA)
 
-    schema_branch = SchemaRegistryBranch(cache={}, name="test")
+    schema_branch = SchemaBranch(cache={}, name="test")
 
     schema_branch.set(name="schema1", schema=schema)
     assert hash(schema) in schema_branch._cache
@@ -126,7 +126,7 @@ async def test_schema_branch_get(default_branch: Branch):
     }
     schema = NodeSchema(**SCHEMA)
 
-    schema_branch = SchemaRegistryBranch(cache={}, name="test")
+    schema_branch = SchemaBranch(cache={}, name="test")
 
     schema_branch.set(name="schema1", schema=schema)
     assert len(schema_branch._cache) == 1
@@ -136,7 +136,7 @@ async def test_schema_branch_get(default_branch: Branch):
 
 
 async def test_schema_branch_load_schema_initial(schema_all_in_one):
-    schema = SchemaRegistryBranch(cache={}, name="test")
+    schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     assert isinstance(schema.get(name="Criticality"), NodeSchema)
@@ -145,7 +145,7 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one):
 
 
 async def test_schema_branch_process_inheritance(schema_all_in_one):
-    schema = SchemaRegistryBranch(cache={}, name="test")
+    schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     schema.process_inheritance()
@@ -162,7 +162,7 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
 
 
 async def test_schema_branch_generate_identifiers(schema_all_in_one):
-    schema = SchemaRegistryBranch(cache={}, name="test")
+    schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     schema.generate_identifiers()
@@ -176,7 +176,7 @@ async def test_schema_branch_load_schema_extension(
 ):
     schema = SchemaRoot(**core_models)
 
-    schema_branch = SchemaRegistryBranch(cache={}, name="test")
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
     schema_branch.process()
 
@@ -231,7 +231,7 @@ async def test_schema_branch_process_filters(
         ]
     }
 
-    schema_branch = SchemaRegistryBranch(cache={}, name="test")
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
     schema_branch.process_filters()
 
@@ -314,7 +314,7 @@ async def test_schema_branch_copy(
         ]
     }
 
-    schema_branch = SchemaRegistryBranch(cache={}, name="test")
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
     new_schema = schema_branch.duplicate()
 
@@ -366,7 +366,7 @@ async def test_schema_branch_diff(
         ]
     }
 
-    schema_branch = SchemaRegistryBranch(cache={}, name="test")
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
     new_schema = schema_branch.duplicate()
 
@@ -559,7 +559,7 @@ async def test_load_schema_to_db_core_models(
 async def test_load_schema_to_db_simple_01(
     session: AsyncSession,
     default_branch: Branch,
-    register_core_models_schema: SchemaRegistryBranch,
+    register_core_models_schema: SchemaBranch,
     schema_file_infra_simple_01,
 ):
     schema = SchemaRoot(**schema_file_infra_simple_01)
@@ -576,7 +576,7 @@ async def test_load_schema_to_db_simple_01(
 async def test_load_schema_to_db_w_generics_01(
     session: AsyncSession,
     default_branch: Branch,
-    register_core_models_schema: SchemaRegistryBranch,
+    register_core_models_schema: SchemaBranch,
     schema_file_infra_w_generics_01,
 ):
     schema = SchemaRoot(**schema_file_infra_w_generics_01)

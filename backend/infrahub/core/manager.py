@@ -276,7 +276,7 @@ class SchemaDiff(BaseModel):
         return self.changed + self.added + self.removed
 
 
-class SchemaRegistryBranch:
+class SchemaBranch:
     def __init__(self, cache: Dict, name: Optional[str] = None, data: Optional[Dict[str, int]] = None):
         self._cache: Dict[int, Union[NodeSchema, GenericSchema, GroupSchema]] = cache
         self.name: Optional[str] = name
@@ -300,7 +300,7 @@ class SchemaRegistryBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics, "groups": self.groups}
 
-    def diff(self, obj: SchemaRegistryBranch) -> SchemaDiff:
+    def diff(self, obj: SchemaBranch) -> SchemaDiff:
         local_keys = list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
         other_keys = list(obj.nodes.keys()) + list(obj.generics.keys()) + list(obj.groups.keys())
         present_both = intersection(local_keys, other_keys)
@@ -318,7 +318,7 @@ class SchemaRegistryBranch:
 
         return schema_diff
 
-    def duplicate(self, name: Optional[str] = None) -> SchemaRegistryBranch:
+    def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(name=name, data=copy.deepcopy(self.to_dict()), cache=self._cache)
 
@@ -500,7 +500,7 @@ class SchemaRegistryBranch:
 class SchemaManager(NodeManager):
     def __init__(self):
         self._cache: Dict[int, Any] = {}
-        self._branches: Dict[str, SchemaRegistryBranch] = {}
+        self._branches: Dict[str, SchemaBranch] = {}
 
     def _get_from_cache(self, key):
         return self._cache[key]
@@ -511,7 +511,7 @@ class SchemaManager(NodeManager):
         branch = branch or config.SETTINGS.main.default_branch
 
         if branch not in self._branches:
-            self._branches[branch] = SchemaRegistryBranch(cache=self._cache, name=branch)
+            self._branches[branch] = SchemaBranch(cache=self._cache, name=branch)
 
         return self._branches[branch].set(name=name, schema=schema)
 
@@ -550,16 +550,16 @@ class SchemaManager(NodeManager):
 
         return self._branches[branch_name].get_all()
 
-    def get_schema_branch(self, name: str) -> SchemaRegistryBranch:
+    def get_schema_branch(self, name: str) -> SchemaBranch:
         if name in self._branches:
             return self._branches[name]
 
-        self._branches[name] = SchemaRegistryBranch(cache=self._cache, name=name)
+        self._branches[name] = SchemaBranch(cache=self._cache, name=name)
         return self._branches[name]
 
     async def update_schema_branch(
         self,
-        schema: SchemaRegistryBranch,
+        schema: SchemaBranch,
         session: AsyncSession,
         branch: Optional[Union[Branch, str]] = None,
         limit: Optional[List[str]] = None,
@@ -572,7 +572,7 @@ class SchemaManager(NodeManager):
 
         self._branches[branch.name] = schema
 
-    def register_schema(self, schema: SchemaRoot, branch: str = None) -> SchemaRegistryBranch:
+    def register_schema(self, schema: SchemaRoot, branch: str = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
 
         branch = branch or config.SETTINGS.main.default_branch
@@ -583,7 +583,7 @@ class SchemaManager(NodeManager):
 
     async def load_schema_to_db(
         self,
-        schema: SchemaRegistryBranch,
+        schema: SchemaBranch,
         session: AsyncSession,
         branch: Union[str, Branch] = None,
         limit: Optional[List[str]] = None,
@@ -722,14 +722,14 @@ class SchemaManager(NodeManager):
         self,
         session: AsyncSession,
         branch: Union[str, Branch] = None,
-    ) -> SchemaRegistryBranch:
+    ) -> SchemaBranch:
         """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type.
 
         FIXME This implementation is inefficient because we are querying the relationships for each ndoe independantly.
         It would be much faster to query all AttributeSchema and all RelationshipSchema at once."""
 
         branch = await get_branch(branch=branch, session=session)
-        schema = SchemaRegistryBranch(cache=self._cache, name=branch.name)
+        schema = SchemaBranch(cache=self._cache, name=branch.name)
 
         group_schema = self.get(name="GroupSchema", branch=branch)
         for schema_node in await self.query(schema=group_schema, branch=branch, session=session):
