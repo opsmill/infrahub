@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/**"
+      - "backend/**"
       - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
