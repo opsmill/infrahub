@@ -19,6 +19,7 @@ from infrahub_client.schema import (
     RelationshipSchema,
 )
 from infrahub_client.timestamp import Timestamp
+from infrahub_client.store import NodeStore
 
 __all__ = [
     "AttributeSchema",
@@ -34,6 +35,7 @@ __all__ = [
     "NodeNotFound",
     "NodeSchema",
     "Mutation",
+    "NodeStore",
     "Query",
     "RelationshipSchema",
     "ServerNotReacheableError",
