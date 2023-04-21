@@ -3,6 +3,7 @@ import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { classNames } from "../utils/common";
 import { Input } from "./input";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 
 export type SelectOption = {
   id: string;
@@ -14,10 +15,11 @@ type SelectProps = {
   options: SelectOption[];
   onChange: (value: SelectOption) => void;
   disabled?: boolean;
+  error?: FormFieldError;
 }
 
 export const Select = (props: SelectProps) => {
-  const { options, value, onChange, disabled } = props;
+  const { options, value, onChange, disabled, error } = props;
 
   const [query, setQuery] = useState("");
 
@@ -56,6 +58,7 @@ export const Select = (props: SelectProps) => {
             }
           }
           disabled={disabled}
+          error={error}
         />
         <Combobox.Button
           className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"

@@ -1,4 +1,5 @@
 import { Select, SelectOption } from "../components/select";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 
 type SelectProps = {
   label: string;
@@ -6,6 +7,7 @@ type SelectProps = {
   options: Array<SelectOption>;
   disabled: boolean;
   onChange: (value: SelectOption) => void;
+  error?: FormFieldError;
 }
 
 export const OpsSelect = (props: SelectProps) => {
