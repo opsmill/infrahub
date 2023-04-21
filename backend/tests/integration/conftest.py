@@ -46,9 +46,16 @@ async def load_infrastructure_schema(session):
 
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
     infra_schema = yaml.safe_load(schema_txt)
-    schema = registry.schema.register_schema(schema=SchemaRoot(**infra_schema))
-    schema.process()  # SHOULDN'T HAVE TO DO THAT HERE
-    await registry.schema.update_schema_branch(schema=schema, session=session)
+
+    default_branch_name = config.SETTINGS.main.default_branch
+    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
+    tmp_schema = branch_schema.duplicate()
+    tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
+    tmp_schema.process()
+
+    await registry.schema.update_schema_branch(
+        schema=tmp_schema, session=session, branch=default_branch_name, update_db=True
+    )
 
 
 @pytest.fixture(scope="module")

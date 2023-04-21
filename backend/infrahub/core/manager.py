@@ -636,8 +636,8 @@ class SchemaManager(NodeManager):
 
         # Then create the Attributes and the relationships
         if isinstance(node, (NodeSchema, GenericSchema)):
-            new_node.relationships = []
-            new_node.attributes = []
+            new_node.relationships = [item for item in new_node.relationships if item.inherited]
+            new_node.attributes = [item for item in new_node.attributes if item.inherited]
 
             for item in node.local_attributes:
                 attr = await Node.init(schema=attribute_schema, branch=branch, session=session)
