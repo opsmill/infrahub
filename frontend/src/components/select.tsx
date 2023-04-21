@@ -37,6 +37,7 @@ export const Select = (props: SelectProps) => {
       value={selectedOption}
       onChange={
         (item) => {
+          setQuery("");
           setSelectedOption(item);
           onChange(item);
         }
@@ -46,8 +47,14 @@ export const Select = (props: SelectProps) => {
       <div className="relative mt-1">
         <Combobox.Input
           as={Input}
-          value={selectedOption?.name ?? ""}
-          onChange={(event) => setQuery(event.target.value)}
+          value={query ? query : selectedOption?.name ?? ""}
+          onChange={
+            (value: any) => {
+              // Remove the selected option and update query (allow empty query)
+              setSelectedOption(undefined);
+              setQuery(value);
+            }
+          }
           disabled={disabled}
         />
         <Combobox.Button

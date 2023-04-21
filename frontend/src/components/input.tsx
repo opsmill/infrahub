@@ -13,8 +13,7 @@ import { classNames } from "../utils/common";
 
 // Forward ref used for Combobox.Input in Select
 export const Input = React.forwardRef((props: any, ref: any) => {
-  const { className, onChange, error, defaultValue, ...propsToPass } = props;
-  console.log("error: ", error);
+  const { className, onChange, error, ...propsToPass } = props;
 
   return (
     <div className="relative">
