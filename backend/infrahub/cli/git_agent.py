@@ -135,6 +135,7 @@ def start(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
     logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("aio_pika").setLevel(logging.ERROR)
     logging.getLogger("aiormq").setLevel(logging.ERROR)

@@ -63,6 +63,7 @@ def load(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
     logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
 
     log_level = "DEBUG" if debug else "INFO"
     FORMAT = "%(message)s"
