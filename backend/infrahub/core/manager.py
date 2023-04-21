@@ -25,7 +25,7 @@ from infrahub.core.schema import (
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
-    internal_schema
+    internal_schema,
 )
 from infrahub.exceptions import SchemaNotFound
 from infrahub.utils import deep_merge_dict, intersection
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
-INTERNAL_SCHEMA_NODE_KINDS = [ node["kind"] for node in internal_schema["nodes"] ]
+INTERNAL_SCHEMA_NODE_KINDS = [node["kind"] for node in internal_schema["nodes"]]
 
 # pylint: disable=redefined-builtin
 
