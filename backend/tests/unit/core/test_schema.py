@@ -1,8 +1,55 @@
+from typing import Hashable, List
+
 import pytest
 from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import registry
-from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import (
+    AttributeSchema,
+    BaseSchemaModel,
+    NodeSchema,
+    RelationshipSchema,
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
+
+
+def test_base_schema_model_sorting():
+    class MySchema(BaseSchemaModel):
+        _sort_by: List[str] = ["first_name", "last_name"]
+        first_name: str
+        last_name: str
+
+    my_list = [
+        MySchema(first_name="John", last_name="Doe"),
+        MySchema(first_name="David", last_name="Doe"),
+        MySchema(first_name="David", last_name="Smith"),
+    ]
+    sorted_list = sorted(my_list)
+
+    sorted_names = [(item.first_name, item.last_name) for item in sorted_list]
+    assert sorted_names == [("David", "Doe"), ("David", "Smith"), ("John", "Doe")]
+
+
+def test_base_schema_model_hashing():
+    class MySubElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+
+    class MyTopElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        subs: List[MySubElement]
+
+    node1 = MyTopElement(
+        name="node1", subs=[MySubElement(name="orange"), MySubElement(name="apple"), MySubElement(name="coconut")]
+    )
+    node2 = MyTopElement(
+        name="node1", subs=[MySubElement(name="apple"), MySubElement(name="orange"), MySubElement(name="coconut")]
+    )
+
+    assert hash(node1) == hash(node2)
 
 
 def test_schema_root_no_generic():
@@ -115,6 +162,44 @@ def test_node_schema_unique_identifiers():
     assert schema.relationships[1].identifier == "something_unique"
 
 
+async def test_node_schema_hashable():
+    SCHEMA = {
+        "name": "criticality",
+        "kind": "Criticality",
+        "default_filter": "name__value",
+        "branch": True,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "Criticality", "cardinality": "one"},
+            {"name": "second", "identifier": "something_unique", "peer": "Criticality", "cardinality": "one"},
+        ],
+    }
+    schema = NodeSchema(**SCHEMA)
+
+    assert isinstance(schema, Hashable)
+    assert hash(schema)
+
+
+async def test_attribute_schema_hashable():
+    SCHEMA = {"name": "name", "kind": "Text", "unique": True}
+
+    schema = AttributeSchema(**SCHEMA)
+
+    assert isinstance(schema, Hashable)
+    assert hash(schema)
+
+
+async def test_relationship_schema_hashable():
+    SCHEMA = {"name": "first", "peer": "Criticality", "identifier": "cardinality__peer", "cardinality": "one"}
+
+    schema = RelationshipSchema(**SCHEMA)
+
+    assert isinstance(schema, Hashable)
+    assert hash(schema)
+
+
 async def test_node_schema_generate_fields_for_display_label():
     SCHEMA = {
         "name": "criticality",
@@ -166,37 +251,6 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     assert filters == expected_response
     assert params == {"rel_cars_peer_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
     assert nbr_rels == 2
-
-
-async def test_extend_node_with_interface(session, default_branch):
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "generic_interface",
-                "kind": "GenericInterface",
-                "attributes": [
-                    {"name": "my_generic_name", "kind": "Text"},
-                ],
-            }
-        ],
-        "nodes": [
-            {
-                "name": "mynode",
-                "kind": "MYNode",
-                "default_filter": "name__value",
-                "inherit_from": ["GenericInterface"],
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            }
-        ],
-    }
-    schema = SchemaRoot(**SCHEMA)
-    schema.extend_nodes_with_interfaces()
-
-    assert "my_generic_name" in schema.nodes[0].valid_input_names
-    assert schema.nodes[0].get_attribute("my_generic_name").inherited
 
 
 def test_core_models():

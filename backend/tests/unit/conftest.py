@@ -17,7 +17,7 @@ from infrahub.core.initialization import (
     first_time_initialization,
     initialization,
 )
-from infrahub.core.manager import SchemaManager
+from infrahub.core.manager import SchemaBranch, SchemaManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
@@ -640,7 +640,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
 
 @pytest.fixture
-async def car_person_schema(session: AsyncSession, data_schema) -> None:
+async def car_person_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -675,6 +675,7 @@ async def car_person_schema(session: AsyncSession, data_schema) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
     for node in schema.nodes:
         registry.set_schema(name=node.kind, schema=node)
 
@@ -733,7 +734,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
 
 
 @pytest.fixture
-async def car_person_schema_generics(session: AsyncSession, data_schema) -> None:
+async def car_person_schema_generics(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -790,13 +791,11 @@ async def car_person_schema_generics(session: AsyncSession, data_schema) -> None
     }
 
     schema = SchemaRoot(**SCHEMA)
-    schema.extend_nodes_with_interfaces()
-    for node in schema.nodes + schema.generics:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def person_tag_schema(session: AsyncSession, data_schema) -> None:
+async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -827,12 +826,11 @@ async def person_tag_schema(session: AsyncSession, data_schema) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.nodes:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def all_attribute_types_schema(session: AsyncSession, data_schema) -> NodeSchema:
+async def all_attribute_types_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "all_attribute_types",
         "kind": "AllAttributeTypes",
@@ -847,13 +845,13 @@ async def all_attribute_types_schema(session: AsyncSession, data_schema) -> Node
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node_schema.kind, schema=node_schema)
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
 
     return node_schema
 
 
 @pytest.fixture
-async def criticality_schema(session: AsyncSession, data_schema) -> NodeSchema:
+async def criticality_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "criticality",
         "kind": "Criticality",
@@ -872,13 +870,13 @@ async def criticality_schema(session: AsyncSession, data_schema) -> NodeSchema:
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
     return node
 
 
 @pytest.fixture
-async def generic_vehicule_schema(session) -> GenericSchema:
+async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GenericSchema:
     SCHEMA = {
         "name": "vehicule",
         "kind": "Vehicule",
@@ -889,20 +887,20 @@ async def generic_vehicule_schema(session) -> GenericSchema:
     }
 
     node = GenericSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
     return node
 
 
 @pytest.fixture
-async def group_on_road_vehicule_schema(session) -> GroupSchema:
+async def group_on_road_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GroupSchema:
     SCHEMA = {
         "name": "on_road",
         "kind": "OnRoad",
     }
 
     node = GroupSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
     return node
 
@@ -922,7 +920,7 @@ async def car_schema(
     }
 
     node = NodeSchema(**SCHEMA)
-    node.extend_with_interface(interface=generic_vehicule_schema)
+    node.inherit_from_interface(interface=generic_vehicule_schema)
     registry.set_schema(name=node.kind, schema=node)
 
     return node
@@ -983,7 +981,7 @@ async def boat_schema(session: AsyncSession, generic_vehicule_schema) -> NodeSch
     }
 
     node = NodeSchema(**SCHEMA)
-    node.extend_with_interface(interface=generic_vehicule_schema)
+    node.inherit_from_interface(interface=generic_vehicule_schema)
     registry.set_schema(name=node.kind, schema=node)
 
     return node
@@ -1049,7 +1047,7 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
 
 
 @pytest.fixture
-async def data_schema(session) -> None:
+async def data_schema(session, default_branch: Branch) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -1073,8 +1071,7 @@ async def data_schema(session) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.generics:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1096,24 +1093,21 @@ async def init_db(empty_database, session) -> None:
 @pytest.fixture
 async def default_branch(reset_registry, empty_database, session) -> Branch:
     await create_root_node(session=session)
-    return await create_default_branch(session=session)
+    branch = await create_default_branch(session=session)
+    registry.schema = SchemaManager()
+    return branch
 
 
 @pytest.fixture
-async def register_internal_models_schema(default_branch) -> SchemaRoot:
+async def register_internal_models_schema(default_branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
-    await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
-
-    return schema
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaRoot:
+async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
-    schema.extend_nodes_with_interfaces()
-    await SchemaManager.register_schema_to_registry(schema=schema, branch=default_branch.name)
-
-    return schema
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture

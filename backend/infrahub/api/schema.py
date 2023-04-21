@@ -1,16 +1,15 @@
-import copy
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends
-from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
-from infrahub.core.manager import SchemaManager
+from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.exceptions import SchemaNotFound
 
 router = APIRouter(prefix="/schema")
 
@@ -31,22 +30,7 @@ async def get_schema(
 ) -> SchemaReadAPI:
     branch = await get_branch(session=session, branch=branch)
 
-    # Make a local copy of the schema to ensure that any modification won't touch the objects in the registry
-    full_schema = copy.deepcopy(registry.get_full_schema(branch=branch))
-
-    # Populate the used_by field on all the generics objects
-    # ideally we should populate this value directly in the registry
-    # but this will require a bigger refactoring so for now it's best to do it here
-    for kind, item in full_schema.items():
-        if not isinstance(item, NodeSchema):
-            continue
-
-        for generic in item.inherit_from:
-            if generic not in full_schema:
-                logger.warning(f"Unable to find the Generic Object {generic}, referenced by {kind}")
-                continue
-            if kind not in full_schema[generic].used_by:
-                full_schema[generic].used_by.append(kind)
+    full_schema = registry.schema.get_full(branch=branch)
 
     return SchemaReadAPI(
         nodes=[value for value in full_schema.values() if isinstance(value, NodeSchema)],
@@ -60,10 +44,22 @@ async def load_schema(
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
 ):
-    branch = await get_branch(session=session, branch=branch)
+    branch: Branch = await get_branch(session=session, branch=branch)
 
-    schema.extend_nodes_with_interfaces()
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
+    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+
+    # We create a copy of the existing branch schema to do some validation before loading it.
+    tmp_schema = branch_schema.duplicate()
+    try:
+        tmp_schema.load_schema(schema=schema)
+        tmp_schema.process()
+    except (SchemaNotFound, ValueError) as exc:
+        return JSONResponse(status_code=422, content={"error": exc.message})
+
+    diff = tmp_schema.diff(branch_schema)
+
+    await registry.schema.update_schema_branch(
+        schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
+    )
 
     return JSONResponse(status_code=202, content={})

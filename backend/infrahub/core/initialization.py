@@ -20,7 +20,7 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     roots = await Root.get_list(session=session)
     if len(roots) == 0:
-        raise Exception("Database hasn't been initialized yet. please run infrahub db init")
+        raise Exception("Database hasn't been initialized yet. please run 'infrahub db init'")
     if len(roots) > 1:
         raise Exception("Database is corrupted, more than 1 root node found.")
     registry.id = roots[0].uuid
@@ -34,12 +34,15 @@ async def initialization(session: AsyncSession):
 
     # ---------------------------------------------------
     # Load all schema in the database into the registry
+    #  ... Unless the schema has been initialized already
     # ---------------------------------------------------
-    schema = SchemaRoot(**internal_schema)
-    await SchemaManager.register_schema_to_registry(schema)
+    if not registry.schema:
+        registry.schema = SchemaManager()
+        schema = SchemaRoot(**internal_schema)
+        registry.schema.register_schema(schema=schema)
 
-    schema = await SchemaManager.load_schema_from_db(session=session)
-    await SchemaManager.register_schema_to_registry(schema=schema)
+        for branch in branches:
+            await registry.schema.load_schema_from_db(session=session, branch=branch)
 
     # ---------------------------------------------------
     # Load internal models into the registry
@@ -108,27 +111,18 @@ async def first_time_initialization(session: AsyncSession):
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
-
     await create_root_node(session=session)
-    await create_default_branch(session=session)
+    default_branch = await create_default_branch(session=session)
 
     # --------------------------------------------------
-    # Load the internal schema in the database
+    # Load the internal and core schema in the database
     # --------------------------------------------------
+    registry.schema = SchemaManager()
     schema = SchemaRoot(**internal_schema)
-    schema.extend_nodes_with_interfaces()
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
-    LOGGER.info("Created the internal Schema in the database")
-
-    # --------------------------------------------------
-    # Load the schema for the common models in the database
-    # --------------------------------------------------
-    schema = SchemaRoot(**core_models)
-    schema.extend_nodes_with_interfaces()
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
-    LOGGER.info("Created the core models in the database")
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, session=session)
+    LOGGER.info("Created the Schema in the database")
 
     # --------------------------------------------------
     # Create Default Users and Groups

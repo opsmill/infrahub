@@ -4,6 +4,7 @@ import copy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
+from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.relationship import Relationship
@@ -49,25 +50,84 @@ class RelationshipKind(str, BaseEnum):
     PARENT = "Parent"
 
 
-def full_schema_to_schema_root(full_schema: Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]) -> SchemaRoot:
-    schema_root_dict = {
-        "nodes": [item for item in full_schema.values() if isinstance(item, NodeSchema)],
-        "generics": [item for item in full_schema.values() if isinstance(item, GenericSchema)],
-        "groups": [item for item in full_schema.values() if isinstance(item, GroupSchema)],
-    }
+class BaseSchemaModel(BaseModel):
+    _exclude_from_hash: List[str] = []
+    _sort_by: List[str] = []
 
-    return SchemaRoot(**schema_root_dict)
+    class Config:
+        extra = Extra.forbid
+        underscore_attrs_are_private = True
+
+    def __hash__(self):
+        """Generate a hash for the object.
+
+        Calculating a hash can be very complicated if the data that we are storing is dynamic
+        In order for this function to work, it's recommended to exclude all objects or list of objects with _exclude_from_hash
+        List of hashable elements are fine and they will be converted automatically to Tuple.
+        """
+
+        values = []
+
+        for field_name in sorted(self.__fields__.keys()):
+            if field_name.startswith("_") or field_name in self._exclude_from_hash:
+                continue
+
+            value = getattr(self, field_name)
+            if isinstance(value, list):
+                values.append(tuple(sorted(tuple(value))))
+            else:
+                values.append(value)
+
+        return hash(tuple(values))
+
+    def _sorting_keys(self, other: BaseSchemaModel) -> Tuple[List[Any], List[Any]]:
+        """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
+        if not self._sort_by:
+            raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
+
+        if not hasattr(other, "_sort_by") and not other._sort_by:
+            raise TypeError(
+                f"Sorting not supported between instance of {other.__class__.__name__} and {self.__class__.__name__}"
+            )
+
+        self_sort_keys: List[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
+        other_sort_keys: List[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
+
+        return self_sort_keys, other_sort_keys
+
+    def __lt__(self, other: Self) -> bool:
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) < tuple(other_sort_keys)
+
+    def __le__(self, other: Self) -> bool:
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) <= tuple(other_sort_keys)
+
+    def __gt__(self, other: Self) -> bool:
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) > tuple(other_sort_keys)
+
+    def __ge__(self, other: Self) -> bool:
+        self_sort_keys, other_sort_keys = self._sorting_keys(other)
+        return tuple(self_sort_keys) >= tuple(other_sort_keys)
+
+    def duplicate(self) -> Self:
+        """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
+        return self.__class__(**copy.deepcopy(self.dict()))
 
 
-class FilterSchema(BaseModel):
+class FilterSchema(BaseSchemaModel):
     name: str
     kind: FilterSchemaKind
     enum: Optional[List]
     object_kind: Optional[str]
     description: Optional[str]
 
+    _sort_by: List[str] = ["name"]
 
-class AttributeSchema(BaseModel):
+
+class AttributeSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     kind: str
     label: Optional[str]
@@ -82,8 +142,8 @@ class AttributeSchema(BaseModel):
     branch: bool = True
     optional: bool = False
 
-    class Config:
-        extra = Extra.forbid
+    _exclude_from_hash: List[str] = ["id"]
+    _sort_by: List[str] = ["name"]
 
     @validator("kind")
     def kind_options(
@@ -101,7 +161,8 @@ class AttributeSchema(BaseModel):
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
-class RelationshipSchema(BaseModel):
+class RelationshipSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
@@ -114,17 +175,8 @@ class RelationshipSchema(BaseModel):
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
 
-    class Config:
-        extra = Extra.forbid
-
-    @validator("kind")
-    def kind_options(
-        cls,
-        v,
-    ):
-        if v not in RELATIONSHIP_KINDS:
-            raise ValueError(f"Only valid Relationship Kind are : {RELATIONSHIP_KINDS} ")
-        return v
+    _exclude_from_hash: List[str] = ["id", "filters"]
+    _sort_by: List[str] = ["name"]
 
     def get_class(self):
         return Relationship
@@ -226,17 +278,27 @@ class RelationshipSchema(BaseModel):
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class BaseNodeSchema(BaseModel):
+class BaseNodeSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     kind: str
-    description: Optional[str] = Field(max_length=128)
+    description: Optional[str]
     default_filter: Optional[str]
     display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    class Config:
-        extra = Extra.forbid
+    _exclude_from_hash: List[str] = ["id", "attributes", "relationships"]
+    _sort_by: List[str] = ["name"]
+
+    def __hash__(self):
+        """Extend the Hash Calculation to account for attributes and relationships."""
+        super_hash = [super().__hash__()]
+
+        for item in self.attributes + self.relationships:
+            super_hash.append(hash(item))
+
+        return hash(tuple(super_hash))
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -346,8 +408,6 @@ class NodeSchema(BaseNodeSchema):
     branch: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
 
-    # TODO add validation to ensure that 2 attributes can't have the same name
-
     @root_validator
     def unique_names(cls, values):
         attr_names = [attr.name for attr in values.get("attributes", [])]
@@ -357,47 +417,62 @@ class NodeSchema(BaseNodeSchema):
             raise ValueError(f"Names of attributes and relationships must be unique : {names_dup}")
         return values
 
-    @root_validator
+    @root_validator(pre=True)
     def generate_identifier(
         cls,
         values,
     ):
-        identifiers = []
-
         for rel in values.get("relationships", []):
-            if not rel.identifier:
-                identifier = "__".join(sorted([values.get("kind"), rel.peer]))
-                rel.identifier = identifier.lower()
+            if not rel.get("identifier", None) and values.get("kind") and rel.get("peer"):
+                identifier = "__".join(sorted([values.get("kind"), rel.get("peer")]))
+                rel["identifier"] = identifier.lower()
 
-            identifiers.append(rel.identifier)
-
-        if identifier_dup := duplicates(identifiers):
-            raise ValueError(f"Identifier of relationships must be unique : {identifier_dup}")
         return values
 
-    def extend_with_interface(self, interface: GenericSchema) -> NodeSchema:
-        existing_node_names = self.valid_input_names
+    @root_validator(pre=False)
+    def unique_identifiers(
+        cls,
+        values,
+    ):
+        identifiers = [rel.identifier for rel in values.get("relationships", [])]
+        if identifier_dup := duplicates(identifiers):
+            raise ValueError(f"Identifier of relationships must be unique : {identifier_dup}")
+
+        return values
+
+    def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
+        existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
+        existing_inherited_relationships = {
+            item.name: idx for idx, item in enumerate(self.relationships) if item.inherited
+        }
+        existing_inherited_fields = list(existing_inherited_attributes.keys()) + list(
+            existing_inherited_relationships.keys()
+        )
 
         for item in interface.attributes + interface.relationships:
-            if item.name in existing_node_names:
+            if item.name in self.valid_input_names:
                 continue
 
             new_item = copy.deepcopy(item)
             new_item.inherited = True
 
-            if isinstance(item, AttributeSchema):
+            if isinstance(item, AttributeSchema) and item.name not in existing_inherited_fields:
                 self.attributes.append(new_item)
-            elif isinstance(item, RelationshipSchema):
+            elif isinstance(item, AttributeSchema) and item.name in existing_inherited_fields:
+                item_idx = existing_inherited_attributes[item.name]
+                self.attributes[item_idx] = new_item
+            elif isinstance(item, RelationshipSchema) and item.name not in existing_inherited_fields:
                 self.relationships.append(new_item)
+            elif isinstance(item, RelationshipSchema) and item.name in existing_inherited_fields:
+                item_idx = existing_inherited_relationships[item.name]
+                self.relationships[item_idx] = new_item
 
 
-class GroupSchema(BaseModel):
+class GroupSchema(BaseSchemaModel):
+    id: Optional[str]
     name: str
     kind: str
     description: Optional[str]
-
-    class Config:
-        extra = Extra.forbid
 
 
 # -----------------------------------------------------
@@ -405,24 +480,18 @@ class GroupSchema(BaseModel):
 #  For the initial implementation its possible to add attribute and relationships on Node
 #  Later on we'll consider adding support for other Node attributes like inherited_from etc ...
 #  And we'll look into adding support for Generic as well
-class BaseNodeExtensionSchema(BaseModel):
+class BaseNodeExtensionSchema(BaseSchemaModel):
     kind: str
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
-
-    class Config:
-        extra = Extra.forbid
 
 
 class NodeExtensionSchema(BaseNodeExtensionSchema):
     pass
 
 
-class SchemaExtension(BaseModel):
+class SchemaExtension(BaseSchemaModel):
     nodes: List[NodeExtensionSchema] = Field(default_factory=list)
-
-    class Config:
-        extra = Extra.forbid
 
 
 class SchemaRoot(BaseModel):
@@ -444,39 +513,6 @@ class SchemaRoot(BaseModel):
             return False
 
         return True
-
-    @root_validator
-    def check_relationships_peer_are_valid(cls, values):
-        for node in values.get("nodes", []) + values.get("generics", []):
-            for relationship in node.relationships:
-                if not cls.has_schema(values, relationship.peer) and not registry.has_schema(name=relationship.peer):
-                    raise ValueError(
-                        f"Unable to find the schema {relationship.peer} to build the relationship with {node.kind}"
-                    )
-
-        return values
-
-    def extend_nodes_with_interfaces(self) -> SchemaRoot:
-        """Extend all the nodes with the attributes and relationships
-        from the Interface objects defined in inherited_from.
-
-        In the current implementation, we are only looking for Generic/interface in the local object.
-        Pretty soon, we will mostlikely need to extend that to the registry/db to allow a model to use a generic he hasn't defined
-        """
-
-        generics = {item.kind: item for item in self.generics}
-
-        # For all node_schema, add the attributes & relationships from the generic / interface
-        for node in self.nodes:
-            if not node.inherit_from:
-                continue
-            for generic_kind in node.inherit_from:
-                if generic_kind not in generics:
-                    # TODO add a proper exception for all schema related issue
-                    raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
-                node.extend_with_interface(interface=generics[generic_kind])
-
-        return self
 
 
 # TODO need to investigate how we could generate the internal schema
