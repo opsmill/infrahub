@@ -1,16 +1,17 @@
-import { ChangeEvent } from "react";
 import { classNames } from "../utils/common";
 import { Input } from "../components/input";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 
-interface Props {
+type OpsInputProps = {
   label: string;
   value: string;
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onChange: (value: string) => void;
   className?: string;
+  error?: FormFieldError;
 }
 
-export const OpsInput = (props: Props) => {
-  const { className, onChange, value, label } = props;
+export const OpsInput = (props: OpsInputProps) => {
+  const { className, onChange, value, label, error } = props;
 
   return (
     <>
@@ -22,6 +23,7 @@ export const OpsInput = (props: Props) => {
         onChange={onChange}
         defaultValue={value ?? ""}
         className={classNames(className ?? "")}
+        error={error}
       />
     </>
   );

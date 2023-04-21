@@ -1,5 +1,6 @@
 import { RegisterOptions } from "react-hook-form";
 import { SelectOption } from "../../components/select";
+import { FormFieldError } from "./form";
 
 // Different values for "kind" property of each attribute in the schema
 export type SchemaAttributeType = "ID" | "Text" | "Number" | "TextArea" | "DateTime" | "Email" | "Password" | "URL" | "File" | "MacAddress" | "Color" | "Bandwidth" | "IPHost" | "IPNetwork" | "Checkbox" | "List" | "Any" | "String" | "Integer" | "Boolean";
@@ -53,4 +54,5 @@ export interface DynamicFieldData {
     values: SelectOption[];
   };
   config?: RegisterOptions;
+  error?: FormFieldError;
 }

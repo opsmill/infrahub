@@ -7,30 +7,42 @@ import {
 import { DynamicControl } from "./dynamic-control";
 import { DynamicFieldData } from "./dynamic-control-types";
 import { BUTTON_TYPES, Button } from "../../components/button";
+import { resolve } from "../../utils/objects";
 
-interface FormProps {
+type ErrorRef = {
+  name?: string;
+}
+
+export type FormFieldError = {
+  message?: string;
+  ref?: ErrorRef;
+  type?: string;
+}
+
+type FormProps = {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
   onCancel?: Function;
 }
 
-interface FormFieldProps {
+type FormFieldProps = {
   field: DynamicFieldData;
+  error?: FormFieldError
 }
 
 export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
   const formMethods = useForm();
   const {
     handleSubmit,
-    // formState,
+    formState: { errors },
   } = formMethods;
-  // console.log("formState?.errors: ", formState?.errors);
 
   const FormField = (props: FormFieldProps) => {
-    const { field } = props;
+    const { field, error } = props;
+
     return <>
       <div className="sm:col-span-7">
-        <DynamicControl {...field} />
+        <DynamicControl {...field} error={error} />
       </div>
     </>;
   };
@@ -43,8 +55,8 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
             {
               fields
               .map(
-                (d, i) => (
-                  <FormField key={i} field={d} />
+                (field, index) => (
+                  <FormField key={index} field={field} error={resolve(field.name, errors)} />
                 )
               )
             }
