@@ -27,7 +27,6 @@ export const MultiSelect = (props: SelectProps) => {
       value={selectedOptions}
       onChange={
         (item: SelectOption[]) => {
-          console.log("item: ", item);
           setSelectedOption(item);
           onChange(item);
         }
