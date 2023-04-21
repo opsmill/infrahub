@@ -121,7 +121,7 @@ async def generate_object_types(
 
     branch = await get_branch(session=session, branch=branch)
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch)
 
     group_memberships = defaultdict(list)
 
@@ -216,7 +216,7 @@ async def generate_object_types(
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch)
 
     # Generate all Graphql objectType and store them in the registry
     await generate_object_types(session=session)
@@ -242,7 +242,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
     branch = await get_branch(branch=branch, session=session)
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch)
 
     for node_schema in full_schema.values():
         if not isinstance(node_schema, NodeSchema):
