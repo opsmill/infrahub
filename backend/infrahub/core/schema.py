@@ -467,9 +467,6 @@ class NodeSchema(BaseNodeSchema):
                 item_idx = existing_inherited_relationships[item.name]
                 self.relationships[item_idx] = new_item
 
-    def extend_with_interface(self, interface: GenericSchema) -> NodeSchema:
-        return self.inherit_from_interface(interface=interface)
-
 
 class GroupSchema(BaseSchemaModel):
     id: Optional[str]

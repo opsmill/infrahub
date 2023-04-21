@@ -920,7 +920,7 @@ async def car_schema(
     }
 
     node = NodeSchema(**SCHEMA)
-    node.extend_with_interface(interface=generic_vehicule_schema)
+    node.inherit_from_interface(interface=generic_vehicule_schema)
     registry.set_schema(name=node.kind, schema=node)
 
     return node
@@ -981,7 +981,7 @@ async def boat_schema(session: AsyncSession, generic_vehicule_schema) -> NodeSch
     }
 
     node = NodeSchema(**SCHEMA)
-    node.extend_with_interface(interface=generic_vehicule_schema)
+    node.inherit_from_interface(interface=generic_vehicule_schema)
     registry.set_schema(name=node.kind, schema=node)
 
     return node
