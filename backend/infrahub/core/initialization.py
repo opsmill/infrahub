@@ -121,6 +121,7 @@ async def first_time_initialization(session: AsyncSession):
     schema = SchemaRoot(**internal_schema)
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.process()
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, session=session)
     LOGGER.info("Created the Schema in the database")
 
