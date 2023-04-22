@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     server_address: str = "http://localhost:8000"
-    api_key: Optional[str]
+    api_key: Optional[str] = None
 
     class Config:
         """Additional parameters to automatically map environment variable to some settings."""
@@ -49,7 +49,7 @@ def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Option
         SETTINGS = Settings(**config_tmp)
         return
 
-    SETTINGS = Settings()  # type: ignore
+    SETTINGS = Settings()
 
 
 def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None):
@@ -72,4 +72,4 @@ def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_dat
         raise typer.Abort()
 
 
-SETTINGS = Settings()  # type: ignore
+SETTINGS = Settings()
