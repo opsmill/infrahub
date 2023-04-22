@@ -1,15 +1,8 @@
-import copy
-import logging
-import uuid
-from asyncio import run as aiorun
 from collections import defaultdict
-from ipaddress import IPv4Network
-from typing import Dict, List, Optional, Any
+from typing import Optional
 
-import typer
-from rich.logging import RichHandler
 
-from infrahub_client import InfrahubClient, InfrahubNode, NodeNotFound
+from infrahub_client import InfrahubNode, NodeNotFound
 
 
 class NodeStore:
@@ -30,11 +23,12 @@ class NodeStore:
         self._store[node_kind][key] = node
 
     def get(self, key: str, kind: Optional[str] = None, **kwargs) -> InfrahubNode:
-
         if kind and kind not in self._store and key not in self._store[kind]:
             if "default" in kwargs:
                 return kwargs.get("default")
-            raise NodeNotFound(branch_name="n/a", node_type=kind, identifier=key, message="Unable to find the node in the Store")
+            raise NodeNotFound(
+                branch_name="n/a", node_type=kind, identifier=key, message="Unable to find the node in the Store"
+            )
 
         if kind and kind in self._store and key in self._store[kind]:
             return self._store[kind][key]
@@ -45,4 +39,6 @@ class NodeStore:
 
         if "default" in kwargs:
             return kwargs.get("default")
-        raise NodeNotFound(branch_name="n/a", node_type="n/a", identifier=key, message=f"Unable to find the node {key!r} in the Store")
+        raise NodeNotFound(
+            branch_name="n/a", node_type="n/a", identifier=key, message=f"Unable to find the node {key!r} in the Store"
+        )

@@ -1,8 +1,9 @@
-
 import pytest
-from infrahub_client import NodeStore, InfrahubNode
+
+from infrahub_client import InfrahubNode, NodeStore
 
 client_types = ["standard", "sync"]
+
 
 @pytest.mark.parametrize("client_type", client_types)
 def test_node_store_set(client_type, clients, location_schema):
@@ -20,7 +21,12 @@ def test_node_store_set(client_type, clients, location_schema):
 @pytest.mark.parametrize("client_type", client_types)
 def test_node_store_get(client_type, clients, location_schema):
     client = getattr(clients, client_type)
-    data = {"id": "54f3108c-1f21-44c4-93cf-ec5737587b48", "name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+    data = {
+        "id": "54f3108c-1f21-44c4-93cf-ec5737587b48",
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+    }
     node = InfrahubNode(client=client, schema=location_schema, data=data)
 
     store = NodeStore()
