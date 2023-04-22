@@ -97,6 +97,7 @@ async def _run(
     method: str,
     log: logging.Logger,
     branch: str,
+    concurrent: int,
 ) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
@@ -113,7 +114,9 @@ async def _run(
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await InfrahubClient.init(
+        address=config.SETTINGS.server_address, insert_tracker=True, max_concurrent_execution=concurrent
+    )
     func = getattr(module, method)
     await func(client=client, log=log, branch=branch)
 
@@ -137,6 +140,7 @@ def run(
     debug: bool = False,
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = typer.Option("main"),
+    concurrent: int = typer.Option(4, envvar="INFRAHUBCTL_CONCURRENT_EXECUTION"),
 ) -> None:
     """Execute a script."""
     config.load_and_exit(config_file=config_file)
@@ -148,4 +152,4 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    aiorun(_run(script=script, method=method, log=log, branch=branch))
+    aiorun(_run(script=script, method=method, log=log, branch=branch, concurrent=concurrent))

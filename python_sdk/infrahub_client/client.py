@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import httpx
 
+from infrahub_client.batch import InfrahubBatch
 from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerSync
 from infrahub_client.data import (
     BranchData,
@@ -63,6 +64,7 @@ class BaseClient:
         test_client: Optional[TestClient] = None,
         default_branch: str = "main",
         insert_tracker: bool = False,
+        max_concurrent_execution: int = 5,
     ):
         self.address = address
         self.client = None
@@ -74,6 +76,7 @@ class BaseClient:
         self.log = log or logging.getLogger("infrahub_client")
         self.insert_tracker = insert_tracker
         self.headers = {"content-type": "application/json"}
+        self.max_concurrent_execution = max_concurrent_execution
 
         if test_client:
             self.address = ""
@@ -90,6 +93,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchema(self)
         self.branch = InfrahubBranchManager(self)
+        self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
 
     @classmethod
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
@@ -359,6 +363,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             resp.raise_for_status()
 
         return resp.json()
+
+    async def create_batch(self) -> InfrahubBatch:
+        return InfrahubBatch(semaphore=self.concurrent_execution_limit)
 
     async def get_list_repositories(
         self, branches: Optional[Dict[str, BranchData]] = None
