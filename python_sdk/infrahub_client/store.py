@@ -1,7 +1,6 @@
 from collections import defaultdict
 from typing import Optional
 
-
 from infrahub_client import InfrahubNode, NodeNotFound
 
 

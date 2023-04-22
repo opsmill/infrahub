@@ -4,7 +4,6 @@ from collections import defaultdict
 from ipaddress import IPv4Network
 from typing import Dict, List
 
-
 from infrahub_client import InfrahubClient, InfrahubNode, NodeStore
 
 # flake8: noqa
