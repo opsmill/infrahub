@@ -36,7 +36,7 @@ async def _render(
     config_file: str,
     branch: str,
     debug: bool,
-):
+) -> None:
     """Render a local Jinja Template (RFile) for debugging purpose."""
     log_level = "DEBUG" if debug else "INFO"
 
@@ -97,7 +97,7 @@ async def _run(
     method: str,
     log: logging.Logger,
     branch: str,
-):
+) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
     module_name = os.path.splitext(filename)[0]
@@ -125,7 +125,7 @@ def render(
     branch: str = "main",
     debug: bool = False,
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
-):
+) -> None:
     """Render a local Jinja Template (RFile) for debugging purpose."""
     aiorun(_render(rfile=rfile, params=params, config_file=config_file, branch=branch, debug=debug))
 
@@ -137,7 +137,7 @@ def run(
     debug: bool = False,
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = typer.Option("main"),
-):
+) -> None:
     """Execute a script."""
     config.load_and_exit(config_file=config_file)
 
