@@ -31,8 +31,8 @@ class NodeStore:
 
     def get(self, key: str, kind: Optional[str] = None) -> InfrahubNode:
 
-        if kind and kind not in self._store or key not in self._store[kind]:
-            raise NodeNotFound(branch="n/a", node_type=kind, identifier=key, message="Unable to find the node in the Store")
+        if kind and kind not in self._store and key not in self._store[kind]:
+            raise NodeNotFound(branch_name="n/a", node_type=kind, identifier=key, message="Unable to find the node in the Store")
 
         if kind:
             return self._store[kind][key]
@@ -41,4 +41,4 @@ class NodeStore:
             if key in self._store[kind]:
                 return self._store[kind][key]
 
-        raise NodeNotFound(branch="n/a", node_type="n/a", identifier=key, message=f"Unable to find the node {key!r} in the Store")
+        raise NodeNotFound(branch_name="n/a", node_type="n/a", identifier=key, message=f"Unable to find the node {key!r} in the Store")
