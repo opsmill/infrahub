@@ -1,13 +1,9 @@
-import copy
 import logging
 import uuid
-from asyncio import run as aiorun
 from collections import defaultdict
 from ipaddress import IPv4Network
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-import typer
-from rich.logging import RichHandler
 
 from infrahub_client import InfrahubClient, InfrahubNode, NodeStore
 
@@ -145,7 +141,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     group_eng = store.get("network_engineering")
     group_ops = store.get("network_operation")
     account_pop = store.get("pop-builder")
-    account_cloe = store.get("Chloe O'Brian")
+    # store.get("Chloe O'Brian")
     account_crm = store.get("CRM Synchronization")
     active_status = store.get(kind="Status", key="active")
     internal_as = store.get(kind="AutonomousSystem", key="Duff")
@@ -437,6 +433,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             f" Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
         )
 
+    return site_name
+
 
 # ---------------------------------------------------------------
 # Use the `infrahubctl run` command line to execute this script
@@ -446,53 +444,63 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 # ---------------------------------------------------------------
 async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
-    # Create User Accounts and Groups
+    # Create User Accounts, Groups & Organizations
     # ------------------------------------------
     loopback_ip_dict: Dict[str, InfrahubNode] = {}
 
+    batch = await client.create_batch()
+
     for group in ACCOUNT_GROUPS:
         obj = await client.create(branch=branch, kind="Group", data={"name": group[0], "label": group[1]})
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
         store.set(key=group[0], node=obj)
-
-        log.info(f"Group Created: {obj.name.value}")
 
     for account in ACCOUNTS:
         obj = await client.create(branch=branch, kind="Account", data={"name": account[0], "type": account[1]})
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
         store.set(key=account[0], node=obj)
-        log.info(f"Account Created: {obj.name.value}")
 
-    group_eng = store.get("network_engineering")
-    group_ops = store.get("network_operation")
-    account_pop = store.get("pop-builder")
-    account_cloe = store.get("Chloe O'Brian")
-    account_crm = store.get("CRM Synchronization")
-
-    # ------------------------------------------
-    # Create Organizations, BGP Peer Groups
-    # ------------------------------------------
     for org in ORGANIZATIONS:
         obj = await client.create(
             branch=branch, kind="Organization", data={"name": {"value": org[0], "is_protected": True}}
         )
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
+        store.set(key=org[0], node=obj)
 
-        asn = await client.create(
+    # Create all Groups, Accounts and Organizations
+    async for node, _ in batch.execute():
+        log.info(f"{node._schema.kind} Created {node.name.value}")
+
+    store.get("network_engineering")
+    store.get("network_operation")
+    account_pop = store.get("pop-builder")
+    account_cloe = store.get("Chloe O'Brian")
+    store.get("CRM Synchronization")
+
+    # ------------------------------------------
+    # Create Autonommous Systems
+    # ------------------------------------------
+    batch = await client.create_batch()
+    for org in ORGANIZATIONS:
+        obj = await client.create(
             branch=branch,
             kind="AutonomousSystem",
             data={
                 "name": {"value": f"AS{org[1]}", "source": account_pop.id, "owner": account_cloe.id},
                 "asn": {"value": org[1], "source": account_pop.id, "owner": account_cloe.id},
-                "organization": {"id": obj.id, "source": account_pop.id},
+                "organization": {"id": store.get(kind="Organization", key=org[0]).id, "source": account_pop.id},
             },
         )
-        await asn.save()
-
-        store.set(key=org[0], node=asn)
+        batch.add(task=obj.save, node=obj)
         store.set(key=org[0], node=obj)
-        log.info(f"Organization Created: {obj.name.value} | {asn.asn.value}")
 
+    async for node, _ in batch.execute():
+        log.info(f"{node._schema.kind} Created {node.name.value}")
+
+    # ------------------------------------------
+    # Create BGP Peer Groups
+    # ------------------------------------------
+    batch = await client.create_batch()
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
         remote_as = store.get(kind="AutonomousSystem", key=peer_group[4], default=None)
@@ -508,32 +516,35 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             local_as=store.get(kind="AutonomousSystem", key=peer_group[3]).id,
             remote_as=remote_as_id,
         )
-        await obj.save()
-
+        batch.add(task=obj.save, node=obj)
         store.set(key=peer_group[0], node=obj)
-        log.info(f"Peer Group Created: {obj.name.value}")
+
+    async for node, _ in batch.execute():
+        log.info(f"Peer Group Created Created {node.name.value}")
 
     # ------------------------------------------
     # Create Status, Role & Tags
     # ------------------------------------------
+    batch = await client.create_batch()
+
     log.info("Creating Roles, Status & Tag")
     for role in DEVICE_ROLES + INTF_ROLES + VLAN_ROLES:
         obj = await client.create(branch=branch, kind="Role", name={"value": role, "source": account_pop.id})
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
         store.set(key=role, node=obj)
-        log.info(f" Created Role: {role}")
 
     for status in STATUSES:
         obj = await client.create(branch=branch, kind="Status", name={"value": status, "source": account_pop.id})
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
         store.set(key=status, node=obj)
-        log.info(f" Created Status: {status}")
 
     for tag in TAGS:
         obj = await client.create(branch=branch, kind="Tag", name={"value": tag, "source": account_pop.id})
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
         store.set(key=tag, node=obj)
-        log.info(f" Created Tag: {tag}")
+
+    async for node, _ in batch.execute():
+        log.info(f"{node._schema.kind}  Created {node.name.value}")
 
     active_status = store.get(kind="Status", key="active")
     internal_as = store.get(kind="AutonomousSystem", key="Duff")
@@ -545,12 +556,18 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     SITE_NAMES = site_names_generator(nbr_site=5)
 
-    for site_idx, site_name in enumerate(SITE_NAMES):
-        await generate_site(site_name=site_name, client=client, branch=branch, log=log)
+    batch = await client.create_batch()
+
+    for site_name in SITE_NAMES:
+        batch.add(task=generate_site, site_name=site_name, client=client, branch=branch, log=log)
+
+    async for _, response in batch.execute():
+        log.debug(f"Site {response} Creation Completed")
 
     # --------------------------------------------------
     # CREATE Full Mesh iBGP SESSION between all the Edge devices
     # --------------------------------------------------
+    batch = await client.create_batch()
     for site1 in SITE_NAMES:
         for site2 in SITE_NAMES:
             if site1 == site2:
@@ -579,11 +596,13 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
                         status=active_status.id,
                         role=store.get(kind="Role", key="backbone").id,
                     )
-                    await obj.save()
-
+                    batch.add(task=obj.save, node=obj)
                     log.info(
-                        f" Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
+                        f"Creating BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
                     )
+
+    async for node, _ in batch.execute():
+        log.debug(f"BGP Session Creation Completed")
 
     # # --------------------------------------------------
     # # CREATE BACKBONE LINKS & CIRCUITS
