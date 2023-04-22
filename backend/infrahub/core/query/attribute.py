@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Optional, Set, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.query import Query, QueryType
 from infrahub_client.timestamp import Timestamp
@@ -102,7 +102,7 @@ class AttributeCreateQuery(AttributeQuery):
 
         self.return_labels = ["a", "av", "r1", "r2"]
 
-    def get_new_ids(self) -> Set[str, int]:
+    def get_new_ids(self) -> tuple[str, int]:
         result = self.get_result()
         attr = result.get("a")
 

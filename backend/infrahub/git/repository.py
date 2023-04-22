@@ -7,7 +7,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 import git
@@ -737,7 +737,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def compare_local_remote(self) -> Set[List[str], List[str]]:
+    async def compare_local_remote(self) -> tuple[List[str], List[str]]:
         """
         Returns:
             List[str] New Branches in Remote
