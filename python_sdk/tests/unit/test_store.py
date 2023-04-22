@@ -28,3 +28,6 @@ def test_node_store_get(client_type, clients, location_schema):
     store.set(key="mykey", node=node)
     assert store.get(kind="Location", key="mykey").id == node.id
     assert store.get(key="mykey").id == node.id
+
+    assert store.get(kind="Location", key="anotherkey", default=None) is None
+    assert store.get(key="anotherkey", default=None) is None
