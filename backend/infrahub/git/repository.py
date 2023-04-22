@@ -1200,7 +1200,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             ) from exc
 
     async def execute_python_transform(
-        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: dict = None
+        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: Optional[dict] = None
     ) -> InfrahubCheck:
         """Execute A Python Transform stored in the repository."""
 
