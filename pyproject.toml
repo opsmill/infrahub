@@ -173,6 +173,10 @@ ignore_missing_imports = true
 module = "infrahub_client.*"
 disallow_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = "infrahub_ctl.*"
+disallow_untyped_defs = true
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

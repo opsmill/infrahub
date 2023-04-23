@@ -3,7 +3,7 @@ import sys
 from asyncio import run as aiorun
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, Generator, List, Optional, Union
 
 import typer
 from rich.console import Console
@@ -23,7 +23,7 @@ ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
 
 
 @app.callback()
-def callback():
+def callback() -> None:
     """
     Manage the branches in a remote Infrahub instance.
 
@@ -31,7 +31,7 @@ def callback():
     """
 
 
-async def _list():
+async def _list() -> None:
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     console = Console()
@@ -85,7 +85,7 @@ async def _list():
 @app.command("list")
 def list_branch(
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
-):
+) -> None:
     """List all existing branches."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
@@ -94,7 +94,7 @@ def list_branch(
     aiorun(_list())
 
 
-async def _create(branch_name: str, description: str, data_only: bool):
+async def _create(branch_name: str, description: str, data_only: bool) -> None:
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
@@ -118,7 +118,7 @@ def create(
     description: str = typer.Argument(""),
     data_only: bool = True,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
-):
+) -> None:
     """Create a new branch."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
@@ -127,7 +127,7 @@ def create(
     aiorun(_create(branch_name=branch_name, description=description, data_only=data_only))
 
 
-async def _rebase(branch_name: str):
+async def _rebase(branch_name: str) -> None:
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
@@ -149,7 +149,7 @@ async def _rebase(branch_name: str):
 def rebase(
     branch_name: str,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
-):
+) -> None:
     """Rebase a Branch with main."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
@@ -158,7 +158,7 @@ def rebase(
     aiorun(_rebase(branch_name=branch_name))
 
 
-async def _merge(branch_name: str):
+async def _merge(branch_name: str) -> None:
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
@@ -180,7 +180,7 @@ async def _merge(branch_name: str):
 def merge(
     branch_name: str,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
-):
+) -> None:
     """Merge a Branch with main."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
@@ -189,7 +189,7 @@ def merge(
     aiorun(_merge(branch_name=branch_name))
 
 
-async def _validate(branch_name: str):
+async def _validate(branch_name: str) -> None:
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
@@ -211,14 +211,14 @@ async def _validate(branch_name: str):
 def validate(
     branch_name: str,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
-):
+) -> None:
     """Validate if a branch has some conflict and is passing all the tests (NOT IMPLEMENTED YET)."""
     config.load_and_exit(config_file=config_file)
     aiorun(_validate(branch_name=branch_name))
 
 
 @rich_group()
-def node_panel_generator(nodes: List[Dict]):
+def node_panel_generator(nodes: List[Dict]) -> Generator:
     for node in nodes:
         lines = []
 
@@ -275,7 +275,9 @@ def node_panel_generator(nodes: List[Dict]):
         )
 
 
-async def _diff(branch_name: str, time_from: Union[str, datetime], time_to: Union[str, datetime], branch_only: bool):
+async def _diff(
+    branch_name: str, time_from: Union[str, datetime], time_to: Union[str, datetime], branch_only: bool
+) -> None:
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
@@ -301,7 +303,7 @@ def diff(
     time_to: Optional[datetime] = typer.Option(None, "--to", help="End Time used to calculate the Diff, Default: now"),
     branch_only: bool = True,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
-):
+) -> None:
     """Show the differences between a Branch and main."""
     config.load_and_exit(config_file=config_file)
 

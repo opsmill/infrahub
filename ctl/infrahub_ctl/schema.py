@@ -15,13 +15,13 @@ app = typer.Typer()
 
 
 @app.callback()
-def callback():
+def callback() -> None:
     """
     Manage the schema in a remote Infrahub instance.
     """
 
 
-async def _load(schema: Path, log: logging.Logger):  # pylint: disable=unused-argument
+async def _load(schema: Path, log: logging.Logger) -> None:  # pylint: disable=unused-argument
     console = Console()
 
     try:
@@ -57,7 +57,7 @@ def load(
     schema: Path,
     debug: bool = False,
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
-):
+) -> None:
     """Load a schema file into Infrahub."""
     config.load_and_exit(config_file=config_file)
 
@@ -74,6 +74,6 @@ def load(
 
 
 @app.command()
-def migrate():
+def migrate() -> None:
     """Migrate the schema to the latest version. (Not Implemented Yet)"""
     print("Not implemented yet.")

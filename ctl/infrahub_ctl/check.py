@@ -17,7 +17,7 @@ app = typer.Typer()
 
 
 @app.callback()
-def callback():
+def callback() -> None:
     """
     Execute user-defined checks.
     """
@@ -30,7 +30,7 @@ def run(
     rebase: bool = True,
     debug: bool = False,
     format_json: bool = False,
-):
+) -> None:
     """Locate and execute all checks under the defined path."""
 
     log_level = "DEBUG" if debug else "INFO"
