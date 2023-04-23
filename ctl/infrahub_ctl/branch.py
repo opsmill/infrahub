@@ -127,13 +127,13 @@ def create(
     aiorun(_create(branch_name=branch_name, description=description, data_only=data_only))
 
 
-async def _delete(branch_name: str):
+async def _delete(branch_name: str) -> None:
     console = Console()
 
     client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
 
     try:
-        branch = await client.branch.delete(branch_name=branch_name)
+        await client.branch.delete(branch_name=branch_name)
     except ServerNotReacheableError as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
@@ -149,7 +149,7 @@ async def _delete(branch_name: str):
 def delete(
     branch_name: str,
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
-):
+) -> None:
     """Delete a branch."""
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)

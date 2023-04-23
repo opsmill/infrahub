@@ -1,36 +1,36 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Awaitable, Dict, Generator, List, Optional
+from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from infrahub_client.node import InfrahubNode
 
 
 @dataclass
 class BatchTask:
-    task: Awaitable
-    args: Optional[List[Any]] = None
-    kwargs: Optional[Dict[str, Any]] = None
+    task: Callable[[Any], Awaitable[Any]]
+    args: Tuple[Any, ...]
+    kwargs: Dict[str, Any]
     node: Optional[InfrahubNode] = None
 
 
-async def execute_batch_task_in_pool(task: BatchTask, semaphore) -> tuple[InfrahubNode, Any]:
+async def execute_batch_task_in_pool(
+    task: BatchTask, semaphore: asyncio.Semaphore
+) -> tuple[Optional[InfrahubNode], Any]:
     async with semaphore:
-        return task.node, await task.task(*task.args, **task.kwargs)
+        return (task.node, await task.task(*task.args, **task.kwargs))
 
 
 class InfrahubBatch:
     def __init__(self, semaphore: Optional[asyncio.Semaphore] = None, max_concurrent_execution: int = 5):
         self._tasks: List[BatchTask] = []
-        self.semaphore: asyncio.Semaphore = semaphore
+        self.semaphore = semaphore or asyncio.Semaphore(value=max_concurrent_execution)
 
-        if not self.semaphore:
-            self.semaphore = asyncio.Semaphore(value=max_concurrent_execution)
-
-    def add(self, *args, task: Awaitable, node: Optional[InfrahubNode] = None, **kwargs):
+    def add(
+        self, *args: Any, task: Callable[[Any], Awaitable[Any]], node: Optional[InfrahubNode] = None, **kwargs: Any
+    ) -> None:
         self._tasks.append(BatchTask(task=task, node=node, args=args, kwargs=kwargs))
 
-    async def execute(self) -> Generator[None, None, tuple[Optional[InfrahubNode], Any]]:
-        results: List[tuple[InfrahubNode, Any]] = []
+    async def execute(self) -> AsyncGenerator:
         tasks = []
 
         for batch_task in self._tasks:
