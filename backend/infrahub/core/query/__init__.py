@@ -144,7 +144,7 @@ class Query(ABC):
 
     order_by: Optional[List[str]] = None
 
-    def __init__(self, branch: Branch = None, at: Union[Timestamp, str] = None, limit: int = None):
+    def __init__(self, branch: Optional[Branch] = None, at: Union[Timestamp, str] = None, limit: Optional[int] = None):
         if branch:
             self.branch = branch
 
@@ -169,7 +169,7 @@ class Query(ABC):
     async def init(
         cls,
         session: AsyncSession,
-        branch: Branch = None,
+        branch: Optional[Branch] = None,
         at: Union[Timestamp, str] = None,
         limit: Optional[int] = None,
         *args,
@@ -215,7 +215,7 @@ class Query(ABC):
 
         return query_str
 
-    async def execute(self, session: AsyncSession = None) -> SelfQuery:
+    async def execute(self, session: AsyncSession) -> SelfQuery:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -243,7 +243,7 @@ class Query(ABC):
     def get_raw_results(self) -> List[QueryResult]:
         return self.results
 
-    def get_result(self) -> QueryResult:
+    def get_result(self) -> Union[QueryResult, None]:
         """Return a single Result."""
 
         if not self.num_of_results:

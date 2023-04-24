@@ -102,7 +102,7 @@ async def execute_read_query_async(
 
 
 @QUERY_WRITE_METRICS.time()
-async def execute_write_query_async(session: AsyncSession, query: str, params: dict = None):
+async def execute_write_query_async(session: AsyncSession, query: str, params: Optional[dict] = None):
     async def work(tx, params: dict):
         response = await tx.run(query, params)
         return await response.values()
