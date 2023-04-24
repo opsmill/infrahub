@@ -215,7 +215,7 @@ class Query(ABC):
 
         return query_str
 
-    async def execute(self, session: Optional[AsyncSession] = None) -> SelfQuery:
+    async def execute(self, session: AsyncSession) -> SelfQuery:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
