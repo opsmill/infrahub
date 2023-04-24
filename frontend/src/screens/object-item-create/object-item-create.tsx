@@ -9,6 +9,7 @@ import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdi
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
+import { constructPath } from "../../utils/fetch";
 
 export default function ObjectItemCreate() {
   let { objectname } = useParams();
@@ -51,7 +52,7 @@ export default function ObjectItemCreate() {
       } catch(err) {
         console.error("Something went wrong while creating the object: ", err);
       }
-      navigate(-1);
+      navigate(constructPath(`/objects/${objectname}`));
     } else {
       console.info("Nothing to create");
     }

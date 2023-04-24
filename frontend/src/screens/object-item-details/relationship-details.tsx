@@ -18,6 +18,7 @@ import updateObjectWithId from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
+import { constructPath } from "../../utils/fetch";
 
 type iRelationDetailsProps = {
   parentSchema: iNodeSchema;
@@ -118,7 +119,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   </dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                     <Link
-                      onClick={() => navigate(getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id))}
+                      onClick={() => navigate(constructPath(getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id)))}
                     >
                       {relationshipsData.display_label}
                     </Link>
@@ -285,7 +286,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
                               key={item.id}
                             >
-                              <Link onClick={() => navigate(getObjectDetailsUrl(item, schemaKindName, item.id))}>
+                              <Link onClick={() => navigate(constructPath(getObjectDetailsUrl(item, schemaKindName, item.id)))}>
                                 {item.display_label}
                               </Link>
 

@@ -4,15 +4,10 @@ import { BranchesItems } from "../screens/branches/branches-items";
 import { Diff } from "../screens/branches/diff/diff";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
-import ObjectItemEdit from "../screens/object-item-edit/object-item-edit";
 import ObjectItems from "../screens/object-items/object-items";
 import OpsObjects from "../screens/ops-objects/ops-objects";
 
 export const MAIN_ROUTES = [
-  {
-    path: "/objects/:objectname/:objectid/edit",
-    element: <ObjectItemEdit />,
-  },
   {
     path: "/objects/:objectname/new",
     element: <ObjectItemCreate />,

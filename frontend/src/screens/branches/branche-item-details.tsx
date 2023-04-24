@@ -10,6 +10,7 @@ import { Tabs } from "../../components/tabs";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/constants";
 import { BRANCH_TABS, BranchAction } from "./actions/branch-action";
+import { constructPath } from "../../utils/fetch";
 
 const tabs = [
   {
@@ -61,6 +62,8 @@ export const BrancheItemDetails = () => {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const navigate = useNavigate();
 
+  const branchesPath = constructPath("/branches");
+
   const fetchBranchDetails = useCallback(
     async () => {
       if (!branchname) return;
@@ -69,7 +72,7 @@ export const BrancheItemDetails = () => {
         const branchDetails = await getBranchDetails(branchname);
 
         if (!branchDetails?.name) {
-          navigate("/branches");
+          navigate(branchesPath);
         }
 
         setBranch(branchDetails);
@@ -78,7 +81,7 @@ export const BrancheItemDetails = () => {
         console.error("err: ", err);
         setIsLoadingBranch(false);
       }
-    }, [branchname, navigate]
+    }, [branchname, branchesPath, navigate]
   );
 
   useEffect(
@@ -93,7 +96,7 @@ export const BrancheItemDetails = () => {
       <div className="bg-white sm:flex sm:items-center py-4 px-4 pb-0 sm:px-6 lg:px-8 w-full">
         <div className="sm:flex-auto flex items-center">
           <div
-            onClick={() => navigate("/branches")}
+            onClick={() => navigate(branchesPath)}
             className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
           >
             <h1 className="text-xl font-semibold text-gray-900 mr-2">Branches</h1>

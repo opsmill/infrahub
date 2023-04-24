@@ -11,6 +11,7 @@ import rebaseBranch from "../../../graphql/mutations/branches/rebaseBranch";
 import mergeBranch from "../../../graphql/mutations/branches/mergeBranch";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../../config/constants";
+import { constructPath } from "../../../utils/fetch";
 
 export const BRANCH_TABS = {
   DIFF: "diff",
@@ -79,7 +80,7 @@ export const BranchAction = (props: any) => {
         return (
           <Button
             className="mr-0 md:mr-3"
-            onClick={() => navigate(`/branches/${branch.name}/pull-request`)}
+            onClick={() => navigate(constructPath(`/branches/${branch.name}/pull-request`))}
             disabled={branch.is_default}
           >
             Pull request
