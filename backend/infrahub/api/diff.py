@@ -161,13 +161,13 @@ async def get_diff_data(  # pylint: disable=too-many-branches
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
     for branch_name, items in nodes.items():
         for item in items.values():
-            node_diff = BranchDiffNode(**item.to_graphql(), display_label=display_labels[item.id])
+            node_diff = BranchDiffNode(**item.to_graphql(), display_label=display_labels.get(item.id, ""))
             schema = registry.get_schema(name=node_diff.kind, branch=node_diff.branch)
 
             for rel in rels_per_node.get(item.id, []):
                 if rel_schema := schema.get_relationship_by_identifier(id=rel.name, raise_on_error=False):
                     diff_rel = extract_diff_relationship(node_id=item.id, name=rel_schema.name, rel=rel)
-                    diff_rel.peer.display_label = display_labels[diff_rel.peer.id]
+                    diff_rel.peer.display_label = display_labels.get(diff_rel.peer.id, "")
                     node_diff.relationships.append(diff_rel)
 
             response[branch_name].append(node_diff)
@@ -189,11 +189,11 @@ async def get_diff_data(  # pylint: disable=too-many-branches
                         id=node_in_rel,
                         kind=rel.nodes[node_in_rel].kind,
                         action=DiffAction.UPDATED,
-                        display_label=display_labels[node_in_rel],
+                        display_label=display_labels.get(node_in_rel, ""),
                     )
 
                 diff_rel = extract_diff_relationship(node_id=node_in_rel, name=rel_schema.name, rel=rel)
-                diff_rel.peer.display_label = display_labels[diff_rel.peer.id]
+                diff_rel.peer.display_label = display_labels.get(diff_rel.peer.id, "")
                 node_diff.relationships.append(diff_rel)
 
         if node_diff:
