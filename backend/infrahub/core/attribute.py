@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 import ujson
@@ -338,7 +338,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         rels_offset: int = 0,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> tuple[List[str], Dict, int]:
+    ) -> Tuple[List[str], Dict, int]:
         """Generate Query String Snippet to filter the right node."""
 
         query_filters = []
