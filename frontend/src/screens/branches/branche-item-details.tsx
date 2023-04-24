@@ -8,9 +8,9 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiff } from "./diff/data-diff";
 import { Tabs } from "../../components/tabs";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/constants";
 import { BRANCH_TABS, BranchAction } from "./actions/branch-action";
 import { constructPath } from "../../utils/fetch";
+import { QSP } from "../../config/qsp";
 
 const tabs = [
   {

@@ -1,7 +1,7 @@
 import { Tabs } from "../../../components/tabs";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../../config/constants";
 import { DataDiff } from "./data-diff";
+import { QSP } from "../../../config/qsp";
 
 const DIFF_TABS = {
   CONVERSATIONS: "conversation",
