@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { Select2Step, iTwoStepDropdownData } from "../components/select-2-step";
-import { SelectOption } from "../screens/edit-form-hook/dynamic-control-types";
+import { SelectOption } from "../components/select";
 
 const optionsLeft: SelectOption[] = [
   {
-    label: "Account",
-    value: "account"
+    name: "Account",
+    id: "account"
   },
   {
-    label: "Group",
-    value: "group"
+    name: "Group",
+    id: "group"
   },
   {
-    label: "Repository",
-    value: "repository"
+    name: "Repository",
+    id: "repository"
   }
 ];
 

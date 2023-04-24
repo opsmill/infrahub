@@ -2,7 +2,6 @@ import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroi
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { HasNameAndID } from "../../components-form/select";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { RoundedButton } from "../../components/rounded-button";
@@ -18,6 +17,7 @@ import updateObjectWithId from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
+import { SelectOption } from "../../components/select";
 
 type iRelationDetailsProps = {
   parentSchema: iNodeSchema;
@@ -44,7 +44,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  let options: HasNameAndID[] = [];
+  let options: SelectOption[] = [];
 
   const generic = generics.find(g => g.kind === relationshipSchema.peer);
   if(generic) {

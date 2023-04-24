@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { SelectOption } from "../screens/edit-form-hook/dynamic-control-types";
 import OpsMultiSelect from "./multi-select";
+import { SelectOption } from "../components/select";
 
 interface Props {
   name: string;

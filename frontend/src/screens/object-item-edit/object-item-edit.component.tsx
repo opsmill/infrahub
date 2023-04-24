@@ -14,6 +14,8 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 
 interface Props {
   objectname: string;
@@ -23,7 +25,7 @@ interface Props {
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  let { objectname, objectid } = props;
+  const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [date] = useAtom(timeState);
@@ -87,26 +89,31 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   async function onSubmit(data: any, error: any) {
-    props.closeDrawer();
     const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
+
     if (Object.keys(updateObject).length) {
       try {
         await updateObjectWithId(objectid!, schema, updateObject);
-      } catch {
-        console.error("Something went wrong while updating the object");
+        closeDrawer();
+        onUpdateComplete();
+        onUpdateComplete();
+        return;
+      } catch (e) {
+        toast(<Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR}/>);
+        console.error("Something went wrong while updating the object", e);
+        return;
       }
-      props.onUpdateComplete();
-    } else {
-      console.info("Nothing to update");
-      props.onUpdateComplete();
     }
   }
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
-      {formStructure && (
-        <EditFormHookComponent onCancel={props.closeDrawer} onSubmit={onSubmit} fields={formStructure} />
-      )}
+      {
+        formStructure
+        && (
+          <EditFormHookComponent onCancel={props.closeDrawer} onSubmit={onSubmit} fields={formStructure} />
+        )
+      }
     </div>
   );
 }

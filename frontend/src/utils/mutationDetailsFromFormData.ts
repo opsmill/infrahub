@@ -48,7 +48,7 @@ const getMutationDetailsFromFormData = (
 
       updateObject[relationship.name] = updateObject[relationship.name].list.map((row: any) => {
         const objWithMetaFields: any =  {
-          id: row.value
+          id: row.id
         };
 
         fieldKeys.forEach(key => {

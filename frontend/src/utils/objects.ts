@@ -13,3 +13,9 @@ export const getObjectUrl = (data: ObjectData) => {
 
   return `/objects/${kind}/${id}`;
 };
+
+export const resolve = (path: string, object: any, separator: string = ".") => {
+  const properties: Array<any> = Array.isArray(path) ? path : path.split(separator);
+
+  return properties.reduce((prev: any, curr: any) => prev?.[curr], object);
+};
