@@ -10,6 +10,7 @@ import { timeState } from "../../state/atoms/time.atom";
 import RelationshipDetails from "./relationship-details";
 
 interface Props {
+  parentNode: any;
   parentSchema: iNodeSchema;
   refreshObject: Function;
 }
@@ -72,7 +73,7 @@ export default function RelationshipsDetails(props: Props) {
 
   return (
     <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1">
-      <RelationshipDetails mode="TABLE" parentSchema={props.parentSchema} refreshObject={props.refreshObject} relationshipsData={relationships} relationshipSchema={relationshipSchema} />
+      <RelationshipDetails parentNode={props.parentNode} mode="TABLE" parentSchema={props.parentSchema} refreshObject={props.refreshObject} relationshipsData={relationships} relationshipSchema={relationshipSchema} />
       {/* <dl className="sm:divide-y sm:divide-gray-200">
       </dl> */}
     </div>
