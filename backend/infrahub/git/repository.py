@@ -737,7 +737,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def compare_local_remote(self) -> tuple[List[str], List[str]]:
+    async def compare_local_remote(self) -> Tuple[List[str], List[str]]:
         """
         Returns:
             List[str] New Branches in Remote
