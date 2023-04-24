@@ -1,4 +1,5 @@
-import { QSP } from "../config/constants";
+import { QSP } from "../config/qsp";
+
 
 export const fetchUrl = async (url: string, payload?: RequestInit) => {
   const rawResponse = await fetch(url, payload);

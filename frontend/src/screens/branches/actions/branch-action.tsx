@@ -10,8 +10,8 @@ import validateBranch from "../../../graphql/mutations/branches/validateBranch";
 import rebaseBranch from "../../../graphql/mutations/branches/rebaseBranch";
 import mergeBranch from "../../../graphql/mutations/branches/mergeBranch";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../../config/constants";
 import { constructPath } from "../../../utils/fetch";
+import { QSP } from "../../../config/qsp";
 
 export const BRANCH_TABS = {
   DIFF: "diff",

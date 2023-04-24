@@ -1,6 +1,6 @@
 import { GraphQLClient } from "graphql-request";
 import { CONFIG } from "../config/config";
-import { QSP } from "../config/constants";
+import { QSP } from "../config/qsp";
 
 // Checking if there's a branch specified in the URL QSP
 // If it's present, use that instead of "main"
