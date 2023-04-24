@@ -1,7 +1,6 @@
 import { Select2StepPreview } from "../component-preview/select-2-step.preview";
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
-import { Diff } from "../screens/branches/diff/diff";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
 import ObjectItems from "../screens/object-items/object-items";
@@ -32,10 +31,6 @@ export const MAIN_ROUTES = [
     path: "/branches/:branchname",
     element: <BrancheItemDetails />,
   },
-  {
-    path: "/branches/:branchname/pull-request",
-    element: <Diff />,
-  },
 ];
 
 export const CUSTOM_COMPONENT_ROUTES = [
@@ -62,9 +57,3 @@ export const BRANCHES_MENU_ITEMS = [
     label: "Pull requests"
   }
 ];
-
-export const QSP = {
-  BRANCH: "branch",
-  DATETIME: "at",
-  TAB: "tab",
-};

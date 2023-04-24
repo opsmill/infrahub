@@ -18,7 +18,7 @@ import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
 import { graphQLClient } from "../../graphql/graphqlClient";
-import { QSP } from "../../config/constants";
+import { QSP } from "../../config/qsp";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;

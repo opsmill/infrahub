@@ -15,7 +15,6 @@ import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
-import { QSP } from "../../config/constants";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
@@ -29,6 +28,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit.compon
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
+import { QSP } from "../../config/qsp";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();

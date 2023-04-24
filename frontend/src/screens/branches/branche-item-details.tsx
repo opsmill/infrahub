@@ -1,92 +1,42 @@
-import { formatDistanceToNow } from "date-fns";
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Badge } from "../../components/badge";
-import { Pill } from "../../components/pill";
-import getBranchDetails from "../../graphql/queries/branches/getBranchDetails";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { DataDiff } from "./diff/data-diff";
-import { Tabs } from "../../components/tabs";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/constants";
-import { BRANCH_TABS, BranchAction } from "./actions/branch-action";
+import { Diff } from "./diff/diff";
+import { BranchDetails } from "./branch-details";
+import { TabsButtons } from "../../components/tabs-buttons";
+import { QSP } from "../../config/qsp";
+
+export const BRANCH_TABS = {
+  DETAILS: "details",
+  DIFF: "diff",
+};
 
 const tabs = [
   {
+    label: "Details",
+    name: BRANCH_TABS.DETAILS
+  },
+  {
     label: "Diff",
     name: BRANCH_TABS.DIFF
-  },
-  {
-    label: "Merge",
-    name: BRANCH_TABS.MERGE
-  },
-  {
-    label: "Pull Request",
-    name: BRANCH_TABS.PR
-  },
-  {
-    label: "Pull Request",
-    name: BRANCH_TABS.REBASE
-  },
-  {
-    label: "Validate",
-    name: BRANCH_TABS.VALIDATE
-  },
-  {
-    label: "Delete",
-    name: BRANCH_TABS.DELETE
   },
 ];
 
 const renderContent = (tab: string | null | undefined, branch: any) => {
   switch(tab) {
-    case BRANCH_TABS.MERGE:
-    case BRANCH_TABS.PR:
-    case BRANCH_TABS.VALIDATE:
-    case BRANCH_TABS.REBASE:
-    case BRANCH_TABS.DELETE: {
-      return <BranchAction branch={branch} />;
+    case BRANCH_TABS.DIFF: {
+      return <Diff />;
     }
     default: {
-      return <DataDiff />;
+      return <BranchDetails />;
     }
   }
 };
 
 export const BrancheItemDetails = () => {
-  const { branchname } = useParams();
-
-  const [branch, setBranch] = useState({} as any);
-  const [isLoadingBranch, setIsLoadingBranch] = useState(true);
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [branch] = useState({} as any);
+  const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   const navigate = useNavigate();
-
-  const fetchBranchDetails = useCallback(
-    async () => {
-      if (!branchname) return;
-
-      try {
-        const branchDetails = await getBranchDetails(branchname);
-
-        if (!branchDetails?.name) {
-          navigate("/branches");
-        }
-
-        setBranch(branchDetails);
-        setIsLoadingBranch(false);
-      } catch(err) {
-        console.error("err: ", err);
-        setIsLoadingBranch(false);
-      }
-    }, [branchname, navigate]
-  );
-
-  useEffect(
-    () => {
-      fetchBranchDetails();
-    },
-    [fetchBranchDetails]
-  );
 
   return (
     <>
@@ -100,47 +50,11 @@ export const BrancheItemDetails = () => {
           </div>
 
           <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">Access the branch details and management tools.</p>
+
         </div>
+
+        <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
       </div>
-
-      <div className="bg-white p-6">
-        {
-          isLoadingBranch
-          && <LoadingScreen />
-        }
-
-        {
-          !isLoadingBranch
-          && branch?.name
-          && (
-            <>
-              <div className="border-t border-b border-gray-200 px-4 py-5 sm:p-0 mb-6">
-                <dl className="divide-y divide-gray-200">
-                  <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{branch.name}</dd>
-                  </div>
-                  <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Origin branch</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"><Badge>{branch.origin_branch}</Badge></dd>
-                  </div>
-                  <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Branched</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"> <Pill>{formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}</Pill></dd>
-                  </div>
-                  <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Created</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"> <Pill>{formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}</Pill></dd>
-                  </div>
-                </dl>
-              </div>
-
-            </>
-          )
-        }
-      </div>
-
-      <Tabs tabs={tabs} />
 
       {
         renderContent(qspTab, branch)

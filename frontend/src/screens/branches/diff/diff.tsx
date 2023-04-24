@@ -1,7 +1,7 @@
 import { Tabs } from "../../../components/tabs";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../../config/constants";
 import { DataDiff } from "./data-diff";
+import { QSP } from "../../../config/qsp";
 
 const DIFF_TABS = {
   CONVERSATIONS: "conversation",
@@ -56,12 +56,12 @@ const renderContent = (tab: string | null | undefined) => {
 };
 
 export const Diff = () => {
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryParam(QSP.BRANCH_DIFF_TAB, StringParam);
 
   return (
     <div>
       <div>
-        <Tabs tabs={tabs} />
+        <Tabs tabs={tabs} qsp={QSP.BRANCH_DIFF_TAB}/>
       </div>
 
       <div>

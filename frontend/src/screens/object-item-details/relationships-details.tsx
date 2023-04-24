@@ -2,12 +2,12 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/constants";
 import getObjectRelationshipsDetails from "../../graphql/queries/objects/objectRelationshipDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import RelationshipDetails from "./relationship-details";
+import { QSP } from "../../config/qsp";
 
 interface Props {
   parentSchema: iNodeSchema;
