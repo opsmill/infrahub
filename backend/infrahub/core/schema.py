@@ -379,8 +379,16 @@ class BaseNodeSchema(BaseSchemaModel):
         return [item for item in self.attributes if item.unique]
 
     def generate_fields_for_display_label(self) -> Dict:
-        fields = {}
+        """Generate a Dictionnary containing the list of fields that are required
+        to generate the display_label.
 
+        If display_labels is not defined, we return None which equal to everything.
+        """
+
+        if not hasattr(self, "display_labels") or not isinstance(self.display_labels, list):
+            return None
+
+        fields = {}
         for item in self.display_labels:
             elements = item.split("__")
             if len(elements) == 1:
