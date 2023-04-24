@@ -3,12 +3,9 @@ from graphql import graphql
 from neo4j import AsyncSession
 
 from infrahub.core.branch import Branch
-from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql import generate_graphql_schema
-
-
 
 
 async def test_update_simple_object(db, session: AsyncSession, person_john_main: Node, branch: Branch):
