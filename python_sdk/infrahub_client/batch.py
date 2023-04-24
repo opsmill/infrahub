@@ -15,7 +15,7 @@ class BatchTask:
 
 async def execute_batch_task_in_pool(
     task: BatchTask, semaphore: asyncio.Semaphore
-) -> tuple[Optional[InfrahubNode], Any]:
+) -> Tuple[Optional[InfrahubNode], Any]:
     async with semaphore:
         return (task.node, await task.task(*task.args, **task.kwargs))
 
