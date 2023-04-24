@@ -922,38 +922,47 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 rfile_in_repo.template_path.value = template_path
                 await rfile_in_repo.save()
 
-    async def import_all_graphql_query(self, branch_name: str):
+    async def import_all_graphql_query(self, branch_name: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
 
-        LOGGER.debug(f"{self.name} | Importing all GraphQL Queries in branch {branch_name} ")
+        LOGGER.debug(f"{self.name} | Importing all GraphQL Queries in branch {branch_name}")
 
         query_files = await self.find_files(extension=["gql"], branch_name=branch_name)
+        if not query_files:
+            return
 
-        queries_in_graph = await self.client.get_list_graphql_queries(branch_name=branch_name)
+        schema = await self.client.schema.get(kind="GraphQLQuery", branch=branch_name)
+
+        queries_in_graph = await self.client.filters(
+            kind="GraphQLQuery", branch=branch_name, repository__id=str(self.id)
+        )
+        queries = {query.name.value: query for query in queries_in_graph}
 
         for query_file in query_files:
             filename = os.path.basename(query_file)
             query_name = os.path.splitext(filename)[0]
             query_string = Path(query_file).read_text(encoding="UTF-8")
 
-            if query_name not in queries_in_graph.keys():
+            if query_name not in queries.keys():
                 LOGGER.info(f"{self.name} | New Graphql Query '{query_name}' found on branch {branch_name}, creating")
-                await self.client.create_graphql_query(branch_name=branch_name, name=query_name, query=query_string)
+                data = {"name": query_name, "query": query_string, "repository": self.id}
+                create_payload = self.client.schema.generate_payload_create(
+                    schema=schema,
+                    data=data,
+                    source=self.id,
+                    is_protected=True,
+                )
+                obj = await self.client.create(kind="GraphQLQuery", branch=branch_name, **create_payload)
+                await obj.save()
 
-            elif query_string != queries_in_graph[query_name].query:
-                query = queries_in_graph[query_name]
+            elif query_string != queries[query_name].query:
+                query = queries[query_name]
                 LOGGER.info(
                     f"{self.name} | New version of the Graphql Query '{query_name}' found on branch {branch_name}, updating"
                 )
-                await self.client.update_graphql_query(
-                    branch_name=branch_name,
-                    id=query.id,
-                    name=query_name,
-                    query=query_string,
-                    description=query.description,
-                )
+                query.query.value = query_string
+                await query.save()
 
-        # TODO need to add traceabillity to identify where a query is coming from
         # TODO need to identify Query that are not present anymore (once lineage is available)
 
     async def import_python_checks_from_module(self, branch_name: str, module, file_path: str):
