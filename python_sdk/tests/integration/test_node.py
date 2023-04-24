@@ -102,7 +102,7 @@ class TestInfrahubNode:
         }
         schema = await client.schema.get(kind="RFile", branch="main")
         create_payload = client.schema.generate_payload_create(
-            schema=schema, data=data, source=repo01.id, protected=True
+            schema=schema, data=data, source=repo01.id, is_protected=True
         )
         obj = await client.create(kind="RFile", branch="main", **create_payload)
         await obj.save()
