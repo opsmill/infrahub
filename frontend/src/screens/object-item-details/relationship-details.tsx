@@ -2,6 +2,7 @@ import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroi
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { BUTTON_TYPES, Button } from "../../components/button";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import ModalDelete from "../../components/modal-delete";
@@ -10,11 +11,13 @@ import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "../../utils/objects";
 import updateObjectWithId from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -30,18 +33,9 @@ type iRelationDetailsProps = {
   mode: "TABLE" | "DESCRIPTION-LIST";
 }
 
-const regex = /^Related/; // starts with Related
-
-const getObjectDetailsUrl = (relationshipsData: {__typename: string}, schemaKindName: iSchemaKindNameMap, relatedNodeId: string) :string => {
-  const peerKind: string = relationshipsData?.__typename?.replace(regex, "");
-  const peerName = schemaKindName[peerKind];
-  const url = `/objects/${peerName}/${relatedNodeId}`;
-  return url;
-};
-
 export default function RelationshipDetails(props: iRelationDetailsProps) {
-  const { objectname, objectid } = useParams();
-  const { relationshipsData, relationshipSchema } = props;
+  const {objectname, objectid} = useParams();
+  const {relationshipsData, relationshipSchema, refreshObject} = props;
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -53,9 +47,12 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   let options: SelectOption[] = [];
 
   const generic = generics.find(g => g.kind === relationshipSchema.peer);
+
   if(generic) {
-    (generic.used_by || []).forEach(name => {
+    (generic.used_by || [])
+    .forEach(name => {
       const relatedSchema = schemaList.find(s => s.kind === name);
+
       if(relatedSchema) {
         options.push({
           id: relatedSchema.name,
@@ -65,6 +62,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     });
   } else {
     const relatedSchema = schemaList.find(s => s.kind === relationshipSchema.peer);
+
     if(relatedSchema) {
       options.push({
         id: relatedSchema.name,
@@ -107,6 +105,23 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     return null;
   }
 
+
+  const handleDeleteRelationship = async (id: string) => {
+    const newList  = relationshipsData.map((item: any) => ({ id: item.id })).filter((item: any) =>  item.id !== id);
+
+    await updateObjectWithId(
+    objectid!,
+    schema,
+    {
+      [relationshipSchema.name]: newList
+    }
+    );
+
+    refreshObject();
+
+    setShowAddDrawer(false);
+  };
+
   return <>
     <div
       key={relationshipSchema?.name}
@@ -124,7 +139,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   </dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                     <Link
-                      onClick={() => navigate(getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id))}
+                      onClick={() => navigate(constructPath(getObjectDetailsUrl(relationshipsData, schemaKindName, relationshipsData.id)))}
                     >
                       {relationshipsData.display_label}
                     </Link>
@@ -218,10 +233,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   )
                                 )
                               }
-                              <th scope="col" className="relative py-3.5 pl-3 w-24">
+                              <th scope="col" className="relative py-3.5 pl-3 w-24 border-b border-gray-300">
                                 <span className="sr-only">Meta</span>
                               </th>
-                              <th scope="col" className="relative py-3.5 pl-3 w-24">
+                              <th scope="col" className="relative py-3.5 pl-3 w-24 border-b border-gray-300">
                                 <span className="sr-only">Delete</span>
                               </th>
                             </tr>
@@ -232,7 +247,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               ?.map(
                                 (row: any, index: number) => (
                                   <tr
-                                    // onClick={() => navigate(getObjectUrl({ kind: schema.name, id: row.id }))}
+                                    onClick={() => navigate(getObjectDetailsUrl(row, schemaKindName, row.id))}
                                     key={index}
                                     className="hover:bg-gray-50 cursor-pointer"
                                   >
@@ -249,20 +264,19 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                         {getObjectItemDisplayValue(row, column)}
                                       </td>
                                     ))}
-                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
-                                      <div className="text-indigo-600 hover:text-indigo-900 cursor-pointer" onClick={async () => {
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
+                                      <Button onClick={(event: any) => {
+                                        event.stopPropagation();
                                         setRowForMetaEdit(row);
                                         setShowRelationMetaEditModal(true);
                                       }}>
                                         Meta
-                                      </div>
+                                      </Button>
                                     </td>
-                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
-                                      <div className="text-indigo-600 hover:text-indigo-900 cursor-pointer" onClick={async () => {
-                                        setRelatedRowIdToDelete(row.id);
-                                      }}>
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
+                                      <Button buttonType={BUTTON_TYPES.CANCEL} onClick={() => setRelatedRowIdToDelete(row.id)}>
                                         Delete
-                                      </div>
+                                      </Button>
                                     </td>
                                   </tr>
                                 )
@@ -297,7 +311,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
                               key={item.id}
                             >
-                              <Link onClick={() => navigate(getObjectDetailsUrl(item, schemaKindName, item.id))}>
+                              <Link onClick={() => navigate(constructPath(getObjectDetailsUrl(item, schemaKindName, item.id)))}>
                                 {item.display_label}
                               </Link>
 
@@ -398,12 +412,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         title="Delete"
         description="Are you sure you want to delete the relationship? This action cannot be undone."
         onCancel={() => setRelatedRowIdToDelete(undefined)}
-        onDelete={async () => {
-          const newList  = relationshipsData.map((item: any) => ({ id: item.id })).filter((item: any) =>  item.id !== relatedRowIdToDelete);
-          await updateObjectWithId(objectid!, schema, {
-            [relationshipSchema.name]: newList
-          });
-          props.refreshObject();
+        onDelete={() => {
+          if(relatedRowIdToDelete) {
+            handleDeleteRelationship(relatedRowIdToDelete);
+          }
         }}
         open={!!relatedRowIdToDelete}
         setOpen={() => setRelatedRowIdToDelete(undefined)}

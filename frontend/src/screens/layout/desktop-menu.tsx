@@ -7,6 +7,7 @@ import DropDownMenuHeader from "./desktop-menu-header";
 import { DropDownMenuItem } from "./desktop-menu-item";
 
 import logo from "./logo.png";
+import { constructPath } from "../../utils/fetch";
 
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
@@ -17,7 +18,7 @@ export default function DesktopMenu() {
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={`/objects/${item.name}`}
+        path={constructPath(`/objects/${item.name}`)}
         label={item.label}
         onClick={onClinkMenuItem}
       />

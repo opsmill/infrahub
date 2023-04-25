@@ -62,9 +62,3 @@ export const BRANCHES_MENU_ITEMS = [
     label: "Pull requests"
   }
 ];
-
-export const QSP = {
-  BRANCH: "branch",
-  DATETIME: "at",
-  TAB: "tab",
-};
