@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { RoundedButton } from "../../components/rounded-button";
+import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -17,9 +18,10 @@ import updateObjectWithId from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
-import { SelectOption } from "../../components/select";
+import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 
 type iRelationDetailsProps = {
+  parentNode: any;
   parentSchema: iNodeSchema;
   refreshObject: Function;
   relationshipsData: any;
@@ -43,6 +45,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [generics] = useAtom(genericsState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
+  const [rowForMetaEdit, setRowForMetaEdit] = useState();
 
   let options: SelectOption[] = [];
 
@@ -213,6 +217,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 )
                               }
                               <th scope="col" className="relative py-3.5 pl-3 w-24">
+                                <span className="sr-only">Meta</span>
+                              </th>
+                              <th scope="col" className="relative py-3.5 pl-3 w-24">
                                 <span className="sr-only">Delete</span>
                               </th>
                             </tr>
@@ -240,6 +247,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                         {getObjectItemDisplayValue(row, column)}
                                       </td>
                                     ))}
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
+                                      <div className="text-indigo-600 hover:text-indigo-900 cursor-pointer" onClick={async () => {
+                                        setRowForMetaEdit(row);
+                                        setShowRelationMetaEditModal(true);
+                                      }}>
+                                        Meta
+                                      </div>
+                                    </td>
                                     <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
                                       <div className="text-indigo-600 hover:text-indigo-900 cursor-pointer" onClick={async () => {
                                         const newList  = relationshipsData.map((item: any) => ({ id: item.id })).filter((item: any) =>  item.id !== row.id);
@@ -373,6 +388,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             setShowAddDrawer(false);
           }
         }} fields={formFields} />
+      </SlideOver>
+      <SlideOver title={"Meta-details"} subtitle="Update meta details" open={showRelationMetaEditModal} setOpen={setShowRelationMetaEditModal}>
+        <ObjectItemMetaEdit closeDrawer={() => {
+          setShowRelationMetaEditModal(false);
+        }}  onUpdateComplete={() => {
+          setShowRelationMetaEditModal(false);
+          props.refreshObject();
+        }} attributeOrRelationshipToEdit={rowForMetaEdit} schemaList={schemaList} schema={schema} attributeOrRelationshipName={relationshipSchema.name} type="relationship" row={{...props.parentNode, [relationshipSchema.name]: relationshipsData}}  />
       </SlideOver>
     </div>
   </>;
