@@ -600,24 +600,16 @@ async def test_update_relationship_many2(
     assert sorted([peer.name.value for peer in peers]) == ["Black", "Red"]
 
 
-@pytest.mark.skip(reason="Currently not working need to investigate")
+@pytest.mark.xfail(reason="Currently not working need to investigate")
 async def test_update_relationship_previously_deleted(
-    db, session: AsyncSession, default_branch: Branch, person_tag_schema
+    db,
+    session: AsyncSession,
+    person_jack_main: Node,
+    tag_blue_main: Node,
+    tag_red_main: Node,
+    tag_black_main: Node,
+    branch: Branch,
 ):
-    t1 = await Node.init(session=session, schema="Tag")
-    await t1.new(session=session, name="Blue", description="The Blue tag")
-    await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
-    await t2.new(session=session, name="Red", description="The Red tag")
-    await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="Tag")
-    await t3.new(session=session, name="Black", description="The Black tag")
-    await t3.save(session=session)
-
-    p1 = await Node.init(session=session, schema="Person")
-    await p1.new(session=session, firstname="John", lastname="Doe")
-    await p1.save(session=session)
-
     query = """
     mutation {
         person_update(data: {id: "%s", tags: [ { id: "%s" } ] }) {
@@ -633,11 +625,11 @@ async def test_update_relationship_previously_deleted(
         }
     }
     """ % (
-        p1.id,
-        t1.id,
+        person_jack_main.id,
+        tag_blue_main.id,
     )
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
@@ -648,7 +640,7 @@ async def test_update_relationship_previously_deleted(
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 1
 
-    p11 = await NodeManager.get_one(session=session, id=p1.id)
+    p11 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(session=session))) == 1
 
     # Replace the current value (t1) with t2 and t3
@@ -667,12 +659,12 @@ async def test_update_relationship_previously_deleted(
         }
     }
     """ % (
-        p1.id,
-        t2.id,
-        t3.id,
+        person_jack_main.id,
+        tag_red_main.id,
+        tag_black_main.id,
     )
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
@@ -683,7 +675,7 @@ async def test_update_relationship_previously_deleted(
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
-    p12 = await NodeManager.get_one(session=session, id=p1.id)
+    p12 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(session=session)
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Red"]
 
@@ -703,12 +695,12 @@ async def test_update_relationship_previously_deleted(
         }
     }
     """ % (
-        p1.id,
-        t1.id,
-        t3.id,
+        person_jack_main.id,
+        tag_blue_main.id,
+        tag_black_main.id,
     )
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
@@ -719,6 +711,6 @@ async def test_update_relationship_previously_deleted(
     assert result.data["person_update"]["ok"] is True
     assert len(result.data["person_update"]["object"]["tags"]) == 2
 
-    p13 = await NodeManager.get_one(session=session, id=p1.id)
+    p13 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p13.tags.get(session=session)
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
