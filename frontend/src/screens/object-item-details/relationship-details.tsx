@@ -233,10 +233,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   )
                                 )
                               }
-                              <th scope="col" className="relative py-3.5 pl-3 w-24">
+                              <th scope="col" className="relative py-3.5 pl-3 w-24 border-b border-gray-300">
                                 <span className="sr-only">Meta</span>
                               </th>
-                              <th scope="col" className="relative py-3.5 pl-3 w-24">
+                              <th scope="col" className="relative py-3.5 pl-3 w-24 border-b border-gray-300">
                                 <span className="sr-only">Delete</span>
                               </th>
                             </tr>
@@ -264,7 +264,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                         {getObjectItemDisplayValue(row, column)}
                                       </td>
                                     ))}
-                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
                                       <Button onClick={(event: any) => {
                                         event.stopPropagation();
                                         setRowForMetaEdit(row);
@@ -273,7 +273,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                         Meta
                                       </Button>
                                     </td>
-                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
                                       <Button buttonType={BUTTON_TYPES.CANCEL} onClick={(event: any) => handleDeleteRelationship(event, row.id)}>
                                         Delete
                                       </Button>
