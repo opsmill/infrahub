@@ -6,13 +6,19 @@ from typing import Optional
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession
 
 # from contextlib import asynccontextmanager
-from neo4j.exceptions import ClientError
+from neo4j.exceptions import ClientError, ServiceUnavailable
 
 import infrahub.config as config
 
 from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
 
 validated_database = {}
+
+
+async def create_database(driver: AsyncDriver, database_name: str):
+    default_db = driver.session()
+    await default_db.run(f"CREATE DATABASE {database_name} WAIT")
+    await validate_database(driver=driver, database_name=database_name, retry=2)
 
 
 async def validate_database(driver: AsyncDriver, database_name: str, retry: int = 0, retry_interval: int = 1) -> bool:
@@ -24,6 +30,7 @@ async def validate_database(driver: AsyncDriver, database_name: str, retry: int 
         retry (int, optional): Number of retry before raising an exception. Defaults to 0.
         retry_interval (int, optional): Time between retries in second. Defaults to 1.
     """
+    global validated_database  # pylint: disable=global-variable-not-assigned
 
     try:
         session = driver.session(database=database_name)
@@ -34,7 +41,7 @@ async def validate_database(driver: AsyncDriver, database_name: str, retry: int 
             raise
 
         await asyncio.sleep(retry_interval)
-        validated_database(driver=driver, database_name=database_name, retry=retry - 1)
+        await validate_database(driver=driver, database_name=database_name, retry=retry - 1)
 
     return True
 
@@ -49,11 +56,12 @@ async def get_db():
         try:
             await validate_database(driver=driver, database_name=config.SETTINGS.database.database)
 
+        except ServiceUnavailable:
+            await create_database(driver=driver, database_name=config.SETTINGS.database.database)
+
         except ClientError as exc:
             if "database does not exist" in exc.message or "Unable to get a routing table for database" in exc.message:
-                default_db = driver.session()
-                await default_db.run(f"CREATE DATABASE {config.SETTINGS.database.database}")
-                await validate_database(driver=driver, database_name=config.SETTINGS.database.database, retry=3)
+                await create_database(driver=driver, database_name=config.SETTINGS.database.database)
             else:
                 raise
 
