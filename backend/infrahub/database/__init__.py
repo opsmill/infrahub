@@ -6,7 +6,7 @@ from typing import Optional
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession
 
 # from contextlib import asynccontextmanager
-from neo4j.exceptions import ClientError, ServiceUnavailable
+from neo4j.exceptions import ClientError
 
 import infrahub.config as config
 
@@ -18,10 +18,11 @@ validated_database = {}
 async def create_database(driver: AsyncDriver, database_name: str):
     default_db = driver.session()
     await default_db.run(f"CREATE DATABASE {database_name} WAIT")
-    await validate_database(driver=driver, database_name=database_name, retry=2)
 
 
-async def validate_database(driver: AsyncDriver, database_name: str, retry: int = 0, retry_interval: int = 1) -> bool:
+async def validate_database(
+    driver: AsyncDriver, database_name: str, retry: int = 0, retry_interval: int = 1, create_db: bool = True
+) -> bool:
     """Validate if a database is present in Neo4j by executing a simple query.
 
     Args:
@@ -36,34 +37,28 @@ async def validate_database(driver: AsyncDriver, database_name: str, retry: int 
         session = driver.session(database=database_name)
         await session.run("SHOW TRANSACTIONS")
         validated_database[database_name] = True
-    except ClientError:
+
+    except ClientError as exc:
+        if create_db and exc.code == "Neo.ClientError.Database.DatabaseNotFound":
+            await create_database(driver=driver, database_name=config.SETTINGS.database.database)
+
         if retry == 0:
             raise
 
         await asyncio.sleep(retry_interval)
-        await validate_database(driver=driver, database_name=database_name, retry=retry - 1)
+        await validate_database(driver=driver, database_name=database_name, retry=retry - 1, create_db=False)
 
     return True
 
 
-async def get_db():
-    global validated_database  # pylint: disable=global-variable-not-assigned
-
+async def get_db(retry: int = 0):
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
     driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
 
     if config.SETTINGS.database.database not in validated_database:
-        try:
-            await validate_database(driver=driver, database_name=config.SETTINGS.database.database)
-
-        except ServiceUnavailable:
-            await create_database(driver=driver, database_name=config.SETTINGS.database.database)
-
-        except ClientError as exc:
-            if "database does not exist" in exc.message or "Unable to get a routing table for database" in exc.message:
-                await create_database(driver=driver, database_name=config.SETTINGS.database.database)
-            else:
-                raise
+        await validate_database(
+            driver=driver, database_name=config.SETTINGS.database.database, retry=retry, create_db=True
+        )
 
     return driver
 
