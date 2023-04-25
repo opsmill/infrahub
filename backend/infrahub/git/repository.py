@@ -737,7 +737,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def compare_local_remote(self) -> tuple[List[str], List[str]]:
+    async def compare_local_remote(self) -> Tuple[List[str], List[str]]:
         """
         Returns:
             List[str] New Branches in Remote
@@ -890,7 +890,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.info(f"{self.name}: New RFile {rfile['name']!r} found on branch {branch_name!r}, creating")
 
                 create_payload = self.client.schema.generate_payload_create(
-                    schema=schema, data=rfile, source=self.id, protected=True
+                    schema=schema, data=rfile, source=self.id, is_protected=True
                 )
                 obj = await self.client.create(kind="RFile", branch=branch_name, **create_payload)
                 await obj.save()
@@ -1200,7 +1200,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             ) from exc
 
     async def execute_python_transform(
-        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: dict = None
+        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: Optional[dict] = None
     ) -> InfrahubCheck:
         """Execute A Python Transform stored in the repository."""
 

@@ -1,22 +1,28 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { HasNameAndID, OpsSelect } from "./select";
+import { OpsSelect } from "./select";
+import { SelectOption } from "../components/select";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 
-interface Props {
+type SelectRegisterProps = {
   name: string;
   value: string;
   label: string;
-  options: HasNameAndID[];
+  options: SelectOption[];
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
+  error?: FormFieldError;
 }
 
-export const OpsSelectRegister = (props: Props) => {
-  const { name, value, register, setValue, config, options, label } = props;
-  const inputRegister = register(name, {
-    value: value ?? "",
-    ...config
-  });
+export const OpsSelectRegister = (props: SelectRegisterProps) => {
+  const { name, value, register, setValue, config, options, label, error } = props;
+  const inputRegister = register(
+    name,
+    {
+      value: value ?? "",
+      ...config
+    }
+  );
 
   return (
     <OpsSelect
@@ -24,9 +30,8 @@ export const OpsSelectRegister = (props: Props) => {
       disabled={false}
       value={value}
       options={options}
-      onChange={(item) => {
-        setValue(inputRegister.name, item.id);
-      }}
+      onChange={(item: SelectOption) => setValue(inputRegister.name, item.id)}
+      error={error}
     />
   );
 };

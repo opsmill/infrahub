@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from infrahub_client.batch import InfrahubBatch
 from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerSync
 from infrahub_client.client import InfrahubClient, InfrahubClientSync
 from infrahub_client.exceptions import (
@@ -18,10 +19,12 @@ from infrahub_client.schema import (
     NodeSchema,
     RelationshipSchema,
 )
+from infrahub_client.store import NodeStore
 from infrahub_client.timestamp import Timestamp
 
 __all__ = [
     "AttributeSchema",
+    "InfrahubBatch",
     "InfrahubBranchManager",
     "InfrahubBranchManagerSync",
     "InfrahubClient",
@@ -34,6 +37,7 @@ __all__ = [
     "NodeNotFound",
     "NodeSchema",
     "Mutation",
+    "NodeStore",
     "Query",
     "RelationshipSchema",
     "ServerNotReacheableError",

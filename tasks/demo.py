@@ -178,7 +178,7 @@ def load_infra_schema(context: Context):
 def load_infra_data(context: Context):
     """Load some demo data."""
     context.run(
-        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git infrahubctl run models/infrastructure_edge.py",
+        f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} run infrahub-git infrahubctl run models/infrastructure_edge.py --timeout 20",
         pty=True,
     )
 

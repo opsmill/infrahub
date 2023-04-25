@@ -49,10 +49,10 @@ export default function ObjectItemCreate() {
     if (Object.keys(newObject).length) {
       try {
         await createObject(schema, newObject);
+        navigate(`/objetcs/${objectname}`);
       } catch(err) {
         console.error("Something went wrong while creating the object: ", err);
       }
-      navigate(constructPath(`/objects/${objectname}`));
     } else {
       console.info("Nothing to create");
     }
@@ -60,11 +60,15 @@ export default function ObjectItemCreate() {
 
   return (
     <div className="p-4 bg-white flex-1 overflow-auto flex">
-      {schema && formStructure && (
-        <div className="flex-1">
-          <EditFormHookComponent onSubmit={onSubmit} fields={formStructure} />
-        </div>
-      )}
+      {
+        schema
+        && formStructure
+        && (
+          <div className="flex-1">
+            <EditFormHookComponent onSubmit={onSubmit} onCancel={() => navigate(`/objects/${objectname}`)} fields={formStructure} />
+          </div>
+        )
+      }
     </div>
   );
 

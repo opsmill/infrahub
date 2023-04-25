@@ -1,4 +1,4 @@
-import { HasNameAndID } from "../components-form/select";
+import { SelectOption } from "../components/select";
 import {
   ControlType,
   DynamicFieldData,
@@ -25,7 +25,7 @@ const getFormStructureForCreateEdit = (
   const formFields: DynamicFieldData[] = [];
 
   schema.attributes?.forEach((attribute) => {
-    let options: HasNameAndID[] = [];
+    let options: SelectOption[] = [];
     if (attribute.enum) {
       options = attribute.enum?.map((row: any) => ({
         name: row,
@@ -51,7 +51,7 @@ const getFormStructureForCreateEdit = (
   schema.relationships
   ?.filter((relationship) => relationship.kind === "Attribute")
   .forEach((relationship) => {
-    let options: HasNameAndID[] = [];
+    let options: SelectOption[] = [];
 
     const isInherited = relationship.inherited;
 
@@ -129,12 +129,7 @@ export const getFormStructureForMetaEdit = (
 
 
   const sourceOwnerFormFields: DynamicFieldData[] = sourceOwnerFields.map(f => {
-    const metaFieldName = attributeOrRelationshipName + "." + f;
-    const schemaOptions: HasNameAndID[] = [
-    //   {
-    //   name: "",
-    //   id: "",
-    // },
+    const schemaOptions: SelectOption[] = [
       ...schemaList.filter(schema => {
         if((schema.inherit_from || []).indexOf(relatedObjects[f]) > -1) {
           return true;
@@ -147,13 +142,13 @@ export const getFormStructureForMetaEdit = (
       }))];
 
     return {
-      name: metaFieldName,
+      name: f,
       kind: "Text",
       isAttribute: false,
       isRelationship: false,
       type: "select2step",
       label: f.split("_").filter(r => !!r).join(" "),
-      value: row?.[attributeOrRelationshipName]?.[f],
+      value: row?.[f],
       options: {
         values: schemaOptions,
       },
@@ -162,15 +157,14 @@ export const getFormStructureForMetaEdit = (
   });
 
   const booleanFormFields: DynamicFieldData[] = booleanFields.map(f => {
-    const metaFieldName = attributeOrRelationshipName + "." + f;
     return {
-      name: metaFieldName,
+      name: f,
       kind: "Checkbox",
       isAttribute: false,
       isRelationship: false,
       type: "checkbox",
       label: f.split("_").filter(r => !!r).join(" "),
-      value: row?.[attributeOrRelationshipName]?.[f],
+      value: row?.[f],
       options: {
         values: [],
       },

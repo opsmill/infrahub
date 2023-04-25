@@ -68,6 +68,7 @@ export default function BranchSelector() {
 
   const branchesOptions = branches.map(
     (branch) => ({
+      id: branch.name,
       name: branch.name
     })
   );

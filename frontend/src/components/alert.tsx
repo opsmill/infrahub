@@ -11,7 +11,15 @@ export enum ALERT_TYPES {
   ERROR
 }
 
-export const Alert = (props: any) => {
+type AlertProps = {
+  closeToast?: Function;
+  onDismiss?: Function;
+  message?: string;
+  details?: string;
+  type?: ALERT_TYPES;
+}
+
+export const Alert = (props: AlertProps) => {
   const {
     // Toast props
     closeToast,

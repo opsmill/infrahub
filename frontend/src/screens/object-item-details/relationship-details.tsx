@@ -2,10 +2,10 @@ import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroi
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { HasNameAndID } from "../../components-form/select";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { RoundedButton } from "../../components/rounded-button";
+import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -20,8 +20,10 @@ import NoDataFound from "../no-data-found/no-data-found";
 import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { BUTTON_TYPES, Button } from "../../components/button";
+import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 
 type iRelationDetailsProps = {
+  parentNode: any;
   parentSchema: iNodeSchema;
   refreshObject: Function;
   relationshipsData: any;
@@ -36,8 +38,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [generics] = useAtom(genericsState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
+  const [rowForMetaEdit, setRowForMetaEdit] = useState();
 
-  let options: HasNameAndID[] = [];
+  let options: SelectOption[] = [];
 
   const generic = generics.find(g => g.kind === relationshipSchema.peer);
 
@@ -228,7 +232,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   )
                                 )
                               }
-                              <th scope="col" className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                              <th scope="col" className="relative py-3.5 pl-3 w-24">
+                                <span className="sr-only">Meta</span>
+                              </th>
+                              <th scope="col" className="relative py-3.5 pl-3 w-24">
                                 <span className="sr-only">Delete</span>
                               </th>
                             </tr>
@@ -243,20 +250,28 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                     key={index}
                                     className="hover:bg-gray-50 cursor-pointer"
                                   >
-                                    {
-                                      columns
-                                      ?.map(
-                                        (column) => (
-                                          <td
-                                            key={row.id + "-" + column.name}
-                                            className={"border-b border-gray-200 whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"}
-                                          >
-                                            {getObjectItemDisplayValue(row, column)}
-                                          </td>
-                                        )
-                                      )
-                                    }
-                                    <td className="border-b border-gray-200 relative py-4 px-5 text-right text-sm font-medium w-24">
+                                    {columns?.map((column) => (
+                                      <td
+                                        key={row.id + "-" + column.name}
+                                        className={classNames(
+                                          index !== relationshipsData.length - 1
+                                            ? "border-b border-gray-200"
+                                            : "",
+                                          "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                        )}
+                                      >
+                                        {getObjectItemDisplayValue(row, column)}
+                                      </td>
+                                    ))}
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
+                                      <div className="text-indigo-600 hover:text-indigo-900 cursor-pointer" onClick={async () => {
+                                        setRowForMetaEdit(row);
+                                        setShowRelationMetaEditModal(true);
+                                      }}>
+                                        Meta
+                                      </div>
+                                    </td>
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
                                       <Button buttonType={BUTTON_TYPES.CANCEL} onClick={(event: any) => handleDeleteRelationship(event, row.id)}>
                                         Delete
                                       </Button>
@@ -382,6 +397,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             setShowAddDrawer(false);
           }
         }} fields={formFields} />
+      </SlideOver>
+      <SlideOver title={"Meta-details"} subtitle="Update meta details" open={showRelationMetaEditModal} setOpen={setShowRelationMetaEditModal}>
+        <ObjectItemMetaEdit closeDrawer={() => {
+          setShowRelationMetaEditModal(false);
+        }}  onUpdateComplete={() => {
+          setShowRelationMetaEditModal(false);
+          props.refreshObject();
+        }} attributeOrRelationshipToEdit={rowForMetaEdit} schemaList={schemaList} schema={schema} attributeOrRelationshipName={relationshipSchema.name} type="relationship" row={{...props.parentNode, [relationshipSchema.name]: relationshipsData}}  />
       </SlideOver>
     </div>
   </>;

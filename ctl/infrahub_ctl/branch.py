@@ -127,6 +127,37 @@ def create(
     aiorun(_create(branch_name=branch_name, description=description, data_only=data_only))
 
 
+async def _delete(branch_name: str) -> None:
+    console = Console()
+
+    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+
+    try:
+        await client.branch.delete(branch_name=branch_name)
+    except ServerNotReacheableError as exc:
+        console.print(f"[red]{exc.message}")
+        sys.exit(1)
+    except GraphQLError as exc:
+        for error in exc.errors:
+            console.print(f"[red]{error['message']}")
+        sys.exit(1)
+
+    console.print(f"Branch '{branch_name}' deleted successfully.")
+
+
+@app.command()
+def delete(
+    branch_name: str,
+    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+) -> None:
+    """Delete a branch."""
+
+    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+
+    config.load_and_exit(config_file=config_file)
+    aiorun(_delete(branch_name=branch_name))
+
+
 async def _rebase(branch_name: str) -> None:
     console = Console()
 
