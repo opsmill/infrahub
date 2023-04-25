@@ -76,10 +76,12 @@ class StandardNode(BaseModel):
         node_type = self.get_type()
 
         attrs = []
+        params = {"uuid": str(uuid.uuid4())}
         for attr_name in self.__fields__:
             if attr_name in self._exclude_attrs:
                 continue
-            attrs.append(f"{attr_name}: '{getattr(self, attr_name)}'")
+            attrs.append(f"{attr_name}: ${attr_name}")
+            params[attr_name] = getattr(self, attr_name)
 
         if attrs:
             query = """
@@ -97,8 +99,6 @@ class StandardNode(BaseModel):
             """
                 % node_type
             )
-
-        params = {"uuid": str(uuid.uuid4())}
 
         results = await execute_write_query_async(session=session, query=query, params=params)
         if not results:

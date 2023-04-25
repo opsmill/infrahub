@@ -94,8 +94,9 @@ async def create_default_branch(session: AsyncSession) -> Branch:
     return default_branch
 
 
-async def create_branch(branch_name: str, session: AsyncSession) -> Branch:
-    branch = Branch(name=branch_name, status="OPEN", description=f"Branch {branch_name}", is_default=False)
+async def create_branch(branch_name: str, session: AsyncSession, description: str = "") -> Branch:
+    description = description or f"Branch {branch_name}"
+    branch = Branch(name=branch_name, status="OPEN", description=description, is_default=False)
     await branch.save(session=session)
     registry.branch[branch.name] = branch
 
