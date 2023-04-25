@@ -436,7 +436,7 @@ class Branch(StandardNode):
 
     async def validate_branch(
         self, rpc_client: InfrahubRpcClient, session: Optional[AsyncSession] = None
-    ) -> tuple[bool, List[str]]:
+    ) -> Tuple[bool, List[str]]:
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -455,7 +455,7 @@ class Branch(StandardNode):
 
         return passed, messages
 
-    async def validate_graph(self, session: AsyncSession) -> tuple[bool, List[str]]:
+    async def validate_graph(self, session: AsyncSession) -> Tuple[bool, List[str]]:
         passed = True
         messages = []
 
@@ -470,7 +470,7 @@ class Branch(StandardNode):
 
     async def validate_repositories(
         self, rpc_client: InfrahubRpcClient, session: AsyncSession
-    ) -> tuple[bool, List[str]]:
+    ) -> Tuple[bool, List[str]]:
         passed = True
         messages = []
         tasks = []

@@ -92,12 +92,7 @@ async def _render(
     print(template.render(**params_dict, **response))
 
 
-async def _run(
-    script: Path,
-    method: str,
-    log: logging.Logger,
-    branch: str,
-) -> None:
+async def _run(script: Path, method: str, log: logging.Logger, branch: str, concurrent: int, timeout: int) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
     module_name = os.path.splitext(filename)[0]
@@ -113,7 +108,12 @@ async def _run(
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await InfrahubClient.init(
+        address=config.SETTINGS.server_address,
+        insert_tracker=True,
+        max_concurrent_execution=concurrent,
+        default_timeout=timeout,
+    )
     func = getattr(module, method)
     await func(client=client, log=log, branch=branch)
 
@@ -136,7 +136,11 @@ def run(
     method: str = "run",
     debug: bool = False,
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
-    branch: str = typer.Option("main"),
+    branch: str = typer.Option("main", help="Branch on which to run the script."),
+    concurrent: int = typer.Option(
+        4, help="Maximum number of requets to execute at the same time.", envvar="INFRAHUBCTL_CONCURRENT_EXECUTION"
+    ),
+    timeout: int = typer.Option(10, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
 ) -> None:
     """Execute a script."""
     config.load_and_exit(config_file=config_file)
@@ -148,4 +152,4 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    aiorun(_run(script=script, method=method, log=log, branch=branch))
+    aiorun(_run(script=script, method=method, log=log, branch=branch, concurrent=concurrent, timeout=timeout))

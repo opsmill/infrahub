@@ -2,10 +2,10 @@ import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroi
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { HasNameAndID } from "../../components-form/select";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import { RoundedButton } from "../../components/rounded-button";
+import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -48,7 +48,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
   const [rowForMetaEdit, setRowForMetaEdit] = useState();
 
-  let options: HasNameAndID[] = [];
+  let options: SelectOption[] = [];
 
   const generic = generics.find(g => g.kind === relationshipSchema.peer);
   if(generic) {

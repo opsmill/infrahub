@@ -1,4 +1,4 @@
-import { HasNameAndID } from "../components-form/select";
+import { SelectOption } from "../components/select";
 import {
   ControlType,
   DynamicFieldData,
@@ -25,7 +25,7 @@ const getFormStructureForCreateEdit = (
   const formFields: DynamicFieldData[] = [];
 
   schema.attributes?.forEach((attribute) => {
-    let options: HasNameAndID[] = [];
+    let options: SelectOption[] = [];
     if (attribute.enum) {
       options = attribute.enum?.map((row: any) => ({
         name: row,
@@ -51,7 +51,7 @@ const getFormStructureForCreateEdit = (
   schema.relationships
   ?.filter((relationship) => relationship.kind === "Attribute")
   .forEach((relationship) => {
-    let options: HasNameAndID[] = [];
+    let options: SelectOption[] = [];
 
     const isInherited = relationship.inherited;
 
@@ -129,7 +129,7 @@ export const getFormStructureForMetaEdit = (
 
 
   const sourceOwnerFormFields: DynamicFieldData[] = sourceOwnerFields.map(f => {
-    const schemaOptions: HasNameAndID[] = [
+    const schemaOptions: SelectOption[] = [
       ...schemaList.filter(schema => {
         if((schema.inherit_from || []).indexOf(relatedObjects[f]) > -1) {
           return true;
