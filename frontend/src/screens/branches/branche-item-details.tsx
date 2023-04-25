@@ -40,8 +40,8 @@ export const BrancheItemDetails = () => {
 
   return (
     <>
-      <div className="bg-white sm:flex sm:items-center py-4 px-4 pb-0 sm:px-6 lg:px-8 w-full">
-        <div className="sm:flex-auto flex items-center">
+      <div className="bg-white py-4 px-4 pb-0 w-full">
+        <div className="flex items-center">
           <div
             onClick={() => navigate("/branches")}
             className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
@@ -50,11 +50,10 @@ export const BrancheItemDetails = () => {
           </div>
 
           <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">Access the branch details and management tools.</p>
-
         </div>
-
-        <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
       </div>
+
+      <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
       {
         renderContent(qspTab, branch)

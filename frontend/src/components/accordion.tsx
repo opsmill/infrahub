@@ -1,9 +1,12 @@
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
-// type Accordion = {};
+type AccordionProps = {
+  title?: any;
+  children?: any;
+};
 
-export default function Accordion(props: any) {
+export default function Accordion(props: AccordionProps) {
   const {title, children} = props;
 
   return (

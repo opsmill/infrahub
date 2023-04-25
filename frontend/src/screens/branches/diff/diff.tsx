@@ -14,14 +14,14 @@ const DIFF_TABS = {
 };
 
 const tabs = [
-  {
-    label: "Conversation",
-    name: DIFF_TABS.CONVERSATIONS
-  },
-  {
-    label: "Status",
-    name: DIFF_TABS.STATUS
-  },
+  // {
+  //   label: "Conversation",
+  //   name: DIFF_TABS.CONVERSATIONS
+  // },
+  // {
+  //   label: "Status",
+  //   name: DIFF_TABS.STATUS
+  // },
   {
     label: "Data",
     name: DIFF_TABS.DATA
@@ -30,14 +30,14 @@ const tabs = [
     label: "Files",
     name: DIFF_TABS.FILES
   },
-  {
-    label: "Checks",
-    name: DIFF_TABS.CHECKS
-  },
-  {
-    label: "Artifacts",
-    name: DIFF_TABS.ARTIFACTS
-  },
+  // {
+  //   label: "Checks",
+  //   name: DIFF_TABS.CHECKS
+  // },
+  // {
+  //   label: "Artifacts",
+  //   name: DIFF_TABS.ARTIFACTS
+  // },
   {
     label: "Schema",
     name: DIFF_TABS.SCHEMA
@@ -46,11 +46,12 @@ const tabs = [
 
 const renderContent = (tab: string | null | undefined) => {
   switch(tab) {
-    case DIFF_TABS.DATA: {
-      return <DataDiff />;
+    case DIFF_TABS.FILES:
+    case DIFF_TABS.SCHEMA: {
+      return null;
     }
     default: {
-      return null;
+      return <DataDiff />;
     }
   }
 };

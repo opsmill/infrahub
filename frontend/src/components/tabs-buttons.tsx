@@ -33,7 +33,7 @@ export const TabsButtons = (props: TabsProps) => {
 
   return (
     <div className="bg-white flex items-center">
-      <div className="flex-1 isolate inline-flex rounded-md shadow-sm ring-1 ring-gray-300">
+      <div className="isolate inline-flex rounded-md shadow-sm ring-1 ring-gray-300 m-4">
         {
           tabs
           .map(
@@ -48,7 +48,7 @@ export const TabsButtons = (props: TabsProps) => {
                 }
                 className={
                   classNames(
-                    "ring-0",
+                    "ring-0 px-4 py-2",
                     getClassName(index === 0, index === tabs.length -1)
                   )
                 }

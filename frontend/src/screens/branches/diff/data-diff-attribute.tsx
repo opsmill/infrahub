@@ -1,3 +1,4 @@
+import Accordion from "../../../components/accordion";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttributeProperty } from "./data-diff-attribute-property";
 import { tDataDiffNodeAttribute, tDataDiffNodeAttributeProperty } from "./data-diff-node";
@@ -16,28 +17,32 @@ export const DataDiffAttribute = (props: tDataDiffNodeAttributeProps) => {
   } = attribute;
 
   return (
-    <div className="flex flex-col">
-      <div className="">
-        <span className="mr-2 font-semibold">
-          {name}
-        </span>
+    <div className="flex flex-col pl-4">
+      <Accordion title={
+        (
+          <>
+            <span className="mr-2 font-semibold">
+              {name}
+            </span>
 
-        {
-          changed_at
-          && (
-            <DateDisplay date={changed_at} hideDefault />
-          )
-        }
-      </div>
-
-      <div className="divide-y border">
-        {
-          properties
-          ?.map(
-            (property: tDataDiffNodeAttributeProperty, index: number) => <DataDiffAttributeProperty key={index} property={property} />
-          )
-        }
-      </div>
+            {
+              changed_at
+                && (
+                  <DateDisplay date={changed_at} hideDefault />
+                )
+            }
+          </>
+        )
+      }>
+        <div className="divide-y border">
+          {
+            properties
+            ?.map(
+              (property: tDataDiffNodeAttributeProperty, index: number) => <DataDiffAttributeProperty key={index} property={property} />
+            )
+          }
+        </div>
+      </Accordion>
     </div>
 
   );

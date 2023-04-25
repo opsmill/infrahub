@@ -39,9 +39,9 @@ export type tDataDiffNodeProps = {
 }
 
 const badgeTypes: { [key: string]: BADGE_TYPES } = {
-  created: BADGE_TYPES.VALIDATE,
+  added: BADGE_TYPES.VALIDATE,
   updated: BADGE_TYPES.WARNING,
-  deleted: BADGE_TYPES.CANCEL,
+  removed: BADGE_TYPES.CANCEL,
 };
 
 export const getBadgeType = (action?: string) => {
@@ -66,7 +66,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   } = node;
 
   const title = (
-    <div>
+    <div className="flex">
       <Badge className="mr-2" type={getBadgeType(node?.action)}>
         {action?.toUpperCase()}
       </Badge>
