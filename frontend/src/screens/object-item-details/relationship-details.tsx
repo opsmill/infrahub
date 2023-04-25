@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
+import ModalDelete from "../../components/modal-delete";
 import { RoundedButton } from "../../components/rounded-button";
 import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
@@ -47,6 +48,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
   const [rowForMetaEdit, setRowForMetaEdit] = useState();
+  const [relatedRowIdToDelete, setRelatedRowIdToDelete] = useState();
 
   let options: SelectOption[] = [];
 
@@ -257,12 +259,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                     </td>
                                     <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
                                       <div className="text-indigo-600 hover:text-indigo-900 cursor-pointer" onClick={async () => {
-                                        const newList  = relationshipsData.map((item: any) => ({ id: item.id })).filter((item: any) =>  item.id !== row.id);
-                                        await updateObjectWithId(objectid!, schema, {
-                                          [relationshipSchema.name]: newList
-                                        });
-                                        props.refreshObject();
-                                        setShowAddDrawer(false);
+                                        setRelatedRowIdToDelete(row.id);
                                       }}>
                                         Delete
                                       </div>
@@ -397,6 +394,20 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           props.refreshObject();
         }} attributeOrRelationshipToEdit={rowForMetaEdit} schemaList={schemaList} schema={schema} attributeOrRelationshipName={relationshipSchema.name} type="relationship" row={{...props.parentNode, [relationshipSchema.name]: relationshipsData}}  />
       </SlideOver>
+      <ModalDelete
+        title="Delete"
+        description="Are you sure you want to delete the relationship? This action cannot be undone."
+        onCancel={() => setRelatedRowIdToDelete(undefined)}
+        onDelete={async () => {
+          const newList  = relationshipsData.map((item: any) => ({ id: item.id })).filter((item: any) =>  item.id !== relatedRowIdToDelete);
+          await updateObjectWithId(objectid!, schema, {
+            [relationshipSchema.name]: newList
+          });
+          props.refreshObject();
+        }}
+        open={!!relatedRowIdToDelete}
+        setOpen={() => setRelatedRowIdToDelete(undefined)}
+      />
     </div>
   </>;
 };
