@@ -317,7 +317,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             ) from exc
 
         # Validate that at least one worktree for the active commit in main has been created
-        commit = str(repo.head.commit)
+        try:
+            commit = str(repo.head.commit)
+        except ValueError as exc:
+            raise RepositoryError(
+                identifier=self.name, message="The initial commit is missing for {self.name}"
+            ) from exc
+
         if not os.path.isdir(os.path.join(self.directory_commits, commit)):
             raise RepositoryError(
                 identifier=self.name, message=f"The directory for the main commit is missing for {self.name}"
