@@ -46,7 +46,7 @@ def event_loop():
 
 @pytest.fixture(scope="module")
 async def db() -> AsyncDriver:
-    driver = await get_db()
+    driver = await get_db(retry=1)
 
     yield driver
 

@@ -33,7 +33,7 @@ def execute_before_any_test():
 
 @pytest.fixture(scope="module")
 async def db():
-    driver = await get_db()
+    driver = await get_db(retry=1)
 
     yield driver
 
