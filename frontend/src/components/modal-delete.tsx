@@ -6,7 +6,7 @@ interface iProps {
     open: boolean;
     setOpen: React.Dispatch<React.SetStateAction<boolean>>;
     title: string;
-    description: string;
+    description: string | React.ReactNode;
     onDelete: Function;
     onCancel: Function;
 }

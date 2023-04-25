@@ -6,8 +6,8 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { DropDownMenuItem } from "./desktop-menu-item";
 
-import logo from "./logo.png";
 import { constructPath } from "../../utils/fetch";
+import logo from "./logo.png";
 
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
@@ -48,7 +48,7 @@ export default function DesktopMenu() {
   );
 
   return (
-    <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col z-20">
+    <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
       <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-white pt-5">
         <div className="flex flex-shrink-0 items-center px-4">
           <img className="h-10 w-auto" src={logo} alt="Your Company" />
