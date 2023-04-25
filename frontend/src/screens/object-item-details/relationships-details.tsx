@@ -55,7 +55,7 @@ export default function RelationshipsDetails(props: Props) {
 
       setIsLoading(false);
     },
-    [objectid, schema, qspTab]
+    [objectid, schema, qspTab, generics, schemaList]
   );
 
   useEffect(

@@ -8,6 +8,7 @@ import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { DateDisplay } from "../../components/date-display";
+import { constructPath } from "../../utils/fetch";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
@@ -30,7 +31,7 @@ export const BranchesItems = () => {
             <li
               className="col-span-1 rounded-lg bg-white shadow cursor-pointer hover:bg-gray-50"
               key={branch.name}
-              onClick={() => navigate(`/branches/${branch.name}`)}
+              onClick={() => navigate(constructPath(`/branches/${branch.name}`))}
             >
               <div className="flex w-full items-center justify-between space-x-6 p-6">
                 <div className="flex flex-1">

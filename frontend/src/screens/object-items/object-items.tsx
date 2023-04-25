@@ -19,6 +19,7 @@ import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import { constructPath } from "../../utils/fetch";
 
 declare const Handlebars: any;
 
@@ -114,10 +115,6 @@ export default function ObjectItems() {
     return <ErrorScreen />;
   }
 
-  // if (isLoading && !objectRows) {
-  //   return <LoadingScreen />;
-  // }
-
   return (
     <div className="bg-white flex-1 overflow-x-auto flex flex-col">
       <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
@@ -135,7 +132,7 @@ export default function ObjectItems() {
           )
         }
 
-        <RoundedButton onClick={() => navigate(`/objects/${schema.name}/new`)}>
+        <RoundedButton onClick={() => navigate(constructPath(`/objects/${schema.name}/new`))}>
           <PlusIcon className="h-5 w-5" aria-hidden="true" />
         </RoundedButton>
       </div>
@@ -187,7 +184,7 @@ export default function ObjectItems() {
                         ?.map(
                           (row, index) => (
                             <tr
-                              onClick={() => navigate(getObjectUrl({ kind: schema.name, id: row.id }))}
+                              onClick={() => navigate(constructPath(getObjectUrl({ kind: schema.name, id: row.id })))}
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer"
                             >

@@ -5,6 +5,7 @@ import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttribute } from "./data-diff-attribute";
 import { getObjectUrl } from "../../../utils/objects";
 import { Link } from "../../../components/link";
+import { constructPath } from "../../../utils/fetch";
 
 export type tDataDiffNodeAttributePropertyValue = {
   new: string;
@@ -92,7 +93,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
       <Accordion title={title}>
         <div className="m-4 flex">
-          <Link onClick={() => navigate(getObjectUrl({ kind, id, branch: branchname }))}>
+          <Link onClick={() => navigate(constructPath(getObjectUrl({ kind, id, branch: branchname })))}>
           ID: {id}
           </Link>
         </div>

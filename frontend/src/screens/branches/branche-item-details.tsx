@@ -5,6 +5,7 @@ import { Diff } from "./diff/diff";
 import { BranchDetails } from "./branch-details";
 import { TabsButtons } from "../../components/tabs-buttons";
 import { QSP } from "../../config/qsp";
+import { constructPath } from "../../utils/fetch";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -38,12 +39,14 @@ export const BrancheItemDetails = () => {
   const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   const navigate = useNavigate();
 
+  const branchesPath = constructPath("/branches");
+
   return (
     <>
       <div className="bg-white py-4 px-4 pb-0 w-full">
         <div className="flex items-center">
           <div
-            onClick={() => navigate("/branches")}
+            onClick={() => navigate(branchesPath)}
             className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
           >
             <h1 className="text-xl font-semibold text-gray-900 mr-2">Branches</h1>
