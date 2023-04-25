@@ -21,7 +21,7 @@ import { Select } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 import { graphQLClient } from "../graphql/graphqlClient";
-import { QSP } from "../config/constants";
+import { QSP } from "../config/qsp";
 
 export default function BranchSelector() {
   const [branch, setBranch] = useAtom(branchState);

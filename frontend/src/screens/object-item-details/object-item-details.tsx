@@ -15,7 +15,6 @@ import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
-import { QSP } from "../../config/constants";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
@@ -29,6 +28,8 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit.compon
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
+import { constructPath } from "../../utils/fetch";
+import { QSP } from "../../config/qsp";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
@@ -126,7 +127,7 @@ export default function ObjectItemDetails() {
     <div className="bg-white flex-1 overflow-auto flex flex-col">
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
-          onClick={() => navigate(`/objects/${objectname}`)}
+          onClick={() => navigate(constructPath(`/objects/${objectname}`))}
           className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
         >
           {schema.kind}

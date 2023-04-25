@@ -3,8 +3,9 @@ import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
 import { Fragment } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
+import { constructPath } from "../utils/fetch";
 
 export type TooltipDetailItemType = "date" | "text" | "link";
 
@@ -21,11 +22,9 @@ interface Props {
 
 export default function MetaDetailsTooltip(props: Props) {
   const navigate = useNavigate();
-  const { search } = useLocation();
   const [schemaKindName] = useAtom(schemaKindNameState);
-  const navigateToObjectDetailsPage = (obj: any) => {
-    navigate(`/objects/${schemaKindName[obj.__typename]}/${obj.id}/${search}`);
-  };
+
+  const navigateToObjectDetailsPage = (obj: any) => navigate(constructPath(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`));
 
   return <Popover className="relative mt-1.5 ml-2">
     <Popover.Button>

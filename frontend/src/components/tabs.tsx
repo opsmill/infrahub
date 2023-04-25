@@ -1,6 +1,6 @@
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../config/constants";
 import { classNames } from "../utils/common";
+import { QSP } from "../config/qsp";
 
 type Tab = {
   name?: string;

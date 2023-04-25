@@ -7,7 +7,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { graphQLClient } from "./graphql/graphqlClient";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
-import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES, QSP } from "./config/constants";
+import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
 import SentryClient from "./config/sentry";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
 import Layout from "./screens/layout/layout";
@@ -18,6 +18,7 @@ import { genericSchemaState, genericsState, iGenericSchema, iGenericSchemaMappin
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { fetchUrl } from "./utils/fetch";
+import { QSP } from "./config/qsp";
 
 function App() {
   const [, setSchema] = useAtom(schemaState);
