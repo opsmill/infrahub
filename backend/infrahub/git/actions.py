@@ -20,8 +20,8 @@ async def sync_remote_repositories(client: InfrahubClient) -> None:
                 repo = await InfrahubRepository.init(
                     id=repository.id, name=repository.name, location=repository.location, client=client
                 )
-            except RepositoryError as excinfo:
-                LOGGER.error(excinfo)
+            except RepositoryError as exc:
+                LOGGER.error(exc)
                 init_failed = True
 
             if init_failed:
@@ -30,8 +30,8 @@ async def sync_remote_repositories(client: InfrahubClient) -> None:
                         id=repository.id, name=repository.name, location=repository.location, client=client
                     )
                     await repo.import_objects_from_files(branch_name=repo.default_branch_name)
-                except RepositoryError as excinfo:
-                    LOGGER.error(excinfo)
+                except RepositoryError as exc:
+                    LOGGER.error(exc)
                     continue
 
             await repo.sync()
