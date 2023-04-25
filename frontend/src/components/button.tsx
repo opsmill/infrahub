@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import { classNames } from "../utils/common";
 
 type ButtonProps = {
@@ -6,7 +5,7 @@ type ButtonProps = {
   buttonType?: BUTTON_TYPES;
   className?: string;
   onClick?: Function;
-  children?: ReactNode[] | string;
+  children?: any;
   disabled?: boolean;
 };
 

@@ -1,4 +1,4 @@
-import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -275,7 +275,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                     </td>
                                     <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
                                       <Button buttonType={BUTTON_TYPES.CANCEL} onClick={(event: any) => handleDeleteRelationship(event, row.id)}>
-                                        Delete
+                                        <TrashIcon className="h-5 w-5" />
                                       </Button>
                                     </td>
                                   </tr>

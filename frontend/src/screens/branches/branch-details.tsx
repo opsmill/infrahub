@@ -146,7 +146,7 @@ export const BranchDetails = () => {
                     })}
                     disabled={branch.is_default}
                   >
-                  Rebase
+                    Rebase
                     <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                   </Button>
 
