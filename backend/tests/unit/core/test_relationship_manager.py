@@ -66,16 +66,6 @@ async def test_many_init_no_input_no_rel(session: AsyncSession, person_jack_main
     assert not len(await relm.get(session=session))
 
 
-@pytest.fixture
-async def person_jack_tags_main(
-    session: AsyncSession, person_tag_schema, tag_blue_main: Node, tag_red_main: Node
-) -> Node:
-    obj = await Node.init(session=session, schema="Person")
-    await obj.new(session=session, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
-    await obj.save(session=session)
-    return obj
-
-
 async def test_many_init_no_input_existing_rel(session: AsyncSession, person_jack_tags_main: Node, branch: Branch):
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
@@ -130,6 +120,37 @@ async def test_one_save_input_obj(session: AsyncSession, tag_blue_main: Node, pe
     # First for the relationship, Second via the branch
     paths = await get_paths_between_nodes(
         session=session, source_id=tag_blue_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+    )
+    assert len(paths) == 2
+
+
+async def test_one_udpate(
+    session: AsyncSession, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="Person")
+    rel_schema = person_schema.get_relationship("primary_tag")
+
+    # We should have only 1 paths between t1 and p1 via the branch
+    paths = await get_paths_between_nodes(
+        session=session, source_id=tag_blue_main.db_id, destination_id=person_jack_primary_tag_main.db_id, max_length=2
+    )
+    assert len(paths) == 2
+
+    relm = await RelationshipManager.init(
+        session=session,
+        schema=rel_schema,
+        branch=branch,
+        at=Timestamp(),
+        node=person_jack_primary_tag_main,
+        name="primary_tag",
+        data=tag_blue_main,
+    )
+    await relm.save(session=session)
+
+    # We should have 2 paths between t1 and p1
+    # First for the relationship, Second via the branch
+    paths = await get_paths_between_nodes(
+        session=session, source_id=tag_blue_main.db_id, destination_id=person_jack_primary_tag_main.db_id, max_length=2
     )
     assert len(paths) == 2
 

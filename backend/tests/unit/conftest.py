@@ -894,11 +894,21 @@ async def tag_black_main(session: AsyncSession, default_branch: Branch, person_t
 
 @pytest.fixture
 async def person_jack_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    person = await Node.init(session=session, schema="Person", branch=default_branch)
-    await person.new(session=session, firstname="Jack", lastname="Russell")
-    await person.save(session=session)
+    obj = await Node.init(session=session, schema="Person", branch=default_branch)
+    await obj.new(session=session, firstname="Jack", lastname="Russell")
+    await obj.save(session=session)
 
-    return person
+    return obj
+
+
+@pytest.fixture
+async def person_jack_tags_main(
+    session: AsyncSession, default_branch: Branch, person_tag_schema, tag_blue_main: Node, tag_red_main: Node
+) -> Node:
+    obj = await Node.init(session=session, schema="Person")
+    await obj.new(session=session, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
+    await obj.save(session=session)
+    return obj
 
 
 @pytest.fixture
