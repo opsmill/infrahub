@@ -11,6 +11,10 @@ if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
 
 
+PROPERTIES_FLAG = ["is_visible", "is_protected"]
+PROPERTIES_OBJECT = ["source", "owner"]
+
+
 class InfrahubNodeBase:
     def __init__(self, schema: NodeSchema, data: Optional[dict] = None) -> None:
         self._schema = schema
@@ -75,6 +79,10 @@ class InfrahubNodeBase:
             attr_data = attr._generate_query_data()
             if attr_data:
                 data[attr_name] = attr_data
+
+        for rel_name in self._relationships:
+            rel_data = RelationshipManager._generate_query_data()
+            data[rel_name] = rel_data
 
         return {self._schema.name: data}
 
@@ -295,6 +303,7 @@ class RelatedNode:
 
         self.id: Optional[str] = data.get("id", None)
         self.display_label = data.get("display_label", None)
+        self.typename = data.get("__typename", None)
         self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
 
         for prop in self._properties:
@@ -313,16 +322,6 @@ class RelatedNode:
         for prop_name in self._properties:
             if getattr(self, prop_name) is not None:
                 data[f"_relation__{prop_name}"] = getattr(self, prop_name)
-
-        return data
-
-    def _generate_query_data(self) -> Optional[Dict]:
-        data: Dict[str, Any] = {"id": None, "display_label": None, "__typename": None}
-
-        for prop_name in self._properties_flag:
-            data[f"_relation__{prop_name}"] = None
-        for prop_name in self._properties_object:
-            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None, "__typename": None}
 
         return data
 
@@ -361,13 +360,14 @@ class RelationshipManager:
     def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
 
-    def _generate_query_data(self) -> Dict:
-        data: Dict[str, Any] = {"id": None, "display_label": None}
+    @classmethod
+    def _generate_query_data(cls) -> Dict:
+        data: Dict[str, Any] = {"id": None, "display_label": None, "__typename": None}
 
-        for prop_name in self._properties_flag:
+        for prop_name in PROPERTIES_FLAG:
             data[f"_relation__{prop_name}"] = None
-        for prop_name in self._properties_object:
-            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None}
+        for prop_name in PROPERTIES_OBJECT:
+            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None, "__typename": None}
 
         return data
 
