@@ -31,7 +31,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
       case "checkbox":
         return <OpsCheckboxRegister {...props} register={register} setValue={setValue} />;
       case "select": {
-        if(["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
+        if(kind && ["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
           config.valueAsNumber = true;
         }
         return <OpsSelectRegister {...props} options={options.values} register={register} setValue={setValue} />;

@@ -8,10 +8,11 @@ interface Props {
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
+  onChange?: Function;
 }
 
 export const OpsSwitchRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label } = props;
+  const { name, value, register, setValue, config, label, onChange } = props;
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -23,6 +24,9 @@ export const OpsSwitchRegister = (props: Props) => {
       label={label}
       value={value}
       onChange={(value) => {
+        if (onChange) {
+          onChange(value);
+        }
         setValue(inputRegister.name, value);
       }}
     />

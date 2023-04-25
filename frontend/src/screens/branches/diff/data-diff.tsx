@@ -3,23 +3,76 @@ import { useCallback, useEffect, useState } from "react";
 import { DataDiffNode } from "./data-diff-node";
 import { CONFIG } from "../../../config/config";
 import { fetchUrl } from "../../../utils/fetch";
+import { DynamicFieldData } from "../../edit-form-hook/dynamic-control-types";
+import { Filters } from "../../../components/filters";
+import { QSP } from "../../../config/qsp";
+import { StringParam, useQueryParam } from "use-query-params";
+import LoadingScreen from "../../loading-screen/loading-screen";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../../components/alert";
 
 export const DataDiff = () => {
   const { branchname } = useParams();
   const [diff, setDiff] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
+  const [timeFrom, setTimeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
+  const [timeTo, setTimeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+
+  const fields: DynamicFieldData[] = [
+    {
+      name: "branch_only",
+      label: "Branch only",
+      type: "switch",
+      value: branchOnly === "true"
+    },
+    {
+      name: "time_from",
+      label: "Time from",
+      type: "text",
+      value: timeFrom
+    },
+    {
+      name: "time_to",
+      label: "Time to",
+      type: "text",
+      value: timeTo
+    },
+  ];
 
   const fetchDiffDetails = useCallback(
     async () => {
       if (!branchname) return;
 
+      setIsLoading(true);
+
+      const url = CONFIG.DIFF_URL(branchname);
+
+      const options: string[][] = [
+        ["branch_only", branchOnly ?? ""],
+        ["time_from", timeFrom ?? ""],
+        ["time_to", timeTo ?? ""],
+      ]
+      .filter(
+        ([k, v]) => v !== undefined && v !== ""
+      );
+
+      const qsp = new URLSearchParams(options);
+
+      const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+
       try {
-        const diffDetails = await fetchUrl(CONFIG.DIFF_URL(branchname));
+        const diffDetails = await fetchUrl(urlWithQsp);
 
         setDiff(diffDetails[branchname] ?? []);
       } catch(err) {
         console.error("err: ", err);
+        toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
       }
-    }, [branchname]
+
+      setIsLoading(false);
+    },
+    [branchname, branchOnly, timeFrom, timeTo]
   );
 
   useEffect(
@@ -29,15 +82,41 @@ export const DataDiff = () => {
     [fetchDiffDetails]
   );
 
+  const handleSubmit = (data:any) => {
+    const { branch_only, time_from, time_to } = data;
+
+    if (branch_only !== undefined) {
+      setBranchOnly(branch_only);
+    }
+
+    if (time_from) {
+      setTimeFrom(time_from);
+    }
+
+    if (time_to) {
+      setTimeTo(time_to);
+    }
+  };
+
   return (
     <>
-      <div className="bg-white p-6">
-        More content here to go back in time...
+      <div className="bg-white p-6 flex">
+        <Filters fields={fields} onSubmit={handleSubmit} />
       </div>
 
       <div>
         {
-          diff?.map((node: any, index: number) => <DataDiffNode key={index} node={node} />)
+          isLoading
+          && (
+            <LoadingScreen />
+          )
+        }
+
+        {
+          !isLoading
+          && diff?.map(
+            (node: any, index: number) => <DataDiffNode key={index} node={node} />
+          )
         }
       </div>
     </>

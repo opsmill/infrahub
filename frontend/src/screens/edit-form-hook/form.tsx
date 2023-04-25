@@ -19,7 +19,7 @@ export type FormFieldError = {
   type?: string;
 }
 
-type FormProps = {
+export type FormProps = {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
   onCancel?: Function;
@@ -32,10 +32,7 @@ type FormFieldProps = {
 
 export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
   const formMethods = useForm();
-  const {
-    handleSubmit,
-    formState: { errors },
-  } = formMethods;
+  const { handleSubmit, formState: { errors }, } = formMethods;
 
   const FormField = (props: FormFieldProps) => {
     const { field, error } = props;

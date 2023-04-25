@@ -34,3 +34,28 @@ export const constructPath = (path: string) => {
 
   return `${path}${newParams}`;
 };
+
+// Update a QSP in the URL (add, update or remove it)
+export const updateQsp = (qsp: string, newValue: string, setSearchParams: Function) => {
+  const { href } = window.location;
+
+  const url = new URL(href);
+
+  const { searchParams } = url;
+
+  // Get QSP as [ [ key, value ], ... ]
+  const params = [...Array.from(searchParams), [qsp, newValue]];
+
+  // Construct the new params as { [name]: value }
+  const newParams = params
+  .reduce(
+    (acc, [k, v]) => ({
+      ...acc,
+      [k]: v,
+    })
+    , {}
+  );
+
+  console.log("newParams: ", newParams);
+  return setSearchParams(newParams);
+};

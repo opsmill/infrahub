@@ -226,7 +226,7 @@ export default function BranchSelector() {
                 <Input value={format(branchedFrom ?? new Date(), "MM/dd/yyy HH:mm")} onChange={setNewBranchName} disabled />
 
                 Is data only:
-                <Switch enabled={isDataOnly} onChange={setIsDataOnly} />
+                <Switch checked={isDataOnly} onChange={setIsDataOnly} />
               </div>
 
               <div className="flex justify-center">

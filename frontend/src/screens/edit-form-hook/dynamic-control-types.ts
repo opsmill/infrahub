@@ -48,9 +48,9 @@ export interface DynamicFieldData {
   label: string;
   type: ControlType;
   name: string;
-  kind: SchemaAttributeType;
+  kind?: SchemaAttributeType;
   value: any;
-  options: {
+  options?: {
     values: SelectOption[];
   };
   config?: RegisterOptions;
