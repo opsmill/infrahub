@@ -21,6 +21,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { classNames } from "../../utils/common";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -264,12 +265,13 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                       </td>
                                     ))}
                                     <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
-                                      <div className="text-indigo-600 hover:text-indigo-900 cursor-pointer" onClick={async () => {
+                                      <Button onClick={(event: any) => {
+                                        event.stopPropagation();
                                         setRowForMetaEdit(row);
                                         setShowRelationMetaEditModal(true);
                                       }}>
                                         Meta
-                                      </div>
+                                      </Button>
                                     </td>
                                     <td className="relative py-4 px-5 text-right text-sm font-medium w-24">
                                       <Button buttonType={BUTTON_TYPES.CANCEL} onClick={(event: any) => handleDeleteRelationship(event, row.id)}>

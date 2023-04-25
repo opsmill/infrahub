@@ -9,7 +9,6 @@ import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdi
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import { constructPath } from "../../utils/fetch";
 
 export default function ObjectItemCreate() {
   let { objectname } = useParams();
