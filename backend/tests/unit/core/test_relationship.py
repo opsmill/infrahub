@@ -1,4 +1,8 @@
+import pytest
+from neo4j import AsyncSession
+
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
@@ -6,85 +10,84 @@ from infrahub.core.relationship import Relationship
 from infrahub_client.timestamp import Timestamp
 
 
-async def test_relationship_init(session, default_branch, person_tag_schema):
-    person_schema = registry.get_schema(name="Person")
-    rel_schema = person_schema.get_relationship("tags")
-
-    t1 = await Node.init(session=session, schema="Tag")
-    await t1.new(session=session, name="blue")
-    await t1.save(session=session)
-    p1 = await Node.init(session=session, schema=person_schema)
-    await p1.new(session=session, firstname="John", lastname="Doe")
-    await p1.save(session=session)
-
-    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1)
-
-    assert rel.schema == rel_schema
-    assert rel.name == rel_schema.name
-    assert rel.branch == default_branch
-    assert rel.node_id == p1.id
-    assert await rel.get_node(session=session) == p1
-
-    rel = Relationship(schema=rel_schema, branch=default_branch, node_id=p1.id)
-
-    assert rel.schema == rel_schema
-    assert rel.name == rel_schema.name
-    assert rel.branch == default_branch
-    assert rel.node_id == p1.id
-
-    rel_node = await rel.get_node(session=session)
-    assert type(rel_node) == Node
-    assert rel_node.id == p1.id
-
-
-async def test_relationship_init_w_node_property(
-    session, default_branch, person_tag_schema, first_account, second_account
+async def test_relationship_init(
+    session: AsyncSession, default_branch: Branch, tag_blue_main: Node, person_jack_main: Node, branch: Branch
 ):
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
-    t1 = await Node.init(session=session, schema="Tag")
-    await t1.new(session=session, name="blue")
-    await t1.save(session=session)
-
-    p1 = await Node.init(session=session, schema=person_schema)
-    await p1.new(session=session, firstname="John", lastname="Doe")
-    await p1.save(session=session)
-
-    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1, source=first_account, owner=second_account)
+    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
 
     assert rel.schema == rel_schema
     assert rel.name == rel_schema.name
-    assert rel.branch == default_branch
-    assert rel.node_id == p1.id
-    assert await rel.get_node(session=session) == p1
+    assert rel.branch == branch
+    assert rel.node_id == person_jack_main.id
+    assert await rel.get_node(session=session) == person_jack_main
+
+    rel = Relationship(schema=rel_schema, branch=branch, node_id=person_jack_main.id)
+
+    assert rel.schema == rel_schema
+    assert rel.name == rel_schema.name
+    assert rel.branch == branch
+    assert rel.node_id == person_jack_main.id
+
+    rel_node = await rel.get_node(session=session)
+    assert type(rel_node) == Node
+    assert rel_node.id == person_jack_main.id
+
+
+async def test_relationship_init_w_node_property(
+    session,
+    default_branch: Branch,
+    first_account: Node,
+    second_account: Node,
+    tag_blue_main: Node,
+    person_jack_main: Node,
+    branch: Branch,
+):
+    person_schema = registry.get_schema(name="Person")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel = Relationship(
+        schema=rel_schema, branch=branch, node=person_jack_main, source=first_account, owner=second_account
+    )
+
+    assert rel.schema == rel_schema
+    assert rel.name == rel_schema.name
+    assert rel.branch == branch
+    assert rel.node_id == person_jack_main.id
+    assert await rel.get_node(session=session) == person_jack_main
     assert rel.source_id == first_account.id
     assert rel.owner_id == second_account.id
 
 
-async def test_relationship_load_existing(session, default_branch, car_person_schema):
-    car_schema = registry.get_schema(name="Car")
-    rel_schema = car_schema.get_relationship("owner")
-
-    p1 = await Node.init(session=session, schema="Person")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
-
-    c3: Node = await Node.init(session=session, schema="Car")
-    await c3.new(
+@pytest.fixture
+async def car_smart_properties_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
+    car: Node = await Node.init(session=session, schema="Car", branch=default_branch)
+    await car.new(
         session=session,
         name="smart",
         nbr_seats=2,
         is_electric=True,
-        owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        owner={"id": person_john_main.id, "_relation__is_protected": True, "_relation__is_visible": False},
     )
-    await c3.save(session=session)
+    await car.save(session=session)
 
-    rel = Relationship(schema=rel_schema, branch=default_branch, node=c3)
+    return car
+
+
+async def test_relationship_load_existing(
+    session: AsyncSession, person_john_main: Node, car_smart_properties_main: Node, branch: Branch
+):
+    car_schema = registry.get_schema(name="Car")
+    rel_schema = car_schema.get_relationship("owner")
+
+    rel = Relationship(schema=rel_schema, branch=branch, node=car_smart_properties_main)
 
     query = await RelationshipGetPeerQuery.init(
         session=session,
-        source=c3,
+        source=car_smart_properties_main,
+        branch=branch,
         at=Timestamp(),
         rel=rel,
     )
@@ -103,46 +106,31 @@ async def test_relationship_load_existing(session, default_branch, car_person_sc
     assert rel.is_visible is False
 
 
-async def test_relationship_peer(session, default_branch, person_tag_schema, first_account, second_account):
+async def test_relationship_peer(session: AsyncSession, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
-    t1 = await Node.init(session=session, schema="Tag")
-    await t1.new(session=session, name="blue")
-    await t1.save(session=session)
-
-    p1 = await Node.init(session=session, schema=person_schema)
-    await p1.new(session=session, firstname="John", lastname="Doe")
-    await p1.save(session=session)
-
-    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1)
-    await rel.set_peer(value=t1)
+    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    await rel.set_peer(value=tag_blue_main)
 
     assert rel.schema == rel_schema
     assert rel.name == rel_schema.name
-    assert rel.branch == default_branch
-    assert rel.node_id == p1.id
-    assert await rel.get_node(session=session) == p1
-    assert rel.peer_id == t1.id
-    assert await rel.get_peer(session=session) == t1
+    assert rel.branch == branch
+    assert rel.node_id == person_jack_main.id
+    assert await rel.get_node(session=session) == person_jack_main
+    assert rel.peer_id == tag_blue_main.id
+    assert await rel.get_peer(session=session) == tag_blue_main
 
 
-async def test_relationship_save(session, default_branch, person_tag_schema):
+async def test_relationship_save(session: AsyncSession, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
     person_schema = registry.get_schema(name="Person")
     rel_schema = person_schema.get_relationship("tags")
 
-    t1 = await Node.init(session=session, schema="Tag")
-    await t1.new(session=session, name="blue")
-    await t1.save(session=session)
-    p1 = await Node.init(session=session, schema=person_schema)
-    await p1.new(session=session, firstname="John", lastname="Doe")
-    await p1.save(session=session)
-
-    rel = Relationship(schema=rel_schema, branch=default_branch, node=p1)
-    await rel.set_peer(value=t1)
+    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    await rel.set_peer(value=tag_blue_main)
     await rel.save(session=session)
 
-    p11 = await NodeManager.get_one(id=p1.id, session=session)
+    p11 = await NodeManager.get_one(id=person_jack_main.id, session=session, branch=branch)
     tags = await p11.tags.get(session=session)
     assert len(tags) == 1
     assert tags[0].id == rel.id

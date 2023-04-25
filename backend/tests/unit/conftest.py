@@ -12,6 +12,7 @@ import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
+    create_branch,
     create_default_branch,
     create_root_node,
     first_time_initialization,
@@ -64,6 +65,14 @@ async def session(db: AsyncDriver) -> AsyncSession:
 @pytest.fixture
 async def rpc_client() -> InfrahubRpcClientTesting:
     return InfrahubRpcClientTesting()
+
+
+@pytest.fixture(params=["main", "branch2"])
+async def branch(request, session: AsyncSession, default_branch: Branch):
+    if request.param == "main":
+        return default_branch
+    else:
+        return await create_branch(branch_name=str(request.param), session=session)
 
 
 @pytest.fixture(scope="session")
@@ -827,6 +836,79 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def person_john_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    await person.new(session=session, name="John", height=180)
+    await person.save(session=session)
+
+    return person
+
+
+@pytest.fixture
+async def person_jim_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    await person.new(session=session, name="Jim", height=170)
+    await person.save(session=session)
+
+    return person
+
+
+@pytest.fixture
+async def car_accord_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
+    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    await car.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
+    await car.save(session=session)
+
+    return car
+
+
+@pytest.fixture
+async def tag_blue_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
+    tag = await Node.init(session=session, schema="Tag", branch=default_branch)
+    await tag.new(session=session, name="Blue", description="The Blue tag")
+    await tag.save(session=session)
+
+    return tag
+
+
+@pytest.fixture
+async def tag_red_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
+    tag = await Node.init(session=session, schema="Tag", branch=default_branch)
+    await tag.new(session=session, name="Red", description="The Red tag")
+    await tag.save(session=session)
+
+    return tag
+
+
+@pytest.fixture
+async def tag_black_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
+    tag = await Node.init(session=session, schema="Tag", branch=default_branch)
+    await tag.new(session=session, name="Black", description="The Black tag")
+    await tag.save(session=session)
+
+    return tag
+
+
+@pytest.fixture
+async def person_jack_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
+    obj = await Node.init(session=session, schema="Person", branch=default_branch)
+    await obj.new(session=session, firstname="Jack", lastname="Russell")
+    await obj.save(session=session)
+
+    return obj
+
+
+@pytest.fixture
+async def person_jack_tags_main(
+    session: AsyncSession, default_branch: Branch, person_tag_schema, tag_blue_main: Node, tag_red_main: Node
+) -> Node:
+    obj = await Node.init(session=session, schema="Person")
+    await obj.new(session=session, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
+    await obj.save(session=session)
+    return obj
 
 
 @pytest.fixture
