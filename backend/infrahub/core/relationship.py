@@ -653,8 +653,6 @@ class RelationshipManager:
                         session=session,
                     )
 
-        # breakpoint()
-
         return self
 
     async def delete(
