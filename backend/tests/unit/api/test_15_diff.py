@@ -148,7 +148,7 @@ async def test_diff_data_endpoint_branch_only_default(session, client, client_he
     data = response.json()
     assert data is not None
     assert list(data.keys()) == ["branch2"]
-    assert len(data["branch2"]) == 3
+    assert len(data["branch2"]) == 4
 
 
 async def test_diff_data_endpoint_branch_time_from(session, client, client_headers, car_person_data_diff):
@@ -182,8 +182,8 @@ async def test_diff_data_endpoint_branch_time_from_to(session, client, client_he
     data = response.json()
     assert data is not None
     assert list(data.keys()) == ["branch2"]
-    assert len(data["branch2"]) == 2
-    assert sorted([item["kind"] for item in data["branch2"]]) == ["Car", "Person"]
+    assert len(data["branch2"]) == 3
+    assert sorted([item["kind"] for item in data["branch2"]]) == ["Car", "Person", "Person"]
 
 
 async def test_diff_data_endpoint_with_main_default(session, client, client_headers, car_person_data_diff):
