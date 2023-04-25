@@ -264,13 +264,13 @@ export default function ObjectItemDetails() {
                 atttributeRelationships
                 ?.map(
                   (relationshipSchema: any) => <RelationshipDetails
+                    parentNode={objectDetails}
                     mode="DESCRIPTION-LIST"
                     parentSchema={schema}
                     refreshObject={fetchObjectDetails}
                     key={relationshipSchema.name}
                     relationshipsData={objectDetails[relationshipSchema.name]}
-                    relationshipSchema={relationshipSchema}
-                  />
+                    relationshipSchema={relationshipSchema} />
                 )
               }
             </dl>
@@ -281,7 +281,7 @@ export default function ObjectItemDetails() {
       {
         qspTab
         && (
-          <RelationshipsDetails parentSchema={schema} refreshObject={fetchObjectDetails} />
+          <RelationshipsDetails parentNode={objectDetails} parentSchema={schema} refreshObject={fetchObjectDetails} />
         )
       }
 
@@ -314,6 +314,7 @@ export default function ObjectItemDetails() {
               fetchObjectDetails();
             }
           }
+          attributeOrRelationshipToEdit={objectDetails[metaEditFieldDetails?.attributeOrRelationshipName]}
           schemaList={schemaList}
           schema={schema}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}

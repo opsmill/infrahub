@@ -51,6 +51,7 @@ interface Props {
   row: any;
   schema: iNodeSchema;
   type: "attribute" | "relationship",
+  attributeOrRelationshipToEdit: any;
   attributeOrRelationshipName: any;
   schemaList: iNodeSchema[];
   closeDrawer: Function;
@@ -58,22 +59,45 @@ interface Props {
 }
 
 export default function ObjectItemMetaEdit(props: Props) {
-  const { row, type, attributeOrRelationshipName, schema, schemaList } = props;
-  const formStructure = getFormStructureForMetaEdit(row, type, attributeOrRelationshipName, schemaList);
-
+  const { row, type, attributeOrRelationshipName, schema, schemaList, attributeOrRelationshipToEdit } = props;
+  const formStructure = getFormStructureForMetaEdit(attributeOrRelationshipToEdit, type, attributeOrRelationshipName, schemaList);
   async function onSubmit(data: any, error: any) {
-    data[attributeOrRelationshipName].id = props.row[attributeOrRelationshipName].id;
-    if (Object.keys(data).length) {
-      try {
-        await updateObjectWithId(row.id!, schema, data);
-      } catch {
-        console.error("Something went wrong while updating the object");
+    let updateObject: any = {
+      id: props.row.id,
+    };
+    if(type === "relationship") {
+      const relationshipSchema = schema.relationships?.find(s => s.name === attributeOrRelationshipName);
+      if(relationshipSchema?.cardinality === "many") {
+        const newRelationshipList = row[attributeOrRelationshipName].map((item: any) => {
+          if(item.id === props.attributeOrRelationshipToEdit.id) {
+            return {
+              ...data,
+              id: item.id,
+            };
+          } else {
+            return {
+              id: item.id
+            };
+          }
+        });
+        updateObject[attributeOrRelationshipName] = newRelationshipList;
+      } else {
+        updateObject[attributeOrRelationshipName] = {
+          id: props.row[attributeOrRelationshipName].id,
+          ...data,
+        };
       }
-      props.onUpdateComplete();
     } else {
-      console.info("Nothing to update");
-      props.onUpdateComplete();
+      updateObject[attributeOrRelationshipName] = {
+        ...data,
+      };
     }
+    try {
+      await updateObjectWithId(row.id!, schema, updateObject);
+    } catch {
+      console.error("Something went wrong while updating the object");
+    }
+    props.onUpdateComplete();
   }
 
   return (
