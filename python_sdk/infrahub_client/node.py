@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from infrahub_client.exceptions import Error, FilterNotFound
+from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
 from infrahub_client.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from infrahub_client.client import BaseClient, InfrahubClient, InfrahubClientSync
+    from infrahub_client.client import InfrahubClient, InfrahubClientSync
 
 
 PROPERTIES_FLAG = ["is_visible", "is_protected"]
@@ -75,12 +75,16 @@ class Attribute:
 
 class RelatedNodeBase:
     def __init__(
-        self, client: BaseClient, schema: RelationshipSchema, data: Union[Any, dict], name: Optional[str] = None
+        self,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
+        name: Optional[str] = None,
     ):
         self.schema = schema
         self.name = name
 
-        self._client = client
+        self._branch = branch
 
         self._properties_flag = PROPERTIES_FLAG
         self._properties_object = PROPERTIES_OBJECT
@@ -101,7 +105,7 @@ class RelatedNodeBase:
             data = {"id": data}
 
         if isinstance(data, dict):
-            self._id: Optional[str] = data.get("id", None)
+            self._id = data.get("id", None)
             self._display_label = data.get("display_label", None)
             self._typename = data.get("__typename", None)
             self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
@@ -114,22 +118,22 @@ class RelatedNodeBase:
                 setattr(self, prop, data.get(f"_relation__{prop}", None))
 
     @property
-    def id(self):
+    def id(self) -> Optional[str]:
         if self._peer:
             return self._peer.id
         return self._id
 
     @property
-    def display_label(self):
+    def display_label(self) -> Optional[str]:
         if self._peer:
             return self._peer.display_label
         return self._display_label
 
     @property
-    def typename(self):
+    def typename(self) -> Optional[str]:
         if self._peer:
             return self._peer.typename
-        return self.typename
+        return self._typename
 
     def _generate_input_data(self) -> Dict[str, Any]:
         data = {}
@@ -143,20 +147,33 @@ class RelatedNodeBase:
 
         return data
 
-    def _get(self) -> InfrahubNodeBase:
+    def _get(self):  # type: ignore[no-untyped-def]
         if self._peer:
             return self._peer
 
         if self.id and self.typename and self._client.internal_store:
-            self._client.store.get(key=self.id, kind=self.typename)
+            return self._client.store.get(key=self.id, kind=self.typename)
+
+        raise NodeNotFound(branch_name=self._branch, node_type=self.schema.peer, identifier=self.id)
 
 
 class RelatedNode(RelatedNodeBase):
-    async def fetch(self):
+    def __init__(
+        self,
+        client: InfrahubClient,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
+        name: Optional[str] = None,
+    ):
+        self._client = client
+        super().__init__(branch=branch, schema=schema, data=data, name=name)
+
+    async def fetch(self) -> None:
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = await self._client.get(ids=[self], kind=self.typename)
+        self._peer = await self._client.get(ids=[self.id], kind=self.typename)
 
     @property
     def peer(self) -> InfrahubNode:
@@ -167,6 +184,23 @@ class RelatedNode(RelatedNodeBase):
 
 
 class RelatedNodeSync(RelatedNodeBase):
+    def __init__(
+        self,
+        client: InfrahubClientSync,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
+        name: Optional[str] = None,
+    ):
+        self._client = client
+        super().__init__(branch=branch, schema=schema, data=data, name=name)
+
+    def fetch(self) -> None:
+        if not self.id or not self.typename:
+            raise Error("Unable to fetch the peer, id and/or typename are not defined")
+
+        self._peer = self._client.get(ids=[self.id], kind=self.typename)
+
     @property
     def peer(self) -> InfrahubNodeSync:
         return self.get()
@@ -176,50 +210,21 @@ class RelatedNodeSync(RelatedNodeBase):
 
 
 class RelationshipManagerBase:
-    _related_node_class = RelatedNodeBase
-
-    def __init__(self, name: str, client: BaseClient, schema: RelationshipSchema, data: Union[Any, dict]):
+    def __init__(self, name: str, branch: str, schema: RelationshipSchema, data: Union[Any, dict]):
         self.name = name
         self.schema = schema
-        self.client = client
-        self.peers: List[RelatedNodeBase] = []
+        self.branch = branch
 
         self._properties_flag = PROPERTIES_FLAG
         self._properties_object = PROPERTIES_OBJECT
         self._properties = self._properties_flag + self._properties_object
 
-        if data is None:
-            return
-
-        if not isinstance(data, list):
-            raise ValueError(f"{name} found a {type(data)} instead of a list")
-
-        for item in data:
-            self.peers.append(self._related_node_class(name=name, client=client, schema=schema, data=item))
-
     @property
     def peer_ids(self) -> List[str]:
-        return [peer.id for peer in self.peers if peer.id]
-
-    def add(self, data: Union[str, RelatedNodeBase, dict]) -> None:
-        """Add a new peer to this relationship."""
-        new_node = self._related_node_class(schema=self.schema, client=self.client, data=data)
-
-        if new_node.id and new_node.id not in self.peer_ids:
-            self.peers.append(self._related_node_class(schema=self.schema, client=self.client, data=data))
-
-    def remove(self, data: Union[str, RelatedNodeBase, dict]) -> None:
-        node_to_remove = self._related_node_class(schema=self.schema, client=self.client, data=data)
-
-        if node_to_remove.id and node_to_remove.id in self.peer_ids:
-            idx = self.peer_ids.index(node_to_remove.id)
-            if self.peers[idx].id != node_to_remove.id:
-                raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
-
-            self.peers.pop(idx)
+        return [peer.id for peer in self.peers if peer.id]  # type: ignore[attr-defined]
 
     def _generate_input_data(self) -> List[Dict]:
-        return [peer._generate_input_data() for peer in self.peers]
+        return [peer._generate_input_data() for peer in self.peers]  # type: ignore[attr-defined]
 
     @classmethod
     def _generate_query_data(cls) -> Dict:
@@ -234,39 +239,92 @@ class RelationshipManagerBase:
 
 
 class RelationshipManager(RelationshipManagerBase):
-    _related_node_class = RelatedNode
+    def __init__(
+        self, name: str, client: InfrahubClient, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
+    ):
+        self.client = client
+        self.peers: List[RelatedNode] = []
 
-    def __init__(self, name: str, client: InfrahubClient, schema: RelationshipSchema, data: Union[Any, dict]):
-        super().__init__(name=name, client=client, schema=schema, data=data)
+        super().__init__(name=name, schema=schema, branch=branch, data=data)
+
+        if data is None:
+            return
+
+        if not isinstance(data, list):
+            raise ValueError(f"{name} found a {type(data)} instead of a list")
+
+        for item in data:
+            self.peers.append(RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item))
 
     async def fetch(self) -> None:
         for peer in self.peers:
             await peer.fetch()
 
+    def add(self, data: Union[str, RelatedNode, dict]) -> None:
+        """Add a new peer to this relationship."""
+        new_node = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
+
+        if new_node.id and new_node.id not in self.peer_ids:
+            self.peers.append(RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data))
+
+    def remove(self, data: Union[str, RelatedNode, dict]) -> None:
+        node_to_remove = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
+
+        if node_to_remove.id and node_to_remove.id in self.peer_ids:
+            idx = self.peer_ids.index(node_to_remove.id)
+            if self.peers[idx].id != node_to_remove.id:
+                raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
+
+            self.peers.pop(idx)
+
 
 class RelationshipManagerSync(RelationshipManagerBase):
-    _related_node_class = RelatedNodeSync
+    def __init__(
+        self, name: str, client: InfrahubClientSync, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
+    ):
+        self.client = client
+        self.peers: List[RelatedNodeSync] = []
 
-    def __init__(self, name: str, client: InfrahubClientSync, schema: RelationshipSchema, data: Union[Any, dict]):
-        super().__init__(name=name, client=client, schema=schema, data=data)
+        super().__init__(name=name, schema=schema, branch=branch, data=data)
 
-    async def fetch(self) -> None:
+        if data is None:
+            return
+
+        if not isinstance(data, list):
+            raise ValueError(f"{name} found a {type(data)} instead of a list")
+
+        for item in data:
+            self.peers.append(
+                RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+            )
+
+    def fetch(self) -> None:
         for peer in self.peers:
             peer.fetch()
 
+    def add(self, data: Union[str, RelatedNodeSync, dict]) -> None:
+        """Add a new peer to this relationship."""
+        new_node = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
+
+        if new_node.id and new_node.id not in self.peer_ids:
+            self.peers.append(RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data))
+
+    def remove(self, data: Union[str, RelatedNodeSync, dict]) -> None:
+        node_to_remove = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
+
+        if node_to_remove.id and node_to_remove.id in self.peer_ids:
+            idx = self.peer_ids.index(node_to_remove.id)
+            if self.peers[idx].id != node_to_remove.id:
+                raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
+
+            self.peers.pop(idx)
+
 
 class InfrahubNodeBase:
-    _attribute_class = Attribute
-    _related_node_class = RelatedNodeBase
-    _relationship_manager_class = RelationshipManagerBase
-
-    def __init__(
-        self, client: BaseClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
-    ) -> None:
+    def __init__(self, schema: NodeSchema, branch: str, data: Optional[dict] = None) -> None:
         self._schema = schema
         self._data = data
-        self._client = client
-        self._branch = branch or self._client.default_branch
+        self._branch = branch
 
         self.id: Optional[str] = data.get("id", None) if isinstance(data, dict) else None
         self.display_label: Optional[str] = data.get("display_label", None) if isinstance(data, dict) else None
@@ -275,33 +333,17 @@ class InfrahubNodeBase:
         self._attributes = [item.name for item in self._schema.attributes]
         self._relationships = [item.name for item in self._schema.relationships]
 
+        self._init_attributes(data)
+        self._init_relationships(data)
+
+    def _init_attributes(self, data: Optional[dict] = None) -> None:
         for attr_name in self._attributes:
             attr_schema = [attr for attr in self._schema.attributes if attr.name == attr_name][0]
             attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
             setattr(self, attr_name, Attribute(name=attr_name, schema=attr_schema, data=attr_data))
 
-        for rel_name in self._relationships:
-            rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
-            rel_data = data.get(rel_name, None) if isinstance(data, dict) else None
-
-            if rel_schema.cardinality == "one":
-                setattr(self, f"_{rel_name}", None)
-                setattr(
-                    self.__class__,
-                    rel_name,
-                    generate_relationship_property(
-                        name=rel_name, client=self._client, node_class=self._related_node_class
-                    ),
-                )
-                setattr(self, rel_name, rel_data)
-            else:
-                setattr(
-                    self,
-                    rel_name,
-                    self._relationship_manager_class(
-                        name=rel_name, client=self._client, schema=rel_schema, data=rel_data
-                    ),
-                )
+    def _init_relationships(self, data: Optional[dict] = None) -> None:
+        pass
 
     def __repr__(self) -> str:
         if self.display_label:
@@ -333,10 +375,13 @@ class InfrahubNodeBase:
                 continue
 
             item_data = item._generate_input_data()
+            rel_schema = self._schema.get_relationship(name=item_name, raise_on_error=False)
+
             if item_data:
                 data[item_name] = item_data
-            elif item_name in self._relationships and self._schema.get_relationship(item_name).cardinality == "many":
-                data[item_name] = []
+            elif item_name in self._relationships and rel_schema:
+                if rel_schema.cardinality == "many":
+                    data[item_name] = []
 
         return {"data": data}
 
@@ -376,13 +421,33 @@ class InfrahubNodeBase:
 
 
 class InfrahubNode(InfrahubNodeBase):
-    _related_node_class = RelatedNode
-    _relationship_manager_class = RelationshipManager
-
     def __init__(
         self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
     ) -> None:
-        super().__init__(client=client, schema=schema, branch=branch, data=data)
+        self._client = client
+        super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
+
+    def _init_relationships(self, data: Optional[dict] = None) -> None:
+        for rel_name in self._relationships:
+            rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
+            rel_data = data.get(rel_name, None) if isinstance(data, dict) else None
+
+            if rel_schema.cardinality == "one":
+                setattr(self, f"_{rel_name}", None)
+                setattr(
+                    self.__class__,
+                    rel_name,
+                    generate_relationship_property(name=rel_name, node=self, node_class=RelatedNode),  # type: ignore[arg-type]
+                )
+                setattr(self, rel_name, rel_data)
+            else:
+                setattr(
+                    self,
+                    rel_name,
+                    RelationshipManager(
+                        name=rel_name, client=self._client, branch=self._branch, schema=rel_schema, data=rel_data
+                    ),
+                )
 
     async def delete(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
@@ -434,13 +499,33 @@ class InfrahubNode(InfrahubNodeBase):
 
 
 class InfrahubNodeSync(InfrahubNodeBase):
-    _related_node_class = RelatedNodeSync
-    _relationship_manager_class = RelationshipManagerSync
-
     def __init__(
         self, client: InfrahubClientSync, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
     ) -> None:
-        super().__init__(client=client, schema=schema, branch=branch, data=data)
+        self._client = client
+        super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
+
+    def _init_relationships(self, data: Optional[dict] = None) -> None:
+        for rel_name in self._relationships:
+            rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
+            rel_data = data.get(rel_name, None) if isinstance(data, dict) else None
+
+            if rel_schema.cardinality == "one":
+                setattr(self, f"_{rel_name}", None)
+                setattr(
+                    self.__class__,
+                    rel_name,
+                    generate_relationship_property(name=rel_name, node=self, node_class=RelatedNodeSync),  # type: ignore[arg-type]
+                )
+                setattr(self, rel_name, rel_data)
+            else:
+                setattr(
+                    self,
+                    rel_name,
+                    RelationshipManagerSync(
+                        name=rel_name, client=self._client, branch=self._branch, schema=rel_schema, data=rel_data
+                    ),
+                )
 
     def delete(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
@@ -505,7 +590,7 @@ class NodeProperty:
         return self.id
 
 
-def generate_relationship_property(client: BaseClient, name: str, node_class: type(RelatedNodeBase)):  # type: ignore
+def generate_relationship_property(node: Union[InfrahubNode, InfrahubNodeSync], name: str, node_class):  # type: ignore
     """Return a property that stores values under a private non-public name."""
     internal_name = "_" + name.lower()
     external_name = name
@@ -520,6 +605,10 @@ def generate_relationship_property(client: BaseClient, name: str, node_class: ty
             setattr(self, internal_name, value)
         else:
             schema = [rel for rel in self._schema.relationships if rel.name == external_name][0]
-            setattr(self, internal_name, node_class(name=external_name, client=client, schema=schema, data=value))
+            setattr(
+                self,
+                internal_name,
+                node_class(name=external_name, branch=node._branch, client=node._client, schema=schema, data=value),
+            )
 
     return prop

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 from infrahub_client.exceptions import NodeNotFound
 
 if TYPE_CHECKING:
-    from infrahub_client.node import InfrahubNode, InfrahubNodeBase, InfrahubNodeSync
+    from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 
 
 class NodeStoreBase:
@@ -16,18 +16,15 @@ class NodeStoreBase:
     we need to save them in order to reuse them laterto associate them with another node for example.
     """
 
-    def __init__(self) -> None:
-        self._store: Dict[str, Dict[str, InfrahubNodeBase]] = defaultdict(dict)
-
-    def _set(self, key: str, node: InfrahubNodeBase) -> None:
+    def _set(self, key: str, node) -> None:  # type: ignore[no-untyped-def]
         if "InfrahubNode" not in node.__class__.__name__:
             raise TypeError(f"'node' must be of type InfrahubNode, not {type(node)!r}")
 
         node_kind = node._schema.kind
-        self._store[node_kind][key] = node
+        self._store[node_kind][key] = node  # type: ignore[attr-defined]
 
-    def _get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
-        if kind and kind not in self._store and key not in self._store[kind]:
+    def _get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True):  # type: ignore[no-untyped-def]
+        if kind and kind not in self._store and key not in self._store[kind]:  # type: ignore[attr-defined]
             if not raise_when_missing:
                 return None
             raise NodeNotFound(
@@ -37,10 +34,10 @@ class NodeStoreBase:
                 message="Unable to find the node in the Store",
             )
 
-        if kind and kind in self._store and key in self._store[kind]:
-            return self._store[kind][key]
+        if kind and kind in self._store and key in self._store[kind]:  # type: ignore[attr-defined]
+            return self._store[kind][key]  # type: ignore[attr-defined]
 
-        for _, item in self._store.items():
+        for _, item in self._store.items():  # type: ignore[attr-defined]
             if key in item:
                 return item[key]
 
@@ -55,6 +52,9 @@ class NodeStoreBase:
 
 
 class NodeStore(NodeStoreBase):
+    def __init__(self) -> None:
+        self._store: Dict[str, Dict[str, InfrahubNode]] = defaultdict(dict)
+
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
 
@@ -63,6 +63,9 @@ class NodeStore(NodeStoreBase):
 
 
 class NodeStoreSync(NodeStoreBase):
+    def __init__(self) -> None:
+        self._store: Dict[str, Dict[str, InfrahubNodeSync]] = defaultdict(dict)
+
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNodeSync]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
 
