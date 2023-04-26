@@ -6,19 +6,14 @@ A Python SDK for Infrahub greatly simplifies how we can interact with Infrahub p
 The Python Client is still under development and it doesn't have 100% feature parity with the GraphQL API yet.
 !!!
 
-!!!warning Async Version Only
-It's important to mention that the current version of the Python SDK is only compatible with Python Async.
-The goal is to support both Sync and Async Python but currently, it only supports Async.  
-Please reach out if you need help getting started with Python Async, it's easier than it looks.<br>
-_There are a few examples of scripts available to help you get started as an example._<br>
-_If this is a big show-stopper for you, please let us know so that we can prioritize the work to add support for non-async python._
-!!!
-
 ## Installation
 
 > The Python SDK is currently hosted in the same repository as infrahub, but once both reaches a better maturity state, the plan is to move the SDK into its own repository.
 
 ## Getting Started
+
+The SDK supports both synchronous and asynchronous Python. The default asynchronous version is provided by the `InfrahubClient` class while the synchronous version
+is using the `InfrahubClientSync` class.
 
 ### Query all Account objects
 
@@ -36,3 +31,7 @@ _If this is a big show-stopper for you, please let us know so that we can priori
 ### Delete an object
 
 :::code source="../../python_sdk/examples/example_delete.py" :::
+
+### Create a new Account with the synchronous version
+
+:::code source="../../python_sdk/examples/example_create_sync.py" :::
