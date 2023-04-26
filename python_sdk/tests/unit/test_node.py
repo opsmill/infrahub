@@ -5,8 +5,8 @@ import pytest
 from infrahub_client.node import (
     InfrahubNode,
     InfrahubNodeSync,
-    RelatedNode,
-    RelationshipManager,
+    RelatedNodeBase,
+    RelationshipManagerBase,
 )
 
 # pylint: disable=no-member
@@ -79,10 +79,10 @@ async def test_init_node_data_with_relationships(client, location_schema, client
     assert node.description.value == "JFK Airport"
     assert node.type.value == "SITE"
 
-    assert isinstance(node.tags, RelationshipManager)
+    assert isinstance(node.tags, RelationshipManagerBase)
     assert len(node.tags.peers) == 2
-    assert isinstance(node.tags.peers[0], RelatedNode)
-    assert isinstance(node.primary_tag, RelatedNode)
+    assert isinstance(node.tags.peers[0], RelatedNodeBase)
+    assert isinstance(node.primary_tag, RelatedNodeBase)
     assert node.primary_tag.id == "pppppppp"
 
 
