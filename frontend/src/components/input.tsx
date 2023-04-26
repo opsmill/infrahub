@@ -30,7 +30,7 @@ export const Input = forwardRef(
                 disabled:cursor-not-allowed disabled:bg-gray-100
             `,
               className ?? "",
-              error ? "ring-red-500 focus:ring-red-600" : ""
+              error && error?.message ? "ring-red-500 focus:ring-red-600" : ""
             )
           }
           {...propsToPass}

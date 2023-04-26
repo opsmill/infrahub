@@ -33,12 +33,12 @@ export const Filters = ({ fields, onSubmit }: FormProps) => {
             }
           </div>
 
-          <Button
+          {/* <Button
             disabled
             className="mr-2"
           >
             Clear all
-          </Button>
+          </Button> */}
 
           <Button type="submit">
             Validate

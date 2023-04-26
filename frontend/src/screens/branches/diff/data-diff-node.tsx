@@ -33,6 +33,7 @@ export type tDataDiffNode = {
   kind: string;
   changed_at?: number;
   attributes: tDataDiffNodeAttribute[];
+  relationships: tDataDiffNodeAttribute[];
 }
 
 export type tDataDiffNodeProps = {
@@ -64,6 +65,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     kind,
     changed_at,
     attributes = [],
+    relationships = []
   } = node;
 
   const title = (
@@ -112,6 +114,15 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         <div>
           {
             attributes
+            ?.map(
+              (attribute: tDataDiffNodeAttribute, index: number) => (
+                <DataDiffAttribute key={index} attribute={attribute} />
+              )
+            )
+          }
+
+          {
+            relationships
             ?.map(
               (attribute: tDataDiffNodeAttribute, index: number) => (
                 <DataDiffAttribute key={index} attribute={attribute} />

@@ -6,8 +6,8 @@ export const fetchUrl = async (url: string, payload?: RequestInit) => {
   return rawResponse?.json();
 };
 
-const QSP_TO_PREVENT_FROM_FORWARDING = [
-  QSP.TAB
+const QSP_TO_INCLUDE = [
+  QSP.BRANCH
 ];
 
 // Construct link with path that contains all QSP
@@ -22,7 +22,7 @@ export const constructPath = (path: string) => {
   const params = Array
   .from(searchParams)
   .filter(
-    ([k, v]) => !QSP_TO_PREVENT_FROM_FORWARDING.includes(k) // Remove some QSP if not needed to be forwarded
+    ([k, v]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
   );
 
   // Construct the new params as "?key=value&..."

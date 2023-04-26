@@ -18,9 +18,7 @@ export const DataDiff = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom, setTimeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  console.log("timeFrom: ", timeFrom);
   const [timeTo, setTimeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
-  console.log("timeTo: ", timeTo);
 
   const fields: DynamicFieldData[] = [
     {
