@@ -67,11 +67,11 @@ async def test_schema_load_endpoint_valid_simple(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_infra_simple_01,
+    helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        creation = client.post("/schema/load", headers=client_headers, json=schema_file_infra_simple_01)
+        creation = client.post("/schema/load", headers=client_headers, json=helper.schema_file("infra_simple_01.json"))
         read = client.get("/schema", headers=client_headers)
 
     assert creation.status_code == 202
@@ -95,11 +95,13 @@ async def test_schema_load_endpoint_valid_with_generics(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_infra_w_generics_01,
+    helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response1 = client.post("/schema/load", headers=client_headers, json=schema_file_infra_w_generics_01)
+        response1 = client.post(
+            "/schema/load", headers=client_headers, json=helper.schema_file("infra_w_generics_01.json")
+        )
         assert response1.status_code == 202
 
         response2 = client.get("/schema", headers=client_headers)
@@ -115,14 +117,16 @@ async def test_schema_load_endpoint_valid_with_extensions(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_infra_w_extensions_01,
+    helper,
 ):
     org_schema = registry.schema.get(name="Organization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post("/schema/load", headers=client_headers, json=schema_file_infra_w_extensions_01)
+        response = client.post(
+            "/schema/load", headers=client_headers, json=helper.schema_file("infra_w_extensions_01.json")
+        )
 
     assert response.status_code == 202
 
@@ -136,11 +140,13 @@ async def test_schema_load_endpoint_not_valid_simple_02(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_not_valid_simple_02,
+    helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_simple_02)
+        response = client.post(
+            "/schema/load", headers=client_headers, json=helper.schema_file("not_valid_simple_02.json")
+        )
 
     assert response.status_code == 422
 
@@ -151,11 +157,13 @@ async def test_schema_load_endpoint_not_valid_simple_03(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_not_valid_simple_03,
+    helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_simple_03)
+        response = client.post(
+            "/schema/load", headers=client_headers, json=helper.schema_file("not_valid_simple_03.json")
+        )
 
     assert response.status_code == 422
 
@@ -166,11 +174,13 @@ async def test_schema_load_endpoint_not_valid_simple_04(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_not_valid_simple_04,
+    helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_simple_04)
+        response = client.post(
+            "/schema/load", headers=client_headers, json=helper.schema_file("not_valid_simple_04.json")
+        )
 
     assert response.status_code == 422
 
@@ -181,10 +191,12 @@ async def test_schema_load_endpoint_not_valid_simple_05(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_not_valid_simple_05,
+    helper,
 ):
     with client:
-        response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_simple_05)
+        response = client.post(
+            "/schema/load", headers=client_headers, json=helper.schema_file("not_valid_simple_05.json")
+        )
 
     assert response.status_code == 422
     response.json()["detail"][0]["msg"] == "Name can not be set to a reserved keyword 'class' is not allowed."
@@ -196,10 +208,12 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
     client_headers,
     default_branch: Branch,
     register_core_models_schema,
-    schema_file_not_valid_w_generics_02,
+    helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_w_generics_02)
+        response = client.post(
+            "/schema/load", headers=client_headers, json=helper.schema_file("not_valid_w_generics_02.json")
+        )
 
     assert response.status_code == 422

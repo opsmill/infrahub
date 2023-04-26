@@ -1210,62 +1210,6 @@ async def register_account_schema(session) -> None:
 
 
 @pytest.fixture
-async def schema_file_infra_w_generics_01() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_w_generics_01.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_infra_w_extensions_01() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_w_extensions_01.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_infra_simple_01() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_simple_01.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_02() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_02.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_03() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_03.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_04() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_04.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_05() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_05.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_w_generics_02() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_w_generics_02.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
 async def first_account(session: AsyncSession, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="First Account", type="Git")
