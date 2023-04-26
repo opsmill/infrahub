@@ -7,7 +7,7 @@ type LinkProps = {
 
 export const Link = (props: LinkProps) => {
   return (
-    <div onClick={props.onClick} className="cursor-pointer underline">
+    <div onClick={props.onClick} className="cursor-pointer underline hover:bg-slate-100 rounded-md px-3">
       {props.children}
     </div>
   );

@@ -1,18 +1,21 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import OpsSwitch from "./switch";
+import { FormFieldError } from "../screens/edit-form-hook/form";
+import { OpsDatePicker } from "./date-picker";
+import { useState } from "react";
 
 interface Props {
   name: string;
   label: string;
-  value: boolean;
+  value?: Date;
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
-  onChange?: Function;
+  error?: FormFieldError;
 }
 
-export const OpsSwitchRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, onChange } = props;
+export const OpsDatePickerRegister = (props: Props) => {
+  const { name, value, register, setValue, config, label, error } = props;
+  const [currentValue, setCurrentValue] = useState(value);
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -20,17 +23,16 @@ export const OpsSwitchRegister = (props: Props) => {
   });
 
   return (
-    <OpsSwitch
+    <OpsDatePicker
       label={label}
-      value={value}
+      value={currentValue}
       onChange={
-        (value) => {
-          if (onChange) {
-            onChange(value);
-          }
+        (value?: Date) => {
+          setCurrentValue(value);
           setValue(inputRegister.name, value);
         }
       }
+      error={error}
     />
   );
 };

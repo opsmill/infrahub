@@ -10,6 +10,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
+import { formatISO, parseISO } from "date-fns";
 
 export const DataDiff = () => {
   const { branchname } = useParams();
@@ -17,7 +18,9 @@ export const DataDiff = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom, setTimeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
+  console.log("timeFrom: ", timeFrom);
   const [timeTo, setTimeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  console.log("timeTo: ", timeTo);
 
   const fields: DynamicFieldData[] = [
     {
@@ -29,14 +32,14 @@ export const DataDiff = () => {
     {
       name: "time_from",
       label: "Time from",
-      type: "text",
-      value: timeFrom
+      type: "datepicker",
+      value: timeFrom ? parseISO(timeFrom) : undefined
     },
     {
       name: "time_to",
       label: "Time to",
-      type: "text",
-      value: timeTo
+      type: "datepicker",
+      value: timeTo ? parseISO(timeTo) : undefined
     },
   ];
 
@@ -89,36 +92,41 @@ export const DataDiff = () => {
       setBranchOnly(branch_only);
     }
 
-    if (time_from) {
-      setTimeFrom(time_from);
-    }
+    setTimeFrom(time_from ? formatISO(time_from) : undefined);
 
-    if (time_to) {
-      setTimeTo(time_to);
-    }
+    setTimeTo(time_to ? formatISO(time_to) : undefined);
   };
 
   return (
     <>
-      <div className="bg-white p-6 flex">
-        <Filters fields={fields} onSubmit={handleSubmit} />
-      </div>
+      {
+        isLoading
+        && (
+          <LoadingScreen />
+        )
+      }
 
-      <div>
-        {
-          isLoading
-          && (
-            <LoadingScreen />
-          )
-        }
+      {
+        !isLoading
+        && (
+          <>
 
-        {
-          !isLoading
-          && diff?.map(
-            (node: any, index: number) => <DataDiffNode key={index} node={node} />
-          )
-        }
-      </div>
+            <div className="bg-white p-6 flex">
+              <Filters fields={fields} onSubmit={handleSubmit} />
+            </div>
+
+            <div>
+
+              {
+                diff?.map(
+                  (node: any, index: number) => <DataDiffNode key={index} node={node} />
+                )
+              }
+            </div>
+          </>
+        )
+      }
+
     </>
   );
 };

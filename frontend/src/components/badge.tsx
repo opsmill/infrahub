@@ -13,35 +13,53 @@ const DEFAULT_CLASS = `
   flex text-sm font-medium mr-2 px-2.5 py-0.5 rounded
 `;
 
-const getClasseName = (type: BADGE_TYPES) => {
+const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
   switch(type) {
     case BADGE_TYPES.VALIDATE: {
-      return "bg-green-600 text-gray-50";
+      return `
+        bg-green-600 text-gray-50
+        ${onClick ? "cursor-pointer hover:bg-green-400" : ""}
+      `;
     }
     case BADGE_TYPES.CANCEL: {
-      return "bg-red-600 text-gray-50";
+      return `
+        bg-red-600 text-gray-50
+        ${onClick ? "cursor-pointer hovebg-red-400:" : ""}
+      `;
     }
     case BADGE_TYPES.WARNING: {
-      return "bg-yellow-400 text-gray-800";
+      return `
+        bg-yellow-400 text-gray-800
+        ${onClick ? "cursor-pointer hover:bg-yellow-200" : ""}
+      `;
     }
     default: {
-      return "bg-gray-100 text-gray-900";
+      return `
+        bg-gray-100 text-gray-900
+        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+      `;
     }
   }
 };
 
 export const Badge = (props: any) => {
-  const { type, className, children, onDelete, value} = props;
+  const { type, className, children, onDelete, value, onClick} = props;
 
-  const customClassName = getClasseName(type);
+  const customClassName = getClasseName(type, onClick);
 
   const handleClick = (event: any) => {
     event.stopPropagation();
     event.preventDefault();
 
-    if (!onDelete || !value) return;
+    if (onClick) {
+      return onClick(value);
+    }
 
-    return onDelete(value);
+    if (onDelete && value) {
+      return onDelete(value);
+    }
+
+    return;
   };
 
   return (
@@ -52,6 +70,7 @@ export const Badge = (props: any) => {
           customClassName,
           className,
           onDelete ? "cursor-pointer" : ""
+
         )
       }
       onClick={handleClick}

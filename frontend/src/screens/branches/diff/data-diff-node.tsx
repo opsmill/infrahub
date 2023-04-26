@@ -4,8 +4,8 @@ import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttribute } from "./data-diff-attribute";
 import { getObjectUrl } from "../../../utils/objects";
-import { Link } from "../../../components/link";
 import { constructPath } from "../../../utils/fetch";
+import { Tooltip } from "../../../components/tooltip";
 
 export type tDataDiffNodeAttributePropertyValue = {
   new: string;
@@ -72,9 +72,20 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         {action?.toUpperCase()}
       </Badge>
 
-      <Badge className="mr-2">
-        {kind}
-      </Badge>
+      <Tooltip message={"Link to the object"}>
+        <Badge
+          className="mr-2"
+          onClick={
+            () => {
+              console.log("OK");
+              navigate(constructPath(getObjectUrl({ kind, id, branch: branchname })));
+            }
+          }
+        >
+          {kind}
+        </Badge>
+      </Tooltip>
+
 
       <span className="mr-2">
         {display_label}
@@ -86,18 +97,18 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           <DateDisplay date={changed_at} hideDefault />
         )
       }
+
+      {/* <div className="flex font-normal">
+        <Link onClick={() => navigate(constructPath(getObjectUrl({ kind, id, branch: branchname })))}>
+          ID: {id}
+        </Link>
+      </div> */}
     </div>
   );
 
   return (
     <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
       <Accordion title={title}>
-        <div className="m-4 flex">
-          <Link onClick={() => navigate(constructPath(getObjectUrl({ kind, id, branch: branchname })))}>
-          ID: {id}
-          </Link>
-        </div>
-
         <div>
           {
             attributes

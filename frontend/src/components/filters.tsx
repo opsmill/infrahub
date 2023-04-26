@@ -22,7 +22,7 @@ export const Filters = ({ fields, onSubmit }: FormProps) => {
     <div>
       <form className="flex-1" onSubmit={handleSubmit(onSubmit)}>
         <FormProvider {...formMethods}>
-          <div className="flex">
+          <div className="flex mb-4">
             {
               fields
               .map(
@@ -32,6 +32,13 @@ export const Filters = ({ fields, onSubmit }: FormProps) => {
               )
             }
           </div>
+
+          <Button
+            disabled
+            className="mr-2"
+          >
+            Clear all
+          </Button>
 
           <Button type="submit">
             Validate
