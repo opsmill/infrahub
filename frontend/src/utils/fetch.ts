@@ -23,14 +23,19 @@ export const constructPath = (path: string) => {
   .from(searchParams)
   .filter(
     ([k, v]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
+  )
+  .filter(
+    ([k, v]) => !path.includes(k) // If a QSP is already in the path, then we don't override it
   );
 
   // Construct the new params as "?key=value&..."
-  const newParams = params
-  .reduce(
-    (acc, [k, v], index) => `${acc}${k}=${v}${index === params.length -1 ? "" : "&"}`
-    , "?"
-  );
+  const newParams = params.length
+    ? params
+    .reduce(
+      (acc, [k, v], index) => `${acc}${k}=${v}${index === params.length -1 ? "" : "&"}`
+      , "?"
+    )
+    : "";
 
   return `${path}${newParams}`;
 };
