@@ -22,12 +22,14 @@
 
 /** Classes for the displayed toast **/
 .Toastify__toast {
-  padding: 0;
+  padding: 0 !important;
+  min-height: initial !important;
 }
 .Toastify__toast--rtl {
 }
 .Toastify__toast-body {
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /** Used to position the icon **/

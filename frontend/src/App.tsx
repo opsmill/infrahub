@@ -3,7 +3,9 @@ import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
+
 import { graphQLClient } from "./graphql/graphqlClient";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
@@ -163,15 +165,24 @@ function App() {
     <>
       <Routes>
         <Route path="/" element={<Layout />}>
-          {MAIN_ROUTES.map((route) => (
-            <Route index key={route.path} path={route.path} element={route.element} />
-          ))}
-          {CUSTOM_COMPONENT_ROUTES.map((route) => (
-            <Route index key={route.path} path={route.path} element={route.element} />
-          ))}
+          {
+            MAIN_ROUTES.map(
+              (route) => (
+                <Route index key={route.path} path={route.path} element={route.element} />
+              )
+            )
+          }
+
+          {
+            CUSTOM_COMPONENT_ROUTES.map(
+              (route) => (
+                <Route index key={route.path} path={route.path} element={route.element} />
+              )
+            )
+          }
         </Route>
       </Routes>
-      <ToastContainer closeOnClick={false} newestOnTop position="bottom-right" />
+      <ToastContainer autoClose={false} closeOnClick={false} newestOnTop position="bottom-right" />
     </>
   );
 }
