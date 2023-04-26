@@ -9,8 +9,6 @@ import { Tooltip } from "../../components/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { DateDisplay } from "../../components/date-display";
 import { constructPath } from "../../utils/fetch";
-import { toast } from "react-toastify";
-import { Alert } from "../../components/alert";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
@@ -24,8 +22,6 @@ export const BranchesItems = () => {
     ...storedBranches.filter(b => b.name === "main"),
     ...sortedBranches
   ];
-
-  toast(<Alert message="OK" />);
 
   return (
     <ul className="grid gap-6 grid-cols-1 p-6">
