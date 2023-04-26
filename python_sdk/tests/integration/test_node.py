@@ -173,7 +173,7 @@ class TestInfrahubNode:
         assert node.id is not None
 
         node.name.value = "query021"  # type: ignore[attr-defined]
-        node.repository = repo99
+        node.repository = repo99  # type: ignore[attr-defined]
         node.tags.add(tag_green.id)  # type: ignore[attr-defined]
         node.tags.remove(tag_red.id)  # type: ignore[attr-defined]
         await node.save()

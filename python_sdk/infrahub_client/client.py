@@ -81,8 +81,6 @@ class BaseClient:
         self.headers = {"content-type": "application/json"}
         self.max_concurrent_execution = max_concurrent_execution
 
-        self.store = None
-
         if test_client:
             self.address = ""
 
@@ -153,7 +151,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         obj = InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
 
-        if self.internal_store:
+        if self.internal_store and obj.id:
             self.store.set(key=obj.id, node=obj)
 
         return obj
@@ -184,7 +182,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         if self.internal_store:
             for node in nodes:
-                self.store.set(key=node.id, node=node)
+                if node.id:
+                    self.store.set(key=node.id, node=node)
         return nodes
 
     async def filters(
@@ -212,7 +211,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         if self.internal_store:
             for node in nodes:
-                self.store.set(key=node.id, node=node)
+                if node.id:
+                    self.store.set(key=node.id, node=node)
         return nodes
 
     async def execute_graphql(  # pylint: disable=too-many-branches
@@ -698,7 +698,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         if self.internal_store:
             for node in nodes:
-                self.store.set(key=node.id, node=node)
+                if node.id:
+                    self.store.set(key=node.id, node=node)
         return nodes
 
     def create(
@@ -900,7 +901,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         if self.internal_store:
             for node in nodes:
-                self.store.set(key=node.id, node=node)
+                if node.id:
+                    self.store.set(key=node.id, node=node)
         return nodes
 
     def get(
@@ -939,7 +941,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         obj = InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
 
-        if self.internal_store:
+        if self.internal_store and obj.id:
             self.store.set(key=obj.id, node=obj)
 
         return obj

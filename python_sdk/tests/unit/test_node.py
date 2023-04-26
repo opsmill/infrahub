@@ -95,7 +95,7 @@ async def test_init_node_data_graphql(client, location_schema, location_data01, 
 
     assert node.name.value == "DFW"
     assert node.name.is_protected is True
-    assert node.description.value == None
+    assert node.description.value is None
     assert node.type.value == "SITE"
 
     assert isinstance(node.tags, RelationshipManagerBase)
@@ -325,16 +325,14 @@ async def test_update_input_data__with_relationships_01(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_update_input_data_empty_relationship(
-    client, location_schema, location_data01, tag_schema, tag_blue_data, tag_green_data, client_type
+    client, location_schema, location_data01, tag_schema, tag_blue_data, client_type
 ):
     if client_type == "standard":
         location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
         tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
 
     else:
         location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data)
         tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
 
     location.tags.remove(tag_blue)
