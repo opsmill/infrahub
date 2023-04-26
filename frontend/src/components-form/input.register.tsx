@@ -22,6 +22,7 @@ export const OpsInputRegister = (props: Props) => {
 
   return (
     <OpsInput
+      type={config && config.valueAsNumber ? "number" : "text"}
       label={label}
       value={value}
       onChange={(value) => setValue(inputRegister.name, value)}
