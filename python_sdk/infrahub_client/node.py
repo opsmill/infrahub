@@ -90,12 +90,12 @@ class RelatedNodeBase:
         self._properties_object = PROPERTIES_OBJECT
         self._properties = self._properties_flag + self._properties_object
 
-        self._peer: Optional[InfrahubNodeBase] = None
+        self._peer = None
         self._id: Optional[str] = None
         self._display_label: Optional[str] = None
         self._typename: Optional[str] = None
 
-        if isinstance(data, InfrahubNodeBase):
+        if isinstance(data, (InfrahubNode, InfrahubNodeSync)):
             self._peer = data
 
             for prop in self._properties:
@@ -147,15 +147,6 @@ class RelatedNodeBase:
 
         return data
 
-    def _get(self):  # type: ignore[no-untyped-def]
-        if self._peer:
-            return self._peer
-
-        if self.id and self.typename and self._client.internal_store:
-            return self._client.store.get(key=self.id, kind=self.typename)
-
-        raise NodeNotFound(branch_name=self._branch, node_type=self.schema.peer, identifier=self.id)
-
 
 class RelatedNode(RelatedNodeBase):
     def __init__(
@@ -180,7 +171,16 @@ class RelatedNode(RelatedNodeBase):
         return self.get()
 
     def get(self) -> InfrahubNode:
-        return self._get()
+        if self._peer:
+            return self._peer  # type: ignore[return-value]
+
+        if not self.id:
+            raise ValueError("Node id but be defined to query it.")
+
+        if self.id and self.typename:
+            return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+
+        raise NodeNotFound(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
 
 class RelatedNodeSync(RelatedNodeBase):
@@ -206,11 +206,20 @@ class RelatedNodeSync(RelatedNodeBase):
         return self.get()
 
     def get(self) -> InfrahubNodeSync:
-        return self._get()
+        if self._peer:
+            return self._peer  # type: ignore[return-value]
+
+        if not self.id:
+            raise ValueError("Node id but be defined to query it.")
+
+        if self.id and self.typename:
+            return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+
+        raise NodeNotFound(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
 
 class RelationshipManagerBase:
-    def __init__(self, name: str, branch: str, schema: RelationshipSchema, data: Union[Any, dict]):
+    def __init__(self, name: str, branch: str, schema: RelationshipSchema):
         self.name = name
         self.schema = schema
         self.branch = branch
@@ -218,6 +227,8 @@ class RelationshipManagerBase:
         self._properties_flag = PROPERTIES_FLAG
         self._properties_object = PROPERTIES_OBJECT
         self._properties = self._properties_flag + self._properties_object
+
+        self.peers: List[Union[RelatedNode, RelatedNodeSync]] = []
 
     @property
     def peer_ids(self) -> List[str]:
@@ -243,9 +254,8 @@ class RelationshipManager(RelationshipManagerBase):
         self, name: str, client: InfrahubClient, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
     ):
         self.client = client
-        self.peers: List[RelatedNode] = []
 
-        super().__init__(name=name, schema=schema, branch=branch, data=data)
+        super().__init__(name=name, schema=schema, branch=branch)
 
         if data is None:
             return
@@ -258,7 +268,7 @@ class RelationshipManager(RelationshipManagerBase):
 
     async def fetch(self) -> None:
         for peer in self.peers:
-            await peer.fetch()
+            await peer.fetch()  # type: ignore[misc]
 
     def add(self, data: Union[str, RelatedNode, dict]) -> None:
         """Add a new peer to this relationship."""
@@ -283,9 +293,8 @@ class RelationshipManagerSync(RelationshipManagerBase):
         self, name: str, client: InfrahubClientSync, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
     ):
         self.client = client
-        self.peers: List[RelatedNodeSync] = []
 
-        super().__init__(name=name, schema=schema, branch=branch, data=data)
+        super().__init__(name=name, schema=schema, branch=branch)
 
         if data is None:
             return
@@ -468,7 +477,7 @@ class InfrahubNode(InfrahubNodeBase):
         else:
             await self._update(at=at)
 
-        if self._client.internal_store and self.id:
+        if self.id:
             self._client.store.set(key=self.id, node=self)
 
     async def _create(self, at: Timestamp) -> None:

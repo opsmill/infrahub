@@ -16,6 +16,9 @@ class NodeStoreBase:
     we need to save them in order to reuse them laterto associate them with another node for example.
     """
 
+    def __init__(self) -> None:
+        self._store: Dict[str, Dict] = defaultdict(dict)
+
     def _set(self, key: str, node) -> None:  # type: ignore[no-untyped-def]
         if "InfrahubNode" not in node.__class__.__name__:
             raise TypeError(f"'node' must be of type InfrahubNode, not {type(node)!r}")
@@ -52,9 +55,6 @@ class NodeStoreBase:
 
 
 class NodeStore(NodeStoreBase):
-    def __init__(self) -> None:
-        self._store: Dict[str, Dict[str, InfrahubNode]] = defaultdict(dict)
-
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
 
@@ -63,9 +63,6 @@ class NodeStore(NodeStoreBase):
 
 
 class NodeStoreSync(NodeStoreBase):
-    def __init__(self) -> None:
-        self._store: Dict[str, Dict[str, InfrahubNodeSync]] = defaultdict(dict)
-
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNodeSync]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
 
