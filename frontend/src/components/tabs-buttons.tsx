@@ -1,7 +1,6 @@
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "./button";
 import { QSP } from "../config/qsp";
-import { classNames } from "../utils/common";
 
 type Tab = {
   name?: string;
@@ -14,18 +13,6 @@ type TabsProps = {
   qsp?: string,
 }
 
-const getClassName = (firstItem: boolean, lastItem: boolean): string => {
-  if (firstItem) {
-    return "rounded-l-md";
-  }
-
-  if (lastItem) {
-    return "rounded-r-md";
-  }
-
-  return "rounded-none";
-};
-
 export const TabsButtons = (props: TabsProps) => {
   const { tabs, rightItems, qsp} = props;
 
@@ -33,7 +20,7 @@ export const TabsButtons = (props: TabsProps) => {
 
   return (
     <div className="bg-white flex items-center">
-      <div className="isolate inline-flex rounded-md shadow-sm ring-1 ring-gray-300 m-4">
+      <div className="isolate inline-flex rounded-md shadow-sm border border-gray-300 m-4 overflow-hidden">
         {
           tabs
           .map(
@@ -46,12 +33,7 @@ export const TabsButtons = (props: TabsProps) => {
                     ? BUTTON_TYPES.ACTIVE
                     : undefined
                 }
-                className={
-                  classNames(
-                    "ring-0 px-4 py-2",
-                    getClassName(index === 0, index === tabs.length -1)
-                  )
-                }
+                className={"border-0 px-4 py-2 rounded-none"}
               >
                 {tab.label}
               </Button>
