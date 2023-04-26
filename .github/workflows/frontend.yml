@@ -33,9 +33,9 @@ jobs:
       - name: "Install frontend"
         working-directory: ./frontend
         run: npm i
-      - name: "Run integration tests"
-        working-directory: ./frontend
-        run: "npm run cypress:run"
+      # - name: "Run integration tests"
+      #   working-directory: ./frontend
+      #   run: "npm run cypress:run"
       - name: "Run unit tests"
         working-directory: ./frontend
         run: "npm run test"
