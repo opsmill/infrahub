@@ -9,17 +9,12 @@ from aio_pika import IncomingMessage
 from rich.logging import RichHandler
 
 import infrahub.config as config
-from infrahub.git import (
-    handle_git_rpc_message,
-    handle_message,
-    initialize_repositories_directory,
-)
+from infrahub.git import handle_message, initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import (
     InfrahubMessage,
     InfrahubRPCResponse,
-    MessageType,
     RPCStatusCode,
 )
 from infrahub_client import InfrahubClient
@@ -64,11 +59,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                         rpc = InfrahubMessage.convert(message)
                         log.debug(f"Received RPC message {rpc.type}")
 
-                        if rpc.type == MessageType.GIT:
-                            response = await handle_git_rpc_message(message=rpc, client=client)
-
-                        else:
-                            response = await handle_message(message=rpc, client=client)
+                        response = await handle_message(message=rpc, client=client)
 
                         log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
                     except Exception as exc:  # pylint: disable=broad-except
