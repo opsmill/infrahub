@@ -42,6 +42,7 @@ from infrahub_client.queries import (
     QUERY_ALL_TRANSFORM_PYTHON,
 )
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
+from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -63,6 +64,7 @@ class BaseClient:
         log: Optional[Logger] = None,
         test_client: Optional[TestClient] = None,
         default_branch: str = "main",
+        internal_store: bool = True,
         insert_tracker: bool = False,
         max_concurrent_execution: int = 5,
     ):
@@ -74,9 +76,12 @@ class BaseClient:
         self.retry_delay = retry_delay
         self.default_branch = default_branch
         self.log = log or logging.getLogger("infrahub_client")
+        self.internal_store = internal_store
         self.insert_tracker = insert_tracker
         self.headers = {"content-type": "application/json"}
         self.max_concurrent_execution = max_concurrent_execution
+
+        self.store = None
 
         if test_client:
             self.address = ""
@@ -93,6 +98,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchema(self)
         self.branch = InfrahubBranchManager(self)
+        if self.internal_store:
+            self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
 
     @classmethod
@@ -144,7 +151,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if len(response[schema.name]) > 1:
             raise IndexError("More than 1 node returned")
 
-        return InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+        obj = InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+
+        if self.internal_store:
+            self.store.set(key=obj.id, node=obj)
+
+        return obj
 
     async def all(self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
         """Retrieve all nodes of a given kind
@@ -167,7 +179,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         response = await self.execute_graphql(
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
         )
-        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+        nodes = [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+        if self.internal_store:
+            for node in nodes:
+                self.store.set(key=node.id, node=node)
+        return nodes
 
     async def filters(
         self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs: Any
@@ -190,7 +208,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-filters"
         )
 
-        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+        nodes = [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+        if self.internal_store:
+            for node in nodes:
+                self.store.set(key=node.id, node=node)
+        return nodes
 
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
@@ -640,6 +663,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchemaSync(self)
         self.branch = InfrahubBranchManagerSync(self)
+        if self.internal_store:
+            self.store = NodeStoreSync()
 
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
@@ -666,9 +691,15 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         response = self.execute_graphql(
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
         )
-        return [
+
+        nodes = [
             InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
         ]
+
+        if self.internal_store:
+            for node in nodes:
+                self.store.set(key=node.id, node=node)
+        return nodes
 
     def create(
         self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs: Any
@@ -863,9 +894,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-filters"
         )
 
-        return [
+        nodes = [
             InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
         ]
+
+        if self.internal_store:
+            for node in nodes:
+                self.store.set(key=node.id, node=node)
+        return nodes
 
     def get(
         self,
@@ -901,7 +937,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if len(response[schema.name]) > 1:
             raise IndexError("More than 1 node returned")
 
-        return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+        obj = InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+
+        if self.internal_store:
+            self.store.set(key=obj.id, node=obj)
+
+        return obj
 
     def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
         raise NotImplementedError(
