@@ -12,6 +12,7 @@ import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import rebaseBranch from "../../graphql/mutations/branches/rebaseBranch";
 import validateBranch from "../../graphql/mutations/branches/validateBranch";
 import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
+import { constructPath } from "../../utils/fetch";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -65,6 +66,7 @@ export const BranchDetails = () => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />);
     } catch (error: any) {
+      console.log("error: ", error);
       setDetailsContent(error);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
@@ -169,14 +171,20 @@ export const BranchDetails = () => {
 
                   <Button
                     className="mr-0 md:mr-3"
-                    onClick={() => branchAction({
-                      successMessage: "Branch deleted successfuly!",
-                      errorMessage: "An error occured while deleting the branch",
-                      request: deleteBranch,
-                      options: {
-                        name: branch.name
+                    onClick={
+                      async () => {
+                        await branchAction({
+                          successMessage: "Branch deleted successfuly!",
+                          errorMessage: "An error occured while deleting the branch",
+                          request: deleteBranch,
+                          options: {
+                            name: branch.name
+                          }
+                        });
+
+                        navigate(constructPath("/branches"));
                       }
-                    })}
+                    }
                     buttonType={BUTTON_TYPES.CANCEL}
                     disabled={branch.is_default}
                   >
