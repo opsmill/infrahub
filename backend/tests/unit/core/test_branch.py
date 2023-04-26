@@ -833,3 +833,13 @@ async def test_delete_branch(
 
     assert pre_delete
     assert not post_delete
+
+
+async def test_create_branch(session, empty_database):
+    """Validate that creating a branch with quotes in descriptions work and are properly handled with params"""
+    branch_name = "branching-out"
+    description = "It's supported with quotes"
+    await create_branch(branch_name=branch_name, session=session, description=description)
+    branch = await Branch.get_by_name(name=branch_name, session=session)
+    assert branch.name == branch_name
+    assert branch.description == description

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import keyword
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
@@ -399,6 +400,13 @@ class BaseNodeSchema(BaseSchemaModel):
                 raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
 
         return fields
+
+    @validator("name")
+    def name_is_not_keyword(cls, value: str) -> str:
+        if keyword.iskeyword(value):
+            raise ValueError(f"Name can not be set to a reserved keyword '{value}' is not allowed.")
+
+        return value
 
 
 class GenericSchema(BaseNodeSchema):

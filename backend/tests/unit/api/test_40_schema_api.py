@@ -162,6 +162,21 @@ async def test_schema_load_endpoint_not_valid_simple_04(
     assert response.status_code == 422
 
 
+async def test_schema_load_endpoint_not_valid_simple_05(
+    session,
+    client: TestClient,
+    client_headers,
+    default_branch: Branch,
+    register_core_models_schema,
+    schema_file_not_valid_simple_05,
+):
+    with client:
+        response = client.post("/schema/load", headers=client_headers, json=schema_file_not_valid_simple_05)
+
+    assert response.status_code == 422
+    response.json()["detail"][0]["msg"] == "Name can not be set to a reserved keyword 'class' is not allowed."
+
+
 async def test_schema_load_endpoint_not_valid_with_generics_02(
     session,
     client: TestClient,

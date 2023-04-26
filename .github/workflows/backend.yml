@@ -50,8 +50,6 @@ jobs:
         run: "poetry run invoke backend.flake8"
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
-      - name: "Await healthy containers"
-        run: "poetry run invoke demo.wait-healthy"
       - name: "Unit Tests"
         run: "poetry run pytest --cov=infrahub backend/tests/unit"
       - name: "Coveralls : Unit Tests"

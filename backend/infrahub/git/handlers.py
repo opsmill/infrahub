@@ -40,6 +40,12 @@ async def handle_not_found(  # pylint: disable=unused-argument
     return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
 
 
+async def handle_not_implemented(  # pylint: disable=unused-argument
+    message: InfrahubRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+
+
 async def handle_check_message_action_python(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
@@ -59,6 +65,50 @@ async def handle_check_message_action_python(message: InfrahubCheckRPC, client: 
 
     except (CheckError, FileNotFound) as exc:
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
+
+
+async def handle_git_message_action_branch_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+    async with lock_registry.get(message.repository_name):
+        try:
+            await repo.create_branch_in_git(branch_name=message.params["branch_name"])
+        except RepositoryError as exc:
+            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
+
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+
+
+async def handle_git_message_action_diff(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+    files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
+        first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
+    )
+    return InfrahubRPCResponse(
+        status=RPCStatusCode.OK.value,
+        response={"files_changed": files_changed, "files_added": files_added, "files_removed": files_removed},
+    )
+
+
+async def handle_git_message_action_merge(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+    async with lock_registry.get(message.repository_name):
+        await repo.merge(source_branch=message.params["branch_name"], dest_branch=config.SETTINGS.main.default_branch)
+        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+
+
+async def handle_git_message_action_repo_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+    async with lock_registry.get(message.repository_name):
+        try:
+            repo = await InfrahubRepository.new(
+                id=message.repository_id, name=message.repository_name, location=message.location, client=client
+            )
+            await repo.import_objects_from_files(branch_name=repo.default_branch_name)
+            await repo.sync()
+
+        except RepositoryError as exc:
+            return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
+
+        return InfrahubRPCResponse(status=RPCStatusCode.CREATED.value)
 
 
 async def handle_transform_message_action_jinja2(
@@ -104,61 +154,17 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
 ) -> InfrahubRPCResponse:
     LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
 
-    if message.action == GitMessageAction.REPO_ADD.value:
-        async with lock_registry.get(message.repository_name):
-            try:
-                repo = await InfrahubRepository.new(
-                    id=message.repository_id, name=message.repository_name, location=message.location, client=client
-                )
-                await repo.import_objects_from_files(branch_name=repo.default_branch_name)
-                await repo.sync()
-
-            except RepositoryError as exc:
-                return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
-
-            return InfrahubRPCResponse(status=RPCStatusCode.CREATED.value)
-
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-
-    if message.action == GitMessageAction.BRANCH_ADD.value:
-        async with lock_registry.get(message.repository_name):
-            try:
-                await repo.create_branch_in_git(branch_name=message.params["branch_name"])
-            except RepositoryError as exc:
-                return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
-
-            return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
-
-    elif message.action == GitMessageAction.DIFF.value:
-        # Calculate the diff between 2 timestamps / branches
-        files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
-            first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
-        )
-        return InfrahubRPCResponse(
-            status=RPCStatusCode.OK.value,
-            response={"files_changed": files_changed, "files_added": files_added, "files_removed": files_removed},
-        )
-
-    elif message.action == GitMessageAction.MERGE.value:
-        async with lock_registry.get(message.repository_name):
-            await repo.merge(
-                source_branch=message.params["branch_name"], dest_branch=config.SETTINGS.main.default_branch
-            )
-            return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
-
-    elif message.action == GitMessageAction.REBASE.value:
-        # async with lock_registry.get(message.repository_name):
-        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
-
-    elif message.action == GitMessageAction.PUSH.value:
-        # async with lock_registry.get(message.repository_name):
-        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
-
-    elif message.action == GitMessageAction.PULL.value:
-        # async with lock_registry.get(message.repository_name):
-        return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
-
-    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
+    handler_map = {
+        GitMessageAction.REPO_ADD.value: handle_git_message_action_repo_add,
+        GitMessageAction.BRANCH_ADD.value: handle_git_message_action_branch_add,
+        GitMessageAction.DIFF.value: handle_git_message_action_diff,
+        GitMessageAction.MERGE.value: handle_git_message_action_merge,
+        GitMessageAction.REBASE.value: handle_not_implemented,
+        GitMessageAction.PUSH.value: handle_not_implemented,
+        GitMessageAction.PULL.value: handle_not_implemented,
+    }
+    handler = handler_map.get(message.action) or handle_bad_request
+    return await handler(message=message, client=client)
 
 
 async def handle_git_transform_message(message: InfrahubTransformRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -188,6 +194,7 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
 async def handle_message(message: InfrahubRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     message_type_map = {
         MessageType.CHECK: handle_git_check_message,
+        MessageType.GIT: handle_git_rpc_message,
         MessageType.TRANSFORMATION: handle_git_transform_message,
     }
     handler = message_type_map.get(message.type) or handle_not_found
