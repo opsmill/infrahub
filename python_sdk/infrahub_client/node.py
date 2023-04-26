@@ -47,8 +47,10 @@ class Attribute:
     def _generate_input_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {}
 
-        if self.value is not None:
-            data["value"] = self.value
+        if self.value is None:
+            return data
+
+        data["value"] = self.value
 
         for prop_name in self._properties_flag:
             if getattr(self, prop_name) is not None:
@@ -84,13 +86,17 @@ class RelatedNodeBase:
         self._properties_object = PROPERTIES_OBJECT
         self._properties = self._properties_flag + self._properties_object
 
-        self._peer: Optional[InfrahubNode] = None
+        self._peer: Optional[InfrahubNodeBase] = None
         self._id: Optional[str] = None
         self._display_label: Optional[str] = None
         self._typename: Optional[str] = None
 
-        if isinstance(data, InfrahubNode):
+        if isinstance(data, InfrahubNodeBase):
             self._peer = data
+
+            for prop in self._properties:
+                setattr(self, prop, None)
+
         elif not isinstance(data, dict):
             data = {"id": data}
 
@@ -100,12 +106,12 @@ class RelatedNodeBase:
             self._typename = data.get("__typename", None)
             self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
 
-        for prop in self._properties:
-            if value := data.get(prop, None):
-                setattr(self, prop, value)
-                continue
+            for prop in self._properties:
+                if value := data.get(prop, None):
+                    setattr(self, prop, value)
+                    continue
 
-            setattr(self, prop, data.get(f"_relation__{prop}", None))
+                setattr(self, prop, data.get(f"_relation__{prop}", None))
 
     @property
     def id(self):
@@ -191,17 +197,26 @@ class RelationshipManagerBase:
         for item in data:
             self.peers.append(self._related_node_class(name=name, client=client, schema=schema, data=item))
 
+    @property
+    def peer_ids(self) -> List[str]:
+        return [peer.id for peer in self.peers if peer.id]
+
     def add(self, data: Union[str, RelatedNodeBase, dict]) -> None:
-        """Add a new peer to this relationship.
-        Need to check if the peer is already present
-        """
+        """Add a new peer to this relationship."""
+        new_node = self._related_node_class(schema=self.schema, client=self.client, data=data)
 
-        # TODO add some check to ensure
-        # that we are not adding a node that already exist
-        self.peers.append(self._related_node_class(schema=self.schema, data=data))
+        if new_node.id and new_node.id not in self.peer_ids:
+            self.peers.append(self._related_node_class(schema=self.schema, client=self.client, data=data))
 
-    def remove(self, data: Any) -> None:
-        pass
+    def remove(self, data: Union[str, RelatedNodeBase, dict]) -> None:
+        node_to_remove = self._related_node_class(schema=self.schema, client=self.client, data=data)
+
+        if node_to_remove.id and node_to_remove.id in self.peer_ids:
+            idx = self.peer_ids.index(node_to_remove.id)
+            if self.peers[idx].id != node_to_remove.id:
+                raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
+
+            self.peers.pop(idx)
 
     def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
@@ -305,12 +320,21 @@ class InfrahubNodeBase:
         data = {}
         for item_name in self._attributes + self._relationships:
             item = getattr(self, item_name)
-            if item is None:
+            if (
+                item is None
+                and item_name in self._relationships
+                and self._schema.get_relationship(item_name).cardinality == "one"
+            ):
+                data[item_name] = None
+                continue
+            elif item is None:
                 continue
 
             item_data = item._generate_input_data()
             if item_data:
                 data[item_name] = item_data
+            elif item_name in self._relationships and self._schema.get_relationship(item_name).cardinality == "many":
+                data[item_name] = []
 
         return {"data": data}
 
@@ -490,10 +514,10 @@ def generate_relationship_property(client: BaseClient, name: str, node_class: ty
 
     @prop.setter
     def prop(self, value):  # type: ignore
-        if isinstance(value, RelatedNode) or value is None:
+        if isinstance(value, RelatedNodeBase) or value is None:
             setattr(self, internal_name, value)
         else:
             schema = [rel for rel in self._schema.relationships if rel.name == external_name][0]
-            setattr(self, internal_name, RelatedNode(name=external_name, client=client, schema=schema, data=value))
+            setattr(self, internal_name, node_class(name=external_name, client=client, schema=schema, data=value))
 
     return prop

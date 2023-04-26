@@ -92,6 +92,14 @@ async def tag_red(session: AsyncSession) -> Node:
 
 
 @pytest.fixture
+async def tag_green(session: AsyncSession) -> Node:
+    obj = await Node.init(schema="Tag", session=session)
+    await obj.new(session=session, name="Green")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
 async def first_account(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="Account")
     await obj.new(session=session, name="First Account", type="Git")
@@ -127,5 +135,19 @@ async def repo99(session: AsyncSession) -> Node:
 async def gqlquery01(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="GraphQLQuery")
     await obj.new(session=session, name="query01", query="query { device { name { value }}}")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def gqlquery02(session: AsyncSession, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(session=session, schema="GraphQLQuery")
+    await obj.new(
+        session=session,
+        name="query02",
+        query="query { device { name { value }}}",
+        repository=repo01,
+        tags=[tag_blue, tag_red],
+    )
     await obj.save(session=session)
     return obj

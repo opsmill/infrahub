@@ -47,7 +47,7 @@ async def test_init_node_no_data(client, location_schema, client_type):
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_init_node_data(client, location_schema, client_type):
+async def test_init_node_data_user(client, location_schema, client_type):
     data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
@@ -61,7 +61,7 @@ async def test_init_node_data(client, location_schema, client_type):
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_init_node_data_with_relationships(client, location_schema, client_type):
+async def test_init_node_data_user_with_relationships(client, location_schema, client_type):
     data = {
         "name": {"value": "JFK1"},
         "description": {"value": "JFK Airport"},
@@ -84,6 +84,25 @@ async def test_init_node_data_with_relationships(client, location_schema, client
     assert isinstance(node.tags.peers[0], RelatedNodeBase)
     assert isinstance(node.primary_tag, RelatedNodeBase)
     assert node.primary_tag.id == "pppppppp"
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_init_node_data_graphql(client, location_schema, location_data01, client_type):
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+
+    assert node.name.value == "DFW"
+    assert node.name.is_protected is True
+    assert node.description.value == None
+    assert node.type.value == "SITE"
+
+    assert isinstance(node.tags, RelationshipManagerBase)
+    assert len(node.tags.peers) == 1
+    assert isinstance(node.tags.peers[0], RelatedNodeBase)
+    assert isinstance(node.primary_tag, RelatedNodeBase)
+    assert node.primary_tag.id == "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -169,6 +188,8 @@ async def test_create_input_data(client, location_schema, client_type):
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
             "type": {"value": "SITE"},
+            "primary_tag": None,
+            "tags": [],
         }
     }
 
@@ -274,25 +295,56 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
     }
 
 
-# @pytest.mark.parametrize("client_type", client_types)
-# async def test_update_input_data__with_relationships_01(client, location_schema, client_type):
-#     data = {
-#         "name": {"value": "JFK1"},
-#         "description": {"value": "JFK Airport"},
-#         "type": {"value": "SITE"},
-#         "primary_tag": "pppppppp",
-#         "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
-#     }
-#     if client_type == "standard":
-#         node = InfrahubNode(client=client, schema=location_schema, data=data)
-#     else:
-#         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-#     assert node._generate_input_data() == {
-#         "data": {
-#             "name": {"value": "JFK1"},
-#             "description": {"value": "JFK Airport"},
-#             "type": {"value": "SITE"},
-#             "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
-#             "primary_tag": {"id": "pppppppp"},
-#         }
-#     }
+@pytest.mark.parametrize("client_type", client_types)
+async def test_update_input_data__with_relationships_01(
+    client, location_schema, location_data01, tag_schema, tag_blue_data, tag_green_data, client_type
+):
+    if client_type == "standard":
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+        tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+
+    else:
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+        tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+
+    location.primary_tag = tag_green_data
+    location.tags.add(tag_green)
+    location.tags.remove(tag_blue)
+
+    assert location._generate_input_data() == {
+        "data": {
+            "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
+            "primary_tag": {"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"},
+            "tags": [{"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"}],
+            "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
+        },
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_update_input_data_empty_relationship(
+    client, location_schema, location_data01, tag_schema, tag_blue_data, tag_green_data, client_type
+):
+    if client_type == "standard":
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+        tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+
+    else:
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+        tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+
+    location.tags.remove(tag_blue)
+    location.primary_tag = None
+
+    assert location._generate_input_data() == {
+        "data": {
+            "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
+            "primary_tag": None,
+            "tags": [],
+            "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
+        },
+    }

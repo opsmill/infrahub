@@ -158,3 +158,26 @@ class TestInfrahubNode:
         assert nodedb.name.value == "repo95"
         tags = await nodedb.tags.get(session=session)
         assert len(tags) == 2
+
+    async def test_node_update_2(
+        self,
+        session,
+        client: InfrahubClient,
+        init_db_base,
+        tag_green: Node,
+        tag_red: Node,
+        gqlquery02: Node,
+        repo99: Node,
+    ):
+        node = await client.get(kind="GraphQLQuery", name__value="query02")
+        assert node.id is not None
+
+        node.name.value = "query021"  # type: ignore[attr-defined]
+        node.repository = repo99
+        node.tags.add(tag_green.id)  # type: ignore[attr-defined]
+        node.tags.remove(tag_red.id)  # type: ignore[attr-defined]
+        await node.save()
+
+        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+        repodb = await nodedb.repository.get(session=session)
+        assert repodb.id == repo99.id
