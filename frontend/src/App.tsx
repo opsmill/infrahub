@@ -182,7 +182,7 @@ function App() {
           }
         </Route>
       </Routes>
-      <ToastContainer autoClose={false} closeOnClick={false} newestOnTop position="bottom-right" />
+      <ToastContainer closeOnClick={false} newestOnTop position="bottom-right" />
     </>
   );
 }
