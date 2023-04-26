@@ -20,7 +20,7 @@ export enum BUTTON_TYPES {
 // Get default class name and avoid certain class if needed (ex: no rounded button for tabs-button)
 const DEFAULT_CLASS = (className?: string) => `
   ${className?.includes("rounded") ? "" : "rounded-md"}
-  ${className?.includes("ring") ? "" : "ring-1 ring-inset ring-gray-300"}
+  ${className?.includes("border") ? "" : "border border-gray-300"}
   py-1.5 px-2.5
   inline-flex items-center gap-x-1.5
   text-sm font-semibold

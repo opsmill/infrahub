@@ -25,7 +25,7 @@ export const DatePicker = (props: any) => {
         calendarStartDay={1}
       />
 
-      <Button onClick={onClickNow} className="rounded-none rounded-r-md">
+      <Button onClick={onClickNow} className="rounded-none rounded-r-md border-t border-r border-b border-gray-300">
         Now
       </Button>
     </div>
