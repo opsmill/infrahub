@@ -320,14 +320,16 @@ class InfrahubNodeBase:
         data = {}
         for item_name in self._attributes + self._relationships:
             item = getattr(self, item_name)
-            if (
-                item is None
-                and item_name in self._relationships
-                and self._schema.get_relationship(item_name).cardinality == "one"
-            ):
-                data[item_name] = None
-                continue
-            elif item is None:
+            # BLOCKED by https://github.com/opsmill/infrahub/issues/330
+            # if (
+            #     item is None
+            #     and item_name in self._relationships
+            #     and self._schema.get_relationship(item_name).cardinality == "one"
+            # ):
+            #     data[item_name] = None
+            #     continue
+            # el
+            if item is None:
                 continue
 
             item_data = item._generate_input_data()

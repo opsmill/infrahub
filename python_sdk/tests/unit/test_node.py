@@ -188,7 +188,7 @@ async def test_create_input_data(client, location_schema, client_type):
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
             "type": {"value": "SITE"},
-            "primary_tag": None,
+            # "primary_tag": None,
             "tags": [],
         }
     }
@@ -343,7 +343,7 @@ async def test_update_input_data_empty_relationship(
     assert location._generate_input_data() == {
         "data": {
             "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
-            "primary_tag": None,
+            # "primary_tag": None,
             "tags": [],
             "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
         },
