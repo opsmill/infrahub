@@ -64,7 +64,6 @@ class BaseClient:
         log: Optional[Logger] = None,
         test_client: Optional[TestClient] = None,
         default_branch: str = "main",
-        internal_store: bool = True,
         insert_tracker: bool = False,
         max_concurrent_execution: int = 5,
     ):
@@ -76,7 +75,6 @@ class BaseClient:
         self.retry_delay = retry_delay
         self.default_branch = default_branch
         self.log = log or logging.getLogger("infrahub_client")
-        self.internal_store = internal_store
         self.insert_tracker = insert_tracker
         self.headers = {"content-type": "application/json"}
         self.max_concurrent_execution = max_concurrent_execution
@@ -96,8 +94,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchema(self)
         self.branch = InfrahubBranchManager(self)
-        if self.internal_store:
-            self.store = NodeStore()
+        self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
 
     @classmethod
@@ -121,6 +118,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        populate_store: bool = False,
         **kwargs: Any,
     ) -> InfrahubNode:
         branch = branch or self.default_branch
@@ -151,12 +149,18 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         obj = InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
 
-        if self.internal_store and obj.id:
+        if populate_store and obj.id:
             self.store.set(key=obj.id, node=obj)
 
         return obj
 
-    async def all(self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
+    async def all(
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        populate_store: bool = False,
+    ) -> List[InfrahubNode]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -180,14 +184,19 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         nodes = [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
 
-        if self.internal_store:
+        if populate_store:
             for node in nodes:
                 if node.id:
                     self.store.set(key=node.id, node=node)
         return nodes
 
     async def filters(
-        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs: Any
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        populate_store: bool = False,
+        **kwargs: Any,
     ) -> List[InfrahubNode]:
         schema = await self.schema.get(kind=kind)
 
@@ -209,7 +218,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         nodes = [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
 
-        if self.internal_store:
+        if populate_store:
             for node in nodes:
                 if node.id:
                     self.store.set(key=node.id, node=node)
@@ -663,14 +672,15 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchemaSync(self)
         self.branch = InfrahubBranchManagerSync(self)
-        if self.internal_store:
-            self.store = NodeStoreSync()
+        self.store = NodeStoreSync()
 
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
 
-    def all(self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNodeSync]:
+    def all(
+        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, populate_store: bool = False
+    ) -> List[InfrahubNodeSync]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -696,7 +706,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
         ]
 
-        if self.internal_store:
+        if populate_store:
             for node in nodes:
                 if node.id:
                     self.store.set(key=node.id, node=node)
@@ -875,7 +885,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         # TODO add a special method to execute mutation that will check if the method returned OK
 
     def filters(
-        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs: Any
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        populate_store: bool = False,
+        **kwargs: Any,
     ) -> List[InfrahubNodeSync]:
         schema = self.schema.get(kind=kind)
 
@@ -899,7 +914,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
         ]
 
-        if self.internal_store:
+        if populate_store:
             for node in nodes:
                 if node.id:
                     self.store.set(key=node.id, node=node)
@@ -911,6 +926,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        populate_store: bool = False,
         **kwargs: Any,
     ) -> InfrahubNodeSync:
         branch = branch or self.default_branch
@@ -941,7 +957,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         obj = InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
 
-        if self.internal_store and obj.id:
+        if populate_store and obj.id:
             self.store.set(key=obj.id, node=obj)
 
         return obj
