@@ -6,6 +6,8 @@ import { DataDiffAttribute } from "./data-diff-attribute";
 import { getObjectUrl } from "../../../utils/objects";
 import { constructPath } from "../../../utils/fetch";
 import { Tooltip } from "../../../components/tooltip";
+import { useAtom } from "jotai";
+import { schemaState } from "../../../state/atoms/schema.atom";
 
 export type tDataDiffNodeAttributePropertyValue = {
   new: string;
@@ -55,9 +57,6 @@ export const getBadgeType = (action?: string) => {
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { node } = props;
 
-  const { branchname } = useParams();
-  const navigate = useNavigate();
-
   const {
     id,
     display_label,
@@ -67,6 +66,11 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     attributes = [],
     relationships = []
   } = node;
+
+  const { branchname } = useParams();
+  const navigate = useNavigate();
+  const [schemaList] = useAtom(schemaState);
+  const schema = schemaList.filter((s) => s.kind === kind)[0];
 
   const title = (
     <div className="flex">
@@ -80,7 +84,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           onClick={
             () => {
               console.log("OK");
-              navigate(constructPath(getObjectUrl({ kind, id, branch: branchname })));
+              navigate(constructPath(getObjectUrl({ kind: schema.name, id, branch: branchname })));
             }
           }
         >
