@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { SelectOption } from "../components/select";
+import { FormFieldError } from "../screens/edit-form-hook/form";
+import { classNames } from "../utils/common";
 import getDropdownOptionsForRelatedPeers from "../utils/dropdownOptionsForRelatedPeers";
 import { OpsSelect } from "./select";
-import { SelectOption } from "../components/select";
 
 export interface iTwoStepDropdownData {
   parent: string;
@@ -13,10 +15,11 @@ interface Props {
   options: SelectOption[];
   value: iTwoStepDropdownData;
   onChange: (value: iTwoStepDropdownData) => void;
+  error?: FormFieldError;
 }
 
 export const OpsSelect2Step = (props: Props) => {
-  const { label, options, value } = props;
+  const { label, options, value, error } = props;
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
   const [selectedLeft, setSelectedLeft] = useState<SelectOption | null>(
     value.parent
@@ -60,14 +63,14 @@ export const OpsSelect2Step = (props: Props) => {
   }, [selectedLeft, setRightDropdownOptions]);
 
   return (
-    <div className="grid grid-cols-6">
+    <div className={classNames("grid grid-cols-6")}>
       <div className="sm:col-span-6">
         <label className="block text-sm font-medium leading-6 text-gray-900 capitalize">
           {label}
         </label>
       </div>
       <div className="sm:col-span-3 mr-2 mt-1">
-        <OpsSelect disabled={false} value={selectedLeft ? selectedLeft.id : value.parent} options={options.map(o => ({
+        <OpsSelect error={error} disabled={false} value={selectedLeft ? selectedLeft.id : value.parent} options={options.map(o => ({
           name: o.name,
           id: o.id,
         }))} label="" onChange={(e) => {
@@ -79,7 +82,7 @@ export const OpsSelect2Step = (props: Props) => {
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
         {!!selectedLeft && optionsRight.length > 0 && (
-          <OpsSelect disabled={false} value={selectedRight ? selectedRight.id : value.child} options={optionsRight.map(o => ({
+          <OpsSelect error={error} disabled={false} value={selectedRight ? selectedRight.id : value.child} options={optionsRight.map(o => ({
             name: o.name,
             id: o.id,
           }))} label=""

@@ -53,7 +53,7 @@ const getFormStructureForCreateEdit = (
   .forEach((relationship) => {
     let options: SelectOption[] = [];
 
-    const isInherited = relationship.inherited;
+    const isInherited = generics.find(g => g.kind === relationship.peer);
 
     if (!isInherited && dropdownOptions[schemaKindNameMap[relationship.peer]]) {
       options = dropdownOptions[schemaKindNameMap[relationship.peer]].map(
@@ -103,6 +103,9 @@ const getFormStructureForCreateEdit = (
       options: {
         values: options,
       },
+      config: {
+        required: relationship.optional === false ? "Required" : "",
+      }
     });
   });
 

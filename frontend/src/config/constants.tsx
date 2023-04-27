@@ -2,16 +2,11 @@ import { Select2StepPreview } from "../component-preview/select-2-step.preview";
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
 import { Diff } from "../screens/branches/diff/diff";
-import ObjectItemCreate from "../screens/object-item-create/object-item-create";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
 import ObjectItems from "../screens/object-items/object-items";
 import OpsObjects from "../screens/ops-objects/ops-objects";
 
 export const MAIN_ROUTES = [
-  {
-    path: "/objects/:objectname/new",
-    element: <ObjectItemCreate />,
-  },
   {
     path: "/objects/:objectname/:objectid",
     element: <ObjectItemDetails />,

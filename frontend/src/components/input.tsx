@@ -18,6 +18,7 @@ export const Input = React.forwardRef((props: any, ref: any) => {
   return (
     <div className="relative">
       <input
+        type={props.type}
         onChange={(e) => onChange(e.target.value)}
         className={
           classNames(

@@ -1,4 +1,5 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 import OpsSwitch from "./switch";
 
 interface Props {
@@ -8,10 +9,11 @@ interface Props {
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
+  error?: FormFieldError;
 }
 
 export const OpsSwitchRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label } = props;
+  const { name, value, register, setValue, config, label, error } = props;
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -20,6 +22,7 @@ export const OpsSwitchRegister = (props: Props) => {
 
   return (
     <OpsSwitch
+      error={error}
       label={label}
       value={value}
       onChange={(value) => {
