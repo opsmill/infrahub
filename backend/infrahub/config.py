@@ -120,6 +120,15 @@ class AnalyticsSettings(BaseSettings):
             "api_key": {"env": "INFRAHUB_ANALYTICS_API_KEY"},
         }
 
+class FeaturesSettings(BaseSettings):
+    pull_request: bool = False
+
+    class Config:
+        """Additional parameters to automatically map environment variables to some settings."""
+
+        fields = {
+            "pull_request": {"env": "INFRAHUB_FEATURE_PULL_REQUEST"},
+        }
 
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
@@ -132,6 +141,7 @@ class Settings(BaseSettings):
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
+    features: FeaturesSettings = FeaturesSettings()
 
 
 def load(config_file_name="infrahub.toml", config_data=None):
