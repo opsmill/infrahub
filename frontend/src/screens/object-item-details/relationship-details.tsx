@@ -1,8 +1,7 @@
-import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { EyeSlashIcon, InformationCircleIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { BUTTON_TYPES, Button } from "../../components/button";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import ModalDelete from "../../components/modal-delete";
@@ -240,12 +239,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               <th scope="col" className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
                                 <span className="sr-only">Meta</span>
                               </th>
-                              <th scope="col" className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
-                                <span className="sr-only">Edit</span>
-                              </th>
-                              <th scope="col" className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
-                                <span className="sr-only">Delete</span>
-                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
@@ -265,7 +258,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                           index !== relationshipsData.length - 1
                                             ? "border-b border-gray-200"
                                             : "",
-                                          "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                          "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                                         )}
                                       >
                                         {getObjectItemDisplayValue(row, column)}
@@ -275,38 +268,34 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                       index !== relationshipsData.length - 1
                                         ? "border-b border-gray-200"
                                         : "",
-                                      "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                      "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center space-x-3"
                                     )}>
-                                      <Button onClick={(event: any) => {
-                                        event.stopPropagation();
+                                      <div className="cursor-pointer w-7 h-7 flex items-center justify-center" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setRowForMetaEdit(row);
                                         setShowRelationMetaEditModal(true);
                                       }}>
-                                        Meta
-                                      </Button>
-                                    </td>
-                                    <td className={classNames(
-                                      index !== relationshipsData.length - 1
-                                        ? "border-b border-gray-200"
-                                        : "",
-                                      "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                                    )}>
-                                      <Button onClick={(event: any) => {
-                                        console.log("Edit: ", row);
+                                        <InformationCircleIcon className="w-6 h-6 text-gray-600 hover:w-7 hover:h-7" />
+                                      </div>
+                                      <div className="cursor-pointer w-7 h-7 flex items-center justify-center" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setRelatedObjectToEdit(row);
                                       }}>
-                                        Edit
-                                      </Button>
-                                    </td>
-                                    <td className={classNames(
-                                      index !== relationshipsData.length - 1
-                                        ? "border-b border-gray-200"
-                                        : "",
-                                      "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                                    )}>
-                                      <Button buttonType={BUTTON_TYPES.CANCEL} onClick={() => setRelatedRowToDelete(row)}>
-                                        Delete
-                                      </Button>
+                                        <PencilSquareIcon className="w-6 h-6 text-gray-600 hover:w-7 hover:h-7" />
+                                      </div>
+                                      <div className="cursor-pointer w-7 h-7 flex items-center justify-center" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setRelatedRowToDelete(row);
+                                      }}>
+                                        <img
+                                          alt="unlink"
+                                          src={process.env.PUBLIC_URL + "/images/icons/unlink.png"}
+                                          className="w-5 h-5 hover:w-6 hover:h-6"
+                                        />
+                                      </div>
                                     </td>
                                   </tr>
                                 )
