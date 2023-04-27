@@ -142,6 +142,7 @@ class AttributeSchema(BaseSchemaModel):
     unique: bool = False
     branch: bool = True
     optional: bool = False
+    order_weight: Optional[int]
 
     _exclude_from_hash: List[str] = ["id"]
     _sort_by: List[str] = ["name"]
@@ -408,6 +409,20 @@ class BaseNodeSchema(BaseSchemaModel):
 
         return value
 
+    @validator("attributes")
+    def set_order_weight(cls, attributes: List[AttributeSchema]) -> List[AttributeSchema]:
+        weights = [attribute.order_weight for attribute in attributes]
+        if None not in weights:
+            # If the weights are already set they are coming from the
+            # database and can be used as is.
+            return attributes
+        ordered = []
+        for index, attribute in enumerate(attributes):
+            attribute.order_weight = attribute.order_weight or index * 1000 + 1000
+            ordered.append(attribute)
+
+        return ordered
+
 
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
@@ -649,6 +664,7 @@ internal_schema = {
                 {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
                 {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
                 {"name": "branch", "kind": "Boolean", "default_value": True, "optional": True},
+                {"name": "order_weight", "kind": "Number", "optional": True},
                 {
                     "name": "default_value",
                     "kind": "Any",
