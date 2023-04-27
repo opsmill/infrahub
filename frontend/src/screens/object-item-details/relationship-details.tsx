@@ -2,8 +2,10 @@ import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroi
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { BUTTON_TYPES, Button } from "../../components/button";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
+import ModalDelete from "../../components/modal-delete";
 import { RoundedButton } from "../../components/rounded-button";
 import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
@@ -11,17 +13,17 @@ import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
+import { classNames } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "../../utils/objects";
 import updateObjectWithId from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
-import { constructPath } from "../../utils/fetch";
-import { getObjectDetailsUrl } from "../../utils/objects";
-import { BUTTON_TYPES, Button } from "../../components/button";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import { classNames } from "../../utils/common";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -32,6 +34,8 @@ type iRelationDetailsProps = {
   mode: "TABLE" | "DESCRIPTION-LIST";
 }
 
+const regex = /^Related/; // starts with Related
+
 export default function RelationshipDetails(props: iRelationDetailsProps) {
   const {objectname, objectid} = useParams();
   const {relationshipsData, relationshipSchema, refreshObject} = props;
@@ -41,6 +45,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
   const [rowForMetaEdit, setRowForMetaEdit] = useState();
+  const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
+  const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
   let options: SelectOption[] = [];
 
@@ -104,9 +110,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
 
-  const handleDeleteRelationship = async (event: any, id: string) => {
-    event.stopPropagation();
-
+  const handleDeleteRelationship = async (id: string) => {
     const newList  = relationshipsData.map((item: any) => ({ id: item.id })).filter((item: any) =>  item.id !== id);
 
     await updateObjectWithId(
@@ -237,6 +241,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 <span className="sr-only">Meta</span>
                               </th>
                               <th scope="col" className="relative py-3.5 pl-3 w-24 border-b border-gray-300">
+                                <span className="sr-only">Edit</span>
+                              </th>
+                              <th scope="col" className="relative py-3.5 pl-3 w-24 border-b border-gray-300">
                                 <span className="sr-only">Delete</span>
                               </th>
                             </tr>
@@ -274,7 +281,15 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                       </Button>
                                     </td>
                                     <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
-                                      <Button buttonType={BUTTON_TYPES.CANCEL} onClick={(event: any) => handleDeleteRelationship(event, row.id)}>
+                                      <Button onClick={(event: any) => {
+                                        console.log("Edit: ", row);
+                                        setRelatedObjectToEdit(row);
+                                      }}>
+                                        Edit
+                                      </Button>
+                                    </td>
+                                    <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
+                                      <Button buttonType={BUTTON_TYPES.CANCEL} onClick={() => setRelatedRowToDelete(row)}>
                                         Delete
                                       </Button>
                                     </td>
@@ -408,6 +423,45 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           props.refreshObject();
         }} attributeOrRelationshipToEdit={rowForMetaEdit} schemaList={schemaList} schema={schema} attributeOrRelationshipName={relationshipSchema.name} type="relationship" row={{...props.parentNode, [relationshipSchema.name]: relationshipsData}}  />
       </SlideOver>
+      {relatedRowToDelete && <ModalDelete
+        title="Delete"
+        description={<>
+          Are you sure you want to remove the association between <b>`{props.parentNode.display_label}`</b> and <b>`{relatedRowToDelete.display_label}`</b>?
+          The <b>`{relatedRowToDelete.__typename.replace(regex, "")}`</b> <b>`{relatedRowToDelete.display_label}`</b> won&apos;t be deleted in the process.
+        </>}
+        onCancel={() => setRelatedRowToDelete(undefined)}
+        onDelete={() => {
+          if(relatedRowToDelete?.id) {
+            handleDeleteRelationship(relatedRowToDelete.id);
+          }
+        }}
+        open={!!relatedRowToDelete}
+        setOpen={() => setRelatedRowToDelete(undefined)}
+      />}
+      {relatedObjectToEdit && <SlideOver title={`Edit ${relatedObjectToEdit?.display_label}`} subtitle={relatedObjectToEdit.display_label} open={!!relatedObjectToEdit} setOpen={() => setRelatedObjectToEdit(undefined)}>
+        <ObjectItemEditComponent
+          closeDrawer={
+            () => {
+              setRelatedObjectToEdit(undefined);
+            }
+          }
+          onUpdateComplete={
+            async () => {
+              setRelatedObjectToEdit(undefined);
+              await refreshObject();
+            }
+          }
+          objectid={relatedObjectToEdit.id}
+          objectname={(() => {
+            const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
+            console.log(relatedKind);
+            const relatedSchema = schemaList.find(s => s.kind === relatedKind);
+            const kind = schemaKindName[relatedSchema!.kind];
+            console.log("Kind: ", kind);
+            return kind;
+          })()}
+        />
+      </SlideOver>}
     </div>
   </>;
 };
