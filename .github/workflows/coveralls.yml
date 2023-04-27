@@ -34,9 +34,9 @@ jobs:
           running-workflow-name: report
           allowed-conclusions: success,skipped,cancelled,failure
 
-#       - uses: coverallsapp/github-action@v2
-#         env:
-#           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-#         with:
-#           carryforward: "backend-unit,backend-integration,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
-#           parallel-finished: true
+      - uses: coverallsapp/github-action@v2
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          carryforward: "backend-unit,backend-integration,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
+          parallel-finished: true
