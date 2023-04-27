@@ -49,7 +49,7 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
     </>;
   };
 
-  return <form className="flex-1 flex flex-col" onSubmit={handleSubmit(onSubmit)}>
+  return <form className="flex-1 flex flex-col bg-white" onSubmit={handleSubmit(onSubmit)}>
     <FormProvider {...formMethods}>
       <div className="space-y-12 max-w-lg px-4 flex-1 bg-white">
         <div className="pb-12">

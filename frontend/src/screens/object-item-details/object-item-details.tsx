@@ -15,12 +15,15 @@ import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { QSP } from "../../config/qsp";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { timeState } from "../../state/atoms/time.atom";
+import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -28,8 +31,6 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit.compon
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
-import { constructPath } from "../../utils/fetch";
-import { QSP } from "../../config/qsp";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
@@ -286,7 +287,14 @@ export default function ObjectItemDetails() {
         )
       }
 
-      <SlideOver title={`Edit ${schema.label}`} subtitle={objectDetails.display_label} open={showEditDrawer} setOpen={setShowEditDrawer}>
+      <SlideOver title={(
+        <div>
+          <div className="text-lg font-semibold">Edit: {objectDetails.display_label}</div>
+          <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+          <div>ID: {objectDetails.id}</div>
+          <div>Type: {schema.kind}</div>
+        </div>
+      )} open={showEditDrawer} setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
           closeDrawer={
             () => {
@@ -302,7 +310,14 @@ export default function ObjectItemDetails() {
           objectname={objectname!}
         />
       </SlideOver>
-      <SlideOver title={`${metaEditFieldDetails?.attributeOrRelationshipName} > Meta-details`} subtitle="Update meta details" open={showMetaEditModal} setOpen={setShowMetaEditModal}>
+      <SlideOver
+        title={(
+          <div>
+            <div className="text-lg font-semibold">Metadetails for: {metaEditFieldDetails?.attributeOrRelationshipName}</div>
+            <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+          </div>
+        )}
+        open={showMetaEditModal} setOpen={setShowMetaEditModal}>
         <ObjectItemMetaEdit
           closeDrawer={
             () => {

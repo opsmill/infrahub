@@ -9,6 +9,8 @@ import ModalDelete from "../../components/modal-delete";
 import { RoundedButton } from "../../components/rounded-button";
 import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -38,13 +40,14 @@ const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
   const {objectname, objectid} = useParams();
+  const [branch] = useAtom(branchState);
   const {relationshipsData, relationshipSchema, refreshObject} = props;
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
-  const [rowForMetaEdit, setRowForMetaEdit] = useState();
+  const [rowForMetaEdit, setRowForMetaEdit] = useState<any>();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
@@ -401,7 +404,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           />
         </RoundedButton>
       </div>
-      <SlideOver title={`Add ${relationshipSchema.label}`} subtitle={"Add"} open={showAddDrawer} setOpen={setShowAddDrawer}>
+      <SlideOver
+        title={(
+          <div>
+            <div className="text-lg font-semibold">Add associated {relationshipSchema.label}</div>
+            <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+          </div>
+        )}
+        open={showAddDrawer} setOpen={setShowAddDrawer}>
         <EditFormHookComponent onCancel={() => {
           setShowAddDrawer(false);
         }} onSubmit={async (data) => {
@@ -415,7 +425,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           }
         }} fields={formFields} />
       </SlideOver>
-      <SlideOver title={"Meta-details"} subtitle="Update meta details" open={showRelationMetaEditModal} setOpen={setShowRelationMetaEditModal}>
+      <SlideOver
+        title={(
+          <>
+            {rowForMetaEdit && <div>
+              <div className="text-lg font-semibold">Metadata: {props.parentNode?.display_label} - {rowForMetaEdit.display_label}</div>
+              <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+            </div>}
+          </>
+        )}
+        open={showRelationMetaEditModal} setOpen={setShowRelationMetaEditModal}>
         <ObjectItemMetaEdit closeDrawer={() => {
           setShowRelationMetaEditModal(false);
         }}  onUpdateComplete={() => {
@@ -438,7 +457,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         open={!!relatedRowToDelete}
         setOpen={() => setRelatedRowToDelete(undefined)}
       />}
-      {relatedObjectToEdit && <SlideOver title={`Edit ${relatedObjectToEdit?.display_label}`} subtitle={relatedObjectToEdit.display_label} open={!!relatedObjectToEdit} setOpen={() => setRelatedObjectToEdit(undefined)}>
+      {relatedObjectToEdit && <SlideOver
+        title={(
+          <div>
+            <div className="text-lg font-semibold">Edit: {relatedObjectToEdit?.display_label}</div>
+            <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+          </div>
+        )}
+        open={!!relatedObjectToEdit} setOpen={() => setRelatedObjectToEdit(undefined)}>
         <ObjectItemEditComponent
           closeDrawer={
             () => {

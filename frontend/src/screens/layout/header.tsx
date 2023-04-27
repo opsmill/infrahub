@@ -14,11 +14,11 @@ import { StringParam, useQueryParam } from "use-query-params";
 
 import BranchSelector from "../../components/branch-selector";
 import { CONFIG } from "../../config/config";
+import { QSP } from "../../config/qsp";
+import { graphQLClient } from "../../graphql/graphqlClient";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
-import { graphQLClient } from "../../graphql/graphqlClient";
-import { QSP } from "../../config/qsp";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
