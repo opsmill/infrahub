@@ -6,23 +6,25 @@ import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import SchemaManager
+from infrahub.core.models import NodeSchema as NodeSchemaModel
+from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
+from infrahub.core.node import Node
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.exceptions import DatabaseError
 
 LOGGER = logging.getLogger("infrahub")
 
 
 async def initialization(session: AsyncSession):
-    # pylint: disable=import-outside-toplevel,broad-exception-raised
-
     # ---------------------------------------------------
     # Load the Root node
     # ---------------------------------------------------
     roots = await Root.get_list(session=session)
     if len(roots) == 0:
-        raise Exception("Database hasn't been initialized yet. please run 'infrahub db init'")
+        raise DatabaseError("Database hasn't been initialized yet. please run 'infrahub db init'")
     if len(roots) > 1:
-        raise Exception("Database is corrupted, more than 1 root node found.")
+        raise DatabaseError("Database is corrupted, more than 1 root node found.")
     registry.id = roots[0].uuid
 
     # ---------------------------------------------------
@@ -47,9 +49,6 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     # Load internal models into the registry
     # ---------------------------------------------------
-    from infrahub.core.models import NodeSchema as NodeSchemaModel
-    from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
-    from infrahub.core.node import Node
 
     registry.node["Node"] = Node
     registry.node["NodeSchema"] = NodeSchemaModel
@@ -106,9 +105,6 @@ async def create_branch(branch_name: str, session: AsyncSession, description: st
 
 
 async def first_time_initialization(session: AsyncSession):
-    # pylint: disable=import-outside-toplevel
-    from infrahub.core.node import Node
-
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
