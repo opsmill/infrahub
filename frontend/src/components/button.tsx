@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import { classNames } from "../utils/common";
 
 type ButtonProps = {
@@ -6,7 +5,7 @@ type ButtonProps = {
   buttonType?: BUTTON_TYPES;
   className?: string;
   onClick?: Function;
-  children?: ReactNode[] | string;
+  children?: any;
   disabled?: boolean;
 };
 
@@ -14,15 +13,19 @@ export enum BUTTON_TYPES {
   VALIDATE,
   CANCEL,
   WARNING,
-  MAIN
+  MAIN,
+  ACTIVE
 }
 
-const DEFAULT_CLASS = `
+// Get default class name and avoid certain class if needed (ex: no rounded button for tabs-button)
+const DEFAULT_CLASS = (className?: string) => `
+  ${className?.includes("rounded") ? "" : "rounded-md"}
+  ${className?.includes("border") ? "" : "border border-gray-300"}
   py-1.5 px-2.5
-  inline-flex items-center gap-x-1.5 rounded-md
+  inline-flex items-center gap-x-1.5
   text-sm font-semibold
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-  shadow-sm ring-1 ring-inset ring-gray-300
+  shadow-sm
 `;
 
 const getClasseName = (type?: BUTTON_TYPES) => {
@@ -53,6 +56,13 @@ const getClasseName = (type?: BUTTON_TYPES) => {
         bg-indigo-500 text-white
         hover:bg-indigo-600
         disabled:cursor-not-allowed disabled:bg-indigo-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
+      `;
+    }
+    case BUTTON_TYPES.ACTIVE: {
+      return `
+        bg-gray-500 text-white cursor-default
+        hover:bg-gray-500
+        disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
       `;
     }
     default: {
@@ -89,9 +99,9 @@ export const Button = (props: ButtonProps) => {
       type={type ?? "button"}
       className={
         classNames(
-          DEFAULT_CLASS,
+          DEFAULT_CLASS(className),
           customClassName,
-          className
+          className,
         )
       }
       {...propsToPass}

@@ -29,7 +29,7 @@ export default function DesktopMenu() {
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={item.path}
+        path={constructPath(item.path)}
         label={item.label}
         onClick={onClinkMenuItem}
       />
@@ -40,7 +40,7 @@ export default function DesktopMenu() {
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={item.path}
+        path={constructPath(item.path)}
         label={item.label}
         onClick={onClinkMenuItem}
       />

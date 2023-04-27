@@ -1,6 +1,6 @@
 type TooltipProps = {
   children: any;
-  message: string;
+  message: any;
 }
 
 export const Tooltip = (props: TooltipProps) => {

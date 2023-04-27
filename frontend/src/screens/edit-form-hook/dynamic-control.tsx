@@ -6,6 +6,7 @@ import { OpsSelect2StepRegister } from "../../components-form/select-2-step.regi
 import { OpsSelectRegister } from "../../components-form/select.register";
 import { OpsSwitchRegister } from "../../components-form/switch.register";
 import { ControlType, DynamicFieldData } from "./dynamic-control-types";
+import { OpsDatePickerRegister } from "../../components-form/date-picker.register";
 
 export const DynamicControl = (props: DynamicFieldData) => {
   const {
@@ -33,7 +34,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
       case "checkbox":
         return <OpsCheckboxRegister {...props} register={register} setValue={setValue} value={existingValue ?? value} />;
       case "select": {
-        if(["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
+        if(kind && ["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
           config.valueAsNumber = true;
         }
         return <OpsSelectRegister {...props} options={options.values} register={register} setValue={setValue} value={existingValue ?? value} />;
@@ -57,6 +58,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
         // If user does not change anything in the multi-select dropdown, the field value in the form data remains undefined
         // Not a problem currently, as if nothing get's changed, we are not sending out that field in the update mutation
         // but something that we can look into later on
+      }
+      case "datepicker": {
+        return <OpsDatePickerRegister {...props} register={register} setValue={setValue} />;
       }
       default:
         return null;

@@ -5,7 +5,7 @@ declare const Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`
 mutation {
-  branch_create (
+  branch_delete (
     data: { {{{data}}} }
   ) {
       ok

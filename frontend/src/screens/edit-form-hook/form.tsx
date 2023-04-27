@@ -19,7 +19,7 @@ export type FormFieldError = {
   type?: string;
 }
 
-type FormProps = {
+export type FormProps = {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
   onCancel?: Function;

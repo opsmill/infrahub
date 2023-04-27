@@ -1,29 +1,41 @@
-import { useNavigate, useParams } from "react-router-dom";
 import Accordion from "../../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttribute } from "./data-diff-attribute";
-import { getObjectUrl } from "../../../utils/objects";
-import { Link } from "../../../components/link";
-import { constructPath } from "../../../utils/fetch";
+import { DataDiffRelationship } from "./data-diff-relationship";
 
-export type tDataDiffNodeAttributePropertyValue = {
+export type tDataDiffNodePropertyValue = {
   new: string;
   previous: string;
 }
 
-export type tDataDiffNodeAttributeProperty = {
+export type tDataDiffNodeProperty = {
   type: string;
   changed_at: number;
   action: string;
-  value: tDataDiffNodeAttributePropertyValue;
+  value: tDataDiffNodePropertyValue;
+}
+
+export type tDataDiffNodeRelationshipPeer = {
+  id: string;
+  kind: string;
+  display_label?: string;
 }
 
 export type tDataDiffNodeAttribute = {
   name?: string;
   changed_at?: number;
   action?: string;
-  properties?: tDataDiffNodeAttributeProperty[];
+  properties?: tDataDiffNodeProperty[];
+}
+
+export type tDataDiffNodeRelationship = {
+  branch?: string;
+  name?: string;
+  changed_at?: number;
+  action?: string;
+  properties?: tDataDiffNodeProperty[];
+  peer?: tDataDiffNodeRelationshipPeer;
 }
 
 export type tDataDiffNode = {
@@ -33,6 +45,7 @@ export type tDataDiffNode = {
   kind: string;
   changed_at?: number;
   attributes: tDataDiffNodeAttribute[];
+  relationships: tDataDiffNodeAttribute[];
 }
 
 export type tDataDiffNodeProps = {
@@ -40,9 +53,9 @@ export type tDataDiffNodeProps = {
 }
 
 const badgeTypes: { [key: string]: BADGE_TYPES } = {
-  created: BADGE_TYPES.VALIDATE,
+  added: BADGE_TYPES.VALIDATE,
   updated: BADGE_TYPES.WARNING,
-  deleted: BADGE_TYPES.CANCEL,
+  removed: BADGE_TYPES.CANCEL,
 };
 
 export const getBadgeType = (action?: string) => {
@@ -54,27 +67,31 @@ export const getBadgeType = (action?: string) => {
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { node } = props;
 
-  const { branchname } = useParams();
-  const navigate = useNavigate();
-
   const {
-    id,
+    // id,
     display_label,
     action,
     kind,
     changed_at,
     attributes = [],
+    relationships = []
   } = node;
 
+  // const { branchname } = useParams();
+  // const navigate = useNavigate();
+  // const [schemaList] = useAtom(schemaState);
+  // const schema = schemaList.filter((s) => s.kind === kind)[0];
+
   const title = (
-    <div>
-      <Badge className="mr-2" type={getBadgeType(node?.action)}>
+    <div className="flex">
+      <Badge className="mr-2" type={getBadgeType(action)}>
         {action?.toUpperCase()}
       </Badge>
 
       <Badge className="mr-2">
         {kind}
       </Badge>
+
 
       <span className="mr-2">
         {display_label}
@@ -92,20 +109,47 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   return (
     <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
       <Accordion title={title}>
-        <div className="m-4 flex">
-          <Link onClick={() => navigate(constructPath(getObjectUrl({ kind, id, branch: branchname })))}>
-          ID: {id}
-          </Link>
-        </div>
-
-        <div>
+        <div className="">
           {
-            attributes
-            ?.map(
-              (attribute: tDataDiffNodeAttribute, index: number) => (
-                <DataDiffAttribute key={index} attribute={attribute} />
+            attributes?.length
+              ? (
+                <div className="">
+                  {/* <div>
+                      Attributes:
+                  </div> */}
+
+                  {
+                    attributes
+                    ?.map(
+                      (attribute: tDataDiffNodeAttribute, index: number) => (
+                        <DataDiffAttribute key={index} attribute={attribute} />
+                      )
+                    )
+                  }
+                </div>
               )
-            )
+              : null
+          }
+
+          {
+            relationships?.length
+              ? (
+                <div className="">
+                  {/* <div>
+                      Relationships:
+                  </div> */}
+
+                  {
+                    relationships
+                    ?.map(
+                      (relationship: tDataDiffNodeAttribute, index: number) => (
+                        <DataDiffRelationship key={index} relationship={relationship} />
+                      )
+                    )
+                  }
+                </div>
+              )
+              : null
           }
         </div>
       </Accordion>

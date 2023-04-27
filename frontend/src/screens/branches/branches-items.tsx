@@ -7,6 +7,7 @@ import { Badge } from "../../components/badge";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
+import { DateDisplay } from "../../components/date-display";
 import { constructPath } from "../../utils/fetch";
 
 export const BranchesItems = () => {
@@ -23,7 +24,7 @@ export const BranchesItems = () => {
   ];
 
   return (
-    <ul className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 p-6">
+    <ul className="grid gap-6 grid-cols-1 p-6">
       {
         branches.map(
           (branch) => (
@@ -63,12 +64,16 @@ export const BranchesItems = () => {
                   </div>
 
                   <div className="flex flex-col items-end">
-                    <Pill>Branched {formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}</Pill>
+                    <Tooltip message={<DateDisplay date={branch.branched_from}/>}>
+                      <Pill>Branched {formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}</Pill>
+                    </Tooltip>
 
                     {
                       !branch.is_default
                         && (
-                          <Pill className="mt-2">Created {formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}</Pill>
+                          <Tooltip message={<DateDisplay date={branch.created_at}/>}>
+                            <Pill className="mt-2">Created {formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}</Pill>
+                          </Tooltip>
                         )
                     }
                   </div>

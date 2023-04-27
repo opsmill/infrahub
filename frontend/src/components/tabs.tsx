@@ -9,11 +9,12 @@ type Tab = {
 
 type TabsProps = {
   tabs: Tab[];
-  rightItems?: any
+  rightItems?: any,
+  qsp?: string,
 }
 
 export const Tabs = (props: TabsProps) => {
-  const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab, setQspTab] = useQueryParam(props.qsp ?? QSP.TAB, StringParam);
 
   return (
     <div className="bg-white flex items-center border-b border-gray-200">

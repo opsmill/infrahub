@@ -14,7 +14,7 @@ export default function OpsSwitch(props: Props) {
   const [enabled, setEnabled] = useState(value);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col items-center">
       <label
         className="block text-sm font-medium leading-6 text-gray-900 capitalize">
         {label}

@@ -4,20 +4,20 @@ import { classNames } from "../utils/common";
 // type SwitchProps = {}
 
 export const Switch = (props: any) => {
-  const { enabled, onChange, error } = props;
+  const { checked, onChange, error } = props;
 
   return (
     <div className={classNames("relative px-1.5 py-2 rounded-md", error ? "border-2 border-red-300 pb-3" : "")}>
       <HSwitch
-        checked={enabled}
+        checked={checked}
         onChange={onChange}
         className={`${
-          enabled ? "bg-blue-500" : "bg-gray-200"
+          checked ? "bg-blue-500" : "bg-gray-200"
         } relative inline-flex h-6 w-11 items-center rounded-full`}
       >
         <span
           className={`${
-            enabled ? "translate-x-6" : "translate-x-1"
+            checked ? "translate-x-6" : "translate-x-1"
           } inline-block h-4 w-4 transform rounded-full bg-white transition`}
         />
       </HSwitch>
