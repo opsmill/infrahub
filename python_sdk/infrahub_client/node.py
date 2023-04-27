@@ -269,8 +269,8 @@ class RelationshipManager(RelationshipManagerBase):
         for item in data:
             self.peers.append(RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item))
 
-    def __getitem__(self, item) -> RelatedNode:
-        return self.peers[item]
+    def __getitem__(self, item: int) -> RelatedNode:
+        return self.peers[item]  # type: ignore[return-value]
 
     async def fetch(self) -> None:
         for peer in self.peers:
@@ -313,8 +313,8 @@ class RelationshipManagerSync(RelationshipManagerBase):
                 RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
             )
 
-    def __getitem__(self, item) -> RelatedNodeSync:
-        return self.peers[item]
+    def __getitem__(self, item: int) -> RelatedNodeSync:
+        return self.peers[item]  # type: ignore[return-value]
 
     def fetch(self) -> None:
         for peer in self.peers:

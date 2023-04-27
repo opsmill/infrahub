@@ -13,6 +13,7 @@ from infrahub_client.node import (
 )
 
 # pylint: disable=no-member
+# type: ignore[attr-defined]
 
 async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_")]
 sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.startswith("_")]
@@ -377,9 +378,7 @@ async def test_node_get_relationship_from_store(
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_node_get_relationship_not_in_store(
-    client, location_schema, location_data01, tag_schema, tag_red_data, tag_blue_data, client_type
-):
+async def test_node_get_relationship_not_in_store(client, location_schema, location_data01, client_type):
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
 
@@ -387,10 +386,10 @@ async def test_node_get_relationship_not_in_store(
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
 
     with pytest.raises(NodeNotFound):
-        node.primary_tag.peer
+        node.primary_tag.peer  # pylint: disable=pointless-statement
 
     with pytest.raises(NodeNotFound):
-        node.tags[0].peer
+        node.tags[0].peer  # pylint: disable=pointless-statement
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -404,7 +403,7 @@ async def test_node_fetch_relationship(
     tag_red_data,
     tag_blue_data,
     client_type,
-):
+):  # pylint: disable=unused-argument
     response1 = {
         "data": {
             "tag": [
@@ -427,12 +426,12 @@ async def test_node_fetch_relationship(
 
     if client_type == "standard":
         node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01)
-        await node.primary_tag.fetch()
-        await node.tags.fetch()
+        await node.primary_tag.fetch()  # type: ignore[attr-defined]
+        await node.tags.fetch()  # type: ignore[attr-defined]
     else:
-        node = InfrahubNodeSync(client=clients.sync, schema=location_schema, data=location_data01)
-        node.primary_tag.fetch()
-        node.tags.fetch()
+        node = InfrahubNodeSync(client=clients.sync, schema=location_schema, data=location_data01)  # type: ignore[assignment]
+        node.primary_tag.fetch()  # type: ignore[attr-defined]
+        node.tags.fetch()  # type: ignore[attr-defined]
 
-    assert isinstance(node.primary_tag.peer, InfrahubNodeBase)
-    assert isinstance(node.tags[0].peer, InfrahubNodeBase)
+    assert isinstance(node.primary_tag.peer, InfrahubNodeBase)  # type: ignore[attr-defined]
+    assert isinstance(node.tags[0].peer, InfrahubNodeBase)  # type: ignore[attr-defined]
