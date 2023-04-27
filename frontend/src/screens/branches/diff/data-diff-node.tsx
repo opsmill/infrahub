@@ -3,6 +3,7 @@ import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttribute } from "./data-diff-attribute";
 import { DataDiffRelationship } from "./data-diff-relationship";
+import { DiffPill } from "./diff-pill";
 
 export type tDataDiffNodePropertyValue = {
   new: string;
@@ -83,19 +84,23 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   // const schema = schemaList.filter((s) => s.kind === kind)[0];
 
   const title = (
-    <div className="flex">
-      <Badge className="mr-2" type={getBadgeType(action)}>
-        {action?.toUpperCase()}
-      </Badge>
+    <div className="flex flex-1 hover:bg-gray-50">
+      <div className="flex flex-1">
+        <Badge className="mr-2" type={getBadgeType(action)}>
+          {action?.toUpperCase()}
+        </Badge>
 
-      <Badge className="mr-2">
-        {kind}
-      </Badge>
+        <Badge className="mr-2">
+          {kind}
+        </Badge>
 
 
-      <span className="mr-2">
-        {display_label}
-      </span>
+        <span className="mr-2">
+          {display_label}
+        </span>
+      </div>
+
+      <DiffPill />
 
       {
         changed_at
@@ -112,42 +117,24 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         <div className="">
           {
             attributes?.length
-              ? (
-                <div className="">
-                  {/* <div>
-                      Attributes:
-                  </div> */}
-
-                  {
-                    attributes
-                    ?.map(
-                      (attribute: tDataDiffNodeAttribute, index: number) => (
-                        <DataDiffAttribute key={index} attribute={attribute} />
-                      )
-                    )
-                  }
-                </div>
+              ?
+              attributes
+              ?.map(
+                (attribute: tDataDiffNodeAttribute, index: number) => (
+                  <DataDiffAttribute key={index} attribute={attribute} />
+                )
               )
               : null
           }
 
           {
             relationships?.length
-              ? (
-                <div className="">
-                  {/* <div>
-                      Relationships:
-                  </div> */}
-
-                  {
-                    relationships
-                    ?.map(
-                      (relationship: tDataDiffNodeAttribute, index: number) => (
-                        <DataDiffRelationship key={index} relationship={relationship} />
-                      )
-                    )
-                  }
-                </div>
+              ?
+              relationships
+              ?.map(
+                (relationship: tDataDiffNodeAttribute, index: number) => (
+                  <DataDiffRelationship key={index} relationship={relationship} />
+                )
               )
               : null
           }

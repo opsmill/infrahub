@@ -3,6 +3,7 @@ import { DateDisplay } from "../../../components/date-display";
 import { DataDiffProperty } from "./data-diff-property";
 import { tDataDiffNodeProperty, tDataDiffNodeRelationship } from "./data-diff-node";
 import { DataDiffPeer } from "./data-diff-peer";
+import { DiffPill } from "./diff-pill";
 
 export type tDataDiffNodeRelationshipProps = {
   relationship: tDataDiffNodeRelationship,
@@ -19,13 +20,17 @@ export const DataDiffRelationship = (props: tDataDiffNodeRelationshipProps) => {
   } = relationship;
 
   const titleContent = (
-    <div className="flex">
-      {
-        peer
-        && (
-          <DataDiffPeer peer={peer} branch={branch} />
-        )
-      }
+    <div className="flex hover:bg-gray-50">
+      <div className="flex flex-1">
+        {
+          peer
+          && (
+            <DataDiffPeer peer={peer} branch={branch} />
+          )
+        }
+      </div>
+
+      <DiffPill />
 
       {
         changed_at

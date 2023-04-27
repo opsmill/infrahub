@@ -9,7 +9,7 @@ export enum PILL_TYPES {
 }
 
 const DEFAULT_CLASS = `
-  inline-block flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium
+  flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium
   text-gray-80
 `;
 

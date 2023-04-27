@@ -13,7 +13,7 @@ const displayValue = (value: any) => {
     return `${value}`;
   }
 
-  return value;
+  return value || "-";
 };
 
 // Display the values
