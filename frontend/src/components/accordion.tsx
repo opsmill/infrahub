@@ -31,7 +31,7 @@ export default function Accordion(props: AccordionProps) {
             </Disclosure.Button>
           </div>
 
-          <Disclosure.Panel className="mt-2">
+          <Disclosure.Panel className="p-2">
             {children}
           </Disclosure.Panel>
         </>

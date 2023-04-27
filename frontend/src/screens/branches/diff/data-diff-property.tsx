@@ -1,11 +1,11 @@
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
-import { getBadgeType, tDataDiffNodeAttributeProperty } from "./data-diff-node";
+import { getBadgeType, tDataDiffNodeProperty } from "./data-diff-node";
 import { Tooltip } from "../../../components/tooltip";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 
-export type tDataDiffNodeAttributeProps = {
-  property: tDataDiffNodeAttributeProperty,
+export type tDataDiffNodePropertyProps = {
+  property: tDataDiffNodeProperty,
 }
 
 const displayValue = (value: any) => {
@@ -19,7 +19,7 @@ const displayValue = (value: any) => {
 // Display the values
 // (only new one for "added", only old ones for "deleted", and previous + new for "updated")
 const diffContent: { [key: string]: any; } = {
-  added: (property: tDataDiffNodeAttributeProperty) => {
+  added: (property: tDataDiffNodeProperty) => {
     const { value } = property;
 
     const { new: newValue } = value;
@@ -32,7 +32,7 @@ const diffContent: { [key: string]: any; } = {
       </div>
     );
   },
-  removed: (property: tDataDiffNodeAttributeProperty) => {
+  removed: (property: tDataDiffNodeProperty) => {
     const { value } = property;
 
     const { previous: previousValue } = value;
@@ -45,7 +45,7 @@ const diffContent: { [key: string]: any; } = {
       </div>
     );
   },
-  updated: (property: tDataDiffNodeAttributeProperty) => {
+  updated: (property: tDataDiffNodeProperty) => {
     const { value } = property;
 
     const { new: newValue, previous: previousValue } = value;
@@ -76,7 +76,7 @@ const diffContent: { [key: string]: any; } = {
   },
 };
 
-export const DataDiffAttributeProperty = (props: tDataDiffNodeAttributeProps) => {
+export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   const { property } = props;
 
   const {

@@ -8,24 +8,40 @@ import { constructPath } from "../../../utils/fetch";
 import { Tooltip } from "../../../components/tooltip";
 import { useAtom } from "jotai";
 import { schemaState } from "../../../state/atoms/schema.atom";
+import { DataDiffRelationship } from "./data-diff-relationship";
 
-export type tDataDiffNodeAttributePropertyValue = {
+export type tDataDiffNodePropertyValue = {
   new: string;
   previous: string;
 }
 
-export type tDataDiffNodeAttributeProperty = {
+export type tDataDiffNodeProperty = {
   type: string;
   changed_at: number;
   action: string;
-  value: tDataDiffNodeAttributePropertyValue;
+  value: tDataDiffNodePropertyValue;
+}
+
+export type tDataDiffNodeRelationshipPeer = {
+  id: string;
+  kind: string;
+  display_label?: string;
 }
 
 export type tDataDiffNodeAttribute = {
   name?: string;
   changed_at?: number;
   action?: string;
-  properties?: tDataDiffNodeAttributeProperty[];
+  properties?: tDataDiffNodeProperty[];
+}
+
+export type tDataDiffNodeRelationship = {
+  branch?: string;
+  name?: string;
+  changed_at?: number;
+  action?: string;
+  properties?: tDataDiffNodeProperty[];
+  peer?: tDataDiffNodeRelationshipPeer;
 }
 
 export type tDataDiffNode = {
@@ -103,35 +119,53 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           <DateDisplay date={changed_at} hideDefault />
         )
       }
-
-      {/* <div className="flex font-normal">
-        <Link onClick={() => navigate(constructPath(getObjectUrl({ kind, id, branch: branchname })))}>
-          ID: {id}
-        </Link>
-      </div> */}
     </div>
   );
 
   return (
     <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
       <Accordion title={title}>
-        <div>
+        <div className="">
           {
-            attributes
-            ?.map(
-              (attribute: tDataDiffNodeAttribute, index: number) => (
-                <DataDiffAttribute key={index} attribute={attribute} />
+            attributes?.length
+              ? (
+                <div className="mb-4">
+                  <div>
+              Attributes:
+                  </div>
+
+                  {
+                    attributes
+                    ?.map(
+                      (attribute: tDataDiffNodeAttribute, index: number) => (
+                        <DataDiffAttribute key={index} attribute={attribute} />
+                      )
+                    )
+                  }
+                </div>
               )
-            )
+              : null
           }
 
           {
-            relationships
-            ?.map(
-              (attribute: tDataDiffNodeAttribute, index: number) => (
-                <DataDiffAttribute key={index} attribute={attribute} />
+            relationships?.length
+              ? (
+                <div className="">
+                  <div>
+                      Relationships:
+                  </div>
+
+                  {
+                    relationships
+                    ?.map(
+                      (relationship: tDataDiffNodeAttribute, index: number) => (
+                        <DataDiffRelationship key={index} relationship={relationship} />
+                      )
+                    )
+                  }
+                </div>
               )
-            )
+              : null
           }
         </div>
       </Accordion>
