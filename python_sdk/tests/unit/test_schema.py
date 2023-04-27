@@ -36,7 +36,7 @@ async def test_fetch_schema(mock_schema_query_01, client_type):  # pylint: disab
         client = InfrahubClientSync.init(address="http://mock", insert_tracker=True)
         nodes = client.schema.fetch(branch="main")
 
-    assert len(nodes) == 3
+    assert len(nodes) == 4
     assert sorted(nodes.keys()) == ["GraphQLQuery", "Repository", "Tag"]
     assert isinstance(nodes["Tag"], NodeSchema)
 
