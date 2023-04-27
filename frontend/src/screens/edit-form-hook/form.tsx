@@ -4,10 +4,10 @@ import {
   SubmitHandler,
   useForm
 } from "react-hook-form";
-import { DynamicControl } from "./dynamic-control";
-import { DynamicFieldData } from "./dynamic-control-types";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { resolve } from "../../utils/objects";
+import { DynamicControl } from "./dynamic-control";
+import { DynamicFieldData } from "./dynamic-control-types";
 
 type ErrorRef = {
   name?: string;
@@ -32,7 +32,12 @@ type FormFieldProps = {
 
 export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
   const formMethods = useForm();
-  const { handleSubmit, formState: { errors }, } = formMethods;
+  const {
+    handleSubmit,
+    formState,
+  } = formMethods;
+
+  const { errors } = formState;
 
   const FormField = (props: FormFieldProps) => {
     const { field, error } = props;

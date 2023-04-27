@@ -1,6 +1,7 @@
 import { Combobox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { MultipleInput } from "./multiple-input";
 
@@ -14,10 +15,11 @@ type SelectProps = {
   options: SelectOption[];
   onChange: (value: SelectOption[]) => void;
   disabled?: boolean;
+  error?: FormFieldError;
 }
 
 export const MultiSelect = (props: SelectProps) => {
-  const { options, value, onChange, disabled } = props;
+  const { options, value, onChange, disabled, error } = props;
 
   const [selectedOptions, setSelectedOption] = useState<SelectOption[] | undefined>(value);
 
@@ -36,6 +38,7 @@ export const MultiSelect = (props: SelectProps) => {
     >
       <div className="relative mt-1">
         <Combobox.Input
+          className={error ? "ring-red-500 focus:ring-red-600" : ""}
           as={MultipleInput}
           value={selectedOptions}
           onChange={
@@ -106,6 +109,15 @@ export const MultiSelect = (props: SelectProps) => {
               }
             </Combobox.Options>
           )
+        }
+        {
+          error
+        && error?.message
+        && (
+          <div className="absolute text-sm text-red-500 bg-white -bottom-2 ml-2 px-2">
+            {error?.message}
+          </div>
+        )
         }
       </div>
     </Combobox>

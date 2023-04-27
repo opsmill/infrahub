@@ -8,6 +8,7 @@ type OpsInputProps = {
   onChange: (value: string) => void;
   className?: string;
   error?: FormFieldError;
+  type: "number" | "text"
 }
 
 export const OpsInput = (props: OpsInputProps) => {
@@ -20,6 +21,7 @@ export const OpsInput = (props: OpsInputProps) => {
         {label}
       </label>
       <Input
+        type={props.type}
         onChange={onChange}
         defaultValue={value ?? ""}
         className={classNames(className ?? "")}

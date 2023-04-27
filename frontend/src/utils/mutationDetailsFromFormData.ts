@@ -43,6 +43,10 @@ const getMutationDetailsFromFormData = (
       }
     }
 
+    if(isOneToOne && updateObject[relationship.name] && !updateObject[relationship.name].id) {
+      delete updateObject[relationship.name];
+    }
+
     if(isOneToMany && updateObject[relationship.name] && updateObject[relationship.name].list) {
       const fieldKeys = Object.keys(updateObject[relationship.name]).filter(key => key !== "list");
 

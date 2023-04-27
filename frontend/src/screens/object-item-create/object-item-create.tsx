@@ -1,6 +1,7 @@
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { genericSchemaState, genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import createObject from "../../utils/createObject";
@@ -9,18 +10,21 @@ import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdi
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import { constructPath } from "../../utils/fetch";
 
-export default function ObjectItemCreate() {
-  let { objectname } = useParams();
+interface iProps {
+  objectname: string;
+  onCancel?: Function;
+  onCreate: Function;
+}
+
+export default function ObjectItemCreate(props: iProps) {
+  let { objectname } = props;
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
   const [genericSchemaMap] = useAtom(genericSchemaState);
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [formStructure, setFormStructure] = useState<DynamicFieldData[]>();
-
-  const navigate = useNavigate();
 
   const initForm = useCallback(
     async () => {
@@ -49,9 +53,12 @@ export default function ObjectItemCreate() {
     if (Object.keys(newObject).length) {
       try {
         await createObject(schema, newObject);
-        navigate(`/objetcs/${objectname}`);
-      } catch(err) {
+        if(props.onCreate) {
+          props.onCreate();
+        }
+      } catch(err: any) {
         console.error("Something went wrong while creating the object: ", err);
+        toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={err.message} />);
       }
     } else {
       console.info("Nothing to create");
@@ -59,13 +66,13 @@ export default function ObjectItemCreate() {
   }
 
   return (
-    <div className="p-4 bg-white flex-1 overflow-auto flex">
+    <div className="bg-white flex-1 overflow-auto flex">
       {
         schema
         && formStructure
         && (
           <div className="flex-1">
-            <EditFormHookComponent onSubmit={onSubmit} onCancel={() => navigate(constructPath(`/objects/${objectname}`))} fields={formStructure} />
+            <EditFormHookComponent onSubmit={onSubmit} onCancel={() => props.onCancel ? props.onCancel() : null} fields={formStructure} />
           </div>
         )
       }

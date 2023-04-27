@@ -2,16 +2,18 @@ import { gql } from "@apollo/client";
 import { PlusIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { RoundedButton } from "../../components/rounded-button";
+import SlideOver from "../../components/slide-over";
 import { graphQLClient } from "../../graphql/graphqlClient";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns, getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectUrl } from "../../utils/objects";
@@ -19,7 +21,7 @@ import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import { constructPath } from "../../utils/fetch";
+import ObjectItemCreate from "../object-item-create/object-item-create";
 
 declare const Handlebars: any;
 
@@ -54,6 +56,8 @@ export default function ObjectItems() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [currentFilters] = useAtom(comboxBoxFilterState);
 
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
   const filterString = currentFilters
@@ -65,50 +69,42 @@ export default function ObjectItems() {
 
   const navigate = useNavigate();
 
+  const loadData = useCallback(async () => {
+    if (schema) {
+      try {
+
+        setHasError(false);
+        setIsLoading(true);
+        setObjectRows(undefined);
+
+        const queryString = template({
+          ...schema,
+          filterString,
+          relationships: getSchemaRelationshipColumns(schema)
+        });
+
+        const query = gql`
+        ${queryString}
+        `;
+
+        const data: any = await graphQLClient.request(query);
+        const rows = data[schema.name];
+        setObjectRows(rows);
+        setIsLoading(false);
+
+      } catch(e) {
+        console.error("Error: ", e);
+        setHasError(true);
+        setIsLoading(false);
+      };
+    }
+  }, [filterString, schema]);
+
   useEffect(
     () => {
-      const loadData = async () => {
-        if (schema) {
-          try {
-
-            setHasError(false);
-            setIsLoading(true);
-            setObjectRows(undefined);
-
-            const queryString = template({
-              ...schema,
-              filterString,
-              relationships: getSchemaRelationshipColumns(schema)
-            });
-
-            const query = gql`
-            ${queryString}
-            `;
-
-            const data: any = await graphQLClient.request(query);
-            const rows = data[schema.name];
-            setObjectRows(rows);
-            setIsLoading(false);
-
-          } catch(e) {
-            console.error("Error: ", e);
-            setHasError(true);
-            setIsLoading(false);
-          };
-        }
-      };
-
       loadData();
     },
-    [
-      objectname,
-      schemaList,
-      schema,
-      date,
-      branch,
-      currentFilters,
-      filterString,
-    ]
+    [objectname, schemaList, schema, date, branch, currentFilters, filterString, loadData]
   );
 
   if (hasError) {
@@ -132,7 +128,7 @@ export default function ObjectItems() {
           )
         }
 
-        <RoundedButton onClick={() => navigate(constructPath(`/objects/${schema.name}/new`))}>
+        <RoundedButton onClick={() => setShowCreateDrawer(true)}>
           <PlusIcon className="h-5 w-5" aria-hidden="true" />
         </RoundedButton>
       </div>
@@ -218,6 +214,14 @@ export default function ObjectItems() {
             </div>
           </div>
         )}
+      {
+        <SlideOver open={showCreateDrawer} setOpen={setShowCreateDrawer} title={`Create ${objectname}`}>
+          <ObjectItemCreate onCreate={() => {
+            setShowCreateDrawer(false);
+            loadData();
+          }}  onCancel={() => setShowCreateDrawer(false)} objectname={objectname!} />
+        </SlideOver>
+      }
     </div>
   );
 }
