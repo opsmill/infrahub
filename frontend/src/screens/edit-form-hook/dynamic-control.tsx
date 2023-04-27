@@ -1,4 +1,5 @@
 import { useFormContext } from "react-hook-form";
+import { OpsCheckboxRegister } from "../../components-form/checkbox.register";
 import { OpsInputRegister } from "../../components-form/input.register";
 import { OpsMultiSelectRegister } from "../../components-form/multi-select.register";
 import { OpsSelect2StepRegister } from "../../components-form/select-2-step.register";
@@ -29,6 +30,8 @@ export const DynamicControl = (props: DynamicFieldData) => {
         return <OpsInputRegister {...props} register={register} setValue={setValue} value={existingValue ?? value} />;
       case "switch":
         return <OpsSwitchRegister {...props} register={register} setValue={setValue} value={existingValue ?? value} />;
+      case "checkbox":
+        return <OpsCheckboxRegister {...props} register={register} setValue={setValue} value={existingValue ?? value} />;
       case "select": {
         if(["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
           config.valueAsNumber = true;

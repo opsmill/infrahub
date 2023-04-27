@@ -6,7 +6,7 @@ import { FormFieldError } from "./form";
 export type SchemaAttributeType = "ID" | "Text" | "Number" | "TextArea" | "DateTime" | "Email" | "Password" | "URL" | "File" | "MacAddress" | "Color" | "Bandwidth" | "IPHost" | "IPNetwork" | "Checkbox" | "List" | "Any" | "String" | "Integer" | "Boolean";
 
 // Different kind of form inputs
-export type ControlType = "text" | "select" | "select2step" | "multiselect" | "number" | "switch";
+export type ControlType = "text" | "select" | "select2step" | "multiselect" | "number" | "checkbox" | "switch";
 
 export type RelationshipCardinality = "one" | "many";
 
@@ -36,7 +36,7 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (kind: SchemaAttri
 
     case "Checkbox":
     case "Boolean":
-      return "switch";
+      return "checkbox";
 
     default:
       return "text";

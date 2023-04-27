@@ -165,7 +165,7 @@ export const getFormStructureForMetaEdit = (
       kind: "Checkbox",
       isAttribute: false,
       isRelationship: false,
-      type: "switch",
+      type: "checkbox",
       label: f.split("_").filter(r => !!r).join(" "),
       value: row?.[f],
       options: {
