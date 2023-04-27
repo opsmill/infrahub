@@ -393,14 +393,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               )}
           </>
         )}
-      <div className="absolute bottom-4 right-4">
+      {props.mode === "TABLE" && <div className="absolute bottom-4 right-4">
         <RoundedButton onClick={() => setShowAddDrawer(true)} className="p-3 ml-2 bg-blue-500 text-sm hover:bg-blue-600 focus:ring-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
           <PlusIcon
             className="h-7 w-7 text-white"
             aria-hidden="true"
           />
         </RoundedButton>
-      </div>
+      </div>}
       <SlideOver title={`Add ${relationshipSchema.label}`} subtitle={"Add"} open={showAddDrawer} setOpen={setShowAddDrawer}>
         <EditFormHookComponent onCancel={() => {
           setShowAddDrawer(false);
