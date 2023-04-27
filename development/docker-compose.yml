@@ -6,7 +6,7 @@ services:
       context: ../
       dockerfile: development/Dockerfile-backend
     image: "opsmill/infrahub-backend-py${PYTHON_VER}:${IMAGE_VER}"
-    command: gunicorn infrahub.api.main:app --config /source/development/gunicorn.config.py
+    command: gunicorn --config /source/development/gunicorn.config.py infrahub.api.main:app
     ports:
       - "8000:8000"
     depends_on:
