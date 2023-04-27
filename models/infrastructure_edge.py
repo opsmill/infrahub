@@ -579,7 +579,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
     new_branch = await client.branch.create(
         branch_name=new_branch_name,
         data_only=True,
-        description=f"hange the IP addresses between edge1 and edge2 in {site_name}",
+        description=f"Change the IP addresses between edge1 and edge2 in {site_name}",
     )
     log.info(f"Created branch: {new_branch_name!r}")
 
@@ -736,7 +736,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     batch = await client.create_batch()
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
-        remote_as = store.get(kind="AutonomousSystem", key=peer_group[4], default=None)
+        remote_as = store.get(kind="AutonomousSystem", key=peer_group[4], raise_when_missing=False)
         if remote_as:
             remote_as_id = remote_as.id
 
