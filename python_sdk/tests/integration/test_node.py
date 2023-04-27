@@ -158,3 +158,32 @@ class TestInfrahubNode:
         assert nodedb.name.value == "repo95"
         tags = await nodedb.tags.get(session=session)
         assert len(tags) == 2
+
+    @pytest.mark.xfail(
+        reason="The test is failing mostlikely because of a bug on the backend side, Need to investigate and fix"
+    )
+    async def test_node_update_2(
+        self,
+        session,
+        client: InfrahubClient,
+        init_db_base,
+        tag_green: Node,
+        tag_red: Node,
+        gqlquery02: Node,
+        repo99: Node,
+    ):
+        node = await client.get(kind="GraphQLQuery", name__value="query02")
+        assert node.id is not None
+
+        node.name.value = "query021"  # type: ignore[attr-defined]
+        node.repository = repo99.id  # type: ignore[attr-defined]
+        node.tags.add(tag_green.id)  # type: ignore[attr-defined]
+        node.tags.remove(tag_red.id)  # type: ignore[attr-defined]
+        await node.save()
+
+        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+        repodb = await nodedb.repository.get(session=session)
+        assert repodb.id == repo99.id
+
+        tags = await nodedb.tags.get(session=session)
+        assert tags[0].id == tag_green.id
