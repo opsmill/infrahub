@@ -16,8 +16,9 @@ PROPERTIES_OBJECT = ["source", "owner"]
 
 
 class Attribute:
-    def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):  # pylint: disable=unused-argument
+    def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):
         self.name = name
+        self._schema = schema
 
         if not isinstance(data, dict):
             data = {"value": data}
