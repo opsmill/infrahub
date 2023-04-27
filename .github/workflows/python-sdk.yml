@@ -55,19 +55,19 @@ jobs:
         run: "poetry run invoke demo.wait-healthy"
       - name: "Unit Tests"
         run: "poetry run pytest --cov=infrahub_client python_sdk/tests/unit"
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: python-sdk-unit
-          parallel: true
+      # - name: "Coveralls : Unit Tests"
+      #   uses: coverallsapp/github-action@v2.0.0
+      #   env:
+      #     COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+      #   with:
+      #     flag-name: python-sdk-unit
+      #     parallel: true
       - name: "Integration Tests"
         run: "poetry run pytest --cov=infrahub_client python_sdk/tests/integration"
-      - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: python-sdk-integration
-          parallel: true
+      # - name: "Coveralls : Integration Tests"
+      #   uses: coverallsapp/github-action@v2.0.0
+      #   env:
+      #     COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+      #   with:
+      #     flag-name: python-sdk-integration
+      #     parallel: true
