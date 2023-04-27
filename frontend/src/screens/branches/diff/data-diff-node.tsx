@@ -1,13 +1,7 @@
-import { useNavigate, useParams } from "react-router-dom";
 import Accordion from "../../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttribute } from "./data-diff-attribute";
-import { getObjectUrl } from "../../../utils/objects";
-import { constructPath } from "../../../utils/fetch";
-import { Tooltip } from "../../../components/tooltip";
-import { useAtom } from "jotai";
-import { schemaState } from "../../../state/atoms/schema.atom";
 import { DataDiffRelationship } from "./data-diff-relationship";
 
 export type tDataDiffNodePropertyValue = {
@@ -74,7 +68,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { node } = props;
 
   const {
-    id,
+    // id,
     display_label,
     action,
     kind,
@@ -83,30 +77,20 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     relationships = []
   } = node;
 
-  const { branchname } = useParams();
-  const navigate = useNavigate();
-  const [schemaList] = useAtom(schemaState);
-  const schema = schemaList.filter((s) => s.kind === kind)[0];
+  // const { branchname } = useParams();
+  // const navigate = useNavigate();
+  // const [schemaList] = useAtom(schemaState);
+  // const schema = schemaList.filter((s) => s.kind === kind)[0];
 
   const title = (
     <div className="flex">
-      <Badge className="mr-2" type={getBadgeType(node?.action)}>
+      <Badge className="mr-2" type={getBadgeType(action)}>
         {action?.toUpperCase()}
       </Badge>
 
-      <Tooltip message={"Link to the object"}>
-        <Badge
-          className="mr-2"
-          onClick={
-            () => {
-              console.log("OK");
-              navigate(constructPath(getObjectUrl({ kind: schema.name, id, branch: branchname })));
-            }
-          }
-        >
-          {kind}
-        </Badge>
-      </Tooltip>
+      <Badge className="mr-2">
+        {kind}
+      </Badge>
 
 
       <span className="mr-2">
@@ -129,10 +113,10 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           {
             attributes?.length
               ? (
-                <div className="mb-4">
-                  <div>
-              Attributes:
-                  </div>
+                <div className="">
+                  {/* <div>
+                      Attributes:
+                  </div> */}
 
                   {
                     attributes
@@ -151,9 +135,9 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
             relationships?.length
               ? (
                 <div className="">
-                  <div>
+                  {/* <div>
                       Relationships:
-                  </div>
+                  </div> */}
 
                   {
                     relationships

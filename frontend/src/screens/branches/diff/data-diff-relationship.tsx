@@ -1,9 +1,8 @@
 import Accordion from "../../../components/accordion";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffProperty } from "./data-diff-property";
-import { getBadgeType, tDataDiffNodeProperty, tDataDiffNodeRelationship } from "./data-diff-node";
+import { tDataDiffNodeProperty, tDataDiffNodeRelationship } from "./data-diff-node";
 import { DataDiffPeer } from "./data-diff-peer";
-import { Badge } from "../../../components/badge";
 
 export type tDataDiffNodeRelationshipProps = {
   relationship: tDataDiffNodeRelationship,
@@ -14,8 +13,6 @@ export const DataDiffRelationship = (props: tDataDiffNodeRelationshipProps) => {
 
   const {
     branch,
-    action,
-    name,
     changed_at,
     properties,
     peer
@@ -23,14 +20,6 @@ export const DataDiffRelationship = (props: tDataDiffNodeRelationshipProps) => {
 
   const titleContent = (
     <div className="flex">
-      <Badge className="mr-2" type={getBadgeType(action)}>
-        {action?.toUpperCase()}
-      </Badge>
-
-      <Badge>
-        {name}
-      </Badge>
-
       {
         peer
         && (

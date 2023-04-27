@@ -1,6 +1,6 @@
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
-import { getBadgeType, tDataDiffNodeProperty } from "./data-diff-node";
+import { tDataDiffNodeProperty } from "./data-diff-node";
 import { Tooltip } from "../../../components/tooltip";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 
@@ -86,13 +86,7 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   } = property;
 
   return (
-    <div className="p-2 bg-gray-100 grid grid-cols-5 gap-4">
-      <div className="flex items-center">
-        <Badge className="" type={getBadgeType(action)}>
-          {action?.toUpperCase()}
-        </Badge>
-      </div>
-
+    <div className="p-2 bg-gray-100 grid grid-cols-3 gap-4">
       <div className="flex items-center">
         <span className="mr-4">
           {type}

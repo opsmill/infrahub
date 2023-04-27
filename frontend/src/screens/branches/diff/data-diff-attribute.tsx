@@ -20,7 +20,7 @@ export const DataDiffAttribute = (props: tDataDiffNodeAttributeProps) => {
     <div className="flex flex-col pl-4">
       <Accordion title={
         (
-          <>
+          <div className="flex">
             <span className="mr-2 font-semibold">
               {name}
             </span>
@@ -31,7 +31,7 @@ export const DataDiffAttribute = (props: tDataDiffNodeAttributeProps) => {
                   <DateDisplay date={changed_at} hideDefault />
                 )
             }
-          </>
+          </div>
         )
       }>
         <div className="divide-y border">

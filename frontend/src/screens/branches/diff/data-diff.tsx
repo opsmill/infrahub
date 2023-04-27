@@ -25,19 +25,19 @@ export const DataDiff = () => {
       name: "branch_only",
       label: "Branch only",
       type: "switch",
-      value: branchOnly === "true"
+      value: branchOnly === "true",
     },
     {
       name: "time_from",
       label: "Time from",
       type: "datepicker",
-      value: timeFrom ? parseISO(timeFrom) : undefined
+      value: timeFrom ? parseISO(timeFrom) : undefined,
     },
     {
       name: "time_to",
       label: "Time to",
       type: "datepicker",
-      value: timeTo ? parseISO(timeTo) : undefined
+      value: timeTo ? parseISO(timeTo) : undefined,
     },
   ];
 

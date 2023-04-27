@@ -17,20 +17,20 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
   switch(type) {
     case BADGE_TYPES.VALIDATE: {
       return `
-        bg-green-600 text-gray-50
-        ${onClick ? "cursor-pointer hover:bg-green-400" : ""}
+        bg-green-400 text-gray-50
+        ${onClick ? "cursor-pointer hover:bg-green-200" : ""}
       `;
     }
     case BADGE_TYPES.CANCEL: {
       return `
-        bg-red-600 text-gray-50
-        ${onClick ? "cursor-pointer hovebg-red-400:" : ""}
+        bg-red-400 text-gray-50
+        ${onClick ? "cursor-pointer hovebg-red-200:" : ""}
       `;
     }
     case BADGE_TYPES.WARNING: {
       return `
-        bg-yellow-400 text-gray-800
-        ${onClick ? "cursor-pointer hover:bg-yellow-200" : ""}
+        bg-yellow-200 text-gray-800
+        ${onClick ? "cursor-pointer hover:bg-yellow-100" : ""}
       `;
     }
     default: {
