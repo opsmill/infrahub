@@ -1,9 +1,12 @@
 import inspect
 
 import pytest
+from pytest_httpx import HTTPXMock
 
+from infrahub_client.exceptions import NodeNotFound
 from infrahub_client.node import (
     InfrahubNode,
+    InfrahubNodeBase,
     InfrahubNodeSync,
     RelatedNodeBase,
     RelationshipManagerBase,
@@ -103,6 +106,7 @@ async def test_init_node_data_graphql(client, location_schema, location_data01, 
     assert isinstance(node.tags.peers[0], RelatedNodeBase)
     assert isinstance(node.primary_tag, RelatedNodeBase)
     assert node.primary_tag.id == "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"
+    assert node.primary_tag.typename == "Tag"
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -346,3 +350,89 @@ async def test_update_input_data_empty_relationship(
             "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
         },
     }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_node_get_relationship_from_store(
+    client, location_schema, location_data01, tag_schema, tag_red_data, tag_blue_data, client_type
+):
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+        tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+        tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data)
+        tag_blue = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_blue_data)
+
+    client.store.set(key=tag_red.id, node=tag_red)
+    client.store.set(key=tag_blue.id, node=tag_blue)
+
+    assert node.primary_tag.peer == tag_red
+    assert node.primary_tag.get() == tag_red
+
+    assert node.tags[0].peer == tag_blue
+    assert [tag.peer for tag in node.tags] == [tag_blue]
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_node_get_relationship_not_in_store(
+    client, location_schema, location_data01, tag_schema, tag_red_data, tag_blue_data, client_type
+):
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+
+    with pytest.raises(NodeNotFound):
+        node.primary_tag.peer
+
+    with pytest.raises(NodeNotFound):
+        node.tags[0].peer
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_node_fetch_relationship(
+    httpx_mock: HTTPXMock,
+    mock_schema_query_01,
+    clients,
+    location_schema,
+    location_data01,
+    tag_schema,
+    tag_red_data,
+    tag_blue_data,
+    client_type,
+):
+    response1 = {
+        "data": {
+            "tag": [
+                tag_red_data,
+            ]
+        }
+    }
+
+    httpx_mock.add_response(method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-tag-get"})
+
+    response2 = {
+        "data": {
+            "tag": [
+                tag_blue_data,
+            ]
+        }
+    }
+
+    httpx_mock.add_response(method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-tag-get"})
+
+    if client_type == "standard":
+        node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01)
+        await node.primary_tag.fetch()
+        await node.tags.fetch()
+    else:
+        node = InfrahubNodeSync(client=clients.sync, schema=location_schema, data=location_data01)
+        node.primary_tag.fetch()
+        node.tags.fetch()
+
+    assert isinstance(node.primary_tag.peer, InfrahubNodeBase)
+    assert isinstance(node.tags[0].peer, InfrahubNodeBase)

@@ -110,6 +110,9 @@ class RelatedNodeBase:
             self._typename = data.get("__typename", None)
             self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
 
+            if self._typename and self._typename.startswith("Related"):
+                self._typename = self._typename[7:]
+
             for prop in self._properties:
                 if value := data.get(prop, None):
                     setattr(self, prop, value)
@@ -164,7 +167,7 @@ class RelatedNode(RelatedNodeBase):
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = await self._client.get(ids=[self.id], kind=self.typename)
+        self._peer = await self._client.get(ids=[self.id], kind=self.typename, populate_store=True)
 
     @property
     def peer(self) -> InfrahubNode:
@@ -199,7 +202,7 @@ class RelatedNodeSync(RelatedNodeBase):
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = self._client.get(ids=[self.id], kind=self.typename)
+        self._peer = self._client.get(ids=[self.id], kind=self.typename, populate_store=True)
 
     @property
     def peer(self) -> InfrahubNodeSync:
@@ -266,6 +269,9 @@ class RelationshipManager(RelationshipManagerBase):
         for item in data:
             self.peers.append(RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item))
 
+    def __getitem__(self, item) -> RelatedNode:
+        return self.peers[item]
+
     async def fetch(self) -> None:
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
@@ -306,6 +312,9 @@ class RelationshipManagerSync(RelationshipManagerBase):
             self.peers.append(
                 RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
             )
+
+    def __getitem__(self, item) -> RelatedNodeSync:
+        return self.peers[item]
 
     def fetch(self) -> None:
         for peer in self.peers:

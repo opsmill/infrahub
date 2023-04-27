@@ -361,6 +361,20 @@
                     "description": null
                 }
             ]
+        },
+        {
+            "name": "location",
+            "kind": "Location",
+            "default_filter": "name__value",
+            "attributes": [
+                {"name": "name", "kind": "String", "unique": true},
+                {"name": "description", "kind": "String", "optional": true},
+                {"name": "type", "kind": "String"}
+            ],
+            "relationships": [
+                {"name": "tags", "peer": "Tag", "optional": true, "cardinality": "many"},
+                {"name": "primary_tag", "peer": "Tag", "optional": true, "cardinality": "one"}
+            ]
         }
     ]
 }
