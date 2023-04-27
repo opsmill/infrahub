@@ -81,8 +81,17 @@ async def test_get_repositories(mock_branches_list_query, mock_repositories_quer
 async def test_method_all(clients, mock_query_repository_all_01, client_type):  # pylint: disable=unused-argument
     if client_type == "standard":
         repos = await clients.standard.all(kind="Repository")
+        assert not clients.standard.store._store["Repository"]
+
+        repos = await clients.standard.all(kind="Repository", populate_store=True)
+        assert len(clients.standard.store._store["Repository"]) == 2
     else:
         repos = clients.sync.all(kind="Repository")
+        assert not clients.sync.store._store["Repository"]
+
+        repos = clients.sync.all(kind="Repository", populate_store=True)
+        assert len(clients.sync.store._store["Repository"]) == 2
+
     assert len(repos) == 2
 
 
@@ -103,15 +112,25 @@ async def test_method_get_by_id(
         }
     }
 
+    response_id = "bfae43e8-5ebb-456c-a946-bf64e930710a"
     httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
 
     if client_type == "standard":
-        repo = await clients.standard.get(kind="Repository", id="bfae43e8-5ebb-456c-a946-bf64e930710a")
+        repo = await clients.standard.get(kind="Repository", id=response_id)
         assert isinstance(repo, InfrahubNode)
+        with pytest.raises(NodeNotFound):
+            assert clients.standard.store.get(key=response_id)
+
+        repo = await clients.standard.get(kind="Repository", id=response_id, populate_store=True)
+        assert clients.standard.store.get(key=response_id)
     else:
-        repo = clients.sync.get(kind="Repository", id="bfae43e8-5ebb-456c-a946-bf64e930710a")
+        repo = clients.sync.get(kind="Repository", id=response_id)
         assert isinstance(repo, InfrahubNodeSync)
-    assert repo.id == "bfae43e8-5ebb-456c-a946-bf64e930710a"
+        with pytest.raises(NodeNotFound):
+            assert clients.sync.store.get(key=response_id)
+
+        repo = clients.sync.get(kind="Repository", id=response_id, populate_store=True)
+        assert clients.sync.store.get(key=response_id)
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -233,11 +252,30 @@ async def test_method_filters_many(
         repos = await clients.standard.filters(
             kind="Repository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
         )
+        assert len(repos) == 2
+        assert not clients.standard.store._store["Repository"]
+
+        repos = await clients.standard.filters(
+            kind="Repository",
+            ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"],
+            populate_store=True,
+        )
+        assert len(clients.standard.store._store["Repository"]) == 2
+        assert len(repos) == 2
     else:
         repos = clients.sync.filters(
             kind="Repository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
         )
-    assert len(repos) == 2
+        assert len(repos) == 2
+        assert not clients.sync.store._store["Repository"]
+
+        repos = clients.sync.filters(
+            kind="Repository",
+            ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"],
+            populate_store=True,
+        )
+        assert len(clients.sync.store._store["Repository"]) == 2
+        assert len(repos) == 2
 
 
 @pytest.mark.parametrize("client_type", client_types)

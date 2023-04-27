@@ -24,14 +24,6 @@ async def test_one_init_no_input_no_rel(session: AsyncSession, person_jack_main:
     assert not await relm.get_peer(session=session)
 
 
-@pytest.fixture
-async def person_jack_primary_tag_main(session: AsyncSession, person_tag_schema, tag_blue_main: Node) -> Node:
-    obj = await Node.init(session=session, schema="Person")
-    await obj.new(session=session, firstname="Jake", lastname="Russell", primary_tag=tag_blue_main)
-    await obj.save(session=session)
-    return obj
-
-
 async def test_one_init_no_input_existing_rel(
     session: AsyncSession, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
 ):

@@ -42,6 +42,7 @@ from infrahub_client.queries import (
     QUERY_ALL_TRANSFORM_PYTHON,
 )
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
+from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -93,6 +94,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchema(self)
         self.branch = InfrahubBranchManager(self)
+        self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
 
     @classmethod
@@ -116,6 +118,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        populate_store: bool = False,
         **kwargs: Any,
     ) -> InfrahubNode:
         branch = branch or self.default_branch
@@ -144,9 +147,20 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if len(response[schema.name]) > 1:
             raise IndexError("More than 1 node returned")
 
-        return InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+        obj = InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
 
-    async def all(self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNode]:
+        if populate_store and obj.id:
+            self.store.set(key=obj.id, node=obj)
+
+        return obj
+
+    async def all(
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        populate_store: bool = False,
+    ) -> List[InfrahubNode]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -167,10 +181,22 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         response = await self.execute_graphql(
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
         )
-        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+        nodes = [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+        if populate_store:
+            for node in nodes:
+                if node.id:
+                    self.store.set(key=node.id, node=node)
+        return nodes
 
     async def filters(
-        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs: Any
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        populate_store: bool = False,
+        **kwargs: Any,
     ) -> List[InfrahubNode]:
         schema = await self.schema.get(kind=kind)
 
@@ -190,7 +216,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-filters"
         )
 
-        return [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+        nodes = [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+
+        if populate_store:
+            for node in nodes:
+                if node.id:
+                    self.store.set(key=node.id, node=node)
+        return nodes
 
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
@@ -640,12 +672,15 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchemaSync(self)
         self.branch = InfrahubBranchManagerSync(self)
+        self.store = NodeStoreSync()
 
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
 
-    def all(self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None) -> List[InfrahubNodeSync]:
+    def all(
+        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, populate_store: bool = False
+    ) -> List[InfrahubNodeSync]:
         """Retrieve all nodes of a given kind
 
         Args:
@@ -666,9 +701,16 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         response = self.execute_graphql(
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
         )
-        return [
+
+        nodes = [
             InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
         ]
+
+        if populate_store:
+            for node in nodes:
+                if node.id:
+                    self.store.set(key=node.id, node=node)
+        return nodes
 
     def create(
         self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs: Any
@@ -843,7 +885,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         # TODO add a special method to execute mutation that will check if the method returned OK
 
     def filters(
-        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, **kwargs: Any
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        populate_store: bool = False,
+        **kwargs: Any,
     ) -> List[InfrahubNodeSync]:
         schema = self.schema.get(kind=kind)
 
@@ -863,9 +910,15 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-filters"
         )
 
-        return [
+        nodes = [
             InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
         ]
+
+        if populate_store:
+            for node in nodes:
+                if node.id:
+                    self.store.set(key=node.id, node=node)
+        return nodes
 
     def get(
         self,
@@ -873,6 +926,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        populate_store: bool = False,
         **kwargs: Any,
     ) -> InfrahubNodeSync:
         branch = branch or self.default_branch
@@ -901,7 +955,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if len(response[schema.name]) > 1:
             raise IndexError("More than 1 node returned")
 
-        return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+        obj = InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+
+        if populate_store and obj.id:
+            self.store.set(key=obj.id, node=obj)
+
+        return obj
 
     def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
         raise NotImplementedError(

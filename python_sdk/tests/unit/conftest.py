@@ -53,6 +53,157 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
+async def location_data01():
+    data = {
+        "id": "llllllll-llll-llll-llll-llllllllllll",
+        "display_label": "dfw1",
+        "name": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "DFW"},
+        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        "type": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "SITE"},
+        "primary_tag": {
+            "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+            "display_label": "red",
+            "__typename": "RelatedTag",
+            "_relation__is_protected": True,
+            "_relation__is_visible": True,
+            "_relation__owner": None,
+            "_relation__source": None,
+        },
+        "tags": [
+            {
+                "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                "display_label": "blue",
+                "__typename": "RelatedTag",
+                "_relation__is_protected": True,
+                "_relation__is_visible": True,
+                "_relation__owner": None,
+                "_relation__source": None,
+            }
+        ],
+    }
+
+    return data
+
+
+@pytest.fixture
+async def location_data02():
+    data = {
+        "id": "llllllll-llll-llll-llll-llllllllllll",
+        "display_label": "dfw1",
+        "name": {
+            "is_protected": True,
+            "is_visible": True,
+            "owner": None,
+            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "value": "dfw1",
+        },
+        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        "type": {
+            "is_protected": True,
+            "is_visible": True,
+            "owner": None,
+            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "value": "SITE",
+        },
+        "primary_tag": {
+            "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+            "display_label": "red",
+            "__typename": "RelatedTag",
+            "_relation__is_protected": True,
+            "_relation__is_visible": True,
+            "_relation__owner": None,
+            "_relation__source": {
+                "__typename": "Account",
+                "display_label": "CRM",
+                "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            },
+        },
+        "tags": [
+            {
+                "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                "display_label": "blue",
+                "__typename": "RelatedTag",
+                "_relation__is_protected": True,
+                "_relation__is_visible": True,
+                "_relation__owner": None,
+                "_relation__source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+            }
+        ],
+    }
+
+    return data
+
+
+@pytest.fixture
+async def tag_schema() -> NodeSchema:
+    data = {
+        "name": "tag",
+        "kind": "Tag",
+        "default_filter": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def tag_blue_data():
+    data = {
+        "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "display_label": "blue",
+        "name": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "value": "blue",
+        },
+        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+    }
+    return data
+
+
+@pytest.fixture
+async def tag_red_data():
+    data = {
+        "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+        "display_label": "red",
+        "name": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "value": "red",
+        },
+        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+    }
+    return data
+
+
+@pytest.fixture
+async def tag_green_data():
+    data = {
+        "id": "gggggggg-gggg-gggg-gggg-gggggggggggg",
+        "display_label": "green",
+        "name": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "value": "green",
+        },
+        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+    }
+    return data
+
+
+@pytest.fixture
 async def rfile_schema() -> NodeSchema:
     data = {
         "name": "rfile",
