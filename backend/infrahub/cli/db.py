@@ -40,7 +40,7 @@ async def _init(config_file: str):
     #   TODO, if possible try to implement this in an idempotent way
     # --------------------------------------------------
 
-    db = await get_db()
+    db = await get_db(retry=1)
 
     async with db.session(database=config.SETTINGS.database.database) as session:
         log.info("Delete All Nodes")
@@ -55,7 +55,7 @@ async def _load_test_data(config_file: str, dataset: str):
 
     config.load_and_exit(config_file_name=config_file)
 
-    db = await get_db()
+    db = await get_db(retry=1)
 
     async with db.session(database=config.SETTINGS.database.database) as session:
         await initialization(session=session)
