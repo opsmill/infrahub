@@ -15,12 +15,15 @@ import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
+import { QSP } from "../../config/qsp";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { timeState } from "../../state/atoms/time.atom";
+import { classNames } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -28,8 +31,6 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit.compon
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
-import { constructPath } from "../../utils/fetch";
-import { QSP } from "../../config/qsp";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
@@ -181,7 +182,7 @@ export default function ObjectItemDetails() {
                         </dt>
 
                         <div className="flex items-center">
-                          <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                          <dd className={classNames("mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0", attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : "")}>
                             {typeof objectDetails[attribute.name]?.value !== "boolean" ? objectDetails[attribute.name].value ? objectDetails[attribute.name].value : "-" : ""}
                             { typeof objectDetails[attribute.name]?.value === "boolean" &&
                               <>
