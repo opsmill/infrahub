@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any, Dict, List, Optional, Union
 
 VARIABLE_TYPE_MAPPING = (
@@ -64,33 +65,6 @@ def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
     return lines
 
 
-def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> List[str]:
-    offset_str = " " * offset
-    lines = []
-    for key, value in data.items():
-        if isinstance(value, dict):
-            lines.append(f"{offset_str}{key}: " + "{")
-            lines.extend(render_input_block(data=value, offset=offset + indentation, indentation=indentation))
-            lines.append(offset_str + "}")
-        elif isinstance(value, list):
-            lines.append(f"{offset_str}{key}: " + "[")
-            for item in value:
-                if isinstance(item, dict):
-                    lines.append(f"{offset_str}{' '*indentation}" + "{")
-                    lines.extend(
-                        render_input_block(
-                            data=item, offset=offset + indentation + indentation, indentation=indentation
-                        )
-                    )
-                    lines.append(f"{offset_str}{' '*indentation}" + "},")
-                else:
-                    lines.append(f"{offset_str}{' '*indentation}{convert_to_graphql_as_string(item)},")
-            lines.append(offset_str + "]")
-        else:
-            lines.append(f"{offset_str}{key}: {convert_to_graphql_as_string(value)}")
-    return lines
-
-
 MUTATION_GRAPHQL_QUERY_CREATE = """
 mutation($name: String!, $description: String!, $query: String!) {
   graphql_query_create(data: {
@@ -117,7 +91,7 @@ class BaseGraphQLQuery:
 
     def __init__(self, query: dict, variables: Optional[Dict] = None, name: Optional[str] = None):
         self.query = query
-        self.variables = variables
+        self.variables = variables or {}
         self.name = name or ""
 
     def render_first_line(self) -> str:
@@ -128,7 +102,6 @@ class BaseGraphQLQuery:
 
         if self.variables:
             first_line += f" ({render_variables_to_string(self.variables)})"
-
         first_line += " {"
 
         return first_line
@@ -152,16 +125,51 @@ class Mutation(BaseGraphQLQuery):
         self.input_data = input_data
         self.mutation = mutation
         super().__init__(*args, **kwargs)
+        self.variable_values = {}
 
     def render(self) -> str:
-        lines = [self.render_first_line()]
+        lines = []
         lines.append(" " * self.indentation + f"{self.mutation}(")
         lines.extend(
-            render_input_block(data=self.input_data, indentation=self.indentation, offset=self.indentation * 2)
+            self.render_input_block(data=self.input_data, indentation=self.indentation, offset=self.indentation * 2)
         )
         lines.append(" " * self.indentation + "){")
         lines.extend(render_query_block(data=self.query, indentation=self.indentation, offset=self.indentation * 2))
         lines.append(" " * self.indentation + "}")
         lines.append("}")
 
+        lines.insert(0, self.render_first_line())
+
         return "\n" + "\n".join(lines) + "\n"
+
+    def render_input_block(self, data: dict, offset: int = 4, indentation: int = 4) -> List[str]:
+        offset_str = " " * offset
+        lines = []
+        for key, value in data.items():
+            if isinstance(value, dict):
+                lines.append(f"{offset_str}{key}: " + "{")
+                lines.extend(self.render_input_block(data=value, offset=offset + indentation, indentation=indentation))
+                lines.append(offset_str + "}")
+            elif isinstance(value, list):
+                lines.append(f"{offset_str}{key}: " + "[")
+                for item in value:
+                    if isinstance(item, dict):
+                        lines.append(f"{offset_str}{' '*indentation}" + "{")
+                        lines.extend(
+                            self.render_input_block(
+                                data=item, offset=offset + indentation + indentation, indentation=indentation
+                            )
+                        )
+                        lines.append(f"{offset_str}{' '*indentation}" + "},")
+                    else:
+                        var_name = f"{key}_{uuid.uuid4().hex}"
+                        self.variables[var_name] = type(value)
+                        self.variable_values[var_name] = value
+                        lines.append(f"{offset_str}{' '*indentation}${var_name},")
+                lines.append(offset_str + "]")
+            else:
+                var_name = f"{key}_{uuid.uuid4().hex}"
+                self.variables[var_name] = type(value)
+                self.variable_values[var_name] = value
+                lines.append(f"{offset_str}{key}: ${var_name}")
+        return lines

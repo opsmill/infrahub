@@ -1,11 +1,6 @@
 import pytest
 
-from infrahub_client.graphql import (
-    Mutation,
-    Query,
-    render_input_block,
-    render_query_block,
-)
+from infrahub_client.graphql import Mutation, Query, render_query_block
 
 # pylint: disable=redefined-outer-name
 
@@ -102,7 +97,8 @@ def test_render_query_block(query_data_no_filter):
 
 
 def test_render_input_block(input_data_01):
-    lines = render_input_block(data=input_data_01)
+    mutation = Mutation(mutation="testing", input_data=input_data_01, query={})
+    lines = mutation.render_input_block(data=input_data_01)
 
     expected_lines = [
         "    data: {",
@@ -129,7 +125,7 @@ def test_render_input_block(input_data_01):
     assert lines == expected_lines
 
     # Render the input block with an indentation of 2
-    lines = render_input_block(data=input_data_01, offset=2, indentation=2)
+    lines = mutation.render_input_block(data=input_data_01, offset=2, indentation=2)
 
     expected_lines = [
         "  data: {",

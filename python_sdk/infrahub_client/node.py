@@ -506,6 +506,7 @@ class InfrahubNode(InfrahubNodeBase):
             query=query.render(),
             branch_name=self._branch,
             at=at,
+            variables=query.variable_values,
             tracker=f"mutation-{str(self._schema.kind).lower()}-create",
         )
         self.id = response[mutation_name]["object"]["id"]
@@ -519,6 +520,7 @@ class InfrahubNode(InfrahubNodeBase):
             query=query.render(),
             branch_name=self._branch,
             at=at,
+            variables=query.variable_values,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
         )
 
