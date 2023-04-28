@@ -100,9 +100,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const columns = getAttributeColumnsFromNodeOrGenericSchema(schemaList, generics, relationshipSchema.peer);
 
-  if(!relationshipsData) {
-    return null;
-  }
+  // if(!relationshipsData) {
+  //   return null;
+  // }
 
   if(relationshipsData && relationshipsData._relation__is_visible === false) {
     return null;
@@ -133,6 +133,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     <div
       key={relationshipSchema?.name}
     >
+      {!relationshipsData && (
+        <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-4 sm:px-6">
+          <dt className="text-sm font-medium text-gray-500 flex items-center">
+            {relationshipSchema?.label}
+          </dt>
+          <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
+            -
+          </dd>
+        </div>
+      )}
       {
         relationshipsData
         && (
@@ -185,6 +195,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           setMetaEditFieldDetails({
                             type: "relationship",
                             attributeOrRelationshipName: relationshipSchema.name,
+                            label: relationshipSchema.label || relationshipSchema.name,
                           });
                           setShowMetaEditModal(true);
                         }}>
@@ -285,7 +296,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                     </td>
                                     <td className="relative py-4 px-5 text-right text-sm font-medium w-24 border-b border-gray-300">
                                       <Button onClick={(event: any) => {
-                                        console.log("Edit: ", row);
                                         setRelatedObjectToEdit(row);
                                       }}>
                                         Edit
@@ -406,9 +416,21 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       </div>
       <SlideOver
         title={(
-          <div>
-            <div className="text-lg font-semibold">Add associated {relationshipSchema.label}</div>
-            <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">Add associated {relationshipSchema.label}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <img src="https://static-00.iconduck.com/assets.00/git-branch-icon-512x512-31judnk1.png" className="w-4 h-4" />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <svg className="h-1.5 w-1.5 mr-1 fill-yellow-500" viewBox="0 0 6 6" aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {relationshipSchema.peer}
+            </span>
           </div>
         )}
         open={showAddDrawer} setOpen={setShowAddDrawer}>
@@ -428,9 +450,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       <SlideOver
         title={(
           <>
-            {rowForMetaEdit && <div>
-              <div className="text-lg font-semibold">Metadata: {props.parentNode?.display_label} - {rowForMetaEdit.display_label}</div>
-              <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+            {rowForMetaEdit && <div className="space-y-2">
+              <div className="flex items-center w-full">
+                <span className="text-lg font-semibold mr-3">{props.parentNode?.display_label} - {rowForMetaEdit.display_label}</span>
+                <div className="flex-1"></div>
+                <div className="flex items-center">
+                  <img src="https://static-00.iconduck.com/assets.00/git-branch-icon-512x512-31judnk1.png" className="w-4 h-4" />
+                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                </div>
+              </div>
+              <div className="text-gray-500">Association metadata</div>
             </div>}
           </>
         )}
@@ -459,10 +488,24 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       />}
       {relatedObjectToEdit && <SlideOver
         title={(
-          <div>
-            <div className="text-lg font-semibold">Edit: {relatedObjectToEdit?.display_label}</div>
-            <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-          </div>
+          <>
+            {<div className="space-y-2">
+              <div className="flex items-center w-full">
+                <span className="text-lg font-semibold mr-3">{relatedObjectToEdit?.display_label}</span>
+                <div className="flex-1"></div>
+                <div className="flex items-center">
+                  <img src="https://static-00.iconduck.com/assets.00/git-branch-icon-512x512-31judnk1.png" className="w-4 h-4" />
+                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                </div>
+              </div>
+              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                <svg className="h-1.5 w-1.5 mr-1 fill-yellow-500" viewBox="0 0 6 6" aria-hidden="true">
+                  <circle cx={3} cy={3} r={3} />
+                </svg>
+                {relatedObjectToEdit?.__typename.replace(regex, "")}
+              </span>
+            </div>}
+          </>
         )}
         open={!!relatedObjectToEdit} setOpen={() => setRelatedObjectToEdit(undefined)}>
         <ObjectItemEditComponent
@@ -480,10 +523,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           objectid={relatedObjectToEdit.id}
           objectname={(() => {
             const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
-            console.log(relatedKind);
             const relatedSchema = schemaList.find(s => s.kind === relatedKind);
             const kind = schemaKindName[relatedSchema!.kind];
-            console.log("Kind: ", kind);
             return kind;
           })()}
         />

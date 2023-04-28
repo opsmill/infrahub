@@ -1,5 +1,4 @@
 import { Dialog, Transition } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
 import { Fragment } from "react";
 
 interface Props {
@@ -39,22 +38,12 @@ export default function SlideOver(props: Props) {
                 leaveFrom="translate-x-0"
                 leaveTo="translate-x-full"
               >
-                <Dialog.Panel className="pointer-events-auto w-screen max-w-md shadow-xl flex flex-col">
-                  <div className="bg-indigo-700 px-4 py-6 sm:px-4">
-                    <div className="flex items-center justify-between">
-                      <Dialog.Title className="text-base leading-6 text-white">
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-lg shadow-xl flex flex-col">
+                  <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
+                    <div className="w-full">
+                      <Dialog.Title className="text-base leading-6">
                         {title}
                       </Dialog.Title>
-                      <div className="ml-3 flex h-7 items-center">
-                        <button
-                          type="button"
-                          className="rounded-md bg-indigo-700 text-indigo-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
-                          onClick={() => setOpen(false)}
-                        >
-                          <span className="sr-only">Close panel</span>
-                          <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                        </button>
-                      </div>
                     </div>
                   </div>
 

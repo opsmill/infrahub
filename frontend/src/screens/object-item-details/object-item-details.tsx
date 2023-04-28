@@ -237,6 +237,7 @@ export default function ObjectItemDetails() {
                                           setMetaEditFieldDetails({
                                             type: "attribute",
                                             attributeOrRelationshipName: attribute.name,
+                                            label: attribute.label || attribute.name,
                                           });
                                           setShowMetaEditModal(true);
                                         }
@@ -288,11 +289,24 @@ export default function ObjectItemDetails() {
       }
 
       <SlideOver title={(
-        <div>
-          <div className="text-lg font-semibold">Edit: {objectDetails.display_label}</div>
-          <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-          <div>ID: {objectDetails.id}</div>
-          <div>Type: {schema.kind}</div>
+        <div className="space-y-2">
+          <div className="flex items-center w-full">
+            <span className="text-lg font-semibold mr-3">{objectDetails.display_label}</span>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <svg className="h-1.5 w-1.5 mr-1 fill-yellow-500" viewBox="0 0 6 6" aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {schema.kind}
+            </span>
+            <div className="flex-1"></div>
+            <div className="flex items-center">
+              <img src="https://static-00.iconduck.com/assets.00/git-branch-icon-512x512-31judnk1.png" className="w-4 h-4" />
+              <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+            </div>
+          </div>
+          <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+            ID: {objectDetails.id}
+          </div>
         </div>
       )} open={showEditDrawer} setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
@@ -312,9 +326,16 @@ export default function ObjectItemDetails() {
       </SlideOver>
       <SlideOver
         title={(
-          <div>
-            <div className="text-lg font-semibold">Metadetails for: {metaEditFieldDetails?.attributeOrRelationshipName}</div>
-            <div>Branch: {branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <img src="https://static-00.iconduck.com/assets.00/git-branch-icon-512x512-31judnk1.png" className="w-4 h-4" />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              </div>
+            </div>
+            <div className="text-gray-500">Metadata</div>
           </div>
         )}
         open={showMetaEditModal} setOpen={setShowMetaEditModal}>
