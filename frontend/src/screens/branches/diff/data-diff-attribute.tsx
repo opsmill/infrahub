@@ -4,6 +4,7 @@ import { DataDiffProperty } from "./data-diff-property";
 import { tDataDiffNodeAttribute, tDataDiffNodeProperty } from "./data-diff-node";
 import { DiffPill } from "./diff-pill";
 import { Badge } from "../../../components/badge";
+import { diffContent } from "../../../utils/diff";
 
 export type tDataDiffNodeAttributeProps = {
   attribute: tDataDiffNodeAttribute,
@@ -13,36 +14,49 @@ export const DataDiffAttribute = (props: tDataDiffNodeAttributeProps) => {
   const { attribute } = props;
 
   const {
+    action,
     name,
     changed_at,
     properties
   } = attribute;
 
+  const property = properties?.find((p) => p.type === "HAS_VALUE");
+
+  const titleContent = (
+    <div className="p-2 pr-0 hover:bg-gray-50 grid grid-cols-3 gap-4">
+      <div className="flex">
+        <Badge>
+          Attribute
+        </Badge>
+
+        <span className="mr-2 font-semibold">
+          {name}
+        </span>
+      </div>
+
+      <div className="flex">
+        <span className="font-semibold">
+          {diffContent[action](property)}
+        </span>
+      </div>
+
+      <div className="flex justify-end">
+        <DiffPill />
+
+        {
+          changed_at
+          && (
+            <DateDisplay date={changed_at} hideDefault />
+          )
+        }
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col pl-4">
-      <Accordion title={
-        (
-          <div className="flex hover:bg-gray-50">
-            <Badge>
-              Attribute
-            </Badge>
-
-            <span className="flex-1 mr-2 font-semibold">
-              {name}
-            </span>
-
-            <DiffPill />
-
-            {
-              changed_at
-                && (
-                  <DateDisplay date={changed_at} hideDefault />
-                )
-            }
-          </div>
-        )
-      }>
-        <div className="divide-y border">
+    <div className="flex flex-col">
+      <Accordion title={titleContent}>
+        <div className="divide-y">
           {
             properties
             ?.map(

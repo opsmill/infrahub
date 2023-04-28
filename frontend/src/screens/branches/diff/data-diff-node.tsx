@@ -11,8 +11,8 @@ export type tDataDiffNodePropertyValue = {
 }
 
 export type tDataDiffNodeProperty = {
-  type: string;
-  changed_at: number;
+  type?: string;
+  changed_at?: number;
   action: string;
   value: tDataDiffNodePropertyValue;
 }
@@ -26,7 +26,7 @@ export type tDataDiffNodeRelationshipPeer = {
 export type tDataDiffNodeAttribute = {
   name?: string;
   changed_at?: number;
-  action?: string;
+  action: string;
   properties?: tDataDiffNodeProperty[];
 }
 
@@ -34,7 +34,7 @@ export type tDataDiffNodeRelationship = {
   branch?: string;
   name?: string;
   changed_at?: number;
-  action?: string;
+  action: string;
   properties?: tDataDiffNodeProperty[];
   peer?: tDataDiffNodeRelationshipPeer;
 }
@@ -84,7 +84,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   // const schema = schemaList.filter((s) => s.kind === kind)[0];
 
   const title = (
-    <div className="flex flex-1 hover:bg-gray-50">
+    <div className="p-2 pr-0 flex flex-1 hover:bg-gray-50">
       <div className="flex flex-1">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
