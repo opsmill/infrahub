@@ -81,9 +81,12 @@ async def test_schema_load_endpoint_valid_simple(
     assert device
     device = device[0]
     attributes = {attrib["name"]: attrib["order_weight"] for attrib in device["attributes"]}
+    relationships = {attrib["name"]: attrib["order_weight"] for attrib in device["relationships"]}
     assert attributes["name"] == 1000
     assert attributes["description"] == 900
     assert attributes["type"] == 3000
+    assert relationships["interfaces"] == 450
+    assert relationships["tags"] == 101000
 
 
 async def test_schema_load_endpoint_valid_with_generics(
