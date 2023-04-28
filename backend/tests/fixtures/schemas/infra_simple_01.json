@@ -8,7 +8,7 @@
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
-                {"name": "description", "kind": "Text", "optional": true},
+                {"name": "description", "kind": "Text", "optional": true, "order_weight": 900},
                 {"name": "type", "kind": "Text"}
             ],
             "relationships": [
