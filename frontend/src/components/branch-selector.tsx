@@ -1,5 +1,5 @@
 import { CheckIcon } from "@heroicons/react/20/solid";
-import { CircleStackIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { CircleStackIcon, PlusIcon, ShieldCheckIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useCallback, useState } from "react";
@@ -16,7 +16,6 @@ import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
 import { PopOver } from "./popover";
-import { RoundedButton } from "./rounded-button";
 import { Select } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
@@ -48,7 +47,7 @@ export default function BranchSelector() {
 
   const valueLabel = (
     <>
-      <CheckIcon className="h-5 w-5" aria-hidden="true" />
+      <Square3Stack3DIcon className="h-5 w-5" aria-hidden="true" />
       <p className="ml-2.5 text-sm font-medium">
         {
           getCurrentBranch()?.name
@@ -58,12 +57,12 @@ export default function BranchSelector() {
   );
 
   const PopOverButton = (
-    <RoundedButton className="ml-2 bg-blue-500 text-sm hover:bg-blue-600 focus:ring-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
+    <Button buttonType={BUTTON_TYPES.MAIN} className="flex-1 rounded-r-md border border-blue-600" type="submit">
       <PlusIcon
         className="h-5 w-5 text-white"
         aria-hidden="true"
       />
-    </RoundedButton>
+    </Button>
   );
 
   const branchesOptions = branches.map(
@@ -200,7 +199,7 @@ export default function BranchSelector() {
   }
 
   return (
-    <>
+    <div className="flex">
       <SelectButton
         value={getCurrentBranch()}
         valueLabel={valueLabel}
@@ -236,6 +235,6 @@ export default function BranchSelector() {
           )
         }
       </PopOver>
-    </>
+    </div>
   );
 }
