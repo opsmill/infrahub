@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Any, Dict, List, Optional, Union
 
@@ -9,6 +10,8 @@ VARIABLE_TYPE_MAPPING = (
     (float, "Float!"),
     (bool, "Boolean!"),
 )
+
+SAFE_VALUE = re.compile(r"(^[\$ a-zA-Z0-9_-]+$)|(^$)")
 
 
 def convert_to_graphql_as_string(value: Union[str, bool, list]) -> str:
@@ -125,7 +128,7 @@ class Mutation(BaseGraphQLQuery):
         self.input_data = input_data
         self.mutation = mutation
         super().__init__(*args, **kwargs)
-        self.variable_values = {}
+        self.variable_values: dict[str, Any] = {}
 
     def render(self) -> str:
         lines = []
@@ -141,6 +144,25 @@ class Mutation(BaseGraphQLQuery):
         lines.insert(0, self.render_first_line())
 
         return "\n" + "\n".join(lines) + "\n"
+
+    def process_value(self, key: str, value: Union[str, int, bool, list]) -> str:
+        if isinstance(value, bool):
+            return repr(value).lower()
+        if isinstance(value, list):
+            values_as_string = [self.process_value(key, item) for item in value]
+            return "[" + ", ".join(values_as_string) + "]"
+
+        if isinstance(value, int):
+            return str(value)
+
+        if SAFE_VALUE.match(value):
+            return f'"{value}"'
+
+        var_name = f"{key}_{uuid.uuid4().hex}"
+        self.variables[var_name] = type(value)
+        self.variable_values[var_name] = value
+
+        return f"${var_name}"
 
     def render_input_block(self, data: dict, offset: int = 4, indentation: int = 4) -> List[str]:
         offset_str = " " * offset
@@ -162,14 +184,8 @@ class Mutation(BaseGraphQLQuery):
                         )
                         lines.append(f"{offset_str}{' '*indentation}" + "},")
                     else:
-                        var_name = f"{key}_{uuid.uuid4().hex}"
-                        self.variables[var_name] = type(value)
-                        self.variable_values[var_name] = value
-                        lines.append(f"{offset_str}{' '*indentation}${var_name},")
+                        lines.append(f"{offset_str}{' '*indentation}{self.process_value(key, value)},")
                 lines.append(offset_str + "]")
             else:
-                var_name = f"{key}_{uuid.uuid4().hex}"
-                self.variables[var_name] = type(value)
-                self.variable_values[var_name] = value
-                lines.append(f"{offset_str}{key}: ${var_name}")
+                lines.append(f"{offset_str}{key}: {self.process_value(key, value)}")
         return lines
