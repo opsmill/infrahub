@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
