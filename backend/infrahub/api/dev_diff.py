@@ -31,6 +31,21 @@ class DiffSummary(BaseModel):
     removed: int = 0
     updated: int = 0
 
+    def inc(self, name: str) -> int:
+        """Increase one of the counter by 1.
+
+        Return the new value of the counter.
+        """
+        try:
+            cnt = getattr(self, name)
+        except AttributeError as exc:
+            raise ValueError(f"{name} is not a valid counter in DiffSummary.") from exc
+
+        new_value = cnt + 1
+        setattr(self, name, new_value)
+
+        return new_value
+
 
 class BranchDiffPropertyValue(BaseModel):
     new: Any
@@ -80,17 +95,32 @@ class BranchDiffRelationshipOne(BaseModel):
     action: DiffAction
 
 
-class BranchDiffRelationshipMany(BaseModel):
-    type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
+class BranchDiffRelationshipManyElement(BaseModel):
     branch: str
     id: str
     identifier: str
     summary: DiffSummary = DiffSummary()
-    name: str
     peer: BranchDiffRelationshipPeerNode
     properties: List[BranchDiffProperty] = Field(default_factory=list)
     changed_at: Optional[str]
     action: DiffAction
+
+
+class BranchDiffRelationshipMany(BaseModel):
+    type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
+    branch: str
+    identifier: str
+    summary: DiffSummary = DiffSummary()
+    name: str
+    peers: List[BranchDiffRelationshipManyElement] = Field(default_factory=list)
+
+    @property
+    def action(self) -> DiffAction:
+        if self.summary.added and not self.summary.updated and not self.summary.removed:
+            return DiffAction.ADDED
+        if not self.summary.added and not self.summary.updated and self.summary.removed:
+            return DiffAction.REMOVED
+        return DiffAction.UPDATED
 
 
 class BranchDiffNode(BaseModel):
@@ -140,7 +170,7 @@ async def get_display_labels(nodes: Dict[str, List[str]], session: AsyncSession)
 
 
 def extract_diff_relationship_one(
-    node_id: str, name: str, rels: List[RelationshipDiffElement]
+    node_id: str, name: str, identifier: str, rels: List[RelationshipDiffElement], display_labels: Dict[str, str]
 ) -> Optional[BranchDiffRelationshipOne]:
     """Extract a BranchDiffRelationshipOne object from a list of RelationshipDiffElement."""
 
@@ -160,18 +190,19 @@ def extract_diff_relationship_one(
         if rel.changed_at:
             changed_at = rel.changed_at.to_string()
 
-        peer = [rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id][0]
+        peer = dict([rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id][0])
+        peer["display_label"] = display_labels.get(peer.get("id", None), "")
 
         if rel.action.value == "added":
-            peer_value = {"new": dict(peer)}
+            peer_value = {"new": peer}
         else:
-            peer_value = {"previous": dict(peer)}
+            peer_value = {"previous": peer}
 
         return BranchDiffRelationshipOne(
             branch=rel.branch,
             id=rel.id,
             name=name,
-            identifier=rel.name,
+            identifier=identifier,
             peer=peer_value,
             properties=[prop.to_graphql() for prop in rel.properties.values()],
             changed_at=changed_at,
@@ -186,33 +217,73 @@ def extract_diff_relationship_one(
             )
             return None
 
-        rel_added = [rel for rel in rels if rel.action.value == "added"]
-        rel_removed = [rel for rel in rels if rel.action.value == "removed"]
+        rel_added = [rel for rel in rels if rel.action.value == "added"][0]
+        rel_removed = [rel for rel in rels if rel.action.value == "removed"][0]
 
-        peer_added = [rel_node for rel_node in rel_added.nodes.values() if rel_node.id != node_id][0]
-        peer_removed = [rel_node for rel_node in rel_removed.nodes.values() if rel_node.id != node_id][0]
+        peer_added = dict([rel_node for rel_node in rel_added.nodes.values() if rel_node.id != node_id][0])
+        peer_added["display_label"] = display_labels.get(peer_added.get("id", None), "")
 
-        if peer_added.changed_at:
-            changed_at = peer_added.changed_at.to_string()
-        elif peer_removed.changed_at:
-            changed_at = peer_removed.changed_at.to_string()
-
+        peer_removed = dict([rel_node for rel_node in rel_removed.nodes.values() if rel_node.id != node_id][0])
+        peer_removed["display_label"] = display_labels.get(peer_removed.get("id", None), "")
         peer_value = {"new": dict(peer_added), "previous": dict(peer_removed)}
 
         return BranchDiffRelationshipOne(
             branch=rel_added.branch,
             id=rel_added.id,
             name=name,
-            identifier=rel_added.name,
+            identifier=identifier,
             peer=peer_value,
             properties=[prop.to_graphql() for prop in rel_added.properties.values()],
             changed_at=changed_at,
-            action=rel_added.action,
+            action="updated",
         )
+
+    return None
+
+
+def extract_diff_relationship_many(
+    node_id: str, name: str, identifier: str, rels: List[RelationshipDiffElement], display_labels: Dict[str, str]
+) -> Optional[BranchDiffRelationshipMany]:
+    """Extract a BranchDiffRelationshipMany object from a list of RelationshipDiffElement."""
+
+    if not rels:
+        return None
+
+    rel_diff = BranchDiffRelationshipMany(
+        branch=rels[0].branch,
+        name=name,
+        identifier=identifier,
+    )
+
+    for rel in rels:
+        changed_at = None
+        if rel.changed_at:
+            changed_at = rel.changed_at.to_string()
+
+        peer = [rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id][0].dict(
+            exclude={"db_id", "labels"}
+        )
+        peer["display_label"] = display_labels.get(peer["id"], "")
+
+        rel_diff.summary.inc(rel.action.value)
+
+        rel_diff.peers.append(
+            BranchDiffRelationshipManyElement(
+                branch=rel.branch,
+                id=rel.id,
+                identifier=identifier,
+                peer=peer,
+                properties=[prop.to_graphql() for prop in rel.properties.values()],
+                changed_at=changed_at,
+                action=rel.action,
+            )
+        )
+
+    return rel_diff
 
 
 @router.get("/data")
-async def get_diff_data(  # pylint: disable=too-many-branches
+async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statements
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
     time_from: Optional[str] = None,
@@ -233,12 +304,14 @@ async def get_diff_data(  # pylint: disable=too-many-branches
     node_ids = defaultdict(lambda: defaultdict(list))
 
     # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
-    rels_per_node: Dict[str, Dict[str, List[RelationshipDiffElement]]] = defaultdict(lambda: defaultdict(list))
+    rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
     for branch_name, items in rels.items():
         for item in items.values():
             for sub_item in item.values():
                 for node_id, node in sub_item.nodes.items():
-                    rels_per_node[node_id][sub_item.name].append(sub_item)
+                    rels_per_node[branch_name][node_id][sub_item.name].append(sub_item)
                     if node_id not in node_ids[branch_name][node.kind]:
                         node_ids[branch_name][node.kind].append(node_id)
 
@@ -251,7 +324,7 @@ async def get_diff_data(  # pylint: disable=too-many-branches
     display_labels = await get_display_labels(nodes=node_ids, session=session)
 
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
-    for branch_name, items in nodes.items():
+    for branch_name, items in nodes.items():  # pylint: disable=too-many-nested-blocks
         for item in items.values():
             item_graphql = item.to_graphql()
 
@@ -264,63 +337,98 @@ async def get_diff_data(  # pylint: disable=too-many-branches
                 **item_dict, elements=item_elements, display_label=display_labels.get(item.id, "")
             )
 
-            # Extract the value from the list of properties
-            for name, element in node_diff.elements.items():
-                idx_to_remove = None
-
-                cnt = getattr(node_diff.summary, element.action.value)
-                setattr(node_diff.summary, element.action.value, cnt + 1)
-
-                for idx, prop in enumerate(element.properties):
-                    if prop.type == "HAS_VALUE":
-                        idx_to_remove = idx
-                        element.value = prop
-                    else:
-                        cnt = getattr(element.summary, prop.action.value)
-                        setattr(element.summary, prop.action.value, cnt + 1)
-
-                if idx_to_remove:
-                    element.properties.pop(idx_to_remove)
-
             schema = registry.get_schema(name=node_diff.kind, branch=node_diff.branch)
 
-            if item.id in rels_per_node:
-                for rel_name, rels in rels_per_node[item.id].items():
+            # Extract the value from the list of properties
+            for _, element in node_diff.elements.items():
+                node_diff.summary.inc(element.action.value)
+
+                for prop in element.properties:
+                    if prop.type == "HAS_VALUE":
+                        element.value = prop
+                    else:
+                        element.summary.inc(prop.action.value)
+
+                if element.value:
+                    element.properties.remove(element.value)
+
+            if item.id in rels_per_node[branch_name]:
+                for rel_name, rels in rels_per_node[branch_name][item.id].items():
                     if rel_schema := schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False):
+                        diff_rel = None
                         if rel_schema.cardinality == "one":
-                            diff_rel = extract_diff_relationship_one(node_id=item.id, name=rel_schema.name, rels=rels)
-                            if diff_rel:
-                                # diff_rel.peer.display_label = display_labels.get(diff_rel.peer.id, "")
-                                node_diff.elements[diff_rel.name] = diff_rel
+                            diff_rel = extract_diff_relationship_one(
+                                node_id=item.id,
+                                name=rel_schema.name,
+                                identifier=rel_name,
+                                rels=rels,
+                                display_labels=display_labels,
+                            )
+                        elif rel_schema.cardinality == "many":
+                            diff_rel = extract_diff_relationship_many(
+                                node_id=item.id,
+                                name=rel_schema.name,
+                                identifier=rel_name,
+                                rels=rels,
+                                display_labels=display_labels,
+                            )
+
+                        if diff_rel:
+                            node_diff.elements[diff_rel.name] = diff_rel
+                            node_diff.summary.inc(diff_rel.action.value)
 
             response[branch_name].append(node_diff)
             nodes_in_diff.append(node_diff.id)
 
-    # # Check if all nodes associated with a relationship have been accounted for
-    # # If a node is missing it means its changes are only related to its relationships
-    # for node_in_rel, rels in rels_per_node.items():
-    #     if node_in_rel in nodes_in_diff:
-    #         continue
+    # Check if all nodes associated with a relationship have been accounted for
+    # If a node is missing it means its changes are only related to its relationships
+    for branch_name, _ in rels_per_node.items():
+        for node_in_rel, _ in rels_per_node[branch_name].items():
+            if node_in_rel in nodes_in_diff:
+                continue
 
-    #     node_diff = None
-    #     for rel in rels:
-    #         schema = registry.get_schema(name=rel.nodes[node_in_rel].kind, branch=rel.branch)
-    #         if rel_schema := schema.get_relationship_by_identifier(id=rel.name, raise_on_error=False):
-    #             if not node_diff:
-    #                 node_diff = BranchDiffNode(
-    #                     branch=rel.branch,
-    #                     id=node_in_rel,
-    #                     kind=rel.nodes[node_in_rel].kind,
-    #                     action=DiffAction.UPDATED,
-    #                     display_label=display_labels.get(node_in_rel, ""),
-    #                 )
+            node_diff = None
+            for rel_name, rels in rels_per_node[branch_name][node_in_rel].items():
+                node_kind = rels[0].nodes[node_in_rel].kind
 
-    #             diff_rel = extract_diff_relationship(node_id=node_in_rel, name=rel_schema.name, rel=rel)
-    #             diff_rel.peer.display_label = display_labels.get(diff_rel.peer.id, "")
-    #             node_diff.relationships.append(diff_rel)
+                schema = registry.get_schema(name=node_kind, branch=branch_name)
+                rel_schema = schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False)
+                if not rel_schema:
+                    continue
 
-    # if node_diff:
-    #     response[rel.branch].append(node_diff)
+                if not node_diff:
+                    node_diff = BranchDiffNode(
+                        branch=branch_name,
+                        id=node_in_rel,
+                        kind=node_kind,
+                        action=DiffAction.UPDATED,
+                        display_label=display_labels.get(node_in_rel, ""),
+                    )
+
+                diff_rel = None
+                if rel_schema.cardinality == "one":
+                    diff_rel = extract_diff_relationship_one(
+                        node_id=node_in_rel,
+                        name=rel_schema.name,
+                        identifier=rel_name,
+                        rels=rels,
+                        display_labels=display_labels,
+                    )
+                elif rel_schema.cardinality == "many":
+                    diff_rel = extract_diff_relationship_many(
+                        node_id=node_in_rel,
+                        name=rel_schema.name,
+                        identifier=rel_name,
+                        rels=rels,
+                        display_labels=display_labels,
+                    )
+
+                if diff_rel:
+                    node_diff.elements[diff_rel.name] = diff_rel
+                    node_diff.summary.inc(diff_rel.action.value)
+
+            if node_diff:
+                response[branch_name].append(node_diff)
 
     return response
 
