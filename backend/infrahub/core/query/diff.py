@@ -275,6 +275,60 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
         return sort_results_by_time(results, rel_label="r")
 
 
+class DiffNodePropertiesByIDSQuery(Query):
+    name: str = "diff_node_properties_ids"
+    order_by: List[str] = ["a.name"]
+
+    def __init__(
+        self,
+        ids: List[str],
+        at: str,
+        account=None,
+        *args,
+        **kwargs,
+    ):
+        self.account = account
+        self.ids = ids
+        self.at = Timestamp(at)
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["ids"] = self.ids
+
+        rels_filter, rels_params = self.branch.get_query_filter_relationships(
+            rel_labels=["r"], at=self.at, include_outside_parentheses=True
+        )
+
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (a) WHERE a.uuid IN $ids
+        MATCH (a)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]-(ap)
+        WHERE %s
+        """ % (
+            "\n AND ".join(rels_filter),
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["a", "ap", "r"]
+
+    def get_results_by_id_and_prop_type(self, attr_id: str, prop_type: str) -> List[QueryResult]:
+        """Return a list of all results matching a given relationship id / property type.
+
+        The results are ordered chronologicall (from oldest to newest)
+        """
+        results = [
+            result
+            for result in self.results
+            if result.get("r").get("branch") in self.branch.get_branches_in_scope()
+            and result.get("a").get("uuid") == attr_id
+            and result.get("r").type == prop_type
+        ]
+
+        return sort_results_by_time(results, rel_label="r")
+
+
 class DiffRelationshipPropertiesByIDSRangeQuery(Query):
     name = "diff_relationship_properties_range_ids"
 
@@ -332,7 +386,3 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         ]
 
         return sort_results_by_time(results, rel_label="r")
-
-
-# class DiffNodePropertiesByIDSRangeQuery(Query):
-#     name = "diff_node_properties_range_ids"
