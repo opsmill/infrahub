@@ -14,7 +14,7 @@ tasks:
     init: |
       pyenv install 3.10 --skip-existing
       pyenv local 3.10
-      pip install toml invoke
+      pip install toml invoke==2.0.0
       curl -sSL https://install.python-poetry.org | python3 -
       poetry config virtualenvs.create false
       poetry install
