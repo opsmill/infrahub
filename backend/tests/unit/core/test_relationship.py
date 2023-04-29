@@ -7,7 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
-from infrahub_client.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp
 
 
 async def test_relationship_init(

@@ -66,10 +66,10 @@ except ImportError:
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql.generator import generate_object_types
 from infrahub.utils import str_to_bool
-from infrahub_client.timestamp import Timestamp
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
 

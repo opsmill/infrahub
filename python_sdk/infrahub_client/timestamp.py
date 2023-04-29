@@ -53,9 +53,6 @@ class Timestamp:
     def to_timestamp(self) -> str:
         return self.obj.int_timestamp
 
-    async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # pylint: disable=unused-argument
-        return self.obj
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Timestamp):
             return NotImplemented

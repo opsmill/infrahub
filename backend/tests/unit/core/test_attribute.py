@@ -5,8 +5,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
-from infrahub_client.timestamp import Timestamp
 
 
 async def test_init(
