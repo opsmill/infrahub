@@ -38,7 +38,7 @@ It's designed to be controlled by `invoke` using a list of predefined commands
 
 ### Pre-Requisite
 
-In order to run the demo environment, the following applications msit be installed on the systems:
+In order to run the demo environment, the following applications must be installed on the systems:
 - [pyinvoke](https://www.pyinvoke.org/)
 - Docker & Docker Compose
 

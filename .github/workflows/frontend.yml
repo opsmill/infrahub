@@ -20,7 +20,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
-        run: "pip install poetry==1.3.2 toml invoke"
+        run: "pip install poetry==1.3.2 toml invoke==2.0.0"
       - name: "Install frontend"
         working-directory: ./frontend
         run: npm install
