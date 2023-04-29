@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
@@ -52,9 +52,6 @@ class Timestamp:
 
     def to_timestamp(self) -> str:
         return self.obj.int_timestamp
-
-    async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # pylint: disable=unused-argument
-        return self.obj
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Timestamp):

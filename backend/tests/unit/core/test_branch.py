@@ -11,6 +11,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound
 from infrahub.message_bus.events import (
@@ -20,7 +21,6 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
-from infrahub_client.timestamp import Timestamp
 
 
 async def test_branch_name_validator(session):

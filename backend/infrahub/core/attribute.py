@@ -17,9 +17,9 @@ from infrahub.core.query.attribute import (
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession

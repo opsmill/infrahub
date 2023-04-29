@@ -9,9 +9,9 @@ from neo4j.graph import Node, Relationship
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async, execute_write_query_async
 from infrahub.exceptions import QueryError
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession

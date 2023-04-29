@@ -5,8 +5,8 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.relationship import RelationshipManager
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
-from infrahub_client.timestamp import Timestamp
 
 
 async def test_one_init_no_input_no_rel(session: AsyncSession, person_jack_main: Node, branch: Branch):

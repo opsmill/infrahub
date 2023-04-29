@@ -20,6 +20,7 @@ from infrahub.core.query.diff import (
     DiffRelationshipQuery,
 )
 from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
     element_id_to_id,
@@ -36,7 +37,6 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession

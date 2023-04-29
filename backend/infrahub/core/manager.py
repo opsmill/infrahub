@@ -27,9 +27,9 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import SchemaNotFound
 from infrahub.utils import deep_merge_dict, intersection
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
