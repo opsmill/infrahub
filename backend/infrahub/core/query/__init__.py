@@ -121,13 +121,13 @@ class QueryResult:
         """Return all relationships."""
 
         for item in self.data:
-            if hasattr(item, "nodes"):
+            if isinstance(item, Relationship):
                 yield item
 
     def get_nodes(self) -> Generator[Node, None, None]:
         """Return all nodes."""
         for item in self.data:
-            if hasattr(item, "labels"):
+            if isinstance(item, Node):
                 yield item
 
     def __iter__(self):
@@ -144,7 +144,9 @@ class Query(ABC):
 
     order_by: Optional[List[str]] = None
 
-    def __init__(self, branch: Optional[Branch] = None, at: Union[Timestamp, str] = None, limit: Optional[int] = None):
+    def __init__(
+        self, branch: Optional[Branch] = None, at: Optional[Union[Timestamp, str]] = None, limit: Optional[int] = None
+    ):
         if branch:
             self.branch = branch
 
@@ -160,7 +162,7 @@ class Query(ABC):
         self.params: dict = {}
         self.query_lines: List[str] = []
         self.return_labels: List[str] = []
-        self.results: List[QueryResult] = None
+        self.results: List[QueryResult] = []
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
@@ -170,14 +172,14 @@ class Query(ABC):
         cls,
         session: AsyncSession,
         branch: Optional[Branch] = None,
-        at: Union[Timestamp, str] = None,
+        at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         *args,
         **kwargs,
     ):
         query = cls(branch=branch, at=at, limit=limit, *args, **kwargs)
 
-        await query.query_init(session=session, *args, **kwargs)
+        await query.query_init(session, *args, **kwargs)
 
         return query
 
@@ -301,7 +303,7 @@ class Query(ABC):
             yield self.results[attr_info["idx"]]
 
     @property
-    def num_of_results(self) -> int:
+    def num_of_results(self) -> Union[int, None]:
         if not self.has_been_executed:
             return None
 
