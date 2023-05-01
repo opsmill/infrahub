@@ -1,7 +1,9 @@
+import { toast } from "react-toastify";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { getFormStructureForMetaEdit } from "../../utils/formStructureForCreateEdit";
 import updateObjectWithId from "../../utils/updateObjectWithId";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 
 // const optionsLeft: SelectOption[] = [
 //   {
@@ -94,6 +96,7 @@ export default function ObjectItemMetaEdit(props: Props) {
     }
     try {
       await updateObjectWithId(row.id!, schema, updateObject);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
     } catch {
       console.error("Something went wrong while updating the object");
     }
