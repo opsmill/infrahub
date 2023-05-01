@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
@@ -22,6 +22,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 
 declare const Handlebars: any;
 
@@ -215,7 +216,22 @@ export default function ObjectItems() {
           </div>
         )}
       {
-        <SlideOver open={showCreateDrawer} setOpen={setShowCreateDrawer} title={`Create ${objectname}`}>
+        <SlideOver
+          title={(
+            <div className="space-y-2">
+              <div className="flex items-center w-full">
+                <span className="text-lg font-semibold mr-3">Create {objectname}</span>
+                <div className="flex-1"></div>
+                <div className="flex items-center">
+                  <Square3Stack3DIcon className="w-5 h-5" />
+                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          open={showCreateDrawer} setOpen={setShowCreateDrawer}
+        // title={`Create ${objectname}`}
+        >
           <ObjectItemCreate onCreate={() => {
             setShowCreateDrawer(false);
             loadData();

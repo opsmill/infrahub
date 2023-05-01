@@ -4,6 +4,7 @@ import {
   LockClosedIcon,
   PencilIcon,
   PencilSquareIcon,
+  Square3Stack3DIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
@@ -31,6 +32,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit.compon
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
@@ -237,6 +239,7 @@ export default function ObjectItemDetails() {
                                           setMetaEditFieldDetails({
                                             type: "attribute",
                                             attributeOrRelationshipName: attribute.name,
+                                            label: attribute.label || attribute.name,
                                           });
                                           setShowMetaEditModal(true);
                                         }
@@ -287,7 +290,27 @@ export default function ObjectItemDetails() {
         )
       }
 
-      <SlideOver title={`Edit ${schema.label}`} subtitle={objectDetails.display_label} open={showEditDrawer} setOpen={setShowEditDrawer}>
+      <SlideOver title={(
+        <div className="space-y-2">
+          <div className="flex items-center w-full">
+            <span className="text-lg font-semibold mr-3">{objectDetails.display_label}</span>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <svg className="h-1.5 w-1.5 mr-1 fill-yellow-500" viewBox="0 0 6 6" aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {schema.kind}
+            </span>
+            <div className="flex-1"></div>
+            <div className="flex items-center">
+              <Square3Stack3DIcon className="w-5 h-5" />
+              <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+            </div>
+          </div>
+          <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+            ID: {objectDetails.id}
+          </div>
+        </div>
+      )} open={showEditDrawer} setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
           closeDrawer={
             () => {
@@ -303,7 +326,21 @@ export default function ObjectItemDetails() {
           objectname={objectname!}
         />
       </SlideOver>
-      <SlideOver title={`${metaEditFieldDetails?.attributeOrRelationshipName} > Meta-details`} subtitle="Update meta details" open={showMetaEditModal} setOpen={setShowMetaEditModal}>
+      <SlideOver
+        title={(
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <Square3Stack3DIcon className="w-5 h-5" />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              </div>
+            </div>
+            <div className="text-gray-500">Metadata</div>
+          </div>
+        )}
+        open={showMetaEditModal} setOpen={setShowMetaEditModal}>
         <ObjectItemMetaEdit
           closeDrawer={
             () => {

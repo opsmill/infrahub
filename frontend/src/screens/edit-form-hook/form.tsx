@@ -49,7 +49,7 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
     </>;
   };
 
-  return <form className="flex-1 flex flex-col" onSubmit={handleSubmit(onSubmit)}>
+  return <form className="flex-1 flex flex-col bg-white" onSubmit={handleSubmit(onSubmit)}>
     <FormProvider {...formMethods}>
       <div className="space-y-12 max-w-lg px-4 flex-1 bg-white">
         <div className="pb-12">
@@ -68,7 +68,7 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
       <div className="mt-6 flex items-center justify-end gap-x-6 py-3 max-w-lg pr-3 border-t">
         <Button onClick={
           () => {
-            if(onCancel) {
+            if (onCancel) {
               onCancel();
             }
           }
