@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, validator
 
 import infrahub.config as config
 from infrahub.core.constants import DiffAction, RelationshipStatus
+from infrahub.core.manager import NodeManager
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
@@ -20,6 +21,7 @@ from infrahub.core.query.diff import (
     DiffRelationshipQuery,
 )
 from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
+from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
@@ -141,13 +143,14 @@ class Branch(StandardNode):
 
         return cls._convert_node_to_obj(results[0].values()[0])
 
+    @classmethod
+    def isinstance(cls, obj: Any) -> bool:
+        return isinstance(obj, cls)
+
     async def get_origin_branch(self, session: AsyncSession) -> Branch:
         """Return the branch Object of the origin_branch."""
         if not self.origin_branch or self.origin_branch == self.name:
             return None
-
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core import get_branch
 
         return await get_branch(self.origin_branch, session=session)
 
@@ -429,8 +432,6 @@ class Branch(StandardNode):
         await self.save(session=session)
 
         # Update the branch in the registry after the rebase
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core import registry
 
         registry.branch[self.name] = self
 
@@ -474,9 +475,6 @@ class Branch(StandardNode):
         passed = True
         messages = []
         tasks = []
-
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
 
         # For all repositories in this branch, run all checks
         repos = await NodeManager.query(schema="Repository", branch=self, session=session)
@@ -543,9 +541,6 @@ class Branch(StandardNode):
         await self.merge_repositories(rpc_client=rpc_client, session=session)
 
     async def merge_graph(self, session: AsyncSession, at: Union[str, Timestamp] = None):
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core import registry
-
         rel_ids_to_update = []
 
         default_branch = registry.branch[config.SETTINGS.main.default_branch]
@@ -686,9 +681,6 @@ class Branch(StandardNode):
         await self.rebase(session=session)
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
-
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema="Repository", session=session)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
@@ -1012,9 +1004,6 @@ class Diff:
     async def get_modified_paths_repositories_for_branch(
         self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> Set[Tuple]:
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
-
         tasks = []
         paths = set()
 
@@ -1526,9 +1515,6 @@ class Diff:
     async def get_files_repositories_for_branch(
         self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> List[FileDiffElement]:
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
-
         tasks = []
         files = []
 
@@ -1566,3 +1552,6 @@ class Diff:
                 files.extend(response)
 
         return files
+
+
+registry.branch_object = Branch
