@@ -2,7 +2,6 @@ import Accordion from "../../../components/accordion";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffProperty } from "./data-diff-property";
 import { tDataDiffNodeProperty, tDataDiffNodeRelationship } from "./data-diff-node";
-import { DiffPill } from "./diff-pill";
 import { Badge } from "../../../components/badge";
 import { diffContent } from "../../../utils/diff";
 
@@ -46,7 +45,7 @@ export const DataDiffRelationship = (props: tDataDiffNodeRelationshipProps) => {
       </div>
 
       <div className="flex justify-end">
-        <DiffPill />
+        {/* <DiffPill /> */}
 
         {
           changed_at
@@ -76,7 +75,7 @@ export const DataDiffRelationship = (props: tDataDiffNodeRelationshipProps) => {
             </Accordion>
           )
           : (
-            <div className="m-2">
+            <div className="m-2 mr-0">
               {titleContent}
             </div>
           )

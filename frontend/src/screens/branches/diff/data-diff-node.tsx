@@ -2,8 +2,6 @@ import Accordion from "../../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffAttribute } from "./data-diff-attribute";
-import { DataDiffRelationship } from "./data-diff-relationship";
-import { DiffPill } from "./diff-pill";
 
 export type tDataDiffNodePropertyValue = {
   new: string;
@@ -75,7 +73,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     kind,
     changed_at,
     attributes = [],
-    relationships = []
+    // relationships = []
   } = node;
 
   // const { branchname } = useParams();
@@ -100,7 +98,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         </span>
       </div>
 
-      <DiffPill />
+      {/* <DiffPill /> */}
 
       {
         changed_at
@@ -127,7 +125,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
               : null
           }
 
-          {
+          {/* {
             relationships?.length
               ?
               relationships
@@ -137,7 +135,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
                 )
               )
               : null
-          }
+          } */}
         </div>
       </Accordion>
     </div>
