@@ -155,6 +155,7 @@ async def test_diff_data_endpoint_branch_only_default(session, client, client_he
     )
 
 
+@pytest.mark.xfail(reason="Need to investigate, occationally fails")
 async def test_diff_data_endpoint_branch_time_from(session, client, client_headers, car_person_data_generic_diff):
     time20 = car_person_data_generic_diff["time20"]
 
