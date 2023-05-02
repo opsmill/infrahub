@@ -1,5 +1,5 @@
 import { Combobox } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon } from "@heroicons/react/20/solid";
 import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
@@ -9,6 +9,7 @@ import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 declare const Handlebars: any;
 
@@ -116,7 +117,7 @@ export default function FilterCombobox(props: Props) {
         />
 
         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-          <ChevronUpDownIcon
+          <ChevronDownIcon
             className="h-5 w-5 text-gray-400"
             aria-hidden="true"
           />
