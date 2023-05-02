@@ -33,17 +33,20 @@ export default function BranchSelector() {
   const [branchedFrom] = useState(); // TODO: Add camendar component
   const [isDataOnly, setIsDataOnly] = useState(true);
 
-  const getCurrentBranch = useCallback(() :Branch => {
-    if(branch) {
-      return branch;
-    }
+  const getCurrentBranch = useCallback(
+    () :Branch => {
+      if(branch) {
+        return branch;
+      }
 
-    if(branchInQueryString) {
-      return branches.filter((b) => b.name === branchInQueryString.trim())[0];
-    } else {
-      return branches.filter(b => b.is_default)[0];
-    }
-  }, [branch, branchInQueryString, branches]);
+      if(branchInQueryString) {
+        return branches.filter((b) => b.name === branchInQueryString.trim())[0];
+      } else {
+        return branches.filter(b => b.is_default)[0];
+      }
+    },
+    [branch, branchInQueryString, branches]
+  );
 
   const valueLabel = (
     <>
@@ -77,20 +80,23 @@ export default function BranchSelector() {
   /**
    * Update GraphQL client endpoint whenever branch changes
    */
-  const onBranchChange = useCallback((branch: Branch) => {
-    if(branch) {
-      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch.name));
-    }
+  const onBranchChange = useCallback(
+    (branch: Branch) => {
+      if(branch) {
+        graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(branch.name));
+      }
 
-    setBranch(branch);
+      setBranch(branch);
 
-    if (branch?.is_default) {
+      if (branch?.is_default) {
       // undefined is needed to remove a parameter from the QSP
-      setBranchInQueryString(undefined);
-    } else {
-      setBranchInQueryString(branch.name);
-    }
-  }, [setBranch, setBranchInQueryString]);
+        setBranchInQueryString(undefined);
+      } else {
+        setBranchInQueryString(branch.name);
+      }
+    },
+    [setBranch, setBranchInQueryString]
+  );
 
   const handleBranchedFrom = (newBranch: any) => setOriginBranch(newBranch);
 
@@ -184,7 +190,9 @@ export default function BranchSelector() {
 
       onBranchChange(newBranch);
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
+      // toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
+
+      window.location.reload();
     } catch (e) {
       const details = "An error occured while creating the branch";
       toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={details} />);

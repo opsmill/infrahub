@@ -1,14 +1,14 @@
-import { ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "../../components/badge";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { DateDisplay } from "../../components/date-display";
 import { constructPath } from "../../utils/fetch";
+import { Badge } from "../../components/badge";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
@@ -40,21 +40,37 @@ export const BranchesItems = () => {
                       {
                         branch.is_default
                           && (
-                            <Tooltip message={"Default branch"}>
-                              <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                            </Tooltip>
+                            <>
+                              <Tooltip message={"Default branch"}>
+                                <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                              </Tooltip>
+
+                              <div className="text-base font-semibold leading-6 text-gray-900">
+                                {branch.name}
+                              </div>
+                            </>
                           )
                       }
 
-                      <h3 className="text-sm font-medium text-gray-900 py-0.5">{branch.name}</h3>
-
                       {
                         !branch.is_default
-                          && (
+                        && (
+                          <div className="flex items-center">
+                            <Tooltip message={"Destination branch"}>
+                              <p className="max-w-2xl text-sm text-gray-500">main</p>
+                            </Tooltip>
+
+                            <ChevronLeftIcon className="h-5 w-5 mx-2 flex-shrink-0 text-gray-400" aria-hidden="true" />
+
+                            <div className="text-base font-semibold leading-6 text-gray-900 mr-2">
+                              {branch.name}
+                            </div>
+
                             <Tooltip message={"Origin branch"}>
                               <Badge>{branch.origin_branch}</Badge>
                             </Tooltip>
-                          )
+                          </div>
+                        )
                       }
                     </div>
 

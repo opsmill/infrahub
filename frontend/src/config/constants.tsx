@@ -46,10 +46,6 @@ export const BRANCHES_MENU_ITEMS = [
   {
     path: "/branches",
     label: "List"
-  },
-  {
-    path: "/pull-requests",
-    label: "Pull requests"
   }
 ];
 

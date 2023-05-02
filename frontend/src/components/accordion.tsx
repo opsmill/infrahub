@@ -13,8 +13,8 @@ export default function Accordion(props: AccordionProps) {
     <Disclosure as="div">
       {({ open }) => (
         <>
-          <div>
-            <Disclosure.Button className="flex w-full items-center text-left">
+          <div className="flex">
+            <Disclosure.Button className="flex flex-1 w-full items-center">
               <span className="flex h-7 items-center mr-2 relative">
                 {
                   open
@@ -27,11 +27,11 @@ export default function Accordion(props: AccordionProps) {
                 }
 
               </span>
-              <span className="font-semibold">{title}</span>
+              <span className="flex-1 font-semibold text-left justify-start">{title}</span>
             </Disclosure.Button>
           </div>
 
-          <Disclosure.Panel className="p-2">
+          <Disclosure.Panel className="p-2 pl-8 pr-0">
             {children}
           </Disclosure.Panel>
         </>

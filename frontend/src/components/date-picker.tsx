@@ -64,7 +64,7 @@ export const DatePicker = (props: any) => {
       />
 
       <Button onClick={handleClickNow} className="rounded-none rounded-r-md border-t border-r border-b border-gray-300" disabled={!date && !text}>
-        Now
+        Reset
       </Button>
     </div>
   );

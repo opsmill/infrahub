@@ -2,7 +2,8 @@ import Accordion from "../../../components/accordion";
 import { DateDisplay } from "../../../components/date-display";
 import { DataDiffProperty } from "./data-diff-property";
 import { tDataDiffNodeProperty, tDataDiffNodeRelationship } from "./data-diff-node";
-import { DataDiffPeer } from "./data-diff-peer";
+import { Badge } from "../../../components/badge";
+import { diffContent } from "../../../utils/diff";
 
 export type tDataDiffNodeRelationshipProps = {
   relationship: tDataDiffNodeRelationship,
@@ -12,38 +13,58 @@ export const DataDiffRelationship = (props: tDataDiffNodeRelationshipProps) => {
   const { relationship } = props;
 
   const {
-    branch,
+    action,
     changed_at,
     properties,
     peer
   } = relationship;
 
-  const titleContent = (
-    <div className="flex">
-      {
-        peer
-        && (
-          <DataDiffPeer peer={peer} branch={branch} />
-        )
-      }
+  console.log("properties: ", properties);
+  const property = properties?.find((p) => p.type === "HAS_VALUE");
 
-      {
-        changed_at
-        && (
-          <DateDisplay date={changed_at} hideDefault />
-        )
-      }
+  const titleContent = (
+    <div className="p-2 pr-0 hover:bg-gray-50 grid grid-cols-3 gap-4">
+      <div className="flex">
+        <Badge>
+          {peer?.kind}
+        </Badge>
+
+        <span className="mr-2 font-semibold">
+          {peer?.display_label}
+        </span>
+      </div>
+
+      <div className="flex">
+        <span className="font-semibold">
+          {
+            action
+            && property
+            && diffContent[action](property)
+          }
+        </span>
+      </div>
+
+      <div className="flex justify-end">
+        {/* <DiffPill /> */}
+
+        {
+          changed_at
+          && (
+            <DateDisplay date={changed_at} hideDefault />
+          )
+        }
+      </div>
     </div>
   );
 
   return (
-    <div className="flex flex-col pl-4">
+    <div className="flex flex-col">
       {
         properties
         ?.length
           ? (
             <Accordion title={titleContent}>
-              <div>
+              <div className="divide-y">
                 {
                   properties
                   ?.map(
@@ -54,7 +75,7 @@ export const DataDiffRelationship = (props: tDataDiffNodeRelationshipProps) => {
             </Accordion>
           )
           : (
-            <div className="m-2">
+            <div className="m-2 mr-0">
               {titleContent}
             </div>
           )

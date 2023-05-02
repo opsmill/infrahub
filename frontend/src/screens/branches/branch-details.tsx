@@ -13,6 +13,8 @@ import rebaseBranch from "../../graphql/mutations/branches/rebaseBranch";
 import validateBranch from "../../graphql/mutations/branches/validateBranch";
 import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
 import { constructPath } from "../../utils/fetch";
+import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
+import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -119,7 +121,7 @@ export const BranchDetails = () => {
             && (
               <>
                 <div className="flex flex-1 flex-col md:flex-row">
-                  {/* <Button
+                  <Button
                     className="mr-0 md:mr-3"
                     onClick={() => branchAction({
                       successMessage: "Branch merged successfuly!",
@@ -132,9 +134,9 @@ export const BranchDetails = () => {
                     buttonType={BUTTON_TYPES.VALIDATE}
                     disabled={branch.is_default}
                   >
-                  Merge
+                    Merge
                     <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                  </Button> */}
+                  </Button>
 
                   <Button
                     className="mr-0 md:mr-3"
@@ -149,7 +151,7 @@ export const BranchDetails = () => {
                     disabled={branch.is_default}
                   >
                     Rebase
-                    <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                    <ArrowPathIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                   </Button>
 
                   <Button
@@ -183,13 +185,15 @@ export const BranchDetails = () => {
                         });
 
                         navigate(constructPath("/branches"));
+
+                        window.location.reload();
                       }
                     }
                     buttonType={BUTTON_TYPES.CANCEL}
                     disabled={branch.is_default}
                   >
                     Delete
-                    <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                    <TrashIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </>
