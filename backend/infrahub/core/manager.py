@@ -14,6 +14,7 @@ from infrahub.core.query.node import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
+    NodeListGetRelationshipsQuery,
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
@@ -56,6 +57,7 @@ class NodeManager:
         include_source: bool = False,
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
+        prefetch_relationships: bool = False,
         account=None,
     ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
@@ -101,6 +103,7 @@ class NodeManager:
             include_source=include_source,
             include_owner=include_owner,
             session=session,
+            prefetch_relationships=prefetch_relationships,
         )
 
         return list(response.values()) if node_ids else []
@@ -160,6 +163,7 @@ class NodeManager:
         include_source: bool = False,
         include_owner: bool = False,
         session: Optional[AsyncSession] = None,
+        prefetch_relationships: bool = False,
         account=None,
     ) -> Node:
         """Return one node based on its ID."""
@@ -171,6 +175,7 @@ class NodeManager:
             include_source=include_source,
             include_owner=include_owner,
             account=account,
+            prefetch_relationships=prefetch_relationships,
             session=session,
         )
 
@@ -188,6 +193,7 @@ class NodeManager:
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
+        prefetch_relationships: bool = False,
         session: Optional[AsyncSession] = None,
         account=None,
     ) -> Dict[str, Node]:
@@ -214,6 +220,31 @@ class NodeManager:
         )
         await query.execute(session=session)
         node_attributes = query.get_attributes_group_by_node()
+
+        # if prefetch_relationships is enabled
+        # Query all the peers associated with all nodes at once.
+        peers_per_node = None
+        peers = None
+        if prefetch_relationships:
+            query = await NodeListGetRelationshipsQuery.init(session=session, ids=ids, branch=branch, at=at)
+            await query.execute(session=session)
+            peers_per_node = query.get_peers_group_by_node()
+
+            peer_ids = []
+
+            for node, node_data in peers_per_node.items():
+                for node_peers in node_data.values():
+                    peer_ids.extend([peer_id for peer_id in node_peers])
+
+            peer_ids = list(set(peer_ids))
+            peers = await cls.get_many(
+                ids=peer_ids,
+                branch=branch,
+                at=at,
+                session=session,
+                include_owner=include_owner,
+                include_source=include_source,
+            )
 
         nodes = {}
 
@@ -252,6 +283,19 @@ class NodeManager:
 
                     if attr.owner_uuid:
                         attrs[attr_name]["owner"] = attr.owner_uuid
+
+            # --------------------------------------------------------
+            # Relationships
+            # --------------------------------------------------------
+            if prefetch_relationships and peers:
+                for rel_schema in node.schema.relationships:
+                    if node_id in peers_per_node and rel_schema.identifier in peers_per_node[node_id]:
+                        rel_peers = [peers.get(id) for id in peers_per_node[node_id][rel_schema.identifier]]
+                        if rel_schema.cardinality == "one":
+                            if len(rel_peers) == 1:
+                                attrs[rel_schema.name] = rel_peers[0]
+                        elif rel_schema.cardinality == "many":
+                            attrs[rel_schema.name] = rel_peers
 
             # Identify the proper Class to use for this Node
             node_class = Node
@@ -731,20 +775,26 @@ class SchemaManager(NodeManager):
         schema = SchemaBranch(cache=self._cache, name=branch.name)
 
         group_schema = self.get(name="GroupSchema", branch=branch)
-        for schema_node in await self.query(schema=group_schema, branch=branch, session=session):
+        for schema_node in await self.query(
+            schema=group_schema, branch=branch, prefetch_relationships=True, session=session
+        ):
             schema.set(
                 name=schema_node.kind.value, schema=await self.convert_group_schema_to_schema(schema_node=schema_node)
             )
 
         generic_schema = self.get(name="GenericSchema", branch=branch)
-        for schema_node in await self.query(schema=generic_schema, branch=branch, session=session):
+        for schema_node in await self.query(
+            schema=generic_schema, branch=branch, prefetch_relationships=True, session=session
+        ):
             schema.set(
                 name=schema_node.kind.value,
                 schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, session=session),
             )
 
         node_schema = self.get(name="NodeSchema", branch=branch)
-        for schema_node in await self.query(schema=node_schema, branch=branch, session=session):
+        for schema_node in await self.query(
+            schema=node_schema, branch=branch, prefetch_relationships=True, session=session
+        ):
             schema.set(
                 name=schema_node.kind.value,
                 schema=await self.convert_node_schema_to_schema(schema_node=schema_node, session=session),
