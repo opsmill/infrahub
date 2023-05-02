@@ -13,7 +13,7 @@ from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
-    DiffNodePropertiesByIDSRangeQuery,
+    DiffNodePropertiesByIDSQuery,
     DiffNodeQuery,
     DiffRelationshipPropertiesByIDSRangeQuery,
     DiffRelationshipPropertyQuery,
@@ -1210,12 +1210,11 @@ class Diff:
         # ------------------------------------------------------------
         # Query the current value for all attributes that have been updated
         # ------------------------------------------------------------
-        origin_attr_query = await DiffNodePropertiesByIDSRangeQuery.init(
+        origin_attr_query = await DiffNodePropertiesByIDSQuery.init(
             session=session,
             ids=list(attrs_to_query),
             branch=self.branch,
-            diff_from=self.diff_from,
-            diff_to=self.diff_to,
+            at=self.diff_from,
         )
 
         await origin_attr_query.execute(session=session)
