@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { classNames } from "../utils/common";
 
 type ButtonProps = {
@@ -53,9 +54,9 @@ const getClasseName = (type?: BUTTON_TYPES) => {
     }
     case BUTTON_TYPES.MAIN: {
       return `
-        bg-indigo-500 text-white
-        hover:bg-indigo-600
-        disabled:cursor-not-allowed disabled:bg-indigo-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
+        bg-blue-500 text-white
+        hover:bg-blue-600
+        disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
       `;
     }
     case BUTTON_TYPES.ACTIVE: {
@@ -75,39 +76,41 @@ const getClasseName = (type?: BUTTON_TYPES) => {
   }
 };
 
-export const Button = (props: ButtonProps) => {
-  const {
-    buttonType,
-    type,
-    className = "",
-    onClick,
-    ...propsToPass
-  } = props;
+export const Button = forwardRef(
+  (props: ButtonProps, ref) => {
+    const {
+      buttonType,
+      type,
+      className = "",
+      onClick,
+      ...propsToPass
+    } = props;
 
-  const customClassName = getClasseName(buttonType);
+    const customClassName = getClasseName(buttonType);
 
-  const handleClick = (event: any) => {
-    if (type !== "submit") {
-      event.stopPropagation();
-    }
-
-    onClick && onClick(event);
-  };
-
-  return (
-    <button
-      type={type ?? "button"}
-      className={
-        classNames(
-          DEFAULT_CLASS(className),
-          customClassName,
-          className,
-        )
+    const handleClick = (event: any) => {
+      if (type !== "submit") {
+        event.stopPropagation();
       }
-      {...propsToPass}
-      onClick={handleClick}
-    >
-      {props.children}
-    </button>
-  );
-};
+
+      onClick && onClick(event);
+    };
+
+    return (
+      <button
+        type={type ?? "button"}
+        className={
+          classNames(
+            DEFAULT_CLASS(className),
+            customClassName,
+            className,
+          )
+        }
+        {...propsToPass}
+        onClick={handleClick}
+      >
+        {props.children}
+      </button>
+    );
+  }
+);
