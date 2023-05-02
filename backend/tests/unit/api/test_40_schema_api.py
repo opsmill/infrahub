@@ -71,9 +71,22 @@ async def test_schema_load_endpoint_valid_simple(
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post("/schema/load", headers=client_headers, json=schema_file_infra_simple_01)
+        creation = client.post("/schema/load", headers=client_headers, json=schema_file_infra_simple_01)
+        read = client.get("/schema", headers=client_headers)
 
-    assert response.status_code == 202
+    assert creation.status_code == 202
+    assert read.status_code == 200
+    nodes = read.json()["nodes"]
+    device = [node for node in nodes if node["name"] == "device"]
+    assert device
+    device = device[0]
+    attributes = {attrib["name"]: attrib["order_weight"] for attrib in device["attributes"]}
+    relationships = {attrib["name"]: attrib["order_weight"] for attrib in device["relationships"]}
+    assert attributes["name"] == 1000
+    assert attributes["description"] == 900
+    assert attributes["type"] == 3000
+    assert relationships["interfaces"] == 450
+    assert relationships["tags"] == 101000
 
 
 async def test_schema_load_endpoint_valid_with_generics(

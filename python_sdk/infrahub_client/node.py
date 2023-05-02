@@ -23,8 +23,8 @@ class Attribute:
         if not isinstance(data, dict):
             data = {"value": data}
 
-        self._properties_flag = ["is_visible", "is_protected"]
-        self._properties_object = ["source", "owner"]
+        self._properties_flag = PROPERTIES_FLAG
+        self._properties_object = PROPERTIES_OBJECT
         self._properties = self._properties_flag + self._properties_object
 
         self._read_only = ["updated_at", "is_inherited"]
@@ -119,7 +119,13 @@ class RelatedNodeBase:
                     setattr(self, prop, value)
                     continue
 
-                setattr(self, prop, data.get(f"_relation__{prop}", None))
+                prop_data = data.get(f"_relation__{prop}", None)
+                if prop_data and isinstance(prop_data, dict) and "id" in prop_data:
+                    setattr(self, prop, prop_data["id"])
+                elif prop_data and isinstance(prop_data, (str, bool)):
+                    setattr(self, prop, prop_data)
+                else:
+                    setattr(self, prop, None)
 
     @property
     def id(self) -> Optional[str]:

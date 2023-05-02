@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from neo4j.graph import Relationship as Neo4jRelationship
 
 from infrahub.core.query import Query, QueryType
-from infrahub_client.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession

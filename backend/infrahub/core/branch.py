@@ -13,13 +13,14 @@ from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
-    DiffNodePropertiesByIDSRangeQuery,
+    DiffNodePropertiesByIDSQuery,
     DiffNodeQuery,
     DiffRelationshipPropertiesByIDSRangeQuery,
     DiffRelationshipPropertyQuery,
     DiffRelationshipQuery,
 )
 from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
     element_id_to_id,
@@ -36,7 +37,6 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -1210,12 +1210,11 @@ class Diff:
         # ------------------------------------------------------------
         # Query the current value for all attributes that have been updated
         # ------------------------------------------------------------
-        origin_attr_query = await DiffNodePropertiesByIDSRangeQuery.init(
+        origin_attr_query = await DiffNodePropertiesByIDSQuery.init(
             session=session,
             ids=list(attrs_to_query),
             branch=self.branch,
-            diff_from=self.diff_from,
-            diff_to=self.diff_to,
+            at=self.diff_from,
         )
 
         await origin_attr_query.execute(session=session)

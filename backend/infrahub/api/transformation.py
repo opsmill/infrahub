@@ -8,6 +8,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import generate_graphql_schema
 from infrahub.message_bus.events import (
     InfrahubRPCResponse,
@@ -16,7 +17,6 @@ from infrahub.message_bus.events import (
     TransformMessageAction,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
-from infrahub_client.timestamp import Timestamp
 
 router = APIRouter()
 

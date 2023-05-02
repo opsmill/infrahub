@@ -11,6 +11,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound
 from infrahub.message_bus.events import (
@@ -20,7 +21,6 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
-from infrahub_client.timestamp import Timestamp
 
 
 async def test_branch_name_validator(session):
@@ -436,7 +436,6 @@ async def test_diff_get_files(session, rpc_client: InfrahubRpcClientTesting, def
     assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-@pytest.mark.xfail(reason="FIXME: Currently the previous value is incorrect")
 async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_main):
     branch2 = await create_branch(branch_name="branch2", session=session)
 
@@ -445,14 +444,13 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
 
     time01 = Timestamp()
     await repo01b2.save(session=session, at=time01)
-    Timestamp()
+
+    time02 = Timestamp()
 
     repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
     repo01b2.commit.value = "0987654321"
-
-    time02 = Timestamp()
-    await repo01b2.save(session=session, at=time02)
-    Timestamp()
+    time03 = Timestamp()
+    await repo01b2.save(session=session, at=time03)
 
     # Calculate the diff since the creation of the branch
     diff1 = await Diff.init(branch=branch2, session=session)
@@ -480,7 +478,7 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
                             "new": "0987654321",
                             "previous": "aaaaaaaaaaa",
                         },
-                        "changed_at": time01.to_string(),
+                        "changed_at": time03.to_string(),
                     }
                 ],
             }
@@ -489,8 +487,42 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
 
     assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time01
 
+    # Calculate the diff since the creation of the branch
+    diff1 = await Diff.init(branch=branch2, session=session, diff_to=time02)
+    nodes = await diff1.get_nodes(session=session)
 
-@pytest.mark.xfail(reason="FIXME: Currently the previous value is incorrect")
+    expected_response_branch2_repo01_time02 = {
+        "branch": "branch2",
+        "labels": ["Node", "Repository"],
+        "kind": "Repository",
+        "id": repo01b2.id,
+        "action": "updated",
+        "changed_at": None,
+        "attributes": [
+            {
+                "id": repo01b2.commit.id,
+                "name": "commit",
+                "action": "updated",
+                "changed_at": None,
+                "properties": [
+                    {
+                        "branch": "branch2",
+                        "type": "HAS_VALUE",
+                        "action": "updated",
+                        "value": {
+                            "new": "1234567890",
+                            "previous": "aaaaaaaaaaa",
+                        },
+                        "changed_at": time01.to_string(),
+                    }
+                ],
+            }
+        ],
+    }
+
+    assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time02
+
+
 async def test_diff_get_nodes_multiple_changes(session, default_branch, repos_in_main):
     branch2 = await create_branch(branch_name="branch2", session=session)
 
@@ -508,7 +540,7 @@ async def test_diff_get_nodes_multiple_changes(session, default_branch, repos_in
     await repo01b2.save(session=session, at=time02)
     Timestamp()
 
-    # Calculate the diff, just after the first modication in the branch (time01_after)
+    # Calculate the diff, just after the first modification in the branch (time01_after)
     # It should change the previous value returned by the query
 
     diff2 = await Diff.init(branch=branch2, session=session, diff_from=time01_after)

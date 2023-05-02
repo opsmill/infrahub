@@ -1,12 +1,13 @@
 import { useFormContext } from "react-hook-form";
 import { OpsCheckboxRegister } from "../../components-form/checkbox.register";
+import { OpsDatePickerRegister } from "../../components-form/date-picker.register";
 import { OpsInputRegister } from "../../components-form/input.register";
 import { OpsMultiSelectRegister } from "../../components-form/multi-select.register";
 import { OpsSelect2StepRegister } from "../../components-form/select-2-step.register";
 import { OpsSelectRegister } from "../../components-form/select.register";
 import { OpsSwitchRegister } from "../../components-form/switch.register";
+import { OpsTextareaRegister } from "../../components-form/textarea.register";
 import { ControlType, DynamicFieldData } from "./dynamic-control-types";
-import { OpsDatePickerRegister } from "../../components-form/date-picker.register";
 
 export const DynamicControl = (props: DynamicFieldData) => {
   const {
@@ -26,6 +27,8 @@ export const DynamicControl = (props: DynamicFieldData) => {
     switch (inputType) {
       case "text":
         return <OpsInputRegister {...props} register={register} setValue={setValue} value={existingValue ?? value} />;
+      case "textarea":
+        return <OpsTextareaRegister {...props} register={register} setValue={setValue} value={existingValue ?? value} />;
       case "number":
         config.valueAsNumber = true;
         return <OpsInputRegister {...props} register={register} setValue={setValue} value={existingValue ?? value} />;

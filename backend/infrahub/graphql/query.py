@@ -7,7 +7,7 @@ from graphql import graphql
 
 from infrahub.core import get_branch
 from infrahub.core.manager import NodeManager
-from infrahub_client.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp
 
 from .generator import generate_query_mixin
 from .schema import InfrahubBaseQuery

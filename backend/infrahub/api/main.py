@@ -13,12 +13,13 @@ from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
-from infrahub.api import diff, internal, schema, transformation
+from infrahub.api import dev_diff, diff, internal, schema, transformation
 from infrahub.api.dependencies import get_session
 from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import generate_graphql_schema
@@ -26,7 +27,6 @@ from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
-from infrahub_client.timestamp import Timestamp
 
 app = FastAPI(
     title="Infrahub",
@@ -47,6 +47,7 @@ app.include_router(schema.router)
 app.include_router(transformation.router)
 app.include_router(internal.router)
 app.include_router(diff.router)
+app.include_router(dev_diff.router)
 
 
 @app.on_event("startup")

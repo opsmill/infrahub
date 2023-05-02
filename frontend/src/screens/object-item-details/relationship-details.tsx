@@ -2,7 +2,6 @@ import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroi
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { BUTTON_TYPES, Button } from "../../components/button";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import ModalDelete from "../../components/modal-delete";
@@ -97,10 +96,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const columns = getAttributeColumnsFromNodeOrGenericSchema(schemaList, generics, relationshipSchema.peer);
 
-  if(!relationshipsData) {
-    return null;
-  }
-
   if(relationshipsData && relationshipsData._relation__is_visible === false) {
     return null;
   }
@@ -130,6 +125,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     <div
       key={relationshipSchema?.name}
     >
+      {!relationshipsData && (
+        <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-4 sm:px-6">
+          <dt className="text-sm font-medium text-gray-500 flex items-center">
+            {relationshipSchema?.label}
+          </dt>
+          <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
+            -
+          </dd>
+        </div>
+      )}
       {
         relationshipsData
         && (
@@ -240,12 +245,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               <th scope="col" className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
                                 <span className="sr-only">Meta</span>
                               </th>
-                              <th scope="col" className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
-                                <span className="sr-only">Edit</span>
-                              </th>
-                              <th scope="col" className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
-                                <span className="sr-only">Delete</span>
-                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
@@ -265,7 +264,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                           index !== relationshipsData.length - 1
                                             ? "border-b border-gray-200"
                                             : "",
-                                          "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                          "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                                         )}
                                       >
                                         {getObjectItemDisplayValue(row, column)}
@@ -275,38 +274,62 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                       index !== relationshipsData.length - 1
                                         ? "border-b border-gray-200"
                                         : "",
-                                      "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                      "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center space-x-3"
                                     )}>
-                                      <Button onClick={(event: any) => {
-                                        event.stopPropagation();
+                                      <div className="cursor-pointer w-7 h-7 flex items-center justify-center" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setRowForMetaEdit(row);
                                         setShowRelationMetaEditModal(true);
                                       }}>
-                                        Meta
-                                      </Button>
-                                    </td>
-                                    <td className={classNames(
-                                      index !== relationshipsData.length - 1
-                                        ? "border-b border-gray-200"
-                                        : "",
-                                      "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                                    )}>
-                                      <Button onClick={(event: any) => {
-                                        console.log("Edit: ", row);
+                                        <MetaDetailsTooltip
+                                          position="LEFT"
+                                          items={[
+                                            {
+                                              label: "Updated at",
+                                              value: row._updated_at,
+                                              type: "date",
+                                            },
+                                            {
+                                              label: "Update time",
+                                              value: `${new Date(row._updated_at).toLocaleDateString()} ${new Date(row._updated_at).toLocaleTimeString()}`,
+                                              type: "text",
+                                            },
+                                            {
+                                              label: "Source",
+                                              value: row._relation__source,
+                                              type: "link"
+                                            },
+                                            {
+                                              label: "Owner",
+                                              value: row._relation__owner,
+                                              type: "link"
+                                            },
+                                            {
+                                              label: "Is protected",
+                                              value: row._relation__is_protected ? "True" : "False",
+                                              type: "text"
+                                            },
+                                          ]} />
+                                      </div>
+                                      <div className="cursor-pointer w-7 h-7 flex items-center justify-center" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setRelatedObjectToEdit(row);
                                       }}>
-                                        Edit
-                                      </Button>
-                                    </td>
-                                    <td className={classNames(
-                                      index !== relationshipsData.length - 1
-                                        ? "border-b border-gray-200"
-                                        : "",
-                                      "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                                    )}>
-                                      <Button buttonType={BUTTON_TYPES.CANCEL} onClick={() => setRelatedRowToDelete(row)}>
-                                        Delete
-                                      </Button>
+                                        <PencilSquareIcon className="w-6 h-6 text-gray-600 hover:w-7 hover:h-7" />
+                                      </div>
+                                      <div className="cursor-pointer w-7 h-7 flex items-center justify-center" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setRelatedRowToDelete(row);
+                                      }}>
+                                        <img
+                                          alt="unlink"
+                                          src={process.env.PUBLIC_URL + "/images/icons/unlink.png"}
+                                          className="w-5 h-5 hover:w-6 hover:h-6"
+                                        />
+                                      </div>
                                     </td>
                                   </tr>
                                 )

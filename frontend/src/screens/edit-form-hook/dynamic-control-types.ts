@@ -6,14 +6,13 @@ import { FormFieldError } from "./form";
 export type SchemaAttributeType = "ID" | "Text" | "Number" | "TextArea" | "DateTime" | "Email" | "Password" | "URL" | "File" | "MacAddress" | "Color" | "Bandwidth" | "IPHost" | "IPNetwork" | "Checkbox" | "List" | "Any" | "String" | "Integer" | "Boolean";
 
 // Different kind of form inputs
-export type ControlType = "text" | "select" | "select2step" | "multiselect" | "number" | "checkbox" | "switch" | "datepicker";
+export type ControlType = "text" | "textarea" | "select" | "select2step" | "multiselect" | "number" | "checkbox" | "switch" | "datepicker";
 
 export type RelationshipCardinality = "one" | "many";
 
 export const getFormInputControlTypeFromSchemaAttributeKind = (kind: SchemaAttributeType): ControlType => {
   switch(kind) {
     case "Text":
-    case "TextArea":
     case "ID":
     case "DateTime":
     case "Email":
@@ -28,6 +27,9 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (kind: SchemaAttri
     case "Any":
     case "String":
       return "text";
+
+    case "TextArea":
+      return "textarea";
 
     case "Number":
     case "Bandwidth":

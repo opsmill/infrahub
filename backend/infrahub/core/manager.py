@@ -27,9 +27,9 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import SchemaNotFound
 from infrahub.utils import deep_merge_dict, intersection
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -591,7 +591,6 @@ class SchemaManager(NodeManager):
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
         branch = await get_branch(branch=branch, session=session)
-
         for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()) + list(schema.groups.keys()):
             if limit and item_kind not in limit:
                 continue
