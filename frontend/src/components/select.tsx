@@ -30,7 +30,7 @@ export const Select = (props: SelectProps) => {
       ? options
       : options
       .filter(
-        (option: any) => option?.name.toLowerCase().includes(query.toLowerCase())
+        (option: any) => option?.name?.toString().toLowerCase().includes(query.toLowerCase())
       );
 
   return (
