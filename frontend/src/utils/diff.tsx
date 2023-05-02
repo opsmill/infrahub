@@ -8,6 +8,10 @@ export const displayValue = (value: any) => {
     return `${value}`;
   }
 
+  if (value === "NULL") {
+    return "-";
+  }
+
   return value || "-";
 };
 
