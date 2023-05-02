@@ -94,6 +94,7 @@ export default function ObjectItemEditComponent(props: Props) {
     if (Object.keys(updateObject).length) {
       try {
         await updateObjectWithId(objectid!, schema, updateObject);
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} updated`} />);
         closeDrawer();
         onUpdateComplete();
         onUpdateComplete();

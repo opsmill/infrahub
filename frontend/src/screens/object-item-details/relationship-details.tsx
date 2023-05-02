@@ -23,6 +23,8 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { branchState } from "../../state/atoms/branch.atom";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 
@@ -122,6 +124,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     refreshObject();
 
     setShowAddDrawer(false);
+    toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Association with ${relationshipSchema.peer} removed`} />);
   };
 
   return <>
@@ -472,6 +475,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               [relationshipSchema.name]: newList
             });
             props.refreshObject();
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Association with ${relationshipSchema.peer} added`} />);
             setShowAddDrawer(false);
           }
         }} fields={formFields} />

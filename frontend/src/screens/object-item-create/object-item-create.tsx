@@ -53,6 +53,7 @@ export default function ObjectItemCreate(props: iProps) {
     if (Object.keys(newObject).length) {
       try {
         await createObject(schema, newObject);
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);
         if(props.onCreate) {
           props.onCreate();
         }
