@@ -1,10 +1,11 @@
 import { Combobox } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon } from "@heroicons/react/20/solid";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { components } from "../../infraops";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { classNames } from "../../utils/common";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 interface Props {
   filter: components["schemas"]["FilterSchema"];
@@ -49,7 +50,7 @@ export default function FilterComboEnum(props: Props) {
           displayValue={(row: any) => (row ? row.display_label : "")}
         />
         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-          <ChevronUpDownIcon
+          <ChevronDownIcon
             className="h-5 w-5 text-gray-400"
             aria-hidden="true"
           />

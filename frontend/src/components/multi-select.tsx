@@ -1,9 +1,10 @@
 import { Combobox } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { MultipleInput } from "./multiple-input";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export type SelectOption = {
   id: string;
@@ -51,7 +52,7 @@ export const MultiSelect = (props: SelectProps) => {
         <Combobox.Button
           className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
         >
-          <ChevronUpDownIcon
+          <ChevronDownIcon
             className="h-5 w-5 text-gray-400"
             aria-hidden="true"
           />
