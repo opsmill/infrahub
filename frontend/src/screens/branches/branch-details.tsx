@@ -185,6 +185,8 @@ export const BranchDetails = () => {
                         });
 
                         navigate(constructPath("/branches"));
+
+                        window.location.reload();
                       }
                     }
                     buttonType={BUTTON_TYPES.CANCEL}
