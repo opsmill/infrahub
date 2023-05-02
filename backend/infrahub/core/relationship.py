@@ -516,22 +516,29 @@ class RelationshipManager:
 
         return self._relationships
 
-    async def update(self, data: Union[List[str], List[Node], str, Node], session: AsyncSession) -> bool:
+    async def update(self, data: Union[List[str], List[Node], str, Node, None], session: AsyncSession) -> bool:
         """Replace and Update the list of relationships with this one."""
+
         if not isinstance(data, list):
             data = [data]
 
         # Reset the list of relationship and save the previous one to see if we can reuse some
         previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(session=session)}
         self._relationships = []
-
         changed = False
+
         for item in data:
-            if not isinstance(item, (self.rel_class, str, dict)) and not hasattr(item, "_schema"):
+            if not isinstance(item, (self.rel_class, str, dict, type(None))) and not hasattr(item, "_schema"):
                 raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
 
             if hasattr(item, "_schema") and item.id in previous_relationships:
                 self._relationships.append(previous_relationships[item.id])
+                continue
+
+            if isinstance(item, type(None)) and previous_relationships:
+                for rel in previous_relationships:
+                    await previous_relationships[rel].delete(session=session)
+                changed = True
                 continue
 
             if isinstance(item, str) and item in previous_relationships:

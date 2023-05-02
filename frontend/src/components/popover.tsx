@@ -6,8 +6,8 @@ import { classNames } from "../utils/common";
 
 export const PopOver = ({children, className, buttonComponent, title}: any) => {
   return (
-    <Popover className={"relative"}>
-      <Popover.Button as="div">
+    <Popover className="flex relative">
+      <Popover.Button as="div" className="flex">
         {buttonComponent}
       </Popover.Button>
 
