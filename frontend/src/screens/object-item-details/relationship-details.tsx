@@ -1,4 +1,4 @@
-import { EyeSlashIcon, InformationCircleIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -282,7 +282,35 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                         setRowForMetaEdit(row);
                                         setShowRelationMetaEditModal(true);
                                       }}>
-                                        <InformationCircleIcon className="w-6 h-6 text-gray-600 hover:w-7 hover:h-7" />
+                                        <MetaDetailsTooltip
+                                          position="LEFT"
+                                          items={[
+                                            {
+                                              label: "Updated at",
+                                              value: row._updated_at,
+                                              type: "date",
+                                            },
+                                            {
+                                              label: "Update time",
+                                              value: `${new Date(row._updated_at).toLocaleDateString()} ${new Date(row._updated_at).toLocaleTimeString()}`,
+                                              type: "text",
+                                            },
+                                            {
+                                              label: "Source",
+                                              value: row._relation__source,
+                                              type: "link"
+                                            },
+                                            {
+                                              label: "Owner",
+                                              value: row._relation__owner,
+                                              type: "link"
+                                            },
+                                            {
+                                              label: "Is protected",
+                                              value: row._relation__is_protected ? "True" : "False",
+                                              type: "text"
+                                            },
+                                          ]} />
                                       </div>
                                       <div className="cursor-pointer w-7 h-7 flex items-center justify-center" onClick={(e) => {
                                         e.preventDefault();
