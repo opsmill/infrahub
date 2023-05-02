@@ -297,6 +297,75 @@ async def test_update_new_single_relationship_flag_property(
     assert rm.is_protected is True
 
 
+async def test_update_delete_optional_relationship_cardinality_one(
+    db, session: AsyncSession, person_jim_main: Node, car_accord_main: Node, branch: Branch
+):
+    query = """
+    mutation {
+        car_update(data: {id: "%s", owner: { id: "%s" }}) {
+            ok
+            object {
+                id
+                owner {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        car_accord_main.id,
+        person_jim_main.id,
+    )
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["car_update"]["ok"] is True
+    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "Jim"
+
+    car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
+    car_peer = await car.owner.get_peer(session=session)
+    assert car_peer.id == person_jim_main.id
+    query = """
+    mutation {
+        car_update(data: {id: "%s", owner: null}) {
+            ok
+            object {
+                id
+                owner {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        car_accord_main.id,
+    )
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["car_update"]["ok"] is True
+    assert result.data["car_update"]["object"]["owner"] is None
+    car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
+    car_peer = await car.owner.get_peer(session=session)
+    assert car_peer is None
+
+
 async def test_update_existing_single_relationship_flag_property(
     db, session: AsyncSession, default_branch: Branch, person_john_main: Node, car_accord_main: Node, branch: Branch
 ):
