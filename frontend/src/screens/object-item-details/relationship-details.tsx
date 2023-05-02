@@ -125,7 +125,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     refreshObject();
 
     setShowAddDrawer(false);
-    toast(<Alert type={ALERT_TYPES.ERROR} message={`Association with ${relationshipSchema.peer} removed`} />);
+    toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Association with ${relationshipSchema.peer} removed`} />);
   };
 
   return <>
