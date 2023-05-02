@@ -8,7 +8,6 @@ export type tDataDiffNodePropertyProps = {
 
 export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   const { property } = props;
-  console.log("property: ", property);
 
   const {
     type,
