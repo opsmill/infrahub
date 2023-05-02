@@ -179,7 +179,7 @@ class Query(ABC):
     ):
         query = cls(branch=branch, at=at, limit=limit, *args, **kwargs)
 
-        await query.query_init(session, *args, **kwargs)
+        await query.query_init(session=session, **kwargs)
 
         return query
 
@@ -303,7 +303,7 @@ class Query(ABC):
             yield self.results[attr_info["idx"]]
 
     @property
-    def num_of_results(self) -> Union[int, None]:
+    def num_of_results(self) -> Optional[int]:
         if not self.has_been_executed:
             return None
 
