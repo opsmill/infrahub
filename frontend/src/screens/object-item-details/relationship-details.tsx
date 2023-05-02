@@ -1,4 +1,4 @@
-import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { EyeSlashIcon, LockClosedIcon, PencilSquareIcon, PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -23,6 +23,8 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { branchState } from "../../state/atoms/branch.atom";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -37,13 +39,14 @@ const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
   const {objectname, objectid} = useParams();
+  const [branch] = useAtom(branchState);
   const {relationshipsData, relationshipSchema, refreshObject} = props;
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
-  const [rowForMetaEdit, setRowForMetaEdit] = useState();
+  const [rowForMetaEdit, setRowForMetaEdit] = useState<any>();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
@@ -187,6 +190,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           setMetaEditFieldDetails({
                             type: "relationship",
                             attributeOrRelationshipName: relationshipSchema.name,
+                            label: relationshipSchema.label || relationshipSchema.name,
                           });
                           setShowMetaEditModal(true);
                         }}>
@@ -439,7 +443,26 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           />
         </RoundedButton>
       </div>}
-      <SlideOver title={`Add ${relationshipSchema.label}`} subtitle={"Add"} open={showAddDrawer} setOpen={setShowAddDrawer}>
+      <SlideOver
+        title={(
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">Add associated {relationshipSchema.label}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <Square3Stack3DIcon className="w-5 h-5" />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <svg className="h-1.5 w-1.5 mr-1 fill-yellow-500" viewBox="0 0 6 6" aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {relationshipSchema.peer}
+            </span>
+          </div>
+        )}
+        open={showAddDrawer} setOpen={setShowAddDrawer}>
         <EditFormHookComponent onCancel={() => {
           setShowAddDrawer(false);
         }} onSubmit={async (data) => {
@@ -453,7 +476,23 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           }
         }} fields={formFields} />
       </SlideOver>
-      <SlideOver title={"Meta-details"} subtitle="Update meta details" open={showRelationMetaEditModal} setOpen={setShowRelationMetaEditModal}>
+      <SlideOver
+        title={(
+          <>
+            {rowForMetaEdit && <div className="space-y-2">
+              <div className="flex items-center w-full">
+                <span className="text-lg font-semibold mr-3">{props.parentNode?.display_label} - {rowForMetaEdit.display_label}</span>
+                <div className="flex-1"></div>
+                <div className="flex items-center">
+                  <Square3Stack3DIcon className="w-5 h-5" />
+                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                </div>
+              </div>
+              <div className="text-gray-500">Association metadata</div>
+            </div>}
+          </>
+        )}
+        open={showRelationMetaEditModal} setOpen={setShowRelationMetaEditModal}>
         <ObjectItemMetaEdit closeDrawer={() => {
           setShowRelationMetaEditModal(false);
         }}  onUpdateComplete={() => {
@@ -476,7 +515,28 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         open={!!relatedRowToDelete}
         setOpen={() => setRelatedRowToDelete(undefined)}
       />}
-      {relatedObjectToEdit && <SlideOver title={`Edit ${relatedObjectToEdit?.display_label}`} subtitle={relatedObjectToEdit.display_label} open={!!relatedObjectToEdit} setOpen={() => setRelatedObjectToEdit(undefined)}>
+      {relatedObjectToEdit && <SlideOver
+        title={(
+          <>
+            {<div className="space-y-2">
+              <div className="flex items-center w-full">
+                <span className="text-lg font-semibold mr-3">{relatedObjectToEdit?.display_label}</span>
+                <div className="flex-1"></div>
+                <div className="flex items-center">
+                  <Square3Stack3DIcon className="w-5 h-5" />
+                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                </div>
+              </div>
+              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                <svg className="h-1.5 w-1.5 mr-1 fill-yellow-500" viewBox="0 0 6 6" aria-hidden="true">
+                  <circle cx={3} cy={3} r={3} />
+                </svg>
+                {relatedObjectToEdit?.__typename.replace(regex, "")}
+              </span>
+            </div>}
+          </>
+        )}
+        open={!!relatedObjectToEdit} setOpen={() => setRelatedObjectToEdit(undefined)}>
         <ObjectItemEditComponent
           closeDrawer={
             () => {
