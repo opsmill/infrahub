@@ -14,7 +14,7 @@ import validateBranch from "../../graphql/mutations/branches/validateBranch";
 import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
 import { constructPath } from "../../utils/fetch";
 import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
-import { HandThumbUpIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -121,39 +121,6 @@ export const BranchDetails = () => {
             && (
               <>
                 <div className="flex flex-1 flex-col md:flex-row">
-                  {/* <Button
-                    className="mr-0 md:mr-3"
-                    onClick={() => branchAction({
-                      successMessage: "Branch merged successfuly!",
-                      errorMessage: "An error occured while merging the branch",
-                      request: mergeBranch,
-                      options: {
-                        name: branch.name
-                      }
-                    })}
-                    buttonType={BUTTON_TYPES.VALIDATE}
-                    disabled={branch.is_default}
-                  >
-                  Merge
-                    <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                  </Button> */}
-
-                  <Button
-                    className="mr-0 md:mr-3"
-                    onClick={() => branchAction({
-                      successMessage: "Branch rebased successfuly!",
-                      errorMessage: "An error occured while rebasing the branch",
-                      request: rebaseBranch,
-                      options: {
-                        name: branch.name
-                      }
-                    })}
-                    disabled={branch.is_default}
-                  >
-                    Rebase
-                    <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                  </Button>
-
                   <Button
                     className="mr-0 md:mr-3"
                     onClick={() => branchAction({
@@ -168,7 +135,23 @@ export const BranchDetails = () => {
                     disabled={branch.is_default}
                   >
                     Merge
-                    <HandThumbUpIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                    <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  </Button>
+
+                  <Button
+                    className="mr-0 md:mr-3"
+                    onClick={() => branchAction({
+                      successMessage: "Branch rebased successfuly!",
+                      errorMessage: "An error occured while rebasing the branch",
+                      request: rebaseBranch,
+                      options: {
+                        name: branch.name
+                      }
+                    })}
+                    disabled={branch.is_default}
+                  >
+                    Rebase
+                    <ArrowPathIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                   </Button>
 
                   <Button

@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Diff } from "./diff/diff";
 import { BranchDetails } from "./branch-details";
 import { TabsButtons } from "../../components/tabs-buttons";
 import { QSP } from "../../config/qsp";
 import { constructPath } from "../../utils/fetch";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -23,7 +23,7 @@ const tabs = [
   },
 ];
 
-const renderContent = (tab: string | null | undefined, branch: any) => {
+const renderContent = (tab: string | null | undefined) => {
   switch(tab) {
     case BRANCH_TABS.DIFF: {
       return <Diff />;
@@ -35,7 +35,8 @@ const renderContent = (tab: string | null | undefined, branch: any) => {
 };
 
 export const BrancheItemDetails = () => {
-  const [branch] = useState({} as any);
+  const { branchname } = useParams();
+  console.log("branchname: ", branchname);
   const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   const navigate = useNavigate();
 
@@ -49,17 +50,18 @@ export const BrancheItemDetails = () => {
             onClick={() => navigate(branchesPath)}
             className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
           >
-            <h1 className="text-xl font-semibold text-gray-900 mr-2">Branches</h1>
+            Branches
           </div>
+          <ChevronRightIcon className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400" aria-hidden="true" />
 
-          <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">Access the branch details and management tools.</p>
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">{branchname}</p>
         </div>
       </div>
 
       <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
       {
-        renderContent(qspTab, branch)
+        renderContent(qspTab)
       }
     </>
   );
