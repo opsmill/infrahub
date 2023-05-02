@@ -14,6 +14,7 @@ import validateBranch from "../../graphql/mutations/branches/validateBranch";
 import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
 import { constructPath } from "../../utils/fetch";
 import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
+import { HandThumbUpIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -167,7 +168,7 @@ export const BranchDetails = () => {
                     disabled={branch.is_default}
                   >
                     Merge
-                    <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                    <HandThumbUpIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                   </Button>
 
                   <Button
@@ -207,7 +208,7 @@ export const BranchDetails = () => {
                     disabled={branch.is_default}
                   >
                     Delete
-                    <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                    <TrashIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </>
