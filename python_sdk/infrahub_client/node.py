@@ -450,6 +450,7 @@ class InfrahubNode(InfrahubNodeBase):
         self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
     ) -> None:
         self._client = client
+        self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
@@ -527,6 +528,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def __init__(
         self, client: InfrahubClientSync, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
     ) -> None:
+        self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
