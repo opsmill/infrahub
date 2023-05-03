@@ -2,6 +2,7 @@
 extends: default
 
 ignore: |
+  /.venv
   /examples
   /repositories
   /frontend/node_modules
