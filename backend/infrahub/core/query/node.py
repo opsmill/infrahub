@@ -388,8 +388,8 @@ class NodeListGetRelationshipsQuery(Query):
 
     def get_peers_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
         peers_by_node = defaultdict(lambda: defaultdict(list))
-
-        for result in self.get_results_group_by(("n", "uuid"), ("rel", "name")):
+        
+        for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
             node_id = result.get("n").get("uuid")
             rel_name = result.get("rel").get("name")
             peer_id = result.get("peer").get("uuid")
