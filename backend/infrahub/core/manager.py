@@ -229,7 +229,6 @@ class NodeManager:
             query = await NodeListGetRelationshipsQuery.init(session=session, ids=ids, branch=branch, at=at)
             await query.execute(session=session)
             peers_per_node = query.get_peers_group_by_node()
-
             peer_ids = []
 
             for node, node_data in peers_per_node.items():

@@ -1,7 +1,7 @@
+import asyncio
 import logging
 import os
 import time
-import asyncio
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -15,8 +15,8 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub.api import dev_diff, diff, internal, schema, transformation
-from infrahub.api.dependencies import get_session
 from infrahub.api.background import BackgroundRunner
+from infrahub.api.dependencies import get_session
 from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
@@ -29,7 +29,6 @@ from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
-
 
 app = FastAPI(
     title="Infrahub",
@@ -73,8 +72,11 @@ async def app_initialization():
     app.state.rpc_client = await InfrahubRpcClient().connect()
 
     # Initialize the Background Runner
-    app.state.runner = BackgroundRunner(driver=app.state.db, database_name=config.SETTINGS.database.database, interval=10)
+    app.state.runner = BackgroundRunner(
+        driver=app.state.db, database_name=config.SETTINGS.database.database, interval=10
+    )
     asyncio.create_task(app.state.runner.run())
+
 
 @app.on_event("shutdown")
 async def shutdown():
