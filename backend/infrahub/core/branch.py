@@ -147,7 +147,7 @@ class Branch(StandardNode):
     def isinstance(cls, obj: Any) -> bool:
         return isinstance(obj, cls)
 
-    async def get_origin_branch(self, session: AsyncSession) -> Branch:
+    async def get_origin_branch(self, session: AsyncSession) -> Optional[Branch]:
         """Return the branch Object of the origin_branch."""
         if not self.origin_branch or self.origin_branch == self.name:
             return None
@@ -166,7 +166,7 @@ class Branch(StandardNode):
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Union[Timestamp, str] = None) -> Dict[str, str]:
+    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> Dict[str, str]:
         """Return all the names of the branches that are constituing this branch with the associated times."""
 
         at = Timestamp(at)
@@ -228,7 +228,7 @@ class Branch(StandardNode):
         self,
         rel_label: str = "r",
         branch_label: str = "b",
-        at: Union[Timestamp, str] = None,
+        at: Optional[Union[Timestamp, str]] = None,
         include_outside_parentheses: bool = False,
     ) -> Tuple[str, Dict]:
         """Generate a CYPHER Query filter to query the nodes associated with a given branch at a specific time.
@@ -255,7 +255,7 @@ class Branch(StandardNode):
         return "(" + "\n OR ".join(filters) + ")", params
 
     def get_query_filter_relationships(
-        self, rel_labels: list, at: Union[Timestamp, str] = None, include_outside_parentheses: bool = False
+        self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
     ) -> Tuple[List, Dict]:
         """Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch."""
 
@@ -289,7 +289,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_path(self, at: Union[Timestamp, str] = None) -> Tuple[str, Dict]:
+    def get_query_filter_path(self, at: Optional[Union[Timestamp, str]] = None) -> Tuple[str, Dict]:
         """Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
         Examples:
@@ -423,7 +423,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(self, session: Optional[AsyncSession] = None):
+    async def rebase(self, session: AsyncSession):
         """Rebase the current Branch with its origin branch"""
 
         # FIXME, we must ensure that there is no conflict before rebasing a branch
@@ -435,9 +435,7 @@ class Branch(StandardNode):
 
         registry.branch[self.name] = self
 
-    async def validate_branch(
-        self, rpc_client: InfrahubRpcClient, session: Optional[AsyncSession] = None
-    ) -> Tuple[bool, List[str]]:
+    async def validate_branch(self, rpc_client: InfrahubRpcClient, session: AsyncSession) -> Tuple[bool, List[str]]:
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -540,7 +538,7 @@ class Branch(StandardNode):
 
         await self.merge_repositories(rpc_client=rpc_client, session=session)
 
-    async def merge_graph(self, session: AsyncSession, at: Union[str, Timestamp] = None):
+    async def merge_graph(self, session: AsyncSession, at: Optional[Union[str, Timestamp]] = None):
         rel_ids_to_update = []
 
         default_branch = registry.branch[config.SETTINGS.main.default_branch]
