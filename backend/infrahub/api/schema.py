@@ -1,7 +1,8 @@
+import os
 from typing import List, Optional
 
-import pendulum
 from fastapi import APIRouter, Depends
+from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
@@ -11,6 +12,7 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.exceptions import SchemaNotFound
+from infrahub.lock import registry as lock_registry
 
 router = APIRouter(prefix="/schema")
 
@@ -47,26 +49,28 @@ async def load_schema(
 ):
     branch: Branch = await get_branch(session=session, branch=branch)
 
-    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    # TODO we need to replace this lock with a distributed lock
+    async with lock_registry.get_branch_schema_update():
+        logger.error(f"[{os.getpid()}] API: {branch.name}: lock acquired, current hash {branch.schema_hash}")
 
-    # We create a copy of the existing branch schema to do some validation before loading it.
-    tmp_schema = branch_schema.duplicate()
-    try:
-        tmp_schema.load_schema(schema=schema)
-        tmp_schema.process()
-    except (SchemaNotFound, ValueError) as exc:
-        return JSONResponse(status_code=422, content={"error": exc.message})
+        branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
-    diff = tmp_schema.diff(branch_schema)
+        # We create a copy of the existing branch schema to do some validation before loading it.
+        tmp_schema = branch_schema.duplicate()
+        try:
+            tmp_schema.load_schema(schema=schema)
+            tmp_schema.process()
+        except (SchemaNotFound, ValueError) as exc:
+            return JSONResponse(status_code=422, content={"error": exc.message})
 
-    if diff.all:
-        await registry.schema.update_schema_branch(
-            schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
-        )
+        diff = tmp_schema.diff(branch_schema)
 
-        latest_schema = registry.schema.get_schema_branch(name=branch.name)
-        branch.schema_changed_at = pendulum.now(tz="UTC").to_iso8601_string()
-        branch.schema_hash = hash(latest_schema)
-        await branch.save(session=session)
+        if diff.all:
+            await registry.schema.update_schema_branch(
+                schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
+            )
+            branch.update_schema_hash()
+            logger.error(f"[{os.getpid()}] {branch.name}: Schema has been updated, new hash {branch.schema_hash}")
+            await branch.save(session=session)
 
-    return JSONResponse(status_code=202, content={})
+        return JSONResponse(status_code=202, content={})
