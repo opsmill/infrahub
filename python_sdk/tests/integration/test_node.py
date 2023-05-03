@@ -110,7 +110,7 @@ class TestInfrahubNode:
         assert obj.id is not None
         nodedb = await client.get(kind="RFile", id=str(obj.id))
 
-        input_data = nodedb._generate_input_data()["data"]
+        input_data = nodedb._generate_input_data()["data"]["data"]
         assert input_data["name"]["value"] == "rfile10"
         # Validate that the source isn't a dictionary bit a reference to the repo
         assert input_data["name"]["source"] == repo01.id

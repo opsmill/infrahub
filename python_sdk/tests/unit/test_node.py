@@ -5,6 +5,7 @@ from pytest_httpx import HTTPXMock
 
 from infrahub_client.exceptions import NodeNotFound
 from infrahub_client.node import (
+    SAFE_VALUE,
     InfrahubNode,
     InfrahubNodeBase,
     InfrahubNodeSync,
@@ -20,11 +21,36 @@ sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.st
 
 client_types = ["standard", "sync"]
 
+SAFE_GRAPHQL_VALUES = [
+    pytest.param("", id="allow-empty"),
+    pytest.param("user1", id="allow-normal"),
+    pytest.param("User Lastname", id="allow-space"),
+    pytest.param("020a1c39-6071-4bf8-9336-ffb7a001e665", id="allow-uuid"),
+    pytest.param("user.lastname", id="allow-dots"),
+]
+
+UNSAFE_GRAPHQL_VALUES = [
+    pytest.param('No "quote"', id="disallow-quotes"),
+    pytest.param("Line \n break", id="disallow-linebreaks"),
+]
+
 
 async def test_method_sanity():
     """Validate that there is at least one public method and that both clients look the same."""
     assert async_node_methods
     assert async_node_methods == sync_node_methods
+
+
+@pytest.mark.parametrize("value", SAFE_GRAPHQL_VALUES)
+def test_validate_graphql_value(value: str) -> None:
+    """All these values are safe and should not be converted"""
+    assert SAFE_VALUE.match(value)
+
+
+@pytest.mark.parametrize("value", UNSAFE_GRAPHQL_VALUES)
+def test_identify_unsafe_graphql_value(value: str) -> None:
+    """All these values are safe and should not be converted"""
+    assert not SAFE_VALUE.match(value)
 
 
 @pytest.mark.parametrize("method", async_node_methods)
@@ -188,7 +214,7 @@ async def test_create_input_data(client, location_schema, client_type):
         node = InfrahubNode(client=client, schema=location_schema, data=data)
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-    assert node._generate_input_data() == {
+    assert node._generate_input_data()["data"] == {
         "data": {
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
@@ -197,6 +223,39 @@ async def test_create_input_data(client, location_schema, client_type):
             "tags": [],
         }
     }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_create_input_data__with_relationships_02(client, location_schema, client_type):
+    """Validate input data with variables that needs replacements"""
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK\n Airport"},
+        "type": {"value": "SITE"},
+        "primary_tag": "pppppppp",
+        "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
+    }
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema, data=data)
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
+
+    input_data = node._generate_input_data()
+    assert len(input_data["variables"].keys()) == 1
+    key = list(input_data["variables"].keys())[0]
+    value = input_data["variables"][key]
+
+    expected = {
+        "data": {
+            "name": {"value": "JFK1"},
+            "description": {"value": f"${key}"},
+            "type": {"value": "SITE"},
+            "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
+            "primary_tag": {"id": "pppppppp"},
+        }
+    }
+    assert input_data["data"] == expected
+    assert value == "JFK\n Airport"
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -212,7 +271,7 @@ async def test_create_input_data__with_relationships_01(client, location_schema,
         node = InfrahubNode(client=client, schema=location_schema, data=data)
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-    assert node._generate_input_data() == {
+    assert node._generate_input_data()["data"] == {
         "data": {
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
@@ -237,7 +296,7 @@ async def test_create_input_data_with_relationships_02(clients, rfile_schema, cl
     else:
         node = InfrahubNodeSync(client=clients.sync, schema=rfile_schema, data=data)
 
-    assert node._generate_input_data() == {
+    assert node._generate_input_data()["data"] == {
         "data": {
             "name": {
                 "is_protected": True,
@@ -276,7 +335,7 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
     else:
         node = InfrahubNodeSync(client=clients.sync, schema=rfile_schema, data=data)
 
-    assert node._generate_input_data() == {
+    assert node._generate_input_data()["data"] == {
         "data": {
             "name": {
                 "is_protected": True,
@@ -318,7 +377,7 @@ async def test_update_input_data__with_relationships_01(
     location.tags.add(tag_green)
     location.tags.remove(tag_blue)
 
-    assert location._generate_input_data() == {
+    assert location._generate_input_data()["data"] == {
         "data": {
             "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
             "primary_tag": {"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"},
@@ -336,7 +395,7 @@ async def test_update_input_data_with_relationships_02(client, location_schema, 
     else:
         location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data02)
 
-    assert location._generate_input_data() == {
+    assert location._generate_input_data()["data"] == {
         "data": {
             "name": {
                 "is_protected": True,
@@ -383,7 +442,7 @@ async def test_update_input_data_empty_relationship(
     location.tags.remove(tag_blue)
     location.primary_tag = None
 
-    assert location._generate_input_data() == {
+    assert location._generate_input_data()["data"] == {
         "data": {
             "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
             # "primary_tag": None,
