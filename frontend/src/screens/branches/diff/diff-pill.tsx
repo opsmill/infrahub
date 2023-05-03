@@ -7,7 +7,7 @@ type DiffPillProps = {
 }
 
 export const DiffPill = (props: DiffPillProps) => {
-  const { added, updated, removed} = props;
+  const { added, updated, removed } = props;
 
   return (
     <Pill className="flex items-center text-gray-300 mr-2">
