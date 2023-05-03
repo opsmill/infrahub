@@ -19,6 +19,7 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import (
+    AttributeSchema,
     FilterSchema,
     FilterSchemaKind,
     GenericSchema,
@@ -600,6 +601,9 @@ class SchemaManager(NodeManager):
         self._branches[name] = SchemaBranch(cache=self._cache, name=name)
         return self._branches[name]
 
+    def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
+        self._branches[name] = schema
+
     async def update_schema_branch(
         self,
         schema: SchemaBranch,
@@ -682,20 +686,16 @@ class SchemaManager(NodeManager):
             new_node.attributes = [item for item in new_node.attributes if item.inherited]
 
             for item in node.local_attributes:
-                attr = await Node.init(schema=attribute_schema, branch=branch, session=session)
-                await attr.new(**item.dict(exclude={"id", "filters"}), node=obj, session=session)
-                await attr.save(session=session)
-                new_item = item.duplicate()
-                new_item.id = attr.id
-                new_node.attributes.append(new_item)
+                new_attr = await self.create_attribute_in_db(
+                    schema=attribute_schema, item=item, parent=obj, branch=branch, session=session
+                )
+                new_node.attributes.append(new_attr)
 
             for item in node.local_relationships:
-                rel = await Node.init(schema=relationship_schema, branch=branch, session=session)
-                await rel.new(**item.dict(exclude={"id", "filters"}), node=obj, session=session)
-                await rel.save(session=session)
-                new_item = item.duplicate()
-                new_item.id = rel.id
-                new_node.relationships.append(new_item)
+                new_rel = await self.create_relationship_in_db(
+                    schema=relationship_schema, item=item, parent=obj, branch=branch, session=session
+                )
+                new_node.relationships.append(new_rel)
 
         # Save back the node with the newly created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
@@ -726,9 +726,14 @@ class SchemaManager(NodeManager):
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
             )
 
+        attribute_schema = self.get(name="AttributeSchema", branch=branch)
+        relationship_schema = self.get(name="RelationshipSchema", branch=branch)
+
         # Update all direct attributes attributes
         for key, value in schema_dict.items():
             getattr(obj, key).value = value
+
+        new_node = node.duplicate()
 
         # Update the attributes and the relationships nodes as well
         await obj.attributes.update(session=session, data=[item.id for item in node.local_attributes])
@@ -738,27 +743,69 @@ class SchemaManager(NodeManager):
         # Then Update the Attributes and the relationships
         if isinstance(node, (NodeSchema, GenericSchema)):
             items = await self.get_many(
-                ids=[item.id for item in node.local_attributes + node.local_relationships],
+                ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
                 session=session,
                 include_owner=True,
                 include_source=True,
             )
 
             for item in node.local_attributes:
-                attr = items[item.id]
-                item_dict = item.dict(exclude={"id", "filters"})
-                for key, value in item_dict.items():
-                    getattr(attr, key).value = value
-                await attr.save(session=session)
+                if item.id and items[item.id]:
+                    await self.update_attribute_in_db(item=item, attr=items[item.id], session=session)
+                elif not item.id:
+                    new_attr = await self.create_attribute_in_db(
+                        schema=attribute_schema, item=item, branch=branch, session=session, parent=obj
+                    )
+                    new_node.attributes.append(new_attr)
 
             for item in node.local_relationships:
-                rel = items[item.id]
-                item_dict = item.dict(exclude={"id", "filters"})
-                for key, value in item_dict.items():
-                    getattr(rel, key).value = value
-                await rel.save(session=session)
+                if item.id and items[item.id]:
+                    await self.update_relationship_in_db(item=item, rel=items[item.id], session=session)
+                elif not item.id:
+                    new_rel = await self.create_relationship_in_db(
+                        schema=relationship_schema, item=item, branch=branch, session=session, parent=obj
+                    )
+                    new_node.relationships.append(new_rel)
 
-        return node
+        # Save back the node with the (potnetially) newly created IDs in the SchemaManager
+        self.set(name=new_node.kind, schema=new_node, branch=branch.name)
+        return new_node
+
+    @staticmethod
+    async def create_attribute_in_db(
+        schema: NodeSchema, item: AttributeSchema, branch: Branch, session: AsyncSession, parent: Node
+    ) -> AttributeSchema:
+        obj = await Node.init(schema=schema, branch=branch, session=session)
+        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, session=session)
+        await obj.save(session=session)
+        new_item = item.duplicate()
+        new_item.id = obj.id
+        return new_item
+
+    @staticmethod
+    async def create_relationship_in_db(
+        schema: NodeSchema, item: RelationshipSchema, branch: Branch, session: AsyncSession, parent: Node
+    ) -> RelationshipSchema:
+        obj = await Node.init(schema=schema, branch=branch, session=session)
+        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, session=session)
+        await obj.save(session=session)
+        new_item = item.duplicate()
+        new_item.id = obj.id
+        return new_item
+
+    @staticmethod
+    async def update_attribute_in_db(item: AttributeSchema, attr: Node, session: AsyncSession) -> None:
+        item_dict = item.dict(exclude={"id", "filters"})
+        for key, value in item_dict.items():
+            getattr(attr, key).value = value
+        await attr.save(session=session)
+
+    @staticmethod
+    async def update_relationship_in_db(item: RelationshipSchema, rel: Node, session: AsyncSession) -> None:
+        item_dict = item.dict(exclude={"id", "filters"})
+        for key, value in item_dict.items():
+            getattr(rel, key).value = value
+        await rel.save(session=session)
 
     async def load_schema_from_db(
         self,
