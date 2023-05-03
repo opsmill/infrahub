@@ -151,7 +151,7 @@ class Query(ABC):
             self.branch = branch
 
         if not hasattr(self, "at"):
-            self.at = None
+            self.at = Timestamp(at)
 
         if not self.at:
             self.at = Timestamp(at)
