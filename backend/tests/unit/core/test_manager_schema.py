@@ -171,9 +171,7 @@ async def test_schema_branch_generate_identifiers(schema_all_in_one):
     assert generic.relationships[1].identifier == "genericinterface__status"
 
 
-async def test_schema_branch_load_schema_extension(
-    session: AsyncSession, default_branch, schema_file_infra_w_extensions_01
-):
+async def test_schema_branch_load_schema_extension(session: AsyncSession, default_branch, helper):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
@@ -183,7 +181,7 @@ async def test_schema_branch_load_schema_extension(
     org = schema_branch.get(name="Organization")
     initial_nbr_relationships = len(org.relationships)
 
-    schema_branch.load_schema(schema=SchemaRoot(**schema_file_infra_w_extensions_01))
+    schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_w_extensions_01.json")))
 
     org = schema_branch.get(name="Organization")
     assert len(org.relationships) == initial_nbr_relationships + 1
@@ -560,9 +558,9 @@ async def test_load_schema_to_db_simple_01(
     session: AsyncSession,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    schema_file_infra_simple_01,
+    helper,
 ):
-    schema = SchemaRoot(**schema_file_infra_simple_01)
+    schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
 
@@ -577,9 +575,9 @@ async def test_load_schema_to_db_w_generics_01(
     session: AsyncSession,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    schema_file_infra_w_generics_01,
+    helper,
 ):
-    schema = SchemaRoot(**schema_file_infra_w_generics_01)
+    schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
 
