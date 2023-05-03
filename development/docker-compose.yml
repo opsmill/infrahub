@@ -5,10 +5,8 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-backend
-    image: "opsmill/infrahub-backend-py${PYTHON_VER}:${IMAGE_VER}"
+    image: "opsmill/${INFRAHUB_BUILD_NAME}-py${PYTHON_VER}:${IMAGE_VER}"
     command: gunicorn --config /source/development/gunicorn.config.py infrahub.api.main:app
-    ports:
-      - "8000:8000"
     depends_on:
       database:
         condition: service_healthy
@@ -23,7 +21,7 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-backend
-    image: "opsmill/infrahub-backend-py${PYTHON_VER}:${IMAGE_VER}"
+    image: "opsmill/${INFRAHUB_BUILD_NAME}-py${PYTHON_VER}:${IMAGE_VER}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:
@@ -39,12 +37,10 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-frontend
-    image: "opsmill/infrahub-frontend:${IMAGE_VER}"
+    image: "opsmill/${INFRAHUB_BUILD_NAME}-frontend:${IMAGE_VER}"
     command: npx serve -s build
     depends_on:
       - infrahub-server
-    ports:
-      - "3000:3000"
     tty: true
 volumes:
   git_data:

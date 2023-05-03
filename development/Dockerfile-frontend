@@ -1,5 +1,8 @@
 FROM node:16-slim
 
+ARG INFRAHUB_API_SERVER_URL=http://localhost:8000
+ENV REACT_APP_INFRAHUB_API_SERVER_URL=${INFRAHUB_API_SERVER_URL}
+
 RUN mkdir /source
 
 # Install Python to resolve an issue with @parcel/watch
