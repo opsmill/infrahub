@@ -1,13 +1,19 @@
+from neo4j import AsyncSession
+
 from infrahub.core import get_branch
+from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetLocalAttributeValueQuery,
+    NodeListGetRelationshipsQuery,
 )
 from infrahub.core.timestamp import Timestamp
 
 
-async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch, car_person_schema):
+async def test_query_NodeListGetLocalAttributeValueQuery(
+    session: AsyncSession, default_branch: Branch, car_person_schema
+):
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -36,7 +42,7 @@ async def test_query_NodeListGetLocalAttributeValueQuery(session, default_branch
     assert len(query.get_results_by_id()) == 8
 
 
-async def test_query_NodeListGetAttributeQuery_all_fields(session, base_dataset_02):
+async def test_query_NodeListGetAttributeQuery_all_fields(session: AsyncSession, base_dataset_02):
     default_branch = await get_branch(session=session, branch="main")
     branch1 = await get_branch(session=session, branch="branch1")
 
@@ -89,7 +95,7 @@ async def test_query_NodeListGetAttributeQuery_with_source(
     assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["name"].source_uuid == first_account.id
 
 
-async def test_query_NodeListGetAttributeQuery(session, base_dataset_02):
+async def test_query_NodeListGetAttributeQuery(session: AsyncSession, base_dataset_02):
     default_branch = await get_branch(session=session, branch="main")
     branch1 = await get_branch(session=session, branch="branch1")
 
@@ -124,3 +130,19 @@ async def test_query_NodeListGetAttributeQuery(session, base_dataset_02):
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1"]
     assert len(list(query.get_results())) == 4
     assert query.results[0].branch_score != query.results[1].branch_score
+
+
+async def test_query_NodeListGetRelationshipsQuery(
+    session: AsyncSession, default_branch: Branch, person_jack_tags_main
+):
+    default_branch = await get_branch(session=session, branch="main")
+    query = await NodeListGetRelationshipsQuery.init(
+        session=session,
+        ids=[person_jack_tags_main.id],
+        branch=default_branch,
+    )
+    await query.execute(session=session)
+    result = query.get_peers_group_by_node()
+    assert person_jack_tags_main.id in result
+    assert "person__tag" in result[person_jack_tags_main.id]
+    assert len(result[person_jack_tags_main.id]["person__tag"]) == 2
