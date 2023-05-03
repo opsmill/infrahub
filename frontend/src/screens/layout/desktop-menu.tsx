@@ -1,25 +1,24 @@
 import { LinkIcon, Square3Stack3DIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useLocation } from "react-router-dom";
 import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS } from "../../config/constants";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { DropDownMenuItem } from "./desktop-menu-item";
 
+import { constructPath } from "../../utils/fetch";
 import logo from "./logo.png";
 
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
   const [, setCurrentFilters] = useAtom(comboxBoxFilterState);
-  const { search } = useLocation();
   const onClinkMenuItem = () => setCurrentFilters([]);
 
   const schemaItems = schema.map(
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={`/objects/${item.name}/${search}`}
+        path={constructPath(`/objects/${item.name}`)}
         label={item.label}
         onClick={onClinkMenuItem}
       />
@@ -30,7 +29,7 @@ export default function DesktopMenu() {
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={item.path + `/${search}`}
+        path={constructPath(item.path)}
         label={item.label}
         onClick={onClinkMenuItem}
       />
@@ -41,7 +40,7 @@ export default function DesktopMenu() {
     (item, index) => (
       <DropDownMenuItem
         key={index}
-        path={item.path + `/${search}`}
+        path={constructPath(item.path)}
         label={item.label}
         onClick={onClinkMenuItem}
       />
@@ -49,7 +48,7 @@ export default function DesktopMenu() {
   );
 
   return (
-    <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col z-20">
+    <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
       <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-white pt-5">
         <div className="flex flex-shrink-0 items-center px-4">
           <img className="h-10 w-auto" src={logo} alt="Your Company" />

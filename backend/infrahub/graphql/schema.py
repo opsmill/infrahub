@@ -5,7 +5,13 @@ from typing import Optional
 from graphene import Boolean, Field, List, ObjectType, String
 from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
 
-from .mutations import BranchCreate, BranchMerge, BranchRebase, BranchValidate
+from .mutations import (
+    BranchCreate,
+    BranchDelete,
+    BranchMerge,
+    BranchRebase,
+    BranchValidate,
+)
 from .types import BranchDiffType, BranchType
 from .utils import extract_fields
 
@@ -56,6 +62,7 @@ class InfrahubBaseQuery(ObjectType):
 
 class InfrahubBaseMutation(ObjectType):
     branch_create = BranchCreate.Field()
+    branch_delete = BranchDelete.Field()
     branch_rebase = BranchRebase.Field()
     branch_merge = BranchMerge.Field()
     branch_validate = BranchValidate.Field()

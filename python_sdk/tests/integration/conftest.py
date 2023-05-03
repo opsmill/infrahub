@@ -33,7 +33,7 @@ def execute_before_any_test():
 
 @pytest.fixture(scope="module")
 async def db():
-    driver = await get_db()
+    driver = await get_db(retry=1)
 
     yield driver
 
@@ -72,7 +72,7 @@ async def location_schema() -> NodeSchema:
             {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
         ],
     }
-    return NodeSchema(**data)
+    return NodeSchema(**data)  # type: ignore
 
 
 @pytest.fixture
@@ -87,6 +87,14 @@ async def tag_blue(session: AsyncSession) -> Node:
 async def tag_red(session: AsyncSession) -> Node:
     obj = await Node.init(schema="Tag", session=session)
     await obj.new(session=session, name="Red")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def tag_green(session: AsyncSession) -> Node:
+    obj = await Node.init(schema="Tag", session=session)
+    await obj.new(session=session, name="Green")
     await obj.save(session=session)
     return obj
 
@@ -127,5 +135,19 @@ async def repo99(session: AsyncSession) -> Node:
 async def gqlquery01(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="GraphQLQuery")
     await obj.new(session=session, name="query01", query="query { device { name { value }}}")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def gqlquery02(session: AsyncSession, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(session=session, schema="GraphQLQuery")
+    await obj.new(
+        session=session,
+        name="query02",
+        query="query { device { name { value }}}",
+        repository=repo01,
+        tags=[tag_blue, tag_red],
+    )
     await obj.save(session=session)
     return obj

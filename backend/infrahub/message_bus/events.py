@@ -265,7 +265,7 @@ class InfrahubRPCResponse(InfrahubMessage):
         self,
         status: RPCStatusCode,
         response: Optional[dict] = None,
-        errors: list = None,
+        errors: Optional[list] = None,
         *args,
         **kwargs,
     ):
@@ -298,7 +298,7 @@ class InfrahubGitRPC(InfrahubRPC):
 
     def __init__(
         self,
-        repository: Node = None,
+        repository: Optional[Node] = None,
         repository_name: Optional[str] = None,
         repository_id: Optional[str] = None,
         location: Optional[str] = None,
@@ -355,7 +355,7 @@ class InfrahubTransformRPC(InfrahubRPC):
         transform_location: str,
         data: dict,
         branch_name: str,
-        repository: Node = None,
+        repository: Optional[Node] = None,
         repository_name: Optional[str] = None,
         repository_id: Optional[str] = None,
         commit: Optional[str] = None,
@@ -415,7 +415,7 @@ class InfrahubCheckRPC(InfrahubRPC):
         check_location: str,
         check_name: str,
         branch_name: str,
-        repository: Node = None,
+        repository: Optional[Node] = None,
         repository_name: Optional[str] = None,
         repository_id: Optional[str] = None,
         commit: Optional[str] = None,
@@ -475,7 +475,7 @@ class InfrahubDataMessage(InfrahubActionMessage):
 
     def __init__(
         self,
-        node: Node = None,
+        node: Optional[Node] = None,
         node_id: Optional[str] = None,
         node_kind: Optional[str] = None,
         branch: Optional[str] = None,

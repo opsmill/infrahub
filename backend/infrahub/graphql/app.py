@@ -7,7 +7,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from distutils.util import strtobool
 from inspect import isawaitable
 from typing import (
     Any,
@@ -65,10 +64,12 @@ except ImportError:
     GraphQLFormattedError = Dict[str, Any]
 
 import infrahub.config as config
-from infrahub.core import get_branch
+from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
-from infrahub_client.timestamp import Timestamp
+from infrahub.graphql.generator import generate_object_types
+from infrahub.utils import str_to_bool
 
 from . import get_gql_mutation, get_gql_query, get_gql_subscription
 
@@ -129,10 +130,16 @@ class InfrahubGraphQLApp:
 
     async def _get_schema(self, session: AsyncSession):
         if not self._schema:
+            default_branch = config.SETTINGS.main.default_branch
+            await generate_object_types(session=session, branch=default_branch)
+            types_dict = registry.get_all_graphql_type(branch=default_branch)
+            types = list(types_dict.values())
+
             self._schema = graphene.Schema(
                 query=await get_gql_query(session=session),
                 mutation=await get_gql_mutation(session=session),
                 subscription=await get_gql_subscription(session=session),
+                types=types,
                 auto_camelcase=False,
             )
 
@@ -148,7 +155,7 @@ class InfrahubGraphQLApp:
                 try:
                     branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
                     branch = await get_branch(session=session, branch=branch_name)
-                    branch.ephemeral_rebase = bool(strtobool(str(request.query_params.get("rebase", False))))
+                    branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 

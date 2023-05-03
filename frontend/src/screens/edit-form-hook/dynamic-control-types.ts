@@ -1,17 +1,18 @@
 import { RegisterOptions } from "react-hook-form";
+import { SelectOption } from "../../components/select";
+import { FormFieldError } from "./form";
 
 // Different values for "kind" property of each attribute in the schema
 export type SchemaAttributeType = "ID" | "Text" | "Number" | "TextArea" | "DateTime" | "Email" | "Password" | "URL" | "File" | "MacAddress" | "Color" | "Bandwidth" | "IPHost" | "IPNetwork" | "Checkbox" | "List" | "Any" | "String" | "Integer" | "Boolean";
 
-// Different values for the type of "Form input types" when in the create/edit forms
-export type ControlType = "text" | "select" | "multiselect" | "number" | "checkbox";
+// Different kind of form inputs
+export type ControlType = "text" | "textarea" | "select" | "select2step" | "multiselect" | "number" | "checkbox" | "switch" | "datepicker";
 
 export type RelationshipCardinality = "one" | "many";
 
 export const getFormInputControlTypeFromSchemaAttributeKind = (kind: SchemaAttributeType): ControlType => {
   switch(kind) {
     case "Text":
-    case "TextArea":
     case "ID":
     case "DateTime":
     case "Email":
@@ -27,6 +28,9 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (kind: SchemaAttri
     case "String":
       return "text";
 
+    case "TextArea":
+      return "textarea";
+
     case "Number":
     case "Bandwidth":
     case "Integer":
@@ -41,22 +45,16 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (kind: SchemaAttri
   }
 };
 
-export interface SelectOption {
-  label: string;
-  value: string;
-}
-
+// Interface for every field in a create/edit form
 export interface DynamicFieldData {
   label: string;
-  inputType: ControlType;
-  fieldName: string;
-  type: string;
-  defaultValue: any;
-  isAttribute: boolean;
-  isRelationship: boolean;
-  relationshipCardinality?: RelationshipCardinality;
-  options: {
+  type: ControlType;
+  name: string;
+  kind?: SchemaAttributeType;
+  value: any;
+  options?: {
     values: SelectOption[];
   };
   config?: RegisterOptions;
+  error?: FormFieldError;
 }

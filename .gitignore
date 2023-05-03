@@ -1,3 +1,5 @@
+.coverage
+coverage.xml
 *.pyc
 *.env
 script.py
@@ -6,3 +8,9 @@ script.py
 node_modules/*
 development/docker-compose.override.yml
 .DS_Store
+.python-version
+
+# Direnv files (https://direnv.net/)
+.direnv/
+.envrc
+

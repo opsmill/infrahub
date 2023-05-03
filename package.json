@@ -17,8 +17,7 @@
     },
     "lint-staged": {
         "*.(js|tsx|ts)": [
-            "npm run lint:frontend",
-            "git add ."
+            "npm run lint:frontend"
         ]
     }
 }

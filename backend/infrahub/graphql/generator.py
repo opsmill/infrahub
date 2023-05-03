@@ -72,7 +72,7 @@ async def default_resolver(*args, **kwargs):
     # Extract the contextual information from the request context
     at = info.context.get("infrahub_at")
     branch = info.context.get("infrahub_branch")
-    account = info.context.get("infrahub_account", None)
+    # account = info.context.get("infrahub_account", None)
     db = info.context.get("infrahub_database")
 
     # Extract the name of the fields in the GQL query
@@ -95,9 +95,6 @@ async def default_resolver(*args, **kwargs):
             fields=fields,
             at=at,
             branch=branch,
-            account=account,
-            include_source=True,
-            include_owner=True,
         )
 
         if node_rel.cardinality == "many":
@@ -124,7 +121,7 @@ async def generate_object_types(
 
     branch = await get_branch(session=session, branch=branch)
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch)
 
     group_memberships = defaultdict(list)
 
@@ -135,9 +132,7 @@ async def generate_object_types(
         if not isinstance(node_schema, GenericSchema):
             continue
         interface = generate_interface_object(schema=node_schema, branch=branch)
-        related_interface = generate_related_interface_object(schema=node_schema, branch=branch)
         registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
-        registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
 
     # Define DataOwner and DataOwner
     data_source = registry.get_graphql_type(name="DataSource", branch=branch)
@@ -147,23 +142,36 @@ async def generate_object_types(
         gql_type._meta.fields["source"] = graphene.Field(data_source)
         gql_type._meta.fields["owner"] = graphene.Field(data_owner)
 
+    # Generate all RelatedInterfaceType and store them in the registry
+    for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, GenericSchema):
+            continue
+
+        related_interface = generate_related_interface_object(schema=node_schema, branch=branch)
+
+        related_interface._meta.fields["_relation__source"] = graphene.Field(data_source)
+        related_interface._meta.fields["_relation__owner"] = graphene.Field(data_owner)
+
+        registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
+
     # Generate all GraphQL ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, NodeSchema):
-            continue
-        node_type = generate_graphql_object(schema=node_schema, branch=branch)
-        related_node_type = generate_related_graphql_object(schema=node_schema, branch=branch)
+        if isinstance(node_schema, NodeSchema):
+            node_type = generate_graphql_object(schema=node_schema, branch=branch)
+            related_node_type = generate_related_graphql_object(schema=node_schema, branch=branch)
 
-        related_node_type._meta.fields["_relation__source"] = graphene.Field(data_source)
-        related_node_type._meta.fields["_relation__owner"] = graphene.Field(data_owner)
+            related_node_type._meta.fields["_relation__source"] = graphene.Field(data_source)
+            related_node_type._meta.fields["_relation__owner"] = graphene.Field(data_owner)
 
-        registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
-        registry.set_graphql_type(name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name)
+            registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
+            registry.set_graphql_type(
+                name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name
+            )
 
-        # Register this model to all the groups it belongs to.
-        if node_schema.groups:
-            for group_name in node_schema.groups:
-                group_memberships[group_name].append(f"Related{node_schema.kind}")
+            # Register this model to all the groups it belongs to.
+            if node_schema.groups:
+                for group_name in node_schema.groups:
+                    group_memberships[group_name].append(f"Related{node_schema.kind}")
 
     # Generate all the Groups with associated ObjectType / RelatedObjectType
     for node_name, node_schema in full_schema.items():
@@ -178,7 +186,7 @@ async def generate_object_types(
 
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, NodeSchema):
+        if not isinstance(node_schema, (NodeSchema, GenericSchema)):
             continue
         node_type = registry.get_graphql_type(name=node_name, branch=branch.name)
         related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch.name)
@@ -208,7 +216,7 @@ async def generate_object_types(
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch)
 
     # Generate all Graphql objectType and store them in the registry
     await generate_object_types(session=session)
@@ -234,7 +242,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
     branch = await get_branch(branch=branch, session=session)
 
-    full_schema = registry.get_full_schema(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch)
 
     for node_schema in full_schema.values():
         if not isinstance(node_schema, NodeSchema):
@@ -339,6 +347,10 @@ def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> 
 
     main_attrs = {
         "display_label": graphene.String(required=False),
+        "_updated_at": graphene.DateTime(required=False),
+        "_relation__updated_at": graphene.DateTime(required=False),
+        "_relation__is_visible": graphene.Boolean(required=False),
+        "_relation__is_protected": graphene.Boolean(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 

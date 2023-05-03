@@ -5,6 +5,8 @@ import { useAtom } from "jotai";
 import { Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
+import { constructPath } from "../utils/fetch";
+import { classNames } from "../utils/common";
 
 export type TooltipDetailItemType = "date" | "text" | "link";
 
@@ -16,18 +18,19 @@ interface TooltipListItem {
 
 interface Props {
     items: TooltipListItem[];
+    header?: React.ReactNode;
+    position?: "LEFT" | "RIGHT";
 }
 
 export default function MetaDetailsTooltip(props: Props) {
   const navigate = useNavigate();
   const [schemaKindName] = useAtom(schemaKindNameState);
-  const navigateToObjectDetailsPage = (obj: any) => {
-    navigate(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`);
-  };
+
+  const navigateToObjectDetailsPage = (obj: any) => navigate(constructPath(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`));
 
   return <Popover className="relative mt-1.5 ml-2">
     <Popover.Button>
-      <InformationCircleIcon className="w-5 h-5" />
+      <InformationCircleIcon className="w-6 h-6 text-gray-500" />
     </Popover.Button>
     <Transition
       as={Fragment}
@@ -38,8 +41,9 @@ export default function MetaDetailsTooltip(props: Props) {
       leaveFrom="opacity-100 translate-y-0"
       leaveTo="opacity-0 translate-y-1"
     >
-      <Popover.Panel className="absolute z-10 bg-white rounded-lg border shadow-xl">
+      <Popover.Panel className={classNames("absolute z-10 bg-white rounded-lg border shadow-xl", props.position === "LEFT" ? "right-0" : "")}>
         <div className="w-80 text-sm divide-y px-4">
+          {!!props.header && (props.header)}
           {props.items.map(item => {
             return <div key={item.label} className="flex justify-between w-full py-4">
               <div>{item.label}: </div>

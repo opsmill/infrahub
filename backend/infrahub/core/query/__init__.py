@@ -9,9 +9,9 @@ from neo4j.graph import Node, Relationship
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async, execute_write_query_async
 from infrahub.exceptions import QueryError
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -121,13 +121,13 @@ class QueryResult:
         """Return all relationships."""
 
         for item in self.data:
-            if hasattr(item, "nodes"):
+            if isinstance(item, Relationship):
                 yield item
 
     def get_nodes(self) -> Generator[Node, None, None]:
         """Return all nodes."""
         for item in self.data:
-            if hasattr(item, "labels"):
+            if isinstance(item, Node):
                 yield item
 
     def __iter__(self):
@@ -144,7 +144,9 @@ class Query(ABC):
 
     order_by: Optional[List[str]] = None
 
-    def __init__(self, branch: Branch = None, at: Union[Timestamp, str] = None, limit: int = None):
+    def __init__(
+        self, branch: Optional[Branch] = None, at: Optional[Union[Timestamp, str]] = None, limit: Optional[int] = None
+    ):
         if branch:
             self.branch = branch
 
@@ -160,7 +162,7 @@ class Query(ABC):
         self.params: dict = {}
         self.query_lines: List[str] = []
         self.return_labels: List[str] = []
-        self.results: List[QueryResult] = None
+        self.results: List[QueryResult] = []
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
@@ -169,15 +171,15 @@ class Query(ABC):
     async def init(
         cls,
         session: AsyncSession,
-        branch: Branch = None,
-        at: Union[Timestamp, str] = None,
+        branch: Optional[Branch] = None,
+        at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         *args,
         **kwargs,
     ):
         query = cls(branch=branch, at=at, limit=limit, *args, **kwargs)
 
-        await query.query_init(session=session, *args, **kwargs)
+        await query.query_init(session=session, **kwargs)
 
         return query
 
@@ -215,7 +217,7 @@ class Query(ABC):
 
         return query_str
 
-    async def execute(self, session: AsyncSession = None) -> SelfQuery:
+    async def execute(self, session: AsyncSession) -> SelfQuery:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -243,7 +245,7 @@ class Query(ABC):
     def get_raw_results(self) -> List[QueryResult]:
         return self.results
 
-    def get_result(self) -> QueryResult:
+    def get_result(self) -> Union[QueryResult, None]:
         """Return a single Result."""
 
         if not self.num_of_results:
@@ -301,7 +303,7 @@ class Query(ABC):
             yield self.results[attr_info["idx"]]
 
     @property
-    def num_of_results(self) -> int:
+    def num_of_results(self) -> Optional[int]:
         if not self.has_been_executed:
             return None
 

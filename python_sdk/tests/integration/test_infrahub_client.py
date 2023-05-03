@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client import InfrahubClient
+from infrahub_client.node import InfrahubNode
 
 # pylint: disable=unused-argument
 
@@ -13,7 +14,7 @@ class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def test_client(self):
         # pylint: disable=import-outside-toplevel
-        from infrahub.main import app
+        from infrahub.api.main import app
 
         return TestClient(app)
 
@@ -79,6 +80,15 @@ class TestInfrahubClient:
 
         assert "test_query2" in queries
 
+    async def test_branch_delete(self, client: InfrahubClient, init_db_base, base_dataset, session):
+        async_branch = "async-delete-branch"
+        await create_branch(branch_name=async_branch, session=session)
+        pre_delete = await client.branch.all()
+        await client.branch.delete(async_branch)
+        post_delete = await client.branch.all()
+        assert async_branch in pre_delete.keys()
+        assert async_branch not in post_delete.keys()
+
     async def test_create_graphql_query_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
         query_string = """
         query {
@@ -131,27 +141,6 @@ class TestInfrahubClient:
         rfiles = await client.get_list_rfiles(branch_name="main")
 
         assert "rfile1" in rfiles
-
-    async def test_create_rfile_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
-        branch_name = "main"
-
-        rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
-        repositories = await NodeManager.query("Repository", branch=branch_name, session=session)
-        queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
-
-        assert len(rfiles) == 1
-
-        await client.create_rfile(
-            branch_name=branch_name,
-            name="rfile1",
-            description="test rfile2",
-            template_path="mytemplate.j2",
-            template_repository=str(repositories[0].id),
-            query=str(queries[0].name.value),
-        )
-
-        rfiles = await NodeManager.query("RFile", branch=branch_name, session=session)
-        assert len(rfiles) == 2
 
     async def test_query_transform_python(self, client: InfrahubClient, init_db_base, base_dataset):
         transforms = await client.get_list_transform_python(branch_name="main")

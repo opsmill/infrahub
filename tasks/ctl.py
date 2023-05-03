@@ -6,7 +6,7 @@ from invoke import (  # type: ignore  # pylint: disable=import-error
 
 # flake8: noqa: W605
 
-MAIN_DIRECTORY = "infrahub_ctl"
+MAIN_DIRECTORY = "ctl"
 NAMESPACE = "CTL"
 
 
@@ -92,6 +92,15 @@ def flake8(context: Context):
 
 
 @task
+def isort(context: Context):
+    """Run isort to check that Python files adherence to import standards."""
+
+    print(f" - [{NAMESPACE}] Check code with isort")
+    exec_cmd = f"isort --check --diff {MAIN_DIRECTORY}"
+    context.run(exec_cmd, pty=True)
+
+
+@task
 def mypy(context: Context):
     """This will run mypy for the specified name and Python version."""
 
@@ -113,6 +122,7 @@ def pylint(context: Context):
 def lint(context: Context):
     """This will run all linter."""
     black(context)
+    isort(context)
     flake8(context)
     pylint(context)
     mypy(context)

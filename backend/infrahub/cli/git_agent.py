@@ -9,20 +9,12 @@ from aio_pika import IncomingMessage
 from rich.logging import RichHandler
 
 import infrahub.config as config
-from infrahub.exceptions import RepositoryError
-from infrahub.git import (
-    InfrahubRepository,
-    handle_git_check_message,
-    handle_git_rpc_message,
-    handle_git_transform_message,
-    initialize_repositories_directory,
-)
-from infrahub.lock import registry as lock_registry
+from infrahub.git import handle_message, initialize_repositories_directory
+from infrahub.git.actions import sync_remote_repositories
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import (
     InfrahubMessage,
     InfrahubRPCResponse,
-    MessageType,
     RPCStatusCode,
 )
 from infrahub_client import InfrahubClient
@@ -67,17 +59,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                         rpc = InfrahubMessage.convert(message)
                         log.debug(f"Received RPC message {rpc.type}")
 
-                        if rpc.type == MessageType.GIT:
-                            response = await handle_git_rpc_message(message=rpc, client=client)
-
-                        elif rpc.type == MessageType.TRANSFORMATION:
-                            response = await handle_git_transform_message(message=rpc, client=client)
-
-                        elif rpc.type == MessageType.CHECK:
-                            response = await handle_git_check_message(message=rpc, client=client)
-
-                        else:
-                            response = InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+                        response = await handle_message(message=rpc, client=client)
 
                         log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
                     except Exception as exc:  # pylint: disable=broad-except
@@ -98,38 +80,14 @@ async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
     initialize_repositories_directory()
 
     # TODO Validate access to the GraphQL API with the proper credentials
-    branches = await client.branch.all()
-    repositories = await client.get_list_repositories(branches=branches)
-
-    for repo_name, repository in repositories.items():
-        async with lock_registry.get(repo_name):
-            try:
-                repo = await InfrahubRepository.init(
-                    id=repository.id, name=repository.name, location=repository.location, client=client
-                )
-            except RepositoryError:
-                repo = await InfrahubRepository.new(
-                    id=repository.id, name=repository.name, location=repository.location, client=client
-                )
-                await repo.import_objects_from_files(branch_name=repo.default_branch_name)
-
-            await repo.sync()
+    await sync_remote_repositories(client=client)
 
 
 async def monitor_remote_activity(client: InfrahubClient, interval: int, log: logging.Logger):
     log.info("Monitoring remote repository for updates .. ")
 
     while True:
-        branches = await client.branch.all()
-        repositories = await client.get_list_repositories(branches=branches)
-
-        for repo_name, repository in repositories.items():
-            async with lock_registry.get(repo_name):
-                repo = await InfrahubRepository.init(
-                    id=repository.id, name=repository.name, location=repository.location, client=client
-                )
-                await repo.sync()
-
+        await sync_remote_repositories(client=client)
         await asyncio.sleep(interval)
 
 
@@ -168,6 +126,7 @@ def start(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
     logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("aio_pika").setLevel(logging.ERROR)
     logging.getLogger("aiormq").setLevel(logging.ERROR)

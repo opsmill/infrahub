@@ -259,43 +259,6 @@ mutation($id: String!, $name: String!, $description: String!, $query: String!) {
 }
 """
 
-MUTATION_RFILE_CREATE = """
-mutation($name: String!, $description: String!, $template_path: String!, $template_repository: String!, $query: String!) {
-  rfile_create(data: {
-    name: { value: $name },
-    description: { value: $description },
-    query: { id: $query }
-    template_path: { value: $template_path }
-    template_repository: { id: $template_repository }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_RFILE_UPDATE = """
-mutation($id: String!, $name: String!, $description: String!, $template_path: String!) {
-  rfile_update(data: {
-    id: $id
-    name: { value: $name },
-    description: { value: $description },
-    template_path: { value: $template_path }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
 MUTATION_CHECK_CREATE = """
 mutation($name: String!, $description: String!, $file_path: String!, $class_name: String!, $repository: String!, $query: String!, $timeout: Int!, $rebase: Boolean!) {
   check_create(data: {

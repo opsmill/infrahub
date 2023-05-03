@@ -6,8 +6,8 @@ import pytest
 import yaml
 
 import infrahub.config as config
+from infrahub.core import registry
 from infrahub.core.initialization import first_time_initialization, initialization
-from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import get_db
@@ -25,7 +25,7 @@ def event_loop():
 
 @pytest.fixture(scope="module")
 async def db():
-    driver = await get_db()
+    driver = await get_db(retry=1)
 
     yield driver
 
@@ -47,11 +47,15 @@ async def load_infrastructure_schema(session):
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
     infra_schema = yaml.safe_load(schema_txt)
 
-    schema = SchemaRoot(**infra_schema)
-    schema.extend_nodes_with_interfaces()
+    default_branch_name = config.SETTINGS.main.default_branch
+    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
+    tmp_schema = branch_schema.duplicate()
+    tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
+    tmp_schema.process()
 
-    await SchemaManager.register_schema_to_registry(schema)
-    await SchemaManager.load_schema_to_db(schema, session=session)
+    await registry.schema.update_schema_branch(
+        schema=tmp_schema, session=session, branch=default_branch_name, update_db=True
+    )
 
 
 @pytest.fixture(scope="module")

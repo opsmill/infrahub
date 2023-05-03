@@ -6,9 +6,9 @@ from uuid import UUID
 from infrahub.core import get_branch, registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub_client.timestamp import Timestamp
 
 from ..attribute import BaseAttribute
 from ..relationship import RelationshipManager
@@ -346,7 +346,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
         await query.execute(session=session)
 
-    async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
+    async def to_graphql(self, session: AsyncSession, fields: dict) -> dict:
         """Generate GraphQL Payload for all attributes
 
         Returns:

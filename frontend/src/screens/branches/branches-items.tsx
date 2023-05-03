@@ -1,14 +1,16 @@
-import { ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "../../components/badge";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import useQuery from "../../graphql/hooks/useQuery";
 import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
 import { branchesState } from "../../state/atoms/branches.atom";
+import { DateDisplay } from "../../components/date-display";
+import { constructPath } from "../../utils/fetch";
+import { Badge } from "../../components/badge";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
@@ -29,14 +31,14 @@ export const BranchesItems = () => {
   ];
 
   return (
-    <ul className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 p-6">
+    <ul className="grid gap-6 grid-cols-1 p-6">
       {
         branches.map(
           (branch) => (
             <li
               className="col-span-1 rounded-lg bg-white shadow cursor-pointer hover:bg-gray-50"
               key={branch.name}
-              onClick={() => navigate(`/branches/${branch.id}`)}
+              onClick={() => navigate(constructPath(`/branches/${branch.name}`))}
             >
               <div className="flex w-full items-center justify-between space-x-6 p-6">
                 <div className="flex flex-1">
@@ -45,21 +47,37 @@ export const BranchesItems = () => {
                       {
                         branch.is_default
                           && (
-                            <Tooltip message={"Default branch"}>
-                              <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                            </Tooltip>
+                            <>
+                              <Tooltip message={"Default branch"}>
+                                <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                              </Tooltip>
+
+                              <div className="text-base font-semibold leading-6 text-gray-900">
+                                {branch.name}
+                              </div>
+                            </>
                           )
                       }
 
-                      <h3 className="text-sm font-medium text-gray-900 py-0.5">{branch.name}</h3>
-
                       {
                         !branch.is_default
-                          && (
+                        && (
+                          <div className="flex items-center">
+                            <Tooltip message={"Destination branch"}>
+                              <p className="max-w-2xl text-sm text-gray-500">main</p>
+                            </Tooltip>
+
+                            <ChevronLeftIcon className="h-5 w-5 mx-2 flex-shrink-0 text-gray-400" aria-hidden="true" />
+
+                            <div className="text-base font-semibold leading-6 text-gray-900 mr-2">
+                              {branch.name}
+                            </div>
+
                             <Tooltip message={"Origin branch"}>
                               <Badge>{branch.origin_branch}</Badge>
                             </Tooltip>
-                          )
+                          </div>
+                        )
                       }
                     </div>
 
@@ -69,12 +87,16 @@ export const BranchesItems = () => {
                   </div>
 
                   <div className="flex flex-col items-end">
-                    <Pill>Branched {formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}</Pill>
+                    <Tooltip message={<DateDisplay date={branch.branched_from}/>}>
+                      <Pill>Branched {formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}</Pill>
+                    </Tooltip>
 
                     {
                       !branch.is_default
                         && (
-                          <Pill className="mt-2">Created {formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}</Pill>
+                          <Tooltip message={<DateDisplay date={branch.created_at}/>}>
+                            <Pill className="mt-2">Created {formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}</Pill>
+                          </Tooltip>
                         )
                     }
                   </div>

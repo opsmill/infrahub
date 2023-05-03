@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 class Error(Exception):
@@ -8,14 +8,14 @@ class Error(Exception):
 
 
 class ServerNotReacheableError(Error):
-    def __init__(self, address, message=None):
+    def __init__(self, address: str, message: Optional[str] = None):
         self.address = address
         self.message = message or f"Unable to connect to '{address}'."
         super().__init__(self.message)
 
 
 class ServerNotResponsiveError(Error):
-    def __init__(self, url, message=None):
+    def __init__(self, url: str, message: Optional[str] = None):
         self.url = url
         self.message = message or f"Unable to read from '{url}'."
         super().__init__(self.message)
@@ -31,21 +31,27 @@ class GraphQLError(Error):
 
 
 class BranchNotFound(Error):
-    def __init__(self, identifier, message=None):
+    def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"Unable to find the branch '{identifier}' in the Database."
         super().__init__(self.message)
 
 
 class SchemaNotFound(Error):
-    def __init__(self, identifier, message=None):
+    def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"Unable to find the schema '{identifier}'."
         super().__init__(self.message)
 
 
 class NodeNotFound(Error):
-    def __init__(self, branch_name, node_type, identifier, message="Unable to find the node in the database."):
+    def __init__(
+        self,
+        branch_name: str,
+        node_type: str,
+        identifier: Dict[str, List[str]],
+        message: str = "Unable to find the node in the database.",
+    ):
         self.branch_name = branch_name
         self.node_type = node_type
         self.identifier = identifier
@@ -53,7 +59,7 @@ class NodeNotFound(Error):
         self.message = message
         super().__init__(self.message)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"""
         {self.message}
         {self.branch_name} | {self.node_type} | {self.identifier}
@@ -61,8 +67,16 @@ class NodeNotFound(Error):
 
 
 class FilterNotFound(Error):
-    def __init__(self, identifier, kind, message=None):
+    def __init__(self, identifier: str, kind: str, message: Optional[str] = None, filters: Optional[List[str]] = None):
         self.identifier = identifier
         self.kind = kind
-        self.message = message or f"{identifier!r} is not a valid filter for {self.identifier!r}."
+        self.filters = filters or []
+        self.message = message or f"{identifier!r} is not a valid filter for {self.kind!r} ({', '.join(self.filters)})."
+        super().__init__(self.message)
+
+
+class ValidationError(Error):
+    def __init__(self, identifier: str, message: str):
+        self.identifier = identifier
+        self.message = message
         super().__init__(self.message)

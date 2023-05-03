@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from pydantic import BaseModel
 
 from infrahub_client.graphql import Mutation
-from infrahub_client.queries import QUERY_ALL_BRANCHES, QUERY_BRANCH_DIFF
+from infrahub_client.queries import QUERY_ALL_BRANCHES
 
 if TYPE_CHECKING:
-    from infrahub_client import InfrahubClient
+    from infrahub_client.client import InfrahubClient, InfrahubClientSync
 
 
 class BranchData(BaseModel):
@@ -35,7 +35,28 @@ MUTATION_QUERY_DATA = {
 }
 
 
-class InfrahubBranchManager:
+class InfraHubBranchManagerBase:
+    @classmethod
+    def generate_diff_data_url(
+        cls,
+        client: Union[InfrahubClient, InfrahubClientSync],
+        branch_name: str,
+        branch_only: bool = True,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+    ) -> str:
+        """Generate the URL for the diff_data function."""
+        url = f"{client.address}/diff/data?branch={branch_name}"
+        url += f"&branch_only={str(branch_only).lower()}"
+        if time_from:
+            url += f"&time_from={time_from}"
+        if time_to:
+            url += f"&time_to={time_to}"
+
+        return url
+
+
+class InfrahubBranchManager(InfraHubBranchManagerBase):
     def __init__(self, client: InfrahubClient):
         self.client = client
 
@@ -51,6 +72,16 @@ class InfrahubBranchManager:
         response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-create")
 
         return BranchData(**response["branch_create"]["object"])
+
+    async def delete(self, branch_name: str) -> bool:
+        input_data = {
+            "data": {
+                "name": branch_name,
+            }
+        }
+        query = Mutation(mutation="branch_delete", input_data=input_data, query={"ok": None})
+        response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-delete")
+        return response["branch_delete"]["ok"]
 
     async def rebase(self, branch_name: str) -> BranchData:
         input_data = {
@@ -101,16 +132,105 @@ class InfrahubBranchManager:
 
         return branches
 
-    async def diff(
+    async def diff_data(
         self,
         branch_name: str,
         branch_only: bool = True,
-        diff_from: Optional[str] = None,
-        diff_to: Optional[str] = None,
-    ):
-        variables = {"branch_name": branch_name, "branch_only": branch_only, "diff_from": diff_from, "diff_to": diff_to}
-        response = await self.client.execute_graphql(
-            query=QUERY_BRANCH_DIFF, variables=variables, tracker="query-branch-diff"
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+    ) -> Dict[Any, Any]:
+        url = self.generate_diff_data_url(
+            client=self.client, branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
         )
+        response = await self.client._get(url=url, headers=self.client.headers)
+        return response.json()
 
-        return response
+
+class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
+    def __init__(self, client: InfrahubClientSync):
+        self.client = client
+
+    def all(self) -> Dict[str, BranchData]:
+        data = self.client.execute_graphql(query=QUERY_ALL_BRANCHES, tracker="query-branch-all")
+
+        branches = {branch["name"]: BranchData(**branch) for branch in data["branch"]}
+
+        return branches
+
+    def create(
+        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
+    ) -> BranchData:
+        input_data = {
+            "background_execution": background_execution,
+            "data": {"name": branch_name, "description": description, "is_data_only": data_only},
+        }
+
+        query = Mutation(mutation="branch_create", input_data=input_data, query=MUTATION_QUERY_DATA)
+        response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-create")
+
+        return BranchData(**response["branch_create"]["object"])
+
+    def delete(self, branch_name: str) -> bool:
+        input_data = {
+            "data": {
+                "name": branch_name,
+            }
+        }
+        query = Mutation(mutation="branch_delete", input_data=input_data, query={"ok": None})
+        response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-delete")
+        return response["branch_delete"]["ok"]
+
+    def diff_data(
+        self,
+        branch_name: str,
+        branch_only: bool = True,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+    ) -> Dict[Any, Any]:
+        url = self.generate_diff_data_url(
+            client=self.client, branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
+        )
+        response = self.client._get(url=url, headers=self.client.headers)
+        return response.json()
+
+    def merge(self, branch_name: str) -> BranchData:
+        input_data = {
+            "data": {
+                "name": branch_name,
+            }
+        }
+        query = Mutation(mutation="branch_merge", input_data=input_data, query=MUTATION_QUERY_DATA)
+        response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-merge")
+
+        return response["branch_merge"]["ok"]
+
+    def rebase(self, branch_name: str) -> BranchData:
+        input_data = {
+            "data": {
+                "name": branch_name,
+            }
+        }
+        query = Mutation(mutation="branch_rebase", input_data=input_data, query=MUTATION_QUERY_DATA)
+        response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-rebase")
+        return response["branch_rebase"]["ok"]
+
+    def validate(self, branch_name: str) -> BranchData:
+        input_data = {
+            "data": {
+                "name": branch_name,
+            }
+        }
+
+        query_data = {
+            "ok": None,
+            "messages": None,
+            "object": {
+                "id": None,
+                "name": None,
+            },
+        }
+
+        query = Mutation(mutation="branch_validate", input_data=input_data, query=query_data)
+        response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-validate")
+
+        return response["branch_validate"]["ok"]

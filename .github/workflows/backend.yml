@@ -4,11 +4,17 @@ name: "Backend"
 on:
   pull_request:
     paths:
+      - ".github/**"
       - "backend/**"
       - "development/**"
+      - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
-      - tasks.py
+      - "tasks/**"
+  push:
+    branches:
+      - develop
+      - stable
 
 env:
   NEO4J_USERNAME: neo4j
@@ -22,9 +28,9 @@ jobs:
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v3"
       - name: "Setup Python environment"
-        run: "pip install poetry==1.3.2 toml invoke"
+        run: "pip install poetry==1.3.2 toml invoke==2.0.0"
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
@@ -36,11 +42,29 @@ jobs:
         run: "invoke demo.dev-start"
       - name: "Install project"
         run: "poetry install --only=main,dev,server"
+      - name: "Black Tests"
+        run: "poetry run invoke backend.black"
+      - name: "Isort Tests"
+        run: "poetry run invoke backend.isort"
       - name: "Flake8 Tests"
         run: "poetry run invoke backend.flake8"
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
       - name: "Unit Tests"
-        run: "poetry run pytest -v backend/tests/unit"
+        run: "poetry run pytest --cov=infrahub backend/tests/unit"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-unit
+          parallel: true
       - name: "Integration Tests : User Workflows"
-        run: "poetry run pytest -v backend/tests/integration/user_workflows/"
+        run: "poetry run pytest --cov=infrahub backend/tests/integration/user_workflows/"
+      - name: "Coveralls : Integration Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-integration
+          parallel: true

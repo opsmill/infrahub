@@ -1,51 +1,70 @@
 import { Combobox } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { classNames } from "../utils/common";
 import { Input } from "./input";
+import { FormFieldError } from "../screens/edit-form-hook/form";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
-// type Option = {} // Object with name property
+export type SelectOption = {
+  id: string;
+  name: string;
+}
 
-// type SelectProps = {
-//   value: string
-// }
+type SelectProps = {
+  value?: string;
+  options: SelectOption[];
+  onChange: (value: SelectOption) => void;
+  disabled?: boolean;
+  error?: FormFieldError;
+}
 
-// interface SelectProps {
-//   value: string
-// }
-
-export const Select = (props: any) => {
-  const { options, value, onChange, disabled } = props;
+export const Select = (props: SelectProps) => {
+  const { options, value, onChange, disabled, error } = props;
 
   const [query, setQuery] = useState("");
+
+  const [selectedOption, setSelectedOption] = useState<SelectOption | undefined>(options.find((option: any) => option?.id === value));
 
   const filteredOptions =
     query === ""
       ? options
       : options
       .filter(
-        (option: any) => option?.name.toLowerCase().includes(query.toLowerCase())
+        (option: any) => option?.name?.toString().toLowerCase().includes(query.toLowerCase())
       );
 
   return (
     <Combobox
       as="div"
-      value={value}
-      onChange={onChange}
+      value={selectedOption}
+      onChange={
+        (item) => {
+          setQuery("");
+          setSelectedOption(item);
+          onChange(item);
+        }
+      }
       disabled={disabled}
     >
       <div className="relative mt-1">
         <Combobox.Input
           as={Input}
-          value={value}
-          onChange={(event) => setQuery(event.target.value)}
+          value={query ? query : selectedOption?.name ?? ""}
+          onChange={
+            (value: any) => {
+              // Remove the selected option and update query (allow empty query)
+              setSelectedOption(undefined);
+              setQuery(value);
+            }
+          }
           disabled={disabled}
+          error={error}
         />
         <Combobox.Button
           className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
-          disabled={disabled}
         >
-          <ChevronUpDownIcon
+          <ChevronDownIcon
             className="h-5 w-5 text-gray-400"
             aria-hidden="true"
           />
@@ -60,7 +79,7 @@ export const Select = (props: any) => {
                 .map(
                   (option: any) => (
                     <Combobox.Option
-                      key={option}
+                      key={option.id}
                       value={option}
                       className={({ active }) =>
                         classNames(
@@ -92,7 +111,8 @@ export const Select = (props: any) => {
                                 >
                                   <CheckIcon className="h-5 w-5" aria-hidden="true" />
                                 </span>
-                              )}
+                              )
+                            }
                           </>
                         )
                       }

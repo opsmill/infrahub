@@ -29,6 +29,34 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
 
 
+async def test_create_check_unique(db, session, default_branch, car_person_schema):
+    p1 = await Node.init(session=session, schema="Person")
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    query = """
+    mutation {
+        person_create(data: {name: { value: "John"}, height: {value: 182}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "An object already exist" in result.errors[0].message
+
+
 async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
     query = """
     mutation {
@@ -73,7 +101,12 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
 async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
     query = """
     mutation {
-        person_create(data: {name: { value: "John", is_protected: true}, height: {value: 182, is_visible: false}}) {
+        person_create(
+            data: {
+                name: { value: "John", is_protected: true }
+                height: { value: 182, is_visible: false }
+            }
+        ) {
             ok
             object {
                 id
@@ -128,7 +161,12 @@ async def test_create_object_with_node_property(
 
     query = """
     mutation {
-        person_create(data: {name: { value: "John", source: "%s" }, height: {value: 182, owner: "%s" }}) {
+        person_create(
+            data: {
+                name: { value: "John", source: "%s" }
+                height: { value: 182, owner: "%s" }
+            }
+        ) {
             ok
             object {
                 id
@@ -196,12 +234,14 @@ async def test_create_object_with_single_relationship(db, session, default_branc
 
     query = """
     mutation {
-        car_create(data: {
-            name: { value: "Accord" },
-            nbr_seats: { value: 5 },
-            is_electric: { value: false },
-            owner: { id: "John" }
-        }) {
+        car_create(
+            data: {
+                name: { value: "Accord" }
+                nbr_seats: { value: 5 }
+                is_electric: { value: false }
+                owner: { id: "John" }
+            }
+        ) {
             ok
             object {
                 id
@@ -271,12 +311,14 @@ async def test_create_object_with_single_relationship_node_property(
     query = (
         """
     mutation {
-        car_create(data: {
-            name: { value: "Accord" },
-            nbr_seats: { value: 5 },
-            is_electric: { value: false },
-            owner: { id: "John", _relation__owner: "%s" }
-        }) {
+        car_create(
+            data: {
+                name: { value: "Accord" }
+                nbr_seats: { value: 5 }
+                is_electric: { value: false }
+                owner: { id: "John", _relation__owner: "%s" }
+            }
+        ) {
             ok
             object {
                 id
@@ -319,10 +361,12 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
 
     query = """
     mutation {
-        fruit_create(data: {
-            name: { value: "apple" },
-            tags: [ {id: "tag1" }, {id: "tag2" }, {id: "tag3" } ]
-        }) {
+        fruit_create(
+            data: {
+                name: { value: "apple" }
+                tags: [{ id: "tag1" }, { id: "tag2" }, { id: "tag3" }]
+            }
+        ) {
             ok
             object {
                 id
@@ -362,14 +406,16 @@ async def test_create_object_with_multiple_relationships_with_node_property(
 
     query = """
     mutation {
-        fruit_create(data: {
-            name: { value: "apple" },
-            tags: [
-                {id: "tag1", _relation__source: "%s" },
-                {id: "tag2", _relation__owner: "%s" },
-                {id: "tag3", _relation__source: "%s",  _relation__owner: "%s" }
-            ]
-        }) {
+        fruit_create(
+            data: {
+                name: { value: "apple" }
+                tags: [
+                    { id: "tag1", _relation__source: "%s" }
+                    { id: "tag2", _relation__owner: "%s" }
+                    { id: "tag3", _relation__source: "%s", _relation__owner: "%s" }
+                ]
+            }
+        ) {
             ok
             object {
                 id
@@ -433,14 +479,16 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
 
     query = """
     mutation {
-        fruit_create(data: {
-            name: { value: "apple" },
-            tags: [
-                { id: "tag1", _relation__is_protected: true },
-                { id: "tag2", _relation__is_protected: true },
-                { id: "tag3", _relation__is_protected: true }
-            ]
-        }) {
+        fruit_create(
+            data: {
+                name: { value: "apple" }
+                tags: [
+                    { id: "tag1", _relation__is_protected: true }
+                    { id: "tag2", _relation__is_protected: true }
+                    { id: "tag3", _relation__is_protected: true }
+                ]
+            }
+        ) {
             ok
             object {
                 id
@@ -472,7 +520,10 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
 async def test_create_person_not_valid(db, session, default_branch, car_person_schema):
     query = """
     mutation {
-        person_create(data: {name: { value: "John"}, height: {value: "182"}}) {
+        person_create(data: {
+            name: { value: "John"},
+            height: {value: "182"}
+        }) {
             ok
             object {
                 id

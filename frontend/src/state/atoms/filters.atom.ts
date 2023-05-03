@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 
+// Need to save the data type of the fiter value. Could be string | number | boolean
 export interface iComboBoxFilter {
   name: string;
   value: string;

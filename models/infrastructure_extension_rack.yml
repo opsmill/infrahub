@@ -1,0 +1,47 @@
+---
+version: '1.0'
+nodes:
+  - name: rack
+    kind: Rack
+    default_filter: name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: height
+        kind: Text
+    relationships:
+      - name: location
+        peer: Location
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: status
+        peer: Status
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: Role
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: Tag
+        optional: true
+        cardinality: many
+        kind: Attribute
+extensions:
+  nodes:
+    - kind: Location
+      relationships:
+        - name: racks
+          peer: Rack
+          optional: true
+          cardinality: many
+          kind: Generic

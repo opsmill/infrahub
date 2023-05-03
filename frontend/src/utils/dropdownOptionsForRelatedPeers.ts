@@ -1,7 +1,7 @@
 import { gql } from "graphql-request";
-import { graphQLClient } from "..";
+import { graphQLClient } from "../graphql/graphqlClient";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
 
 export interface iPeerDropdownOption {
   id: string;
@@ -52,14 +52,13 @@ const getDropdownOptionsForRelatedPeers = async (
     return {};
   }
   const queryString = template({
-    peers,
+    peers: peers.filter(peer => !!peer),
   });
   const query = gql`
     ${queryString}
   `;
   try {
-    const data = await graphQLClient.request(query);
-    return data;
+    return graphQLClient.request(query);
   } catch {
     console.error(
       "Something went wrong while fetching form dropdown option list"

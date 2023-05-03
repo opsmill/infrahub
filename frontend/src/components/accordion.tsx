@@ -1,17 +1,20 @@
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
-// type Accordion = {};
+type AccordionProps = {
+  title?: any;
+  children?: any;
+};
 
-export default function Accordion(props: any) {
+export default function Accordion(props: AccordionProps) {
   const {title, children} = props;
 
   return (
     <Disclosure as="div">
       {({ open }) => (
         <>
-          <dt>
-            <Disclosure.Button className="flex w-full items-center text-left">
+          <div className="flex">
+            <Disclosure.Button className="flex flex-1 w-full items-center">
               <span className="flex h-7 items-center mr-2 relative">
                 {
                   open
@@ -24,11 +27,11 @@ export default function Accordion(props: any) {
                 }
 
               </span>
-              <span className="font-semibold">{title}</span>
+              <span className="flex-1 font-semibold text-left justify-start">{title}</span>
             </Disclosure.Button>
-          </dt>
+          </div>
 
-          <Disclosure.Panel as="dd" className="mt-2 pr-12">
+          <Disclosure.Panel className="p-2 pl-8 pr-0">
             {children}
           </Disclosure.Panel>
         </>

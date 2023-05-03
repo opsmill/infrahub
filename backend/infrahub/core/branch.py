@@ -9,17 +9,20 @@ from pydantic import BaseModel, Field, validator
 
 import infrahub.config as config
 from infrahub.core.constants import DiffAction, RelationshipStatus
+from infrahub.core.manager import NodeManager
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
-    DiffNodePropertiesByIDSRangeQuery,
+    DiffNodePropertiesByIDSQuery,
     DiffNodeQuery,
     DiffRelationshipPropertiesByIDSRangeQuery,
     DiffRelationshipPropertyQuery,
     DiffRelationshipQuery,
 )
 from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
+from infrahub.core.registry import get_branch, registry
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import (
     add_relationship,
     element_id_to_id,
@@ -36,7 +39,6 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub.message_bus.rpc import InfrahubRpcClient
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -68,6 +70,31 @@ class AddNodeToBranch(Query):
         self.params["branch"] = self.branch.name
         self.params["status"] = RelationshipStatus.ACTIVE.value
 
+        self.add_to_query(query)
+
+
+class DeleteBranchRelationshipsQuery(Query):
+    name: str = "delete_branch_relationships"
+    insert_return: bool = False
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(self, branch_name: str, *args, **kwargs):
+        self.branch_name = branch_name
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        query = """
+        MATCH p = (s)-[r]-(d)
+        WHERE r.branch = $branch_name
+        DELETE r
+        WITH *
+        UNWIND nodes(p) AS n
+        MATCH (n)
+        WHERE NOT (n)--()
+        DELETE n
+        """
+        self.params["branch_name"] = self.branch_name
         self.add_to_query(query)
 
 
@@ -116,13 +143,14 @@ class Branch(StandardNode):
 
         return cls._convert_node_to_obj(results[0].values()[0])
 
+    @classmethod
+    def isinstance(cls, obj: Any) -> bool:
+        return isinstance(obj, cls)
+
     async def get_origin_branch(self, session: AsyncSession) -> Branch:
         """Return the branch Object of the origin_branch."""
         if not self.origin_branch or self.origin_branch == self.name:
             return None
-
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core import get_branch
 
         return await get_branch(self.origin_branch, session=session)
 
@@ -188,6 +216,13 @@ class Branch(StandardNode):
             end[self.origin_branch] = end_time.to_string()
 
         return start, end
+
+    async def delete(self, session: AsyncSession) -> None:
+        if self.is_default:
+            raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
+        await super().delete(session=session)
+        query = await DeleteBranchRelationshipsQuery.init(session=session, branch_name=self.name)
+        await query.execute(session=session)
 
     def get_query_filter_branch_to_node(
         self,
@@ -397,14 +432,12 @@ class Branch(StandardNode):
         await self.save(session=session)
 
         # Update the branch in the registry after the rebase
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core import registry
 
         registry.branch[self.name] = self
 
     async def validate_branch(
         self, rpc_client: InfrahubRpcClient, session: Optional[AsyncSession] = None
-    ) -> set(bool, List[str]):
+    ) -> Tuple[bool, List[str]]:
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -423,7 +456,7 @@ class Branch(StandardNode):
 
         return passed, messages
 
-    async def validate_graph(self, session: AsyncSession) -> set(bool, List[str]):
+    async def validate_graph(self, session: AsyncSession) -> Tuple[bool, List[str]]:
         passed = True
         messages = []
 
@@ -436,13 +469,12 @@ class Branch(StandardNode):
 
         return passed, messages
 
-    async def validate_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession) -> set(bool, List[str]):
+    async def validate_repositories(
+        self, rpc_client: InfrahubRpcClient, session: AsyncSession
+    ) -> Tuple[bool, List[str]]:
         passed = True
         messages = []
         tasks = []
-
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
 
         # For all repositories in this branch, run all checks
         repos = await NodeManager.query(schema="Repository", branch=self, session=session)
@@ -509,9 +541,6 @@ class Branch(StandardNode):
         await self.merge_repositories(rpc_client=rpc_client, session=session)
 
     async def merge_graph(self, session: AsyncSession, at: Union[str, Timestamp] = None):
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core import registry
-
         rel_ids_to_update = []
 
         default_branch = registry.branch[config.SETTINGS.main.default_branch]
@@ -652,9 +681,6 @@ class Branch(StandardNode):
         await self.rebase(session=session)
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
-
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema="Repository", session=session)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
@@ -978,9 +1004,6 @@ class Diff:
     async def get_modified_paths_repositories_for_branch(
         self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> Set[Tuple]:
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
-
         tasks = []
         paths = set()
 
@@ -1176,12 +1199,11 @@ class Diff:
         # ------------------------------------------------------------
         # Query the current value for all attributes that have been updated
         # ------------------------------------------------------------
-        origin_attr_query = await DiffNodePropertiesByIDSRangeQuery.init(
+        origin_attr_query = await DiffNodePropertiesByIDSQuery.init(
             session=session,
             ids=list(attrs_to_query),
             branch=self.branch,
-            diff_from=self.diff_from,
-            diff_to=self.diff_to,
+            at=self.diff_from,
         )
 
         await origin_attr_query.execute(session=session)
@@ -1492,9 +1514,6 @@ class Diff:
     async def get_files_repositories_for_branch(
         self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> List[FileDiffElement]:
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
-
         tasks = []
         files = []
 
@@ -1532,3 +1551,6 @@ class Diff:
                 files.extend(response)
 
         return files
+
+
+registry.branch_object = Branch

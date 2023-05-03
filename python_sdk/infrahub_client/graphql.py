@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 VARIABLE_TYPE_MAPPING = (
     (str, "String!"),
@@ -10,7 +10,7 @@ VARIABLE_TYPE_MAPPING = (
 )
 
 
-def convert_to_graphql_as_string(value) -> str:
+def convert_to_graphql_as_string(value: Union[str, bool, list]) -> str:
     if isinstance(value, str) and value.startswith("$"):
         return value
     if isinstance(value, str):
@@ -137,7 +137,7 @@ class BaseGraphQLQuery:
 class Query(BaseGraphQLQuery):
     query_type = "query"
 
-    def render(self):
+    def render(self) -> str:
         lines = [self.render_first_line()]
         lines.extend(render_query_block(data=self.query, indentation=self.indentation, offset=self.indentation))
         lines.append("}")
@@ -148,12 +148,12 @@ class Query(BaseGraphQLQuery):
 class Mutation(BaseGraphQLQuery):
     query_type = "mutation"
 
-    def __init__(self, *args, mutation: str, input_data: dict, **kwargs):
+    def __init__(self, *args: Any, mutation: str, input_data: dict, **kwargs: Any):
         self.input_data = input_data
         self.mutation = mutation
         super().__init__(*args, **kwargs)
 
-    def render(self):
+    def render(self) -> str:
         lines = [self.render_first_line()]
         lines.append(" " * self.indentation + f"{self.mutation}(")
         lines.extend(

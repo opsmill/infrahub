@@ -2,21 +2,21 @@ import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import {
   Bars3BottomLeftIcon,
-  BellIcon,
-  ClockIcon
+  BellIcon
 } from "@heroicons/react/24/outline";
-import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
-import { Fragment, useEffect, useState } from "react";
-import Datetime from "react-datetime";
-import "react-datetime/css/react-datetime.css";
-import { StringParam, useQueryParam } from "use-query-params";
-import { graphQLClient } from "../..";
+import { Fragment, useEffect } from "react";
+import { formatISO } from "date-fns";
+
 import BranchSelector from "../../components/branch-selector";
 import { CONFIG } from "../../config/config";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
+import { graphQLClient } from "../../graphql/graphqlClient";
+import { QSP } from "../../config/qsp";
+import { StringParam, useQueryParam } from "use-query-params";
+import { DatePicker } from "../../components/date-picker";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -24,13 +24,33 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
-  const [qspDate, setQspDate] = useQueryParam("at", StringParam);
-  const [isDateDefault, setIsDateDefault] = useState(qspDate ? false : true);
+  const [, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const { setSidebarOpen } = props;
 
-  useEffect(() => {
-    graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
-  }, [date]);
+  useEffect(
+    () => {
+      if(date !== undefined) {
+        graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
+      }
+    },
+    [date]
+  );
+
+  const handleDateChange = (newDate: any) => {
+    if (newDate) {
+      setDate(newDate);
+      setQspDate(formatISO(newDate));
+    } else {
+      // Undefined is needed to remove a parameter from the QSP
+      setQspDate(undefined);
+    }
+  };
+
+  const handleClickNow = () => {
+    setDate(null);
+    // Undefined is needed to remove a parameter from the QSP
+    setQspDate(undefined);
+  };
 
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-white shadow">
@@ -64,57 +84,9 @@ export default function Header(props: Props) {
           </form>
         </div>
         <div className="ml-4 flex items-center md:ml-6">
-          {isDateDefault && (
-            <button
-              onClick={() => {
-                setIsDateDefault(false);
-                setDate(null);
-              }}
-              type="button"
-              className="mr-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              <span className="sr-only">Query Date Time</span>
-              <ClockIcon className="h-6 w-6" aria-hidden="true" />
-            </button>
-          )}
-
-          {!isDateDefault && (
-            <Datetime
-              initialValue={qspDate ? new Date(qspDate) : date}
-              onChange={(a: any) => {
-                if (a.toDate) {
-                  setDate(a.toDate());
-                  setQspDate(formatISO(a.toDate()));
-                } else {
-                  setQspDate(undefined);
-                }
-              }}
-              className="mr-5"
-              inputProps={{
-                className:
-                  "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
-              }}
-              renderView={(mode: any, renderDefault: any) => {
-                // Only for years, months and days view
-                if (mode === "time") return renderDefault();
-
-                return (
-                  <div className="wrapper">
-                    {renderDefault()}
-                    <div className="controls">
-                      <button onClick={() => {
-                        setIsDateDefault(true);
-                        setDate(null);
-                        setQspDate(undefined);
-                      }}>
-                        Now
-                      </button>
-                    </div>
-                  </div>
-                );
-              }}
-            />
-          )}
+          <div className="mr-4">
+            <DatePicker date={date} onChange={handleDateChange} onClickNow={handleClickNow} />
+          </div>
 
           <BranchSelector />
           <button

@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
-from infrahub.core import get_branch
+from infrahub.core import get_branch, registry
+from infrahub.core.manager import NodeManager
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
+
+# pylint: disable=redefined-builtin
 
 
 class AccountTokenValidateQuery(Query):
@@ -59,3 +62,51 @@ async def validate_token(token, session: AsyncSession, branch: Union[Branch, str
     account_name = query.get_account_name()
 
     return account_name or False
+
+
+async def get_account(
+    account,
+    session: AsyncSession,
+    branch=None,
+    at=None,
+):
+    # No default value supported for now
+    if not account:
+        return None
+
+    if hasattr(account, "schema") and account.schema.kind == "Account":
+        return account
+
+    # Try to get it from the registry
+    #   if not present in the registry, get it from the database directly
+    #   and update the registry
+    if account in registry.account:
+        return registry.account[account]
+
+    account_schema = registry.get_schema(name="Account")
+
+    obj = await NodeManager.query(
+        account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, session=session
+    )
+    registry.account[account] = obj
+
+    return obj
+
+
+def get_account_by_id(id: str):  # pylint: disable=unused-argument
+    # No default value supported for now
+    # if not id:
+    return None
+
+    # from .account import Account
+
+    # if id in registry.account_id:
+    #     return registry.account_id[id]
+
+    # obj = Account.get(id=id)
+    # if not obj:
+    #     return None
+
+    # registry.account[obj.name.value] = obj
+    # registry.account_id[id] = obj
+    # return obj

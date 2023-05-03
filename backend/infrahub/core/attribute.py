@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 import ujson
@@ -17,9 +17,9 @@ from infrahub.core.query.attribute import (
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
-from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -338,7 +338,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         rels_offset: int = 0,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> Set[List[str], Dict, int]:
+    ) -> Tuple[List[str], Dict, int]:
         """Generate Query String Snippet to filter the right node."""
 
         query_filters = []

@@ -5,8 +5,8 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-backend
-    image: "opsmill/infrahub-py${PYTHON_VER}:${IMAGE_VER}"
-    command: gunicorn infrahub.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+    image: "opsmill/infrahub-backend-py${PYTHON_VER}:${IMAGE_VER}"
+    command: gunicorn --config /source/development/gunicorn.config.py infrahub.api.main:app
     ports:
       - "8000:8000"
     depends_on:
@@ -23,8 +23,9 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-backend
-    image: "opsmill/infrahub-py${PYTHON_VER}:${IMAGE_VER}"
+    image: "opsmill/infrahub-backend-py${PYTHON_VER}:${IMAGE_VER}"
     command: infrahub git-agent start --debug
+    restart: unless-stopped
     depends_on:
       - infrahub-server
     environment:
@@ -39,13 +40,11 @@ services:
       context: ../
       dockerfile: development/Dockerfile-frontend
     image: "opsmill/infrahub-frontend:${IMAGE_VER}"
-    command: npm start
+    command: npx serve -s build
     depends_on:
       - infrahub-server
     ports:
       - "3000:3000"
-    volumes:
-      - ../frontend/src:/source/src
     tty: true
 volumes:
   git_data:

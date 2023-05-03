@@ -1,22 +1,30 @@
 import { gql } from "@apollo/client";
-import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { graphQLClient } from "../..";
+import { RoundedButton } from "../../components/rounded-button";
+import SlideOver from "../../components/slide-over";
+import { graphQLClient } from "../../graphql/graphqlClient";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
+import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
+import { getSchemaObjectColumns, getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectUrl } from "../../utils/objects";
 import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import ObjectItemCreate from "../object-item-create/object-item-create";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
 
 const template = Handlebars.compile(`query {{kind}} {
         {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
@@ -36,41 +44,7 @@ const template = Handlebars.compile(`query {{kind}} {
     }
 `);
 
-const getRelationshipsColumns = (schema: any) => schema?.relationships?.filter((relationship: any) => relationship?.cardinality === "one");
 
-const getItemsColumn = (schema: any) => {
-  return [
-    ...(schema?.attributes ?? []),
-    ...(getRelationshipsColumns(schema) ?? [])
-  ]
-  .sort(
-    (a, b) => {
-      if (a.label && b.label) {
-        return a.label.localeCompare(b.label);
-      }
-      return -1;
-    }
-  );
-};
-
-const getObjectItemDisplayValue = (row: any, attribute: any) => {
-  // Get "value" or "display_name" depending on the kind (attribute or relationship)
-  const value = row[attribute?.name]?.value ?? row[attribute?.name]?.display_label ?? "-";
-
-  if (row?.value === false) {
-    return (
-      <XMarkIcon className="h-4 w-4" />
-    );
-  }
-
-  if (row?.value === true) {
-    return (
-      <CheckIcon className="h-4 w-4" />
-    );
-  }
-
-  return value;
-};
 
 export default function ObjectItems() {
   const { objectname } = useParams();
@@ -83,68 +57,60 @@ export default function ObjectItems() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [currentFilters] = useAtom(comboxBoxFilterState);
 
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+
+  // All the fiter values are being sent out as strings inside quotes.
+  // This will not work if the type of filter value is not string.
   const filterString = currentFilters
   .map((row) => `${row.name}: "${row.value}"`)
   .join(",");
 
-  // Get all teh needed columns (attributes + relationships with a cardinality of "one")
-  const columns = getItemsColumn(schema);
+  // Get all the needed columns (attributes + relationships with a cardinality of "one")
+  const columns = getSchemaObjectColumns(schema);
 
   const navigate = useNavigate();
 
+  const loadData = useCallback(async () => {
+    if (schema) {
+      try {
+
+        setHasError(false);
+        setIsLoading(true);
+        setObjectRows(undefined);
+
+        const queryString = template({
+          ...schema,
+          filterString,
+          relationships: getSchemaRelationshipColumns(schema)
+        });
+
+        const query = gql`
+        ${queryString}
+        `;
+
+        const data: any = await graphQLClient.request(query);
+        const rows = data[schema.name];
+        setObjectRows(rows);
+        setIsLoading(false);
+
+      } catch(e) {
+        console.error("Error: ", e);
+        setHasError(true);
+        setIsLoading(false);
+      };
+    }
+  }, [filterString, schema]);
+
   useEffect(
     () => {
-      const loadData = async () => {
-        if (schema) {
-          try {
-
-            setHasError(false);
-            setIsLoading(true);
-            setObjectRows(undefined);
-
-            const queryString = template({
-              ...schema,
-              filterString,
-              relationships: getRelationshipsColumns(schema)
-            });
-
-            const query = gql`
-            ${queryString}
-            `;
-
-            const data = await graphQLClient.request(query);
-            const rows = data[schema.name];
-            setObjectRows(rows);
-            setIsLoading(false);
-
-          } catch(e) {
-            console.error("Error: ", e);
-            setHasError(true);
-            setIsLoading(false);
-          };
-        }
-      };
-
       loadData();
     },
-    [
-      objectname,
-      schemaList,
-      schema,
-      date,
-      branch,
-      currentFilters,
-      filterString,
-    ]
+    [objectname, schemaList, schema, date, branch, currentFilters, filterString, loadData]
   );
 
   if (hasError) {
     return <ErrorScreen />;
   }
-
-  // if (isLoading && !objectRows) {
-  //   return <LoadingScreen />;
-  // }
 
   return (
     <div className="bg-white flex-1 overflow-x-auto flex flex-col">
@@ -163,15 +129,9 @@ export default function ObjectItems() {
           )
         }
 
-        <button
-          onClick={() => {
-            navigate(`/objects/${schema.name}/new`);
-          }}
-          type="button"
-          className="rounded-full bg-blue-600 p-1.5 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-        >
+        <RoundedButton onClick={() => setShowCreateDrawer(true)}>
           <PlusIcon className="h-5 w-5" aria-hidden="true" />
-        </button>
+        </RoundedButton>
       </div>
 
       {
@@ -221,9 +181,7 @@ export default function ObjectItems() {
                         ?.map(
                           (row, index) => (
                             <tr
-                              onClick={() => {
-                                navigate(`/objects/${schema.name}/${row.id}`);
-                              }}
+                              onClick={() => navigate(constructPath(getObjectUrl({ kind: schema.name, id: row.id })))}
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer"
                             >
@@ -257,6 +215,35 @@ export default function ObjectItems() {
             </div>
           </div>
         )}
+      {
+        <SlideOver
+          title={(
+            <div className="space-y-2">
+              <div className="flex items-center w-full">
+                <span className="text-lg font-semibold mr-3">Create {objectname}</span>
+                <div className="flex-1"></div>
+                <div className="flex items-center">
+                  <Square3Stack3DIcon className="w-5 h-5" />
+                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                </div>
+              </div>
+              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                <svg className="h-1.5 w-1.5 mr-1 fill-yellow-500" viewBox="0 0 6 6" aria-hidden="true">
+                  <circle cx={3} cy={3} r={3} />
+                </svg>
+                {schema?.kind}
+              </span>
+            </div>
+          )}
+          open={showCreateDrawer} setOpen={setShowCreateDrawer}
+        // title={`Create ${objectname}`}
+        >
+          <ObjectItemCreate onCreate={() => {
+            setShowCreateDrawer(false);
+            loadData();
+          }}  onCancel={() => setShowCreateDrawer(false)} objectname={objectname!} />
+        </SlideOver>
+      }
     </div>
   );
 }

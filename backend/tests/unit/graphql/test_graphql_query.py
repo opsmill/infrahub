@@ -7,8 +7,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import generate_graphql_schema
-from infrahub_client.timestamp import Timestamp
 
 
 async def test_simple_query(db, session, default_branch: Branch, criticality_schema):
@@ -536,6 +536,128 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
     assert len(result.data["criticality"]) == 1
 
 
+async def test_query_multiple_filters(db, session, default_branch: Branch, car_person_manufacturer_schema):
+    car = registry.get_schema(name="Car")
+    person = registry.get_schema(name="Person")
+    manufacturer = registry.get_schema(name="Manufacturer")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    m1 = await Node.init(session=session, schema=manufacturer)
+    await m1.new(session=session, name="chevrolet")
+    await m1.save(session=session)
+    m2 = await Node.init(session=session, schema=manufacturer)
+    await m2.new(session=session, name="ford", description="from Michigan")
+    await m2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=False, owner=p1, manufacturer=m1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=car)
+    await c2.new(session=session, name="bolt", nbr_seats=3, is_electric=True, owner=p1, manufacturer=m2)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=car)
+    await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2, manufacturer=m1)
+    await c3.save(session=session)
+
+    query01 = """
+    query {
+        car(owner__name__value: "John", nbr_seats__value: 4) {
+            id
+            name {
+                value
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query01,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["car"]) == 1
+    assert result.data["car"][0]["id"] == c1.id
+
+    query02 = """
+    query {
+        car(is_electric__value: true, nbr_seats__value: 4) {
+            id
+            name {
+                value
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query02,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["car"]) == 1
+    assert result.data["car"][0]["id"] == c3.id
+
+    query03 = """
+    query {
+        car(owner__name__value: "John", manufacturer__name__value: "ford", ) {
+            id
+            name {
+                value
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query03,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["car"]) == 1
+    assert result.data["car"][0]["id"] == c2.id
+
+    query04 = """
+    query {
+        car(owner__id: "%s", manufacturer__id: "%s", ) {
+            id
+            name {
+                value
+            }
+        }
+    }
+    """ % (
+        p1.id,
+        m2.id,
+    )
+
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query04,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["car"]) == 1
+    assert result.data["car"][0]["id"] == c2.id
+
+
 async def test_query_filter_relationships(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -555,6 +677,57 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     await c2.save(session=session)
     c3 = await Node.init(session=session, schema=car)
     await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
+    await c3.save(session=session)
+
+    query = """
+    query {
+        person(name__value: "John") {
+            name {
+                value
+            }
+            cars(name__value: "volt") {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["person"]) == 1
+    assert result.data["person"][0]["name"]["value"] == "John"
+    assert len(result.data["person"][0]["cars"]) == 1
+    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+
+
+async def test_query_filter_relationships_with_generic(db, session, default_branch: Branch, car_person_schema_generics):
+    ecar = registry.get_schema(name="ElectricCar")
+    gcar = registry.get_schema(name="GazCar")
+    person = registry.get_schema(name="Person")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=ecar)
+    await c1.new(session=session, name="volt", nbr_seats=4, nbr_engine=4, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=ecar)
+    await c2.new(session=session, name="bolt", nbr_seats=4, nbr_engine=2, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=gcar)
+    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
     await c3.save(session=session)
 
     query = """
@@ -992,11 +1165,15 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     query = """
     query {
         person {
+            id
             name {
                 value
             }
             cars {
                 _relation__owner {
+                    id
+                }
+                _relation__source {
                     id
                 }
                 name {
@@ -1016,7 +1193,21 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     )
 
     assert result.errors is None
-    assert len(result.data["person"]) == 2
+
+    results = {item["name"]["value"]: item for item in result.data["person"]}
+    assert sorted(list(results.keys())) == ["Jane", "John"]
+    assert len(results["John"]["cars"]) == 1
+    assert len(results["Jane"]["cars"]) == 1
+
+    assert results["John"]["cars"][0]["name"]["value"] == "volt"
+    assert results["John"]["cars"][0]["_relation__owner"]
+    assert results["John"]["cars"][0]["_relation__owner"]["id"] == first_account.id
+    assert results["John"]["cars"][0]["_relation__source"] is None
+
+    assert results["Jane"]["cars"][0]["name"]["value"] == "bolt"
+    assert results["Jane"]["cars"][0]["_relation__owner"] is None
+    assert results["Jane"]["cars"][0]["_relation__source"]
+    assert results["Jane"]["cars"][0]["_relation__source"]["id"] == first_account.id
 
 
 async def test_query_attribute_flag_property(

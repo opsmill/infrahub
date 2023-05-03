@@ -1,10 +1,16 @@
 import { gql } from "graphql-request";
-import { graphQLClient } from "../../..";
+import { graphQLClient } from "../../graphqlClient";
+import { Branch } from "../../../generated/graphql";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
 
+type BranchResult = {
+  branch: Branch[]
+}
+
+// TODO: Not working for now, needs the backend to be implemented
 // const template = Handlebars.compile(`query {
-//     branch (id: "{{objectid}}") {
+//     branch (name: "{{banchName}}") {
 //         id
 //         name
 //         description
@@ -31,19 +37,19 @@ const template = Handlebars.compile(`query {
 }
 `);
 
-const getBranchDetails = async (id: string) => {
+const getBranchDetails = async (name: string) => {
   const queryString = template({
-    objectid: id,
+    banchName: name,
   });
 
   const query = gql`
     ${queryString}
   `;
 
-  const data = await graphQLClient.request(query);
-  console.log("data: ", data);
+  const data: BranchResult = await graphQLClient.request(query);
 
-  const currentBranch = data?.branch?.filter((branch: any) => branch.id === id)[0];
+  // TODO: Remove filter once the details query is working
+  const currentBranch = data?.branch?.filter((branch: any) => branch.name === name)[0];
 
   return currentBranch;
 };

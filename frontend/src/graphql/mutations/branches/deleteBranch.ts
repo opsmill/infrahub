@@ -1,11 +1,11 @@
-import { graphQLClient } from "../../..";
+import { graphQLClient } from "../../graphqlClient";
 import { objectToString } from "../../../utils/common";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`
 mutation {
-  branch_create (
+  branch_delete (
     data: { {{{data}}} }
   ) {
       ok

@@ -4,19 +4,25 @@ name: "infrahubctl"
 on:
   pull_request:
     paths:
-      - "infrahub_ctl/**"
+      - ".github/**"
+      - "ctl/**"
+      - "python_sdk/**"
       - pyproject.toml
       - poetry.lock
-      - tasks.py
+      - "tasks/**"
+  push:
+    branches:
+      - develop
+      - stable
 
 jobs:
   python-tests:
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v3"
       - name: "Setup Python environment"
-        run: "pip install poetry==1.3.2 toml invoke"
+        run: "pip install poetry==1.3.2 toml invoke==2.0.0"
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
@@ -24,6 +30,10 @@ jobs:
           git config --global user.name "Infrahub"
       - name: "Install project"
         run: "poetry install --only=main,dev,cli,sdk"
+      - name: "Black Tests"
+        run: "poetry run invoke ctl.black"
+      - name: "Isort Tests"
+        run: "poetry run invoke ctl.isort"
       - name: "Flake8 Tests"
         run: "poetry run invoke ctl.flake8"
       - name: "Pylint Tests"
@@ -31,4 +41,11 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run invoke ctl.mypy"
       - name: "Unit Tests"
-        run: "poetry run pytest -v infrahub_ctl/tests/unit"
+        run: "poetry run pytest --cov=infrahub_ctl ctl/tests/unit"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: infrahubctl-unit
+          parallel: true

@@ -1,7 +1,7 @@
-import { graphQLClient } from "../../..";
+import { graphQLClient } from "../../graphqlClient";
 import { objectToString } from "../../../utils/common";
 
-declare var Handlebars: any;
+declare const Handlebars: any;
 
 const mutationTemplate = Handlebars.compile(`
 mutation {
@@ -14,7 +14,6 @@ mutation {
 `);
 
 const validateBranch = async (data: any) => {
-  console.log("data: ", data);
   const mutation = mutationTemplate({
     data: objectToString(data)
   });

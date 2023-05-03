@@ -1,20 +1,22 @@
 import { Combobox } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon } from "@heroicons/react/20/solid";
 import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { graphQLClient } from "../..";
+import { graphQLClient } from "../../graphql/graphqlClient";
 import { components } from "../../infraops";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+
+declare const Handlebars: any;
 
 interface Props {
   filter: components["schemas"]["FilterSchema"];
 }
 
-declare var Handlebars: any;
 const template = Handlebars.compile(`query {{kind.value}} {
     {{name}} {
         id
@@ -39,12 +41,13 @@ export default function FilterCombobox(props: Props) {
       if (schema && !filter.enum) {
         setHasError(false);
         setIsLoading(true);
+        // TODO: Extract GQL function in the graphql/ fodler
         const queryString = template(schema);
         const query = gql`
         ${queryString}
       `;
         try {
-          const data = await graphQLClient.request(query);
+          const data: any = await graphQLClient.request(query);
           const rows = data[schema.name];
           setObjectRows(rows);
           setIsLoading(false);
@@ -114,7 +117,7 @@ export default function FilterCombobox(props: Props) {
         />
 
         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-          <ChevronUpDownIcon
+          <ChevronDownIcon
             className="h-5 w-5 text-gray-400"
             aria-hidden="true"
           />

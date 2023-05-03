@@ -9,25 +9,29 @@ export interface paths {
     /** Get Schema */
     get: operations["get_schema_schema__get"];
   };
-  "/config/": {
-    /** Get Config */
-    get: operations["get_config_config__get"];
+  "/schema/load": {
+    /** Load Schema */
+    post: operations["load_schema_schema_load_post"];
   };
-  "/info/": {
-    /** Get Info */
-    get: operations["get_info_info__get"];
+  "/transform/{transform_url}": {
+    /** Transform Python */
+    get: operations["transform_python_transform__transform_url__get"];
   };
   "/rfile/{rfile_id}": {
     /** Generate Rfile */
     get: operations["generate_rfile_rfile__rfile_id__get"];
   };
+  "/config": {
+    /** Get Config */
+    get: operations["get_config_config_get"];
+  };
+  "/info": {
+    /** Get Info */
+    get: operations["get_info_info_get"];
+  };
   "/query/{query_id}": {
     /** Graphql Query */
     get: operations["graphql_query_query__query_id__get"];
-  };
-  "/transform/{transform_url}": {
-    /** Transform Python */
-    get: operations["transform_python_transform__transform_url__get"];
   };
 }
 
@@ -118,6 +122,44 @@ export interface components {
      * @enum {string}
      */
     FilterSchemaKind: "Text" | "Number" | "Boolean" | "Object" | "MultiObject" | "Enum";
+    /**
+     * GenericSchema
+     * @description A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined.
+     */
+    GenericSchema: {
+      /** Name */
+      name: string;
+      /** Kind */
+      kind: string;
+      /** Description */
+      description?: string;
+      /** Default Filter */
+      default_filter?: string;
+      /** Display Labels */
+      display_labels?: (string)[];
+      /** Attributes */
+      attributes?: (components["schemas"]["AttributeSchema"])[];
+      /** Relationships */
+      relationships?: (components["schemas"]["RelationshipSchema"])[];
+      /**
+       * Branch
+       * @default true
+       */
+      branch?: boolean;
+      /** Label */
+      label?: string;
+      /** Used By */
+      used_by?: (string)[];
+    };
+    /** GroupSchema */
+    GroupSchema: {
+      /** Name */
+      name: string;
+      /** Kind */
+      kind: string;
+      /** Description */
+      description?: string;
+    };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -165,6 +207,15 @@ export interface components {
        */
       internal_address?: string;
     };
+    /** NodeExtensionSchema */
+    NodeExtensionSchema: {
+      /** Kind */
+      kind: string;
+      /** Attributes */
+      attributes?: (components["schemas"]["AttributeSchema"])[];
+      /** Relationships */
+      relationships?: (components["schemas"]["RelationshipSchema"])[];
+    };
     /** NodeSchema */
     NodeSchema: {
       /** Name */
@@ -173,6 +224,10 @@ export interface components {
       kind: string;
       /** Description */
       description?: string;
+      /** Default Filter */
+      default_filter?: string;
+      /** Display Labels */
+      display_labels?: (string)[];
       /** Attributes */
       attributes?: (components["schemas"]["AttributeSchema"])[];
       /** Relationships */
@@ -188,10 +243,6 @@ export interface components {
        * @default true
        */
       branch?: boolean;
-      /** Default Filter */
-      default_filter?: string;
-      /** Display Labels */
-      display_labels?: (string)[];
       /** Filters */
       filters?: (components["schemas"]["FilterSchema"])[];
     };
@@ -261,10 +312,35 @@ export interface components {
       /** Git Agent Dsn */
       git_agent_dsn?: string;
     };
-    /** SchemaAPI */
-    SchemaAPI: {
+    /** SchemaExtension */
+    SchemaExtension: {
+      /** Nodes */
+      nodes?: (components["schemas"]["NodeExtensionSchema"])[];
+    };
+    /** SchemaLoadAPI */
+    SchemaLoadAPI: {
+      /** Version */
+      version: string;
+      /** Generics */
+      generics?: (components["schemas"]["GenericSchema"])[];
+      /** Nodes */
+      nodes?: (components["schemas"]["NodeSchema"])[];
+      /** Groups */
+      groups?: (components["schemas"]["GroupSchema"])[];
+      /**
+       * Extensions
+       * @default {
+       *   "nodes": []
+       * }
+       */
+      extensions?: components["schemas"]["SchemaExtension"];
+    };
+    /** SchemaReadAPI */
+    SchemaReadAPI: {
       /** Nodes */
       nodes: (components["schemas"]["NodeSchema"])[];
+      /** Generics */
+      generics: (components["schemas"]["GenericSchema"])[];
     };
     /** ValidationError */
     ValidationError: {
@@ -298,7 +374,7 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["SchemaAPI"];
+          "application/json": components["schemas"]["SchemaReadAPI"];
         };
       };
       /** @description Validation Error */
@@ -309,24 +385,56 @@ export interface operations {
       };
     };
   };
-  /** Get Config */
-  get_config_config__get: {
+  /** Load Schema */
+  load_schema_schema_load_post: {
+    parameters: {
+      query: {
+        branch?: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SchemaLoadAPI"];
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["ConfigAPI"];
+          "application/json": Record<string, never>;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
   };
-  /** Get Info */
-  get_info_info__get: {
+  /** Transform Python */
+  transform_python_transform__transform_url__get: {
+    parameters: {
+      query: {
+        branch?: string;
+        at?: string;
+        rebase?: boolean;
+      };
+      path: {
+        transform_url: string;
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["InfoAPI"];
+          "application/json": Record<string, never>;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -358,6 +466,28 @@ export interface operations {
       };
     };
   };
+  /** Get Config */
+  get_config_config_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ConfigAPI"];
+        };
+      };
+    };
+  };
+  /** Get Info */
+  get_info_info_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["InfoAPI"];
+        };
+      };
+    };
+  };
   /** Graphql Query */
   graphql_query_query__query_id__get: {
     parameters: {
@@ -368,33 +498,6 @@ export interface operations {
       };
       path: {
         query_id: string;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": Record<string, never>;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  /** Transform Python */
-  transform_python_transform__transform_url__get: {
-    parameters: {
-      query: {
-        branch?: string;
-        at?: string;
-        rebase?: boolean;
-      };
-      path: {
-        transform_url: string;
       };
     };
     responses: {
