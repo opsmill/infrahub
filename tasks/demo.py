@@ -12,51 +12,61 @@ from .utils import project_ver
 
 # flake8: noqa: W605
 
+here = os.path.abspath(os.path.dirname(__file__))
+TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
+BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", TOP_DIRECTORY_NAME)
 PYTHON_VER = os.getenv("PYTHON_VER", "3.10")
-IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/infrahub-backend-py{PYTHON_VER}")
+IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
 PWD = os.getcwd()
 
-BUILD_NAME = "infrahub-dev"
-USE_OVERRIDE_FILE = False
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
-
+DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
 COMPOSE_FILES = ["development/docker-compose-deps.yml", "development/docker-compose.yml"]
 DEV_COMPOSE_FILES = ["development/docker-compose-deps.yml"]
+
+AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
 
 if os.path.exists(OVERRIDE_FILE_NAME):
     print("!! Found an override file for docker compose !!")
     COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
     DEV_COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
-    USE_OVERRIDE_FILE = True
+else:
+    COMPOSE_FILES.append(DEFAULT_FILE_NAME)
+    DEV_COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 
 COMPOSE_FILES_CMD = f"-f {' -f '.join(COMPOSE_FILES)}"
 DEV_COMPOSE_FILES_CMD = f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
 
 ENV_VARS = f"IMAGE_NAME={IMAGE_NAME}, IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_VER}"
+ENV_VARS = f"IMAGE_NAME={IMAGE_NAME}, IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_VER} INFRAHUB_BUILD_NAME={BUILD_NAME}"
 
 VOLUME_NAMES = ["neo4j_data", "neo4j_logs", "git_data"]
 
 
 @task
-def build(
-    context, name=IMAGE_NAME, python_ver=PYTHON_VER, image_ver=IMAGE_VER, nocache=False
-):  # pylint: disable=too-many-arguments
+def build(context, service=None, python_ver=PYTHON_VER, nocache=False):  # pylint: disable=too-many-arguments
     """Build an image with the provided name and python version.
 
     Args:
         context (obj): Used to run specific commands
-        name (str): Used to name the docker image
         python_ver (str): Define the Python version docker image to build from
-        image_ver (str): Define image version
         nocache (bool): Do not use cache when building the image
     """
-    print(f"Building image {name}:{image_ver}")
+    print(f"Building images")
+
+    if service and service not in AVAILABLE_SERVICES:
+        exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
+
     exec_cmd = (
         f"{ENV_VARS} docker compose {COMPOSE_FILES_CMD} -p {BUILD_NAME} build --build-arg PYTHON_VER={python_ver}"
     )
     if nocache:
         exec_cmd += " --no-cache"
+
+    if service:
+        exec_cmd += f" {service}"
+
     context.run(exec_cmd, pty=True)
 
 
