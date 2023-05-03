@@ -113,6 +113,8 @@ class Branch(StandardNode):
     is_default: bool = False
     is_protected: bool = False
     is_data_only: bool = False
+    schema_changed_at: Optional[str]
+    schema_hash: Optional[str]
 
     ephemeral_rebase: bool = False
 

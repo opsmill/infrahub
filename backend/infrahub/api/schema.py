@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+import pendulum
 from fastapi import APIRouter, Depends
 from neo4j import AsyncSession
 from pydantic import BaseModel
@@ -58,8 +59,14 @@ async def load_schema(
 
     diff = tmp_schema.diff(branch_schema)
 
-    await registry.schema.update_schema_branch(
-        schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
-    )
+    if diff.all:
+        await registry.schema.update_schema_branch(
+            schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
+        )
+
+        latest_schema = registry.schema.get_schema_branch(name=branch.name)
+        branch.schema_changed_at = pendulum.now(tz="UTC").to_iso8601_string()
+        branch.schema_hash = hash(latest_schema)
+        await branch.save(session=session)
 
     return JSONResponse(status_code=202, content={})

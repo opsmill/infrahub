@@ -1,5 +1,6 @@
 import asyncio
 
+import pendulum
 import pydantic
 from graphene import Boolean, Field, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
@@ -286,6 +287,12 @@ class BranchCreate(Mutation):
         except pydantic.error_wrappers.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValueError("\n".join(error_msgs)) from exc
+
+        # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+        obj.schema_changed_at = pendulum.now(tz="UTC").to_iso8601_string()
+        origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+        registry.schema.register_schema(schema=origin_schema, branch=obj.name)
+        obj.schema_hash = hash(origin_schema)
 
         await obj.save(session=session)
 
