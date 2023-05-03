@@ -89,8 +89,18 @@ export default function ObjectItems() {
         `;
 
         const data: any = await graphQLClient.request(query);
-        const rows = data[schema.name];
-        setObjectRows(rows);
+
+        // Get actual param from pathname to get current object
+        const params = window.location.pathname.split("/");
+        const currentObject = params[params.length - 1];
+
+        // Update state only if the query is for the current object
+        // TODO: Update that when switching to new graphql client and cancel query
+        if (currentObject === objectname) {
+          const rows = data[schema.name];
+          setObjectRows(rows);
+        }
+
         setIsLoading(false);
 
       } catch(e) {
@@ -99,7 +109,7 @@ export default function ObjectItems() {
         setIsLoading(false);
       };
     }
-  }, [filterString, schema]);
+  }, [filterString, schema, objectname]);
 
   useEffect(
     () => {
