@@ -2,16 +2,14 @@ import { gql } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
-import { graphQLClient } from "../../graphql/graphqlClient";
 import { branchState } from "../../state/atoms/branch.atom";
 import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -23,36 +21,35 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import useQuery from "../../graphql/useQuery";
 
 declare const Handlebars: any;
 
-const template = Handlebars.compile(`query {{kind}} {
-        {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
-            id
-            display_label
-            {{#each attributes}}
-              {{this.name}} {
-                  value
-              }
-            {{/each}}
-            {{#each relationships}}
-              {{this.name}} {
-                  display_label
-              }
-            {{/each}}
-        }
-    }
+const template = Handlebars.compile(`
+query {{kind}} {
+  {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
+    id
+    display_label
+
+    {{#each attributes}}
+      {{this.name}} {
+          value
+      }
+    {{/each}}
+
+    {{#each relationships}}
+      {{this.name}} {
+          display_label
+      }
+    {{/each}}
+  }
+}
 `);
-
-
 
 export default function ObjectItems() {
   const { objectname } = useParams();
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [objectRows, setObjectRows] = useState<any[] | undefined>();
   const [schemaList] = useAtom(schemaState);
-  const [date] = useAtom(timeState);
+  // const [date] = useAtom(timeState);
   const [branch] = useAtom(branchState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [currentFilters] = useAtom(comboxBoxFilterState);
@@ -70,45 +67,21 @@ export default function ObjectItems() {
 
   const navigate = useNavigate();
 
-  const loadData = useCallback(async () => {
-    if (schema) {
-      try {
+  const queryString = schema
+    ? template({
+      ...schema,
+      filterString,
+      relationships: getSchemaRelationshipColumns(schema)
+    })
+    // Empty query to make the gql parsing work
+    // TODO: Find another solution for queries while loading schema
+    : "query { ok }";
 
-        setHasError(false);
-        setIsLoading(true);
-        setObjectRows(undefined);
+  const { loading, error, data } = useQuery(gql`${queryString}`, { skip: !schema });
 
-        const queryString = template({
-          ...schema,
-          filterString,
-          relationships: getSchemaRelationshipColumns(schema)
-        });
+  const rows = data && data[schema?.name];
 
-        const query = gql`
-        ${queryString}
-        `;
-
-        const data: any = await graphQLClient.request(query);
-        const rows = data[schema.name];
-        setObjectRows(rows);
-        setIsLoading(false);
-
-      } catch(e) {
-        console.error("Error: ", e);
-        setHasError(true);
-        setIsLoading(false);
-      };
-    }
-  }, [filterString, schema]);
-
-  useEffect(
-    () => {
-      loadData();
-    },
-    [objectname, schemaList, schema, date, branch, currentFilters, filterString, loadData]
-  );
-
-  if (hasError) {
+  if (error) {
     return <ErrorScreen />;
   }
 
@@ -120,7 +93,7 @@ export default function ObjectItems() {
           && (
             <div className="sm:flex-auto flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">
-                {schema.kind} ({objectRows?.length})
+                {schema.kind} ({rows?.length})
               </h1>
               <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
                 A list of all the {schema.kind} in your infrastructure.
@@ -140,14 +113,14 @@ export default function ObjectItems() {
       }
 
       {
-        isLoading
-        && !objectRows
+        loading
+        && !rows
         && <LoadingScreen />
       }
 
       {
-        !isLoading
-        && objectRows
+        !loading
+        && rows
         && (
           <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full overflow-x-auto flex-1">
             <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
@@ -177,9 +150,9 @@ export default function ObjectItems() {
                     </thead>
                     <tbody className="bg-white">
                       {
-                        objectRows
+                        rows
                         ?.map(
-                          (row, index) => (
+                          (row: any, index: number) => (
                             <tr
                               onClick={() => navigate(constructPath(getObjectUrl({ kind: schema.name, id: row.id })))}
                               key={index}
@@ -189,7 +162,7 @@ export default function ObjectItems() {
                                 <td
                                   key={row.id + "-" + attribute.name}
                                   className={classNames(
-                                    index !== objectRows.length - 1
+                                    index !== rows.length - 1
                                       ? "border-b border-gray-200"
                                       : "",
                                     "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
@@ -206,7 +179,7 @@ export default function ObjectItems() {
                   </table>
 
                   {
-                    !objectRows
+                    !rows
                     ?.length
                     && <NoDataFound />
                   }
@@ -238,10 +211,11 @@ export default function ObjectItems() {
           open={showCreateDrawer} setOpen={setShowCreateDrawer}
         // title={`Create ${objectname}`}
         >
-          <ObjectItemCreate onCreate={() => {
-            setShowCreateDrawer(false);
-            loadData();
-          }}  onCancel={() => setShowCreateDrawer(false)} objectname={objectname!} />
+          <ObjectItemCreate
+            onCreate={() => setShowCreateDrawer(false)}
+            onCancel={() => setShowCreateDrawer(false)}
+            objectname={objectname!}
+          />
         </SlideOver>
       }
     </div>

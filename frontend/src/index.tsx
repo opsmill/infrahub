@@ -6,6 +6,8 @@ import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import reportWebVitals from "./reportWebVitals";
 import App from "./App";
+import { ApolloProvider } from "@apollo/client";
+import graphqlClient from "./graphql/graphqlClientApollo";
 
 const root = ReactDOM.createRoot(
   (
@@ -24,7 +26,9 @@ root.render(
           objectToSearchString: queryString.stringify,
         }}
       >
-        <App />
+        <ApolloProvider client={graphqlClient}>
+          <App />
+        </ApolloProvider>
       </QueryParamProvider>
     </BrowserRouter>
   </React.StrictMode>
