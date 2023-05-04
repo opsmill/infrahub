@@ -433,7 +433,13 @@ class SchemaBranch:
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
         for item in schema.nodes + schema.generics + schema.groups:
-            self.set(name=item.kind, schema=item)
+            try:
+                existing_item = self.get(name=item.kind)
+                new_item = existing_item.duplicate()
+                new_item.update(item)
+                self.set(name=item.kind, schema=new_item)
+            except SchemaNotFound:
+                self.set(name=item.kind, schema=item)
 
         for node_extension in schema.extensions.nodes:
             node = self.get(name=node_extension.kind)
