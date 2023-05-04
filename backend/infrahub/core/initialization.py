@@ -96,6 +96,12 @@ async def create_default_branch(session: AsyncSession) -> Branch:
 async def create_branch(branch_name: str, session: AsyncSession, description: str = "") -> Branch:
     description = description or f"Branch {branch_name}"
     branch = Branch(name=branch_name, status="OPEN", description=description, is_default=False)
+
+    origin_schema = registry.schema.get_schema_branch(name=branch.origin_branch)
+    new_schema = origin_schema.duplicate(name=branch.name)
+    registry.schema.set_schema_branch(name=branch.name, schema=new_schema)
+
+    branch.update_schema_hash()
     await branch.save(session=session)
     registry.branch[branch.name] = branch
 
