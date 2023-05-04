@@ -12,7 +12,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { formatISO, parseISO } from "date-fns";
 
-export const DataDiff = () => {
+export const FilesDiff = () => {
   const { branchname } = useParams();
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +47,8 @@ export const DataDiff = () => {
 
       setIsLoading(true);
 
-      const url = CONFIG.DATA_DIFF_URL(branchname);
+      const url = CONFIG.FILES_DIFF_URL(branchname);
+      console.log("url: ", url);
 
       const options: string[][] = [
         ["branch_only", branchOnly ?? ""],

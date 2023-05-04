@@ -2,6 +2,7 @@ import { Tabs } from "../../../components/tabs";
 import { StringParam, useQueryParam } from "use-query-params";
 import { DataDiff } from "./data-diff";
 import { QSP } from "../../../config/qsp";
+import { SchemaDiff } from "./schema-diff";
 
 const DIFF_TABS = {
   CONVERSATIONS: "conversation",
@@ -47,12 +48,12 @@ const tabs = [
 const renderContent = (tab: string | null | undefined) => {
   switch(tab) {
     case DIFF_TABS.FILES:
-    case DIFF_TABS.SCHEMA: {
+      // return <FilesDiff />;
       return null;
-    }
-    default: {
+    case DIFF_TABS.SCHEMA:
+      return <SchemaDiff />;
+    default:
       return <DataDiff />;
-    }
   }
 };
 

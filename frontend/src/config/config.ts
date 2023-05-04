@@ -20,5 +20,7 @@ export const CONFIG = {
     ? `${INFRAHUB_API_SERVER_URL}/schema?branch=${branch}`
     : `${INFRAHUB_API_SERVER_URL}/schema`,
   CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/config`,
-  DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/dev/diff/data?branch=${branch}`,
+  DATA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/dev/diff/data?branch=${branch}`,
+  FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/diff/files?branch=${branch}`,
+  SCHEMA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/diff/schema?branch=${branch}`,
 };
