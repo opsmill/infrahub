@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import keyword
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 from typing_extensions import Self
@@ -10,7 +10,7 @@ from typing_extensions import Self
 from infrahub.core import registry
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import BaseEnum, duplicates
+from infrahub.utils import BaseEnum, duplicates, intersection
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -81,6 +81,10 @@ class BaseSchemaModel(BaseModel):
 
         return hash(tuple(values))
 
+    @property
+    def _sorting_id(self) -> Set[Any]:
+        return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
+
     def _sorting_keys(self, other: BaseSchemaModel) -> Tuple[List[Any], List[Any]]:
         """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
         if not self._sort_by:
@@ -115,6 +119,62 @@ class BaseSchemaModel(BaseModel):
     def duplicate(self) -> Self:
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
         return self.__class__(**copy.deepcopy(self.dict()))
+
+    def update(self, other: Self) -> Self:
+        """Update the current object with the new value from the new one if they are defined.
+
+        Currently this method works for the following type of field
+            int, str, bool, float: If present the value from Other is overwriting the local value
+            list[BaseSchemaModel]: The list will be merge if all elements in the list have a _sorting_id and if it's unique.
+
+        TODO Implement other fields type like dict
+        """
+
+        for field_name, _ in other.__fields__.items():
+            if not hasattr(self, field_name):
+                setattr(self, field_name, getattr(other, field_name))
+                continue
+
+            attr_other = getattr(other, field_name)
+            attr_local = getattr(self, field_name)
+            if attr_other is None:
+                continue
+
+            if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
+                setattr(self, field_name, getattr(other, field_name))
+                continue
+
+            if isinstance(attr_local, list) and isinstance(attr_other, list):
+                # merging the list is not easy, we need to create a unique id based on the
+                # sorting keys and if we have 2 sub items with the same key we can merge them recursively with update()
+                local_sub_items = {item._sorting_id: item for item in attr_local if hasattr(item, "_sorting_id")}
+                other_sub_items = {item._sorting_id: item for item in attr_other if hasattr(item, "_sorting_id")}
+
+                new_list = []
+
+                if len(local_sub_items) != len(attr_local) or len(other_sub_items) != len(attr_other):
+                    raise ValueError(
+                        f"Unable to merge the list for {field_name}, not all items are supporting _sorting_id"
+                    )
+
+                if duplicates(list(local_sub_items.keys())) or duplicates(list(other_sub_items.keys())):
+                    raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
+
+                shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
+                local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
+                other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
+
+                new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
+                new_list.extend([value for key, value in other_sub_items.items() if key in other_only_ids])
+
+                for item_id in shared_ids:
+                    other_item = other_sub_items[item_id]
+                    local_item = local_sub_items[item_id]
+                    new_list.append(local_item.update(other_item))
+
+                setattr(self, field_name, new_list)
+
+        return self
 
 
 class FilterSchema(BaseSchemaModel):

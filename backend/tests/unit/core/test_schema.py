@@ -1,4 +1,4 @@
-from typing import Hashable, List
+from typing import Hashable, List, Optional
 
 import pytest
 from pydantic.error_wrappers import ValidationError
@@ -50,6 +50,42 @@ def test_base_schema_model_hashing():
     )
 
     assert hash(node1) == hash(node2)
+
+
+def test_base_schema_update():
+    class MySubElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        value1: Optional[str]
+        value2: Optional[int]
+
+    class MyTopElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        value1: Optional[str]
+        value2: Optional[int]
+        subs: List[MySubElement]
+
+    node1 = MyTopElement(
+        name="node1",
+        value1="first",
+        value2=2,
+        subs=[MySubElement(name="orange", value1="tochange", value2=22), MySubElement(name="coconut")],
+    )
+    node2 = MyTopElement(
+        name="node1", value1="FIRST", subs=[MySubElement(name="apple"), MySubElement(name="orange", value1="toreplace")]
+    )
+
+    assert node1.update(node2).dict() == {
+        "name": "node1",
+        "subs": [
+            {"name": "coconut", "value1": None, "value2": None},
+            {"name": "apple", "value1": None, "value2": None},
+            {"name": "orange", "value1": "toreplace", "value2": 22},
+        ],
+        "value1": "FIRST",
+        "value2": 2,
+    }
 
 
 def test_schema_root_no_generic():
