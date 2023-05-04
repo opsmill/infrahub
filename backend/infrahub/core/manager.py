@@ -187,7 +187,7 @@ class NodeManager:
         return result[id]
 
     @classmethod
-    async def get_many(
+    async def get_many(  # pylint: disable=too-many-branches
         cls,
         ids: List[UUID],
         fields: Optional[dict] = None,
@@ -233,9 +233,9 @@ class NodeManager:
             peers_per_node = query.get_peers_group_by_node()
             peer_ids = []
 
-            for node, node_data in peers_per_node.items():
-                for node_peers in node_data.values():
-                    peer_ids.extend([peer_id for peer_id in node_peers])
+            for _, node_data in peers_per_node.items():
+                for _, node_peers in node_data.items():
+                    peer_ids.extend(node_peers)
 
             peer_ids = list(set(peer_ids))
             peers = await cls.get_many(
@@ -347,7 +347,9 @@ class SchemaBranch:
         return {"nodes": self.nodes, "generics": self.generics, "groups": self.groups}
 
     async def get_graphql_schema(self, session: AsyncSession) -> GraphQLSchema:
-        from infrahub.graphql import generate_graphql_schema
+        from infrahub.graphql import (  # pylint: disable=import-outside-toplevel
+            generate_graphql_schema,
+        )
 
         if not self._graphql_schema:
             self._graphql_schema = await generate_graphql_schema(session=session, branch=self.name)
@@ -447,6 +449,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_inheritance()
         self.process_filters()
+        # self.generate_weight()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -825,10 +828,7 @@ class SchemaManager(NodeManager):
         session: AsyncSession,
         branch: Union[str, Branch] = None,
     ) -> SchemaBranch:
-        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type.
-
-        FIXME This implementation is inefficient because we are querying the relationships for each ndoe independantly.
-        It would be much faster to query all AttributeSchema and all RelationshipSchema at once."""
+        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type."""
 
         branch = await get_branch(branch=branch, session=session)
         schema = SchemaBranch(cache=self._cache, name=branch.name)
