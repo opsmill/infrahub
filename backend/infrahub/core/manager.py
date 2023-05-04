@@ -767,12 +767,13 @@ class SchemaManager(NodeManager):
             items = await self.get_many(
                 ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
                 session=session,
+                branch=branch,
                 include_owner=True,
                 include_source=True,
             )
 
             for item in node.local_attributes:
-                if item.id and items[item.id]:
+                if item.id and item.id in items:
                     await self.update_attribute_in_db(item=item, attr=items[item.id], session=session)
                 elif not item.id:
                     new_attr = await self.create_attribute_in_db(
@@ -781,7 +782,7 @@ class SchemaManager(NodeManager):
                     new_node.attributes.append(new_attr)
 
             for item in node.local_relationships:
-                if item.id and items[item.id]:
+                if item.id and item.id in items:
                     await self.update_relationship_in_db(item=item, rel=items[item.id], session=session)
                 elif not item.id:
                     new_rel = await self.create_relationship_in_db(
