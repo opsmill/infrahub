@@ -77,7 +77,7 @@ export const diffContent: { [key: string]: any; } = {
 
 // Display the values
 // (only new one for "added", only old ones for "deleted", and previous + new for "updated")
-export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string) => {
+export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string, onClick: any) => {
   const { new: newPeer, previous: previousPeer, kind, display_label } = peer;
 
   // From relationship one
@@ -130,12 +130,14 @@ export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string) => {
   }
 
   // From relationship many
-  if (kind && display_label) {
+  if (kind && display_label && onClick) {
     return (
       <div className="flex">
-        <Badge type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL}>
-          {displayValue(display_label)}
-        </Badge>
+        <Tooltip message={`Link to ${display_label}`}>
+          <Badge type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL} onClick={onClick}>
+            {displayValue(display_label)}
+          </Badge>
+        </Tooltip>
       </div>
     );
   }

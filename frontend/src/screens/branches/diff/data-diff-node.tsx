@@ -42,6 +42,7 @@ export type tDataDiffNodeValue = {
 
 export type tDataDiffNodeElement = {
   value: tDataDiffNodeValue;
+  branch?: string;
   name: string;
   changed_at?: number;
   type?: string;

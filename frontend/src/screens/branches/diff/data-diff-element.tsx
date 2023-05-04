@@ -6,6 +6,11 @@ import { DiffPill } from "./diff-pill";
 import { diffContent, diffPeerContent } from "../../../utils/diff";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { DateDisplay } from "../../../components/date-display";
+import { constructPath } from "../../../utils/fetch";
+import { getObjectDetailsUrl } from "../../../utils/objects";
+import { useAtom } from "jotai";
+import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
+import { useNavigate } from "react-router-dom";
 
 export type tDataDiffNodeElementProps = {
   element: tDataDiffNodeElement,
@@ -14,11 +19,13 @@ export type tDataDiffNodeElementProps = {
 export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { element } = props;
 
+  const [schemaKindName] = useAtom(schemaKindNameState);
+  const navigate = useNavigate();
+
   const {
+    branch,
     action,
     value,
-    type,
-    identifier,
     name,
     changed_at,
     properties,
@@ -32,8 +39,16 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
       return diffContent[value.action](value);
     }
 
-    if (peer) {
-      return diffPeerContent(peer, action);
+    if (peer?.kind && peer?.id) {
+      const objectUrl = getObjectDetailsUrl({ __typename: peer.kind }, schemaKindName, peer.id);
+
+      const url = branch
+        ? constructPath(`${objectUrl}?branch=${branch}`)
+        : constructPath(objectUrl);
+
+      const onClick = () => navigate(url);
+
+      return diffPeerContent(peer, action, onClick);
     }
 
     return null;
@@ -42,12 +57,17 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const titleContent = (
     <div className="p-2 pr-0 hover:bg-gray-50 grid grid-cols-3 gap-4">
       <div className="flex">
-        <Badge>
-          {
-            type // From Attributes or peer relationship
-            || identifier // From peers relationships
-          }
-        </Badge>
+        {
+          !name
+          && peer?.kind
+          && (
+            <Badge>
+              {
+                peer?.kind
+              }
+            </Badge>
+          )
+        }
 
         <span className="mr-2 font-semibold">
           {name}
