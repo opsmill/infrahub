@@ -22,6 +22,8 @@ import "./styles/index.css";
 import { fetchUrl } from "./utils/fetch";
 import { QSP } from "./config/qsp";
 
+const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
+
 function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
@@ -133,6 +135,10 @@ function App() {
   const setSchemaInState = useCallback(
     async () => {
       const {schema, generics}: { schema: iNodeSchema[], generics: iGenericSchema[]} = await fetchSchema();
+      schema.forEach(s => {
+        s.attributes = sortByOrderWeight(s.attributes || []);
+        s.relationships = sortByOrderWeight(s.relationships || []);
+      });
       setSchema(schema);
       setGenerics(generics);
 
