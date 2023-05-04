@@ -57,7 +57,7 @@ async def test_get_paths_between_nodes(session: AsyncSession, empty_database):
     assert len(paths) == 0
 
 
-async def test_get_paths_between_nodes(session: AsyncSession, empty_database):
+async def test_count_relationships(session: AsyncSession, empty_database):
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })
@@ -68,6 +68,6 @@ async def test_get_paths_between_nodes(session: AsyncSession, empty_database):
     RETURN p1, p2, p3
     """
 
-    results = await execute_write_query_async(session=session, query=query)
+    await execute_write_query_async(session=session, query=query)
 
     assert await count_relationships(session=session) == 3
