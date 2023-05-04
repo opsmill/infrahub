@@ -14,9 +14,7 @@ from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerS
 from infrahub_client.data import (
     BranchData,
     CheckData,
-    GraphQLQueryData,
     RepositoryData,
-    RFileData,
     TransformPythonData,
 )
 from infrahub_client.exceptions import (
@@ -31,14 +29,10 @@ from infrahub_client.queries import (
     MUTATION_CHECK_CREATE,
     MUTATION_CHECK_UPDATE,
     MUTATION_COMMIT_UPDATE,
-    MUTATION_GRAPHQL_QUERY_CREATE,
-    MUTATION_GRAPHQL_QUERY_UPDATE,
     MUTATION_TRANSFORM_PYTHON_CREATE,
     MUTATION_TRANSFORM_PYTHON_UPDATE,
     QUERY_ALL_CHECKS,
-    QUERY_ALL_GRAPHQL_QUERIES,
     QUERY_ALL_REPOSITORIES,
-    QUERY_ALL_RFILES,
     QUERY_ALL_TRANSFORM_PYTHON,
 )
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
@@ -433,23 +427,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return repositories
 
-    async def get_list_graphql_queries(self, branch_name: str) -> Dict[str, GraphQLQueryData]:
-        data = await self.execute_graphql(
-            query=QUERY_ALL_GRAPHQL_QUERIES, branch_name=branch_name, tracker="query-graphqlquery-all"
-        )
-
-        items = {
-            item["name"]["value"]: GraphQLQueryData(
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                query=item["query"]["value"],
-            )
-            for item in data["graphql_query"]
-        }
-
-        return items
-
     async def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
         data = await self.execute_graphql(query=QUERY_ALL_CHECKS, branch_name=branch_name, tracker="query-check-all")
 
@@ -489,47 +466,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 rebase=item["rebase"]["value"],
             )
             for item in data["transform_python"]
-        }
-
-        return items
-
-    async def create_graphql_query(self, branch_name: str, name: str, query: str, description: str = "") -> bool:
-        variables = {"name": name, "description": description, "query": query}
-        await self.execute_graphql(
-            query=MUTATION_GRAPHQL_QUERY_CREATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-graphqlquery-create",
-        )
-
-        return True
-
-    async def update_graphql_query(
-        self, branch_name: str, id: str, name: str, query: str, description: str = ""
-    ) -> bool:
-        variables = {"id": id, "name": name, "description": description, "query": query}
-        await self.execute_graphql(
-            query=MUTATION_GRAPHQL_QUERY_UPDATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-graphqlquery-update",
-        )
-
-        return True
-
-    async def get_list_rfiles(self, branch_name: str) -> Dict[str, RFileData]:
-        data = await self.execute_graphql(query=QUERY_ALL_RFILES, branch_name=branch_name, tracker="query-rfile-all")
-
-        items = {
-            item["name"]["value"]: RFileData(  # type: ignore
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                template_path=item["template_path"]["value"],
-                template_repository=item["template_repository"]["id"],
-                query=item["query"]["name"]["value"],
-            )
-            for item in data["rfile"]
         }
 
         return items
@@ -754,17 +690,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return True
 
-    def create_graphql_query(self, branch_name: str, name: str, query: str, description: str = "") -> bool:
-        variables = {"name": name, "description": description, "query": query}
-        self.execute_graphql(
-            query=MUTATION_GRAPHQL_QUERY_CREATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-graphqlquery-create",
-        )
-
-        return True
-
     def create_transform_python(
         self,
         branch_name: str,
@@ -967,17 +892,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
-    def get_list_graphql_queries(self, branch_name: str) -> Dict[str, GraphQLQueryData]:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
     def get_list_repositories(self, branches: Optional[Dict[str, BranchData]] = None) -> Dict[str, RepositoryData]:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
-    def get_list_rfiles(self, branch_name: str) -> Dict[str, RFileData]:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
@@ -1018,11 +933,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: int = 10,
         rebase: bool = False,
     ) -> bool:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
-    def update_graphql_query(self, branch_name: str, id: str, name: str, query: str, description: str = "") -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )

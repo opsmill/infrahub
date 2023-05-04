@@ -15,51 +15,6 @@ query {
 }
 """
 
-QUERY_ALL_GRAPHQL_QUERIES = """
-query {
-    graphql_query {
-        id
-        name {
-            value
-        }
-        description {
-            value
-        }
-        query {
-            value
-        }
-    }
-}
-"""
-
-QUERY_ALL_RFILES = """
-query {
-    rfile {
-        id
-        name {
-            value
-        }
-        description {
-            value
-        }
-        template_path {
-            value
-        }
-        template_repository {
-            id
-            name {
-                value
-            }
-        }
-        query {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
 
 QUERY_ALL_CHECKS = """
 query {
@@ -223,41 +178,6 @@ mutation ($repository_id: String!, $commit: String!) {
 }
 """
 
-
-MUTATION_GRAPHQL_QUERY_CREATE = """
-mutation($name: String!, $description: String!, $query: String!) {
-  graphql_query_create(data: {
-    name: { value: $name },
-    description: { value: $description },
-    query: { value: $query }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_GRAPHQL_QUERY_UPDATE = """
-mutation($id: String!, $name: String!, $description: String!, $query: String!) {
-  graphql_query_update(data: {
-    id: $id
-    name: { value: $name },
-    description: { value: $description },
-    query: { value: $query }}){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
 
 MUTATION_CHECK_CREATE = """
 mutation($name: String!, $description: String!, $file_path: String!, $class_name: String!, $repository: String!, $query: String!, $timeout: Int!, $rebase: Boolean!) {
