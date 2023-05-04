@@ -616,8 +616,11 @@ class SchemaManager(NodeManager):
 
         if update_db:
             await self.load_schema_to_db(schema=schema, session=session, branch=branch, limit=limit)
+            # After updating the schema into the db
+            # we need to pull a fresh version because some default value are managed/generated within the node object
+            updated_schema = await self.load_schema_from_db(session=session, branch=branch)
 
-        self._branches[branch.name] = schema
+        self._branches[branch.name] = updated_schema
 
     def register_schema(self, schema: SchemaRoot, branch: str = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
