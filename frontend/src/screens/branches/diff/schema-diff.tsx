@@ -23,7 +23,7 @@ export const SchemaDiff = () => {
 
       setIsLoading(true);
 
-      const url = CONFIG.DATA_DIFF_URL(branchname);
+      const url = CONFIG.SCHEMA_DIFF_URL(branchname);
 
       const options: string[][] = [
         ["branch_only", branchOnly ?? ""],
