@@ -89,7 +89,6 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { node } = props;
 
   const {
-    // id,
     display_label,
     action,
     kind,
@@ -97,11 +96,6 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     summary,
     elements
   } = node;
-
-  // const { branchname } = useParams();
-  // const navigate = useNavigate();
-  // const [schemaList] = useAtom(schemaState);
-  // const schema = schemaList.filter((s) => s.kind === kind)[0];
 
   const title = (
     <div className="p-2 pr-0 flex flex-1 hover:bg-gray-50">
@@ -122,12 +116,14 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
       <DiffPill {...summary} />
 
-      {
-        changed_at
-        && (
-          <DateDisplay date={changed_at} hideDefault />
-        )
-      }
+      <div className="w-[160px] flex justify-end">
+        {
+          changed_at
+          && (
+            <DateDisplay date={changed_at} hideDefault />
+          )
+        }
+      </div>
     </div>
   );
 

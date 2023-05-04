@@ -1,10 +1,11 @@
 import Accordion from "../../../components/accordion";
-import { DateDisplay } from "../../../components/date-display";
 import { DataDiffProperty } from "./data-diff-property";
 import { tDataDiffNodeElement, tDataDiffNodeProperty } from "./data-diff-node";
 import { Badge } from "../../../components/badge";
 import { DiffPill } from "./diff-pill";
 import { diffContent, diffPeerContent } from "../../../utils/diff";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { DateDisplay } from "../../../components/date-display";
 
 export type tDataDiffNodeElementProps = {
   element: tDataDiffNodeElement,
@@ -64,39 +65,55 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
       <div className="flex justify-end">
         <DiffPill {...summary} />
 
-        {
-          changed_at
-          && (
-            <DateDisplay date={changed_at} hideDefault />
-          )
-        }
+        <div className="w-[160px] flex justify-end">
+          {
+            changed_at
+            && (
+              <DateDisplay date={changed_at} hideDefault />
+            )
+          }
+        </div>
       </div>
     </div>
   );
 
   return (
     <div className="flex flex-col">
-      <Accordion title={titleContent}>
-        <div className="divide-y">
-          {
-            properties
-            ?.map(
-              (property: tDataDiffNodeProperty, index: number) => (
-                <DataDiffProperty key={index} property={property} />
-              )
-            )
-          }
+      {
+        properties?.length || peers?.length
+          ? (
+            <Accordion title={titleContent}>
+              <div className="divide-y">
+                {
+                  properties
+                  ?.map(
+                    (property: tDataDiffNodeProperty, index: number) => (
+                      <DataDiffProperty key={index} property={property} />
+                    )
+                  )
+                }
 
-          {
-            peers
-            ?.map(
-              (element, index) => (
-                <DataDiffElement key={index} element={element} />
-              )
-            )
-          }
-        </div>
-      </Accordion>
+                {
+                  peers
+                  ?.map(
+                    (element, index) => (
+                      <DataDiffElement key={index} element={element} />
+                    )
+                  )
+                }
+              </div>
+            </Accordion>
+          )
+          : (
+            <div className="flex">
+              {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
+              <ChevronDownIcon className="h-5 w-5 mr-2 text-transparent" aria-hidden="true" />
+              <div className="flex-1">
+                {titleContent}
+              </div>
+            </div>
+          )
+      }
     </div>
 
   );

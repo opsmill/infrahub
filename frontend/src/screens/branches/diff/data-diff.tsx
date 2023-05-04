@@ -3,43 +3,19 @@ import { useCallback, useEffect, useState } from "react";
 import { DataDiffNode } from "./data-diff-node";
 import { CONFIG } from "../../../config/config";
 import { fetchUrl } from "../../../utils/fetch";
-import { DynamicFieldData } from "../../edit-form-hook/dynamic-control-types";
-import { Filters } from "../../../components/filters";
 import { QSP } from "../../../config/qsp";
 import { StringParam, useQueryParam } from "use-query-params";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { formatISO, parseISO } from "date-fns";
 
 export const DataDiff = () => {
   const { branchname } = useParams();
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [timeFrom, setTimeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  const [timeTo, setTimeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
-
-  const fields: DynamicFieldData[] = [
-    {
-      name: "branch_only",
-      label: "Branch only",
-      type: "switch",
-      value: branchOnly === "true",
-    },
-    {
-      name: "time_from",
-      label: "Time from",
-      type: "datepicker",
-      value: timeFrom ? parseISO(timeFrom) : undefined,
-    },
-    {
-      name: "time_to",
-      label: "Time to",
-      type: "datepicker",
-      value: timeTo ? parseISO(timeTo) : undefined,
-    },
-  ];
+  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
+  const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
+  const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
 
   const fetchDiffDetails = useCallback(
     async () => {
@@ -83,18 +59,6 @@ export const DataDiff = () => {
     [fetchDiffDetails]
   );
 
-  const handleSubmit = (data:any) => {
-    const { branch_only, time_from, time_to } = data;
-
-    if (branch_only !== undefined) {
-      setBranchOnly(branch_only);
-    }
-
-    setTimeFrom(time_from ? formatISO(time_from) : undefined);
-
-    setTimeTo(time_to ? formatISO(time_to) : undefined);
-  };
-
   return (
     <>
       {
@@ -107,21 +71,13 @@ export const DataDiff = () => {
       {
         !isLoading
         && (
-          <>
-
-            <div className="bg-white p-6 flex">
-              <Filters fields={fields} onSubmit={handleSubmit} />
-            </div>
-
-            <div>
-
-              {
-                diff?.map(
-                  (node: any, index: number) => <DataDiffNode key={index} node={node} />
-                )
-              }
-            </div>
-          </>
+          <div>
+            {
+              diff?.map(
+                (node: any, index: number) => <DataDiffNode key={index} node={node} />
+              )
+            }
+          </div>
         )
       }
 

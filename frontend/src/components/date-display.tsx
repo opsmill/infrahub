@@ -14,7 +14,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
   }
 
   return (
-    <span className="mr-2 italic font-normal">
+    <span className="font-normal">
       {
         fromNow
           ? formatDistanceToNow(props.date ? new Date() : new Date(), { addSuffix: true })
