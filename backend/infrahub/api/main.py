@@ -134,8 +134,8 @@ async def graphql_query(
     if not gql_query:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    schema = registry.schema.get_schema_branch(name=branch.name)
-    gql_schema = await schema.get_graphql_schema(session=session)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    gql_schema = await schema_branch.get_graphql_schema(session=session)
 
     result = await graphql(
         gql_schema,
