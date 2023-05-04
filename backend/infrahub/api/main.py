@@ -72,10 +72,11 @@ async def app_initialization():
     app.state.rpc_client = await InfrahubRpcClient().connect()
 
     # Initialize the Background Runner
-    app.state.runner = BackgroundRunner(
-        driver=app.state.db, database_name=config.SETTINGS.database.database, interval=10
-    )
-    asyncio.create_task(app.state.runner.run())
+    if "testing" not in config.SETTINGS.database.database:
+        app.state.runner = BackgroundRunner(
+            driver=app.state.db, database_name=config.SETTINGS.database.database, interval=10
+        )
+        asyncio.create_task(app.state.runner.run())
 
 
 @app.on_event("shutdown")
