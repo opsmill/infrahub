@@ -142,7 +142,7 @@ class StandardNode(BaseModel):
         return True
 
     @classmethod
-    async def get(cls, id, session: AsyncSession):
+    async def get(cls, id: str, session: AsyncSession):
         """Get a node from the database identied by its ID."""
 
         node = await cls._get_item_raw(id=id, session=session)
@@ -178,8 +178,13 @@ class StandardNode(BaseModel):
         Returns:
             StandardNode: Proper StandardNode object
         """
+
         attrs = dict(node)
         attrs["id"] = node.element_id
+        for key, value in attrs.items():
+            if value == "None":
+                attrs[key] = None
+
         return cls(**attrs)
 
     @classmethod
