@@ -33,7 +33,7 @@ class BackgroundRunner:
         """
 
         async with lock_registry.get_branch_schema_update():
-            logger.error(f"[{os.getpid()}] Runner: lock acquired")
+            logger.debug(f"[{os.getpid()}] Runner: lock acquired")
 
             branches = await Branch.get_list(session=session)
             active_branches = [branch.name for branch in branches]
@@ -42,18 +42,18 @@ class BackgroundRunner:
 
                 if branch_already_present:
                     if registry.branch[new_branch.name].schema_hash != new_branch.schema_hash:
-                        logger.error(
+                        logger.info(
                             f"[{os.getpid()}] {new_branch.name}: New hash detected OLD {registry.branch[new_branch.name].schema_hash} >> {new_branch.schema_hash} NEW"
                         )
                         registry.branch[new_branch.name] = new_branch
                         await registry.schema.load_schema_from_db(session=session, branch=new_branch)
 
                 else:
-                    logger.error(f"[{os.getpid()}] {new_branch.name}: New branch detected")
+                    logger.debug(f"[{os.getpid()}] {new_branch.name}: New branch detected")
                     registry.branch[new_branch.name] = new_branch
                     await registry.schema.load_schema_from_db(session=session, branch=new_branch)
 
-            for branch_name, _ in registry.branch.items():
+            for branch_name in list(registry.branch.keys()):
                 if branch_name not in active_branches:
                     del registry.branch[branch_name]
-                    logger.error(f"[{os.getpid()}]  Removed branch {branch_name} from the registry")
+                    logger.debug(f"[{os.getpid()}] Removed branch {branch_name} from the registry")
