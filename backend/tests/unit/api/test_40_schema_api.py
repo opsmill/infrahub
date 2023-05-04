@@ -130,7 +130,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
 
     assert response.status_code == 202
 
-    org_schema = registry.schema.get(name="Organization")
+    org_schema = registry.schema.get(name="Organization", branch=default_branch.name)
     assert len(org_schema.relationships) == initial_nbr_relationships + 1
 
 

@@ -9,7 +9,6 @@ from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import generate_graphql_schema
 from infrahub.message_bus.events import (
     InfrahubRPCResponse,
     InfrahubTransformRPC,
@@ -50,7 +49,9 @@ async def transform_python(
     query = await transform.query.get_peer(session=session)
     repository = await transform.repository.get_peer(session=session)
 
-    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    gql_schema = await schema.get_graphql_schema(session=session)
+
     result = await graphql(
         gql_schema,
         source=query.query.value,
@@ -127,7 +128,9 @@ async def generate_rfile(
     query = await rfile.query.get_peer(session=session)
     repository = await rfile.template_repository.get_peer(session=session)
 
-    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    gql_schema = await schema.get_graphql_schema(session=session)
+
     result = await graphql(
         gql_schema,
         source=query.query.value,

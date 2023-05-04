@@ -1201,6 +1201,8 @@ async def register_core_schema_db(
     session: AsyncSession, default_branch: Branch, register_core_models_schema
 ) -> SchemaBranch:
     await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, session=session)
+    updated_schema = await registry.schema.load_schema_from_db(session=session, branch=default_branch)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
 
 
 @pytest.fixture

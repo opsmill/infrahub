@@ -752,8 +752,8 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Update the attributes and the relationships nodes as well
-        await obj.attributes.update(session=session, data=[item.id for item in node.local_attributes])
-        await obj.relationships.update(session=session, data=[item.id for item in node.local_relationships])
+        await obj.attributes.update(session=session, data=[item.id for item in node.local_attributes if item.id])
+        await obj.relationships.update(session=session, data=[item.id for item in node.local_relationships if item.id])
         await obj.save(session=session)
 
         # Then Update the Attributes and the relationships
