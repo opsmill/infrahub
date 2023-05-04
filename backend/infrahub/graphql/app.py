@@ -70,7 +70,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 from infrahub.utils import str_to_bool
 
-
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"
 GQL_CONNECTION_INIT = "connection_init"

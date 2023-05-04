@@ -1,10 +1,7 @@
 import asyncio
-import os
-from pathlib import Path
 
 import pendulum
 import pytest
-import ujson
 from neo4j import AsyncDriver, AsyncSession
 from neo4j._codec.hydration.v1 import HydrationHandler
 
@@ -32,7 +29,6 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-from infrahub.utils import get_fixtures_dir
 
 
 @pytest.fixture(scope="session")
