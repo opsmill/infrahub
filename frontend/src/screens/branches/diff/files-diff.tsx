@@ -24,7 +24,6 @@ export const FilesDiff = () => {
       setIsLoading(true);
 
       const url = CONFIG.FILES_DIFF_URL(branchname);
-      console.log("url: ", url);
 
       const options: string[][] = [
         ["branch_only", branchOnly ?? ""],
