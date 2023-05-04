@@ -113,6 +113,8 @@ class Branch(StandardNode):
     is_default: bool = False
     is_protected: bool = False
     is_data_only: bool = False
+    schema_changed_at: Optional[str]
+    schema_hash: Optional[int]
 
     ephemeral_rebase: bool = False
 
@@ -125,6 +127,16 @@ class Branch(StandardNode):
     @validator("created_at", pre=True, always=True)
     def set_created_at(cls, value):  # pylint: disable=no-self-argument
         return Timestamp(value).to_string()
+
+    def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> None:
+        latest_schema = registry.schema.get_schema_branch(name=self.name)
+        self.schema_changed_at = Timestamp(at).to_string()
+        new_hash = hash(latest_schema)
+        if new_hash == self.schema_hash:
+            return False
+
+        self.schema_hash = hash(latest_schema)
+        return True
 
     @classmethod
     async def get_by_name(cls, name: str, session: AsyncSession) -> Branch:

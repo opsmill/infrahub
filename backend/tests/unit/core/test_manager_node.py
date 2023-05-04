@@ -1,10 +1,13 @@
+from neo4j import AsyncSession
+
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 
 
-async def test_get_one_attribute(session, default_branch, criticality_schema):
+async def test_get_one_attribute(session: AsyncSession, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)
@@ -103,7 +106,7 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.color.is_protected is False
 
 
-async def test_get_one_relationship(session, default_branch, car_person_schema):
+async def test_get_one_relationship(session: AsyncSession, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
 
@@ -132,7 +135,9 @@ async def test_get_one_relationship(session, default_branch, car_person_schema):
     assert len(list(await p11.cars.get(session=session))) == 2
 
 
-async def test_get_one_relationship_with_flag_property(session, default_branch, car_person_schema):
+async def test_get_one_relationship_with_flag_property(
+    session: AsyncSession, default_branch: Branch, car_person_schema
+):
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -178,7 +183,7 @@ async def test_get_one_relationship_with_flag_property(session, default_branch, 
     assert rels[1].is_visible is False
 
 
-async def test_get_many(session, default_branch, criticality_schema):
+async def test_get_many(session: AsyncSession, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)
@@ -191,7 +196,18 @@ async def test_get_many(session, default_branch, criticality_schema):
     assert len(nodes) == 2
 
 
-async def test_query_no_filter(session, default_branch, criticality_schema):
+async def test_get_many_prefetch(session: AsyncSession, default_branch: Branch, person_jack_tags_main):
+    nodes = await NodeManager.get_many(session=session, ids=[person_jack_tags_main.id], prefetch_relationships=True)
+
+    assert len(nodes) == 1
+    assert nodes[person_jack_tags_main.id]
+    tags = await nodes[person_jack_tags_main.id].tags.get(session=session)
+    assert len(tags) == 2
+    assert tags[0]._peer
+    assert tags[1]._peer
+
+
+async def test_query_no_filter(session: AsyncSession, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)
@@ -208,7 +224,7 @@ async def test_query_no_filter(session, default_branch, criticality_schema):
     assert len(nodes) == 3
 
 
-async def test_query_with_filter_string_int(session, default_branch, criticality_schema):
+async def test_query_with_filter_string_int(session: AsyncSession, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=3)
     await obj1.save(session=session)
@@ -235,7 +251,7 @@ async def test_query_with_filter_string_int(session, default_branch, criticality
     assert len(nodes) == 1
 
 
-async def test_query_with_filter_bool_rel(session, default_branch, car_person_schema):
+async def test_query_with_filter_bool_rel(session: AsyncSession, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
 
@@ -269,7 +285,7 @@ async def test_query_with_filter_bool_rel(session, default_branch, car_person_sc
     assert len(nodes) == 2
 
 
-async def test_query_non_default_class(session, default_branch, criticality_schema):
+async def test_query_non_default_class(session: AsyncSession, default_branch: Branch, criticality_schema):
     class Criticality(Node):
         def always_true(self):
             return True
@@ -290,7 +306,7 @@ async def test_query_non_default_class(session, default_branch, criticality_sche
     assert nodes[0].always_true()
 
 
-async def test_query_class_name(session, default_branch, criticality_schema):
+async def test_query_class_name(session: AsyncSession, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=3)
     await obj1.save(session=session)
@@ -308,7 +324,7 @@ async def test_query_class_name(session, default_branch, criticality_schema):
 # ------------------------------------------------------------------------
 
 
-async def test_get_one_local_attribute_with_branch(session, default_branch, criticality_schema):
+async def test_get_one_local_attribute_with_branch(session: AsyncSession, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
     await obj1.save(session=session)

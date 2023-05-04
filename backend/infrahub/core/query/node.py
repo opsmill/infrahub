@@ -354,6 +354,51 @@ class NodeListGetAttributeQuery(Query):
         return None
 
 
+class NodeListGetRelationshipsQuery(Query):
+    name: str = "node_list_get_relationship"
+
+    def __init__(
+        self,
+        ids: List[str],
+        *args,
+        **kwargs,
+    ):
+        self.ids = ids
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["ids"] = self.ids
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        query = (
+            """
+        MATCH (n) WHERE n.uuid IN $ids
+        MATCH p = ((n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer))
+        WHERE all(r IN relationships(p) WHERE (%s))
+        """
+            % rels_filter
+        )
+
+        self.add_to_query(query)
+
+        self.return_labels = ["n", "rel", "peer", "r1", "r2"]
+
+    def get_peers_group_by_node(self) -> Dict[str, Dict[str, List[str]]]:
+        peers_by_node = defaultdict(lambda: defaultdict(list))
+
+        for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
+            node_id = result.get("n").get("uuid")
+            rel_name = result.get("rel").get("name")
+            peer_id = result.get("peer").get("uuid")
+
+            peers_by_node[node_id][rel_name].append(peer_id)
+
+        return peers_by_node
+
+
 class NodeListGetInfoQuery(Query):
     name: str = "node_list_get_info"
 

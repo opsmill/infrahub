@@ -2,6 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -56,7 +57,7 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
     await check02.save(session=session)
 
 
-async def test_branch_create(db, session, default_branch, car_person_schema, register_core_models_schema):
+async def test_branch_create(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
     schema = await generate_graphql_schema(session=session, include_subscription=False)
 
     query = """
@@ -91,7 +92,13 @@ async def test_branch_create(db, session, default_branch, car_person_schema, reg
     assert result.data["branch_create"]["object"]["is_default"] is False
     assert result.data["branch_create"]["object"]["branched_from"] is not None
 
-    assert await Branch.get_by_name(session=session, name="branch2")
+    branch2 = await Branch.get_by_name(session=session, name="branch2")
+    branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+
+    assert branch2
+    assert branch2_schema
+
+    assert branch2.schema_hash == hash(branch2_schema)
 
     # Validate that we can't create a branch with a name that already exist
     result = await graphql(
@@ -134,7 +141,9 @@ async def test_branch_create(db, session, default_branch, car_person_schema, reg
     assert result.data["branch_create"]["object"]["is_data_only"] is False
 
 
-async def test_branch_create_invalid_names(db, session, default_branch, car_person_schema, register_core_models_schema):
+async def test_branch_create_invalid_names(
+    db, session, default_branch: Branch, car_person_schema, register_core_models_schema
+):
     schema = await generate_graphql_schema(session=session, include_subscription=False)
 
     query = """
@@ -161,7 +170,7 @@ async def test_branch_create_invalid_names(db, session, default_branch, car_pers
 
 
 async def test_branch_create_with_repositories(
-    db, session, default_branch, rpc_client, repos_and_checks_in_main, register_core_models_schema, data_schema
+    db, session, default_branch: Branch, rpc_client, repos_and_checks_in_main, register_core_models_schema, data_schema
 ):
     mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value)
     await rpc_client.add_response(
@@ -197,7 +206,7 @@ async def test_branch_create_with_repositories(
     assert await Branch.get_by_name(session=session, name="branch2")
 
 
-async def test_branch_rebase(db, session, default_branch, car_person_schema):
+async def test_branch_rebase(db, session, default_branch: Branch, car_person_schema):
     branch2 = await create_branch(session=session, branch_name="branch2")
 
     query = """
@@ -226,7 +235,7 @@ async def test_branch_rebase(db, session, default_branch, car_person_schema):
     assert new_branch2.branched_from != branch2.branched_from
 
 
-async def test_branch_rebase_wrong_branch(db, session, default_branch, car_person_schema):
+async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, car_person_schema):
     query = """
     mutation {
         branch_rebase(data: { name: "branch2" }) {
