@@ -458,16 +458,6 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_list_graphql_query_empty(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {"data": {"graphql_query": []}}
-
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-graphqlquery-all"}
-    )
-    return httpx_mock
-
-
-@pytest.fixture
 async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
