@@ -24,7 +24,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
 from infrahub.exceptions import BranchNotFound
-from infrahub.graphql import generate_graphql_schema
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -135,7 +134,9 @@ async def graphql_query(
     if not gql_query:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    gql_schema = await schema.get_graphql_schema(session=session)
+
     result = await graphql(
         gql_schema,
         source=gql_query.query.value,
