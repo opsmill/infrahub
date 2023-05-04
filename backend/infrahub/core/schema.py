@@ -120,6 +120,53 @@ class BaseSchemaModel(BaseModel):
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
         return self.__class__(**copy.deepcopy(self.dict()))
 
+    @staticmethod
+    def is_list_composed_of_schema_model(items) -> bool:
+        for item in items:
+            if not isinstance(item, BaseSchemaModel):
+                return False
+        return True
+
+    @staticmethod
+    def is_list_composed_of_standard_type(items) -> bool:
+        for item in items:
+            if not isinstance(item, (int, str, bool, float)):
+                return False
+        return True
+
+    @staticmethod
+    def update_list_schema_model(field_name, attr_local, attr_other):
+        # merging the list is not easy, we need to create a unique id based on the
+        # sorting keys and if we have 2 sub items with the same key we can merge them recursively with update()
+        local_sub_items = {item._sorting_id: item for item in attr_local if hasattr(item, "_sorting_id")}
+        other_sub_items = {item._sorting_id: item for item in attr_other if hasattr(item, "_sorting_id")}
+
+        new_list = []
+
+        if len(local_sub_items) != len(attr_local) or len(other_sub_items) != len(attr_other):
+            raise ValueError(f"Unable to merge the list for {field_name}, not all items are supporting _sorting_id")
+
+        if duplicates(list(local_sub_items.keys())) or duplicates(list(other_sub_items.keys())):
+            raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
+
+        shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
+        local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
+        other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
+
+        new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
+        new_list.extend([value for key, value in other_sub_items.items() if key in other_only_ids])
+
+        for item_id in shared_ids:
+            other_item = other_sub_items[item_id]
+            local_item = local_sub_items[item_id]
+            new_list.append(local_item.update(other_item))
+
+        return new_list
+
+    @staticmethod
+    def update_list_standard(local_list, other_list):
+        pass
+
     def update(self, other: Self) -> Self:
         """Update the current object with the new value from the new one if they are defined.
 
@@ -145,34 +192,19 @@ class BaseSchemaModel(BaseModel):
                 continue
 
             if isinstance(attr_local, list) and isinstance(attr_other, list):
-                # merging the list is not easy, we need to create a unique id based on the
-                # sorting keys and if we have 2 sub items with the same key we can merge them recursively with update()
-                local_sub_items = {item._sorting_id: item for item in attr_local if hasattr(item, "_sorting_id")}
-                other_sub_items = {item._sorting_id: item for item in attr_other if hasattr(item, "_sorting_id")}
-
-                new_list = []
-
-                if len(local_sub_items) != len(attr_local) or len(other_sub_items) != len(attr_other):
-                    raise ValueError(
-                        f"Unable to merge the list for {field_name}, not all items are supporting _sorting_id"
+                if self.is_list_composed_of_schema_model(attr_local) and self.is_list_composed_of_schema_model(
+                    attr_other
+                ):
+                    new_attr = self.update_list_schema_model(
+                        field_name=field_name, attr_local=attr_local, attr_other=attr_other
                     )
+                    setattr(self, field_name, new_attr)
 
-                if duplicates(list(local_sub_items.keys())) or duplicates(list(other_sub_items.keys())):
-                    raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
-
-                shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
-                local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
-                other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
-
-                new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
-                new_list.extend([value for key, value in other_sub_items.items() if key in other_only_ids])
-
-                for item_id in shared_ids:
-                    other_item = other_sub_items[item_id]
-                    local_item = local_sub_items[item_id]
-                    new_list.append(local_item.update(other_item))
-
-                setattr(self, field_name, new_list)
+                elif self.is_list_composed_of_standard_type(attr_local) and self.is_list_composed_of_standard_type(
+                    attr_other
+                ):
+                    new_attr = list(set(attr_local + attr_other))
+                    setattr(self, field_name, new_attr)
 
         return self
 

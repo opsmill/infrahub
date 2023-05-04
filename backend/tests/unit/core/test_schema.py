@@ -1,6 +1,7 @@
 from typing import Hashable, List, Optional
 
 import pytest
+from deepdiff import DeepDiff
 from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import registry
@@ -64,19 +65,24 @@ def test_base_schema_update():
         name: str
         value1: Optional[str]
         value2: Optional[int]
+        value3: List[str]
         subs: List[MySubElement]
 
     node1 = MyTopElement(
         name="node1",
         value1="first",
         value2=2,
+        value3=["one", "two"],
         subs=[MySubElement(name="orange", value1="tochange", value2=22), MySubElement(name="coconut")],
     )
     node2 = MyTopElement(
-        name="node1", value1="FIRST", subs=[MySubElement(name="apple"), MySubElement(name="orange", value1="toreplace")]
+        name="node1",
+        value1="FIRST",
+        value3=["one", "three"],
+        subs=[MySubElement(name="apple"), MySubElement(name="orange", value1="toreplace")],
     )
 
-    assert node1.update(node2).dict() == {
+    expected_result = {
         "name": "node1",
         "subs": [
             {"name": "coconut", "value1": None, "value2": None},
@@ -85,7 +91,10 @@ def test_base_schema_update():
         ],
         "value1": "FIRST",
         "value2": 2,
+        "value3": ["one", "two", "three"],
     }
+
+    assert DeepDiff(expected_result, node1.update(node2).dict(), ignore_order=True).to_dict() == {}
 
 
 def test_schema_root_no_generic():
