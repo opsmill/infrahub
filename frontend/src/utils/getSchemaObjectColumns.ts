@@ -4,10 +4,11 @@ import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 interface iColumn {
   label: string;
   name: string;
+  order_weight: number;
 }
 
-const getLabelAndName = R.pick(["label", "name"]);
-const sortByLabel = R.sortBy(R.compose(R.toLower, R.prop("label")));
+const getLabelAndName = R.pick(["label", "name", "order_weight"]);
+const sortByLabel = R.sortBy(R.compose(R.prop("order_weight")));
 
 export const getSchemaRelationshipColumns = (
   schema: iNodeSchema | iGenericSchema
