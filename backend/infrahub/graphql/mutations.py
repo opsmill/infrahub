@@ -13,6 +13,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import BranchNotFound, NodeNotFound, ValidationError
+from infrahub.lock import registry as lock_registry
 from infrahub.message_bus.events import (
     BranchMessageAction,
     DataMessageAction,
@@ -287,12 +288,13 @@ class BranchCreate(Mutation):
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValueError("\n".join(error_msgs)) from exc
 
-        # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-        origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-        new_schema = origin_schema.duplicate(name=obj.name)
-        registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-        obj.update_schema_hash()
-        await obj.save(session=session)
+        async with lock_registry.get_branch_schema_update():
+            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+            new_schema = origin_schema.duplicate(name=obj.name)
+            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+            obj.update_schema_hash()
+            await obj.save(session=session)
 
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
@@ -405,7 +407,17 @@ class BranchMerge(Mutation):
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
-        await obj.merge(rpc_client=rpc_client, session=session)
+
+        # TODO need to replace with a distributed lock
+        async with lock_registry.get_branch_schema_update():
+            await obj.merge(rpc_client=rpc_client, session=session)
+
+            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+            origin_branch = await obj.get_origin_branch(session=session)
+            updated_schema = await registry.schema.load_schema_from_db(session=session, branch=origin_branch)
+            registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
+            origin_branch.update_schema_hash()
+            await origin_branch.save(session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
