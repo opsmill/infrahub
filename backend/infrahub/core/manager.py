@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import UUID
 
+from graphql import GraphQLSchema
 from pydantic import BaseModel, Field
 
 import infrahub.config as config
@@ -327,6 +328,7 @@ class SchemaBranch:
         self.nodes: Dict[str, int] = {}
         self.generics: Dict[str, int] = {}
         self.groups: Dict[str, int] = {}
+        self._graphql_schema = None
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -343,6 +345,14 @@ class SchemaBranch:
     def to_dict(self) -> Dict[str, Any]:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics, "groups": self.groups}
+
+    async def get_graphql_schema(self, session: AsyncSession) -> GraphQLSchema:
+        from infrahub.graphql import generate_graphql_schema
+
+        if not self._graphql_schema:
+            self._graphql_schema = await generate_graphql_schema(session=session, branch=self.name)
+
+        return self._graphql_schema
 
     def diff(self, obj: SchemaBranch) -> SchemaDiff:
         local_keys = list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
