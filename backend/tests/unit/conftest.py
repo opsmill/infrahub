@@ -1197,6 +1197,13 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 
 @pytest.fixture
+async def register_core_schema_db(
+    session: AsyncSession, default_branch: Branch, register_core_models_schema
+) -> SchemaBranch:
+    await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, session=session)
+
+
+@pytest.fixture
 async def register_account_schema(session) -> None:
     SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
 

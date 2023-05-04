@@ -66,7 +66,7 @@ async def test_schema_load_endpoint_valid_simple(
     client: TestClient,
     client_headers,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_schema_db,
     helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
@@ -94,7 +94,7 @@ async def test_schema_load_endpoint_valid_with_generics(
     client: TestClient,
     client_headers,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_schema_db,
     helper,
 ):
     # Must execute in a with block to execute the startup/shutdown events
@@ -116,7 +116,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
     client: TestClient,
     client_headers,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_schema_db,
     helper,
 ):
     org_schema = registry.schema.get(name="Organization", branch=default_branch.name)
