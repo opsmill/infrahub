@@ -2,7 +2,7 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer, toast, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
 
@@ -182,7 +182,7 @@ function App() {
           }
         </Route>
       </Routes>
-      <ToastContainer autoClose={false} closeOnClick={false} newestOnTop position="bottom-right" />
+      <ToastContainer hideProgressBar={true} transition={Slide} autoClose={5000} closeOnClick={false} newestOnTop position="bottom-right" />
     </>
   );
 }
