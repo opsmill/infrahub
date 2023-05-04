@@ -184,7 +184,7 @@ class BaseSchemaModel(BaseModel):
 
             attr_other = getattr(other, field_name)
             attr_local = getattr(self, field_name)
-            if attr_other is None:
+            if attr_other is None or attr_local == attr_other:
                 continue
 
             if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
@@ -203,7 +203,7 @@ class BaseSchemaModel(BaseModel):
                 elif self.is_list_composed_of_standard_type(attr_local) and self.is_list_composed_of_standard_type(
                     attr_other
                 ):
-                    new_attr = list(set(attr_local + attr_other))
+                    new_attr = list(dict.fromkeys(attr_local + attr_other))
                     setattr(self, field_name, new_attr)
 
         return self

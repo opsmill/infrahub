@@ -499,7 +499,7 @@ class SchemaBranch:
             generic = self.get(name=generic_name)
 
             if generic.kind in generics_used_by:
-                generic.used_by = generics_used_by[generic.kind]
+                generic.used_by = sorted(generics_used_by[generic.kind])
             else:
                 generic.used_by = []
 

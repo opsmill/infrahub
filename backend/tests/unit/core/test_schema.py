@@ -94,7 +94,7 @@ def test_base_schema_update():
         "value3": ["one", "two", "three"],
     }
 
-    assert DeepDiff(expected_result, node1.update(node2).dict(), ignore_order=True).to_dict() == {}
+    assert DeepDiff(expected_result, node1.update(node2).dict()).to_dict() == {}
 
 
 def test_schema_root_no_generic():
