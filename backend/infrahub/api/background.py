@@ -33,7 +33,7 @@ class BackgroundRunner:
         """
 
         async with lock_registry.get_branch_schema_update():
-            logger.debug(f"[{os.getpid()}] Runner: lock acquired")
+            # logger.debug(f"[{os.getpid()}] Runner: lock acquired")
 
             branches = await Branch.get_list(session=session)
             active_branches = [branch.name for branch in branches]
