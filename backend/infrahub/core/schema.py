@@ -591,7 +591,7 @@ class NodeSchema(BaseNodeSchema):
             if item.name in self.valid_input_names:
                 continue
 
-            new_item = copy.deepcopy(item)
+            new_item = item.duplicate()
             new_item.inherited = True
 
             if isinstance(item, AttributeSchema) and item.name not in existing_inherited_fields:

@@ -913,8 +913,8 @@ class SchemaManager(NodeManager):
 
             rm = getattr(schema_node, rel_name)
             for rel in await rm.get(session=session):
-                item_data = {}
                 item = await rel.get_peer(session=session)
+                item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_data[item_name] = getattr(item, item_name).value
 
