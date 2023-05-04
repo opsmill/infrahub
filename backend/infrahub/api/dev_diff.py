@@ -10,9 +10,9 @@ from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import Branch, RelationshipDiffElement
+from infrahub.core.branch import Branch, Diff, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
-from infrahub.core.manager import NodeManager
+from infrahub.core.manager import INTERNAL_SCHEMA_NODE_KINDS, NodeManager
 from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint    : disable=too-many-branches
@@ -282,21 +282,13 @@ def extract_diff_relationship_many(
     return rel_diff
 
 
-@router.get("/data")
-async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statements
-    session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
-    branch_only: bool = True,
-) -> Dict[str, List[BranchDiffNode]]:
-    branch: Branch = await get_branch(session=session, branch=branch)
-
+async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-statements
+    session: AsyncSession, diff: Diff, kinds_to_include: Optional[List[str]] = None
+):
     response = defaultdict(list)
     nodes_in_diff = []
 
     # Query the Diff per Nodes and per Relationships from the database
-    diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     nodes = await diff.get_nodes(session=session)
     rels = await diff.get_relationships(session=session)
 
@@ -326,6 +318,9 @@ async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statement
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
     for branch_name, items in nodes.items():  # pylint: disable=too-many-nested-blocks
         for item in items.values():
+            if kinds_to_include and item.kind not in kinds_to_include:
+                continue
+
             item_graphql = item.to_graphql()
 
             # We need to convert the list of attributes to a dict under elements
@@ -431,6 +426,35 @@ async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statement
                 response[branch_name].append(node_diff)
 
     return response
+
+
+@router.get("/data")
+async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statements
+    session: AsyncSession = Depends(get_session),
+    branch: Optional[str] = None,
+    time_from: Optional[str] = None,
+    time_to: Optional[str] = None,
+    branch_only: bool = True,
+) -> Dict[str, List[BranchDiffNode]]:
+    branch: Branch = await get_branch(session=session, branch=branch)
+
+    diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+    schema = registry.schema.get_full(branch=branch)
+    return generate_diff_payload(diff=diff, session=session, kinds_to_include=list(schema.keys()))
+
+
+@router.get("/schema")
+async def get_diff_schema(  # pylint: disable=too-many-branches,too-many-statements
+    session: AsyncSession = Depends(get_session),
+    branch: Optional[str] = None,
+    time_from: Optional[str] = None,
+    time_to: Optional[str] = None,
+    branch_only: bool = True,
+) -> Dict[str, List[BranchDiffNode]]:
+    branch: Branch = await get_branch(session=session, branch=branch)
+
+    diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+    return generate_diff_payload(diff=diff, session=session, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
 
 
 @router.get("/files")
