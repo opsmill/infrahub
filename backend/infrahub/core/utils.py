@@ -122,6 +122,19 @@ async def get_paths_between_nodes(
     return await execute_read_query_async(session=session, query=query, params=params)
 
 
+async def count_relationships(session: AsyncSession) -> int:
+    """Return the total number of relationships in the database."""
+    query = """
+    MATCH ()-[r]->()
+    RETURN count(r) as count
+    """
+
+    params: dict = {}
+
+    result = await execute_write_query_async(session=session, query=query, params=params)
+    return result[0][0]
+
+
 async def delete_all_nodes(session: AsyncSession):
     query = """
     MATCH (n)
