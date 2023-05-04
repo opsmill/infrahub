@@ -284,7 +284,7 @@ def extract_diff_relationship_many(
 
 async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-statements
     session: AsyncSession, diff: Diff, kinds_to_include: Optional[List[str]] = None
-):
+) -> Dict[str, List[BranchDiffNode]]:
     response = defaultdict(list)
     nodes_in_diff = []
 
@@ -440,7 +440,7 @@ async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statement
 
     diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     schema = registry.schema.get_full(branch=branch)
-    return generate_diff_payload(diff=diff, session=session, kinds_to_include=list(schema.keys()))
+    return await generate_diff_payload(diff=diff, session=session, kinds_to_include=list(schema.keys()))
 
 
 @router.get("/schema")
@@ -454,7 +454,7 @@ async def get_diff_schema(  # pylint: disable=too-many-branches,too-many-stateme
     branch: Branch = await get_branch(session=session, branch=branch)
 
     diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
-    return generate_diff_payload(diff=diff, session=session, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
+    return await generate_diff_payload(diff=diff, session=session, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
 
 
 @router.get("/files")
