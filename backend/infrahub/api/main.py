@@ -31,7 +31,7 @@ from infrahub.middleware import InfrahubCORSMiddleware
 
 app = FastAPI(
     title="Infrahub",
-    version="0.2.0",
+    version="0.4.0",
     contact={
         "name": "OpsMill",
         "email": "info@opsmill.com",
