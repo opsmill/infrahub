@@ -44,7 +44,6 @@ async def _load(schema: Path, branch: str, log: logging.Logger) -> None:  # pyli
     _, errors = await client.schema.load(schema=schema_data, branch=branch)
 
     if errors:
-        breakpoint()
         console.print("[red]Unable to load the schema:")
         if "detail" in errors:
             for error in errors.get("detail"):
