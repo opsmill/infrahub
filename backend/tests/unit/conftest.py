@@ -949,6 +949,7 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, data
             {"name": "label", "kind": "Text", "optional": True},
             {"name": "level", "kind": "Number"},
             {"name": "color", "kind": "Text", "default_value": "#444444"},
+            {"name": "mylist", "kind": "List", "default_value": ["one", "two"]},
             {"name": "is_true", "kind": "Boolean", "default_value": True},
             {"name": "is_false", "kind": "Boolean", "default_value": False},
             {"name": "description", "kind": "Text", "optional": True},

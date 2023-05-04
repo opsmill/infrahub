@@ -7,7 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import get_paths_between_nodes
+from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.exceptions import ValidationError
 
 
@@ -413,13 +413,21 @@ async def test_node_update_local_attrs(session, default_branch: Branch, critical
     obj2.level.value = 1
     obj2.is_true.value = False
     obj2.is_false.value = True
+    obj2.mylist.value = ["one", "two"]
     await obj2.save(session=session)
+
+    nbr_rels = await count_relationships(session=session)
 
     obj3 = await NodeManager.get_one(session=session, id=obj1.id)
     assert obj3.name.value == "high"
     assert obj3.level.value == 1
     assert obj3.is_true.value is False
     assert obj3.is_false.value is True
+    assert obj3.mylist.value == ["one", "two"]
+
+    # Validate that saving the object a second time doesn't do anything
+    await obj2.save(session=session)
+    assert await count_relationships(session=session) == nbr_rels
 
 
 async def test_node_update_local_attrs_with_flags(session, default_branch: Branch, criticality_schema):

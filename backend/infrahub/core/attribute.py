@@ -66,7 +66,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.value = None
 
         if data is not None and isinstance(data, dict):
-            self.from_db(data.get("value", None))
+            self.value = self.from_db(data.get("value", None))
 
             fields_to_extract_from_data = ["id", "db_id"] + self._flag_properties + self._node_properties
             for field_name in fields_to_extract_from_data:
@@ -76,7 +76,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 self.updated_at = Timestamp(data.get("updated_at"))
 
         elif data is not None:
-            self.from_db(data)
+            self.value = self.from_db(data)
 
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
@@ -168,11 +168,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return self.serialize(self.value)
 
-    def from_db(self, value: Any):
+    @classmethod
+    def from_db(cls, value: Any):
         if value == "NULL":
-            self.value = None
-        else:
-            self.value = self.deserialize(value)
+            return None
+
+        return cls.deserialize(value)
 
     @classmethod
     def serialize(cls, value: Any) -> Any:
@@ -282,9 +283,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
         # ---------- Update the Value ----------
-        current_value = current_attr.get("av").get("value")
-        if current_value == "NULL":
-            current_value = None
+        current_value = self.from_db(current_attr.get("av").get("value"))
 
         if current_value != self.value:
             # Create the new AttributeValue and update the existing relationship
