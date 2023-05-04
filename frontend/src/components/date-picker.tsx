@@ -9,7 +9,7 @@ import { format, isValid } from "date-fns";
 export const DatePicker = (props: any) => {
   const { date, onChange, onClickNow } = props;
 
-  const [text, setText] = useState("");
+  const [text, setText] = useState(date ? format(date, "MM/dd/yyy HH:mm") : "");
   const [stateHasFocus, setStateHasFocus] = useState(false);
   const [hasError, setHasError] = useState({});
 

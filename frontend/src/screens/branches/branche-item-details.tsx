@@ -36,7 +36,6 @@ const renderContent = (tab: string | null | undefined) => {
 
 export const BrancheItemDetails = () => {
   const { branchname } = useParams();
-  console.log("branchname: ", branchname);
   const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   const navigate = useNavigate();
 

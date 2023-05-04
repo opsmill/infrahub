@@ -9,7 +9,7 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
 
-export const DataDiff = () => {
+export const FilesDiff = () => {
   const { branchname } = useParams();
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +23,7 @@ export const DataDiff = () => {
 
       setIsLoading(true);
 
-      const url = CONFIG.DATA_DIFF_URL(branchname);
+      const url = CONFIG.FILES_DIFF_URL(branchname);
 
       const options: string[][] = [
         ["branch_only", branchOnly ?? ""],

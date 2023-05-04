@@ -1,7 +1,7 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { BADGE_TYPES, Badge } from "../components/badge";
 import { Tooltip } from "../components/tooltip";
-import { tDataDiffNodeProperty } from "../screens/branches/diff/data-diff-node";
+import { tDataDiffNodePeer, tDataDiffNodeProperty } from "../screens/branches/diff/data-diff-node";
 
 export const displayValue = (value: any) => {
   if (typeof value === "boolean") {
@@ -73,4 +73,72 @@ export const diffContent: { [key: string]: any; } = {
       </div>
     );
   },
+};
+
+// Display the values
+// (only new one for "added", only old ones for "deleted", and previous + new for "updated")
+export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string, onClick: any) => {
+  const { new: newPeer, previous: previousPeer, kind, display_label } = peer;
+
+  // From relationship one
+  if (newPeer && !previousPeer) {
+    return (
+      <div className="flex">
+        <Badge type={BADGE_TYPES.VALIDATE}>
+          {displayValue(newPeer?.display_label)}
+        </Badge>
+      </div>
+    );
+  }
+
+  // From relationship one
+  if (!newPeer && previousPeer) {
+    return (
+      <div className="flex">
+        <Badge type={BADGE_TYPES.CANCEL}>
+          {displayValue(previousPeer?.display_label)}
+        </Badge>
+      </div>
+    );
+  }
+
+  // From relationship one
+  if (newPeer && previousPeer) {
+    return (
+      <div className="flex items-center">
+        <div className="flex">
+          <Tooltip message="Previous value">
+            <Badge type={BADGE_TYPES.CANCEL}>
+              {displayValue(previousPeer?.display_label)}
+            </Badge>
+          </Tooltip>
+        </div>
+
+        <div>
+          <ChevronRightIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+        </div>
+
+        <div className="flex">
+          <Tooltip message="New value">
+            <Badge type={BADGE_TYPES.VALIDATE}>
+              {displayValue(newPeer?.display_label)}
+            </Badge>
+          </Tooltip>
+        </div>
+      </div>
+    );
+  }
+
+  // From relationship many
+  if (kind && display_label && onClick) {
+    return (
+      <div className="flex">
+        <Tooltip message={`Link to ${display_label}`}>
+          <Badge type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL} onClick={onClick}>
+            {displayValue(display_label)}
+          </Badge>
+        </Tooltip>
+      </div>
+    );
+  }
 };
