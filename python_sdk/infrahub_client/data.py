@@ -20,23 +20,6 @@ class RepositoryData(BaseModel):
     branches: Dict[str, str]
 
 
-class GraphQLQueryData(BaseModel):
-    id: Optional[str]
-    name: str
-    description: Optional[str]
-    query: str
-
-
-class RFileData(BaseModel):
-    id: Optional[str]
-    name: str
-    description: Optional[str]
-    template_path: str
-    template_repository: str
-    output_path: Optional[str]
-    query: str
-
-
 class CheckData(BaseModel):
     id: Optional[str]
     name: str

@@ -91,26 +91,6 @@ def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
     return lines
 
 
-MUTATION_GRAPHQL_QUERY_CREATE = """
-mutation($name: String!, $description: String!, $query: String!) {
-  graphql_query_create(data: {
-    name: { value: $name },
-    description: { value: $description },
-    query: { value: $query }}
-    )
-    {
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-
 class BaseGraphQLQuery:
     query_type: str = "not-defined"
     indentation: int = 4
