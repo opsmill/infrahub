@@ -11,12 +11,7 @@ import httpx
 
 from infrahub_client.batch import InfrahubBatch
 from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerSync
-from infrahub_client.data import (
-    BranchData,
-    CheckData,
-    RepositoryData,
-    TransformPythonData,
-)
+from infrahub_client.data import BranchData, RepositoryData, TransformPythonData
 from infrahub_client.exceptions import (
     GraphQLError,
     NodeNotFound,
@@ -26,12 +21,9 @@ from infrahub_client.exceptions import (
 from infrahub_client.graphql import Query
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 from infrahub_client.queries import (
-    MUTATION_CHECK_CREATE,
-    MUTATION_CHECK_UPDATE,
     MUTATION_COMMIT_UPDATE,
     MUTATION_TRANSFORM_PYTHON_CREATE,
     MUTATION_TRANSFORM_PYTHON_UPDATE,
-    QUERY_ALL_CHECKS,
     QUERY_ALL_REPOSITORIES,
     QUERY_ALL_TRANSFORM_PYTHON,
 )
@@ -427,26 +419,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return repositories
 
-    async def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
-        data = await self.execute_graphql(query=QUERY_ALL_CHECKS, branch_name=branch_name, tracker="query-check-all")
-
-        items = {
-            item["name"]["value"]: CheckData(
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                file_path=item["file_path"]["value"],
-                class_name=item["class_name"]["value"],
-                query=item["query"]["name"]["value"],
-                repository=item["repository"]["id"],
-                timeout=item["timeout"]["value"],
-                rebase=item["rebase"]["value"],
-            )
-            for item in data["check"]
-        }
-
-        return items
-
     async def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
         data = await self.execute_graphql(
             query=QUERY_ALL_TRANSFORM_PYTHON, branch_name=branch_name, tracker="query-transformpython-all"
@@ -469,62 +441,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         }
 
         return items
-
-    async def create_check(
-        self,
-        branch_name: str,
-        name: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        repository: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
-        variables = {
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "repository": repository,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        await self.execute_graphql(
-            query=MUTATION_CHECK_CREATE, variables=variables, branch_name=branch_name, tracker="mutation-check-create"
-        )
-
-        return True
-
-    async def update_check(
-        self,
-        branch_name: str,
-        id: str,
-        name: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
-        variables = {
-            "id": id,
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        await self.execute_graphql(
-            query=MUTATION_CHECK_UPDATE, variables=variables, branch_name=branch_name, tracker="mutation-check-update"
-        )
-
-        return True
 
     async def create_transform_python(
         self,
@@ -661,34 +577,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
     def create_batch(self) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
-
-    def create_check(
-        self,
-        branch_name: str,
-        name: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        repository: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
-        variables = {
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "repository": repository,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        self.execute_graphql(
-            query=MUTATION_CHECK_CREATE, variables=variables, branch_name=branch_name, tracker="mutation-check-create"
-        )
-
-        return True
 
     def create_transform_python(
         self,
@@ -887,11 +775,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return obj
 
-    def get_list_checks(self, branch_name: str) -> Dict[str, CheckData]:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
     def get_list_repositories(self, branches: Optional[Dict[str, BranchData]] = None) -> Dict[str, RepositoryData]:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
@@ -917,22 +800,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         )
 
     def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
-    def update_check(
-        self,
-        branch_name: str,
-        id: str,
-        name: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )

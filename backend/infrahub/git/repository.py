@@ -971,50 +971,53 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
-        checks_in_graph = await self.client.get_list_checks(branch_name=branch_name)
-        checks_in_repo = {key: value for key, value in checks_in_graph.items() if value.repository == str(self.id)}
+        schema = await self.client.schema.get(kind="Check", branch=branch_name)
+
+        checks_in_graph = await self.client.filters(kind="Check", branch=branch_name, repository__id=str(self.id))
+
+        checks_in_repo = {check.name.value: check for check in checks_in_graph}
 
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
             check_name = check_class.__name__
 
-            if check_name not in checks_in_repo:
+            if check_name not in checks_in_repo.keys():
                 LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
-                await self.client.create_check(
-                    branch_name=branch_name,
-                    name=check_name,
-                    repository=str(self.id),
-                    query=check_class.query,
-                    file_path=file_path,
-                    class_name=check_name,
-                    rebase=check_class.rebase,
-                    timeout=check_class.timeout,
+                data = {
+                    "name": check_name,
+                    "repository": self.id,
+                    "query": check_class.query,
+                    "file_path": file_path,
+                    "class_name": check_name,
+                    "rebase": check_class.rebase,
+                    "timeout": check_class.timeout,
+                }
+                create_payload = self.client.schema.generate_payload_create(
+                    schema=schema,
+                    data=data,
+                    source=self.id,
+                    is_protected=True,
                 )
+                obj = await self.client.create(kind="Check", branch=branch_name, **create_payload)
+                await obj.save()
+
                 continue
 
             check_in_repo = checks_in_repo[check_name]
-
-            # pylint: disable=too-many-boolean-expressions
             if (
-                check_in_repo.repository != self.id
-                or check_in_repo.class_name != check_name
-                or check_in_repo.query != file_path
-                or check_in_repo.file_path != check_class.query
-                or check_in_repo.timeout != check_class.timeout
-                or check_in_repo.rebase != check_class.rebase
+                check_in_repo.query != check_class.query
+                or check_in_repo.file_path.value != file_path
+                or check_in_repo.timeout.value != check_class.timeout
+                or check_in_repo.rebase.value != check_class.rebase
             ):
                 LOGGER.info(
                     f"{self.name}: New version of the Check '{check_name}' found on branch {branch_name}, updating"
                 )
-                await self.client.update_check(
-                    branch_name=branch_name,
-                    id=str(checks_in_repo[check_name].id),
-                    name=check_name,
-                    query=check_class.query,
-                    file_path=file_path,
-                    class_name=check_name,
-                    rebase=check_class.rebase,
-                    timeout=check_class.timeout,
-                )
+
+                check_in_repo.query = check_class.query
+                check_in_repo.file_path.value = file_path
+                check_in_repo.timeout.value = check_class.timeout
+                check_in_repo.rebase.value = check_class.rebase
+                await check_in_repo.save()
 
     async def import_python_transforms_from_module(self, branch_name: str, module, file_path: str):
         # TODO add function to validate if a check is valid
@@ -1022,57 +1025,60 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
-        transforms_in_graph = await self.client.get_list_transform_python(branch_name=branch_name)
-        transforms_in_repo = {
-            key: value for key, value in transforms_in_graph.items() if value.repository == str(self.id)
-        }
+        schema = await self.client.schema.get(kind="TransformPython", branch=branch_name)
+
+        transforms_in_graph = await self.client.filters(
+            kind="TransformPython", branch=branch_name, repository__id=str(self.id)
+        )
+
+        transforms_in_repo = {transform.name.value: transform for transform in transforms_in_graph}
 
         for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
             transform = transform_class()
             transform_class_name = transform_class.__name__
 
-            if transform.name not in transforms_in_repo:
+            if transform.name not in transforms_in_repo.keys():
                 LOGGER.info(
                     f"{self.name}: New Python Transform '{transform.name}' found on branch {branch_name}, creating"
                 )
-                await self.client.create_transform_python(
-                    branch_name=branch_name,
-                    name=transform.name,
-                    repository=str(self.id),
-                    query=transform.query,
-                    file_path=file_path,
-                    url=transform.url,
-                    class_name=transform_class_name,
-                    rebase=transform.rebase,
-                    timeout=transform.timeout,
+                data = {
+                    "name": transform.name,
+                    "repository": self.id,
+                    "query": transform.query,
+                    "file_path": file_path,
+                    "url": transform.url,
+                    "class_name": transform_class_name,
+                    "rebase": transform.rebase,
+                    "timeout": transform.timeout,
+                }
+                create_payload = self.client.schema.generate_payload_create(
+                    schema=schema,
+                    data=data,
+                    source=self.id,
+                    is_protected=True,
                 )
+                obj = await self.client.create(kind="TransformPython", branch=branch_name, **create_payload)
+                await obj.save()
                 continue
 
             transform_in_repo = transforms_in_repo[transform.name]
             # pylint: disable=too-many-boolean-expressions
             if (
-                transform_in_repo.repository != self.id
-                or transform_in_repo.class_name != transform.name
-                or transform_in_repo.query != file_path
-                or transform_in_repo.file_path != transform.query
-                or transform_in_repo.timeout != transform.timeout
-                or transform_in_repo.url != transform.url
-                or transform_in_repo.rebase != transform.rebase
+                transform_in_repo.query != transform.query
+                or transform_in_repo.file_path.value != file_path
+                or transform_in_repo.timeout.value != transform.timeout
+                or transform_in_repo.url.value != transform.url
+                or transform_in_repo.rebase.value != transform.rebase
             ):
                 LOGGER.info(
                     f"{self.name}: New version of the Python Transform '{transform.name}' found on branch {branch_name}, updating"
                 )
-                await self.client.update_transform_python(
-                    branch_name=branch_name,
-                    id=str(transforms_in_repo[transform.name].id),
-                    name=transform.name,
-                    query=transform.query,
-                    file_path=file_path,
-                    url=transform.url,
-                    class_name=transform_class_name,
-                    rebase=transform.rebase,
-                    timeout=transform.timeout,
-                )
+                transform_in_repo.query = transform.query
+                transform_in_repo.file_path.value = file_path
+                transform_in_repo.url.value = transform.url
+                transform_in_repo.rebase.value = transform.rebase
+                transform_in_repo.timeout.value = transform.timeout
+                await transform_in_repo.save()
 
     async def import_all_yaml_files(self, branch_name: str):
         yaml_files = await self.find_files(extension=["yml", "yaml"], branch_name=branch_name)
