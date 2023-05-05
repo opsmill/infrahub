@@ -75,11 +75,6 @@ class TestInfrahubClient:
         assert "main" in branches
         assert "branch01" in branches
 
-    async def test_query_graphql_queries(self, client: InfrahubClient, init_db_base, base_dataset):
-        queries = await client.get_list_graphql_queries(branch_name="main")
-
-        assert "test_query2" in queries
-
     async def test_branch_delete(self, client: InfrahubClient, init_db_base, base_dataset, session):
         async_branch = "async-delete-branch"
         await create_branch(branch_name=async_branch, session=session)
@@ -88,27 +83,6 @@ class TestInfrahubClient:
         post_delete = await client.branch.all()
         assert async_branch in pre_delete.keys()
         assert async_branch not in post_delete.keys()
-
-    async def test_create_graphql_query_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
-        query_string = """
-        query {
-            branch {
-                id
-                name
-                is_data_only
-            }
-        }
-        """
-        branch_name = "main"
-
-        queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
-
-        assert len(queries) == 1
-
-        await client.create_graphql_query(branch_name=branch_name, name="test_query", query=query_string)
-
-        queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
-        assert len(queries) == 2
 
     async def test_get_all(self, client: InfrahubClient, session, init_db_base):
         obj1 = await Node.init(schema="Location", session=session)
@@ -136,11 +110,6 @@ class TestInfrahubClient:
         node = await client.get(kind="Location", id=obj1.id)
         assert isinstance(node, InfrahubNode)
         assert node.name.value == "jfk1"  # type: ignore[attr-defined]
-
-    async def test_query_rfiles(self, client: InfrahubClient, init_db_base, base_dataset):
-        rfiles = await client.get_list_rfiles(branch_name="main")
-
-        assert "rfile1" in rfiles
 
     async def test_query_transform_python(self, client: InfrahubClient, init_db_base, base_dataset):
         transforms = await client.get_list_transform_python(branch_name="main")

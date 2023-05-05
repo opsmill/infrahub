@@ -68,10 +68,7 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
-from infrahub.graphql.generator import generate_object_types
 from infrahub.utils import str_to_bool
-
-from . import get_gql_mutation, get_gql_query, get_gql_subscription
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"
@@ -128,22 +125,22 @@ class InfrahubGraphQLApp:
         if playground and self.on_get is None:
             self.on_get = make_playground_handler()
 
-    async def _get_schema(self, session: AsyncSession):
-        if not self._schema:
-            default_branch = config.SETTINGS.main.default_branch
-            await generate_object_types(session=session, branch=default_branch)
-            types_dict = registry.get_all_graphql_type(branch=default_branch)
-            types = list(types_dict.values())
+    # async def _get_schema(self, session: AsyncSession):
+    #     if not self._schema:
+    #         default_branch = config.SETTINGS.main.default_branch
+    #         await generate_object_types(session=session, branch=default_branch)
+    #         types_dict = registry.get_all_graphql_type(branch=default_branch)
+    #         types = list(types_dict.values())
 
-            self._schema = graphene.Schema(
-                query=await get_gql_query(session=session),
-                mutation=await get_gql_mutation(session=session),
-                subscription=await get_gql_subscription(session=session),
-                types=types,
-                auto_camelcase=False,
-            )
+    #         self._schema = graphene.Schema(
+    #             query=await get_gql_query(session=session),
+    #             mutation=await get_gql_mutation(session=session),
+    #             subscription=await get_gql_subscription(session=session),
+    #             types=types,
+    #             auto_camelcase=False,
+    #         )
 
-        return self._schema
+    #     return self._schema
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
@@ -221,9 +218,11 @@ class InfrahubGraphQLApp:
 
         context_value = await self._get_context_value(session=session, request=request, branch=branch)
 
-        schema = await self._get_schema(session=session)
+        schema_branch = registry.schema.get_schema_branch(name=branch.name)
+        graphql_schema = await schema_branch.get_graphql_schema(session=session)
+
         result = await graphql(
-            schema.graphql_schema,
+            schema=graphql_schema,
             source=query,
             context_value=context_value,
             root_value=self.root_value,

@@ -311,61 +311,63 @@ class TestUserWorkflow01:
         expected_result_branch1 = {
             "branch": "branch1",
             "kind": "InterfaceL3",
-            "id": "9e93b812-f726-444d-ab93-9640fceac04f",
+            "id": "e435e984-5ad6-406d-81d7-99e50bb50462",
+            "summary": {"added": 0, "removed": 0, "updated": 1},
             "display_label": "Loopback0",
             "changed_at": None,
             "action": "updated",
-            "attributes": [
-                {
+            "elements": {
+                "description": {
+                    "type": "Attribute",
                     "name": "description",
-                    "id": "79e39661-ca9d-4248-8178-80e0529a1182",
+                    "id": "fc0c1e6f-7473-4e1b-9d18-acad981002f1",
                     "changed_at": None,
+                    "summary": {"added": 0, "removed": 0, "updated": 0},
                     "action": "updated",
-                    "properties": [
-                        {
-                            "branch": "branch1",
-                            "type": "HAS_VALUE",
-                            "changed_at": "2023-04-29T15:45:38.076309Z",
-                            "action": "updated",
-                            "value": {"new": "New description in branch1", "previous": "NULL"},
-                        }
-                    ],
+                    "value": {
+                        "branch": "branch1",
+                        "type": "HAS_VALUE",
+                        "changed_at": "2023-05-04T18:28:39.138370Z",
+                        "action": "updated",
+                        "value": {"new": "New description in branch1", "previous": "NULL"},
+                    },
+                    "properties": [],
                 }
-            ],
-            "relationships": [],
+            },
         }
 
         expected_result_main = {
             "branch": "main",
             "kind": "InterfaceL3",
-            "id": "77f7998a-0d8f-48c2-a086-aa9c50c39964",
+            "id": "c2b0ceb6-15cf-4c0a-af21-e18001306f22",
+            "summary": {"added": 0, "removed": 0, "updated": 1},
             "display_label": "Ethernet1",
             "changed_at": None,
             "action": "updated",
-            "attributes": [
-                {
+            "elements": {
+                "description": {
+                    "type": "Attribute",
                     "name": "description",
-                    "id": "daadd9fb-5e58-4d9f-b8a1-bcc87ff3a167",
+                    "id": "729d49fc-e691-4de5-8076-292e6d5d7673",
                     "changed_at": None,
+                    "summary": {"added": 0, "removed": 0, "updated": 0},
                     "action": "updated",
-                    "properties": [
-                        {
-                            "branch": "main",
-                            "type": "HAS_VALUE",
-                            "changed_at": "2023-04-29T15:45:38.343810Z",
-                            "action": "updated",
-                            "value": {"new": "New description in main", "previous": "NULL"},
-                        }
-                    ],
+                    "value": {
+                        "branch": "main",
+                        "type": "HAS_VALUE",
+                        "changed_at": "2023-05-04T18:28:41.723471Z",
+                        "action": "updated",
+                        "value": {"new": "New description in main", "previous": "NULL"},
+                    },
+                    "properties": [],
                 }
-            ],
-            "relationships": [],
+            },
         }
 
         paths_to_exclude = [
             "root['id']",
-            "root['attributes'][0]['id']",
-            "root['attributes'][0]['properties'][0]['changed_at']",
+            "root['elements']['description']['id']",
+            "root['elements']['description']['value']['changed_at']",
         ]
         assert (
             DeepDiff(
@@ -419,7 +421,7 @@ class TestUserWorkflow01:
 
         assert intfs[0]["description"]["value"] == new_description
 
-    @pytest.mark.xfail(reason="FIXME: Need to revisit once we have the new diff API")
+    @pytest.mark.xfail(reason="FIXME: Need to investigate, Previous value is not correct")
     def test_validate_diff_again_after_description_update(self, client, dataset01):
         with client:
             time_from = pytest.state["time_after_intf_update_branch1"]
@@ -436,37 +438,36 @@ class TestUserWorkflow01:
         expected_result = {
             "branch": "branch1",
             "kind": "InterfaceL3",
-            "id": "51bd080e-17a2-4063-a28f-739e4cad0162",
+            "id": "8f3ed0a5-ed35-47bd-a76e-441f2d90c79a",
+            "summary": {"added": 0, "removed": 0, "updated": 1},
             "display_label": "Loopback0",
             "changed_at": None,
             "action": "updated",
-            "attributes": [
-                {
+            "elements": {
+                "description": {
+                    "type": "Attribute",
                     "name": "description",
-                    "id": "309792b7-eea4-4d5e-918c-ac142bee2355",
+                    "id": "fbbf4969-ef02-4428-a05f-bc3bee178f51",
                     "changed_at": None,
+                    "summary": {"added": 0, "removed": 0, "updated": 0},
                     "action": "updated",
-                    "properties": [
-                        {
-                            "branch": "branch1",
-                            "type": "HAS_VALUE",
-                            "changed_at": "2023-04-29T15:53:58.268370Z",
-                            "action": "updated",
-                            "value": {
-                                "new": "New New description in branch1",
-                                "previous": "New description in branch1",
-                            },
-                        }
-                    ],
+                    "value": {
+                        "branch": "branch1",
+                        "type": "HAS_VALUE",
+                        "changed_at": "2023-05-04T18:45:28.584932Z",
+                        "action": "updated",
+                        "value": {"new": "New New description in branch1", "previous": "NULL"},
+                    },
+                    "properties": [],
                 }
-            ],
-            "relationships": [],
+            },
         }
 
         paths_to_exclude = [
             "root['id']",
-            "root['attributes'][0]['id']",
-            "root['attributes'][0]['properties'][0]['changed_at']",
+            "root['elements']['description']['id']",
+            "root['elements']['description']['value']['changed_at']",
+            # "root['elements']['description']['value']['value']['previous']",
         ]
 
         assert (

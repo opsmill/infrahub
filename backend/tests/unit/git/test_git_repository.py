@@ -348,9 +348,7 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
     assert True
 
 
-async def test_sync_new_branch(
-    client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query, mock_list_graphql_query_empty
-):
+async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock, mock_add_branch01_query):
     repo = git_repo_03
 
     await repo.fetch()

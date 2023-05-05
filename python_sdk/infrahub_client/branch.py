@@ -121,7 +121,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
             }
         }
         query = Mutation(mutation="branch_merge", input_data=input_data, query=MUTATION_QUERY_DATA)
-        response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-merge")
+        response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-merge", timeout=120)
 
         return response["branch_merge"]["ok"]
 

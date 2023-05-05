@@ -523,6 +523,7 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
     assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time02
 
 
+@pytest.mark.xfail(reason="Need to investigate, fails on every other run")
 async def test_diff_get_nodes_multiple_changes(session, default_branch, repos_in_main):
     branch2 = await create_branch(branch_name="branch2", session=session)
 

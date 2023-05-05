@@ -1,10 +1,7 @@
 import asyncio
-import os
-from pathlib import Path
 
 import pendulum
 import pytest
-import ujson
 from neo4j import AsyncDriver, AsyncSession
 from neo4j._codec.hydration.v1 import HydrationHandler
 
@@ -32,7 +29,6 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-from infrahub.utils import get_fixtures_dir
 
 
 @pytest.fixture(scope="session")
@@ -953,6 +949,7 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, data
             {"name": "label", "kind": "Text", "optional": True},
             {"name": "level", "kind": "Number"},
             {"name": "color", "kind": "Text", "default_value": "#444444"},
+            {"name": "mylist", "kind": "List", "default_value": ["one", "two"]},
             {"name": "is_true", "kind": "Boolean", "default_value": True},
             {"name": "is_false", "kind": "Boolean", "default_value": False},
             {"name": "description", "kind": "Text", "optional": True},
@@ -1201,68 +1198,21 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 
 @pytest.fixture
+async def register_core_schema_db(
+    session: AsyncSession, default_branch: Branch, register_core_models_schema
+) -> SchemaBranch:
+    await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, session=session)
+    updated_schema = await registry.schema.load_schema_from_db(session=session, branch=default_branch)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
+
+
+@pytest.fixture
 async def register_account_schema(session) -> None:
     SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
 
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
     for schema in account_schemas:
         registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
-
-
-@pytest.fixture
-async def schema_file_infra_w_generics_01() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_w_generics_01.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_infra_w_extensions_01() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_w_extensions_01.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_infra_simple_01() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/infra_simple_01.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_02() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_02.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_03() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_03.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_04() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_04.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_simple_05() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_simple_05.json")).read_text()
-
-    return ujson.loads(file_content)
-
-
-@pytest.fixture
-async def schema_file_not_valid_w_generics_02() -> dict:
-    file_content = Path(os.path.join(get_fixtures_dir(), "schemas/not_valid_w_generics_02.json")).read_text()
-
-    return ujson.loads(file_content)
 
 
 @pytest.fixture

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
@@ -13,6 +15,7 @@ if TYPE_CHECKING:
 
 PROPERTIES_FLAG = ["is_visible", "is_protected"]
 PROPERTIES_OBJECT = ["source", "owner"]
+SAFE_VALUE = re.compile(r"(^[\. a-zA-Z0-9_-]+$)|(^$)")
 
 
 class Attribute:
@@ -47,11 +50,20 @@ class Attribute:
 
     def _generate_input_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {}
+        variables: Dict[str, Any] = {}
 
         if self.value is None:
             return data
 
-        data["value"] = self.value
+        if isinstance(self.value, str):
+            if SAFE_VALUE.match(self.value):
+                data["value"] = self.value
+            else:
+                var_name = f"value_{uuid.uuid4().hex}"
+                variables[var_name] = self.value
+                data["value"] = f"${var_name}"
+        else:
+            data["value"] = self.value
 
         for prop_name in self._properties_flag:
             if getattr(self, prop_name) is not None:
@@ -61,7 +73,7 @@ class Attribute:
             if getattr(self, prop_name) is not None:
                 data[prop_name] = getattr(self, prop_name)._generate_input_data()
 
-        return data
+        return {"data": data, "variables": variables}
 
     def _generate_query_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {"value": None}
@@ -242,10 +254,10 @@ class RelationshipManagerBase:
 
     @property
     def peer_ids(self) -> List[str]:
-        return [peer.id for peer in self.peers if peer.id]  # type: ignore[attr-defined]
+        return [peer.id for peer in self.peers if peer.id]
 
     def _generate_input_data(self) -> List[Dict]:
-        return [peer._generate_input_data() for peer in self.peers]  # type: ignore[attr-defined]
+        return [peer._generate_input_data() for peer in self.peers]
 
     @classmethod
     def _generate_query_data(cls) -> Dict:
@@ -385,6 +397,7 @@ class InfrahubNodeBase:
             Dict[str, Dict]: Representation of an input data in dict format
         """
         data = {}
+        variables = {}
         for item_name in self._attributes + self._relationships:
             item = getattr(self, item_name)
             # BLOCKED by https://github.com/opsmill/infrahub/issues/330
@@ -402,13 +415,23 @@ class InfrahubNodeBase:
             item_data = item._generate_input_data()
             rel_schema = self._schema.get_relationship(name=item_name, raise_on_error=False)
 
-            if item_data:
+            if item_data and isinstance(item_data, dict):
+                if variable_values := item_data.get("data"):
+                    data[item_name] = variable_values
+                else:
+                    data[item_name] = item_data
+                if variable_names := item_data.get("variables"):
+                    for key, value in variable_names.items():
+                        variables[key] = value
+            elif item_data and isinstance(item_data, list):
                 data[item_name] = item_data
             elif item_name in self._relationships and rel_schema:
                 if rel_schema.cardinality == "many":
                     data[item_name] = []
 
-        return {"data": data}
+        mutation_variables = {key: type(value) for key, value in variables.items()}
+
+        return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
     def generate_query_data(self, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {"id": None, "display_label": None}
@@ -450,6 +473,7 @@ class InfrahubNode(InfrahubNodeBase):
         self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
     ) -> None:
         self._client = client
+        self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
@@ -500,26 +524,37 @@ class InfrahubNode(InfrahubNodeBase):
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
         mutation_name = f"{self._schema.name}_create"
-        query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
-
+        query = Mutation(
+            mutation=mutation_name,
+            input_data=input_data["data"],
+            query=mutation_query,
+            variables=input_data["mutation_variables"],
+        )
         response = await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+            variables=input_data["variables"],
         )
         self.id = response[mutation_name]["object"]["id"]
 
     async def _update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
-        input_data["data"]["id"] = self.id
+        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        query = Mutation(mutation=f"{self._schema.name}_update", input_data=input_data, query=mutation_query)
+        query = Mutation(
+            mutation=f"{self._schema.name}_update",
+            input_data=input_data["data"],
+            query=mutation_query,
+            variables=input_data["mutation_variables"],
+        )
         await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
+            variables=input_data["variables"],
         )
 
 
@@ -527,6 +562,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def __init__(
         self, client: InfrahubClientSync, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
     ) -> None:
+        self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
@@ -575,26 +611,39 @@ class InfrahubNodeSync(InfrahubNodeBase):
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
         mutation_name = f"{self._schema.name}_create"
-        query = Mutation(mutation=mutation_name, input_data=input_data, query=mutation_query)
+        query = Mutation(
+            mutation=mutation_name,
+            input_data=input_data["data"],
+            query=mutation_query,
+            variables=input_data["mutation_variables"],
+        )
 
         response = self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+            variables=input_data["variables"],
         )
         self.id = response[mutation_name]["object"]["id"]
 
     def _update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
-        input_data["data"]["id"] = self.id
+        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        query = Mutation(mutation=f"{self._schema.name}_update", input_data=input_data, query=mutation_query)
+        query = Mutation(
+            mutation=f"{self._schema.name}_update",
+            input_data=input_data["data"],
+            query=mutation_query,
+            variables=input_data["mutation_variables"],
+        )
+
         self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
+            variables=input_data["variables"],
         )
 
 

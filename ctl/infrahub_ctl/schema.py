@@ -21,7 +21,7 @@ def callback() -> None:
     """
 
 
-async def _load(schema: Path, log: logging.Logger) -> None:  # pylint: disable=unused-argument
+async def _load(schema: Path, branch: str, log: logging.Logger) -> None:  # pylint: disable=unused-argument
     console = Console()
 
     try:
@@ -41,13 +41,18 @@ async def _load(schema: Path, log: logging.Logger) -> None:  # pylint: disable=u
             console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
         raise typer.Exit(2)
 
-    _, errors = await client.schema.load(schema=schema_data)
+    _, errors = await client.schema.load(schema=schema_data, branch=branch)
 
     if errors:
         console.print("[red]Unable to load the schema:")
-        for error in errors.get("detail"):
-            loc_str = [str(item) for item in error["loc"][1:]]
-            console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
+        if "detail" in errors:
+            for error in errors.get("detail"):
+                loc_str = [str(item) for item in error["loc"][1:]]
+                console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
+        elif "error" in errors:
+            console.print(f"  '{errors.get('error')}'")
+        else:
+            console.print(f"  '{errors}'")
     else:
         console.print("[green]Schema loaded successfully!")
 
@@ -56,6 +61,7 @@ async def _load(schema: Path, log: logging.Logger) -> None:  # pylint: disable=u
 def load(
     schema: Path,
     debug: bool = False,
+    branch: str = typer.Option("main", help="Branch on which to load the schema."),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
 ) -> None:
     """Load a schema file into Infrahub."""
@@ -70,7 +76,7 @@ def load(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    aiorun(_load(schema=schema, log=log))
+    aiorun(_load(schema=schema, branch=branch, log=log))
 
 
 @app.command()

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import time
@@ -13,7 +14,8 @@ from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
-from infrahub.api import dev_diff, diff, internal, schema, transformation
+from infrahub.api import diff, internal, schema, transformation
+from infrahub.api.background import BackgroundRunner
 from infrahub.api.dependencies import get_session
 from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
@@ -22,7 +24,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
 from infrahub.exceptions import BranchNotFound
-from infrahub.graphql import generate_graphql_schema
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -30,7 +31,7 @@ from infrahub.middleware import InfrahubCORSMiddleware
 
 app = FastAPI(
     title="Infrahub",
-    version="0.2.0",
+    version="0.4.0",
     contact={
         "name": "OpsMill",
         "email": "info@opsmill.com",
@@ -42,12 +43,10 @@ app = FastAPI(
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
-
 app.include_router(schema.router)
 app.include_router(transformation.router)
 app.include_router(internal.router)
 app.include_router(diff.router)
-app.include_router(dev_diff.router)
 
 
 @app.on_event("startup")
@@ -69,6 +68,13 @@ async def app_initialization():
 
     # Initialize RPC Client
     app.state.rpc_client = await InfrahubRpcClient().connect()
+
+    # Initialize the Background Runner
+    if "testing" not in config.SETTINGS.database.database:
+        app.state.runner = BackgroundRunner(
+            driver=app.state.db, database_name=config.SETTINGS.database.database, interval=10
+        )
+        asyncio.create_task(app.state.runner.run())
 
 
 @app.on_event("shutdown")
@@ -127,7 +133,9 @@ async def graphql_query(
     if not gql_query:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    gql_schema = await generate_graphql_schema(session=session, branch=branch, include_subscription=False)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    gql_schema = await schema_branch.get_graphql_schema(session=session)
+
     result = await graphql(
         gql_schema,
         source=gql_query.query.value,

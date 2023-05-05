@@ -3,7 +3,7 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer, toast, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
 
@@ -23,6 +23,8 @@ import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { fetchUrl } from "./utils/fetch";
 import { QSP } from "./config/qsp";
+
+const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
 
 function App() {
   const [, setSchema] = useAtom(schemaState);
@@ -135,6 +137,10 @@ function App() {
   const setSchemaInState = useCallback(
     async () => {
       const {schema, generics}: { schema: iNodeSchema[], generics: iGenericSchema[]} = await fetchSchema();
+      schema.forEach(s => {
+        s.attributes = sortByOrderWeight(s.attributes || []);
+        s.relationships = sortByOrderWeight(s.relationships || []);
+      });
       setSchema(schema);
       setGenerics(generics);
 
@@ -184,7 +190,7 @@ function App() {
           }
         </Route>
       </Routes>
-      <ToastContainer autoClose={false} closeOnClick={false} newestOnTop position="bottom-right" />
+      <ToastContainer hideProgressBar={true} transition={Slide} autoClose={5000} closeOnClick={false} newestOnTop position="bottom-right" />
     </ApolloProvider>
   );
 }

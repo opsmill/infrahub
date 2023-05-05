@@ -49,7 +49,7 @@ const getFormStructureForCreateEdit = (
   });
 
   schema.relationships
-  ?.filter((relationship) => relationship.kind === "Attribute")
+  ?.filter((relationship) => relationship.cardinality === "one")
   .forEach((relationship) => {
     let options: SelectOption[] = [];
 

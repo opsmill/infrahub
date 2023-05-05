@@ -6,9 +6,6 @@ interface iColumn {
   name: string;
 }
 
-const getLabelAndName = R.pick(["label", "name"]);
-const sortByLabel = R.sortBy(R.compose(R.toLower, R.prop("label")));
-
 export const getSchemaRelationshipColumns = (
   schema: iNodeSchema | iGenericSchema
 ): iColumn[] => {
@@ -19,8 +16,11 @@ export const getSchemaRelationshipColumns = (
   // Relationship kind to show in LIST VIEW - Attribute, Parent
   const relationships = (schema.relationships || [])
   .filter(relationship => relationship.kind === "Attribute" || relationship.kind === "Parent")
-  .map(getLabelAndName);
-  return sortByLabel(relationships);
+  .map((row) => ({
+    label: row.label ?? "",
+    name: row.name,
+  }));
+  return relationships;
 };
 
 export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
@@ -28,8 +28,11 @@ export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema):
     return [];
   }
 
-  const attributes = (schema.attributes || []).map(getLabelAndName);
-  return sortByLabel(attributes);
+  const attributes = (schema.attributes || []).map((row) => ({
+    label: row.label ?? "",
+    name: row.name,
+  }));
+  return attributes;
 };
 
 export const getSchemaObjectColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
@@ -41,7 +44,7 @@ export const getSchemaObjectColumns = (schema: iNodeSchema | iGenericSchema): iC
   const relationships = getSchemaRelationshipColumns(schema);
 
   const columns = R.concat(attributes, relationships);
-  return sortByLabel(columns);
+  return columns;
 };
 
 export const getAttributeColumnsFromNodeOrGenericSchema = (schemaList: iNodeSchema[], generics: iGenericSchema[], kind: String): iColumn[] => {

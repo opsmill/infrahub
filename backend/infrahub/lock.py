@@ -13,5 +13,8 @@ class Registry:
             self.locks[name] = asyncio.Lock()
         return self.locks[name]
 
+    def get_branch_schema_update(self):
+        return self.get("branch-schema-update")
+
 
 registry = Registry()

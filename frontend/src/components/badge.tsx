@@ -24,7 +24,7 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
     case BADGE_TYPES.CANCEL: {
       return `
         bg-red-400 text-gray-50
-        ${onClick ? "cursor-pointer hovebg-red-200:" : ""}
+        ${onClick ? "cursor-pointer hover:bg-red-200" : ""}
       `;
     }
     case BADGE_TYPES.WARNING: {

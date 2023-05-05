@@ -2,7 +2,7 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { CircleStackIcon, PlusIcon, ShieldCheckIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
@@ -47,6 +47,16 @@ export default function BranchSelector() {
     },
     [branch, branchInQueryString, branches]
   );
+
+  useEffect(() => {
+    // On page load, if no branch is set in state (branchState). Fetching it from QSP and setting it in state.
+    if(!branch && branchInQueryString && branches.length) {
+      const selectedBranch = branches.find(b => b.name === branchInQueryString);
+      if(selectedBranch) {
+        setBranch(selectedBranch);
+      }
+    }
+  }, [branch, branchInQueryString, branches, setBranch]);
 
   const valueLabel = (
     <>
