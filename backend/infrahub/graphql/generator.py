@@ -4,7 +4,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Tuple, Type, Union
 
 import graphene
-from fastapi.logger import logger
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry

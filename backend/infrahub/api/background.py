@@ -16,7 +16,7 @@ class BackgroundRunner:
         self.interval = interval
 
     async def run(self):
-        logger.info(f"Background process started")
+        logger.info("Background process started")
 
         while True:
             async with self.driver.session(database=self.database_name) as session:
