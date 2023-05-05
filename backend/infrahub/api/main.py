@@ -187,8 +187,8 @@ app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), method
 app.add_route(
     path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
 )
-app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
-app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
+# app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
+# app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
 
 if __name__ != "main":
     logger.setLevel(gunicorn_logger.level)
