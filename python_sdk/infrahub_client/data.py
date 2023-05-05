@@ -18,16 +18,3 @@ class RepositoryData(BaseModel):
     name: str
     location: str
     branches: Dict[str, str]
-
-
-class TransformPythonData(BaseModel):
-    id: Optional[str]
-    name: str
-    description: Optional[str]
-    repository: str
-    file_path: str
-    class_name: str
-    query: str
-    url: str
-    timeout: Optional[int]
-    rebase: Optional[bool]

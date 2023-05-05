@@ -16,47 +16,6 @@ query {
 """
 
 
-QUERY_ALL_TRANSFORM_PYTHON = """
-query {
-    transform_python {
-        id
-        name {
-            value
-        }
-        description {
-            value
-        }
-        file_path {
-            value
-        }
-        class_name {
-            value
-        }
-        rebase {
-            value
-        }
-        timeout {
-            value
-        }
-        url {
-            value
-        }
-        query {
-            id
-            name {
-                value
-            }
-        }
-        repository {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
 QUERY_ALL_BRANCHES = """
 query {
     branch {
@@ -133,55 +92,6 @@ mutation ($repository_id: String!, $commit: String!) {
         ok
         object {
             commit {
-                value
-            }
-        }
-    }
-}
-"""
-
-
-MUTATION_TRANSFORM_PYTHON_CREATE = """
-mutation($name: String!, $description: String!, $file_path: String!, $class_name: String!, $repository: String!, $query: String!, $url: String!, $timeout: Int!, $rebase: Boolean!) {
-  transform_python_create(data: {
-    name: { value: $name }
-    description: { value: $description }
-    query: { id: $query }
-    file_path: { value: $file_path }
-    url: { value: $url }
-    class_name: { value: $class_name }
-    repository: { id: $repository }
-    timeout: { value: $timeout }
-    rebase: { value: $rebase }
-  }){
-        ok
-        object {
-            id
-            name {
-                value
-            }
-        }
-    }
-}
-"""
-
-MUTATION_TRANSFORM_PYTHON_UPDATE = """
-mutation($id: String!, $name: String!, $description: String!, $file_path: String!, $class_name: String!, $query: String!, $url: String!, $timeout: Int!, $rebase: Boolean!) {
-  transform_python_update(data: {
-    id: $id
-    name: { value: $name },
-    description: { value: $description },
-    file_path: { value: $file_path },
-    class_name: { value: $class_name },
-    url: { value: $url },
-    query: { id: $query },
-    timeout: { value: $timeout },
-    rebase: { value: $rebase },
-  }){
-        ok
-        object {
-            id
-            name {
                 value
             }
         }

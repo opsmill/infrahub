@@ -11,7 +11,7 @@ import httpx
 
 from infrahub_client.batch import InfrahubBatch
 from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerSync
-from infrahub_client.data import BranchData, RepositoryData, TransformPythonData
+from infrahub_client.data import BranchData, RepositoryData
 from infrahub_client.exceptions import (
     GraphQLError,
     NodeNotFound,
@@ -20,13 +20,7 @@ from infrahub_client.exceptions import (
 )
 from infrahub_client.graphql import Query
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
-from infrahub_client.queries import (
-    MUTATION_COMMIT_UPDATE,
-    MUTATION_TRANSFORM_PYTHON_CREATE,
-    MUTATION_TRANSFORM_PYTHON_UPDATE,
-    QUERY_ALL_REPOSITORIES,
-    QUERY_ALL_TRANSFORM_PYTHON,
-)
+from infrahub_client.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
@@ -35,7 +29,6 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 # pylint: disable=redefined-builtin
-# pylint: disable=too-many-lines
 
 
 class BaseClient:
@@ -419,95 +412,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return repositories
 
-    async def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
-        data = await self.execute_graphql(
-            query=QUERY_ALL_TRANSFORM_PYTHON, branch_name=branch_name, tracker="query-transformpython-all"
-        )
-
-        items = {
-            item["name"]["value"]: TransformPythonData(
-                id=item["id"],
-                name=item["name"]["value"],
-                description=item["description"]["value"],
-                file_path=item["file_path"]["value"],
-                url=item["url"]["value"],
-                class_name=item["class_name"]["value"],
-                query=item["query"]["name"]["value"],
-                repository=item["repository"]["id"],
-                timeout=item["timeout"]["value"],
-                rebase=item["rebase"]["value"],
-            )
-            for item in data["transform_python"]
-        }
-
-        return items
-
-    async def create_transform_python(
-        self,
-        branch_name: str,
-        name: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        repository: str,
-        url: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
-        variables = {
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "repository": repository,
-            "url": url,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        await self.execute_graphql(
-            query=MUTATION_TRANSFORM_PYTHON_CREATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-transformpython-create",
-        )
-
-        return True
-
-    async def update_transform_python(
-        self,
-        branch_name: str,
-        id: str,
-        name: str,
-        url: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
-        variables = {
-            "id": id,
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "url": url,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        await self.execute_graphql(
-            query=MUTATION_TRANSFORM_PYTHON_UPDATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-transformpython-update",
-        )
-
-        return True
-
     async def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
         await self.execute_graphql(
@@ -577,39 +481,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
     def create_batch(self) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
-
-    def create_transform_python(
-        self,
-        branch_name: str,
-        name: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        repository: str,
-        url: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
-        variables = {
-            "name": name,
-            "description": description,
-            "file_path": file_path,
-            "class_name": class_name,
-            "repository": repository,
-            "url": url,
-            "query": query,
-            "timeout": timeout,
-            "rebase": rebase,
-        }
-        self.execute_graphql(
-            query=MUTATION_TRANSFORM_PYTHON_CREATE,
-            variables=variables,
-            branch_name=branch_name,
-            tracker="mutation-transformpython-create",
-        )
-
-        return True
 
     def execute_graphql(  # pylint: disable=too-many-branches
         self,
@@ -780,11 +651,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
-    def get_list_transform_python(self, branch_name: str) -> Dict[str, TransformPythonData]:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
     def query_gql_query(
         self,
         name: str,
@@ -800,23 +666,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         )
 
     def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
-        )
-
-    def update_transform_python(
-        self,
-        branch_name: str,
-        id: str,
-        name: str,
-        url: str,
-        query: str,
-        file_path: str,
-        class_name: str,
-        description: str = "",
-        timeout: int = 10,
-        rebase: bool = False,
-    ) -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
