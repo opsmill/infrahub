@@ -27,6 +27,8 @@ SAFE_GRAPHQL_VALUES = [
     pytest.param("User Lastname", id="allow-space"),
     pytest.param("020a1c39-6071-4bf8-9336-ffb7a001e665", id="allow-uuid"),
     pytest.param("user.lastname", id="allow-dots"),
+    pytest.param("/opt/repos/backbone-links", id="allow-filepaths"),
+    pytest.param("https://github.com/opsmill/infrahub-demo-edge", id="allow-urls"),
 ]
 
 UNSAFE_GRAPHQL_VALUES = [
