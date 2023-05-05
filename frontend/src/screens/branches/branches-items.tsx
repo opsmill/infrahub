@@ -5,8 +5,8 @@ import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
-import useQuery from "../../graphql/hooks/useQuery";
-import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
+// import useQuery from "../../graphql/hooks/useQuery";
+// import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { DateDisplay } from "../../components/date-display";
 import { constructPath } from "../../utils/fetch";
@@ -16,10 +16,7 @@ export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
 
-  const { loading, error, data } = useQuery(GET_BRANCHES);
-  console.log("error: ", error);
-  console.log("loading: ", loading);
-  console.log("data: ", data);
+  // const { loading, error, data } = useQuery(GET_BRANCHES);
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 

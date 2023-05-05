@@ -88,6 +88,7 @@ export const getBadgeType = (action?: string) => {
 
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { node } = props;
+  console.log("node: ", node);
 
   const {
     display_label,
