@@ -40,6 +40,7 @@ async def generate_graphql_schema(
     graphene_schema = graphene.Schema(
         query=query, mutation=mutation, subscription=subscription, types=types, auto_camelcase=False
     )
+
     return graphene_schema.graphql_schema
 
 
