@@ -1,4 +1,3 @@
-import os
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends
@@ -51,8 +50,6 @@ async def load_schema(
 
     # TODO we need to replace this lock with a distributed lock
     async with lock_registry.get_branch_schema_update():
-        # logger.debug(f"[{os.getpid()}] API: {branch.name}: lock acquired, current hash {branch.schema_hash}")
-
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.
@@ -70,7 +67,7 @@ async def load_schema(
                 schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
             )
             branch.update_schema_hash()
-            logger.info(f"[{os.getpid()}] {branch.name}: Schema has been updated, new hash {branch.schema_hash}")
+            logger.info(f"{branch.name}: Schema has been updated, new hash {branch.schema_hash}")
             await branch.save(session=session)
 
         return JSONResponse(status_code=202, content={})
