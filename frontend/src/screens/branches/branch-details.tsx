@@ -94,7 +94,7 @@ export const BranchDetails = () => {
             description={
               (
                 <>
-                  Are you sure you want to remove the the branch:<br/> <b>`{branch?.name}`</b>?
+                  Are you sure you want to remove the the branch<br/> <b>`{branch?.name}`</b>?
                 </>
               )
             }
