@@ -6,11 +6,11 @@ from asyncio import run as aiorun
 
 import typer
 from aio_pika import IncomingMessage
-from rich.logging import RichHandler
 
 import infrahub.config as config
 from infrahub.git import handle_message, initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
+from infrahub.log import log
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import (
     InfrahubMessage,
@@ -94,12 +94,6 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int, log: lo
 async def _start(debug: bool, interval: int, config_file: str):
     """Start Infrahub Git Agent."""
 
-    log_level = "DEBUG" if debug else "INFO"
-
-    FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub.git")
-
     log.debug(f"Config file : {config_file}")
 
     config.load_and_exit(config_file)
@@ -125,11 +119,13 @@ def start(
     debug: bool = False,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    logging.getLogger("httpx").setLevel(logging.ERROR)
-    logging.getLogger("httpcore").setLevel(logging.ERROR)
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-    logging.getLogger("aio_pika").setLevel(logging.ERROR)
-    logging.getLogger("aiormq").setLevel(logging.ERROR)
-    logging.getLogger("git").setLevel(logging.ERROR)
+    log.set_name("infrahub.git")
+    log.set_handler("rich")
+    # logging.getLogger("httpx").setLevel(logging.ERROR)
+    # logging.getLogger("httpcore").setLevel(logging.ERROR)
+    # logging.getLogger("neo4j").setLevel(logging.ERROR)
+    # logging.getLogger("aio_pika").setLevel(logging.ERROR)
+    # logging.getLogger("aiormq").setLevel(logging.ERROR)
+    # logging.getLogger("git").setLevel(logging.ERROR)
 
     aiorun(_start(interval=interval, debug=debug, config_file=config_file))
