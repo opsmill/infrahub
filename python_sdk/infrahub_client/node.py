@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 PROPERTIES_FLAG = ["is_visible", "is_protected"]
 PROPERTIES_OBJECT = ["source", "owner"]
-SAFE_VALUE = re.compile(r"(^[\. a-zA-Z0-9_-]+$)|(^$)")
+SAFE_VALUE = re.compile(r"(^[\. /:a-zA-Z0-9_-]+$)|(^$)")
 
 
 class Attribute:
