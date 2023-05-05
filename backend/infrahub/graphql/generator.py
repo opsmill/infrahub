@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Tuple, Type, Union
 
 import graphene
+from fastapi.logger import logger
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
@@ -121,7 +122,7 @@ async def generate_object_types(
 
     branch = await get_branch(session=session, branch=branch)
 
-    full_schema = registry.schema.get_full(branch=branch)
+    full_schema = await registry.schema.get_full_safe(branch=branch)
 
     group_memberships = defaultdict(list)
 
@@ -216,10 +217,10 @@ async def generate_object_types(
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
-    full_schema = registry.schema.get_full(branch=branch)
+    full_schema = await registry.schema.get_full_safe(branch=branch)
 
     # Generate all Graphql objectType and store them in the registry
-    await generate_object_types(session=session)
+    await generate_object_types(session=session, branch=branch)
 
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, NodeSchema):
