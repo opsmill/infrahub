@@ -16,7 +16,8 @@ class Registry:
     async def wait_until_available(self, name: str) -> None:
         """Wait until a given lock is available.
 
-        This allow to block functions what shouldnt process during an event but it's not a blocker if multiple of them happen at the same time.
+        This allow to block functions what shouldnt process during an event
+        but it's not a blocker if multiple of them happen at the same time.
         """
         while self.get(name=name).locked():
             await sleep(0.1)
