@@ -1,5 +1,4 @@
 import asyncio
-import os
 import random
 
 from fastapi.logger import logger
@@ -17,6 +16,8 @@ class BackgroundRunner:
         self.interval = interval
 
     async def run(self):
+        logger.info("Background process started")
+
         while True:
             async with self.driver.session(database=self.database_name) as session:
                 await self.refresh_branches(session=session)
@@ -33,7 +34,7 @@ class BackgroundRunner:
         """
 
         async with lock_registry.get_branch_schema_update():
-            # logger.debug(f"[{os.getpid()}] Runner: lock acquired")
+            # logger.debug(f"Runner: lock acquired")
 
             branches = await Branch.get_list(session=session)
             active_branches = [branch.name for branch in branches]
@@ -43,17 +44,17 @@ class BackgroundRunner:
                 if branch_already_present:
                     if registry.branch[new_branch.name].schema_hash != new_branch.schema_hash:
                         logger.info(
-                            f"[{os.getpid()}] {new_branch.name}: New hash detected OLD {registry.branch[new_branch.name].schema_hash} >> {new_branch.schema_hash} NEW"
+                            f"{new_branch.name}: New hash detected OLD {registry.branch[new_branch.name].schema_hash} >> {new_branch.schema_hash} NEW"
                         )
                         registry.branch[new_branch.name] = new_branch
                         await registry.schema.load_schema_from_db(session=session, branch=new_branch)
 
                 else:
-                    logger.debug(f"[{os.getpid()}] {new_branch.name}: New branch detected")
+                    logger.info(f"{new_branch.name}: New branch detected")
                     registry.branch[new_branch.name] = new_branch
                     await registry.schema.load_schema_from_db(session=session, branch=new_branch)
 
             for branch_name in list(registry.branch.keys()):
                 if branch_name not in active_branches:
                     del registry.branch[branch_name]
-                    logger.debug(f"[{os.getpid()}] Removed branch {branch_name} from the registry")
+                    logger.info(f"Removed branch {branch_name} from the registry")

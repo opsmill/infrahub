@@ -1,5 +1,7 @@
-from infrahub.core import get_branch, get_branch_from_registry
+from infrahub.core import get_branch, get_branch_from_registry, registry
 from infrahub.core.branch import Branch
+from infrahub.core.manager import SchemaManager
+from infrahub.core.schema import SchemaRoot, internal_schema
 
 
 async def test_get_branch_from_registry(session, default_branch):
@@ -11,6 +13,11 @@ async def test_get_branch_from_registry(session, default_branch):
 
 
 async def test_get_branch_not_in_registry(session, default_branch):
+    # initialize internal registry
+    registry.schema = SchemaManager()
+    schema = SchemaRoot(**internal_schema)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
     branch1 = Branch(name="branch1", status="OPEN")
     await branch1.save(session=session)
 

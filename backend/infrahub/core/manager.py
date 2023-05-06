@@ -32,6 +32,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import SchemaNotFound
+from infrahub.lock import registry as lock_registry
 from infrahub.utils import deep_merge_dict, intersection
 
 if TYPE_CHECKING:
@@ -612,6 +613,13 @@ class SchemaManager(NodeManager):
             branch_name = config.SETTINGS.main.default_branch
 
         return self._branches[branch_name].get_all()
+
+    async def get_full_safe(
+        self, branch: Optional[Union[Branch, str]] = None
+    ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+        await lock_registry.wait_branch_schema_update_available()
+
+        return self.get_full(branch=branch)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:
         if name in self._branches:
