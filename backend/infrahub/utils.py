@@ -1,29 +1,10 @@
 import os
-from datetime import datetime
 from enum import Enum, EnumMeta
 from itertools import groupby
 from typing import Any, List, Optional
 from uuid import UUID
 
-from fastapi.logger import logger
-
 KWARGS_TO_DROP = ["session"]
-
-
-def timeit(method):
-    def timed(*args, **kwargs):
-        start_time = datetime.now()
-        result = method(*args, **kwargs)
-        end_time = datetime.now()
-
-        time_diff = end_time - start_time
-
-        clean_kwargs = {key: value for key, value in kwargs.items() if key not in KWARGS_TO_DROP}
-        logger.info("%r (%r, %r) %2.2f sec" % (method.__name__, args, clean_kwargs, time_diff.total_seconds() * 1000))
-
-        return result
-
-    return timed
 
 
 def is_valid_uuid(value: Any) -> bool:
