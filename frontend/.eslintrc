@@ -1,0 +1,63 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true
+    },
+    "extends": [
+        "plugin:react/recommended",
+        "react-app",
+        "react-app/jest",
+        "prettier"
+    ],
+    "plugins": [
+        "unused-imports"
+    ],
+    "rules": {
+        "quotes": [
+            "error",
+            "double"
+        ],
+        "indent": [
+            "error",
+            2,
+            {
+                "SwitchCase": 1,
+                "MemberExpression": 0
+            }
+        ],
+        "function-paren-newline": [
+            "error",
+            "consistent"
+        ],
+        "array-bracket-spacing": [
+            "error",
+            "never"
+        ],
+        "no-return-assign": [
+            0
+        ],
+        "no-underscore-dangle": [
+            0
+        ],
+        "no-tabs": [
+            0
+        ],
+        "no-confusing-arrow": [
+            0
+        ],
+        "no-case-declarations": [
+            0
+        ],
+        "react/display-name": [
+            0
+        ],
+        "import/no-relative-packages": [
+            0
+        ],
+        "react/react-in-jsx-scope": "off",
+        "@typescript-eslint/no-unused-vars": "error",
+        "unused-imports/no-unused-imports-ts": 2,
+        "semi": "error",
+        "no-trailing-spaces": "error"
+    }
+}
