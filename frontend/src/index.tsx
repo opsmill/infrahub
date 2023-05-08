@@ -8,10 +8,8 @@ import reportWebVitals from "./reportWebVitals";
 import App from "./App";
 
 const root = ReactDOM.createRoot(
-  (
-    document.getElementById("root")
-    || document.createElement("div")
-  ) as HTMLElement
+  (document.getElementById("root") ||
+    document.createElement("div")) as HTMLElement
 );
 
 root.render(

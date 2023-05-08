@@ -5,8 +5,8 @@ import { Branch } from "../../../generated/graphql";
 declare const Handlebars: any;
 
 type BranchResult = {
-  branch: Branch[]
-}
+  branch: Branch[];
+};
 
 // TODO: Not working for now, needs the backend to be implemented
 // const template = Handlebars.compile(`query {
@@ -49,7 +49,9 @@ const getBranchDetails = async (name: string) => {
   const data: BranchResult = await graphQLClient.request(query);
 
   // TODO: Remove filter once the details query is working
-  const currentBranch = data?.branch?.filter((branch: any) => branch.name === name)[0];
+  const currentBranch = data?.branch?.filter(
+    (branch: any) => branch.name === name
+  )[0];
 
   return currentBranch;
 };

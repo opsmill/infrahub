@@ -8,7 +8,7 @@ export type iGenericSchema = components["schemas"]["GenericSchema"];
 export const genericsState = atom<iGenericSchema[]>([]);
 
 export interface iGenericSchemaMapping {
-    [node: string]: string[];
+  [node: string]: string[];
 }
 export const genericSchemaState = atom<iGenericSchemaMapping>({});
 

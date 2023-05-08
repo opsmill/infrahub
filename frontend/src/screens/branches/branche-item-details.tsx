@@ -15,16 +15,16 @@ export const BRANCH_TABS = {
 const tabs = [
   {
     label: "Details",
-    name: BRANCH_TABS.DETAILS
+    name: BRANCH_TABS.DETAILS,
   },
   {
     label: "Diff",
-    name: BRANCH_TABS.DIFF
+    name: BRANCH_TABS.DIFF,
   },
 ];
 
 const renderContent = (tab: string | null | undefined) => {
-  switch(tab) {
+  switch (tab) {
     case BRANCH_TABS.DIFF: {
       return <Diff />;
     }
@@ -51,7 +51,10 @@ export const BrancheItemDetails = () => {
           >
             Branches
           </div>
-          <ChevronRightIcon className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400" aria-hidden="true" />
+          <ChevronRightIcon
+            className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+            aria-hidden="true"
+          />
 
           <p className="mt-1 max-w-2xl text-sm text-gray-500">{branchname}</p>
         </div>
@@ -59,9 +62,7 @@ export const BrancheItemDetails = () => {
 
       <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
-      {
-        renderContent(qspTab)
-      }
+      {renderContent(qspTab)}
     </>
   );
 };

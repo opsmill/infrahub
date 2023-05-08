@@ -6,7 +6,10 @@ import { FormProps } from "../screens/edit-form-hook/form";
 
 export const Filters = ({ fields, onSubmit }: FormProps) => {
   const formMethods = useForm();
-  const { handleSubmit, formState: { errors }, } = formMethods;
+  const {
+    handleSubmit,
+    formState: { errors },
+  } = formMethods;
 
   const FilterField = (props: any) => {
     const { field, error } = props;
@@ -23,14 +26,13 @@ export const Filters = ({ fields, onSubmit }: FormProps) => {
       <form className="flex-1" onSubmit={handleSubmit(onSubmit)}>
         <FormProvider {...formMethods}>
           <div className="flex mb-4">
-            {
-              fields
-              .map(
-                (field: any, index: number) => (
-                  <FilterField key={index} field={field} error={resolve(field.name, errors)} />
-                )
-              )
-            }
+            {fields.map((field: any, index: number) => (
+              <FilterField
+                key={index}
+                field={field}
+                error={resolve(field.name, errors)}
+              />
+            ))}
           </div>
 
           {/* <Button
@@ -40,9 +42,7 @@ export const Filters = ({ fields, onSubmit }: FormProps) => {
             Clear all
           </Button> */}
 
-          <Button type="submit">
-            Validate
-          </Button>
+          <Button type="submit">Validate</Button>
         </FormProvider>
       </form>
     </div>

@@ -13,8 +13,8 @@ import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { useNavigate } from "react-router-dom";
 
 export type tDataDiffNodeElementProps = {
-  element: tDataDiffNodeElement,
-}
+  element: tDataDiffNodeElement;
+};
 
 export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { element } = props;
@@ -31,7 +31,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
     properties,
     summary,
     peer,
-    peers
+    peers,
   } = element;
 
   const renderDiffDisplay = () => {
@@ -40,7 +40,11 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
     }
 
     if (peer?.kind && peer?.id) {
-      const objectUrl = getObjectDetailsUrl({ __typename: peer.kind }, schemaKindName, peer.id);
+      const objectUrl = getObjectDetailsUrl(
+        { __typename: peer.kind },
+        schemaKindName,
+        peer.id
+      );
 
       const url = branch
         ? constructPath(`${objectUrl}?branch=${branch}`)
@@ -57,41 +61,20 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const titleContent = (
     <div className="p-2 pr-0 hover:bg-gray-50 grid grid-cols-3 gap-4">
       <div className="flex">
-        {
-          !name
-          && peer?.kind
-          && (
-            <Badge>
-              {
-                peer?.kind
-              }
-            </Badge>
-          )
-        }
+        {!name && peer?.kind && <Badge>{peer?.kind}</Badge>}
 
-        <span className="mr-2 font-semibold">
-          {name}
-        </span>
+        <span className="mr-2 font-semibold">{name}</span>
       </div>
 
       <div className="flex">
-        <span className="font-semibold">
-          {
-            renderDiffDisplay()
-          }
-        </span>
+        <span className="font-semibold">{renderDiffDisplay()}</span>
       </div>
 
       <div className="flex justify-end">
         <DiffPill {...summary} />
 
         <div className="w-[160px] flex justify-end">
-          {
-            changed_at
-            && (
-              <DateDisplay date={changed_at} hideDefault />
-            )
-          }
+          {changed_at && <DateDisplay date={changed_at} hideDefault />}
         </div>
       </div>
     </div>
@@ -99,42 +82,30 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   return (
     <div className="flex flex-col">
-      {
-        properties?.length || peers?.length
-          ? (
-            <Accordion title={titleContent}>
-              <div className="divide-y">
-                {
-                  properties
-                  ?.map(
-                    (property: tDataDiffNodeProperty, index: number) => (
-                      <DataDiffProperty key={index} property={property} />
-                    )
-                  )
-                }
+      {properties?.length || peers?.length ? (
+        <Accordion title={titleContent}>
+          <div className="divide-y">
+            {properties?.map(
+              (property: tDataDiffNodeProperty, index: number) => (
+                <DataDiffProperty key={index} property={property} />
+              )
+            )}
 
-                {
-                  peers
-                  ?.map(
-                    (element, index) => (
-                      <DataDiffElement key={index} element={element} />
-                    )
-                  )
-                }
-              </div>
-            </Accordion>
-          )
-          : (
-            <div className="flex">
-              {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-              <ChevronDownIcon className="h-5 w-5 mr-2 text-transparent" aria-hidden="true" />
-              <div className="flex-1">
-                {titleContent}
-              </div>
-            </div>
-          )
-      }
+            {peers?.map((element, index) => (
+              <DataDiffElement key={index} element={element} />
+            ))}
+          </div>
+        </Accordion>
+      ) : (
+        <div className="flex">
+          {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
+          <ChevronDownIcon
+            className="h-5 w-5 mr-2 text-transparent"
+            aria-hidden="true"
+          />
+          <div className="flex-1">{titleContent}</div>
+        </div>
+      )}
     </div>
-
   );
 };

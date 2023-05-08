@@ -1,4 +1,9 @@
-import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
+import {
+  FieldValues,
+  RegisterOptions,
+  UseFormRegister,
+  UseFormSetValue,
+} from "react-hook-form";
 import { OpsSelect } from "./select";
 import { SelectOption } from "../components/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
@@ -12,17 +17,15 @@ type SelectRegisterProps = {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
-}
+};
 
 export const OpsSelectRegister = (props: SelectRegisterProps) => {
-  const { name, value, register, setValue, config, options, label, error } = props;
-  const inputRegister = register(
-    name,
-    {
-      value: value ?? "",
-      ...config
-    }
-  );
+  const { name, value, register, setValue, config, options, label, error } =
+    props;
+  const inputRegister = register(name, {
+    value: value ?? "",
+    ...config,
+  });
 
   return (
     <OpsSelect

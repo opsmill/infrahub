@@ -8,15 +8,14 @@ type OpsMultiSelectProps = {
   options: SelectOption[];
   onChange: (value: SelectOption[]) => void;
   error?: FormFieldError;
-}
+};
 
 export default function OpsMultiSelect(props: OpsMultiSelectProps) {
   const { value, options, onChange, label, error } = props;
 
   return (
     <>
-      <label
-        className="block text-sm font-medium leading-6 text-gray-900">
+      <label className="block text-sm font-medium leading-6 text-gray-900">
         {label}
       </label>
       <MultiSelect

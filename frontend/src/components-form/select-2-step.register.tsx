@@ -1,4 +1,9 @@
-import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
+import {
+  FieldValues,
+  RegisterOptions,
+  UseFormRegister,
+  UseFormSetValue,
+} from "react-hook-form";
 import { SelectOption } from "../components/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { OpsSelect2Step, iTwoStepDropdownData } from "./select-2-step";
@@ -15,10 +20,11 @@ interface Props {
 }
 
 export const OpsSelect2StepRegister = (props: Props) => {
-  const { name, value, register, setValue, config, options, label, error } = props;
+  const { name, value, register, setValue, config, options, label, error } =
+    props;
   const inputRegister = register(name, {
     value: value ?? "",
-    ...config
+    ...config,
   });
 
   return (

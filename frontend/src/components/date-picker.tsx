@@ -47,11 +47,17 @@ export const DatePicker = (props: any) => {
     setHasError({});
   };
 
-  const CustomInput = forwardRef(
-    ({ onClick }: any, ref) => (
-      <Input onClick={onClick} ref={ref} value={text} onChange={handleChangeInput} className="rounded-r-none" autoFocus={stateHasFocus} error={hasError} />
-    )
-  );
+  const CustomInput = forwardRef(({ onClick }: any, ref) => (
+    <Input
+      onClick={onClick}
+      ref={ref}
+      value={text}
+      onChange={handleChangeInput}
+      className="rounded-r-none"
+      autoFocus={stateHasFocus}
+      error={hasError}
+    />
+  ));
 
   return (
     <div className="flex">
@@ -63,7 +69,11 @@ export const DatePicker = (props: any) => {
         calendarStartDay={1}
       />
 
-      <Button onClick={handleClickNow} className="rounded-none rounded-r-md border-t border-r border-b border-gray-300" disabled={!date && !text}>
+      <Button
+        onClick={handleClickNow}
+        className="rounded-none rounded-r-md border-t border-r border-b border-gray-300"
+        disabled={!date && !text}
+      >
         Reset
       </Button>
     </div>

@@ -8,7 +8,9 @@ export default function ErrorScreen() {
         className="w-56 h-56 object-cover"
         src={errorimage}
       />
-      <div className="text-xl mt-2">Something went wrong. We are looking into it</div>
+      <div className="text-xl mt-2">
+        Something went wrong. We are looking into it
+      </div>
     </div>
   );
 }

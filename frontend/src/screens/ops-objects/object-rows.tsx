@@ -2,7 +2,7 @@ import {
   ChevronDoubleRightIcon,
   ChevronRightIcon,
   ShieldCheckIcon,
-  StarIcon
+  StarIcon,
 } from "@heroicons/react/24/outline";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 
@@ -63,7 +63,10 @@ export default function ObjectRows(props: Props) {
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
                   {schema.attributes?.map((attribute) => (
-                    <li key={attribute.name} className="flex items-center justify-between py-3 pl-3 pr-4 text-sm">
+                    <li
+                      key={attribute.name}
+                      className="flex items-center justify-between py-3 pl-3 pr-4 text-sm"
+                    >
                       <div className="flex w-0 flex-1 items-center">
                         <span className="ml-2 w-0 flex-1 truncate">
                           {attribute.label}
@@ -90,7 +93,10 @@ export default function ObjectRows(props: Props) {
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
                   {schema.relationships?.map((relationship) => (
-                    <li key={relationship.name} className="flex items-center justify-between py-3 pl-3 pr-4 text-sm">
+                    <li
+                      key={relationship.name}
+                      className="flex items-center justify-between py-3 pl-3 pr-4 text-sm"
+                    >
                       <div className="flex w-0 flex-1 items-center">
                         <span className="ml-2 w-0 flex-1 truncate">
                           {relationship.label}

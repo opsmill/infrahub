@@ -1,4 +1,9 @@
-import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
+import {
+  FieldValues,
+  RegisterOptions,
+  UseFormRegister,
+  UseFormSetValue,
+} from "react-hook-form";
 import OpsCheckox from "./checkbox";
 
 interface Props {
@@ -15,7 +20,7 @@ export const OpsCheckboxRegister = (props: Props) => {
 
   const inputRegister = register(name, {
     value: value ?? "",
-    ...config
+    ...config,
   });
 
   return (

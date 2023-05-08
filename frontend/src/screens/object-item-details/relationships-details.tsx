@@ -4,7 +4,11 @@ import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import getObjectRelationshipsDetails from "../../graphql/queries/objects/objectRelationshipDetails";
 import { branchState } from "../../state/atoms/branch.atom";
-import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import {
+  genericsState,
+  iNodeSchema,
+  schemaState,
+} from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import RelationshipDetails from "./relationship-details";
 import { QSP } from "../../config/qsp";
@@ -22,50 +26,54 @@ export default function RelationshipsDetails(props: Props) {
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const relationshipSchema = schema?.relationships?.find((r) => r?.name === qspTab);
+  const relationshipSchema = schema?.relationships?.find(
+    (r) => r?.name === qspTab
+  );
   const [date] = useAtom(timeState);
   const [branch] = useAtom(branchState);
 
   const [
+    ,
     // isLoading
-    ,setIsLoading
+    setIsLoading,
   ] = useState(true);
   const [
+    ,
     // hasError
-    ,setHasError
+    setHasError,
   ] = useState(false);
   const [relationships, setRelationships] = useState();
 
-  const fetchRelationshipDetails = useCallback(
-    async () => {
-      setRelationships(undefined);
-      try {
-        if (!qspTab) {
-          return;
-        }
-
-        setIsLoading(true);
-
-        const data = await getObjectRelationshipsDetails(schema, schemaList, generics, objectid!, qspTab);
-
-        setRelationships(data);
-      } catch(err) {
-        setHasError(true);
+  const fetchRelationshipDetails = useCallback(async () => {
+    setRelationships(undefined);
+    try {
+      if (!qspTab) {
+        return;
       }
 
-      setIsLoading(false);
-    },
-    [objectid, schema, qspTab, generics, schemaList]
-  );
+      setIsLoading(true);
 
-  useEffect(
-    () => {
-      if(schema) {
-        fetchRelationshipDetails();
-      }
-    },
-    [fetchRelationshipDetails, schema, date, branch]
-  );
+      const data = await getObjectRelationshipsDetails(
+        schema,
+        schemaList,
+        generics,
+        objectid!,
+        qspTab
+      );
+
+      setRelationships(data);
+    } catch (err) {
+      setHasError(true);
+    }
+
+    setIsLoading(false);
+  }, [objectid, schema, qspTab, generics, schemaList]);
+
+  useEffect(() => {
+    if (schema) {
+      fetchRelationshipDetails();
+    }
+  }, [fetchRelationshipDetails, schema, date, branch]);
 
   if (!qspTab) {
     return null;
@@ -73,7 +81,14 @@ export default function RelationshipsDetails(props: Props) {
 
   return (
     <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">
-      <RelationshipDetails parentNode={props.parentNode} mode="TABLE" parentSchema={props.parentSchema} refreshObject={props.refreshObject} relationshipsData={relationships} relationshipSchema={relationshipSchema} />
+      <RelationshipDetails
+        parentNode={props.parentNode}
+        mode="TABLE"
+        parentSchema={props.parentSchema}
+        refreshObject={props.refreshObject}
+        relationshipsData={relationships}
+        relationshipSchema={relationshipSchema}
+      />
     </div>
   );
-};
+}

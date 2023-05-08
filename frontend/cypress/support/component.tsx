@@ -44,7 +44,7 @@ declare global {
       mount(
         component: React.ReactNode,
         options?: MountOptions & { routerProps?: MemoryRouterProps }
-      ): Cypress.Chainable<MountReturn>
+      ): Cypress.Chainable<MountReturn>;
     }
   }
 }
@@ -70,8 +70,6 @@ Cypress.Commands.add("mount", (component, options = {}) => {
 
   return mount(wrapped, mountOptions);
 });
-
-
 
 // Example use:
 // cy.mount(<MyComponent />)

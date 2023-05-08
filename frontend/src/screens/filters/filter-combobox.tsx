@@ -36,47 +36,43 @@ export default function FilterCombobox(props: Props) {
   const [query, setQuery] = useState("");
   const currentFilter = filters.filter((row) => row.name === filter.name);
 
-  const fetchFilterRows = useCallback(
-    async () => {
-      if (schema && !filter.enum) {
-        setHasError(false);
-        setIsLoading(true);
-        // TODO: Extract GQL function in the graphql/ fodler
-        const queryString = template(schema);
-        const query = gql`
+  const fetchFilterRows = useCallback(async () => {
+    if (schema && !filter.enum) {
+      setHasError(false);
+      setIsLoading(true);
+      // TODO: Extract GQL function in the graphql/ fodler
+      const queryString = template(schema);
+      const query = gql`
         ${queryString}
       `;
-        try {
-          const data: any = await graphQLClient.request(query);
-          const rows = data[schema.name];
-          setObjectRows(rows);
-          setIsLoading(false);
-        } catch {
-          setHasError(true);
-          setIsLoading(false);
-        }
-      } else if (filter.enum) {
-        setObjectRows(
-          filter.enum.map((en) => ({
-            id: en,
-            display_label: en,
-          }))
-        );
+      try {
+        const data: any = await graphQLClient.request(query);
+        const rows = data[schema.name];
+        setObjectRows(rows);
+        setIsLoading(false);
+      } catch {
+        setHasError(true);
+        setIsLoading(false);
       }
-    },
-    [filter.enum, schema]
-  );
+    } else if (filter.enum) {
+      setObjectRows(
+        filter.enum.map((en) => ({
+          id: en,
+          display_label: en,
+        }))
+      );
+    }
+  }, [filter.enum, schema]);
 
-  useEffect(
-    () => {
-      fetchFilterRows();
-    },
-    [schemaList, schema, filter, fetchFilterRows]
-  );
+  useEffect(() => {
+    fetchFilterRows();
+  }, [schemaList, schema, filter, fetchFilterRows]);
 
   if (hasError) {
     return (
-      <div className="text-red-500">{filter.name} {schema.name}</div>
+      <div className="text-red-500">
+        {filter.name} {schema.name}
+      </div>
     );
     // return <ErrorScreen />;
   }
@@ -88,7 +84,9 @@ export default function FilterCombobox(props: Props) {
   const filteredRows =
     query === ""
       ? objectRows
-      : objectRows?.filter((row) => row.display_label.toLowerCase().includes(query.toLowerCase()));
+      : objectRows?.filter((row) =>
+          row.display_label.toLowerCase().includes(query.toLowerCase())
+        );
 
   return (
     <Combobox
@@ -123,58 +121,46 @@ export default function FilterCombobox(props: Props) {
           />
         </Combobox.Button>
 
-        {
-          filteredRows
-          && filteredRows?.length > 0
-          && (
-            <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-              {
-                filteredRows
-                ?.map(
-                  (row) => (
-                    <Combobox.Option
-                      key={row.id}
-                      value={row}
-                      className={({ active }) =>
-                        classNames(
-                          "relative cursor-default select-none py-2 pl-3 pr-9",
-                          active ? "bg-indigo-600 text-white" : "text-gray-900"
-                        )
-                      }
-                    >
-                      {
-                        ({ active, selected }) => (
-                          <>
-                            <span
-                              className={classNames(
-                                "block truncate",
-                                selected ? "font-semibold" : ""
-                              )}
-                            >
-                              {row.display_label}
-                            </span>
-
-                            {
-                              selected
-                            && (
-                              <span
-                                className={classNames(
-                                  "absolute inset-y-0 right-0 flex items-center pr-4",
-                                  active ? "text-white" : "text-indigo-600"
-                                )}
-                              >
-                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                              </span>
-                            )
-                            }
-                          </>
-                        )
-                      }
-                    </Combobox.Option>
+        {filteredRows && filteredRows?.length > 0 && (
+          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            {filteredRows?.map((row) => (
+              <Combobox.Option
+                key={row.id}
+                value={row}
+                className={({ active }) =>
+                  classNames(
+                    "relative cursor-default select-none py-2 pl-3 pr-9",
+                    active ? "bg-indigo-600 text-white" : "text-gray-900"
                   )
+                }
+              >
+                {({ active, selected }) => (
+                  <>
+                    <span
+                      className={classNames(
+                        "block truncate",
+                        selected ? "font-semibold" : ""
+                      )}
+                    >
+                      {row.display_label}
+                    </span>
+
+                    {selected && (
+                      <span
+                        className={classNames(
+                          "absolute inset-y-0 right-0 flex items-center pr-4",
+                          active ? "text-white" : "text-indigo-600"
+                        )}
+                      >
+                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                    )}
+                  </>
                 )}
-            </Combobox.Options>
-          )}
+              </Combobox.Option>
+            ))}
+          </Combobox.Options>
+        )}
       </div>
     </Combobox>
   );

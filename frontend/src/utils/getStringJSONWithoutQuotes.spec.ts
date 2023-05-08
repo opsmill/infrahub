@@ -1,8 +1,15 @@
 // import { describe, it } from "vitest";
-import { C_JSON1, C_JSON1_OUTPUT, C_JSON2, C_JSON2_OUTPUT, C_JSON3, C_JSON3_OUTPUT } from "../data/jsonSamples";
+import {
+  C_JSON1,
+  C_JSON1_OUTPUT,
+  C_JSON2,
+  C_JSON2_OUTPUT,
+  C_JSON3,
+  C_JSON3_OUTPUT,
+} from "../data/jsonSamples";
 import { getStringJSONWithoutQuotes } from "./getStringJSONWithoutQuotes";
 
-describe("Convert JSON to JSON without quotes (\") in the key names", () => {
+describe('Convert JSON to JSON without quotes (") in the key names', () => {
   it("should work with nested objects", () => {
     const output1 = getStringJSONWithoutQuotes(C_JSON1);
     expect(output1).toEqual(C_JSON1_OUTPUT);

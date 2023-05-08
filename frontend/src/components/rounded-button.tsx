@@ -18,7 +18,7 @@ const DEFAULT_CLASS = `
 `;
 
 const getClasseName = (type: BUTTON_TYPES) => {
-  switch(type) {
+  switch (type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
         bg-green-600 text-gray-50
@@ -61,9 +61,7 @@ export const RoundedButton = (props: any) => {
   return (
     <button
       type="button"
-      className={
-        classNames(DEFAULT_CLASS,customClassName,className)
-      }
+      className={classNames(DEFAULT_CLASS, customClassName, className)}
       {...propsToPass}
     >
       {props.children}

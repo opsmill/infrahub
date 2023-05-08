@@ -1,9 +1,6 @@
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import {
-  Bars3BottomLeftIcon,
-  BellIcon
-} from "@heroicons/react/24/outline";
+import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Fragment, useEffect } from "react";
 import { formatISO } from "date-fns";
@@ -27,14 +24,11 @@ export default function Header(props: Props) {
   const [, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const { setSidebarOpen } = props;
 
-  useEffect(
-    () => {
-      if(date !== undefined) {
-        graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
-      }
-    },
-    [date]
-  );
+  useEffect(() => {
+    if (date !== undefined) {
+      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
+    }
+  }, [date]);
 
   const handleDateChange = (newDate: any) => {
     if (newDate) {
@@ -85,7 +79,11 @@ export default function Header(props: Props) {
         </div>
         <div className="ml-4 flex items-center md:ml-6">
           <div className="mr-4">
-            <DatePicker date={date} onChange={handleDateChange} onClickNow={handleClickNow} />
+            <DatePicker
+              date={date}
+              onChange={handleDateChange}
+              onClickNow={handleClickNow}
+            />
           </div>
 
           <BranchSelector />

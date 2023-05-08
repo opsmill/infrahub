@@ -4,6 +4,7 @@ import { BranchesItems } from "../screens/branches/branches-items";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
 import ObjectItems from "../screens/object-items/object-items";
 import OpsObjects from "../screens/ops-objects/ops-objects";
+import UserItems from "../screens/users/users";
 
 export const MAIN_ROUTES = [
   {
@@ -17,6 +18,10 @@ export const MAIN_ROUTES = [
   {
     path: "/schema",
     element: <OpsObjects />,
+  },
+  {
+    path: "/users",
+    element: <UserItems />,
   },
   {
     path: "/branches",
@@ -37,16 +42,20 @@ export const CUSTOM_COMPONENT_ROUTES = [
 
 export const ADMIN_MENU_ITEMS = [
   {
+    path: "/users",
+    label: "Users",
+  },
+  {
     path: "/schema",
-    label: "Schema"
-  }
+    label: "Schema",
+  },
 ];
 
 export const BRANCHES_MENU_ITEMS = [
   {
     path: "/branches",
-    label: "List"
-  }
+    label: "List",
+  },
 ];
 
 export const DEFAULT_BRANCH_NAME = "main";

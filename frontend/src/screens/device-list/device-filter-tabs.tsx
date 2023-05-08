@@ -1,7 +1,4 @@
-import {
-  BuildingOfficeIcon,
-  UserIcon
-} from "@heroicons/react/20/solid";
+import { BuildingOfficeIcon, UserIcon } from "@heroicons/react/20/solid";
 import { classNames } from "../../utils/common";
 
 const tabs = [

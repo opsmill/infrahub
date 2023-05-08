@@ -48,11 +48,11 @@ const template = Handlebars.compile(`query DropdownFormOptions {
 const getDropdownOptionsForRelatedPeers = async (
   peers: string[]
 ): Promise<iPeerDropdownOptions> => {
-  if(!peers.length) {
+  if (!peers.length) {
     return {};
   }
   const queryString = template({
-    peers: peers.filter(peer => !!peer),
+    peers: peers.filter((peer) => !!peer),
   });
   const query = gql`
     ${queryString}

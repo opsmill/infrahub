@@ -15,7 +15,7 @@ export enum BUTTON_TYPES {
   CANCEL,
   WARNING,
   MAIN,
-  ACTIVE
+  ACTIVE,
 }
 
 // Get default class name and avoid certain class if needed (ex: no rounded button for tabs-button)
@@ -30,7 +30,7 @@ const DEFAULT_CLASS = (className?: string) => `
 `;
 
 const getClasseName = (type?: BUTTON_TYPES) => {
-  switch(type) {
+  switch (type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
         bg-green-600 text-gray-50
@@ -76,41 +76,31 @@ const getClasseName = (type?: BUTTON_TYPES) => {
   }
 };
 
-export const Button = forwardRef(
-  (props: ButtonProps, ref) => {
-    const {
-      buttonType,
-      type,
-      className = "",
-      onClick,
-      ...propsToPass
-    } = props;
+export const Button = forwardRef((props: ButtonProps, ref) => {
+  const { buttonType, type, className = "", onClick, ...propsToPass } = props;
 
-    const customClassName = getClasseName(buttonType);
+  const customClassName = getClasseName(buttonType);
 
-    const handleClick = (event: any) => {
-      if (type !== "submit") {
-        event.stopPropagation();
-      }
+  const handleClick = (event: any) => {
+    if (type !== "submit") {
+      event.stopPropagation();
+    }
 
-      onClick && onClick(event);
-    };
+    onClick && onClick(event);
+  };
 
-    return (
-      <button
-        type={type ?? "button"}
-        className={
-          classNames(
-            DEFAULT_CLASS(className),
-            customClassName,
-            className,
-          )
-        }
-        {...propsToPass}
-        onClick={handleClick}
-      >
-        {props.children}
-      </button>
-    );
-  }
-);
+  return (
+    <button
+      type={type ?? "button"}
+      className={classNames(
+        DEFAULT_CLASS(className),
+        customClassName,
+        className
+      )}
+      {...propsToPass}
+      onClick={handleClick}
+    >
+      {props.children}
+    </button>
+  );
+});

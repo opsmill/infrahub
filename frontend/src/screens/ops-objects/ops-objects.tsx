@@ -17,7 +17,9 @@ export default function OpsObjects() {
                 key={schema?.name}
                 className={classNames(
                   "p-4 shadow-lg border border-gray-200 bg-white rounded-md hover:bg-gray-100 cursor-pointer",
-                  selectedSchema?.name === schema.name ? "border-indigo-500" : ""
+                  selectedSchema?.name === schema.name
+                    ? "border-indigo-500"
+                    : ""
                 )}
                 onClick={() => {
                   setSelectedSchema(schema);

@@ -2,7 +2,11 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
-import { genericSchemaState, genericsState, schemaState } from "../../state/atoms/schema.atom";
+import {
+  genericSchemaState,
+  genericsState,
+  schemaState,
+} from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import getDropdownOptionsForRelatedPeers from "../../utils/dropdownOptionsForRelatedPeers";
@@ -42,18 +46,24 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const initForm = useCallback(
     async (row: any) => {
-      const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
-      const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
-      const formStructure = getFormStructureForCreateEdit(schema, schemaList, genericsList, peerDropdownOptions, schemaKindNameMap, genericSchemaMap, row);
+      const peers = (schema.relationships || []).map(
+        (r) => schemaKindNameMap[r.peer]
+      );
+      const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(
+        peers
+      );
+      const formStructure = getFormStructureForCreateEdit(
+        schema,
+        schemaList,
+        genericsList,
+        peerDropdownOptions,
+        schemaKindNameMap,
+        genericSchemaMap,
+        row
+      );
       setFormStructure(formStructure);
     },
-    [
-      genericSchemaMap,
-      genericsList,
-      schema,
-      schemaKindNameMap,
-      schemaList
-    ]
+    [genericSchemaMap, genericsList, schema, schemaKindNameMap, schemaList]
   );
 
   const fetchItemDetails = useCallback(async () => {
@@ -64,17 +74,25 @@ export default function ObjectItemEditComponent(props: Props) {
       const data = await getObjectDetails(schema, objectid!);
       setObjectDetails(data);
       initForm(data);
-    } catch(err) {
+    } catch (err) {
       setHasError(true);
     }
     setIsLoading(false);
   }, [initForm, objectid, schema]);
 
   useEffect(() => {
-    if(schema) {
+    if (schema) {
       fetchItemDetails();
     }
-  }, [objectname, objectid, schemaList, date, branch, schema, fetchItemDetails]);
+  }, [
+    objectname,
+    objectid,
+    schemaList,
+    date,
+    branch,
+    schema,
+    fetchItemDetails,
+  ]);
 
   if (hasError) {
     return <ErrorScreen />;
@@ -89,18 +107,33 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   async function onSubmit(data: any, error: any) {
-    const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
+    const updateObject = getMutationDetailsFromFormData(
+      schema,
+      data,
+      "update",
+      objectDetails
+    );
 
     if (Object.keys(updateObject).length) {
       try {
         await updateObjectWithId(objectid!, schema, updateObject);
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} updated`} />);
+        toast(
+          <Alert
+            type={ALERT_TYPES.SUCCESS}
+            message={`${schema.kind} updated`}
+          />
+        );
         closeDrawer();
         onUpdateComplete();
         onUpdateComplete();
         return;
       } catch (e) {
-        toast(<Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR}/>);
+        toast(
+          <Alert
+            message="Something went wrong while updating the object"
+            type={ALERT_TYPES.ERROR}
+          />
+        );
         console.error("Something went wrong while updating the object", e);
         return;
       }
@@ -109,12 +142,13 @@ export default function ObjectItemEditComponent(props: Props) {
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
-      {
-        formStructure
-        && (
-          <EditFormHookComponent onCancel={props.closeDrawer} onSubmit={onSubmit} fields={formStructure} />
-        )
-      }
+      {formStructure && (
+        <EditFormHookComponent
+          onCancel={props.closeDrawer}
+          onSubmit={onSubmit}
+          fields={formStructure}
+        />
+      )}
     </div>
   );
 }

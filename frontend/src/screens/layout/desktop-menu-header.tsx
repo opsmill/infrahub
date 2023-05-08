@@ -38,9 +38,7 @@ export default function DropDownMenuHeader(props: Props) {
               <path d="M6 6L14 10L6 14V6Z" fill="currentColor" />
             </svg>
           </Disclosure.Button>
-          <Disclosure.Panel className="space-y-1">
-            {items}
-          </Disclosure.Panel>
+          <Disclosure.Panel className="space-y-1">{items}</Disclosure.Panel>
         </>
       )}
     </Disclosure>

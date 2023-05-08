@@ -1,8 +1,14 @@
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
-export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
-export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
-export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
+export type Exact<T extends { [key: string]: unknown }> = {
+  [K in keyof T]: T[K];
+};
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]?: Maybe<T[SubKey]>;
+};
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]: Maybe<T[SubKey]>;
+};
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: string;
@@ -14,24 +20,23 @@ export type Scalars = {
   GenericScalar: any;
 };
 
-export type Account = DataOwner & DataSource & {
-  __typename?: "Account";
-  _updated_at?: Maybe<Scalars["DateTime"]>;
-  description?: Maybe<StrAttribute>;
-  groups: Array<Maybe<RelatedGroup>>;
-  id: Scalars["String"];
-  name: StrAttribute;
-  tokens: Array<Maybe<RelatedAccountToken>>;
-  type: StrAttribute;
-};
-
+export type Account = DataOwner &
+  DataSource & {
+    __typename?: "Account";
+    _updated_at?: Maybe<Scalars["DateTime"]>;
+    description?: Maybe<StrAttribute>;
+    groups: Array<Maybe<RelatedGroup>>;
+    id: Scalars["String"];
+    name: StrAttribute;
+    tokens: Array<Maybe<RelatedAccountToken>>;
+    type: StrAttribute;
+  };
 
 export type AccountGroupsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type AccountTokensArgs = {
   expiration_date__value?: InputMaybe<Scalars["String"]>;
@@ -515,7 +520,6 @@ export type Check = {
   timeout: IntAttribute;
 };
 
-
 export type CheckTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
@@ -577,7 +581,6 @@ export type Circuit = {
   status?: Maybe<RelatedStatus>;
   vendor_id?: Maybe<StrAttribute>;
 };
-
 
 export type CircuitEndpointsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -740,7 +743,6 @@ export type Device = {
   type: StrAttribute;
 };
 
-
 export type DeviceInterfacesArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   enabled__value?: InputMaybe<Scalars["Boolean"]>;
@@ -748,7 +750,6 @@ export type DeviceInterfacesArgs = {
   name__value?: InputMaybe<Scalars["String"]>;
   speed__value?: InputMaybe<Scalars["Int"]>;
 };
-
 
 export type DeviceTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -811,7 +812,6 @@ export type GenericSchema = {
   relationships: Array<Maybe<RelatedRelationshipSchema>>;
 };
 
-
 export type GenericSchemaAttributesArgs = {
   branch__value?: InputMaybe<Scalars["Boolean"]>;
   default_value__value?: InputMaybe<Scalars["GenericScalar"]>;
@@ -824,7 +824,6 @@ export type GenericSchemaAttributesArgs = {
   optional__value?: InputMaybe<Scalars["Boolean"]>;
   unique__value?: InputMaybe<Scalars["Boolean"]>;
 };
-
 
 export type GenericSchemaRelationshipsArgs = {
   branch__value?: InputMaybe<Scalars["Boolean"]>;
@@ -886,7 +885,6 @@ export type GraphQlQuery = {
   tags: Array<Maybe<RelatedTag>>;
 };
 
-
 export type GraphQlQueryTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
@@ -934,7 +932,6 @@ export type Group = DataOwner & {
   members: Array<Maybe<RelatedAccount>>;
   name: StrAttribute;
 };
-
 
 export type GroupMembersArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -1092,13 +1089,11 @@ export type Interface = {
   tags: Array<Maybe<RelatedTag>>;
 };
 
-
 export type InterfaceIp_AddressesArgs = {
   address__value?: InputMaybe<Scalars["String"]>;
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
 };
-
 
 export type InterfaceTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -1183,7 +1178,6 @@ export type Location = {
   tags: Array<Maybe<RelatedTag>>;
   type: StrAttribute;
 };
-
 
 export type LocationTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -1313,427 +1307,342 @@ export type Mutation = {
   transform_python_update?: Maybe<TransformPythonUpdate>;
 };
 
-
 export type MutationAccount_CreateArgs = {
   data: AccountCreateInput;
 };
-
 
 export type MutationAccount_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationAccount_Token_CreateArgs = {
   data: AccountTokenCreateInput;
 };
-
 
 export type MutationAccount_Token_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationAccount_Token_UpdateArgs = {
   data: AccountTokenUpdateInput;
 };
-
 
 export type MutationAccount_UpdateArgs = {
   data: AccountUpdateInput;
 };
 
-
 export type MutationAttribute_Schema_CreateArgs = {
   data: AttributeSchemaCreateInput;
 };
-
 
 export type MutationAttribute_Schema_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationAttribute_Schema_UpdateArgs = {
   data: AttributeSchemaUpdateInput;
 };
-
 
 export type MutationAutonomous_System_CreateArgs = {
   data: AutonomousSystemCreateInput;
 };
 
-
 export type MutationAutonomous_System_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationAutonomous_System_UpdateArgs = {
   data: AutonomousSystemUpdateInput;
 };
 
-
 export type MutationBgp_Peer_Group_CreateArgs = {
   data: BgpPeerGroupCreateInput;
 };
-
 
 export type MutationBgp_Peer_Group_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationBgp_Peer_Group_UpdateArgs = {
   data: BgpPeerGroupUpdateInput;
 };
-
 
 export type MutationBgp_Session_CreateArgs = {
   data: BgpSessionCreateInput;
 };
 
-
 export type MutationBgp_Session_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationBgp_Session_UpdateArgs = {
   data: BgpSessionUpdateInput;
 };
-
 
 export type MutationBranch_CreateArgs = {
   background_execution?: InputMaybe<Scalars["Boolean"]>;
   data: BranchCreateInput;
 };
 
-
 export type MutationBranch_MergeArgs = {
   data: BranchNameInput;
 };
-
 
 export type MutationBranch_RebaseArgs = {
   data: BranchNameInput;
 };
 
-
 export type MutationBranch_ValidateArgs = {
   data: BranchNameInput;
 };
-
 
 export type MutationCheck_CreateArgs = {
   data: CheckCreateInput;
 };
 
-
 export type MutationCheck_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationCheck_UpdateArgs = {
   data: CheckUpdateInput;
 };
 
-
 export type MutationCircuit_CreateArgs = {
   data: CircuitCreateInput;
 };
-
 
 export type MutationCircuit_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationCircuit_Endpoint_CreateArgs = {
   data: CircuitEndpointCreateInput;
 };
-
 
 export type MutationCircuit_Endpoint_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationCircuit_Endpoint_UpdateArgs = {
   data: CircuitEndpointUpdateInput;
 };
-
 
 export type MutationCircuit_UpdateArgs = {
   data: CircuitUpdateInput;
 };
 
-
 export type MutationCriticality_CreateArgs = {
   data: CriticalityCreateInput;
 };
-
 
 export type MutationCriticality_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationCriticality_UpdateArgs = {
   data: CriticalityUpdateInput;
 };
-
 
 export type MutationDevice_CreateArgs = {
   data: DeviceCreateInput;
 };
 
-
 export type MutationDevice_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationDevice_UpdateArgs = {
   data: DeviceUpdateInput;
 };
 
-
 export type MutationGeneric_Schema_CreateArgs = {
   data: GenericSchemaCreateInput;
 };
-
 
 export type MutationGeneric_Schema_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationGeneric_Schema_UpdateArgs = {
   data: GenericSchemaUpdateInput;
 };
-
 
 export type MutationGraphql_Query_CreateArgs = {
   data: GraphQlQueryCreateInput;
 };
 
-
 export type MutationGraphql_Query_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationGraphql_Query_UpdateArgs = {
   data: GraphQlQueryUpdateInput;
 };
 
-
 export type MutationGroup_CreateArgs = {
   data: GroupCreateInput;
 };
-
 
 export type MutationGroup_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationGroup_Schema_CreateArgs = {
   data: GroupSchemaCreateInput;
 };
-
 
 export type MutationGroup_Schema_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationGroup_Schema_UpdateArgs = {
   data: GroupSchemaUpdateInput;
 };
-
 
 export type MutationGroup_UpdateArgs = {
   data: GroupUpdateInput;
 };
 
-
 export type MutationInterface_CreateArgs = {
   data: InterfaceCreateInput;
 };
-
 
 export type MutationInterface_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationInterface_UpdateArgs = {
   data: InterfaceUpdateInput;
 };
-
 
 export type MutationIpaddress_CreateArgs = {
   data: IpAddressCreateInput;
 };
 
-
 export type MutationIpaddress_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationIpaddress_UpdateArgs = {
   data: IpAddressUpdateInput;
 };
 
-
 export type MutationLocation_CreateArgs = {
   data: LocationCreateInput;
 };
-
 
 export type MutationLocation_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationLocation_UpdateArgs = {
   data: LocationUpdateInput;
 };
-
 
 export type MutationNode_Schema_CreateArgs = {
   data: NodeSchemaCreateInput;
 };
 
-
 export type MutationNode_Schema_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationNode_Schema_UpdateArgs = {
   data: NodeSchemaUpdateInput;
 };
 
-
 export type MutationOrganization_CreateArgs = {
   data: OrganizationCreateInput;
 };
-
 
 export type MutationOrganization_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationOrganization_UpdateArgs = {
   data: OrganizationUpdateInput;
 };
-
 
 export type MutationRelationship_Schema_CreateArgs = {
   data: RelationshipSchemaCreateInput;
 };
 
-
 export type MutationRelationship_Schema_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationRelationship_Schema_UpdateArgs = {
   data: RelationshipSchemaUpdateInput;
 };
 
-
 export type MutationRepository_CreateArgs = {
   data: RepositoryCreateInput;
 };
-
 
 export type MutationRepository_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationRepository_UpdateArgs = {
   data: RepositoryUpdateInput;
 };
-
 
 export type MutationRfile_CreateArgs = {
   data: RFileCreateInput;
 };
 
-
 export type MutationRfile_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationRfile_UpdateArgs = {
   data: RFileUpdateInput;
 };
 
-
 export type MutationRole_CreateArgs = {
   data: RoleCreateInput;
 };
-
 
 export type MutationRole_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationRole_UpdateArgs = {
   data: RoleUpdateInput;
 };
-
 
 export type MutationStatus_CreateArgs = {
   data: StatusCreateInput;
 };
 
-
 export type MutationStatus_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationStatus_UpdateArgs = {
   data: StatusUpdateInput;
 };
 
-
 export type MutationTag_CreateArgs = {
   data: TagCreateInput;
 };
-
 
 export type MutationTag_DeleteArgs = {
   data: DeleteInput;
 };
 
-
 export type MutationTag_UpdateArgs = {
   data: TagUpdateInput;
 };
-
 
 export type MutationTransform_Python_CreateArgs = {
   data: TransformPythonCreateInput;
 };
 
-
 export type MutationTransform_Python_DeleteArgs = {
   data: DeleteInput;
 };
-
 
 export type MutationTransform_Python_UpdateArgs = {
   data: TransformPythonUpdateInput;
@@ -1755,7 +1664,6 @@ export type NodeSchema = {
   relationships: Array<Maybe<RelatedRelationshipSchema>>;
 };
 
-
 export type NodeSchemaAttributesArgs = {
   branch__value?: InputMaybe<Scalars["Boolean"]>;
   default_value__value?: InputMaybe<Scalars["GenericScalar"]>;
@@ -1768,7 +1676,6 @@ export type NodeSchemaAttributesArgs = {
   optional__value?: InputMaybe<Scalars["Boolean"]>;
   unique__value?: InputMaybe<Scalars["Boolean"]>;
 };
-
 
 export type NodeSchemaRelationshipsArgs = {
   branch__value?: InputMaybe<Scalars["Boolean"]>;
@@ -1836,7 +1743,6 @@ export type Organization = {
   name: StrAttribute;
   tags: Array<Maybe<RelatedTag>>;
 };
-
 
 export type OrganizationTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -1908,7 +1814,6 @@ export type Query = {
   transform_python?: Maybe<Array<Maybe<TransformPython>>>;
 };
 
-
 export type QueryAccountArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   groups__description__value?: InputMaybe<Scalars["String"]>;
@@ -1922,7 +1827,6 @@ export type QueryAccountArgs = {
   type__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryAccount_TokenArgs = {
   account__description__value?: InputMaybe<Scalars["String"]>;
   account__id?: InputMaybe<Scalars["ID"]>;
@@ -1932,7 +1836,6 @@ export type QueryAccount_TokenArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
   token__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryAttribute_SchemaArgs = {
   branch__value?: InputMaybe<Scalars["Boolean"]>;
@@ -1947,7 +1850,6 @@ export type QueryAttribute_SchemaArgs = {
   unique__value?: InputMaybe<Scalars["Boolean"]>;
 };
 
-
 export type QueryAutonomous_SystemArgs = {
   asn__value?: InputMaybe<Scalars["Int"]>;
   description__value?: InputMaybe<Scalars["String"]>;
@@ -1957,7 +1859,6 @@ export type QueryAutonomous_SystemArgs = {
   organization__id?: InputMaybe<Scalars["ID"]>;
   organization__name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryBgp_Peer_GroupArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -1974,7 +1875,6 @@ export type QueryBgp_Peer_GroupArgs = {
   remote_as__id?: InputMaybe<Scalars["ID"]>;
   remote_as__name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryBgp_SessionArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2018,7 +1918,6 @@ export type QueryBgp_SessionArgs = {
   type__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryCheckArgs = {
   class_name__value?: InputMaybe<Scalars["String"]>;
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2045,7 +1944,6 @@ export type QueryCheckArgs = {
   timeout__value?: InputMaybe<Scalars["Int"]>;
 };
 
-
 export type QueryCircuitArgs = {
   circuit_id__value?: InputMaybe<Scalars["String"]>;
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2063,7 +1961,6 @@ export type QueryCircuitArgs = {
   status__name__value?: InputMaybe<Scalars["String"]>;
   vendor_id__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryCircuit_EndpointArgs = {
   circuit__circuit_id__value?: InputMaybe<Scalars["String"]>;
@@ -2083,14 +1980,12 @@ export type QueryCircuit_EndpointArgs = {
   site__type__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryCriticalityArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
   level__value?: InputMaybe<Scalars["Int"]>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryDeviceArgs = {
   asn__asn__value?: InputMaybe<Scalars["Int"]>;
@@ -2121,14 +2016,12 @@ export type QueryDeviceArgs = {
   type__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryDiffArgs = {
   branch: Scalars["String"];
   branch_only?: InputMaybe<Scalars["Boolean"]>;
   time_from?: InputMaybe<Scalars["String"]>;
   time_to?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryGeneric_SchemaArgs = {
   attributes__branch__value?: InputMaybe<Scalars["Boolean"]>;
@@ -2158,7 +2051,6 @@ export type QueryGeneric_SchemaArgs = {
   relationships__peer__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryGraphql_QueryArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
@@ -2168,7 +2060,6 @@ export type QueryGraphql_QueryArgs = {
   tags__id?: InputMaybe<Scalars["ID"]>;
   tags__name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryGroupArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2180,14 +2071,12 @@ export type QueryGroupArgs = {
   name__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryGroup_SchemaArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
   kind__value?: InputMaybe<Scalars["String"]>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryInterfaceArgs = {
   connected_circuit__description__value?: InputMaybe<Scalars["String"]>;
@@ -2220,7 +2109,6 @@ export type QueryInterfaceArgs = {
   tags__name__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryIpaddressArgs = {
   address__value?: InputMaybe<Scalars["String"]>;
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2232,7 +2120,6 @@ export type QueryIpaddressArgs = {
   interface__speed__value?: InputMaybe<Scalars["Int"]>;
 };
 
-
 export type QueryLocationArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
@@ -2242,7 +2129,6 @@ export type QueryLocationArgs = {
   tags__name__value?: InputMaybe<Scalars["String"]>;
   type__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryNode_SchemaArgs = {
   attributes__branch__value?: InputMaybe<Scalars["Boolean"]>;
@@ -2276,7 +2162,6 @@ export type QueryNode_SchemaArgs = {
   relationships__peer__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryOrganizationArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
@@ -2285,7 +2170,6 @@ export type QueryOrganizationArgs = {
   tags__id?: InputMaybe<Scalars["ID"]>;
   tags__name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryRelationship_SchemaArgs = {
   branch__value?: InputMaybe<Scalars["Boolean"]>;
@@ -2299,7 +2183,6 @@ export type QueryRelationship_SchemaArgs = {
   optional__value?: InputMaybe<Scalars["Boolean"]>;
   peer__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryRepositoryArgs = {
   account__description__value?: InputMaybe<Scalars["String"]>;
@@ -2343,7 +2226,6 @@ export type QueryRepositoryArgs = {
   username__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryRfileArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
@@ -2367,13 +2249,11 @@ export type QueryRfileArgs = {
   template_repository__username__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryRoleArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryStatusArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2381,13 +2261,11 @@ export type QueryStatusArgs = {
   name__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type QueryTagArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   ids?: InputMaybe<Array<InputMaybe<Scalars["ID"]>>>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type QueryTransform_PythonArgs = {
   class_name__value?: InputMaybe<Scalars["String"]>;
@@ -2427,7 +2305,6 @@ export type RFile = {
   template_path: StrAttribute;
   template_repository?: Maybe<RelatedRepository>;
 };
-
 
 export type RFileTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2472,29 +2349,29 @@ export type RFileUpdateInput = {
   template_repository?: InputMaybe<RelatedNodeInput>;
 };
 
-export type RelatedAccount = RelatedDataOwner & RelatedDataSource & RelatedNodeInterface & {
-  __typename?: "RelatedAccount";
-  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
-  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
-  _relation__owner?: Maybe<DataOwner>;
-  _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
-  _updated_at?: Maybe<Scalars["DateTime"]>;
-  description?: Maybe<StrAttribute>;
-  groups: Array<Maybe<RelatedGroup>>;
-  id: Scalars["String"];
-  name: StrAttribute;
-  tokens: Array<Maybe<RelatedAccountToken>>;
-  type: StrAttribute;
-};
-
+export type RelatedAccount = RelatedDataOwner &
+  RelatedDataSource &
+  RelatedNodeInterface & {
+    __typename?: "RelatedAccount";
+    _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+    _relation__is_visible?: Maybe<Scalars["Boolean"]>;
+    _relation__owner?: Maybe<DataOwner>;
+    _relation__source?: Maybe<DataSource>;
+    _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+    _updated_at?: Maybe<Scalars["DateTime"]>;
+    description?: Maybe<StrAttribute>;
+    groups: Array<Maybe<RelatedGroup>>;
+    id: Scalars["String"];
+    name: StrAttribute;
+    tokens: Array<Maybe<RelatedAccountToken>>;
+    type: StrAttribute;
+  };
 
 export type RelatedAccountGroupsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type RelatedAccountTokensArgs = {
   expiration_date__value?: InputMaybe<Scalars["String"]>;
@@ -2612,7 +2489,6 @@ export type RelatedCheck = RelatedNodeInterface & {
   timeout: IntAttribute;
 };
 
-
 export type RelatedCheckTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
@@ -2636,7 +2512,6 @@ export type RelatedCircuit = RelatedNodeInterface & {
   status?: Maybe<RelatedStatus>;
   vendor_id?: Maybe<StrAttribute>;
 };
-
 
 export type RelatedCircuitEndpointsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2693,7 +2568,6 @@ export type RelatedDevice = RelatedNodeInterface & {
   type: StrAttribute;
 };
 
-
 export type RelatedDeviceInterfacesArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   enabled__value?: InputMaybe<Scalars["Boolean"]>;
@@ -2701,7 +2575,6 @@ export type RelatedDeviceInterfacesArgs = {
   name__value?: InputMaybe<Scalars["String"]>;
   speed__value?: InputMaybe<Scalars["Int"]>;
 };
-
 
 export type RelatedDeviceTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2724,27 +2597,26 @@ export type RelatedGraphQlQuery = RelatedNodeInterface & {
   tags: Array<Maybe<RelatedTag>>;
 };
 
-
 export type RelatedGraphQlQueryTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
 
-export type RelatedGroup = RelatedDataOwner & RelatedNodeInterface & {
-  __typename?: "RelatedGroup";
-  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
-  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
-  _relation__owner?: Maybe<DataOwner>;
-  _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
-  _updated_at?: Maybe<Scalars["DateTime"]>;
-  description?: Maybe<StrAttribute>;
-  id: Scalars["String"];
-  members: Array<Maybe<RelatedAccount>>;
-  name: StrAttribute;
-};
-
+export type RelatedGroup = RelatedDataOwner &
+  RelatedNodeInterface & {
+    __typename?: "RelatedGroup";
+    _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+    _relation__is_visible?: Maybe<Scalars["Boolean"]>;
+    _relation__owner?: Maybe<DataOwner>;
+    _relation__source?: Maybe<DataSource>;
+    _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+    _updated_at?: Maybe<Scalars["DateTime"]>;
+    description?: Maybe<StrAttribute>;
+    id: Scalars["String"];
+    members: Array<Maybe<RelatedAccount>>;
+    name: StrAttribute;
+  };
 
 export type RelatedGroupMembersArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2789,13 +2661,11 @@ export type RelatedInterface = RelatedNodeInterface & {
   tags: Array<Maybe<RelatedTag>>;
 };
 
-
 export type RelatedInterfaceIp_AddressesArgs = {
   address__value?: InputMaybe<Scalars["String"]>;
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
 };
-
 
 export type RelatedInterfaceTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2817,7 +2687,6 @@ export type RelatedLocation = RelatedNodeInterface & {
   tags: Array<Maybe<RelatedTag>>;
   type: StrAttribute;
 };
-
 
 export type RelatedLocationTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2853,7 +2722,6 @@ export type RelatedOrganization = RelatedNodeInterface & {
   tags: Array<Maybe<RelatedTag>>;
 };
 
-
 export type RelatedOrganizationTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
@@ -2876,7 +2744,6 @@ export type RelatedRFile = RelatedNodeInterface & {
   template_path: StrAttribute;
   template_repository?: Maybe<RelatedRepository>;
 };
-
 
 export type RelatedRFileTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2904,31 +2771,32 @@ export type RelatedRelationshipSchema = RelatedNodeInterface & {
   peer: StrAttribute;
 };
 
-export type RelatedRepository = RelatedDataOwner & RelatedDataSource & RelatedNodeInterface & {
-  __typename?: "RelatedRepository";
-  _relation__is_protected?: Maybe<Scalars["Boolean"]>;
-  _relation__is_visible?: Maybe<Scalars["Boolean"]>;
-  _relation__owner?: Maybe<DataOwner>;
-  _relation__source?: Maybe<DataSource>;
-  _relation__updated_at?: Maybe<Scalars["DateTime"]>;
-  _updated_at?: Maybe<Scalars["DateTime"]>;
-  account?: Maybe<RelatedAccount>;
-  checks: Array<Maybe<RelatedCheck>>;
-  commit?: Maybe<StrAttribute>;
-  default_branch: StrAttribute;
-  description?: Maybe<StrAttribute>;
-  id: Scalars["String"];
-  location: StrAttribute;
-  name: StrAttribute;
-  password?: Maybe<StrAttribute>;
-  queries: Array<Maybe<RelatedGraphQlQuery>>;
-  rfiles: Array<Maybe<RelatedRFile>>;
-  tags: Array<Maybe<RelatedTag>>;
-  transform_python: Array<Maybe<RelatedTransformPython>>;
-  type: StrAttribute;
-  username?: Maybe<StrAttribute>;
-};
-
+export type RelatedRepository = RelatedDataOwner &
+  RelatedDataSource &
+  RelatedNodeInterface & {
+    __typename?: "RelatedRepository";
+    _relation__is_protected?: Maybe<Scalars["Boolean"]>;
+    _relation__is_visible?: Maybe<Scalars["Boolean"]>;
+    _relation__owner?: Maybe<DataOwner>;
+    _relation__source?: Maybe<DataSource>;
+    _relation__updated_at?: Maybe<Scalars["DateTime"]>;
+    _updated_at?: Maybe<Scalars["DateTime"]>;
+    account?: Maybe<RelatedAccount>;
+    checks: Array<Maybe<RelatedCheck>>;
+    commit?: Maybe<StrAttribute>;
+    default_branch: StrAttribute;
+    description?: Maybe<StrAttribute>;
+    id: Scalars["String"];
+    location: StrAttribute;
+    name: StrAttribute;
+    password?: Maybe<StrAttribute>;
+    queries: Array<Maybe<RelatedGraphQlQuery>>;
+    rfiles: Array<Maybe<RelatedRFile>>;
+    tags: Array<Maybe<RelatedTag>>;
+    transform_python: Array<Maybe<RelatedTransformPython>>;
+    type: StrAttribute;
+    username?: Maybe<StrAttribute>;
+  };
 
 export type RelatedRepositoryChecksArgs = {
   class_name__value?: InputMaybe<Scalars["String"]>;
@@ -2940,14 +2808,12 @@ export type RelatedRepositoryChecksArgs = {
   timeout__value?: InputMaybe<Scalars["Int"]>;
 };
 
-
 export type RelatedRepositoryQueriesArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
   name__value?: InputMaybe<Scalars["String"]>;
   query__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type RelatedRepositoryRfilesArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -2956,13 +2822,11 @@ export type RelatedRepositoryRfilesArgs = {
   template_path__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type RelatedRepositoryTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type RelatedRepositoryTransform_PythonArgs = {
   class_name__value?: InputMaybe<Scalars["String"]>;
@@ -3035,7 +2899,6 @@ export type RelatedTransformPython = RelatedNodeInterface & {
   url: StrAttribute;
 };
 
-
 export type RelatedTransformPythonTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
@@ -3100,26 +2963,26 @@ export type RelationshipSchemaUpdateInput = {
   peer?: InputMaybe<StringAttributeInput>;
 };
 
-export type Repository = DataOwner & DataSource & {
-  __typename?: "Repository";
-  _updated_at?: Maybe<Scalars["DateTime"]>;
-  account?: Maybe<RelatedAccount>;
-  checks: Array<Maybe<RelatedCheck>>;
-  commit?: Maybe<StrAttribute>;
-  default_branch: StrAttribute;
-  description?: Maybe<StrAttribute>;
-  id: Scalars["String"];
-  location: StrAttribute;
-  name: StrAttribute;
-  password?: Maybe<StrAttribute>;
-  queries: Array<Maybe<RelatedGraphQlQuery>>;
-  rfiles: Array<Maybe<RelatedRFile>>;
-  tags: Array<Maybe<RelatedTag>>;
-  transform_python: Array<Maybe<RelatedTransformPython>>;
-  type: StrAttribute;
-  username?: Maybe<StrAttribute>;
-};
-
+export type Repository = DataOwner &
+  DataSource & {
+    __typename?: "Repository";
+    _updated_at?: Maybe<Scalars["DateTime"]>;
+    account?: Maybe<RelatedAccount>;
+    checks: Array<Maybe<RelatedCheck>>;
+    commit?: Maybe<StrAttribute>;
+    default_branch: StrAttribute;
+    description?: Maybe<StrAttribute>;
+    id: Scalars["String"];
+    location: StrAttribute;
+    name: StrAttribute;
+    password?: Maybe<StrAttribute>;
+    queries: Array<Maybe<RelatedGraphQlQuery>>;
+    rfiles: Array<Maybe<RelatedRFile>>;
+    tags: Array<Maybe<RelatedTag>>;
+    transform_python: Array<Maybe<RelatedTransformPython>>;
+    type: StrAttribute;
+    username?: Maybe<StrAttribute>;
+  };
 
 export type RepositoryChecksArgs = {
   class_name__value?: InputMaybe<Scalars["String"]>;
@@ -3131,14 +2994,12 @@ export type RepositoryChecksArgs = {
   timeout__value?: InputMaybe<Scalars["Int"]>;
 };
 
-
 export type RepositoryQueriesArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
   name__value?: InputMaybe<Scalars["String"]>;
   query__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type RepositoryRfilesArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
@@ -3147,13 +3008,11 @@ export type RepositoryRfilesArgs = {
   template_path__value?: InputMaybe<Scalars["String"]>;
 };
 
-
 export type RepositoryTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["ID"]>;
   name__value?: InputMaybe<Scalars["String"]>;
 };
-
 
 export type RepositoryTransform_PythonArgs = {
   class_name__value?: InputMaybe<Scalars["String"]>;
@@ -3320,11 +3179,9 @@ export type Subscription = {
   query?: Maybe<Scalars["GenericScalar"]>;
 };
 
-
 export type SubscriptionEventArgs = {
   topics?: InputMaybe<Array<InputMaybe<Scalars["String"]>>>;
 };
-
 
 export type SubscriptionQueryArgs = {
   name?: InputMaybe<Scalars["String"]>;
@@ -3383,7 +3240,6 @@ export type TransformPython = {
   timeout: IntAttribute;
   url: StrAttribute;
 };
-
 
 export type TransformPythonTagsArgs = {
   description__value?: InputMaybe<Scalars["String"]>;

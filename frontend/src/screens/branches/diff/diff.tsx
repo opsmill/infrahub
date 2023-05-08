@@ -29,11 +29,11 @@ const tabs = [
   // },
   {
     label: "Data",
-    name: DIFF_TABS.DATA
+    name: DIFF_TABS.DATA,
   },
   {
     label: "Files",
-    name: DIFF_TABS.FILES
+    name: DIFF_TABS.FILES,
   },
   // {
   //   label: "Checks",
@@ -45,12 +45,12 @@ const tabs = [
   // },
   {
     label: "Schema",
-    name: DIFF_TABS.SCHEMA
+    name: DIFF_TABS.SCHEMA,
   },
 ];
 
 const renderContent = (tab: string | null | undefined) => {
-  switch(tab) {
+  switch (tab) {
     case DIFF_TABS.FILES:
       // return <FilesDiff />;
       return null;
@@ -63,9 +63,18 @@ const renderContent = (tab: string | null | undefined) => {
 
 export const Diff = () => {
   const [qspTab] = useQueryParam(QSP.BRANCH_DIFF_TAB, StringParam);
-  const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [timeFrom, setTimeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  const [timeTo, setTimeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const [branchOnly, setBranchOnly] = useQueryParam(
+    QSP.BRANCH_FILTER_BRANCH_ONLY,
+    StringParam
+  );
+  const [timeFrom, setTimeFrom] = useQueryParam(
+    QSP.BRANCH_FILTER_TIME_FROM,
+    StringParam
+  );
+  const [timeTo, setTimeTo] = useQueryParam(
+    QSP.BRANCH_FILTER_TIME_TO,
+    StringParam
+  );
 
   const fields: DynamicFieldData[] = [
     {
@@ -88,7 +97,7 @@ export const Diff = () => {
     },
   ];
 
-  const handleSubmit = (data:any) => {
+  const handleSubmit = (data: any) => {
     const { branch_only, time_from, time_to } = data;
 
     if (branch_only !== undefined) {
@@ -107,14 +116,10 @@ export const Diff = () => {
       </div>
 
       <div>
-        <Tabs tabs={tabs} qsp={QSP.BRANCH_DIFF_TAB}/>
+        <Tabs tabs={tabs} qsp={QSP.BRANCH_DIFF_TAB} />
       </div>
 
-      <div>
-        {
-          renderContent(qspTab)
-        }
-      </div>
+      <div>{renderContent(qspTab)}</div>
     </div>
   );
 };

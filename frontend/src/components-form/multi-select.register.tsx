@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
+import {
+  FieldValues,
+  RegisterOptions,
+  UseFormRegister,
+  UseFormSetValue,
+} from "react-hook-form";
 import { SelectOption } from "../components/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import OpsMultiSelect from "./multi-select";
@@ -16,18 +21,25 @@ interface Props {
 }
 
 export const OpsMultiSelectRegister = (props: Props) => {
-  const { name, value, register, setValue, config, options, label, error } = props;
+  const { name, value, register, setValue, config, options, label, error } =
+    props;
   const multiSelectRegister = register(name, {
     value: value ?? "",
-    ...config
+    ...config,
   });
 
   const [selectedOptions, setSelectedOptions] = useState<SelectOption[]>(value);
 
   return (
-    <OpsMultiSelect error={error} label={label} options={options} value={selectedOptions} onChange={(newValue) => {
-      setSelectedOptions(newValue as SelectOption[]);
-      setValue(multiSelectRegister.name, newValue);
-    }} />
+    <OpsMultiSelect
+      error={error}
+      label={label}
+      options={options}
+      value={selectedOptions}
+      onChange={(newValue) => {
+        setSelectedOptions(newValue as SelectOption[]);
+        setValue(multiSelectRegister.name, newValue);
+      }}
+    />
   );
 };

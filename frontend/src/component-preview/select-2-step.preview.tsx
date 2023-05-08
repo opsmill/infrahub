@@ -5,16 +5,16 @@ import { SelectOption } from "../components/select";
 const optionsLeft: SelectOption[] = [
   {
     name: "Account",
-    id: "account"
+    id: "account",
   },
   {
     name: "Group",
-    id: "group"
+    id: "group",
   },
   {
     name: "Repository",
-    id: "repository"
-  }
+    id: "repository",
+  },
 ];
 
 export const Select2StepPreview = () => {
@@ -38,7 +38,8 @@ export const Select2StepPreview = () => {
                   to select the category from the first dropdown after which the
                   second dropdown is populated with the relevant options. If you
                   change the category in the first dropdown, the options in the
-                  second dropdown are updated according to the selected category.
+                  second dropdown are updated according to the selected
+                  category.
                 </p>
               </div>
             </div>
@@ -57,7 +58,10 @@ export const Select2StepPreview = () => {
             </h1>
             <div>
               <Select2Step
-                defaultValue={{ parent: "group", child: "0831f2dd-4138-4b00-9fdc-c366abee2bd0" }}
+                defaultValue={{
+                  parent: "group",
+                  child: "0831f2dd-4138-4b00-9fdc-c366abee2bd0",
+                }}
                 label="Peer"
                 optionsLeft={optionsLeft}
                 onChange={(value) => {
@@ -69,7 +73,11 @@ export const Select2StepPreview = () => {
               Output
             </h1>
             <div className="relative rounded-xl bg-gray-900 px-6 pb-9 shadow-2xl sm:px-12 lg:px-8 lg:py-8 xl:px-10 xl:py-10 overflow-auto">
-              {value && <pre className="text-sm text-white">{JSON.stringify(value, null, 4)}</pre>}
+              {value && (
+                <pre className="text-sm text-white">
+                  {JSON.stringify(value, null, 4)}
+                </pre>
+              )}
             </div>
           </div>
         </div>

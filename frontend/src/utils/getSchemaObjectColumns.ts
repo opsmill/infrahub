@@ -15,15 +15,20 @@ export const getSchemaRelationshipColumns = (
 
   // Relationship kind to show in LIST VIEW - Attribute, Parent
   const relationships = (schema.relationships || [])
-  .filter(relationship => relationship.kind === "Attribute" || relationship.kind === "Parent")
-  .map((row) => ({
-    label: row.label ?? "",
-    name: row.name,
-  }));
+    .filter(
+      (relationship) =>
+        relationship.kind === "Attribute" || relationship.kind === "Parent"
+    )
+    .map((row) => ({
+      label: row.label ?? "",
+      name: row.name,
+    }));
   return relationships;
 };
 
-export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
+export const getSchemaAttributeColumns = (
+  schema: iNodeSchema | iGenericSchema
+): iColumn[] => {
   if (!schema) {
     return [];
   }
@@ -35,7 +40,9 @@ export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema):
   return attributes;
 };
 
-export const getSchemaObjectColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
+export const getSchemaObjectColumns = (
+  schema: iNodeSchema | iGenericSchema
+): iColumn[] => {
   if (!schema) {
     return [];
   }
@@ -47,13 +54,17 @@ export const getSchemaObjectColumns = (schema: iNodeSchema | iGenericSchema): iC
   return columns;
 };
 
-export const getAttributeColumnsFromNodeOrGenericSchema = (schemaList: iNodeSchema[], generics: iGenericSchema[], kind: String): iColumn[] => {
-  const generic = generics.find(g => g.kind === kind);
-  const peerSchema = schemaList.find(s => s.kind === kind);
-  if(generic) {
+export const getAttributeColumnsFromNodeOrGenericSchema = (
+  schemaList: iNodeSchema[],
+  generics: iGenericSchema[],
+  kind: String
+): iColumn[] => {
+  const generic = generics.find((g) => g.kind === kind);
+  const peerSchema = schemaList.find((s) => s.kind === kind);
+  if (generic) {
     return getSchemaAttributeColumns(generic);
   }
-  if(peerSchema) {
+  if (peerSchema) {
     return getSchemaAttributeColumns(peerSchema);
   }
   return [];

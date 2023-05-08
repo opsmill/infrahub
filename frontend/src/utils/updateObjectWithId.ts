@@ -11,7 +11,11 @@ const mutationTemplate = Handlebars.compile(`mutation {{kind.value}}Update {
 }
 `);
 
-const updateObjectWithId = async (id: string, schema: iNodeSchema, updateObject: object) => {
+const updateObjectWithId = async (
+  id: string,
+  schema: iNodeSchema,
+  updateObject: object
+) => {
   const updateMutation = mutationTemplate({
     name: schema.name,
     data: getStringJSONWithoutQuotes({

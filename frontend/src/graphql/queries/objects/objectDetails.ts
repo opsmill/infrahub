@@ -52,7 +52,9 @@ const template = Handlebars.compile(`query {{kind.value}} {
 
 const getObjectDetails = async (schema: iNodeSchema, id: string) => {
   // Get only a specific set of relationshisp (attribute ones)
-  const relationships = schema?.relationships?.filter((relationship) => relationship.cardinality === "one");
+  const relationships = schema?.relationships?.filter(
+    (relationship) => relationship.cardinality === "one"
+  );
 
   const queryString = template({
     ...schema,
