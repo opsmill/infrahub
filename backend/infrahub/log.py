@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any
+from typing import Any, Dict, List
 
 import structlog
 from pydantic import parse_obj_as
@@ -18,7 +18,7 @@ def get_logger(name: str = "infrahub") -> structlog.stdlib.BoundLogger:
     return structlog.stdlib.get_logger(name)
 
 
-def get_log_data() -> dict[str, Any]:
+def get_log_data() -> Dict[str, Any]:
     return structlog.contextvars.get_contextvars()
 
 
@@ -27,7 +27,7 @@ def set_log_data(key: str, value: Any) -> None:
 
 
 def configure_logging(production: bool = True, log_level: str = "INFO"):
-    shared_processors: list[Processor] = [
+    shared_processors: List[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.TimeStamper(fmt="iso"),
