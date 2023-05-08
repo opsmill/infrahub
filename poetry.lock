@@ -103,6 +103,24 @@ files = [
 ]
 
 [[package]]
+name = "asgi-correlation-id"
+version = "4.2.0"
+description = "Middleware correlating project logs to individual requests"
+category = "dev"
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "asgi_correlation_id-4.2.0-py3-none-any.whl", hash = "sha256:bd3321a4022f38179db775d27c40cb45130ac9429d569cd59b5474cb2f65fb1b"},
+    {file = "asgi_correlation_id-4.2.0.tar.gz", hash = "sha256:9d7dcfc2ed016f6e594fffd553788ac70129db7f92bb4dc268ab0b1a3284de5a"},
+]
+
+[package.dependencies]
+starlette = ">=0.18"
+
+[package.extras]
+celery = ["celery"]
+
+[[package]]
 name = "astroid"
 version = "2.15.4"
 description = "An abstract syntax tree for Python with inference support."
@@ -4307,4 +4325,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "3f092b82cf9dad30a5455868839121fe239bcdb26fba5f64c0214316af120458"
+content-hash = "bf176479c2105878d2bebd7c9cbd5f17f4429b291a39cccadaf69685043435cc"

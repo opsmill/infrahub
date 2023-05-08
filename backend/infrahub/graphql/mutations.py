@@ -14,6 +14,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import BranchNotFound, NodeNotFound, ValidationError
 from infrahub.lock import registry as lock_registry
+from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus.events import (
     BranchMessageAction,
     DataMessageAction,
@@ -29,6 +30,8 @@ from .types import BranchType
 from .utils import extract_fields
 
 # pylint: disable=unused-argument,too-few-public-methods
+
+log = get_logger()
 
 
 # ------------------------------------------
@@ -195,7 +198,10 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         # Create the new repository in the filesystem.
-        await rpc_client.call(InfrahubGitRPC(action=GitMessageAction.REPO_ADD, repository=obj))
+        log.info("create_repository", name=obj.name.value)
+        log_data = get_log_data()
+        request_id = log_data.get("request_id", "")
+        await rpc_client.call(InfrahubGitRPC(action=GitMessageAction.REPO_ADD, repository=obj, request_id=request_id))
 
         # TODO Validate that the creation of the repository went as expected
         ok = True
@@ -296,17 +302,24 @@ class BranchCreate(Mutation):
             obj.update_schema_hash()
             await obj.save(session=session)
 
+        log.info("created_branch", name=obj.name)
+
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
             repositories = await NodeManager.query(session=session, schema="Repository")
 
             tasks = []
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
 
             for repo in repositories:
                 tasks.append(
                     rpc_client.call(
                         message=InfrahubGitRPC(
-                            action=GitMessageAction.BRANCH_ADD, repository=repo, params={"branch_name": obj.name}
+                            action=GitMessageAction.BRANCH_ADD,
+                            repository=repo,
+                            params={"branch_name": obj.name},
+                            request_id=request_id,
                         ),
                         wait_for_response=not background_execution,
                     )

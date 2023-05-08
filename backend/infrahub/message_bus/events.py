@@ -117,12 +117,14 @@ class InfrahubMessage(PickleSerializer):
     """
 
     type = None
+    request_id: Optional[str] = None
 
     SERIALIZER = pickle
     CONTENT_TYPE = "application/python-pickle"
 
-    def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, *args, request_id: Optional[str] = None, **kwargs):  # pylint: disable=unused-argument
         self._message = None
+        self.request_id = request_id
 
     @classmethod
     def convert(cls, message: IncomingMessage) -> SelfInfrahubMessage:
@@ -158,8 +160,10 @@ class InfrahubMessage(PickleSerializer):
 
     def generate_message_body(self) -> dict:
         """Generate the body of the message as a dict."""
-
-        return {}
+        body = {}
+        if self.request_id:
+            body["request_id"] = self.request_id
+        return body
 
     def generate_message(self) -> Message:
         """Generate AMQP Message with body in JSON and store it in self._message."""

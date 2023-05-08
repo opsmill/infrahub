@@ -56,7 +56,6 @@ class InfrahubRpcClientBase:
             self.futures[correlation_id] = future
         else:
             self.futures[correlation_id] = None
-
         await message.send(channel=self.channel, correlation_id=correlation_id, reply_to=self.callback_queue.name)
 
         if wait_for_response:

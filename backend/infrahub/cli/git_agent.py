@@ -12,6 +12,7 @@ from rich.logging import RichHandler
 import infrahub.config as config
 from infrahub.git import handle_message, initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
+from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import (
     InfrahubMessage,
@@ -21,6 +22,8 @@ from infrahub.message_bus.events import (
 from infrahub_client import InfrahubClient
 
 app = typer.Typer()
+
+log = get_logger()
 
 
 def signal_handler(*args, **kwargs):  # pylint: disable=unused-argument
@@ -38,7 +41,7 @@ def callback():
     """
 
 
-async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
+async def subscribe_rpcs_queue(client: InfrahubClient):
     """Subscribe to the RPCs queue and execute the corresponding action when a valid RPC is received."""
     # TODO generate an exception if the broker is not properly configured
     # and return a proper message to the user
@@ -58,11 +61,15 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
 
                     try:
                         rpc = InfrahubMessage.convert(message)
-                        log.debug(f"Received RPC message {rpc.type}")
-
+                        clear_log_context()
+                        if rpc.request_id:
+                            set_log_data(key="request_id", value=rpc.request_id)
+                        log.debug("recieved_message", message_type=rpc.type)
                         response = await handle_message(message=rpc, client=client)
 
-                        log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
+                        log.info(
+                            "RPC Execution Completed", message_type=rpc.type, action=rpc.action, status=response.status
+                        )
                     except Exception as exc:  # pylint: disable=broad-except
                         log.critical(exc, exc_info=True)
                         response = InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[str(exc)])
@@ -76,7 +83,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                 log.exception("Processing error for message %r", message)
 
 
-async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
+async def initialize_git_agent(client: InfrahubClient):
     log.info("Initializing Git Agent ...")
     initialize_repositories_directory()
 
@@ -84,7 +91,7 @@ async def initialize_git_agent(client: InfrahubClient, log: logging.Logger):
     await sync_remote_repositories(client=client)
 
 
-async def monitor_remote_activity(client: InfrahubClient, interval: int, log: logging.Logger):
+async def monitor_remote_activity(client: InfrahubClient, interval: int):
     log.info("Monitoring remote repository for updates .. ")
 
     while True:
@@ -99,7 +106,6 @@ async def _start(debug: bool, interval: int, config_file: str, port: int):
 
     FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub.git")
 
     log.debug(f"Config file : {config_file}")
 
@@ -113,11 +119,11 @@ async def _start(debug: bool, interval: int, config_file: str, port: int):
     client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
     await client.branch.all()
 
-    await initialize_git_agent(client=client, log=log)
+    await initialize_git_agent(client=client)
 
     tasks = [
-        asyncio.create_task(subscribe_rpcs_queue(client=client, log=log)),
-        asyncio.create_task(monitor_remote_activity(client=client, interval=interval, log=log)),
+        asyncio.create_task(subscribe_rpcs_queue(client=client)),
+        asyncio.create_task(monitor_remote_activity(client=client, interval=interval)),
     ]
 
     await asyncio.gather(*tasks)
