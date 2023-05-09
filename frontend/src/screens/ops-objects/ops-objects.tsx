@@ -21,12 +21,11 @@ export default function OpsObjects() {
                 )}
                 onClick={() => {
                   setSelectedSchema(schema);
-                }}
-              >
+                }}>
                 {schema.label}
                 <div className="text-sm text-gray-600">
-                  {schema?.attributes?.length} attribute(s),{" "}
-                  {schema?.relationships?.length} relationships(s)
+                  {schema?.attributes?.length} attribute(s), {schema?.relationships?.length}{" "}
+                  relationships(s)
                 </div>
               </div>
             );

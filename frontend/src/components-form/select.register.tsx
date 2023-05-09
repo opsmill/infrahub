@@ -12,17 +12,14 @@ type SelectRegisterProps = {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
-}
+};
 
 export const OpsSelectRegister = (props: SelectRegisterProps) => {
   const { name, value, register, setValue, config, options, label, error } = props;
-  const inputRegister = register(
-    name,
-    {
-      value: value ?? "",
-      ...config
-    }
-  );
+  const inputRegister = register(name, {
+    value: value ?? "",
+    ...config,
+  });
 
   return (
     <OpsSelect

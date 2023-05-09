@@ -28,8 +28,7 @@ export default function FilterTags() {
                 !active && checked ? "ring-2" : "",
                 "-m-0.5 relative p-0.5 rounded-full flex items-center justify-center cursor-pointer focus:outline-none"
               )
-            }
-          >
+            }>
             <RadioGroup.Label as="span" className="sr-only">
               {color.name}
             </RadioGroup.Label>

@@ -14,7 +14,7 @@ const DEFAULT_CLASS = `
 `;
 
 const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
-  switch(type) {
+  switch (type) {
     case BADGE_TYPES.VALIDATE: {
       return `
         bg-green-400 text-gray-50
@@ -43,7 +43,7 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
 };
 
 export const Badge = (props: any) => {
-  const { type, className, children, onDelete, value, onClick} = props;
+  const { type, className, children, onDelete, value, onClick } = props;
 
   const customClassName = getClasseName(type, onClick);
 
@@ -64,28 +64,20 @@ export const Badge = (props: any) => {
 
   return (
     <span
-      className={
-        classNames(
-          DEFAULT_CLASS,
-          customClassName,
-          className,
-          onDelete ? "cursor-pointer" : ""
-
-        )
-      }
-      onClick={handleClick}
-    >
+      className={classNames(
+        DEFAULT_CLASS,
+        customClassName,
+        className,
+        onDelete ? "cursor-pointer" : ""
+      )}
+      onClick={handleClick}>
       {children}
 
-      {
-        onDelete
-        && (
-          <div className="ml-2 flex flex-col justify-center">
-            <XMarkIcon className="h-4 w-4 text-gray-500" aria-hidden="true"/>
-          </div>
-        )
-      }
+      {onDelete && (
+        <div className="ml-2 flex flex-col justify-center">
+          <XMarkIcon className="h-4 w-4 text-gray-500" aria-hidden="true" />
+        </div>
+      )}
     </span>
   );
-
 };

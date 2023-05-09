@@ -5,8 +5,8 @@ import { Branch } from "../../../generated/graphql";
 declare const Handlebars: any;
 
 type BranchResult = {
-  branch: Branch[]
-}
+  branch: Branch[];
+};
 
 // TODO: Not working for now, needs the backend to be implemented
 // const template = Handlebars.compile(`query {

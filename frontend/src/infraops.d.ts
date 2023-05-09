@@ -266,13 +266,7 @@ export interface components {
      * @description An enumeration.
      * @enum {string}
      */
-    FilterSchemaKind:
-      | "Text"
-      | "Number"
-      | "Boolean"
-      | "Object"
-      | "MultiObject"
-      | "Enum";
+    FilterSchemaKind: "Text" | "Number" | "Boolean" | "Object" | "MultiObject" | "Enum";
     /**
      * GenericSchema
      * @description A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined.

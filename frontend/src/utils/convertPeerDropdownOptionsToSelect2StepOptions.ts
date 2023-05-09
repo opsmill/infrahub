@@ -13,15 +13,12 @@ export const convertPeerDropdownOptionsToSelect2StepOptions = (
     options: [
       {
         name: "",
-        id: ""
+        id: "",
       },
-      ...option[1]
-      .map(
-        (item) => ({
-          name: item.display_label,
-          id: item.id,
-        })
-      ),
+      ...option[1].map((item) => ({
+        name: item.display_label,
+        id: item.id,
+      })),
     ],
   }));
 };
