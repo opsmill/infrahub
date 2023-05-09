@@ -1,10 +1,10 @@
 import DateTimePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+import { format, isValid } from "date-fns";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
-import { forwardRef, useRef, useState } from "react";
-import { format, isValid } from "date-fns";
 
 export const DatePicker = (props: any) => {
   const { date, onChange, onClickNow } = props;
@@ -47,11 +47,23 @@ export const DatePicker = (props: any) => {
     setHasError({});
   };
 
-  const CustomInput = forwardRef(
-    ({ onClick }: any, ref) => (
-      <Input onClick={onClick} ref={ref} value={text} onChange={handleChangeInput} className="rounded-r-none" autoFocus={stateHasFocus} error={hasError} />
-    )
-  );
+  useEffect(() => {
+    if (date) {
+      setText(format(date, "MM/dd/yyy HH:mm"));
+    }
+  }, [date]);
+
+  const CustomInput = forwardRef(({ onClick }: any, ref) => (
+    <Input
+      onClick={onClick}
+      ref={ref}
+      value={text}
+      onChange={handleChangeInput}
+      className="rounded-r-none"
+      autoFocus={stateHasFocus}
+      error={hasError}
+    />
+  ));
 
   return (
     <div className="flex">
@@ -63,7 +75,11 @@ export const DatePicker = (props: any) => {
         calendarStartDay={1}
       />
 
-      <Button onClick={handleClickNow} className="rounded-none rounded-r-md border-t border-r border-b border-gray-300" disabled={!date && !text}>
+      <Button
+        onClick={handleClickNow}
+        className="rounded-none rounded-r-md border-t border-r border-b border-gray-300"
+        disabled={!date && !text}
+      >
         Reset
       </Button>
     </div>
