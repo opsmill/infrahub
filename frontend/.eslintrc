@@ -6,10 +6,15 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
-    // "plugin:prettier/recommended",
+    "plugin:prettier/recommended",
     "react-app/jest",
     "prettier"
   ],
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  },
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint", "unused-imports"],
   "rules": {
