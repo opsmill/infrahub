@@ -15,7 +15,7 @@ export const OpsCheckboxRegister = (props: Props) => {
 
   const inputRegister = register(name, {
     value: value ?? "",
-    ...config
+    ...config,
   });
 
   return (

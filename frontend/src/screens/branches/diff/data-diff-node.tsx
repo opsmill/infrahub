@@ -7,20 +7,20 @@ import { DiffPill } from "./diff-pill";
 export type tDataDiffNodePropertyValue = {
   new: string;
   previous: string;
-}
+};
 
 export type tDataDiffNodeProperty = {
   type?: string;
   changed_at?: number;
   action: string;
   value: tDataDiffNodePropertyValue;
-}
+};
 
 export type tDataDiffNodePeerData = {
   id: string;
   kind: string;
   display_label?: string;
-}
+};
 
 export type tDataDiffNodePeer = {
   // From relationship one
@@ -30,7 +30,7 @@ export type tDataDiffNodePeer = {
   id?: string;
   kind?: string;
   display_label?: string;
-}
+};
 
 export type tDataDiffNodeValue = {
   action: string;
@@ -38,7 +38,7 @@ export type tDataDiffNodeValue = {
   changed_at: string;
   type: string;
   value: tDataDiffNodePropertyValue;
-}
+};
 
 export type tDataDiffNodeElement = {
   value: tDataDiffNodeValue;
@@ -52,13 +52,13 @@ export type tDataDiffNodeElement = {
   peer?: tDataDiffNodePeer;
   peers?: tDataDiffNodeElement[];
   summary?: tDataDiffNodeSummary;
-}
+};
 
 export type tDataDiffNodeSummary = {
   added: number;
   updated: number;
   removed: number;
-}
+};
 
 export type tDataDiffNode = {
   display_label: string;
@@ -68,11 +68,11 @@ export type tDataDiffNode = {
   changed_at?: number;
   summary: tDataDiffNodeSummary;
   elements: Map<string, tDataDiffNodeElement>;
-}
+};
 
 export type tDataDiffNodeProps = {
-  node: tDataDiffNode,
-}
+  node: tDataDiffNode;
+};
 
 const badgeTypes: { [key: string]: BADGE_TYPES } = {
   added: BADGE_TYPES.VALIDATE,
@@ -89,14 +89,7 @@ export const getBadgeType = (action?: string) => {
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { node } = props;
 
-  const {
-    display_label,
-    action,
-    kind,
-    changed_at,
-    summary,
-    elements
-  } = node;
+  const { display_label, action, kind, changed_at, summary, elements } = node;
 
   const title = (
     <div className="p-2 pr-0 flex flex-1 hover:bg-gray-50">
@@ -105,25 +98,15 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           {action?.toUpperCase()}
         </Badge>
 
-        <Badge className="mr-2">
-          {kind}
-        </Badge>
+        <Badge className="mr-2">{kind}</Badge>
 
-
-        <span className="mr-2">
-          {display_label}
-        </span>
+        <span className="mr-2">{display_label}</span>
       </div>
 
       <DiffPill {...summary} />
 
       <div className="w-[160px] flex justify-end">
-        {
-          changed_at
-          && (
-            <DateDisplay date={changed_at} hideDefault />
-          )
-        }
+        {changed_at && <DateDisplay date={changed_at} hideDefault />}
       </div>
     </div>
   );
@@ -132,14 +115,9 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
       <Accordion title={title}>
         <div className="">
-          {
-            Object.values(elements)
-            .map(
-              (element: tDataDiffNodeElement, index: number) => (
-                <DataDiffElement key={index} element={element} />
-              )
-            )
-          }
+          {Object.values(elements).map((element: tDataDiffNodeElement, index: number) => (
+            <DataDiffElement key={index} element={element} />
+          ))}
         </div>
       </Accordion>
     </div>

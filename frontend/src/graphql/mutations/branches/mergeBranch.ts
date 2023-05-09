@@ -15,7 +15,7 @@ mutation {
 
 const mergeBranch = async (data: any) => {
   const mutation = mutationTemplate({
-    data: objectToString(data)
+    data: objectToString(data),
   });
 
   return graphQLClient.request(mutation);

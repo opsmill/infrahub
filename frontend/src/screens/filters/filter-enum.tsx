@@ -22,8 +22,8 @@ export default function FilterComboEnum(props: Props) {
     query === ""
       ? enums
       : enums.filter((row) => {
-        return row.toLowerCase().includes(query.toLowerCase());
-      });
+          return row.toLowerCase().includes(query.toLowerCase());
+        });
 
   return (
     <Combobox
@@ -38,8 +38,7 @@ export default function FilterComboEnum(props: Props) {
             name: filter.name,
           },
         ]);
-      }}
-    >
+      }}>
       <Combobox.Label className="block text-sm font-medium text-gray-700">
         {filter.name}
       </Combobox.Label>
@@ -50,10 +49,7 @@ export default function FilterComboEnum(props: Props) {
           displayValue={(row: any) => (row ? row.display_label : "")}
         />
         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-          <ChevronDownIcon
-            className="h-5 w-5 text-gray-400"
-            aria-hidden="true"
-          />
+          <ChevronDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
         </Combobox.Button>
 
         {filteredRows.length > 0 && (
@@ -67,16 +63,10 @@ export default function FilterComboEnum(props: Props) {
                     "relative cursor-default select-none py-2 pl-3 pr-9",
                     active ? "bg-indigo-600 text-white" : "text-gray-900"
                   )
-                }
-              >
+                }>
                 {({ active, selected }) => (
                   <>
-                    <span
-                      className={classNames(
-                        "block truncate",
-                        selected ? "font-semibold" : ""
-                      )}
-                    >
+                    <span className={classNames("block truncate", selected ? "font-semibold" : "")}>
                       {row}
                     </span>
 
@@ -85,8 +75,7 @@ export default function FilterComboEnum(props: Props) {
                         className={classNames(
                           "absolute inset-y-0 right-0 flex items-center pr-4",
                           active ? "text-white" : "text-indigo-600"
-                        )}
-                      >
+                        )}>
                         <CheckIcon className="h-5 w-5" aria-hidden="true" />
                       </span>
                     )}

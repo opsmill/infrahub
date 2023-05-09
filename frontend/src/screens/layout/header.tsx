@@ -65,8 +65,7 @@ export default function Header(props: Props) {
       <button
         type="button"
         className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 md:hidden"
-        onClick={() => setSidebarOpen(true)}
-      >
+        onClick={() => setSidebarOpen(true)}>
         <span className="sr-only">Open sidebar</span>
         <Bars3BottomLeftIcon className="h-6 w-6" aria-hidden="true" />
       </button>
@@ -93,18 +92,13 @@ export default function Header(props: Props) {
         </div>
         <div className="ml-4 flex items-center md:ml-6">
           <div className="mr-4">
-            <DatePicker
-              date={date}
-              onChange={handleDateChange}
-              onClickNow={handleClickNow}
-            />
+            <DatePicker date={date} onChange={handleDateChange} onClickNow={handleClickNow} />
           </div>
 
           <BranchSelector />
           <button
             type="button"
-            className="ml-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-30 cursor-not-allowed"
-          >
+            className="ml-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-30 cursor-not-allowed">
             <span className="sr-only">View notifications</span>
             <BellIcon className="h-6 w-6" aria-hidden="true" />
           </button>
@@ -128,8 +122,7 @@ export default function Header(props: Props) {
               enterTo="transform opacity-100 scale-100"
               leave="transition ease-in duration-75"
               leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
+              leaveTo="transform opacity-0 scale-95">
               <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none opacity-30">
                 {userNavigation.map((item) => (
                   <Menu.Item key={item.name}>
@@ -139,8 +132,7 @@ export default function Header(props: Props) {
                         className={classNames(
                           active ? "bg-gray-100" : "",
                           "block px-4 py-2 text-sm text-gray-700"
-                        )}
-                      >
+                        )}>
                         {item.name}
                       </a>
                     )}

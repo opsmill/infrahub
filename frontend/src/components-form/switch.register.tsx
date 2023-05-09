@@ -18,7 +18,7 @@ export const OpsSwitchRegister = (props: Props) => {
 
   const inputRegister = register(name, {
     value: value ?? "",
-    ...config
+    ...config,
   });
 
   return (
@@ -26,14 +26,12 @@ export const OpsSwitchRegister = (props: Props) => {
       error={error}
       label={label}
       value={value}
-      onChange={
-        (value) => {
-          if (onChange) {
-            onChange(value);
-          }
-          setValue(inputRegister.name, value);
+      onChange={(value) => {
+        if (onChange) {
+          onChange(value);
         }
-      }
+        setValue(inputRegister.name, value);
+      }}
     />
   );
 };

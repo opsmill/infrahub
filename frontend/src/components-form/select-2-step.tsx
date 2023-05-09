@@ -22,21 +22,17 @@ export const OpsSelect2Step = (props: Props) => {
   const { label, options, value, error } = props;
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
   const [selectedLeft, setSelectedLeft] = useState<SelectOption | null>(
-    value.parent
-      ? options.filter((option) => option.name === value.parent)?.[0]
-      : null
+    value.parent ? options.filter((option) => option.name === value.parent)?.[0] : null
   );
 
   const [selectedRight, setSelectedRight] = useState<SelectOption | null>(
-    value.child
-      ? optionsRight.filter((option) => option.id === value.child)?.[0]
-      : null
+    value.child ? optionsRight.filter((option) => option.id === value.child)?.[0] : null
   );
 
   useEffect(() => {
-    setSelectedRight(value.child
-      ? optionsRight.filter((option) => option.id === value.child)?.[0]
-      : null);
+    setSelectedRight(
+      value.child ? optionsRight.filter((option) => option.id === value.child)?.[0] : null
+    );
   }, [value.child, optionsRight]);
 
   useEffect(() => {
@@ -48,13 +44,15 @@ export const OpsSelect2Step = (props: Props) => {
 
   const setRightDropdownOptions = useCallback(async () => {
     const objectName = selectedLeft?.id;
-    if(objectName) {
+    if (objectName) {
       const peerDropdownOptions = await getDropdownOptionsForRelatedPeers([objectName]);
       const options = peerDropdownOptions[objectName];
-      setOptionsRight(options.map(option => ({
-        name: option.display_label,
-        id: option.id,
-      })));
+      setOptionsRight(
+        options.map((option) => ({
+          name: option.display_label,
+          id: option.id,
+        }))
+      );
     }
   }, [selectedLeft?.id]);
 
@@ -70,32 +68,41 @@ export const OpsSelect2Step = (props: Props) => {
         </label>
       </div>
       <div className="sm:col-span-3 mr-2 mt-1">
-        <OpsSelect error={error} disabled={false} value={selectedLeft ? selectedLeft.id : value.parent} options={options.map(o => ({
-          name: o.name,
-          id: o.id,
-        }))} label="" onChange={(e) => {
-          setSelectedLeft(
-            options.filter((option) => option.id === e.id)[0]
-          );
-          // setSelectedRight(null);
-        }} />
+        <OpsSelect
+          error={error}
+          disabled={false}
+          value={selectedLeft ? selectedLeft.id : value.parent}
+          options={options.map((o) => ({
+            name: o.name,
+            id: o.id,
+          }))}
+          label=""
+          onChange={(e) => {
+            setSelectedLeft(options.filter((option) => option.id === e.id)[0]);
+            // setSelectedRight(null);
+          }}
+        />
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
         {!!selectedLeft && optionsRight.length > 0 && (
-          <OpsSelect error={error} disabled={false} value={selectedRight ? selectedRight.id : value.child} options={optionsRight.map(o => ({
-            name: o.name,
-            id: o.id,
-          }))} label=""
-          onChange={(e) =>
-          {
-            const newOption = optionsRight.filter(option => option.id === e.id)?.[0];
-            setSelectedRight(newOption);
-            props.onChange({
-              parent: selectedLeft.id,
-              child: e.id,
-            });
-          }
-          } />
+          <OpsSelect
+            error={error}
+            disabled={false}
+            value={selectedRight ? selectedRight.id : value.child}
+            options={optionsRight.map((o) => ({
+              name: o.name,
+              id: o.id,
+            }))}
+            label=""
+            onChange={(e) => {
+              const newOption = optionsRight.filter((option) => option.id === e.id)?.[0];
+              setSelectedRight(newOption);
+              props.onChange({
+                parent: selectedLeft.id,
+                child: e.id,
+              });
+            }}
+          />
         )}
       </div>
     </div>

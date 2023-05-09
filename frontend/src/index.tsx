@@ -8,10 +8,7 @@ import reportWebVitals from "./reportWebVitals";
 import App from "./App";
 
 const root = ReactDOM.createRoot(
-  (
-    document.getElementById("root")
-    || document.createElement("div")
-  ) as HTMLElement
+  (document.getElementById("root") || document.createElement("div")) as HTMLElement
 );
 
 root.render(
@@ -22,8 +19,7 @@ root.render(
         options={{
           searchStringToObject: queryString.parse,
           objectToSearchString: queryString.stringify,
-        }}
-      >
+        }}>
         <App />
       </QueryParamProvider>
     </BrowserRouter>

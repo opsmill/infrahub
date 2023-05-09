@@ -16,6 +16,6 @@ export const BRANCH_QUERY = gql`
       created_at
       is_data_only
       is_default
-      }
+    }
   }
 `;

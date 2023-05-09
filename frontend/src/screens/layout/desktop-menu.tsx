@@ -14,38 +14,32 @@ export default function DesktopMenu() {
   const [, setCurrentFilters] = useAtom(comboxBoxFilterState);
   const onClinkMenuItem = () => setCurrentFilters([]);
 
-  const schemaItems = schema.map(
-    (item, index) => (
-      <DropDownMenuItem
-        key={index}
-        path={constructPath(`/objects/${item.name}`)}
-        label={item.label}
-        onClick={onClinkMenuItem}
-      />
-    )
-  );
+  const schemaItems = schema.map((item, index) => (
+    <DropDownMenuItem
+      key={index}
+      path={constructPath(`/objects/${item.name}`)}
+      label={item.label}
+      onClick={onClinkMenuItem}
+    />
+  ));
 
-  const adminItems = ADMIN_MENU_ITEMS.map(
-    (item, index) => (
-      <DropDownMenuItem
-        key={index}
-        path={constructPath(item.path)}
-        label={item.label}
-        onClick={onClinkMenuItem}
-      />
-    )
-  );
+  const adminItems = ADMIN_MENU_ITEMS.map((item, index) => (
+    <DropDownMenuItem
+      key={index}
+      path={constructPath(item.path)}
+      label={item.label}
+      onClick={onClinkMenuItem}
+    />
+  ));
 
-  const branchesItems = BRANCHES_MENU_ITEMS.map(
-    (item, index) => (
-      <DropDownMenuItem
-        key={index}
-        path={constructPath(item.path)}
-        label={item.label}
-        onClick={onClinkMenuItem}
-      />
-    )
-  );
+  const branchesItems = BRANCHES_MENU_ITEMS.map((item, index) => (
+    <DropDownMenuItem
+      key={index}
+      path={constructPath(item.path)}
+      label={item.label}
+      onClick={onClinkMenuItem}
+    />
+  ));
 
   return (
     <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
@@ -57,7 +51,11 @@ export default function DesktopMenu() {
           <nav className="flex-1 space-y-2 bg-white px-2" aria-label="Sidebar">
             <DropDownMenuHeader title={"Objects"} items={schemaItems} Icon={LinkIcon} />
             <DropDownMenuHeader title={"Admin"} items={adminItems} Icon={UserIcon} />
-            <DropDownMenuHeader title={"Branches"} items={branchesItems} Icon={Square3Stack3DIcon} />
+            <DropDownMenuHeader
+              title={"Branches"}
+              items={branchesItems}
+              Icon={Square3Stack3DIcon}
+            />
           </nav>
         </div>
       </div>

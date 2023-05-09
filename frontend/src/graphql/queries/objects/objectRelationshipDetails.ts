@@ -34,9 +34,19 @@ const template = Handlebars.compile(`query {{kind.value}} {
 }
 `);
 
-const getObjectRelationshipsDetails = async (schema: iNodeSchema, schemaList: iNodeSchema[], generics: iGenericSchema[], id: string, relationship: string) => {
+const getObjectRelationshipsDetails = async (
+  schema: iNodeSchema,
+  schemaList: iNodeSchema[],
+  generics: iGenericSchema[],
+  id: string,
+  relationship: string
+) => {
   const relationshipSchema = schema.relationships?.find((r) => r?.name === relationship);
-  const columns = getAttributeColumnsFromNodeOrGenericSchema(schemaList, generics, relationshipSchema?.peer!);
+  const columns = getAttributeColumnsFromNodeOrGenericSchema(
+    schemaList,
+    generics,
+    relationshipSchema?.peer!
+  );
 
   const queryString = template({
     ...schema,

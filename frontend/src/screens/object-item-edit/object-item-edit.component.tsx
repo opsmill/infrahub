@@ -44,16 +44,18 @@ export default function ObjectItemEditComponent(props: Props) {
     async (row: any) => {
       const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
       const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
-      const formStructure = getFormStructureForCreateEdit(schema, schemaList, genericsList, peerDropdownOptions, schemaKindNameMap, genericSchemaMap, row);
+      const formStructure = getFormStructureForCreateEdit(
+        schema,
+        schemaList,
+        genericsList,
+        peerDropdownOptions,
+        schemaKindNameMap,
+        genericSchemaMap,
+        row
+      );
       setFormStructure(formStructure);
     },
-    [
-      genericSchemaMap,
-      genericsList,
-      schema,
-      schemaKindNameMap,
-      schemaList
-    ]
+    [genericSchemaMap, genericsList, schema, schemaKindNameMap, schemaList]
   );
 
   const fetchItemDetails = useCallback(async () => {
@@ -64,14 +66,14 @@ export default function ObjectItemEditComponent(props: Props) {
       const data = await getObjectDetails(schema, objectid!);
       setObjectDetails(data);
       initForm(data);
-    } catch(err) {
+    } catch (err) {
       setHasError(true);
     }
     setIsLoading(false);
   }, [initForm, objectid, schema]);
 
   useEffect(() => {
-    if(schema) {
+    if (schema) {
       fetchItemDetails();
     }
   }, [objectname, objectid, schemaList, date, branch, schema, fetchItemDetails]);
@@ -100,7 +102,12 @@ export default function ObjectItemEditComponent(props: Props) {
         onUpdateComplete();
         return;
       } catch (e) {
-        toast(<Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR}/>);
+        toast(
+          <Alert
+            message="Something went wrong while updating the object"
+            type={ALERT_TYPES.ERROR}
+          />
+        );
         console.error("Something went wrong while updating the object", e);
         return;
       }
@@ -109,12 +116,13 @@ export default function ObjectItemEditComponent(props: Props) {
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
-      {
-        formStructure
-        && (
-          <EditFormHookComponent onCancel={props.closeDrawer} onSubmit={onSubmit} fields={formStructure} />
-        )
-      }
+      {formStructure && (
+        <EditFormHookComponent
+          onCancel={props.closeDrawer}
+          onSubmit={onSubmit}
+          fields={formStructure}
+        />
+      )}
     </div>
   );
 }

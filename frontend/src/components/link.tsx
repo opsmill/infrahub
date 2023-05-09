@@ -3,7 +3,7 @@ import { MouseEventHandler } from "react";
 type LinkProps = {
   onClick: MouseEventHandler;
   children: any;
-}
+};
 
 export const Link = (props: LinkProps) => {
   return (

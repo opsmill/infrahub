@@ -8,4 +8,9 @@ import { QSP } from "../config/qsp";
 const params = new URL(window.location.toString()).searchParams;
 const branchInQsp = params.get(QSP.BRANCH);
 const dateInQsp = params.get(QSP.DATETIME);
-export const graphQLClient = new GraphQLClient(CONFIG.GRAPHQL_URL(branchInQsp ? branchInQsp : "main", dateInQsp ? new Date(dateInQsp) : undefined));
+export const graphQLClient = new GraphQLClient(
+  CONFIG.GRAPHQL_URL(
+    branchInQsp ? branchInQsp : "main",
+    dateInQsp ? new Date(dateInQsp) : undefined
+  )
+);
