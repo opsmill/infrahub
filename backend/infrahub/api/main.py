@@ -14,6 +14,7 @@ from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
+from infrahub import __version__
 from infrahub.api import diff, internal, schema, transformation
 from infrahub.api.background import BackgroundRunner
 from infrahub.api.dependencies import get_session
@@ -31,7 +32,7 @@ from infrahub.middleware import InfrahubCORSMiddleware
 
 app = FastAPI(
     title="Infrahub",
-    version="0.4.0",
+    version=__version__,
     contact={
         "name": "OpsMill",
         "email": "info@opsmill.com",
@@ -187,8 +188,8 @@ app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), method
 app.add_route(
     path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
 )
-app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
-app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
+# app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
+# app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
 
 if __name__ != "main":
     logger.setLevel(gunicorn_logger.level)

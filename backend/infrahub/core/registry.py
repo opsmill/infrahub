@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Union
 import infrahub.config as config
 from infrahub.core.definitions import Brancher
 from infrahub.exceptions import BranchNotFound, DataTypeNotFound, Error
+from infrahub.lock import registry as lock_registry
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -161,8 +162,9 @@ class Registry:
     async def get_branch(self, branch: Optional[Union[Branch, str]], session: Optional[AsyncSession]) -> Branch:
         """Return a branch object based on its name.
 
-        First the function will chec in the registry and if the Branch is not present,
-        and if a session object has been provided it will attempt to retrieve the branch from the database.
+        First the function will check in the registry
+        if the Branch is not present, and if a session object has been provided
+            it will attempt to retrieve the branch and its schema from the database.
 
         Args:
             branch (Optional[Union[Branch, str]]): Branch object or name of a branch
@@ -190,8 +192,13 @@ class Registry:
 
         if not self.branch_object:
             raise Error("Branch object not initialized")
-        obj = await self.branch_object.get_by_name(name=branch, session=session)
-        registry.branch[branch] = obj
+
+        async with lock_registry.get_branch_schema_update():
+            obj = await self.branch_object.get_by_name(name=branch, session=session)
+            registry.branch[branch] = obj
+
+            # Pull the schema for this branch
+            await registry.schema.load_schema_from_db(session=session, branch=obj)
 
         return obj
 

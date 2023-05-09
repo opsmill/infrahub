@@ -4,6 +4,8 @@ from itertools import groupby
 from typing import Any, List, Optional
 from uuid import UUID
 
+KWARGS_TO_DROP = ["session"]
+
 
 def is_valid_uuid(value: Any) -> bool:
     """Check if the input is a valid UUID."""

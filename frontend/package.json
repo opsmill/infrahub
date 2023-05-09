@@ -57,6 +57,7 @@
         "@typescript-eslint/eslint-plugin": "^5.55.0",
         "cypress": "11.2.0",
         "eslint": "^8.36.0",
+        "eslint-config-prettier": "^8.8.0",
         "eslint-config-standard-with-typescript": "^34.0.1",
         "eslint-plugin-import": "^2.27.5",
         "eslint-plugin-n": "^15.6.1",
@@ -68,74 +69,13 @@
         "jsdom": "^21.1.1",
         "lint-staged": "^13.2.0",
         "openapi-typescript": "^6.1.1",
+        "prettier": "2.8.8",
         "pretty-quick": "^3.1.3",
         "react-test-renderer": "^18.2.0",
         "tailwindcss": "^3.2.6",
         "ts-jest": "^29.1.0",
         "typescript": "^4.9.5",
         "vitest": "^0.29.8"
-    },
-    "eslintConfig": {
-        "env": {
-            "browser": true,
-            "es2021": true
-        },
-        "extends": [
-            "plugin:react/recommended",
-            "react-app",
-            "react-app/jest"
-        ],
-        "plugins": [
-            "unused-imports"
-        ],
-        "rules": {
-            "quotes": [
-                "error",
-                "double"
-            ],
-            "indent": [
-                "error",
-                2,
-                {
-                    "SwitchCase": 1,
-                    "MemberExpression": 0
-                }
-            ],
-            "function-paren-newline": [
-                "error",
-                "consistent"
-            ],
-            "array-bracket-spacing": [
-                "error",
-                "never"
-            ],
-            "no-return-assign": [
-                0
-            ],
-            "no-underscore-dangle": [
-                0
-            ],
-            "no-tabs": [
-                0
-            ],
-            "no-confusing-arrow": [
-                0
-            ],
-            "no-case-declarations": [
-                0
-            ],
-            "react/display-name": [
-                0
-            ],
-            "import/no-relative-packages": [
-                0
-            ],
-            "react/react-in-jsx-scope": "off",
-            "@typescript-eslint/no-unused-vars": "error",
-            "unused-imports/no-unused-imports-ts": 2,
-            "semi": "error",
-            "no-trailing-spaces": "error"
-        }
     },
     "browserslist": {
         "production": [

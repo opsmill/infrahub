@@ -125,23 +125,6 @@ class InfrahubGraphQLApp:
         if playground and self.on_get is None:
             self.on_get = make_playground_handler()
 
-    # async def _get_schema(self, session: AsyncSession):
-    #     if not self._schema:
-    #         default_branch = config.SETTINGS.main.default_branch
-    #         await generate_object_types(session=session, branch=default_branch)
-    #         types_dict = registry.get_all_graphql_type(branch=default_branch)
-    #         types = list(types_dict.values())
-
-    #         self._schema = graphene.Schema(
-    #             query=await get_gql_query(session=session),
-    #             mutation=await get_gql_mutation(session=session),
-    #             subscription=await get_gql_subscription(session=session),
-    #             types=types,
-    #             auto_camelcase=False,
-    #         )
-
-    #     return self._schema
-
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             request = Request(scope=scope, receive=receive)

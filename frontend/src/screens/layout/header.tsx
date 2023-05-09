@@ -1,22 +1,19 @@
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import {
-  Bars3BottomLeftIcon,
-  BellIcon
-} from "@heroicons/react/24/outline";
+import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
+import { formatISO, isEqual } from "date-fns";
 import { useAtom } from "jotai";
 import { Fragment, useEffect } from "react";
-import { formatISO } from "date-fns";
 
+import { StringParam, useQueryParam } from "use-query-params";
 import BranchSelector from "../../components/branch-selector";
+import { DatePicker } from "../../components/date-picker";
 import { CONFIG } from "../../config/config";
+import { QSP } from "../../config/qsp";
+import { graphQLClient } from "../../graphql/graphqlClient";
 import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
-import { graphQLClient } from "../../graphql/graphqlClient";
-import { QSP } from "../../config/qsp";
-import { StringParam, useQueryParam } from "use-query-params";
-import { DatePicker } from "../../components/date-picker";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -24,21 +21,33 @@ interface Props {
 
 export default function Header(props: Props) {
   const [date, setDate] = useAtom(timeState);
-  const [, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
+  const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
+
   const { setSidebarOpen } = props;
 
-  useEffect(
-    () => {
-      if(date !== undefined) {
-        graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
+  useEffect(() => {
+    if (qspDate) {
+      const newQspDate = new Date(qspDate);
+
+      // Store the new QSP date only if it's not defined OR if it's different
+      if (!date || (date && !isEqual(newQspDate, date))) {
+        setDate(newQspDate);
       }
-    },
-    [date]
-  );
+    }
+
+    // Remve the date from the store
+    if (!qspDate) {
+      setDate(null);
+    }
+
+    // Update gql endpoint
+    if (date !== undefined) {
+      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
+    }
+  }, [date, qspDate, setDate]);
 
   const handleDateChange = (newDate: any) => {
     if (newDate) {
-      setDate(newDate);
       setQspDate(formatISO(newDate));
     } else {
       // Undefined is needed to remove a parameter from the QSP
@@ -47,7 +56,6 @@ export default function Header(props: Props) {
   };
 
   const handleClickNow = () => {
-    setDate(null);
     // Undefined is needed to remove a parameter from the QSP
     setQspDate(undefined);
   };
@@ -85,7 +93,11 @@ export default function Header(props: Props) {
         </div>
         <div className="ml-4 flex items-center md:ml-6">
           <div className="mr-4">
-            <DatePicker date={date} onChange={handleDateChange} onClickNow={handleClickNow} />
+            <DatePicker
+              date={date}
+              onChange={handleDateChange}
+              onClickNow={handleClickNow}
+            />
           </div>
 
           <BranchSelector />

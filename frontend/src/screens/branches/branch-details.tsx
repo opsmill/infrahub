@@ -15,6 +15,7 @@ import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
 import { constructPath } from "../../utils/fetch";
 import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
+import ModalDelete from "../../components/modal-delete";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -22,6 +23,7 @@ export const BranchDetails = () => {
   const [branch, setBranch] = useState({} as any);
   const [isLoadingBranch, setIsLoadingBranch] = useState(true);
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
+  const [displayModal, setDisplayModal] = useState(false);
   const [detailsContent, setDetailsContent] = useState({});
 
   const navigate = useNavigate();
@@ -82,6 +84,41 @@ export const BranchDetails = () => {
       {
         isLoadingBranch
         && <LoadingScreen />
+      }
+
+      {
+        displayModal
+        && (
+          <ModalDelete
+            title="Delete"
+            description={
+              (
+                <>
+                  Are you sure you want to remove the the branch<br/> <b>`{branch?.name}`</b>?
+                </>
+              )
+            }
+            onCancel={() => setDisplayModal(false)}
+            onDelete={
+              async () => {
+                await branchAction({
+                  successMessage: "Branch deleted successfuly!",
+                  errorMessage: "An error occured while deleting the branch",
+                  request: deleteBranch,
+                  options: {
+                    name: branch.name
+                  }
+                });
+
+                navigate(constructPath("/branches"));
+
+                window.location.reload();
+              }
+            }
+            open={!!displayModal}
+            setOpen={() => setDisplayModal(false)}
+          />
+        )
       }
 
       {
@@ -174,20 +211,7 @@ export const BranchDetails = () => {
                   <Button
                     className="mr-0 md:mr-3"
                     onClick={
-                      async () => {
-                        await branchAction({
-                          successMessage: "Branch deleted successfuly!",
-                          errorMessage: "An error occured while deleting the branch",
-                          request: deleteBranch,
-                          options: {
-                            name: branch.name
-                          }
-                        });
-
-                        navigate(constructPath("/branches"));
-
-                        window.location.reload();
-                      }
+                      () => setDisplayModal(true)
                     }
                     buttonType={BUTTON_TYPES.CANCEL}
                     disabled={branch.is_default}

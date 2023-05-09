@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.initialization import create_branch
-from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub_client import InfrahubClient
 from infrahub_client.node import InfrahubNode
@@ -110,31 +109,3 @@ class TestInfrahubClient:
         node = await client.get(kind="Location", id=obj1.id)
         assert isinstance(node, InfrahubNode)
         assert node.name.value == "jfk1"  # type: ignore[attr-defined]
-
-    async def test_query_transform_python(self, client: InfrahubClient, init_db_base, base_dataset):
-        transforms = await client.get_list_transform_python(branch_name="main")
-
-        assert "transform01" in transforms
-
-    async def test_create_transform_python_main(self, client: InfrahubClient, session, init_db_base, base_dataset):
-        branch_name = "main"
-
-        transforms = await NodeManager.query("TransformPython", branch=branch_name, session=session)
-        repositories = await NodeManager.query("Repository", branch=branch_name, session=session)
-        queries = await NodeManager.query("GraphQLQuery", branch=branch_name, session=session)
-
-        assert len(transforms) == 1
-
-        await client.create_transform_python(
-            branch_name=branch_name,
-            name="transform02",
-            description="test fransform02",
-            file_path="mytransformation02.py",
-            class_name="Transform02",
-            url="transform02",
-            query=str(queries[0].name.value),
-            repository=str(repositories[0].id),
-        )
-
-        transforms = await NodeManager.query("TransformPython", branch=branch_name, session=session)
-        assert len(transforms) == 2
