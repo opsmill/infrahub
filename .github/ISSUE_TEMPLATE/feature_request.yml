@@ -6,7 +6,7 @@ body:
   - type: dropdown
     attributes:
       label: Component
-      description: Please indicate which component(s) this feature is associated with (leave blanc if unknown)
+      description: Please indicate which component(s) this feature is associated with (leave blank if unknown)
       multiple: true
       options:
         - Frontend UI
