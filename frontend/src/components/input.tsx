@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
 import { classNames } from "../utils/common";
 
 // type InputProps = {
@@ -12,7 +12,7 @@ import { classNames } from "../utils/common";
 // }
 
 // Forward ref used for Combobox.Input in Select
-export const Input = forwardRef((props: any, ref: any) => {
+export const Input = forwardRef((props: any) => {
   const { className, onChange, error, ...propsToPass } = props;
 
   return (

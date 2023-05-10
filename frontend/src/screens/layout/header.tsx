@@ -3,7 +3,7 @@ import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual } from "date-fns";
 import { useAtom } from "jotai";
-import { Fragment, useEffect } from "react";
+import React, { Fragment, useEffect } from "react";
 
 import { StringParam, useQueryParam } from "use-query-params";
 import BranchSelector from "../../components/branch-selector";

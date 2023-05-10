@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import { classNames } from "../utils/common";
 
-export const Textarea = forwardRef((props: any, ref: any) => {
+export const Textarea = forwardRef((props: any) => {
   const { className, onChange, error, ...propsToPass } = props;
 
   return (

@@ -1,13 +1,13 @@
-import { useParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { DataDiffNode } from "./data-diff-node";
-import { CONFIG } from "../../../config/config";
-import { fetchUrl } from "../../../utils/fetch";
-import { QSP } from "../../../config/qsp";
-import { StringParam, useQueryParam } from "use-query-params";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
+import { CONFIG } from "../../../config/config";
+import { QSP } from "../../../config/qsp";
+import { fetchUrl } from "../../../utils/fetch";
+import LoadingScreen from "../../loading-screen/loading-screen";
+import { DataDiffNode } from "./data-diff-node";
 
 export const DataDiff = () => {
   const { branchname } = useParams();
@@ -28,7 +28,7 @@ export const DataDiff = () => {
       ["branch_only", branchOnly ?? ""],
       ["time_from", timeFrom ?? ""],
       ["time_to", timeTo ?? ""],
-    ].filter(([k, v]) => v !== undefined && v !== "");
+    ].filter(([, v]) => v !== undefined && v !== "");
 
     const qsp = new URLSearchParams(options);
 

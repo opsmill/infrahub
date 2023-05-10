@@ -1,6 +1,6 @@
 import { QSP } from "../config/qsp";
 
-export const fetchUrl = async (url: string, payload?: RequestInit) => {
+export const fetchUrl = async (url: string, payload?: any) => {
   const rawResponse = await fetch(url, payload);
   return rawResponse?.json();
 };
@@ -18,10 +18,10 @@ export const constructPath = (path: string) => {
   // Get QSP as [ [ key, value ], ... ]
   const params = Array.from(searchParams)
     .filter(
-      ([k, v]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
+      ([k]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
     )
     .filter(
-      ([k, v]) => !path.includes(k) // If a QSP is already in the path, then we don't override it
+      ([k]) => !path.includes(k) // If a QSP is already in the path, then we don't override it
     );
 
   // Construct the new params as "?key=value&..."
