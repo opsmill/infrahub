@@ -52,11 +52,9 @@ query {{kind}} {
 export default function ObjectItems() {
   const { objectname } = useParams();
   const [schemaList] = useAtom(schemaState);
-  // const [date] = useAtom(timeState);
   const [branch] = useAtom(branchState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
-  console.log("currentFilters: ", currentFilters);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   // All the fiter values are being sent out as strings inside quotes.
@@ -70,13 +68,13 @@ export default function ObjectItems() {
 
   const queryString = schema
     ? template({
-        ...schema,
-        filterString,
-        relationships: getSchemaRelationshipColumns(schema),
-      })
+      ...schema,
+      filterString,
+      relationships: getSchemaRelationshipColumns(schema),
+    })
     : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
-      "query { ok }";
+  // TODO: Find another solution for queries while loading schema
+    "query { ok }";
 
   const { loading, error, data } = useQuery(
     gql`

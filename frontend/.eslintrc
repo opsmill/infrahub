@@ -1,6 +1,7 @@
 {
   "env": {
     "browser": true,
+    "node": true,
     "es2021": true
   },
   "settings": {
@@ -54,6 +55,14 @@
     "@typescript-eslint/no-unused-vars": "error",
     "unused-imports/no-unused-imports-ts": 2,
     "semi": "error",
-    "no-trailing-spaces": "error"
+    "no-trailing-spaces": "error",
+    "indent": [
+      "error",
+      2,
+      {
+        "SwitchCase": 1,
+        "MemberExpression": 1
+      }
+    ]
   }
 }
