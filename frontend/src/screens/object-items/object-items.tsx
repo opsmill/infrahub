@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 
 import { useAtom } from "jotai";
@@ -9,8 +9,8 @@ import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import useQuery from "../../graphql/useQuery";
+import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import { branchState } from "../../state/atoms/branch.atom";
-import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
@@ -55,8 +55,8 @@ export default function ObjectItems() {
   // const [date] = useAtom(timeState);
   const [branch] = useAtom(branchState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const [currentFilters] = useAtom(comboxBoxFilterState);
-
+  const currentFilters = useReactiveVar(comboxBoxFilterVar);
+  console.log("currentFilters: ", currentFilters);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   // All the fiter values are being sent out as strings inside quotes.

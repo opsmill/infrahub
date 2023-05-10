@@ -6,4 +6,4 @@ export interface iComboBoxFilter {
   display_label: string;
 }
 
-export const comboxBoxFilterVar = makeVar([]);
+export const comboxBoxFilterVar = makeVar<iComboBoxFilter[]>([]);

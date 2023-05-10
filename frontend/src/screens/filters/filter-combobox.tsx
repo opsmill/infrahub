@@ -1,15 +1,15 @@
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { graphQLClient } from "../../graphql/graphqlClient";
+import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import { components } from "../../infraops";
-import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 declare const Handlebars: any;
 
@@ -28,12 +28,14 @@ const template = Handlebars.compile(`query {{kind.value}} {
 export default function FilterCombobox(props: Props) {
   const { filter } = props;
   const [schemaList] = useAtom(schemaState);
-  const [filters, setFilters] = useAtom(comboxBoxFilterState);
   const schema = schemaList.filter((s) => filter.object_kind === s.kind)[0];
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [objectRows, setObjectRows] = useState<any[] | undefined>();
   const [query, setQuery] = useState("");
+
+  const filters = comboxBoxFilterVar();
+
   const currentFilter = filters.filter((row) => row.name === filter.name);
 
   const fetchFilterRows = useCallback(async () => {
@@ -91,14 +93,17 @@ export default function FilterCombobox(props: Props) {
       as="div"
       value={currentFilter.length ? currentFilter[0] : null}
       onChange={(selected: any) => {
-        setFilters([
+        const newFilters = [
           ...filters.filter((row) => row.name !== filter.name),
           {
             value: selected.id,
             display_label: selected.display_label,
             name: filter.name,
           },
-        ]);
+        ];
+
+        console.log("newFilters: ", newFilters);
+        comboxBoxFilterVar(newFilters);
       }}>
       <Combobox.Label className="block text-sm font-medium text-gray-700">
         {filter.name}

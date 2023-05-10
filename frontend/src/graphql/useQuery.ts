@@ -3,9 +3,7 @@ import { useAtom } from "jotai";
 import { branchState } from "../state/atoms/branch.atom";
 
 const useQuery = (QUERY: any, options?: any) => {
-  console.log("options: ", options);
   const [branch] = useAtom(branchState);
-  console.log("branch: ", branch);
 
   return useApolloQuery(QUERY, { ...options, context: { branch: branch?.name } });
 };

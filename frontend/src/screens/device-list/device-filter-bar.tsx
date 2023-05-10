@@ -1,3 +1,4 @@
+import { useReactiveVar } from "@apollo/client";
 import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { comboxBoxFilterVar, iComboBoxFilter } from "../../graphql/variables/filtersVar";
@@ -17,10 +18,10 @@ interface Props {
 }
 
 export default function DeviceFilterBar(props: Props) {
-  const currentFilters = comboxBoxFilterVar();
-  console.log("currentFilters: ", currentFilters);
+  const currentFilters = useReactiveVar(comboxBoxFilterVar);
 
   const [showFilters, setShowFilters] = useState(false);
+
   return (
     <div className="bg-white">
       <div
