@@ -25,14 +25,6 @@
       "error",
       "double"
     ],
-    "indent": [
-      "error",
-      2,
-      {
-        "SwitchCase": 1,
-        "MemberExpression": 1
-      }
-    ],
     "function-paren-newline": [
       "error",
       "consistent"
