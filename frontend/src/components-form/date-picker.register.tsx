@@ -19,19 +19,17 @@ export const OpsDatePickerRegister = (props: Props) => {
 
   const inputRegister = register(name, {
     value: value ?? "",
-    ...config
+    ...config,
   });
 
   return (
     <OpsDatePicker
       label={label}
       value={currentValue}
-      onChange={
-        (value?: Date) => {
-          setCurrentValue(value);
-          setValue(inputRegister.name, value);
-        }
-      }
+      onChange={(value?: Date) => {
+        setCurrentValue(value);
+        setValue(inputRegister.name, value);
+      }}
       error={error}
     />
   );

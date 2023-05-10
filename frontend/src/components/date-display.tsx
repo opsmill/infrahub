@@ -4,7 +4,7 @@ type DateDisplayProps = {
   date?: number | string | Date;
   hideDefault?: boolean;
   fromNow?: boolean;
-}
+};
 
 export const DateDisplay = (props: DateDisplayProps) => {
   const { date, hideDefault, fromNow } = props;
@@ -15,12 +15,11 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="font-normal">
-      {
-        fromNow
-          ? formatDistanceToNow(props.date ? new Date() : new Date(), { addSuffix: true })
-          : format(props.date ? new Date() : new Date(), "MM/dd/yyy HH:mm")
-      }
+      {fromNow
+        ? formatDistanceToNow(props.date ? new Date() : new Date(), {
+            addSuffix: true,
+          })
+        : format(props.date ? new Date() : new Date(), "MM/dd/yyy HH:mm")}
     </span>
   );
-
 };

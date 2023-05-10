@@ -8,17 +8,14 @@ type SelectProps = {
   disabled: boolean;
   onChange: (value: SelectOption) => void;
   error?: FormFieldError;
-}
+};
 
 export const OpsSelect = (props: SelectProps) => {
   const { label, ...propsToPass } = props;
 
   return (
     <>
-      <label
-        className="block text-sm font-medium leading-6 text-gray-900">
-        {label}
-      </label>
+      <label className="block text-sm font-medium leading-6 text-gray-900">{label}</label>
       <Select {...propsToPass} />
     </>
   );

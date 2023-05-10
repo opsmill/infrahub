@@ -17,7 +17,7 @@ export const displayValue = (value: any) => {
 
 // Display the values
 // (only new one for "added", only old ones for "deleted", and previous + new for "updated")
-export const diffContent: { [key: string]: any; } = {
+export const diffContent: { [key: string]: any } = {
   added: (property: tDataDiffNodeProperty) => {
     const { value } = property;
 
@@ -25,9 +25,7 @@ export const diffContent: { [key: string]: any; } = {
 
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.VALIDATE}>
-          {displayValue(newValue)}
-        </Badge>
+        <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
       </div>
     );
   },
@@ -38,9 +36,7 @@ export const diffContent: { [key: string]: any; } = {
 
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.CANCEL}>
-          {displayValue(previousValue)}
-        </Badge>
+        <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
       </div>
     );
   },
@@ -53,9 +49,7 @@ export const diffContent: { [key: string]: any; } = {
       <div className="flex items-center">
         <div className="flex">
           <Tooltip message="Previous value">
-            <Badge type={BADGE_TYPES.CANCEL}>
-              {displayValue(previousValue)}
-            </Badge>
+            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
           </Tooltip>
         </div>
 
@@ -65,9 +59,7 @@ export const diffContent: { [key: string]: any; } = {
 
         <div className="flex">
           <Tooltip message="New value">
-            <Badge type={BADGE_TYPES.VALIDATE}>
-              {displayValue(newValue)}
-            </Badge>
+            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
           </Tooltip>
         </div>
       </div>
@@ -77,16 +69,14 @@ export const diffContent: { [key: string]: any; } = {
 
 // Display the values
 // (only new one for "added", only old ones for "deleted", and previous + new for "updated")
-export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string, onClick: any) => {
+export const diffPeerContent = (peer: tDataDiffNodePeer, action: string, onClick: any) => {
   const { new: newPeer, previous: previousPeer, kind, display_label } = peer;
 
   // From relationship one
   if (newPeer && !previousPeer) {
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.VALIDATE}>
-          {displayValue(newPeer?.display_label)}
-        </Badge>
+        <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newPeer?.display_label)}</Badge>
       </div>
     );
   }
@@ -95,9 +85,7 @@ export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string, onClic
   if (!newPeer && previousPeer) {
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.CANCEL}>
-          {displayValue(previousPeer?.display_label)}
-        </Badge>
+        <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousPeer?.display_label)}</Badge>
       </div>
     );
   }
@@ -108,9 +96,7 @@ export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string, onClic
       <div className="flex items-center">
         <div className="flex">
           <Tooltip message="Previous value">
-            <Badge type={BADGE_TYPES.CANCEL}>
-              {displayValue(previousPeer?.display_label)}
-            </Badge>
+            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousPeer?.display_label)}</Badge>
           </Tooltip>
         </div>
 
@@ -120,9 +106,7 @@ export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string, onClic
 
         <div className="flex">
           <Tooltip message="New value">
-            <Badge type={BADGE_TYPES.VALIDATE}>
-              {displayValue(newPeer?.display_label)}
-            </Badge>
+            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newPeer?.display_label)}</Badge>
           </Tooltip>
         </div>
       </div>
@@ -134,7 +118,9 @@ export const diffPeerContent =  (peer: tDataDiffNodePeer, action: string, onClic
     return (
       <div className="flex">
         <Tooltip message={`Link to ${display_label}`}>
-          <Badge type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL} onClick={onClick}>
+          <Badge
+            type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL}
+            onClick={onClick}>
             {displayValue(display_label)}
           </Badge>
         </Tooltip>

@@ -52,7 +52,7 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 interface Props {
   row: any;
   schema: iNodeSchema;
-  type: "attribute" | "relationship",
+  type: "attribute" | "relationship";
   attributeOrRelationshipToEdit: any;
   attributeOrRelationshipName: any;
   schemaList: iNodeSchema[];
@@ -61,24 +61,38 @@ interface Props {
 }
 
 export default function ObjectItemMetaEdit(props: Props) {
-  const { row, type, attributeOrRelationshipName, schema, schemaList, attributeOrRelationshipToEdit } = props;
-  const formStructure = getFormStructureForMetaEdit(attributeOrRelationshipToEdit, type, attributeOrRelationshipName, schemaList);
+  const {
+    row,
+    type,
+    attributeOrRelationshipName,
+    schema,
+    schemaList,
+    attributeOrRelationshipToEdit,
+  } = props;
+  const formStructure = getFormStructureForMetaEdit(
+    attributeOrRelationshipToEdit,
+    type,
+    attributeOrRelationshipName,
+    schemaList
+  );
   async function onSubmit(data: any, error: any) {
     let updateObject: any = {
       id: props.row.id,
     };
-    if(type === "relationship") {
-      const relationshipSchema = schema.relationships?.find(s => s.name === attributeOrRelationshipName);
-      if(relationshipSchema?.cardinality === "many") {
+    if (type === "relationship") {
+      const relationshipSchema = schema.relationships?.find(
+        (s) => s.name === attributeOrRelationshipName
+      );
+      if (relationshipSchema?.cardinality === "many") {
         const newRelationshipList = row[attributeOrRelationshipName].map((item: any) => {
-          if(item.id === props.attributeOrRelationshipToEdit.id) {
+          if (item.id === props.attributeOrRelationshipToEdit.id) {
             return {
               ...data,
               id: item.id,
             };
           } else {
             return {
-              id: item.id
+              id: item.id,
             };
           }
         });
@@ -105,7 +119,11 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   return (
     <div className="flex-1 bg-white flex">
-      <EditFormHookComponent onCancel={props.closeDrawer} onSubmit={onSubmit} fields={formStructure} />
+      <EditFormHookComponent
+        onCancel={props.closeDrawer}
+        onSubmit={onSubmit}
+        fields={formStructure}
+      />
     </div>
   );
   // return (

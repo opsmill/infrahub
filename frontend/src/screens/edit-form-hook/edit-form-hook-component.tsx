@@ -9,7 +9,5 @@ interface Props {
 }
 
 export default function EditFormHookComponent(props: Props) {
-  return (
-    <Form {...props} />
-  );
+  return <Form {...props} />;
 }

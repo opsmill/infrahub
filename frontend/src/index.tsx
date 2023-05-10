@@ -4,16 +4,11 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
-import reportWebVitals from "./reportWebVitals";
 import App from "./App";
-import { ApolloProvider } from "@apollo/client";
-import graphqlClient from "./graphql/graphqlClientApollo";
+import reportWebVitals from "./reportWebVitals";
 
 const root = ReactDOM.createRoot(
-  (
-    document.getElementById("root")
-    || document.createElement("div")
-  ) as HTMLElement
+  (document.getElementById("root") || document.createElement("div")) as HTMLElement
 );
 
 root.render(
@@ -24,11 +19,8 @@ root.render(
         options={{
           searchStringToObject: queryString.parse,
           objectToSearchString: queryString.stringify,
-        }}
-      >
-        <ApolloProvider client={graphqlClient}>
-          <App />
-        </ApolloProvider>
+        }}>
+        <App />
       </QueryParamProvider>
     </BrowserRouter>
   </React.StrictMode>

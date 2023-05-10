@@ -1,4 +1,5 @@
-export const INFRAHUB_API_SERVER_URL = process.env.REACT_APP_INFRAHUB_API_SERVER_URL || "http://localhost:8000";
+export const INFRAHUB_API_SERVER_URL =
+  process.env.REACT_APP_INFRAHUB_API_SERVER_URL || "http://localhost:8000";
 
 export const CONFIG = {
   GRAPHQL_URL: (() => {
@@ -9,16 +10,17 @@ export const CONFIG = {
       lastUpdatedBranch = branch ?? lastUpdatedBranch;
       lastUpdatedTime = time;
 
-      if(!lastUpdatedTime) {
+      if (!lastUpdatedTime) {
         return `${INFRAHUB_API_SERVER_URL}/graphql/${lastUpdatedBranch}`;
       } else {
         return `${INFRAHUB_API_SERVER_URL}/graphql/${lastUpdatedBranch}?at=${lastUpdatedTime.toISOString()}`;
       }
     };
   })(),
-  SCHEMA_URL: (branch?: string) => branch
-    ? `${INFRAHUB_API_SERVER_URL}/schema?branch=${branch}`
-    : `${INFRAHUB_API_SERVER_URL}/schema`,
+  SCHEMA_URL: (branch?: string) =>
+    branch
+      ? `${INFRAHUB_API_SERVER_URL}/schema?branch=${branch}`
+      : `${INFRAHUB_API_SERVER_URL}/schema`,
   CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/config`,
   DATA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/dev/diff/data?branch=${branch}`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/diff/files?branch=${branch}`,

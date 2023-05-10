@@ -44,28 +44,20 @@ export default function ObjectItemDetails() {
 
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
-  const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(
-    metaEditFieldDetailsState
-  );
+  const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
   const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const atttributeRelationships =
     schema?.relationships?.filter((relationship) => {
-      if (
-        relationship.kind === "Generic" &&
-        relationship.cardinality === "one"
-      ) {
+      if (relationship.kind === "Generic" && relationship.cardinality === "one") {
         return true;
       }
       if (relationship.kind === "Attribute") {
         return true;
       }
-      if (
-        relationship.kind === "Component" &&
-        relationship.cardinality === "one"
-      ) {
+      if (relationship.kind === "Component" && relationship.cardinality === "one") {
         return true;
       }
       if (relationship.kind === "Parent") {
@@ -80,25 +72,19 @@ export default function ObjectItemDetails() {
       name: schema?.label,
     },
     ...(schema?.relationships || [])
-    .filter((relationship) => {
-      if (
-        relationship.kind === "Generic" &&
-          relationship.cardinality === "many"
-      ) {
-        return true;
-      }
-      if (
-        relationship.kind === "Component" &&
-          relationship.cardinality === "many"
-      ) {
-        return true;
-      }
-      return false;
-    })
-    .map((relationship) => ({
-      label: relationship.label,
-      name: relationship.name,
-    })),
+      .filter((relationship) => {
+        if (relationship.kind === "Generic" && relationship.cardinality === "many") {
+          return true;
+        }
+        if (relationship.kind === "Component" && relationship.cardinality === "many") {
+          return true;
+        }
+        return false;
+      })
+      .map((relationship) => ({
+        label: relationship.label,
+        name: relationship.name,
+      })),
   ];
 
   const navigate = useNavigate();
@@ -139,17 +125,14 @@ export default function ObjectItemDetails() {
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
           onClick={() => navigate(constructPath(`/objects/${objectname}`))}
-          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
-        >
+          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
           {schema.kind}
         </div>
         <ChevronRightIcon
           className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
           aria-hidden="true"
         />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">
-          {objectDetails.display_label}
-        </p>
+        <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetails.display_label}</p>
       </div>
 
       <Tabs
@@ -166,26 +149,20 @@ export default function ObjectItemDetails() {
         <div className="px-4 py-5 sm:p-0">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 flex items-center">
-                ID
-              </dt>
+              <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {objectDetails.id}
               </dd>
             </div>
             {schema.attributes?.map((attribute) => {
-              if (
-                !objectDetails[attribute.name] ||
-                !objectDetails[attribute.name].is_visible
-              ) {
+              if (!objectDetails[attribute.name] || !objectDetails[attribute.name].is_visible) {
                 return null;
               }
 
               return (
                 <div
                   className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6"
-                  key={attribute.name}
-                >
+                  key={attribute.name}>
                   <dt className="text-sm font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>
@@ -194,18 +171,14 @@ export default function ObjectItemDetails() {
                     <dd
                       className={classNames(
                         "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0",
-                        attribute.kind === "TextArea"
-                          ? "whitespace-pre-wrap mr-2"
-                          : ""
-                      )}
-                    >
+                        attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
+                      )}>
                       {typeof objectDetails[attribute.name]?.value !== "boolean"
                         ? objectDetails[attribute.name].value
                           ? objectDetails[attribute.name].value
                           : "-"
                         : ""}
-                      {typeof objectDetails[attribute.name]?.value ===
-                        "boolean" && (
+                      {typeof objectDetails[attribute.name]?.value === "boolean" && (
                         <>
                           {objectDetails[attribute.name]?.value === true && (
                             <CheckIcon className="h-4 w-4" />
@@ -246,24 +219,18 @@ export default function ObjectItemDetails() {
                           },
                           {
                             label: "Is protected",
-                            value: objectDetails[attribute.name].is_protected
-                              ? "True"
-                              : "False",
+                            value: objectDetails[attribute.name].is_protected ? "True" : "False",
                             type: "text",
                           },
                           {
                             label: "Is inherited",
-                            value: objectDetails[attribute.name].is_inherited
-                              ? "True"
-                              : "False",
+                            value: objectDetails[attribute.name].is_inherited ? "True" : "False",
                             type: "text",
                           },
                         ]}
                         header={
                           <div className="flex justify-between w-full py-4">
-                            <div className="font-semibold">
-                              {attribute.label}
-                            </div>
+                            <div className="font-semibold">{attribute.label}</div>
                             <div
                               className="cursor-pointer"
                               onClick={() => {
@@ -273,8 +240,7 @@ export default function ObjectItemDetails() {
                                   label: attribute.label || attribute.name,
                                 });
                                 setShowMetaEditModal(true);
-                              }}
-                            >
+                              }}>
                               <PencilSquareIcon className="w-5 h-5 text-blue-500" />
                             </div>
                           </div>
@@ -317,33 +283,24 @@ export default function ObjectItemDetails() {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">
-                {objectDetails.display_label}
-              </span>
+              <span className="text-lg font-semibold mr-3">{objectDetails.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
-                <div className="ml-1.5 pb-1">
-                  {branch?.name ?? DEFAULT_BRANCH_NAME}
-                </div>
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
-                aria-hidden="true"
-              >
+                aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
               {schema.kind}
             </span>
             <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 ml-3">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-blue-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true"
-              >
+              <svg className="h-1.5 w-1.5 mr-1 fill-blue-500" viewBox="0 0 6 6" aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
               ID: {objectDetails.id}
@@ -351,8 +308,7 @@ export default function ObjectItemDetails() {
           </div>
         }
         open={showEditDrawer}
-        setOpen={setShowEditDrawer}
-      >
+        setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
           closeDrawer={() => {
             setShowEditDrawer(false);
@@ -368,23 +324,18 @@ export default function ObjectItemDetails() {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">
-                {metaEditFieldDetails?.label}
-              </span>
+              <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
-                <div className="ml-1.5 pb-1">
-                  {branch?.name ?? DEFAULT_BRANCH_NAME}
-                </div>
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
             <div className="text-gray-500">Metadata</div>
           </div>
         }
         open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}
-      >
+        setOpen={setShowMetaEditModal}>
         <ObjectItemMetaEdit
           closeDrawer={() => {
             setShowMetaEditModal(false);
@@ -398,9 +349,7 @@ export default function ObjectItemDetails() {
           }
           schemaList={schemaList}
           schema={schema}
-          attributeOrRelationshipName={
-            metaEditFieldDetails?.attributeOrRelationshipName
-          }
+          attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}
           row={objectDetails}
         />

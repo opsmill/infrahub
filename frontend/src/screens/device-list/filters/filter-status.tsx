@@ -5,10 +5,7 @@ export default function FilterStatus() {
   const [status, setStatus] = useState("");
   return (
     <>
-      <label
-        htmlFor="status"
-        className="block text-sm font-medium text-gray-700"
-      >
+      <label htmlFor="status" className="block text-sm font-medium text-gray-700">
         Status
       </label>
       <div className="mt-1">
@@ -21,8 +18,7 @@ export default function FilterStatus() {
               status === "Active"
                 ? "z-10 border-indigo-500 outline-none ring-1 ring-indigo-500"
                 : ""
-            )}
-          >
+            )}>
             Active
           </button>
           <button
@@ -33,8 +29,7 @@ export default function FilterStatus() {
               status === "Inactive"
                 ? "z-10 border-indigo-500 outline-none ring-1 ring-indigo-500"
                 : ""
-            )}
-          >
+            )}>
             Inactive
           </button>
           <button
@@ -42,11 +37,8 @@ export default function FilterStatus() {
             type="button"
             className={classNames(
               "relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50",
-              status === "Down"
-                ? "z-10 border-indigo-500 outline-none ring-1 ring-indigo-500"
-                : ""
-            )}
-          >
+              status === "Down" ? "z-10 border-indigo-500 outline-none ring-1 ring-indigo-500" : ""
+            )}>
             Down
           </button>
         </span>

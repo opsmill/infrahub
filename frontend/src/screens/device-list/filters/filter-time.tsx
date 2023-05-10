@@ -20,10 +20,7 @@ export default function FilterTime() {
       </div>
 
       <RadioGroup value={time} onChange={setTime} className="mt-1">
-        <RadioGroup.Label className="sr-only">
-          {" "}
-          Choose a memory option{" "}
-        </RadioGroup.Label>
+        <RadioGroup.Label className="sr-only"> Choose a memory option </RadioGroup.Label>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
           {timeOptions.map((option) => (
             <RadioGroup.Option
@@ -39,8 +36,7 @@ export default function FilterTime() {
                   "border rounded-md py-2 px-3 flex items-center justify-center text-sm font-medium uppercase sm:flex-1"
                 )
               }
-              disabled={false}
-            >
+              disabled={false}>
               <RadioGroup.Label as="span">{option.name}</RadioGroup.Label>
             </RadioGroup.Option>
           ))}

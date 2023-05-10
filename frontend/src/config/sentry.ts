@@ -2,7 +2,8 @@ import * as Sentry from "@sentry/react";
 import { BrowserTracing } from "@sentry/tracing";
 import { Config } from "../state/atoms/config.atom";
 
-const DEFAULT_DSN = "https://c271c704fe5a43b3b08c83919f0d8e01@o4504893920247808.ingest.sentry.io/4504893931520000";
+const DEFAULT_DSN =
+  "https://c271c704fe5a43b3b08c83919f0d8e01@o4504893920247808.ingest.sentry.io/4504893931520000";
 
 const TRACING_INSTANCE = new BrowserTracing();
 
@@ -25,10 +26,7 @@ const SentryClient = (config?: Config) => {
 
   Sentry.init({
     dsn: config?.logging?.remote?.frontend_dsn ?? DEFAULT_DSN,
-    integrations: [
-      TRACING_INSTANCE,
-      REPLAY_INSTANCE,
-    ],
+    integrations: [TRACING_INSTANCE, REPLAY_INSTANCE],
   });
 
   // Sentry.configureScope((scope: any) => scope.setTransactionName("MainApp"));

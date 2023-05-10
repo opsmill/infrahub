@@ -1,13 +1,6 @@
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  FunnelIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
-import {
-  comboxBoxFilterVar,
-  iComboBoxFilter,
-} from "../../graphql/variables/filtersVar";
+import { comboxBoxFilterVar, iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import FilterCombobox from "../filters/filter-combobox";
 import FilterComboEnum from "../filters/filter-enum";
@@ -32,8 +25,7 @@ export default function DeviceFilterBar(props: Props) {
     <div className="bg-white">
       <div
         aria-labelledby="filter-heading"
-        className="grid items-center border-t border-b border-gray-200"
-      >
+        className="grid items-center border-t border-b border-gray-200">
         <h2 id="filter-heading" className="sr-only">
           Filters
         </h2>
@@ -53,49 +45,30 @@ export default function DeviceFilterBar(props: Props) {
                 <button
                   onClick={() => comboxBoxFilterVar([])}
                   type="button"
-                  className="text-gray-500"
-                >
+                  className="text-gray-500">
                   Clear all
                 </button>
               </div>
             </div>
-            <div
-              aria-hidden="true"
-              className="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block"
-            />
+            <div aria-hidden="true" className="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block" />
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
                 {currentFilters.map((filter: iComboBoxFilter) => (
                   <span
                     key={filter.name}
-                    className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900"
-                  >
+                    className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900">
                     <span>{filter.display_label}</span>
                     <button
                       type="button"
                       onClick={() =>
                         comboxBoxFilterVar(
-                          currentFilters.filter(
-                            (row: iComboBoxFilter) => row !== filter
-                          )
+                          currentFilters.filter((row: iComboBoxFilter) => row !== filter)
                         )
                       }
-                      className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
-                    >
-                      <span className="sr-only">
-                        Remove filter for {filter.display_label}
-                      </span>
-                      <svg
-                        className="h-2 w-2"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 8 8"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeWidth="1.5"
-                          d="M1 1l6 6m0-6L1 7"
-                        />
+                      className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500">
+                      <span className="sr-only">Remove filter for {filter.display_label}</span>
+                      <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
+                        <path strokeLinecap="round" strokeWidth="1.5" d="M1 1l6 6m0-6L1 7" />
                       </svg>
                     </button>
                   </span>
@@ -180,13 +153,9 @@ export default function DeviceFilterBar(props: Props) {
                   if (filter.kind === "Object") {
                     return <FilterCombobox filter={filter} key={filter.name} />;
                   } else if (filter.kind === "Text" && !filter.enum) {
-                    return (
-                      <FilterTextField filter={filter} key={filter.name} />
-                    );
+                    return <FilterTextField filter={filter} key={filter.name} />;
                   } else if (filter.kind === "Text" && filter.enum) {
-                    return (
-                      <FilterComboEnum filter={filter} key={filter.name} />
-                    );
+                    return <FilterComboEnum filter={filter} key={filter.name} />;
                   } else {
                     return null;
                   }

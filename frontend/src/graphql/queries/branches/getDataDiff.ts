@@ -8,7 +8,7 @@ type DiffOptions = {
   time_from?: string;
   time_to?: string;
   branch_only?: boolean;
-}
+};
 
 const queryTemplate = Handlebars.compile(`
 query {
@@ -44,7 +44,7 @@ query {
 
 const getDataDiff = async (options: DiffOptions) => {
   const query = queryTemplate({
-    options: objectToString(options)
+    options: objectToString(options),
   });
 
   const result: any = await graphQLClient.request(query);

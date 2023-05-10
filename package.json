@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "lint:frontend": "cd frontend && npm run eslint:fix",
+        "lint:frontend": "cd frontend && npm run format",
         "prepare": "husky install"
     },
     "dependencies": {

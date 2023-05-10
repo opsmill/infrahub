@@ -26,24 +26,22 @@ export default function ObjectItemCreate(props: iProps) {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [formStructure, setFormStructure] = useState<DynamicFieldData[]>();
 
-  const initForm = useCallback(
-    async () => {
-      const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
-      const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
-      const formStructure = getFormStructureForCreateEdit(schema, schemaList, genericsList, peerDropdownOptions, schemaKindNameMap,genericSchemaMap);
-      setFormStructure(formStructure);
-    },
-    [
-      genericSchemaMap,
-      genericsList,
+  const initForm = useCallback(async () => {
+    const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
+    const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
+    const formStructure = getFormStructureForCreateEdit(
       schema,
+      schemaList,
+      genericsList,
+      peerDropdownOptions,
       schemaKindNameMap,
-      schemaList
-    ]
-  );
+      genericSchemaMap
+    );
+    setFormStructure(formStructure);
+  }, [genericSchemaMap, genericsList, schema, schemaKindNameMap, schemaList]);
 
   useEffect(() => {
-    if(schema) {
+    if (schema) {
       initForm();
     }
   }, [schema, initForm]);
@@ -54,12 +52,14 @@ export default function ObjectItemCreate(props: iProps) {
       try {
         await createObject(schema, newObject);
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);
-        if(props.onCreate) {
+        if (props.onCreate) {
           props.onCreate();
         }
-      } catch(err: any) {
+      } catch (err: any) {
         console.error("Something went wrong while creating the object: ", err);
-        toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={err.message} />);
+        toast(
+          <Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={err.message} />
+        );
       }
     } else {
       console.info("Nothing to create");
@@ -68,16 +68,15 @@ export default function ObjectItemCreate(props: iProps) {
 
   return (
     <div className="bg-white flex-1 overflow-auto flex">
-      {
-        schema
-        && formStructure
-        && (
-          <div className="flex-1">
-            <EditFormHookComponent onSubmit={onSubmit} onCancel={() => props.onCancel ? props.onCancel() : null} fields={formStructure} />
-          </div>
-        )
-      }
+      {schema && formStructure && (
+        <div className="flex-1">
+          <EditFormHookComponent
+            onSubmit={onSubmit}
+            onCancel={() => (props.onCancel ? props.onCancel() : null)}
+            fields={formStructure}
+          />
+        </div>
+      )}
     </div>
   );
-
 }

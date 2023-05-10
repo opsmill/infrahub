@@ -8,17 +8,14 @@ type OpsDatePickerProps = {
   onChange: (value?: Date) => void;
   className?: string;
   error?: FormFieldError;
-}
+};
 
 export const OpsDatePicker = (props: OpsDatePickerProps) => {
   const { className, onChange, value, label, error } = props;
 
   return (
     <>
-      <label
-        className="block text-sm font-medium leading-6 text-gray-900">
-        {label}
-      </label>
+      <label className="block text-sm font-medium leading-6 text-gray-900">{label}</label>
       <DatePicker
         onChange={onChange}
         date={value}
