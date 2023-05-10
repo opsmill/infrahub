@@ -11,12 +11,14 @@
     "cypress:run": "cypress run --component",
     "cypress:ci": "cypress:run",
     "vitest": "vitest --globals --reporter verbose",
-    "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
     "eject": "react-scripts eject",
     "codegen": "graphql-codegen --config codegen.yml",
     "codegen:openapi": "npx openapi-typescript http://localhost:8000/openapi.json --output src/infraops.d.ts",
+    "prettier": "prettier './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
+    "prettier:fix": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
     "eslint": "eslint .",
-    "eslint:fix": "eslint . --fix"
+    "eslint:fix": "eslint . --fix",
+    "format-code": "npm run prettier:fix && npm run eslint:fix"
   },
   "dependencies": {
     "@apollo/client": "^3.7.7",
