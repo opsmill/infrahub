@@ -1,4 +1,5 @@
 import { Disclosure } from "@headlessui/react";
+import React from "react";
 import { classNames } from "../../utils/common";
 
 interface Props {
@@ -16,9 +17,7 @@ export default function DropDownMenuHeader(props: Props) {
         <>
           <Disclosure.Button
             className={classNames(
-              false
-                ? "bg-gray-100 text-gray-900"
-                : "bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+              "bg-gray-100 text-gray-900",
               "group w-full flex items-center pl-2 pr-1 py-2 text-left text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             )}>
             <Icon

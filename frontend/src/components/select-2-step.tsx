@@ -32,7 +32,6 @@ export const Select2Step = (props: Props) => {
     if (defaultValue) {
       props.onChange(defaultValue);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setRightDropdownOptions = useCallback(async () => {

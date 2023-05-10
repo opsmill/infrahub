@@ -1,5 +1,7 @@
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import getObjectDetails from "../../graphql/queries/objects/objectDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { genericSchemaState, genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -14,8 +16,6 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
 
 interface Props {
   objectname: string;
@@ -90,7 +90,7 @@ export default function ObjectItemEditComponent(props: Props) {
     return <NoDataFound />;
   }
 
-  async function onSubmit(data: any, error: any) {
+  async function onSubmit(data: any) {
     const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetails);
 
     if (Object.keys(updateObject).length) {

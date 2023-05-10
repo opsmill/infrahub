@@ -1,9 +1,9 @@
 import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { getFormStructureForMetaEdit } from "../../utils/formStructureForCreateEdit";
 import updateObjectWithId from "../../utils/updateObjectWithId";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import { ALERT_TYPES, Alert } from "../../components/alert";
 
 // const optionsLeft: SelectOption[] = [
 //   {
@@ -75,7 +75,7 @@ export default function ObjectItemMetaEdit(props: Props) {
     attributeOrRelationshipName,
     schemaList
   );
-  async function onSubmit(data: any, error: any) {
+  async function onSubmit(data: any) {
     let updateObject: any = {
       id: props.row.id,
     };

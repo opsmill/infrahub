@@ -10,7 +10,7 @@ type MultipleInputProps = {
 };
 
 // Forward ref used for Combobox.Input in Select
-export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: any) => {
+export const MultipleInput = React.forwardRef((props: MultipleInputProps) => {
   const { className, onChange, value } = props;
 
   // Remove item from list

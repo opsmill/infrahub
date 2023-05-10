@@ -76,7 +76,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
   }
 };
 
-export const Button = forwardRef((props: ButtonProps, ref) => {
+export const Button = forwardRef((props: ButtonProps) => {
   const { buttonType, type, className = "", onClick, ...propsToPass } = props;
 
   const customClassName = getClasseName(buttonType);

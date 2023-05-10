@@ -1,10 +1,10 @@
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { Input } from "./input";
-import { FormFieldError } from "../screens/edit-form-hook/form";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export type SelectOption = {
   id: string;
