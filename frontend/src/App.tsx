@@ -2,17 +2,19 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { ToastContainer, toast, Slide } from "react-toastify";
+import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import { graphQLClient } from "./graphql/graphqlClient";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
+import { QSP } from "./config/qsp";
 import SentryClient from "./config/sentry";
 import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
+import { graphQLClient } from "./graphql/graphqlClient";
 import Layout from "./screens/layout/layout";
+import SignIn from "./screens/sign-in/sign-in";
 import { branchState } from "./state/atoms/branch.atom";
 import { branchesState } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
@@ -27,7 +29,6 @@ import {
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { fetchUrl } from "./utils/fetch";
-import { QSP } from "./config/qsp";
 
 const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
 
@@ -168,6 +169,7 @@ function App() {
   return (
     <>
       <Routes>
+        <Route path="/signin" element={<SignIn />} />
         <Route path="/" element={<Layout />}>
           {MAIN_ROUTES.map((route) => (
             <Route index key={route.path} path={route.path} element={route.element} />
