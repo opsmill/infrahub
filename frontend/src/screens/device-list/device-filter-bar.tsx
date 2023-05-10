@@ -1,7 +1,13 @@
-import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
-import { useAtom } from "jotai";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  FunnelIcon,
+} from "@heroicons/react/20/solid";
 import { useState } from "react";
-import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
+import {
+  comboxBoxFilterVar,
+  iComboBoxFilter,
+} from "../../graphql/variables/filtersVar";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import FilterCombobox from "../filters/filter-combobox";
 import FilterComboEnum from "../filters/filter-enum";
@@ -18,7 +24,9 @@ interface Props {
 }
 
 export default function DeviceFilterBar(props: Props) {
-  const [currentFilters, setCurrentFilters] = useAtom(comboxBoxFilterState);
+  const currentFilters = comboxBoxFilterVar();
+  console.log("currentFilters: ", currentFilters);
+
   const [showFilters, setShowFilters] = useState(false);
   return (
     <div className="bg-white">
@@ -43,7 +51,7 @@ export default function DeviceFilterBar(props: Props) {
               </div>
               <div className="pl-6">
                 <button
-                  onClick={() => setCurrentFilters([])}
+                  onClick={() => comboxBoxFilterVar([])}
                   type="button"
                   className="text-gray-500"
                 >
@@ -57,45 +65,56 @@ export default function DeviceFilterBar(props: Props) {
             />
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
-                {
-                  currentFilters
-                  .map(
-                    (filter) => (
-                      <span
-                        key={filter.name}
-                        className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900"
-                      >
-                        <span>{filter.display_label}</span>
-                        <button
-                          type="button"
-                          onClick={() =>setCurrentFilters(currentFilters.filter((row) => row !== filter))}
-                          className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
-                        >
-                          <span className="sr-only">
-                            Remove filter for {filter.display_label}
-                          </span>
-                          <svg
-                            className="h-2 w-2"
-                            stroke="currentColor"
-                            fill="none"
-                            viewBox="0 0 8 8"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeWidth="1.5"
-                              d="M1 1l6 6m0-6L1 7"
-                            />
-                          </svg>
-                        </button>
+                {currentFilters.map((filter: iComboBoxFilter) => (
+                  <span
+                    key={filter.name}
+                    className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900"
+                  >
+                    <span>{filter.display_label}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        comboxBoxFilterVar(
+                          currentFilters.filter(
+                            (row: iComboBoxFilter) => row !== filter
+                          )
+                        )
+                      }
+                      className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
+                    >
+                      <span className="sr-only">
+                        Remove filter for {filter.display_label}
                       </span>
-                    )
-                  )
-                }
+                      <svg
+                        className="h-2 w-2"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 8 8"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeWidth="1.5"
+                          d="M1 1l6 6m0-6L1 7"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
               </div>
             </div>
 
-            {!showFilters && <ChevronRightIcon onClick={() => setShowFilters(true)} className="w-6 h-6 cursor-pointer text-gray-500" />}
-            {showFilters && <ChevronDownIcon onClick={() => setShowFilters(false)}  className="w-6 h-6 cursor-pointer text-gray-500" />}
+            {!showFilters && (
+              <ChevronRightIcon
+                onClick={() => setShowFilters(true)}
+                className="w-6 h-6 cursor-pointer text-gray-500"
+              />
+            )}
+            {showFilters && (
+              <ChevronDownIcon
+                onClick={() => setShowFilters(false)}
+                className="w-6 h-6 cursor-pointer text-gray-500"
+              />
+            )}
 
             {/* Sort Options Dropdown */}
             {/* <div className="flex justify-end">
@@ -153,28 +172,29 @@ export default function DeviceFilterBar(props: Props) {
             </div> */}
           </div>
         </div>
-        {showFilters && <div className="border-t border-gray-200 pb-10">
-          <div className="mx-auto px-4 text-sm sm:px-6">
-            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-              {
-                props.schema.filters
-                ?.map(
-                  (filter) => {
-                    if (filter.kind === "Object") {
-                      return <FilterCombobox filter={filter} key={filter.name} />;
-                    } else if (filter.kind === "Text" && !filter.enum) {
-                      return <FilterTextField filter={filter} key={filter.name} />;
-                    } else if (filter.kind === "Text" && filter.enum) {
-                      return <FilterComboEnum filter={filter} key={filter.name} />;
-                    } else {
-                      return null;
-                    }
+        {showFilters && (
+          <div className="border-t border-gray-200 pb-10">
+            <div className="mx-auto px-4 text-sm sm:px-6">
+              <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+                {props.schema.filters?.map((filter) => {
+                  if (filter.kind === "Object") {
+                    return <FilterCombobox filter={filter} key={filter.name} />;
+                  } else if (filter.kind === "Text" && !filter.enum) {
+                    return (
+                      <FilterTextField filter={filter} key={filter.name} />
+                    );
+                  } else if (filter.kind === "Text" && filter.enum) {
+                    return (
+                      <FilterComboEnum filter={filter} key={filter.name} />
+                    );
+                  } else {
+                    return null;
                   }
-                )
-              }
+                })}
+              </div>
             </div>
           </div>
-        </div>}
+        )}
       </div>
     </div>
   );
