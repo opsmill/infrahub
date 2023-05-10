@@ -1,6 +1,6 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { Fragment } from "react";
+import React, { Fragment } from "react";
 import { classNames } from "../../utils/common";
 import { navigation } from "./navigation-list";
 

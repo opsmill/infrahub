@@ -25,10 +25,6 @@
       "error",
       "double"
     ],
-    "function-paren-newline": [
-      "error",
-      "consistent"
-    ],
     "array-bracket-spacing": [
       "error",
       "never"

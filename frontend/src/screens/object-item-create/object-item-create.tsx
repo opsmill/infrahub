@@ -46,7 +46,7 @@ export default function ObjectItemCreate(props: iProps) {
     }
   }, [schema, initForm]);
 
-  async function onSubmit(data: any, error: any) {
+  async function onSubmit(data: any) {
     const newObject = getMutationDetailsFromFormData(schema, data, "create");
     if (Object.keys(newObject).length) {
       try {

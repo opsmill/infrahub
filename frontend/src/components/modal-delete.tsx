@@ -1,6 +1,6 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import { Fragment, useRef } from "react";
+import React, { Fragment, useRef } from "react";
 import { BUTTON_TYPES, Button } from "./button";
 
 interface iProps {

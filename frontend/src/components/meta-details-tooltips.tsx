@@ -2,11 +2,11 @@ import { Popover, Transition } from "@headlessui/react";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { formatDistance } from "date-fns";
 import { useAtom } from "jotai";
-import { Fragment } from "react";
+import React, { Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
-import { constructPath } from "../utils/fetch";
 import { classNames } from "../utils/common";
+import { constructPath } from "../utils/fetch";
 
 export type TooltipDetailItemType = "date" | "text" | "link";
 
