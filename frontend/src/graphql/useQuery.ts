@@ -7,7 +7,7 @@ const useQuery = (QUERY: any, options?: any) => {
   const [branch] = useAtom(branchState);
   console.log("branch: ", branch);
 
-  return useApolloQuery(QUERY, {...options, context: { branch: branch?.name }});
+  return useApolloQuery(QUERY, { ...options, context: { branch: branch?.name } });
 };
 
 export default useQuery;
