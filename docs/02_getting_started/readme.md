@@ -4,7 +4,7 @@
 The project includes a local demo environment that can be used to experiment and/or demo Infrahub.
 
 The main requirements to run the Sandbox environment are:
-- Invoke (version 2 minimum)
+- Invoke (version 2 minimum) on MacOS `% brew install pyinvoke`
 - Docker & Docker Compose
 
 ## Prepare the Local Environment
