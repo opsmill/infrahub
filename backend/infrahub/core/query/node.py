@@ -114,11 +114,11 @@ class NodeCreateQuery(NodeQuery):
 
         query = (
             """
-        MATCH (b:Branch { name: $branch })
+        MATCH (root:Root)
         CREATE (n:Node:%s { uuid: $uuid, kind: $kind })
-        CREATE (n)-[r:IS_PART_OF { status: "active", from: $at }]->(b)
+        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "active", from: $at }]->(b)
         """
-            % self.node.get_kind()
+            % ":".join(self.node.get_labels())
         )
 
         at = self.at or self.node._at
@@ -149,9 +149,9 @@ class NodeDeleteQuery(NodeQuery):
         self.params["branch"] = self.branch.name
 
         query = """
-        MATCH (b:Branch { name: $branch })
+        MATCH (root:Root)
         MATCH (n { uuid: $uuid })
-        CREATE (n)-[r:IS_PART_OF { status: "deleted", from: $at }]->(b)
+        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "deleted", from: $at }]->(b)
         """
 
         self.params["at"] = self.at.to_string()
