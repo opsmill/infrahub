@@ -3,11 +3,11 @@ import { CONFIG } from "./config";
 
 const defaultOptions: DefaultOptions = {
   watchQuery: {
-    fetchPolicy: "no-cache",
+    fetchPolicy: "network-only",
     errorPolicy: "ignore",
   },
   query: {
-    fetchPolicy: "no-cache",
+    fetchPolicy: "network-only",
     errorPolicy: "all",
   },
 };
@@ -18,13 +18,7 @@ const graphqlClient = new ApolloClient({
 
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
-  cache: new InMemoryCache({
-    // dataIdFromObject(responseObject, other) {
-    //   console.log("responseObject: ", responseObject);
-    //   console.log("other: ", other);
-    //   return JSON.stringify(responseObject);
-    // },
-  }),
+  cache: new InMemoryCache(),
   defaultOptions,
 });
 
