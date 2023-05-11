@@ -2,11 +2,7 @@ import glob
 import os
 from datetime import datetime
 
-from invoke import (  # type: ignore  # pylint: disable=import-error
-    Collection,
-    Context,
-    task,
-)
+from invoke import Context, task  # type: ignore  # pylint: disable=import-error
 
 from .utils import git_info
 

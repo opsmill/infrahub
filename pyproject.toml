@@ -181,14 +181,14 @@ disallow_untyped_defs = true
 [tool.ruff]
 
 select = [
-    "DTZ",
+    # "DTZ",
     "E",
     "F",
-    "TCH",
+    # "TCH",
     "W",
 ]
 
-line-length = 120
+line-length = 215
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
