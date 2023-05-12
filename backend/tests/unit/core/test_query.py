@@ -67,17 +67,20 @@ async def test_query_results_limit_offset(session, simple_dataset_01):
     query = await Query01.init(session=session, limit=2, offset=1)
     await query.execute(session=session)
     assert query.num_of_results == 2
-    assert query.results[0].get("av").get("value") == "volt"
+    expected_values = sorted([result.get("av").get("value") for result in query.results])
+    assert expected_values == ["accord", "volt"]
 
     query = await Query01.init(session=session, limit=2)
     await query.execute(session=session)
     assert query.num_of_results == 2
-    assert query.results[0].get("av").get("value") == 5
+    expected_values = [result.get("av").get("value") for result in query.results]
+    assert set(expected_values) == {5, "volt"}
 
     query = await Query01.init(session=session, offset=2)
     await query.execute(session=session)
     assert query.num_of_results == 1
-    assert query.results[0].get("av").get("value") == "accord"
+    expected_values = [result.get("av").get("value") for result in query.results]
+    assert expected_values == ["accord"]
 
 
 async def test_query_async(session, simple_dataset_01):
