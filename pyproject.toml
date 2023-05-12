@@ -23,6 +23,9 @@ toml = "^0.10.2"
 jsonlines = "^3.1"
 deepdiff = "^6.2"
 ujson = "^5.7"
+GitPython = "^3.1"
+pydantic = "^1.10"
+pyyaml = "^6.0"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.95"
@@ -33,12 +36,6 @@ neo4j = "~5.7"
 starlette-exporter = "^0.12.0"
 GitPython = "^3.1"
 aio-pika = "^9"
-
-[tool.poetry.group.sdk.dependencies]
-pydantic = "^1.10"
-
-[tool.poetry.group.cli.dependencies]
-GitPython = "^3.1"
 
 [tool.poetry.group.perf.dependencies]
 locust = "^2.13.1"

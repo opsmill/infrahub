@@ -40,7 +40,7 @@ jobs:
       - name: "Start database"
         run: "invoke demo.dev-start"
       - name: "Install project"
-        run: "poetry install --only=main,dev,sdk,server"
+        run: "poetry install --only=main,dev,server"
       - name: "Black Tests"
         run: "poetry run invoke sdk.black"
       - name: "Isort Tests"
