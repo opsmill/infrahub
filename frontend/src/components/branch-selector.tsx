@@ -17,7 +17,7 @@ import graphqlClient from "../graphql/graphqlClientApollo";
 import { createBranch } from "../graphql/mutations/branches/createBranch";
 import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
-import { classNames } from "../utils/common";
+import { classNames, objectToString } from "../utils/common";
 import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
@@ -147,10 +147,11 @@ export default function BranchSelector() {
         is_data_only: isDataOnly,
       } as Branch;
 
-      console.log("createBranch(newBranch): ", createBranch(newBranch));
+      const mustationString = createBranch({ data: objectToString(newBranch) });
+
       await graphqlClient.mutate({
         mutation: gql`
-          ${createBranch(newBranch)}
+          ${mustationString}
         `,
       });
 
@@ -161,9 +162,11 @@ export default function BranchSelector() {
       // toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
 
       window.location.reload();
-    } catch (e) {
-      const details = "An error occured while creating the branch";
-      toast(<Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={details} />);
+    } catch (error) {
+      console.error("Error while creating the branch: ", error);
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message={"An error occured while creating the branch"} />
+      );
     }
   };
 
