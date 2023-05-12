@@ -116,9 +116,9 @@ class NodeCreateQuery(NodeQuery):
             """
         MATCH (root:Root)
         CREATE (n:Node:%s { uuid: $uuid, kind: $kind })
-        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "active", from: $at }]->(b)
+        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "active", from: $at }]->(root)
         """
-            % ":".join(self.node.get_labels())
+            % self.node.get_kind()
         )
 
         at = self.at or self.node._at
@@ -151,7 +151,7 @@ class NodeDeleteQuery(NodeQuery):
         query = """
         MATCH (root:Root)
         MATCH (n { uuid: $uuid })
-        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "deleted", from: $at }]->(b)
+        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "deleted", from: $at }]->(root)
         """
 
         self.params["at"] = self.at.to_string()
@@ -411,16 +411,12 @@ class NodeListGetInfoQuery(Query):
         branches = list(self.branch.get_branches_and_times_to_query().keys())
         self.params["branches"] = branches
 
-        branch_filter, branch_params = self.branch.get_query_filter_branch_to_node(
-            at=self.at.to_string(), rel_label="rb", branch_label="br", include_outside_parentheses=True
-        )
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
         query = (
             """
-        MATCH (br:Branch) WHERE br.name IN $branches
-        WITH (br)
-        MATCH p = ((br)<-[rb:IS_PART_OF]-(n))
+        MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n)
         WHERE all(r IN relationships(p) WHERE ((n.uuid IN $ids) AND %s))
         """
             % branch_filter
@@ -458,13 +454,8 @@ class NodeGetListQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        branches = list(self.branch.get_branches_and_times_to_query().keys())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
 
-        branch_filter, branch_params = self.branch.get_query_filter_branch_to_node(
-            at=self.at.to_string(), rel_label="rb", branch_label="br", include_outside_parentheses=False
-        )
-
-        self.params["branches"] = branches
         self.params.update(branch_params)
 
         node_filter = ""
@@ -473,10 +464,8 @@ class NodeGetListQuery(Query):
             self.params["uuid"] = self.filters["id"]
 
         query = """
-        MATCH (br:Branch) WHERE br.name IN $branches
-        WITH (br)
-        MATCH (br)<-[rb:IS_PART_OF]-(n:%s %s)
-        WHERE %s
+        MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n:%s %s)
+        WHERE all(r IN relationships(p) WHERE (%s))
         """ % (
             self.schema.kind,
             node_filter,
@@ -485,7 +474,7 @@ class NodeGetListQuery(Query):
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "br", "rb"]
+        self.return_labels = ["n", "rb"]
 
         if not self.filters:
             return
@@ -508,29 +497,26 @@ class NodeGetListQuery(Query):
 
             field = self.schema.get_field(field_name)
 
-            field_filters, field_params, nbr_rels = await field.get_query_filter(
+            field_filters, field_params = await field.get_query_filter(
                 session=session,
                 name=field_name,
+                include_match=False,
                 filters=attr_filters,
                 branch=self.branch,
                 param_prefix=f"filter{filter_cnt}",
             )
             self.params.update(field_params)
 
-            self.add_to_query(
-                "WITH " + ",".join(self.return_labels)
-            )  # [label for label in self.return_labels if not label.startswith("r")]))
-
             for field_filter in field_filters:
-                self.add_to_query(field_filter)
-
-            rels_filter, rels_params = self.branch.get_query_filter_relationships(
-                rel_labels=[f"r{y+1}" for y in range(nbr_rels)],
-                at=self.at.to_string(),
-                include_outside_parentheses=True,
-            )
-            self.params.update(rels_params)
-            self.add_to_query("WHERE " + "\n AND ".join(rels_filter))
+                query = """
+                WITH n, rb
+                MATCH p = (n)%s
+                WHERE all(r IN relationships(p) WHERE (%s))
+                """ % (
+                    field_filter,
+                    branch_filter,
+                )
+                self.add_to_query(query)
 
     def get_node_ids(self) -> List[str]:
         return [str(result.get("n").get("uuid")) for result in self.get_results()]

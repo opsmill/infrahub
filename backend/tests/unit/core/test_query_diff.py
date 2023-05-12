@@ -28,7 +28,6 @@ async def test_diff_node_query(session, default_branch, base_dataset_02):
         diff_to=base_dataset_02["time0"],
     )
     await query.execute(session=session)
-
     assert len(query.results) == 6
 
     # Query all nodes from m30 to now
@@ -39,7 +38,6 @@ async def test_diff_node_query(session, default_branch, base_dataset_02):
         diff_to=base_dataset_02["time0"],
     )
     await query.execute(session=session)
-
     assert len(query.results) == 1
 
     # Query all nodes from m60 to m30

@@ -58,10 +58,10 @@ class AddNodeToBranch(Query):
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
-        MATCH (b:Branch { name: $branch })
+        MATCH (root:Root)
         MATCH (d) WHERE ID(d) = $node_id
-        WITH b,d
-        CREATE (d)-[r:IS_PART_OF { from: $now, to: null, status: $status }]->(b)
+        WITH root,d
+        CREATE (d)-[r:IS_PART_OF { branch: $branch, from: $now, to: null, status: $status }]->(root)
         RETURN ID(r)
         """
 
@@ -407,9 +407,8 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_branch_range(
+    def get_query_filter_range(
         self,
-        branch_label: str,
         rel_label: list,
         start_time: Union[Timestamp, str],
         end_time: Union[Timestamp, str],
@@ -427,8 +426,8 @@ class Branch(StandardNode):
         params["end_time"] = end_time.to_string()
 
         filters_per_rel = [
-            f"({branch_label}.name in $branches AND {rel_label}.from >= $start_time AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)",
-            f"({branch_label}.name in $branches AND (({rel_label}.from >= $start_time AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time AND {rel_label}.to <= $end_time)))",
+            f"({rel_label}.branch in $branches AND {rel_label}.from >= $start_time AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)",
+            f"({rel_label}.branch in $branches AND (({rel_label}.from >= $start_time AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time AND {rel_label}.to <= $end_time)))",
         ]
 
         filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
@@ -1107,11 +1106,11 @@ class Diff:
                 continue
 
             branch_status = result.get("r").get("status")
-            branch_name = result.get("b").get("name")
+            branch_name = result.get("r").get("branch")
             from_time = result.get("r").get("from")
 
             item = {
-                "branch": result.get("b").get("name"),
+                "branch": result.get("r").get("branch"),
                 "labels": sorted(list(result.get("n").labels)),
                 "kind": result.get("n").get("kind"),
                 "id": node_id,

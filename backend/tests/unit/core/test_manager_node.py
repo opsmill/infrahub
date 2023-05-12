@@ -251,37 +251,24 @@ async def test_query_with_filter_string_int(session: AsyncSession, default_branc
     assert len(nodes) == 1
 
 
-async def test_query_with_filter_bool_rel(session: AsyncSession, default_branch: Branch, car_person_schema):
+async def test_query_with_filter_bool_rel(
+    session: AsyncSession,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_volt_main,
+    car_yaris_main,
+    car_camry_main,
+    branch: Branch,
+):
     car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
-
-    p1 = await Node.init(session=session, schema=person)
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
-
-    p2 = await Node.init(session=session, schema=person)
-    await p2.new(session=session, name="Jane", height=160)
-    await p2.save(session=session)
-
-    c1 = await Node.init(session=session, schema=car)
-    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
-    await c1.save(session=session)
-    c2 = await Node.init(session=session, schema=car)
-    await c2.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
-    await c2.save(session=session)
-    c3 = await Node.init(session=session, schema=car)
-    await c3.new(session=session, name="camry", nbr_seats=5, is_electric=False, owner=p2)
-    await c3.save(session=session)
-    c4 = await Node.init(session=session, schema=car)
-    await c4.new(session=session, name="yaris", nbr_seats=4, is_electric=False, owner=p2)
-    await c4.save(session=session)
 
     # Check filter with a boolean
-    nodes = await NodeManager.query(session=session, schema=car, filters={"is_electric__value": False})
+    nodes = await NodeManager.query(session=session, schema=car, branch=branch, filters={"is_electric__value": False})
     assert len(nodes) == 3
 
     # Check filter with a relationship
-    nodes = await NodeManager.query(session=session, schema=car, filters={"owner__name__value": "John"})
+    nodes = await NodeManager.query(session=session, schema=car, branch=branch, filters={"owner__name__value": "John"})
     assert len(nodes) == 2
 
 

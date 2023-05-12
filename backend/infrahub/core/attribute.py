@@ -334,55 +334,41 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         name: str,
         filters: Optional[dict] = None,
         branch=None,
-        rels_offset: int = 0,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> Tuple[List[str], Dict, int]:
+    ) -> Tuple[List[str], Dict]:
         """Generate Query String Snippet to filter the right node."""
 
         query_filters = []
         query_params = {}
-        nbr_rels = 0
 
         param_prefix = param_prefix or f"attr_{name}"
 
         if not filters:
-            return query_filters, query_params, nbr_rels
+            return query_filters, query_params
 
         for attr_name, value in filters.items():
             query_filter = ""
 
-            # if attr_name not in cls.__fields__.keys():
-            #     raise Exception(
-            #         f"filter '{attr_name}' is not supported for {cls.__name__}, available option {cls.__fields__.keys()}"
-            #     )
-
             if not isinstance(value, (str, bool, int)):
                 raise TypeError(f"filter {attr_name}: {value} ({type(value)}) is not supported.")
-
-            # value_filter = f"{value}"
-            # if isinstance(value, str):
-            #     value_filter = f'"{value}"'
 
             if include_match:
                 query_filter += "MATCH (n)"
 
             # TODO Validate if filters are valid
-            query_filter += "-[r%s:%s]-(i:Attribute { name: $%s_name } )" % (
-                rels_offset + 1,
+            query_filter += "-[:%s]-(i:Attribute { name: $%s_name } )" % (
                 cls._rel_to_node_label,
                 param_prefix,
             )
-            query_params[f"{param_prefix}_name"] = name
+            query_filter += "-[:HAS_VALUE]-(av { value: $%s_value })" % (param_prefix)
 
-            query_filter += "-[r%s:HAS_VALUE]-(av { value: $%s_value })" % (rels_offset + 2, param_prefix)
+            query_params[f"{param_prefix}_name"] = name
             query_params[f"{param_prefix}_value"] = value
 
             query_filters.append(query_filter)
 
-        nbr_rels = 2
-
-        return query_filters, query_params, nbr_rels
+        return query_filters, query_params
 
     async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
         """Generate GraphQL Payload for this attribute."""
