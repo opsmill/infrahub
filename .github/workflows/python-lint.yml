@@ -1,0 +1,23 @@
+---
+# yamllint disable rule:truthy
+name: "python-lint"
+on:
+  pull_request:
+    paths:
+      - ".github/**"
+      - "**.py"
+      - pyproject.toml
+      - poetry.lock
+  push:
+    branches:
+      - develop
+      - stable
+
+jobs:
+  python-tests:
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Install ruff"
+        uses: "chartboost/ruff-action@v1"

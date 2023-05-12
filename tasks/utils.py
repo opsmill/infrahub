@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from typing import Tuple
 
-from invoke import Context, task  # type: ignore  # pylint: disable=import-error
+from invoke import Context  # type: ignore  # pylint: disable=import-error
 
 try:
     import toml
