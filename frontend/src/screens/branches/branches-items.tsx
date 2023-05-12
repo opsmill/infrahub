@@ -3,20 +3,16 @@ import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "../../components/badge";
+import { DateDisplay } from "../../components/date-display";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
-// import useQuery from "../../graphql/hooks/useQuery";
-// import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
 import { branchesState } from "../../state/atoms/branches.atom";
-import { DateDisplay } from "../../components/date-display";
 import { constructPath } from "../../utils/fetch";
-import { Badge } from "../../components/badge";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
-
-  // const { loading, error, data } = useQuery(GET_BRANCHES);
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 

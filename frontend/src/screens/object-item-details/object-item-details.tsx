@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import { gql, useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
@@ -20,6 +20,7 @@ import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { objectDetails } from "../../graphql/queries/objects/objectDetails";
+import useQuery from "../../graphql/useQuery";
 import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
