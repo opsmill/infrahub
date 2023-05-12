@@ -2,7 +2,7 @@ import { gql, useQuery } from "@apollo/client";
 import { useAtom } from "jotai";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
-import graphqlClient from "../../config/graphqlClient";
+import graphqlClient from "../../graphql/graphqlClientApollo";
 import { objectDetailsEdit } from "../../graphql/queries/objects/objectDetailsEdit";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";

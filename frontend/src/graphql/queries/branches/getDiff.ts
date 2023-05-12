@@ -1,16 +1,13 @@
-import { graphQLClient } from "../../graphqlClient";
-import { objectToString } from "../../../utils/common";
-
 declare const Handlebars: any;
 
-type DiffOptions = {
+export type DiffOptions = {
   branch: string;
   time_from?: string;
   time_to?: string;
   branch_only?: boolean;
 };
 
-const queryTemplate = Handlebars.compile(`
+export const getDiff = Handlebars.compile(`
 query {
   diff ({{{options}}}) {
     nodes {
@@ -70,15 +67,3 @@ query {
   }
 }
 `);
-
-const getDiff = async (options: DiffOptions) => {
-  const query = queryTemplate({
-    options: objectToString(options),
-  });
-
-  const result: any = await graphQLClient.request(query);
-
-  return result?.diff;
-};
-
-export default getDiff;

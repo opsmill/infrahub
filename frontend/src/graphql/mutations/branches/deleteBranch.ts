@@ -1,9 +1,6 @@
-import { graphQLClient } from "../../graphqlClient";
-import { objectToString } from "../../../utils/common";
-
 declare const Handlebars: any;
 
-const mutationTemplate = Handlebars.compile(`
+export const deleteBranch = Handlebars.compile(`
 mutation {
   branch_delete (
     data: { {{{data}}} }
@@ -12,13 +9,3 @@ mutation {
   }
 }
 `);
-
-const deleteBranch = async (data: any) => {
-  const mutation = mutationTemplate({
-    data: objectToString(data),
-  });
-
-  return graphQLClient.request(mutation);
-};
-
-export default deleteBranch;

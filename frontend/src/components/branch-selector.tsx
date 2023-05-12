@@ -1,3 +1,4 @@
+import { gql } from "@apollo/client";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import {
   CircleStackIcon,
@@ -12,7 +13,8 @@ import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { Branch } from "../generated/graphql";
-import createBranch from "../graphql/mutations/branches/createBranch";
+import graphqlClient from "../graphql/graphqlClientApollo";
+import { createBranch } from "../graphql/mutations/branches/createBranch";
 import { branchState } from "../state/atoms/branch.atom";
 import { branchesState } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
@@ -145,7 +147,12 @@ export default function BranchSelector() {
         is_data_only: isDataOnly,
       } as Branch;
 
-      await createBranch(newBranch);
+      console.log("createBranch(newBranch): ", createBranch(newBranch));
+      await graphqlClient.mutate({
+        mutation: gql`
+          ${createBranch(newBranch)}
+        `,
+      });
 
       close();
 

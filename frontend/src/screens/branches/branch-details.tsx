@@ -10,12 +10,14 @@ import { Badge } from "../../components/badge";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import ModalDelete from "../../components/modal-delete";
 import { Pill } from "../../components/pill";
-import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
-import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
-import rebaseBranch from "../../graphql/mutations/branches/rebaseBranch";
-import validateBranch from "../../graphql/mutations/branches/validateBranch";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
+import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
+import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
+import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
 import useQuery from "../../graphql/useQuery";
+import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -34,7 +36,15 @@ export const BranchDetails = () => {
 
     try {
       setIsLoadingRequest(true);
-      const result = await request(options);
+
+      const mutationString = request({ data: objectToString(options) });
+
+      const result = await graphqlClient.mutate({
+        mutation: gql`
+          ${mutationString}
+        `,
+      });
+
       setDetailsContent(result);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />);
