@@ -13,8 +13,7 @@ import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
 import graphqlClient from "./config/graphqlClient";
 import { QSP } from "./config/qsp";
 import SentryClient from "./config/sentry";
-import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
-import { graphQLClient } from "./graphql/graphqlClient";
+import GET_BRANCHES from "./graphql/queries/branches/getBranches";
 import Layout from "./screens/layout/layout";
 import SignIn from "./screens/sign-in/sign-in";
 import { branchState } from "./state/atoms/branch.atom";
@@ -34,6 +33,7 @@ import { fetchUrl } from "./utils/fetch";
 
 const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
 
+// TODO: Use only 1 hook and 1 callback for all 3 requests (branches, schema, config)
 function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
@@ -83,7 +83,10 @@ function App() {
   const fetchBranches = async () => {
     const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
-      const data: iBranchData = await graphQLClient.request(BRANCH_QUERY);
+      const { data }: any = await graphqlClient.query({
+        query: GET_BRANCHES,
+      });
+
       return sortByName(data.branch || []);
     } catch (err) {
       toast(
@@ -92,7 +95,7 @@ function App() {
           message={"Something went wrong when fetching the branch details"}
         />
       );
-      console.error("err: ", err);
+      console.error("Error while fetching branches: ", err);
       return [];
     }
   };
