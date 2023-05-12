@@ -4,7 +4,7 @@
 
 /** Used to define container behavior: width, position: fixed etc... **/
 .Toastify__toast-container {
-  z-index: 1;
+  z-index: 100;
 }
 
 /** Used to define the position of the ToastContainer **/

@@ -27,7 +27,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
-import updateObjectWithId from "../../utils/updateObjectWithId";
+import { updateObjectWithId } from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -118,13 +118,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   const handleDeleteRelationship = async (id: string) => {
-    const newList = relationshipsData
-      .map((item: any) => ({ id: item.id }))
-      .filter((item: any) => item.id !== id);
+    console.log("id: ", id);
+    // const newList = relationshipsData
+    //   .map((item: any) => ({ id: item.id }))
+    //   .filter((item: any) => item.id !== id);
 
-    await updateObjectWithId(objectid!, schema, {
-      [relationshipSchema.name]: newList,
-    });
+    // await updateObjectWithId(objectid!, schema, {
+    //   [relationshipSchema.name]: newList,
+    // });
 
     setShowAddDrawer(false);
 

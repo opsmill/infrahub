@@ -18,7 +18,9 @@ const graphqlClient = new ApolloClient({
 
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
-  cache: new InMemoryCache(),
+  cache: new InMemoryCache({
+    addTypename: false,
+  }),
   defaultOptions,
 });
 

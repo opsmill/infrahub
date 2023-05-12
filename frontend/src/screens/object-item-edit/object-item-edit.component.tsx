@@ -2,12 +2,14 @@ import { gql, useQuery } from "@apollo/client";
 import { useAtom } from "jotai";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
+import graphqlClient from "../../config/graphqlClient";
 import { objectDetailsEdit } from "../../graphql/queries/objects/objectDetailsEdit";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
+import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
-import updateObjectWithId from "../../utils/updateObjectWithId";
+import { updateObjectWithId } from "../../utils/updateObjectWithId";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -45,7 +47,7 @@ export default function ObjectItemEditComponent(props: Props) {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  const { loading, error, data } = useQuery(
+  const { loading, error, data, refetch } = useQuery(
     gql`
       ${queryString}
     `,
@@ -84,14 +86,30 @@ export default function ObjectItemEditComponent(props: Props) {
   );
 
   async function onSubmit(data: any) {
-    const updateObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
+    const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
 
-    if (Object.keys(updateObject).length) {
+    if (Object.keys(updatedObject).length) {
       try {
-        await updateObjectWithId(objectid!, schema, updateObject);
+        const mutationString = updateObjectWithId({
+          name: schema.name,
+          data: getStringJSONWithoutQuotes({
+            id: objectid,
+            ...updatedObject,
+          }),
+        });
+
+        await graphqlClient.mutate({
+          mutation: gql(mutationString),
+        });
+
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} updated`} />);
+
         closeDrawer();
+
         onUpdateComplete();
+
+        refetch();
+
         return;
       } catch (e) {
         toast(
@@ -105,6 +123,8 @@ export default function ObjectItemEditComponent(props: Props) {
       }
     }
   }
+
+  toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} updated`} />);
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">

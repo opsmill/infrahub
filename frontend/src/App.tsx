@@ -185,7 +185,7 @@ function App() {
       <ToastContainer
         hideProgressBar={true}
         transition={Slide}
-        autoClose={5000}
+        autoClose={false}
         closeOnClick={false}
         newestOnTop
         position="bottom-right"
