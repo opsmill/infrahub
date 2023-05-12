@@ -252,8 +252,8 @@ class AttributeSchema(BaseSchemaModel):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
     async def get_query_filter(
-        self, session: AsyncSession, *args, **kwargs
-    ) -> Tuple[List[str], Dict]:  # pylint: disable=unused-argument
+        self, session: AsyncSession, *args, **kwargs  # pylint: disable=unused-argument
+    ) -> Tuple[List[str], Dict]:
         return self.get_class().get_query_filter(*args, **kwargs)
 
 

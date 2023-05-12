@@ -236,36 +236,6 @@ class Branch(StandardNode):
         query = await DeleteBranchRelationshipsQuery.init(session=session, branch_name=self.name)
         await query.execute(session=session)
 
-    def get_query_filter_branch_to_node(
-        self,
-        rel_label: str = "r",
-        branch_label: str = "b",
-        at: Optional[Union[Timestamp, str]] = None,
-        include_outside_parentheses: bool = False,
-    ) -> Tuple[str, Dict]:
-        """Generate a CYPHER Query filter to query the nodes associated with a given branch at a specific time.
-
-        Since the relationship between a node and a branch is slightly different than the other relationship
-        We need to different query.
-        """
-        filters = []
-        params = {}
-
-        for idx, (branch_name, time_to_query) in enumerate(self.get_branches_and_times_to_query(at=at).items()):
-            br_filter = f"({branch_label}.name = $branch{idx} AND ("
-            br_filter += f"({rel_label}.from <= $time{idx} AND {rel_label}.to IS NULL)"
-            br_filter += f" OR ({rel_label}.from <= $time{idx} AND {rel_label}.to >= $time{idx})"
-            br_filter += "))"
-
-            filters.append(br_filter)
-            params[f"branch{idx}"] = branch_name
-            params[f"time{idx}"] = time_to_query
-
-        if not include_outside_parentheses:
-            return "\n OR ".join(filters), params
-
-        return "(" + "\n OR ".join(filters) + ")", params
-
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
     ) -> Tuple[List, Dict]:
