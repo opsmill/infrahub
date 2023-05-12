@@ -1,6 +1,6 @@
 declare const Handlebars: any;
 
-export const objectDetails = Handlebars.compile(`query {{kind.value}} {
+export const objectDetailsEdit = Handlebars.compile(`query {{kind.value}} {
     {{name}} (ids: ["{{objectid}}"]) {
         id
         display_label
@@ -43,5 +43,11 @@ export const objectDetails = Handlebars.compile(`query {{kind.value}} {
         }
         {{/each}}
     }
+    {{#each peers}}
+    {{this}} {
+        id
+        display_label
+    }
+    {{/each}}
 }
 `);

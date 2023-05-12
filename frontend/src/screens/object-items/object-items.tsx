@@ -1,13 +1,12 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
-
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { objectItems } from "../../graphql/queries/objects/objectItems";
 import useQuery from "../../graphql/useQuery";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import { branchState } from "../../state/atoms/branch.atom";
@@ -25,29 +24,6 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create";
-
-declare const Handlebars: any;
-
-const template = Handlebars.compile(`
-query {{kind}} {
-  {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
-    id
-    display_label
-
-    {{#each attributes}}
-      {{this.name}} {
-          value
-      }
-    {{/each}}
-
-    {{#each relationships}}
-      {{this.name}} {
-          display_label
-      }
-    {{/each}}
-  }
-}
-`);
 
 export default function ObjectItems() {
   const { objectname } = useParams();
@@ -67,14 +43,14 @@ export default function ObjectItems() {
   const navigate = useNavigate();
 
   const queryString = schema
-    ? template({
-      ...schema,
-      filterString,
-      relationships: getSchemaRelationshipColumns(schema),
-    })
+    ? objectItems({
+        ...schema,
+        filterString,
+        relationships: getSchemaRelationshipColumns(schema),
+      })
     : // Empty query to make the gql parsing work
-  // TODO: Find another solution for queries while loading schema
-    "query { ok }";
+      // TODO: Find another solution for queries while loading schema
+      "query { ok }";
 
   const { loading, error, data } = useQuery(
     gql`

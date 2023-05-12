@@ -55,14 +55,14 @@
     "@typescript-eslint/no-unused-vars": "error",
     "unused-imports/no-unused-imports-ts": 2,
     "semi": "error",
-    "no-trailing-spaces": "error",
-    "indent": [
-      "error",
-      2,
-      {
-        "SwitchCase": 1,
-        "MemberExpression": 1
-      }
-    ]
+    "no-trailing-spaces": "error"
+    // "indent": [
+    //   "error",
+    //   2,
+    //   {
+    //     "SwitchCase": 1,
+    //     "MemberExpression": 2
+    //   }
+    // ]
   }
 }

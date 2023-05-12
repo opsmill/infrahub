@@ -2,17 +2,16 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "../../config/qsp";
 import getObjectRelationshipsDetails from "../../graphql/queries/objects/objectRelationshipDetails";
 import { branchState } from "../../state/atoms/branch.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { timeState } from "../../state/atoms/time.atom";
 import RelationshipDetails from "./relationship-details";
-import { QSP } from "../../config/qsp";
 
 interface Props {
   parentNode: any;
   parentSchema: iNodeSchema;
-  refreshObject: Function;
 }
 
 export default function RelationshipsDetails(props: Props) {
@@ -79,7 +78,6 @@ export default function RelationshipsDetails(props: Props) {
         parentNode={props.parentNode}
         mode="TABLE"
         parentSchema={props.parentSchema}
-        refreshObject={props.refreshObject}
         relationshipsData={relationships}
         relationshipSchema={relationshipSchema}
       />

@@ -8,12 +8,16 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import ModalDelete from "../../components/modal-delete";
 import { RoundedButton } from "../../components/rounded-button";
 import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -29,15 +33,10 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { branchState } from "../../state/atoms/branch.atom";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 
 type iRelationDetailsProps = {
   parentNode: any;
   parentSchema: iNodeSchema;
-  refreshObject: Function;
   relationshipsData: any;
   relationshipSchema: any;
   mode: "TABLE" | "DESCRIPTION-LIST";
@@ -48,7 +47,7 @@ const regex = /^Related/; // starts with Related
 export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { objectname, objectid } = useParams();
   const [branch] = useAtom(branchState);
-  const { relationshipsData, relationshipSchema, refreshObject } = props;
+  const { relationshipsData, relationshipSchema } = props;
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -127,9 +126,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       [relationshipSchema.name]: newList,
     });
 
-    refreshObject();
-
     setShowAddDrawer(false);
+
     toast(
       <Alert
         type={ALERT_TYPES.SUCCESS}
@@ -493,10 +491,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   })),
                   { id: data.id },
                 ];
+
                 await updateObjectWithId(objectid!, schema, {
                   [relationshipSchema.name]: newList,
                 });
-                props.refreshObject();
+
                 toast(
                   <Alert
                     type={ALERT_TYPES.SUCCESS}
@@ -535,10 +534,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             closeDrawer={() => {
               setShowRelationMetaEditModal(false);
             }}
-            onUpdateComplete={() => {
-              setShowRelationMetaEditModal(false);
-              props.refreshObject();
-            }}
+            onUpdateComplete={() => setShowRelationMetaEditModal(false)}
             attributeOrRelationshipToEdit={rowForMetaEdit}
             schemaList={schemaList}
             schema={schema}
@@ -607,10 +603,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               closeDrawer={() => {
                 setRelatedObjectToEdit(undefined);
               }}
-              onUpdateComplete={async () => {
-                setRelatedObjectToEdit(undefined);
-                await refreshObject();
-              }}
+              onUpdateComplete={async () => setRelatedObjectToEdit(undefined)}
               objectid={relatedObjectToEdit.id}
               objectname={(() => {
                 const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
