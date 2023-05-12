@@ -52,17 +52,14 @@ export default function ObjectItemEditComponent(props: Props) {
     { skip: !schema }
   );
 
-  console.log("error: ", error);
   if (error) {
     return <ErrorScreen />;
   }
 
-  console.log("loading: ", loading);
   if (loading || !schema) {
     return <LoadingScreen />;
   }
 
-  console.log("data: ", data);
   if (!data || (data && !data[schema.name])) {
     return <NoDataFound />;
   }
