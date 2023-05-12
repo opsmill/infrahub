@@ -7,24 +7,44 @@ import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
 
+const PROFILE_TABS = {
+  PREFERENCES: "Preferences",
+  PROFILE: "Profile",
+  TOKENS: "API Tokens",
+  ACCOUNT: "Account",
+};
+
 const tabs = [
   {
-    label: "Profile",
+    label: PROFILE_TABS.PROFILE,
     name: "profile",
   },
   {
-    label: "Preferences",
+    label: PROFILE_TABS.PREFERENCES,
     name: "preferences",
   },
   {
-    label: "API Tokens",
+    label: PROFILE_TABS.TOKENS,
     name: "tokens",
   },
   {
-    label: "Account",
+    label: PROFILE_TABS.ACCOUNT,
     name: "account",
   },
 ];
+
+const renderContent = (tab: string | null | undefined) => {
+  switch (tab) {
+    case PROFILE_TABS.TOKENS:
+      return <TabTokens />;
+    case PROFILE_TABS.ACCOUNT:
+      return <TabPassword />;
+    case PROFILE_TABS.PREFERENCES:
+      return <TabPreferences />;
+    default:
+      return <TabProfile />;
+  }
+};
 
 export default function UserProfile() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
@@ -55,10 +75,7 @@ export default function UserProfile() {
         </div>
       </div>
       <Tabs tabs={tabs} />
-      {!qspTab && <TabProfile />}
-      {qspTab === "tokens" && <TabTokens />}
-      {qspTab === "account" && <TabPassword />}
-      {qspTab === "preferences" && <TabPreferences />}
+      {renderContent(qspTab)}
     </div>
   );
 }
