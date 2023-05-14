@@ -6,6 +6,8 @@ from infrahub.core.query import Query, QueryResult, sort_results_by_time
 
 
 class Query01(Query):
+    order_by = ["at.name"]
+
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
         MATCH (n) WHERE n.uuid = $uuid
@@ -67,20 +69,20 @@ async def test_query_results_limit_offset(session, simple_dataset_01):
     query = await Query01.init(session=session, limit=2, offset=1)
     await query.execute(session=session)
     assert query.num_of_results == 2
-    expected_values = sorted([result.get("av").get("value") for result in query.results])
-    assert expected_values == ["accord", "volt"]
+    expected_values = [result.get("av").get("value") for result in query.results]
+    assert expected_values == ["accord", 5]
 
     query = await Query01.init(session=session, limit=2)
     await query.execute(session=session)
     assert query.num_of_results == 2
     expected_values = [result.get("av").get("value") for result in query.results]
-    assert set(expected_values) == {5, "volt"}
+    assert set(expected_values) == {"accord", "volt"}
 
     query = await Query01.init(session=session, offset=2)
     await query.execute(session=session)
     assert query.num_of_results == 1
     expected_values = [result.get("av").get("value") for result in query.results]
-    assert expected_values == ["accord"]
+    assert expected_values == [5]
 
 
 async def test_query_async(session, simple_dataset_01):
