@@ -6,7 +6,7 @@ from infrahub.core.query import Query, QueryResult, sort_results_by_time
 
 
 class Query01(Query):
-    order_by = ["at.name"]
+    order_by = ["at.name", "r2.from"]
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
@@ -22,7 +22,7 @@ class Query01(Query):
 
 async def test_query_base(session):
     query = await Query01.init(session=session)
-    expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2\nORDER BY at.name"
+    expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2\nORDER BY at.name,r2.from"
 
     assert query.get_query() == expected_query
 
