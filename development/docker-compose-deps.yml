@@ -8,6 +8,8 @@ services:
       - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
       - "NEO4J_dbms_security_auth__minimum__password__length=4"
+      - "NEO4J_server_metrics_prometheus_enabled=true"
+      - "NEO4J_server_metrics_prometheus_endpoint=0.0.0.0:2004"
     volumes:
       - "./plugins:/plugins"
       - "neo4j_data:/data"
@@ -23,6 +25,11 @@ services:
     environment:
       - "RABBITMQ_DEFAULT_USER=infrahub"
       - "RABBITMQ_DEFAULT_PASS=infrahub"
+    volumes:
+      - type: bind
+        source: ./rabbitmq_plugins
+        target: /etc/rabbitmq/enabled_plugins
+        read_only: true
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 5s
