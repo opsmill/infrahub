@@ -22,7 +22,7 @@ class Query01(Query):
 
 async def test_query_base(session):
     query = await Query01.init(session=session)
-    expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2"
+    expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2\nORDER BY at.name"
 
     assert query.get_query() == expected_query
 
