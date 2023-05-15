@@ -1,12 +1,15 @@
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
-import createObject from "../../graphql/mutations/objects/createObject";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { createObject } from "../../graphql/mutations/objects/createObject";
 import { genericSchemaState, genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getDropdownOptionsForRelatedPeers from "../../utils/dropdownOptionsForRelatedPeers";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
+import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -18,7 +21,8 @@ interface iProps {
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  let { objectname } = props;
+  const { objectname, onCreate, onCancel } = props;
+
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
   const [genericSchemaMap] = useAtom(genericSchemaState);
@@ -48,17 +52,36 @@ export default function ObjectItemCreate(props: iProps) {
 
   async function onSubmit(data: any) {
     const newObject = getMutationDetailsFromFormData(schema, data, "create");
+
     if (Object.keys(newObject).length) {
       try {
-        await createObject(schema, newObject);
+        const mutationString = createObject({
+          name: schema.name,
+          data: getStringJSONWithoutQuotes(newObject),
+        });
+
+        const mutation = gql`
+          ${mutationString}
+        `;
+
+        await graphqlClient.mutate({
+          mutation,
+        });
+
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);
-        if (props.onCreate) {
-          props.onCreate();
+
+        if (onCreate) {
+          onCreate();
         }
-      } catch (err: any) {
-        console.error("Something went wrong while creating the object: ", err);
+      } catch (error: any) {
+        console.error("An error occured while creating the object: ", error);
+
         toast(
-          <Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={err.message} />
+          <Alert
+            type={ALERT_TYPES.ERROR}
+            message={"An error occured while creating the object"}
+            details={error.message}
+          />
         );
       }
     } else {
@@ -72,7 +95,7 @@ export default function ObjectItemCreate(props: iProps) {
         <div className="flex-1">
           <EditFormHookComponent
             onSubmit={onSubmit}
-            onCancel={() => (props.onCancel ? props.onCancel() : null)}
+            onCancel={() => (onCancel ? onCancel() : null)}
             fields={formStructure}
           />
         </div>
