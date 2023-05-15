@@ -120,6 +120,10 @@ export default function ObjectItemDetails() {
 
   const objectDetailsData = data[schema.name][0];
 
+  if (!objectDetailsData) {
+    return null;
+  }
+
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
       <div className="px-4 py-5 sm:px-6 flex items-center">

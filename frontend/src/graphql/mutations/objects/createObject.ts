@@ -1,6 +1,6 @@
-import { graphQLClient } from "../graphql/graphqlClient";
-import { iNodeSchema } from "../state/atoms/schema.atom";
-import { getStringJSONWithoutQuotes } from "./getStringJSONWithoutQuotes";
+import { iNodeSchema } from "../../../state/atoms/schema.atom";
+import { getStringJSONWithoutQuotes } from "../../../utils/getStringJSONWithoutQuotes";
+import { graphQLClient } from "../../graphqlClient";
 
 declare const Handlebars: any;
 

@@ -3,13 +3,13 @@ import { useAtom } from "jotai";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
+import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { objectDetailsEdit } from "../../graphql/queries/objects/objectDetailsEdit";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
-import { updateObjectWithId } from "../../utils/updateObjectWithId";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -123,8 +123,6 @@ export default function ObjectItemEditComponent(props: Props) {
       }
     }
   }
-
-  toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} updated`} />);
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
