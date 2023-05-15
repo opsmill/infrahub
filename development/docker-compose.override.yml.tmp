@@ -9,37 +9,36 @@ services:
       - "3000:3000"
 
   # --------------------------------------------------------------------------------
-  # Uncomment to start :
   #  - a Prometheus Server that will collect all metrics endpoints
   #  - A Grafana server to visualize these metrics
   # --------------------------------------------------------------------------------
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   ports:
-  #     - "9090:9090"
-  #   volumes:
-  #     - type: bind
-  #       source: ./prometheus.yml
-  #       target: /etc/prometheus/prometheus.yml
-  #       read_only: true
-  #     - prometheus_data:/prometheus
-  #   command:
-  #     - '--config.file=/etc/prometheus/prometheus.yml'
-  #     - '--storage.tsdb.path=/prometheus'
-  #     - '--web.console.libraries=/etc/prometheus/console_libraries'
-  #     - '--web.console.templates=/etc/prometheus/consoles'
-  #     - '--storage.tsdb.retention.time=1d'
-  #     - '--web.enable-lifecycle'
-  # grafana:
-  #   image: grafana/grafana:9.5.2
-  #   volumes:
-  #     - ./grafana/provisioning:/etc/grafana/provisioning
-  #   environment:
-  #     - GF_SECURITY_ADMIN_USER=admin
-  #     - GF_SECURITY_ADMIN_PASSWORD=admin
-  #     - GF_USERS_ALLOW_SIGN_UP=false
-  #   ports:
-  #     - "3500:3000"
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - type: bind
+        source: ./prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=1d'
+      - '--web.enable-lifecycle'
+  grafana:
+    image: grafana/grafana:9.5.2
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3500:3000"
 
   # --------------------------------------------------------------------------------
   # Uncomment to expose the database and/or the message bus outside of Docker Compose
