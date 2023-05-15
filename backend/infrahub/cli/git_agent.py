@@ -6,6 +6,7 @@ from asyncio import run as aiorun
 
 import typer
 from aio_pika import IncomingMessage
+from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
 import infrahub.config as config
@@ -91,7 +92,7 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int, log: lo
         await asyncio.sleep(interval)
 
 
-async def _start(debug: bool, interval: int, config_file: str):
+async def _start(debug: bool, interval: int, config_file: str, port: int):
     """Start Infrahub Git Agent."""
 
     log_level = "DEBUG" if debug else "INFO"
@@ -103,6 +104,9 @@ async def _start(debug: bool, interval: int, config_file: str):
     log.debug(f"Config file : {config_file}")
 
     config.load_and_exit(config_file)
+
+    # Start the metrics endpoint
+    start_http_server(port)
 
     # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
     log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
@@ -124,6 +128,7 @@ def start(
     interval: int = 10,
     debug: bool = False,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    port: int = typer.Argument(8000, help="Port used to expose a metrics endpoint"),
 ):
     logging.getLogger("httpx").setLevel(logging.ERROR)
     logging.getLogger("httpcore").setLevel(logging.ERROR)
@@ -132,4 +137,4 @@ def start(
     logging.getLogger("aiormq").setLevel(logging.ERROR)
     logging.getLogger("git").setLevel(logging.ERROR)
 
-    aiorun(_start(interval=interval, debug=debug, config_file=config_file))
+    aiorun(_start(interval=interval, debug=debug, config_file=config_file, port=port))
