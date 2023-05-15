@@ -3,6 +3,8 @@ FROM python:${PYTHON_VER}
 
 ENV PYTHONUNBUFFERED 1
 
+RUN mkdir /prom_shared
+
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends -y pkg-config build-essential && \
