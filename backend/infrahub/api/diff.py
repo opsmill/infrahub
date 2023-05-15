@@ -169,7 +169,7 @@ async def get_display_labels(nodes: Dict[str, List[str]], session: AsyncSession)
     return response
 
 
-def extract_diff_relationship_one(
+def extract_diff_relationship_one(  # pylint: disable=too-many-return-statements
     node_id: str, name: str, identifier: str, rels: List[RelationshipDiffElement], display_labels: Dict[str, str]
 ) -> Optional[BranchDiffRelationshipOne]:
     """Extract a BranchDiffRelationshipOne object from a list of RelationshipDiffElement."""
@@ -190,7 +190,14 @@ def extract_diff_relationship_one(
         if rel.changed_at:
             changed_at = rel.changed_at.to_string()
 
-        peer = dict([rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id][0])
+        peer_list = [rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id]
+        if not peer_list:
+            logger.warning(
+                f"extract_diff_relationship_one: unable to find the peer associated with the node {node_id}, Name: {name}"
+            )
+            return None
+
+        peer = dict(peer_list[0])
         peer["display_label"] = display_labels.get(peer.get("id", None), "")
 
         if rel.action.value == "added":
