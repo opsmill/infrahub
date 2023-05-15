@@ -18,7 +18,7 @@ class ConfigAPI(BaseModel):
     main: MainSettings
     logging: LoggingSettings
     analytics: AnalyticsSettings
-    features: ExperimentalFeaturesSettings
+    experimental_features: ExperimentalFeaturesSettings
 
 
 class InfoAPI(BaseModel):
