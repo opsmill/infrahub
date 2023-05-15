@@ -7,6 +7,7 @@ import React, { Fragment, useEffect } from "react";
 
 import { Link } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Avatar } from "../../components/avatar";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/date-picker";
 import { CONFIG } from "../../config/config";
@@ -109,10 +110,9 @@ export default function Header(props: Props) {
             <div>
               <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 <span className="sr-only">Open user menu</span>
-                <img
-                  className="h-10 w-10 rounded-full object-cover"
-                  src="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
-                  alt=""
+                <Avatar
+                  image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
+                  name="Richard Martin"
                 />
               </Menu.Button>
             </div>

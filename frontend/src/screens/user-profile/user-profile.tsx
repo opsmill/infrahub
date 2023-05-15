@@ -1,5 +1,6 @@
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Avatar } from "../../components/avatar";
 import { Tabs } from "../../components/tabs";
 import { QSP } from "../../config/qsp";
 import TabPassword from "./tab-account";
@@ -8,28 +9,28 @@ import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
 
 const PROFILE_TABS = {
-  PREFERENCES: "Preferences",
-  PROFILE: "Profile",
-  TOKENS: "API Tokens",
-  ACCOUNT: "Account",
+  PREFERENCES: "preferences",
+  PROFILE: "profile",
+  TOKENS: "tokens",
+  ACCOUNT: "account",
 };
 
 const tabs = [
   {
-    label: PROFILE_TABS.PROFILE,
-    name: "profile",
+    label: "Profile",
+    name: PROFILE_TABS.PROFILE,
   },
   {
-    label: PROFILE_TABS.PREFERENCES,
-    name: "preferences",
+    label: "Preferences",
+    name: PROFILE_TABS.PREFERENCES,
   },
   {
-    label: PROFILE_TABS.TOKENS,
-    name: "tokens",
+    label: "API Tokens",
+    name: PROFILE_TABS.TOKENS,
   },
   {
-    label: PROFILE_TABS.ACCOUNT,
-    name: "account",
+    label: "Account",
+    name: PROFILE_TABS.ACCOUNT,
   },
 ];
 
@@ -49,22 +50,21 @@ const renderContent = (tab: string | null | undefined) => {
 export default function UserProfile() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1 overflow-auto">
       <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
         <div className="-ml-4 -mt-4 flex flex-wrap items-center justify-between sm:flex-nowrap">
           <div className="ml-4 mt-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <img
-                  className="h-12 w-12 rounded-full"
-                  src="https://ca.slack-edge.com/T04KB9WLQ5T-U04JZMS34P9-7b703e5d0a6d-512"
-                  alt=""
+                <Avatar
+                  image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
+                  name="Richard Martin"
                 />
               </div>
               <div className="ml-4">
-                <h3 className="text-base font-semibold leading-6 text-gray-900">Damien Garros</h3>
+                <h3 className="text-base font-semibold leading-6 text-gray-900">Richard Martin</h3>
                 <p className="text-sm text-gray-500">
-                  <a href="#">@dgarros</a>
+                  <a href="#">@rmartin</a>
                 </p>
               </div>
             </div>
@@ -74,7 +74,9 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
-      <Tabs tabs={tabs} />
+      <div className="sticky top-0 z-10 shadow-sm">
+        <Tabs tabs={tabs} />
+      </div>
       {renderContent(qspTab)}
     </div>
   );
