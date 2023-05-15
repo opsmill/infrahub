@@ -147,10 +147,9 @@ async def generate_object_types(
         if not isinstance(node_schema, GenericSchema):
             continue
 
-        related_interface = generate_related_interface_object(schema=node_schema, branch=branch)
-
-        related_interface._meta.fields["_relation__source"] = graphene.Field(data_source)
-        related_interface._meta.fields["_relation__owner"] = graphene.Field(data_owner)
+        related_interface = generate_related_interface_object(
+            schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner
+        )
 
         registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
 
@@ -158,21 +157,13 @@ async def generate_object_types(
     for node_name, node_schema in full_schema.items():
         if isinstance(node_schema, NodeSchema):
             node_type = generate_graphql_object(schema=node_schema, branch=branch)
-            related_node_type = generate_related_graphql_object(schema=node_schema, branch=branch)
-
-            related_node_type._meta.fields["_relation__source"] = graphene.Field(data_source)
-            related_node_type._meta.fields["_relation__owner"] = graphene.Field(data_owner)
-
-            node_type_edged = generate_graphql_edged_object(schema=node_schema)
-            node_type_edged._meta.fields["node"] = graphene.Field.mounted(
-                graphene.List(of_type=node_type, required=True)
+            related_node_type = generate_related_graphql_object(
+                schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner
             )
 
-            node_type_paginated = generate_graphql_paginated_object(schema=node_schema)
+            node_type_edged = generate_graphql_edged_object(schema=node_schema, node=node_type)
 
-            node_type_paginated._meta.fields["edges"] = graphene.Field.mounted(
-                graphene.List(of_type=node_type_edged, required=True)
-            )
+            node_type_paginated = generate_graphql_paginated_object(schema=node_schema, edge=node_type_edged)
 
             registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
             registry.set_graphql_type(
@@ -309,7 +300,7 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
 
-def generate_graphql_edged_object(schema: NodeSchema) -> Type[InfrahubObject]:
+def generate_graphql_edged_object(schema: NodeSchema, node: Type[InfrahubObject]) -> Type[InfrahubObject]:
     """Generate a ednged GraphQL object Type from a Infrahub NodeSchema for pagination."""
 
     meta_attrs = {
@@ -322,13 +313,14 @@ def generate_graphql_edged_object(schema: NodeSchema) -> Type[InfrahubObject]:
 
     main_attrs = {
         "cursor": graphene.String(required=False),
+        "node": graphene.Field.mounted(graphene.List(of_type=node, required=True)),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
     return type(f"Edged{schema.kind}", (InfrahubObject,), main_attrs)
 
 
-def generate_graphql_paginated_object(schema: NodeSchema) -> Type[InfrahubObject]:
+def generate_graphql_paginated_object(schema: NodeSchema, edge: Type[InfrahubObject]) -> Type[InfrahubObject]:
     """Generate a paginated GraphQL object Type from a Infrahub NodeSchema."""
 
     meta_attrs = {
@@ -342,6 +334,7 @@ def generate_graphql_paginated_object(schema: NodeSchema) -> Type[InfrahubObject
     main_attrs = {
         "total": graphene.Int(required=False),
         "has_next": graphene.Boolean(required=False),
+        "edges": graphene.Field.mounted(graphene.List(of_type=edge, required=True)),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
@@ -394,7 +387,9 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
     return type(schema.kind, (InfrahubInterface,), main_attrs)
 
 
-def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> Type[graphene.Interface]:
+def generate_related_interface_object(
+    schema: GenericSchema, branch: Branch, data_source: InfrahubObject, data_owner: InfrahubObject
+) -> Type[graphene.Interface]:
     meta_attrs = {
         "name": f"Related{schema.kind}",
         "description": schema.description,
@@ -406,6 +401,8 @@ def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> 
         "_relation__updated_at": graphene.DateTime(required=False),
         "_relation__is_visible": graphene.Boolean(required=False),
         "_relation__is_protected": graphene.Boolean(required=False),
+        "_relation__source": graphene.Field(data_source),
+        "_relation__owner": graphene.Field(data_owner),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
@@ -420,7 +417,9 @@ def generate_related_interface_object(schema: GenericSchema, branch: Branch) -> 
     return type(f"Related{schema.kind}", (InfrahubInterface,), main_attrs)
 
 
-def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[InfrahubObject]:
+def generate_related_graphql_object(
+    schema: NodeSchema, branch: Branch, data_source: InfrahubObject, data_owner: InfrahubObject
+) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema for a Related Node."""
 
     meta_attrs = {
@@ -444,6 +443,8 @@ def generate_related_graphql_object(schema: NodeSchema, branch: Branch) -> Type[
         "id": graphene.String(required=True),
         "display_label": graphene.String(required=False),
         "_updated_at": graphene.DateTime(required=False),
+        "_relation__source": graphene.Field(data_source),
+        "_relation__owner": graphene.Field(data_owner),
         "Meta": type("Meta", (object,), meta_attrs),
     }
     for attr in schema.attributes:
