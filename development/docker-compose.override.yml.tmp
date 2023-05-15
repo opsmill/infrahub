@@ -9,7 +9,9 @@ services:
       - "3000:3000"
 
   # --------------------------------------------------------------------------------
-  # Uncomment to start a Prometheus Server that will collect all metrics endpoints
+  # Uncomment to start :
+  #  - a Prometheus Server that will collect all metrics endpoints
+  #  - A Grafana server to visualize these metrics
   # --------------------------------------------------------------------------------
   # prometheus:
   #   image: prom/prometheus:latest
@@ -28,9 +30,20 @@ services:
   #     - '--web.console.templates=/etc/prometheus/consoles'
   #     - '--storage.tsdb.retention.time=1d'
   #     - '--web.enable-lifecycle'
+  # grafana:
+  #   image: grafana/grafana:9.5.2
+  #   container_name: grafana
+  #   volumes:
+  #     - ./grafana/provisioning:/etc/grafana/provisioning
+  #   environment:
+  #     - GF_SECURITY_ADMIN_USER=admin
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #     - GF_USERS_ALLOW_SIGN_UP=false
+  #   ports:
+  #     - "3500:3000"
 
   # --------------------------------------------------------------------------------
-  # Uncomment to expose the database and the message bus outside of Docker Compose
+  # Uncomment to expose the database and/or the message bus outside of Docker Compose
   # --------------------------------------------------------------------------------
   # database:
   #   ports:
