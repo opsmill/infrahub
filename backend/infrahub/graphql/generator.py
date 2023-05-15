@@ -163,9 +163,25 @@ async def generate_object_types(
             related_node_type._meta.fields["_relation__source"] = graphene.Field(data_source)
             related_node_type._meta.fields["_relation__owner"] = graphene.Field(data_owner)
 
+            node_type_edged = generate_graphql_edged_object(schema=node_schema)
+            node_type_edged._meta.fields["node"] = graphene.Field.mounted(
+                graphene.List(of_type=node_type, required=True)
+            )
+
+            node_type_paginated = generate_graphql_paginated_object(schema=node_schema)
+
+            node_type_paginated._meta.fields["edges"] = graphene.Field.mounted(
+                graphene.List(of_type=node_type_edged, required=True)
+            )
+
             registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
             registry.set_graphql_type(
                 name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name
+            )
+            registry.set_graphql_type(name=node_type_edged._meta.name, graphql_type=node_type_edged, branch=branch.name)
+
+            registry.set_graphql_type(
+                name=node_type_paginated._meta.name, graphql_type=node_type_paginated, branch=branch.name
             )
 
             # Register this model to all the groups it belongs to.
@@ -291,6 +307,45 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(schema.kind, (InfrahubObject,), main_attrs)
+
+
+def generate_graphql_edged_object(schema: NodeSchema) -> Type[InfrahubObject]:
+    """Generate a ednged GraphQL object Type from a Infrahub NodeSchema for pagination."""
+
+    meta_attrs = {
+        "schema": schema,
+        "name": f"Edged{schema.kind}",
+        "description": schema.description,
+        "default_resolver": default_resolver,
+        "interfaces": set(),
+    }
+
+    main_attrs = {
+        "cursor": graphene.String(required=False),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    return type(f"Edged{schema.kind}", (InfrahubObject,), main_attrs)
+
+
+def generate_graphql_paginated_object(schema: NodeSchema) -> Type[InfrahubObject]:
+    """Generate a paginated GraphQL object Type from a Infrahub NodeSchema."""
+
+    meta_attrs = {
+        "schema": schema,
+        "name": f"Paginated{schema.kind}",
+        "description": schema.description,
+        "default_resolver": default_resolver,
+        "interfaces": set(),
+    }
+
+    main_attrs = {
+        "total": graphene.Int(required=False),
+        "has_next": graphene.Boolean(required=False),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    return type(f"Paginated{schema.kind}", (InfrahubObject,), main_attrs)
 
 
 def generate_union_object(

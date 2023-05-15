@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
 import infrahub.config as config
 from infrahub.core.definitions import Brancher
@@ -10,6 +10,7 @@ from infrahub.exceptions import BranchNotFound, DataTypeNotFound, Error
 from infrahub.lock import registry as lock_registry
 
 if TYPE_CHECKING:
+    import graphene
     from neo4j import AsyncSession
 
     from infrahub.core.attribute import BaseAttribute
@@ -38,7 +39,7 @@ class Registry:
     attr_group: dict = field(default_factory=dict)
     branch_object: Optional[Brancher] = None
 
-    def set_item(self, kind: str, name: str, item, branch: str = None) -> bool:
+    def set_item(self, kind: str, name: str, item, branch: Optional[str] = None) -> bool:
         branch = branch or config.SETTINGS.main.default_branch
         getattr(self, kind)[branch][name] = item
         return True
@@ -104,7 +105,12 @@ class Registry:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
 
-    def set_graphql_type(self, name: str, graphql_type: InfrahubObject, branch: Optional[str] = None) -> bool:
+    def set_graphql_type(
+        self,
+        name: str,
+        graphql_type: Union[Type[InfrahubObject], Type[graphene.Interface]],
+        branch: Optional[str] = None,
+    ) -> bool:
         return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
 
     def has_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
