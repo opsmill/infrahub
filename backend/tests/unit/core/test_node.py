@@ -715,7 +715,9 @@ async def test_node_relationship_interface(session, default_branch: Branch, vehi
 # --------------------------------------------------------------------------
 
 
-async def test_union(db, session, default_branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema):
+async def test_union(
+    session, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
+):
     SCHEMA = {
         "name": "person",
         "kind": "Person",
@@ -730,7 +732,7 @@ async def test_union(db, session, default_branch, generic_vehicule_schema, car_s
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
     d1 = await Node.init(session=session, schema="Car")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)

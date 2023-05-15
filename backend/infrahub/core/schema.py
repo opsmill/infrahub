@@ -251,7 +251,9 @@ class AttributeSchema(BaseSchemaModel):
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
-    async def get_query_filter(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=unused-argument
+    async def get_query_filter(
+        self, session: AsyncSession, *args, **kwargs  # pylint: disable=unused-argument
+    ) -> Tuple[List[str], Dict]:
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
@@ -285,18 +287,16 @@ class RelationshipSchema(BaseSchemaModel):
         name: Optional[str] = None,  # pylint: disable=unused-argument
         filters: Optional[dict] = None,
         branch: Branch = None,
-        rels_offset: int = 0,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> Tuple[List[str], Dict, int]:
+    ) -> Tuple[List[str], Dict]:
         query_filters = []
         query_params = {}
-        nbr_rels = 0
 
         prefix = param_prefix or f"rel_{self.name}"
 
         if not filters:
-            return query_filters, query_params, nbr_rels
+            return query_filters, query_params
 
         peer_schema = await self.get_peer_schema()
 
@@ -310,8 +310,13 @@ class RelationshipSchema(BaseSchemaModel):
                 query_filter += "MATCH (n)"
 
             query_filter += (
-                "-[r%s:%s]-(Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node { uuid: $%s_peer_id })"
-                % (rels_offset + 1, rel_type, prefix, rels_offset + 2, rel_type, prefix)
+                "-[r1:%s]-(rl:Relationship { name: $%s_rel_name })-[r2:%s]-(peer:Node { uuid: $%s_peer_id })"
+                % (
+                    rel_type,
+                    prefix,
+                    rel_type,
+                    prefix,
+                )
             )
 
             query_filters.append(query_filter)
@@ -320,8 +325,6 @@ class RelationshipSchema(BaseSchemaModel):
         # -------------------------------------------------------------------
         # Check if any of the filters are matching an existing field
         # -------------------------------------------------------------------
-        max_field_nbr_rels = 0
-
         for field_name in peer_schema.valid_input_names:
             query_filter = ""
 
@@ -333,41 +336,32 @@ class RelationshipSchema(BaseSchemaModel):
             if not attr_filters:
                 continue
 
-            # remote_attr = self.node.__fields__[key]
-
             if include_match:
                 query_filter += "MATCH (n)"
 
             # TODO Validate if filters are valid
-            query_filter += "-[r%s:%s]-(rl:Relationship { name: $%s_rel_name })-[r%s:%s]-(p:Node)" % (
-                rels_offset + 1,
+            query_filter += "-[r1:%s]-(rl:Relationship { name: $%s_rel_name })-[r2:%s]-(peer:Node)" % (
                 rel_type,
                 prefix,
-                rels_offset + 2,
                 rel_type,
             )
 
             field = peer_schema.get_field(field_name)
 
-            field_filter, field_params, field_nbr_rels = await field.get_query_filter(
+            field_filter, field_params = await field.get_query_filter(
                 session=session,
                 name=field_name,
                 filters=attr_filters,
                 branch=branch,
-                rels_offset=2,
                 include_match=False,
                 param_prefix=prefix if param_prefix else None,
             )
-
-            if field_nbr_rels > max_field_nbr_rels:
-                max_field_nbr_rels = field_nbr_rels
 
             for filter in field_filter:
                 query_filters.append(query_filter + filter)
                 query_params.update(field_params)
 
-        nbr_rels = 2 + max_field_nbr_rels
-        return query_filters, query_params, nbr_rels
+        return query_filters, query_params
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]

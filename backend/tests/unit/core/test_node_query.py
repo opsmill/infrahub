@@ -1,14 +1,91 @@
 from neo4j import AsyncSession
 
-from infrahub.core import get_branch
+from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
+    NodeGetListQuery,
     NodeListGetAttributeQuery,
+    NodeListGetInfoQuery,
     NodeListGetLocalAttributeValueQuery,
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.timestamp import Timestamp
+
+
+async def test_query_NodeGetListQuery(
+    session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    person_schema = registry.schema.get(name="Person", branch=branch)
+    ids = [person_john_main.id, person_jim_main.id, person_albert_main.id, person_alfred_main.id]
+    query = await NodeGetListQuery.init(session=session, branch=branch, schema=person_schema)
+    await query.execute(session=session)
+    assert sorted(query.get_node_ids()) == sorted(ids)
+
+
+async def test_query_NodeGetListQuery_filter_id(
+    session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    person_schema = registry.schema.get(name="Person", branch=branch)
+    query = await NodeGetListQuery.init(
+        session=session, branch=branch, schema=person_schema, filters={"id": person_john_main.id}
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 1
+
+
+async def test_query_NodeGetListQuery_filter_height(
+    session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    schema = registry.schema.get(name="Person", branch=branch)
+    query = await NodeGetListQuery.init(session=session, branch=branch, schema=schema, filters={"height__value": 160})
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 2
+
+
+async def test_query_NodeGetListQuery_filter_boolean(
+    session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    schema = registry.schema.get(name="Car", branch=branch)
+    query = await NodeGetListQuery.init(
+        session=session, branch=branch, schema=schema, filters={"is_electric__value": False}
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 3
+
+
+async def test_query_NodeGetListQuery_filter_relationship(
+    session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    schema = registry.schema.get(name="Car", branch=branch)
+    query = await NodeGetListQuery.init(
+        session=session, branch=branch, schema=schema, filters={"owner__name__value": "John"}
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 2
+
+
+async def test_query_NodeGetListQuery_filter_multiple(
+    session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    schema = registry.schema.get(name="Car", branch=branch)
+    query = await NodeGetListQuery.init(
+        session=session,
+        branch=branch,
+        schema=schema,
+        filters={"owner__name__value": "John", "is_electric__value": False},
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 1
+
+
+async def test_query_NodeListGetInfoQuery(
+    session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    ids = [person_john_main.id, person_jim_main.id, person_albert_main.id]
+    query = await NodeListGetInfoQuery.init(session=session, branch=branch, ids=ids)
+    await query.execute(session=session)
+    assert len(list(query.get_results_group_by(("n", "uuid")))) == 3
 
 
 async def test_query_NodeListGetLocalAttributeValueQuery(
