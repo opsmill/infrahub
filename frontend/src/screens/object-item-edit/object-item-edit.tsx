@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { objectDetailsEdit } from "../../graphql/queries/objects/objectDetailsEdit";
+import { updateObjectDetails } from "../../graphql/queries/objects/updateObjectDetails";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
@@ -37,7 +37,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
 
   const queryString = schema
-    ? objectDetailsEdit({
+    ? updateObjectDetails({
         ...schema,
         relationships,
         objectid,

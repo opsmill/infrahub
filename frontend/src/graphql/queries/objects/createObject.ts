@@ -1,6 +1,6 @@
 declare const Handlebars: any;
 
-export const objectDetailsEdit = Handlebars.compile(`query {{kind.value}} {
+export const createObject = Handlebars.compile(`mutation {{kind.value}} {
     {{name}} (ids: ["{{objectid}}"]) {
         id
         display_label

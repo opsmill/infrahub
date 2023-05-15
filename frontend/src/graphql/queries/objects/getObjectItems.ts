@@ -1,6 +1,6 @@
 declare const Handlebars: any;
 
-export const objectItems = Handlebars.compile(`
+export const getObjectItems = Handlebars.compile(`
 query {{kind}} {
   {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
     id

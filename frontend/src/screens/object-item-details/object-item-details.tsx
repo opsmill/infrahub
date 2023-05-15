@@ -19,7 +19,7 @@ import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { objectDetails } from "../../graphql/queries/objects/objectDetails";
+import { getObjectDetails } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../graphql/useQuery";
 import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
@@ -30,7 +30,7 @@ import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
@@ -50,7 +50,7 @@ export default function ObjectItemDetails() {
   );
 
   const queryString = schema
-    ? objectDetails({
+    ? getObjectDetails({
         ...schema,
         relationships,
         objectid,

@@ -1,5 +1,7 @@
+import { gql } from "@apollo/client";
 import { useCallback, useEffect, useState } from "react";
-import getDropdownOptionsForRelatedPeers from "../utils/dropdownOptionsForRelatedPeers";
+import graphqlClient from "../graphql/graphqlClientApollo";
+import { getDropdownOptionsForRelatedPeers } from "../utils/dropdownOptionsForRelatedPeers";
 import { SelectOption } from "./select";
 
 export interface iTwoStepDropdownData {
@@ -37,18 +39,30 @@ export const Select2Step = (props: Props) => {
   const setRightDropdownOptions = useCallback(async () => {
     const objectName = selectedLeft?.id;
 
-    if (objectName) {
-      const peerDropdownOptions = await getDropdownOptionsForRelatedPeers([objectName]);
-
-      const options = peerDropdownOptions[objectName];
-
-      setOptionsRight(
-        options.map((option) => ({
-          name: option.display_label,
-          id: option.id,
-        }))
-      );
+    if (!objectName) {
+      return;
     }
+
+    const queryString = getDropdownOptionsForRelatedPeers({
+      peers: [objectName],
+    });
+
+    const query = gql`
+      ${queryString}
+    `;
+
+    const { data } = await graphqlClient.query({
+      query,
+    });
+
+    const options = data[objectName];
+
+    setOptionsRight(
+      options.map((option: any) => ({
+        name: option.display_label,
+        id: option.id,
+      }))
+    );
   }, [selectedLeft?.id]);
 
   useEffect(() => {

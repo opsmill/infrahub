@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
-import { objectItems } from "../../graphql/queries/objects/objectItems";
+import { getObjectItems } from "../../graphql/queries/objects/getObjectItems";
 import useQuery from "../../graphql/useQuery";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import { branchState } from "../../state/atoms/branch.atom";
@@ -43,7 +43,7 @@ export default function ObjectItems() {
   const navigate = useNavigate();
 
   const queryString = schema
-    ? objectItems({
+    ? getObjectItems({
         ...schema,
         filterString,
         relationships: getSchemaRelationshipColumns(schema),

@@ -34,7 +34,7 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 
 type iRelationDetailsProps = {
