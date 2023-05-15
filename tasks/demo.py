@@ -25,7 +25,7 @@ DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
 COMPOSE_FILES = ["development/docker-compose-deps.yml", "development/docker-compose.yml"]
 
 DEV_COMPOSE_FILES = ["development/docker-compose-deps.yml"]
-DEV_OVERRIDE_FILE_NAME = ["development/docker-compose.dev-override.yml"]
+DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 
 AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
 
