@@ -21,11 +21,8 @@ class MainSettings(BaseSettings):
     internal_address: str = "http://localhost:8000"
 
     class Config:
-        """Additional parameters to automatically map environment variable to some settings."""
-
-        fields = {
-            "default_branch": {"env": "infrahub_default_branch"},
-        }
+        env_prefix = "INFRAHUB_"
+        case_sensitive = False
 
 
 class DatabaseSettings(BaseSettings):
@@ -60,14 +57,8 @@ class BrokerSettings(BaseSettings):
     namespace: str = "infrahub"
 
     class Config:
-        """Additional parameters to automatically map environment variables to some settings."""
-
-        fields = {
-            "username": {"env": "INFRAHUB_BROKER_USERNAME"},
-            "password": {"env": "INFRAHUB_BROKER_PASSWORD"},
-            "address": {"env": "INFRAHUB_BROKER_ADDRESS"},
-            "namespace": {"env": "INFRAHUB_BROKER_NAMESPACE"},
-        }
+        env_prefix = "INFRAHUB_BROKER_"
+        case_sensitive = False
 
 
 class ApiSettings(BaseSettings):
@@ -92,14 +83,8 @@ class RemoteLoggingSettings(BaseSettings):
     git_agent_dsn: Optional[str]
 
     class Config:
-        """Additional parameters to automatically map environment variables to some settings."""
-
-        fields = {
-            "enable": {"env": "INFRAHUB_LOGGING_REMOTE_ENABLE"},
-            "frontend_dsn": {"env": "INFRAHUB_LOGGING_REMOTE_FRONTEND_DSN"},
-            "api_server_dsn": {"env": "INFRAHUB_LOGGING_REMOTE_API_SERVER_DSN"},
-            "git_agent_dsn": {"env": "INFRAHUB_LOGGING_REMOTE_GIT_AGENT_DSN"},
-        }
+        env_prefix = "INFRAHUB_LOGGING_REMOTE_"
+        case_sensitive = False
 
 
 class LoggingSettings(BaseSettings):
@@ -112,13 +97,16 @@ class AnalyticsSettings(BaseSettings):
     api_key: Optional[str]
 
     class Config:
-        """Additional parameters to automatically map environment variables to some settings."""
+        env_prefix = "INFRAHUB_ANALYTICS_"
+        case_sensitive = False
 
-        fields = {
-            "enable": {"env": "INFRAHUB_ANALYTICS_ENABLE"},
-            "address": {"env": "INFRAHUB_ANALYTICS_ADDRESS"},
-            "api_key": {"env": "INFRAHUB_ANALYTICS_API_KEY"},
-        }
+
+class ExperimentalFeaturesSettings(BaseSettings):
+    pull_request: bool = False
+
+    class Config:
+        env_prefix = "INFRAHUB_EXPERIMENTAL_"
+        case_sensitive = False
 
 
 class Settings(BaseSettings):
@@ -132,6 +120,7 @@ class Settings(BaseSettings):
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
+    experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
 def load(config_file_name="infrahub.toml", config_data=None):

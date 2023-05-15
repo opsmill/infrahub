@@ -3,7 +3,12 @@ from pydantic import BaseModel
 
 import infrahub.config as config
 from infrahub import __version__
-from infrahub.config import AnalyticsSettings, LoggingSettings, MainSettings
+from infrahub.config import (
+    AnalyticsSettings,
+    ExperimentalFeaturesSettings,
+    LoggingSettings,
+    MainSettings,
+)
 from infrahub.core import registry
 
 router = APIRouter()
@@ -13,6 +18,7 @@ class ConfigAPI(BaseModel):
     main: MainSettings
     logging: LoggingSettings
     analytics: AnalyticsSettings
+    experimental_features: ExperimentalFeaturesSettings
 
 
 class InfoAPI(BaseModel):
@@ -22,7 +28,12 @@ class InfoAPI(BaseModel):
 
 @router.get("/config")
 async def get_config() -> ConfigAPI:
-    return ConfigAPI(main=config.SETTINGS.main, logging=config.SETTINGS.logging, analytics=config.SETTINGS.analytics)
+    return ConfigAPI(
+        main=config.SETTINGS.main,
+        logging=config.SETTINGS.logging,
+        analytics=config.SETTINGS.analytics,
+        experimental_features=config.SETTINGS.experimental_features,
+    )
 
 
 @router.get("/info")
