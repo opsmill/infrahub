@@ -6,6 +6,8 @@ from infrahub.core.query import Query, QueryResult, sort_results_by_time
 
 
 class Query01(Query):
+    order_by = ["at.name", "r2.from"]
+
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
         MATCH (n) WHERE n.uuid = $uuid
@@ -20,9 +22,35 @@ class Query01(Query):
 
 async def test_query_base(session):
     query = await Query01.init(session=session)
-    expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2"
+    expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2\nORDER BY at.name,r2.from"
 
     assert query.get_query() == expected_query
+
+
+async def test_insert_variables_in_query(session, simple_dataset_01):
+    params = {
+        "mystring": "5ffa45d4",
+        "mylist1": ["1", "2", "3"],
+        "mylist2": [1, 2, 3],
+        "myint": 198,
+    }
+
+    query_lines = [
+        "MATCH (n1) WHERE n1.uuid = $mystring",
+        "MATCH (n2) WHERE n2.uuid in $mylist1",
+        "MATCH (n3) WHERE n3.uuid in $mylist2",
+        "MATCH (n4) WHERE n4.uuid in $myint",
+    ]
+
+    expected_query_lines = [
+        'MATCH (n1) WHERE n1.uuid = "5ffa45d4"',
+        "MATCH (n2) WHERE n2.uuid in ['1', '2', '3']",
+        "MATCH (n3) WHERE n3.uuid in [1, 2, 3]",
+        "MATCH (n4) WHERE n4.uuid in 198",
+    ]
+
+    result = Query.insert_variables_in_query(query="\n".join(query_lines), variables=params)
+    assert result == "\n".join(expected_query_lines)
 
 
 async def test_query_results(session, simple_dataset_01):
@@ -37,6 +65,26 @@ async def test_query_results(session, simple_dataset_01):
     assert query.results[0].get("at") is not None
 
 
+async def test_query_results_limit_offset(session, simple_dataset_01):
+    query = await Query01.init(session=session, limit=2, offset=1)
+    await query.execute(session=session)
+    assert query.num_of_results == 2
+    expected_values = [result.get("av").get("value") for result in query.results]
+    assert expected_values == ["accord", 5]
+
+    query = await Query01.init(session=session, limit=2)
+    await query.execute(session=session)
+    assert query.num_of_results == 2
+    expected_values = [result.get("av").get("value") for result in query.results]
+    assert set(expected_values) == {"accord", "volt"}
+
+    query = await Query01.init(session=session, offset=2)
+    await query.execute(session=session)
+    assert query.num_of_results == 1
+    expected_values = [result.get("av").get("value") for result in query.results]
+    assert expected_values == [5]
+
+
 async def test_query_async(session, simple_dataset_01):
     query = await Query01.init(session=session)
 
@@ -47,6 +95,11 @@ async def test_query_async(session, simple_dataset_01):
 
     assert query.num_of_results == 3
     assert query.results[0].get("at") is not None
+
+
+async def test_query_count(session, simple_dataset_01):
+    query = await Query01.init(session=session)
+    assert await query.count(session=session) == 3
 
 
 async def test_query_result_getters(neo4j_factory):

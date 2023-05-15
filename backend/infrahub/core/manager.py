@@ -54,7 +54,8 @@ class NodeManager:
         schema: Union[NodeSchema, str],
         filters: Optional[dict] = None,
         fields: Optional[dict] = None,
-        limit: int = 100,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
@@ -87,7 +88,7 @@ class NodeManager:
 
         # Query the list of nodes matching this Query
         query = await NodeGetListQuery.init(
-            session=session, schema=schema, branch=branch, limit=limit, filters=filters, at=at
+            session=session, schema=schema, branch=branch, offset=offset, limit=limit, filters=filters, at=at
         )
         await query.execute(session=session)
         node_ids = query.get_node_ids()
@@ -119,7 +120,8 @@ class NodeManager:
         filters: dict,
         session: AsyncSession,
         fields: Optional[dict] = None,
-        limit: int = 100,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
     ) -> List[Relationship]:
@@ -129,7 +131,7 @@ class NodeManager:
         rel = Relationship(schema=schema, branch=branch, node_id=id)
 
         query = await RelationshipGetPeerQuery.init(
-            session=session, source_id=id, schema=schema, filters=filters, rel=rel, limit=limit, at=at
+            session=session, source_id=id, schema=schema, filters=filters, rel=rel, offset=offset, limit=limit, at=at
         )
         await query.execute(session=session)
 
