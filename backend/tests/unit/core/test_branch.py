@@ -697,12 +697,9 @@ async def test_diff_get_relationships(session, base_dataset_02):
     assert sorted(rels.keys()) == ["branch1", "main"]
     assert sorted(rels["branch1"]["car__person"].keys()) == ["r1", "r2"]
 
-    paths_to_exclude = [
-        "root['changed_at']",
-        "root['properties']['IS_PROTECTED']['changed_at']",
-        "root['properties']['IS_VISIBLE']['changed_at']",
-    ]
-
+    # ---------------------------------------------------
+    # Branch1 / R1
+    # ---------------------------------------------------
     expected_result_branch1_r1 = {
         "branch": "branch1",
         "id": "r1",
@@ -718,7 +715,7 @@ async def test_diff_get_relationships(session, base_dataset_02):
                 "type": "IS_VISIBLE",
                 "action": DiffAction.UPDATED,
                 "value": {"previous": True, "new": False},
-                "changed_at": "XXXXXXXX",
+                "changed_at": Timestamp(base_dataset_02["time_m20"]),
             }
         },
         "changed_at": None,
@@ -728,11 +725,13 @@ async def test_diff_get_relationships(session, base_dataset_02):
         DeepDiff(
             expected_result_branch1_r1,
             rels["branch1"]["car__person"]["r1"].dict(),
-            exclude_paths=paths_to_exclude,
             ignore_order=True,
         ).to_dict()
         == {}
     )
+    # ---------------------------------------------------
+    # Branch1 / R2
+    # ---------------------------------------------------
     expected_result_branch1_r2 = {
         "branch": "branch1",
         "id": "r2",
@@ -748,28 +747,31 @@ async def test_diff_get_relationships(session, base_dataset_02):
                 "type": "IS_VISIBLE",
                 "action": DiffAction.ADDED,
                 "value": {"previous": None, "new": True},
-                "changed_at": "XXXXXX",
+                "changed_at": Timestamp(base_dataset_02["time_m20"]),
             },
             "IS_PROTECTED": {
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
                 "action": DiffAction.ADDED,
                 "value": {"previous": None, "new": False},
-                "changed_at": "XXXXXX",
+                "changed_at": Timestamp(base_dataset_02["time_m20"]),
             },
         },
-        "changed_at": "XXXXXX",
+        "changed_at": Timestamp(base_dataset_02["time_m20"]),
     }
 
     assert (
         DeepDiff(
             expected_result_branch1_r2,
             rels["branch1"]["car__person"]["r2"].dict(),
-            exclude_paths=paths_to_exclude,
             ignore_order=True,
         ).to_dict()
         == {}
     )
+
+    # ---------------------------------------------------
+    # main / R1
+    # ---------------------------------------------------
 
     expected_result_main_r1 = {
         "branch": "main",
@@ -786,6 +788,7 @@ async def test_diff_get_relationships(session, base_dataset_02):
                 "action": DiffAction.UPDATED,
                 "type": "IS_PROTECTED",
                 "value": {"previous": False, "new": True},
+                "changed_at": Timestamp(base_dataset_02["time_m30"]),
             }
         },
         "changed_at": None,
@@ -794,7 +797,6 @@ async def test_diff_get_relationships(session, base_dataset_02):
         DeepDiff(
             expected_result_main_r1,
             rels["main"]["car__person"]["r1"].dict(),
-            exclude_paths=paths_to_exclude,
             ignore_order=True,
         ).to_dict()
         == {}
