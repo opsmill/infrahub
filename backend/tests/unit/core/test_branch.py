@@ -695,17 +695,110 @@ async def test_diff_get_relationships(session, base_dataset_02):
     rels = await diff.get_relationships(session=session)
 
     assert sorted(rels.keys()) == ["branch1", "main"]
-
     assert sorted(rels["branch1"]["car__person"].keys()) == ["r1", "r2"]
-    assert rels["branch1"]["car__person"]["r1"].action == DiffAction.UPDATED
-    assert rels["branch1"]["car__person"]["r1"].properties["IS_VISIBLE"].action == DiffAction.UPDATED
 
-    assert rels["branch1"]["car__person"]["r2"].action == DiffAction.ADDED
+    paths_to_exclude = [
+        "root['changed_at']",
+        "root['properties']['IS_PROTECTED']['changed_at']",
+        "root['properties']['IS_VISIBLE']['changed_at']",
+    ]
 
-    assert rels["main"]["car__person"]["r1"].action == DiffAction.UPDATED
-    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED
-    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.previous is False
-    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.new is True
+    expected_result_branch1_r1 = {
+        "branch": "branch1",
+        "id": "r1",
+        "name": "car__person",
+        "action": DiffAction.UPDATED,
+        "nodes": {
+            "c1": {"id": "c1", "labels": ["Car", "Node"], "kind": "Car"},
+            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+        },
+        "properties": {
+            "IS_VISIBLE": {
+                "branch": "branch1",
+                "type": "IS_VISIBLE",
+                "action": DiffAction.UPDATED,
+                "value": {"previous": True, "new": False},
+                "changed_at": "XXXXXXXX",
+            }
+        },
+        "changed_at": None,
+    }
+
+    assert (
+        DeepDiff(
+            expected_result_branch1_r1,
+            rels["branch1"]["car__person"]["r1"].dict(),
+            exclude_paths=paths_to_exclude,
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
+    expected_result_branch1_r2 = {
+        "branch": "branch1",
+        "id": "r2",
+        "name": "car__person",
+        "action": DiffAction.ADDED,
+        "nodes": {
+            "c2": {"id": "c2", "labels": ["Car", "Node"], "kind": "Car"},
+            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+        },
+        "properties": {
+            "IS_VISIBLE": {
+                "branch": "branch1",
+                "type": "IS_VISIBLE",
+                "action": DiffAction.ADDED,
+                "value": {"previous": None, "new": True},
+                "changed_at": "XXXXXX",
+            },
+            "IS_PROTECTED": {
+                "branch": "branch1",
+                "type": "IS_PROTECTED",
+                "action": DiffAction.ADDED,
+                "value": {"previous": None, "new": False},
+                "changed_at": "XXXXXX",
+            },
+        },
+        "changed_at": "XXXXXX",
+    }
+
+    assert (
+        DeepDiff(
+            expected_result_branch1_r2,
+            rels["branch1"]["car__person"]["r2"].dict(),
+            exclude_paths=paths_to_exclude,
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
+
+    expected_result_main_r1 = {
+        "branch": "main",
+        "id": "r1",
+        "name": "car__person",
+        "action": DiffAction.UPDATED,
+        "nodes": {
+            "c1": {"id": "c1", "labels": ["Car", "Node"], "kind": "Car"},
+            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+        },
+        "properties": {
+            "IS_PROTECTED": {
+                "branch": "main",
+                "action": DiffAction.UPDATED,
+                "type": "IS_PROTECTED",
+                "value": {"previous": False, "new": True},
+            }
+        },
+        "changed_at": None,
+    }
+    assert (
+        DeepDiff(
+            expected_result_main_r1,
+            rels["main"]["car__person"]["r1"].dict(),
+            exclude_paths=paths_to_exclude,
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
 
 
 async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
