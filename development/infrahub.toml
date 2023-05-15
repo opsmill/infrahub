@@ -20,5 +20,5 @@ password = "infrahub"
 [api]
 cors_allow_origins = ["*"]
 
-# [features]
+# [experimental_features]
 # pull_request = true
