@@ -32,7 +32,6 @@ services:
   #     - '--web.enable-lifecycle'
   # grafana:
   #   image: grafana/grafana:9.5.2
-  #   container_name: grafana
   #   volumes:
   #     - ./grafana/provisioning:/etc/grafana/provisioning
   #   environment:
