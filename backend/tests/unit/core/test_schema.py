@@ -274,28 +274,25 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     person = registry.get_schema(name="Person")
     rel = person.relationships[0]
 
-    filters, params, nbr_rels = await rel.get_query_filter(session=session)
+    filters, params = await rel.get_query_filter(session=session)
     assert filters == []
     assert params == {}
-    assert nbr_rels == 0
 
     # Filter relationships by NAME__VALUE
-    filters, params, nbr_rels = await rel.get_query_filter(session=session, filters={"name__value": "alice"})
+    filters, params = await rel.get_query_filter(session=session, filters={"name__value": "alice"})
     expected_response = [
-        "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Node)-[r3:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_name_name } )-[r4:HAS_VALUE]-(av { value: $attr_name_value })"
+        "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_name_name } )-[:HAS_VALUE]-(av { value: $attr_name_value })"
     ]
     assert filters == expected_response
     assert params == {"attr_name_name": "name", "attr_name_value": "alice", "rel_cars_rel_name": "car__person"}
-    assert nbr_rels == 4
 
     # Filter relationship by ID
-    filters, params, nbr_rels = await rel.get_query_filter(session=session, name="bob", filters={"id": "XXXX-YYYY"})
+    filters, params = await rel.get_query_filter(session=session, name="bob", filters={"id": "XXXX-YYYY"})
     expected_response = [
-        "MATCH (n)-[r1:IS_RELATED]-(Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(p:Node { uuid: $rel_cars_peer_id })"
+        "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(peer:Node { uuid: $rel_cars_peer_id })"
     ]
     assert filters == expected_response
     assert params == {"rel_cars_peer_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
-    assert nbr_rels == 2
 
 
 def test_core_models():

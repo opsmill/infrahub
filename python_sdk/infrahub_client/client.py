@@ -37,7 +37,7 @@ class BaseClient:
     def __init__(
         self,
         address: str = "http://localhost:8000",
-        default_timeout: int = 10,
+        default_timeout: int = 30,
         retry_on_failure: bool = False,
         retry_delay: int = 5,
         log: Optional[Logger] = None,

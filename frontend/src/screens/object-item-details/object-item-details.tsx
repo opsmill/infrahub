@@ -150,7 +150,7 @@ export default function ObjectItemDetails() {
       />
 
       {!qspTab && (
-        <div className="px-4 py-5 sm:p-0">
+        <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>

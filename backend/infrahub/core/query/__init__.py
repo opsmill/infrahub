@@ -145,7 +145,11 @@ class Query(ABC):
     order_by: Optional[List[str]] = None
 
     def __init__(
-        self, branch: Optional[Branch] = None, at: Optional[Union[Timestamp, str]] = None, limit: Optional[int] = None
+        self,
+        branch: Optional[Branch] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ):
         if branch:
             self.branch = branch
@@ -157,6 +161,7 @@ class Query(ABC):
             self.at = Timestamp(at)
 
         self.limit = limit
+        self.offset = offset
 
         # Initialize internal variables
         self.params: dict = {}
@@ -174,10 +179,11 @@ class Query(ABC):
         branch: Optional[Branch] = None,
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
+        offset: Optional[int] = None,
         *args,
         **kwargs,
     ):
-        query = cls(branch=branch, at=at, limit=limit, *args, **kwargs)
+        query = cls(branch=branch, at=at, limit=limit, offset=offset, *args, **kwargs)
 
         await query.query_init(session=session, **kwargs)
 
@@ -187,7 +193,11 @@ class Query(ABC):
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         raise NotImplementedError
 
-    def add_to_query(self, query: str):
+    def add_to_query(self, query: str) -> None:
+        """Add a new section at the end of the query.
+
+        A string with multiple lines will be broken down into multiple entries in self.query_lines
+        Trailing and leading spaces per line will be removed."""
         self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
     def get_query(self, var: bool = False) -> str:
@@ -201,6 +211,9 @@ class Query(ABC):
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
+        if self.offset:
+            tmp_query_lines.append(f"SKIP {self.offset}")
+
         if self.limit:
             tmp_query_lines.append(f"LIMIT {self.limit}")
 
@@ -209,13 +222,28 @@ class Query(ABC):
         if not var:
             return query_str
 
-        for key, value in self.params.items():
-            if isinstance(value, (int, list)):
-                query_str = query_str.replace(f"${key}", str(value))
-            else:
-                query_str = query_str.replace(f"${key}", f'"{value}"')
+        return self.insert_variables_in_query(query=query_str, variables=self.params)
 
-        return query_str
+    def get_count_query(self, var: bool = False) -> str:
+        tmp_query_lines = self.query_lines.copy()
+        tmp_query_lines.append("RETURN count(*) as count")
+        query_str = "\n".join(tmp_query_lines)
+
+        if not var:
+            return query_str
+
+        return self.insert_variables_in_query(query=query_str, variables=self.params)
+
+    @staticmethod
+    def insert_variables_in_query(query: str, variables: dict) -> str:
+        """Search for all the variables in a Query string and replace each variable with its value."""
+        for key, value in variables.items():
+            if isinstance(value, (int, list)):
+                query = query.replace(f"${key}", str(value))
+            else:
+                query = query.replace(f"${key}", f'"{value}"')
+
+        return query
 
     async def execute(self, session: AsyncSession) -> SelfQuery:
         # Ensure all mandatory params have been provided
@@ -238,6 +266,23 @@ class Query(ABC):
         self.has_been_executed = True
 
         return self
+
+    async def count(self, session: AsyncSession) -> int:
+        """Count the number of results matching a READ query.
+        OFFSET and LIMIT are automatically excluded when counting.
+        """
+
+        if self.type == QueryType.WRITE:
+            raise TypeError("Unable to count the number of response on a Write query.")
+        if self.type != QueryType.READ:
+            raise ValueError(f"unknown value for {self.type}")
+
+        results = await execute_read_query_async(query=self.get_count_query(), params=self.params, session=session)
+
+        if not results and self.raise_error_if_empty:
+            raise QueryError(self.get_count_query(), self.params)
+
+        return results[0][0]
 
     def process_results(self, results) -> List[QueryResult]:
         return results

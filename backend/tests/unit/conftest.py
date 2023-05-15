@@ -182,11 +182,10 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     registry.branch[branch1.name] = branch1
 
     query = """
-    MATCH (b0:Branch { name: $main_branch })
-    MATCH (b1:Branch { name: $branch1 })
+    MATCH (root:Root)
 
     CREATE (c1:Node:Car { uuid: "c1", kind: "Car" })
-    CREATE (c1)-[:IS_PART_OF { from: $time_m60, status: "active" }]->(b0)
+    CREATE (c1)-[:IS_PART_OF { branch: $main_branch, from: $time_m60, status: "active" }]->(root)
 
     CREATE (bool_true:Boolean { value: true })
     CREATE (bool_false:Boolean { value: false })
@@ -229,7 +228,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c2:Node:Car { uuid: "c2", kind: "Car" })
-    CREATE (c2)-[:IS_PART_OF {from: $time_m20, status: "active"}]->(b0)
+    CREATE (c2)-[:IS_PART_OF {branch: $main_branch, from: $time_m20, status: "active"}]->(root)
 
     CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
     CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats"})
@@ -260,7 +259,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c3:Node:Car { uuid: "c3", kind: "Car" })
-    CREATE (c3)-[:IS_PART_OF {from: $time_m40, status: "active"}]->(b1)
+    CREATE (c3)-[:IS_PART_OF {branch: $branch1, from: $time_m40, status: "active"}]->(root)
 
     CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
     CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats"})
@@ -291,7 +290,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
-    CREATE (p1)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
+    CREATE (p1)-[:IS_PART_OF { branch: $main_branch, from: $time_m60, status: "active"}]->(root)
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
@@ -300,7 +299,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
-    CREATE (p2)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
+    CREATE (p2)-[:IS_PART_OF {branch: $main_branch, from: $time_m60, status: "active"}]->(root)
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
@@ -309,7 +308,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
-    CREATE (p3)-[:IS_PART_OF {from: $time_m60, status: "active"}]->(b0)
+    CREATE (p3)-[:IS_PART_OF {branch: $main_branch, from: $time_m60, status: "active"}]->(root)
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p3at1)
     CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
@@ -448,11 +447,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     query = """
     // Create all branches nodes
-    MATCH (b0:Branch { name: $main_branch })
-    MATCH (b1:Branch { name: $branch1 })
-    MATCH (b2:Branch { name: $branch2 })
-    MATCH (b3:Branch { name: $branch3 })
-    MATCH (b4:Branch { name: $branch4 })
+    MATCH (root:Root)
 
     // Create the Boolean nodes for the properties
     CREATE (bool_true:Boolean { value: true })
@@ -491,7 +486,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     // TAG 1 - BLUE
     CREATE (t1:Node:Tag { uuid: "p1", kind: "Tag" })
-    CREATE (t1)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+    CREATE (t1)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
 
     CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name"})
     CREATE (t1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t1at1)
@@ -502,7 +497,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     // TAG 2 - RED
     CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag" })
-    CREATE (t2)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+    CREATE (t2)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
 
     CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name"})
     CREATE (t2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t2at1)
@@ -513,7 +508,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     // TAG 3 - GREEN
     CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag" })
-    CREATE (t3)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+    CREATE (t3)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
 
     CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name"})
     CREATE (t3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t3at1)
@@ -529,7 +524,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //  firstname value in main keeps changing every 20s using the day of the week
 
     CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
-    CREATE (p1)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+    CREATE (p1)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
 
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
     CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
@@ -580,7 +575,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //  firstname value in branch2 changes again at m20 after the branch has been rebased
 
     CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
-    CREATE (p2)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+    CREATE (p2)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
 
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
     CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
@@ -613,7 +608,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //    primary Tag: Red
 
     CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
-    CREATE (p3)-[:IS_PART_OF { from: $time_m120, status: "active" }]->(b0)
+    CREATE (p3)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
 
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
     CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
@@ -844,6 +839,15 @@ async def person_john_main(session: AsyncSession, default_branch: Branch, car_pe
 
 
 @pytest.fixture
+async def person_jane_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    await person.new(session=session, name="Jane", height=180)
+    await person.save(session=session)
+
+    return person
+
+
+@pytest.fixture
 async def person_jim_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
     person = await Node.init(session=session, schema="Person", branch=default_branch)
     await person.new(session=session, name="Jim", height=170)
@@ -853,9 +857,54 @@ async def person_jim_main(session: AsyncSession, default_branch: Branch, car_per
 
 
 @pytest.fixture
+async def person_albert_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    await person.new(session=session, name="Albert", height=160)
+    await person.save(session=session)
+
+    return person
+
+
+@pytest.fixture
+async def person_alfred_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    await person.new(session=session, name="Alfred", height=160)
+    await person.save(session=session)
+
+    return person
+
+
+@pytest.fixture
 async def car_accord_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
     car = await Node.init(session=session, schema="Car", branch=default_branch)
     await car.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
+    await car.save(session=session)
+
+    return car
+
+
+@pytest.fixture
+async def car_volt_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
+    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    await car.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=person_john_main.id)
+    await car.save(session=session)
+
+    return car
+
+
+@pytest.fixture
+async def car_camry_main(session: AsyncSession, default_branch: Branch, person_jane_main: Node) -> Node:
+    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    await car.new(session=session, name="camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
+    await car.save(session=session)
+
+    return car
+
+
+@pytest.fixture
+async def car_yaris_main(session: AsyncSession, default_branch: Branch, person_jane_main: Node) -> Node:
+    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    await car.new(session=session, name="yaris", nbr_seats=4, is_electric=False, owner=person_jane_main.id)
     await car.save(session=session)
 
     return car

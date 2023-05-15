@@ -1,0 +1,11 @@
+---
+version: "3.4"
+services:
+  database:
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+  message-queue:
+    ports:
+      - "5672:5672"
+      - "15672:15672"

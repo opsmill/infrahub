@@ -58,10 +58,10 @@ class AddNodeToBranch(Query):
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
-        MATCH (b:Branch { name: $branch })
+        MATCH (root:Root)
         MATCH (d) WHERE ID(d) = $node_id
-        WITH b,d
-        CREATE (d)-[r:IS_PART_OF { from: $now, to: null, status: $status }]->(b)
+        WITH root,d
+        CREATE (d)-[r:IS_PART_OF { branch: $branch, from: $now, to: null, status: $status }]->(root)
         RETURN ID(r)
         """
 
@@ -236,36 +236,6 @@ class Branch(StandardNode):
         query = await DeleteBranchRelationshipsQuery.init(session=session, branch_name=self.name)
         await query.execute(session=session)
 
-    def get_query_filter_branch_to_node(
-        self,
-        rel_label: str = "r",
-        branch_label: str = "b",
-        at: Optional[Union[Timestamp, str]] = None,
-        include_outside_parentheses: bool = False,
-    ) -> Tuple[str, Dict]:
-        """Generate a CYPHER Query filter to query the nodes associated with a given branch at a specific time.
-
-        Since the relationship between a node and a branch is slightly different than the other relationship
-        We need to different query.
-        """
-        filters = []
-        params = {}
-
-        for idx, (branch_name, time_to_query) in enumerate(self.get_branches_and_times_to_query(at=at).items()):
-            br_filter = f"({branch_label}.name = $branch{idx} AND ("
-            br_filter += f"({rel_label}.from <= $time{idx} AND {rel_label}.to IS NULL)"
-            br_filter += f" OR ({rel_label}.from <= $time{idx} AND {rel_label}.to >= $time{idx})"
-            br_filter += "))"
-
-            filters.append(br_filter)
-            params[f"branch{idx}"] = branch_name
-            params[f"time{idx}"] = time_to_query
-
-        if not include_outside_parentheses:
-            return "\n OR ".join(filters), params
-
-        return "(" + "\n OR ".join(filters) + ")", params
-
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
     ) -> Tuple[List, Dict]:
@@ -407,9 +377,8 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_branch_range(
+    def get_query_filter_range(
         self,
-        branch_label: str,
         rel_label: list,
         start_time: Union[Timestamp, str],
         end_time: Union[Timestamp, str],
@@ -427,8 +396,8 @@ class Branch(StandardNode):
         params["end_time"] = end_time.to_string()
 
         filters_per_rel = [
-            f"({branch_label}.name in $branches AND {rel_label}.from >= $start_time AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)",
-            f"({branch_label}.name in $branches AND (({rel_label}.from >= $start_time AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time AND {rel_label}.to <= $end_time)))",
+            f"({rel_label}.branch in $branches AND {rel_label}.from >= $start_time AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)",
+            f"({rel_label}.branch in $branches AND (({rel_label}.from >= $start_time AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time AND {rel_label}.to <= $end_time)))",
         ]
 
         filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
@@ -1107,11 +1076,11 @@ class Diff:
                 continue
 
             branch_status = result.get("r").get("status")
-            branch_name = result.get("b").get("name")
+            branch_name = result.get("r").get("branch")
             from_time = result.get("r").get("from")
 
             item = {
-                "branch": result.get("b").get("name"),
+                "branch": result.get("r").get("branch"),
                 "labels": sorted(list(result.get("n").labels)),
                 "kind": result.get("n").get("kind"),
                 "id": node_id,

@@ -4,7 +4,9 @@ import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual } from "date-fns";
 import React, { Fragment, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Avatar } from "../../components/avatar";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/date-picker";
 import { QSP } from "../../config/qsp";
@@ -98,12 +100,11 @@ export default function Header(props: Props) {
           {/* Profile dropdown */}
           <Menu as="div" className="relative ml-3">
             <div>
-              <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-30">
+              <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 <span className="sr-only">Open user menu</span>
-                <img
-                  className="h-10 w-10 rounded-full object-cover cursor-not-allowed"
-                  src="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
-                  alt=""
+                <Avatar
+                  image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
+                  name="Richard Martin"
                 />
               </Menu.Button>
             </div>
@@ -115,18 +116,18 @@ export default function Header(props: Props) {
               leave="transition ease-in duration-75"
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95">
-              <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none opacity-30">
+              <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                 {userNavigation.map((item) => (
                   <Menu.Item key={item.name}>
                     {({ active }) => (
-                      <a
-                        href={item.href}
+                      <Link
+                        to={item.href}
                         className={classNames(
                           active ? "bg-gray-100" : "",
                           "block px-4 py-2 text-sm text-gray-700"
                         )}>
                         {item.name}
-                      </a>
+                      </Link>
                     )}
                   </Menu.Item>
                 ))}

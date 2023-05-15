@@ -407,10 +407,14 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+
         self.params["source_id"] = self.source_id
 
         query = "MATCH (n { uuid: $source_id })"
         self.add_to_query(query)
+        self.return_labels = ["n"]
 
         clean_filters = {
             key.replace(f"{self.schema.name}__", ""): value
@@ -419,46 +423,45 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         }
 
         if clean_filters:
-            peer_filters, peer_params, nbr_rels = await self.schema.get_query_filter(
-                session=session, filters=clean_filters, branch=self.branch, rels_offset=0
+            peer_filters, peer_params = await self.schema.get_query_filter(
+                session=session, filters=clean_filters, branch=self.branch, include_match=False
             )
             self.params.update(peer_params)
 
             for field_filter in peer_filters:
-                self.add_to_query(field_filter)
+                query = """
+                WITH %s
+                MATCH p = (n)%s
+                WHERE all(r IN relationships(p) WHERE (%s))
+                """ % (
+                    ",".join(self.return_labels),
+                    field_filter,
+                    branch_filter,
+                )
+                self.add_to_query(query)
 
-            rels_filter, rels_params = self.branch.get_query_filter_relationships(
-                rel_labels=[f"r{i}" for i in range(1, nbr_rels + 1)],
-                at=self.at.to_string(),
-                include_outside_parentheses=True,
-            )
-
-            self.params.update(rels_params)
-
-            query = "WHERE " + "\n AND ".join(rels_filter)
-            self.add_to_query(query)
-
-            self.return_labels = ["n", "p", "rl"] + [f"r{i}" for i in range(1, nbr_rels + 1)]
+                # TODO Would be good to add a function to add to return labels without duplicate
+                for item in ["rl", "peer", "r1", "r2"]:
+                    if item not in self.return_labels:
+                        self.return_labels.append(item)
 
         else:
             self.params["identifier"] = self.schema.identifier
-
-            rels_filter, rels_params = self.branch.get_query_filter_relationships(
-                rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
-            )
-            self.params.update(rels_params)
+            rel_type = self.schema.get_class().rel_type
 
             query = """
-            MATCH (n)-[r1]->(rl:Relationship { name: $identifier })<-[r2]-(p)
-            WHERE %s
+            WITH %s
+            MATCH p = (n)-[r1:%s]->(rl:Relationship { name: $identifier })<-[r2:%s]-(peer:Node)
+            WHERE all(r IN relationships(p) WHERE (%s))
             """ % (
-                "\n AND ".join(
-                    rels_filter,
-                ),
+                ",".join(self.return_labels),
+                rel_type,
+                rel_type,
+                branch_filter,
             )
             self.add_to_query(query)
 
-            self.return_labels = ["n", "p", "rl", "r1", "r2"]
+            self.return_labels.extend(["rl", "peer", "r1", "r2"])
 
         # Add Flag Properties
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -467,11 +470,12 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         self.params.update(rels_params)
 
         query = """
-        WITH *
+        WITH %s
         MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
         MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
         WHERE %s
         """ % (
+            ",".join(self.return_labels),
             "\n AND ".join(
                 rels_filter,
             ),
@@ -488,10 +492,11 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             self.params.update(rels_params)
 
             query = """
-            WITH *
+            WITH %s
             OPTIONAL MATCH (rl)-[rel_%s:HAS_%s]-(%s)
             WHERE %s
             """ % (
+                ",".join(self.return_labels),
                 node_prop,
                 node_prop.upper(),
                 node_prop,
@@ -508,9 +513,9 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         return [peer.peer_id for peer in self.get_peers()]
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
-        for result in self.get_results_group_by(("p", "uuid")):
+        for result in self.get_results_group_by(("peer", "uuid")):
             data = RelationshipPeerData(
-                peer_id=result.get("p").get("uuid"),
+                peer_id=result.get("peer").get("uuid"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=result.get("r1").get("from"),
