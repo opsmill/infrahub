@@ -305,7 +305,7 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
 
 async def test_diff_get_files_repository(session, rpc_client, repos_in_main, base_dataset_02):
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value,
+        status=RPCStatusCode.OK,
         response={
             "files_changed": ["readme.md", "mydir/myfile.py"],
             "files_removed": ["notthere.md"],
@@ -343,7 +343,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
     but only one has a different commit value between 2 and from so we expect only 2 files"""
 
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
     )
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
@@ -374,10 +374,10 @@ async def test_diff_get_files_repositories_for_branch_case02(
     both repositories have a new commit value so we expect both to return something"""
 
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
     )
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]})
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"files_changed": ["anotherfile.rb"]})
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
     branch2 = await create_branch(branch_name="branch2", session=session)
@@ -407,10 +407,10 @@ async def test_diff_get_files(session, rpc_client: InfrahubRpcClientTesting, def
     both repositories have a new commit value so we expect both to return something"""
 
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
     )
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]})
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"files_changed": ["anotherfile.rb"]})
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
     branch2 = await create_branch(branch_name="branch2", session=session)
