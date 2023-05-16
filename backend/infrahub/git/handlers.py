@@ -11,6 +11,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.repository import InfrahubRepository
 from infrahub.lock import registry as lock_registry
+from infrahub.log import set_log_data
 from infrahub.message_bus.events import (
     CheckMessageAction,
     GitMessageAction,
@@ -29,21 +30,21 @@ LOGGER = logging.getLogger("infrahub.git")
 
 
 async def handle_bad_request(  # pylint: disable=unused-argument
-    message: InfrahubGitRPC, client: InfrahubClient
+    message: InfrahubRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
-    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST.value)
+    return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST)
 
 
 async def handle_not_found(  # pylint: disable=unused-argument
-    message: InfrahubGitRPC, client: InfrahubClient
+    message: InfrahubRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
-    return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND.value)
+    return InfrahubRPCResponse(status=RPCStatusCode.NOT_FOUND)
 
 
 async def handle_not_implemented(  # pylint: disable=unused-argument
     message: InfrahubRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
-    return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED.value)
+    return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED)
 
 
 async def handle_check_message_action_python(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -59,12 +60,12 @@ async def handle_check_message_action_python(message: InfrahubCheckRPC, client: 
         )
 
         return InfrahubRPCResponse(
-            status=RPCStatusCode.OK.value,
+            status=RPCStatusCode.OK,
             response={"passed": check.passed, "logs": check.logs, "errors": check.errors},
         )
 
     except (CheckError, FileNotFound) as exc:
-        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 
 async def handle_git_message_action_branch_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -74,8 +75,9 @@ async def handle_git_message_action_branch_add(message: InfrahubGitRPC, client: 
             await repo.create_branch_in_git(branch_name=message.params["branch_name"])
         except RepositoryError as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
+        set_log_data(key="branch_name", value=message.params["branch_name"])
 
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+        return InfrahubRPCResponse(status=RPCStatusCode.OK)
 
 
 async def handle_git_message_action_diff(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -84,7 +86,7 @@ async def handle_git_message_action_diff(message: InfrahubGitRPC, client: Infrah
         first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
     )
     return InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value,
+        status=RPCStatusCode.OK,
         response={"files_changed": files_changed, "files_added": files_added, "files_removed": files_removed},
     )
 
@@ -93,7 +95,7 @@ async def handle_git_message_action_merge(message: InfrahubGitRPC, client: Infra
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
     async with lock_registry.get(message.repository_name):
         await repo.merge(source_branch=message.params["branch_name"], dest_branch=config.SETTINGS.main.default_branch)
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value)
+        return InfrahubRPCResponse(status=RPCStatusCode.OK)
 
 
 async def handle_git_message_action_repo_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -108,7 +110,7 @@ async def handle_git_message_action_repo_add(message: InfrahubGitRPC, client: In
         except RepositoryError as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
 
-        return InfrahubRPCResponse(status=RPCStatusCode.CREATED.value)
+        return InfrahubRPCResponse(status=RPCStatusCode.CREATED)
 
 
 async def handle_transform_message_action_jinja2(
@@ -120,10 +122,10 @@ async def handle_transform_message_action_jinja2(
         rendered_template = await repo.render_jinja2_template(
             commit=message.commit, location=message.transform_location, data={"data": message.data} or {}
         )
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"rendered_template": rendered_template})
+        return InfrahubRPCResponse(status=RPCStatusCode.OK, response={"rendered_template": rendered_template})
 
     except (TransformError, FileNotFound) as exc:
-        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 
 async def handle_transform_message_action_python(
@@ -143,10 +145,10 @@ async def handle_transform_message_action_python(
             data=data,
             client=client,
         )
-        return InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"transformed_data": transformed_data})
+        return InfrahubRPCResponse(status=RPCStatusCode.OK, response={"transformed_data": transformed_data})
 
     except (TransformError, FileNotFound) as exc:
-        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[exc.message])
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 
 async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
@@ -155,13 +157,13 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
     LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
 
     handler_map = {
-        GitMessageAction.REPO_ADD.value: handle_git_message_action_repo_add,
-        GitMessageAction.BRANCH_ADD.value: handle_git_message_action_branch_add,
-        GitMessageAction.DIFF.value: handle_git_message_action_diff,
-        GitMessageAction.MERGE.value: handle_git_message_action_merge,
-        GitMessageAction.REBASE.value: handle_not_implemented,
-        GitMessageAction.PUSH.value: handle_not_implemented,
-        GitMessageAction.PULL.value: handle_not_implemented,
+        GitMessageAction.REPO_ADD: handle_git_message_action_repo_add,
+        GitMessageAction.BRANCH_ADD: handle_git_message_action_branch_add,
+        GitMessageAction.DIFF: handle_git_message_action_diff,
+        GitMessageAction.MERGE: handle_git_message_action_merge,
+        GitMessageAction.REBASE: handle_not_implemented,
+        GitMessageAction.PUSH: handle_not_implemented,
+        GitMessageAction.PULL: handle_not_implemented,
     }
     handler = handler_map.get(message.action) or handle_bad_request
     return await handler(message=message, client=client)
@@ -173,8 +175,8 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
     )
 
     handler_map = {
-        TransformMessageAction.JINJA2.value: handle_transform_message_action_jinja2,
-        TransformMessageAction.PYTHON.value: handle_transform_message_action_python,
+        TransformMessageAction.JINJA2: handle_transform_message_action_jinja2,
+        TransformMessageAction.PYTHON: handle_transform_message_action_python,
     }
     handler = handler_map.get(message.action) or handle_bad_request
     return await handler(message=message, client=client)
@@ -185,7 +187,7 @@ async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubCl
         f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
     )
     handler_map = {
-        CheckMessageAction.PYTHON.value: handle_check_message_action_python,
+        CheckMessageAction.PYTHON: handle_check_message_action_python,
     }
     handler = handler_map.get(message.action) or handle_bad_request
     return await handler(message=message, client=client)

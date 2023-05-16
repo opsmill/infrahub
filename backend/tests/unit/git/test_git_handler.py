@@ -26,7 +26,7 @@ async def test_handle_unknown_message(client, git_repo_checks: InfrahubRepositor
     response = await handle_message(message=message, client=client)
 
     assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.NOT_FOUND.value
+    assert response.status == RPCStatusCode.NOT_FOUND
 
 
 async def test_git_check_python_success(client, git_repo_checks: InfrahubRepository, mock_gql_query_my_query):
@@ -45,6 +45,6 @@ async def test_git_check_python_success(client, git_repo_checks: InfrahubReposit
     response = await handle_message(message=message, client=client)
 
     assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.OK.value
+    assert response.status == RPCStatusCode.OK
     assert response.response["passed"] is False
     assert response.response["errors"] == [{"branch": "main", "level": "ERROR", "message": "Not Valid"}]

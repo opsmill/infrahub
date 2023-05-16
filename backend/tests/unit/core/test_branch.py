@@ -305,7 +305,7 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
 
 async def test_diff_get_files_repository(session, rpc_client, repos_in_main, base_dataset_02):
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value,
+        status=RPCStatusCode.OK,
         response={
             "files_changed": ["readme.md", "mydir/myfile.py"],
             "files_removed": ["notthere.md"],
@@ -343,7 +343,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
     but only one has a different commit value between 2 and from so we expect only 2 files"""
 
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
     )
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
@@ -374,10 +374,10 @@ async def test_diff_get_files_repositories_for_branch_case02(
     both repositories have a new commit value so we expect both to return something"""
 
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
     )
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]})
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"files_changed": ["anotherfile.rb"]})
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
     branch2 = await create_branch(branch_name="branch2", session=session)
@@ -407,10 +407,10 @@ async def test_diff_get_files(session, rpc_client: InfrahubRpcClientTesting, def
     both repositories have a new commit value so we expect both to return something"""
 
     mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
     )
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"files_changed": ["anotherfile.rb"]})
+    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"files_changed": ["anotherfile.rb"]})
     await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
     branch2 = await create_branch(branch_name="branch2", session=session)
@@ -695,17 +695,112 @@ async def test_diff_get_relationships(session, base_dataset_02):
     rels = await diff.get_relationships(session=session)
 
     assert sorted(rels.keys()) == ["branch1", "main"]
-
     assert sorted(rels["branch1"]["car__person"].keys()) == ["r1", "r2"]
-    assert rels["branch1"]["car__person"]["r1"].action == DiffAction.UPDATED
-    assert rels["branch1"]["car__person"]["r1"].properties["IS_VISIBLE"].action == DiffAction.UPDATED
 
-    assert rels["branch1"]["car__person"]["r2"].action == DiffAction.ADDED
+    # ---------------------------------------------------
+    # Branch1 / R1
+    # ---------------------------------------------------
+    expected_result_branch1_r1 = {
+        "branch": "branch1",
+        "id": "r1",
+        "name": "car__person",
+        "action": DiffAction.UPDATED,
+        "nodes": {
+            "c1": {"id": "c1", "labels": ["Car", "Node"], "kind": "Car"},
+            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+        },
+        "properties": {
+            "IS_VISIBLE": {
+                "branch": "branch1",
+                "type": "IS_VISIBLE",
+                "action": DiffAction.UPDATED,
+                "value": {"previous": True, "new": False},
+                "changed_at": Timestamp(base_dataset_02["time_m20"]),
+            }
+        },
+        "changed_at": None,
+    }
 
-    assert rels["main"]["car__person"]["r1"].action == DiffAction.UPDATED
-    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].action == DiffAction.UPDATED
-    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.previous is False
-    assert rels["main"]["car__person"]["r1"].properties["IS_PROTECTED"].value.new is True
+    assert (
+        DeepDiff(
+            expected_result_branch1_r1,
+            rels["branch1"]["car__person"]["r1"].dict(),
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
+    # ---------------------------------------------------
+    # Branch1 / R2
+    # ---------------------------------------------------
+    expected_result_branch1_r2 = {
+        "branch": "branch1",
+        "id": "r2",
+        "name": "car__person",
+        "action": DiffAction.ADDED,
+        "nodes": {
+            "c2": {"id": "c2", "labels": ["Car", "Node"], "kind": "Car"},
+            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+        },
+        "properties": {
+            "IS_VISIBLE": {
+                "branch": "branch1",
+                "type": "IS_VISIBLE",
+                "action": DiffAction.ADDED,
+                "value": {"previous": None, "new": True},
+                "changed_at": Timestamp(base_dataset_02["time_m20"]),
+            },
+            "IS_PROTECTED": {
+                "branch": "branch1",
+                "type": "IS_PROTECTED",
+                "action": DiffAction.ADDED,
+                "value": {"previous": None, "new": False},
+                "changed_at": Timestamp(base_dataset_02["time_m20"]),
+            },
+        },
+        "changed_at": Timestamp(base_dataset_02["time_m20"]),
+    }
+
+    assert (
+        DeepDiff(
+            expected_result_branch1_r2,
+            rels["branch1"]["car__person"]["r2"].dict(),
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
+
+    # ---------------------------------------------------
+    # main / R1
+    # ---------------------------------------------------
+
+    expected_result_main_r1 = {
+        "branch": "main",
+        "id": "r1",
+        "name": "car__person",
+        "action": DiffAction.UPDATED,
+        "nodes": {
+            "c1": {"id": "c1", "labels": ["Car", "Node"], "kind": "Car"},
+            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+        },
+        "properties": {
+            "IS_PROTECTED": {
+                "branch": "main",
+                "action": DiffAction.UPDATED,
+                "type": "IS_PROTECTED",
+                "value": {"previous": False, "new": True},
+                "changed_at": Timestamp(base_dataset_02["time_m30"]),
+            }
+        },
+        "changed_at": None,
+    }
+    assert (
+        DeepDiff(
+            expected_result_main_r1,
+            rels["main"]["car__person"]["r1"].dict(),
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
 
 
 async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
