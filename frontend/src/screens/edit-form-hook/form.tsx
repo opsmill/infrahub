@@ -48,7 +48,7 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
       <FormProvider {...formMethods}>
         <div className="space-y-12 max-w-lg px-4 flex-1 bg-white">
           <div className="pb-12">
-            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-7 gap-y-4 py-6">
+            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-7 gap-y-4 py-6 md:grid-cols-4">
               {fields.map((field, index) => (
                 <FormField key={index} field={field} error={resolve(field.name, errors)} />
               ))}

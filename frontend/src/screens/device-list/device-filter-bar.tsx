@@ -1,11 +1,21 @@
-import { useReactiveVar } from "@apollo/client";
+import { gql, useQuery, useReactiveVar } from "@apollo/client";
 import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useAtom } from "jotai";
+import { useEffect, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { StringParam, useQueryParam } from "use-query-params";
+import { Button } from "../../components/button";
+import { QSP } from "../../config/qsp";
 import { comboxBoxFilterVar, iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
-import FilterCombobox from "../filters/filter-combobox";
-import FilterComboEnum from "../filters/filter-enum";
-import FilterTextField from "../filters/filter-textfield";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { getDropdownOptionsForRelatedPeers } from "../../utils/dropdownOptionsForRelatedPeers";
+import { resolve } from "../../utils/objects";
+import { DynamicControl } from "../edit-form-hook/dynamic-control";
+import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
+import ErrorScreen from "../error-screen/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
+import NoDataFound from "../no-data-found/no-data-found";
 
 // const sortOptions = [
 //   { name: "Name", href: "#", current: true },
@@ -21,6 +31,133 @@ export default function DeviceFilterBar(props: Props) {
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
 
   const [showFilters, setShowFilters] = useState(false);
+  const [schemaKindName] = useAtom(schemaKindNameState);
+  const [filterFields, setFilterFields] = useState<DynamicFieldData[]>([]);
+  const [filtersInQueryString, setFiltersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
+
+  const filters = filtersInQueryString
+    ? JSON.parse(window.atob(filtersInQueryString))
+    : currentFilters;
+
+  const peers: string[] = [];
+  (props.schema.filters || []).forEach((f) => {
+    if (f.kind === "Object" && f.object_kind) {
+      peers.push(schemaKindName[f.object_kind]);
+    }
+  });
+  const queryString = getDropdownOptionsForRelatedPeers({
+    peers,
+  });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data } = useQuery(query, { skip: !props.schema });
+
+  const getFilterFields = async () => {
+    const peerDropdownOptions: any = data;
+    const formFields: DynamicFieldData[] = [];
+
+    props.schema.filters?.forEach((filter) => {
+      const currentValue = filters?.find((f: iComboBoxFilter) => f.name === filter.name);
+      if (filter.kind === "Text" && !filter.enum) {
+        formFields.push({
+          label: filter.name,
+          name: filter.name,
+          type: "text",
+          value: currentValue ?? "",
+        });
+      } else if (filter.kind === "Text" && filter.enum) {
+        formFields.push({
+          label: filter.name,
+          name: filter.name,
+          type: "select",
+          value: currentValue ?? "",
+          options: {
+            values: filter.enum?.map((row: any) => ({
+              name: row,
+              id: row,
+            })),
+          },
+        });
+      } else if (filter.kind === "Object") {
+        if (filter.object_kind && peerDropdownOptions[schemaKindName[filter.object_kind]]) {
+          const options = peerDropdownOptions[schemaKindName[filter.object_kind]].map(
+            (row: any) => ({
+              name: row.display_label,
+              id: row.id,
+            })
+          );
+          formFields.push({
+            label: filter.name,
+            name: filter.name,
+            type: "select",
+            value: currentValue ? currentValue.value : "",
+            options: {
+              values: options,
+            },
+          });
+        }
+      }
+    });
+    setFilterFields(formFields);
+  };
+
+  useEffect(() => {
+    getFilterFields();
+  }, [data]);
+
+  const onSubmit = (data: any) => {
+    const keys = Object.keys(data);
+    const filters: iComboBoxFilter[] = [];
+    for (let filterKey of keys) {
+      const filterValue = data[filterKey];
+      if (data[filterKey]) {
+        filters.push({
+          display_label: filterKey,
+          name: filterKey,
+          value: filterValue,
+        });
+      }
+    }
+    comboxBoxFilterVar(filters);
+    if (filters.length) {
+      setFiltersInQueryString(window.btoa(JSON.stringify(filters)));
+    } else {
+      setFiltersInQueryString(undefined);
+    }
+  };
+
+  const formMethods = useForm();
+  const {
+    handleSubmit,
+    reset,
+    resetField,
+    formState: { errors },
+  } = formMethods;
+
+  const FilterField = (props: any) => {
+    const { field, error } = props;
+
+    return (
+      <div className="p-2 mr-2">
+        <DynamicControl {...field} error={error} />
+      </div>
+    );
+  };
+
+  if (error) {
+    return <ErrorScreen />;
+  }
+
+  if (loading || !props.schema) {
+    return <LoadingScreen />;
+  }
+
+  if (!data) {
+    return <NoDataFound />;
+  }
 
   return (
     <div className="bg-white">
@@ -39,12 +176,21 @@ export default function DeviceFilterBar(props: Props) {
                     className="mr-2 h-5 w-5 flex-none text-blue-400 group-hover:text-blue-500"
                     aria-hidden="true"
                   />
-                  {currentFilters.length} Filters
+                  {filters.length} Filters
                 </div>
               </div>
               <div className="pl-6">
                 <button
-                  onClick={() => comboxBoxFilterVar([])}
+                  onClick={() => {
+                    comboxBoxFilterVar([]);
+                    reset();
+                    setFiltersInQueryString(undefined);
+                  }}
+                  // onClick={() => {
+                  //   reset();
+                  //   setCurrentFilters([]);
+                  //   setFiltersInQueryString(undefined);
+                  // }}
                   type="button"
                   className="text-gray-500">
                   Clear all
@@ -54,18 +200,34 @@ export default function DeviceFilterBar(props: Props) {
             <div aria-hidden="true" className="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block" />
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
-                {currentFilters.map((filter: iComboBoxFilter) => (
+                {/* {currentFilters.map((filter: iComboBoxFilter) => ( */}
+                {filters.map((filter: iComboBoxFilter) => (
                   <span
                     key={filter.name}
                     className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900">
                     <span>{filter.display_label}</span>
                     <button
                       type="button"
-                      onClick={() =>
-                        comboxBoxFilterVar(
-                          currentFilters.filter((row: iComboBoxFilter) => row !== filter)
-                        )
-                      }
+                      onClick={() => {
+                        const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
+                        comboxBoxFilterVar(newFilters);
+                        if (newFilters.length) {
+                          setFiltersInQueryString(window.btoa(JSON.stringify(newFilters)));
+                        } else {
+                          setFiltersInQueryString(undefined);
+                        }
+                        resetField(filter.name);
+                      }}
+                      // onClick={() => {
+                      //   const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
+                      //   setCurrentFilters(newFilters);
+                      // if (newFilters.length) {
+                      //   setFiltersInQueryString(window.btoa(JSON.stringify(newFilters)));
+                      // } else {
+                      //   setFiltersInQueryString(undefined);
+                      // }
+                      // resetField(filter.name);
+                      // }}
                       className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500">
                       <span className="sr-only">Remove filter for {filter.display_label}</span>
                       <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
@@ -149,18 +311,24 @@ export default function DeviceFilterBar(props: Props) {
         {showFilters && (
           <div className="border-t border-gray-200 pb-10">
             <div className="mx-auto px-4 text-sm sm:px-6">
-              <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-                {props.schema.filters?.map((filter) => {
-                  if (filter.kind === "Object") {
-                    return <FilterCombobox filter={filter} key={filter.name} />;
-                  } else if (filter.kind === "Text" && !filter.enum) {
-                    return <FilterTextField filter={filter} key={filter.name} />;
-                  } else if (filter.kind === "Text" && filter.enum) {
-                    return <FilterComboEnum filter={filter} key={filter.name} />;
-                  } else {
-                    return null;
-                  }
-                })}
+              <div>
+                <form className="flex-1" onSubmit={handleSubmit(onSubmit)}>
+                  <FormProvider {...formMethods}>
+                    <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                      {filterFields.map((field: any, index: number) => (
+                        <FilterField
+                          key={index}
+                          field={field}
+                          error={resolve(field.name, errors)}
+                        />
+                      ))}
+                    </div>
+                    <Button className="ml-2" type="submit">
+                      Filter
+                      <FunnelIcon className="w-4 h-4 text-gray-500" />
+                    </Button>
+                  </FormProvider>
+                </form>
               </div>
             </div>
           </div>
