@@ -78,9 +78,9 @@ class MiscellaneousSettings(BaseSettings):
 
 class RemoteLoggingSettings(BaseSettings):
     enable: bool = False
-    frontend_dsn: Optional[str]
-    api_server_dsn: Optional[str]
-    git_agent_dsn: Optional[str]
+    frontend_dsn: Optional[str] = None
+    api_server_dsn: Optional[str] = None
+    git_agent_dsn: Optional[str] = None
 
     class Config:
         env_prefix = "INFRAHUB_LOGGING_REMOTE_"
@@ -93,8 +93,8 @@ class LoggingSettings(BaseSettings):
 
 class AnalyticsSettings(BaseSettings):
     enable: bool = True
-    address: Optional[str]
-    api_key: Optional[str]
+    address: Optional[str] = None
+    api_key: Optional[str] = None
 
     class Config:
         env_prefix = "INFRAHUB_ANALYTICS_"
