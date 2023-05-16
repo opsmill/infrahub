@@ -195,9 +195,9 @@ class StandardNode(BaseModel):
         if ids := kwargs.get("ids"):
             filters.append("n.uuid in $ids_value")
             params["ids_value"] = ids
-        if name_filter := kwargs.get("name__value"):
-            filters.append("n.name = $name_value")
-            params["name_value"] = name_filter
+        if name_filter := kwargs.get("name"):
+            filters.append("n.name = $name")
+            params["name"] = name_filter
 
         where = ""
         if filters:

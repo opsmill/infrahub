@@ -24,7 +24,7 @@ async def default_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
 
 
 class InfrahubBaseQuery(ObjectType):
-    branch = List(BranchType, ids=List(ID), name__value=String())
+    branch = List(BranchType, ids=List(ID), name=String())
 
     diff = Field(
         BranchDiffType,

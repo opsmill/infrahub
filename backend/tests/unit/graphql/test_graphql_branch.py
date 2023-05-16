@@ -181,7 +181,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     name_query = (
         """
     query {
-        branch(name__value: "%s" ) {
+        branch(name: "%s" ) {
             id
             name
         }
