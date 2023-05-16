@@ -45,7 +45,7 @@ async def test_transform_endpoint(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         mock_response = InfrahubRPCResponse(
-            status=RPCStatusCode.OK.value, response={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}}
+            status=RPCStatusCode.OK, response={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}}
         )
         await client.app.state.rpc_client.add_response(
             response=mock_response, message_type=MessageType.TRANSFORMATION, action=TransformMessageAction.PYTHON
@@ -87,7 +87,7 @@ async def test_transform_endpoint_path(session, client_headers, patch_rpc_client
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         mock_response = InfrahubRPCResponse(
-            status=RPCStatusCode.OK.value, response={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}}
+            status=RPCStatusCode.OK, response={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}}
         )
         await client.app.state.rpc_client.add_response(
             response=mock_response, message_type=MessageType.TRANSFORMATION, action=TransformMessageAction.PYTHON

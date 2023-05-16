@@ -65,7 +65,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient, log: logging.Logger):
                         log.info(f"RPC Execution Completed {rpc.type} | {rpc.action} | {response.status} ")
                     except Exception as exc:  # pylint: disable=broad-except
                         log.critical(exc, exc_info=True)
-                        response = InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR.value, errors=[str(exc)])
+                        response = InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[str(exc)])
 
                     finally:
                         await response.send(
