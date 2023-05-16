@@ -11,6 +11,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.repository import InfrahubRepository
 from infrahub.lock import registry as lock_registry
+from infrahub.log import set_log_data
 from infrahub.message_bus.events import (
     CheckMessageAction,
     GitMessageAction,
@@ -74,6 +75,7 @@ async def handle_git_message_action_branch_add(message: InfrahubGitRPC, client: 
             await repo.create_branch_in_git(branch_name=message.params["branch_name"])
         except RepositoryError as exc:
             return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
+        set_log_data(key="branch_name", value=message.params["branch_name"])
 
         return InfrahubRPCResponse(status=RPCStatusCode.OK)
 

@@ -13,6 +13,30 @@ def callback():
     """
 
 
+log_config = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "()": "uvicorn.logging.DefaultFormatter",
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        },
+        "access": {
+            "()": "uvicorn.logging.AccessFormatter",
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        },
+    },
+    "handlers": {
+        "default": {"formatter": "default", "class": "logging.NullHandler"},
+        "access": {"formatter": "access", "class": "logging.NullHandler"},
+    },
+    "loggers": {
+        "uvicorn.error": {"level": "INFO", "handlers": ["default"], "propagate": True},
+        "uvicorn.access": {"level": "INFO", "handlers": ["access"], "propagate": False},
+    },
+}
+
+
 @app.command()
 def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
     """Start Infrahub in Debug Mode with reload enabled."""
@@ -30,9 +54,16 @@ def start(listen: str = "127.0.0.1", port: int = 8000, debug: bool = False):
             log_level="info",
             reload=True,
             reload_excludes=["examples", "repositories"],
+            log_config=log_config,
         )
     else:
-        uvicorn.run("infrahub.api.main:app", host=listen, port=port, log_level="info")
+        uvicorn.run(
+            "infrahub.api.main:app",
+            host=listen,
+            port=port,
+            log_level="info",
+            log_config=log_config,
+        )
 
 
 # gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000

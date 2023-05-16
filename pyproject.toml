@@ -36,6 +36,8 @@ neo4j = "~5.7"
 starlette-exporter = "^0.12.0"
 GitPython = "^3.1"
 aio-pika = "^9"
+structlog = "^22.3.0"
+asgi-correlation-id = "4.2.0"
 
 [tool.poetry.group.perf.dependencies]
 locust = "^2.13.1"

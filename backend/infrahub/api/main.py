@@ -2,8 +2,10 @@ import asyncio
 import logging
 import os
 import time
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
+from asgi_correlation_id import CorrelationIdMiddleware
+from asgi_correlation_id.context import correlation_id
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.logger import logger
 from fastapi.responses import JSONResponse
@@ -26,6 +28,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql.app import InfrahubGraphQLApp
+from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
@@ -41,6 +44,7 @@ app = FastAPI(
 
 # pylint: disable=too-many-locals
 
+log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
@@ -55,7 +59,7 @@ async def app_initialization():
     if not config.SETTINGS:
         config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
         config_file_path = os.path.abspath(config_file_name)
-        logger.info(f"Loading the configuration from {config_file_path}")
+        log.info("application_init", config_file=config_file_path)
         config.load_and_exit(config_file_path)
 
     # Initialize database Driver and load local registry
@@ -85,12 +89,25 @@ async def shutdown():
 
 
 @app.middleware("http")
+async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    clear_log_context()
+    request_id = correlation_id.get()
+    set_log_data(key="request_id", value=request_id)
+    set_log_data(key="app", value="infrahub.api")
+    response = await call_next(request)
+    return response
+
+
+@app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
     response.headers["X-Process-Time"] = str(process_time)
     return response
+
+
+app.add_middleware(CorrelationIdMiddleware)
 
 
 @app.exception_handler(BranchNotFound)

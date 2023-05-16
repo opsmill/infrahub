@@ -12,7 +12,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.exceptions import SchemaNotFound
 from infrahub.lock import registry as lock_registry
+from infrahub.log import get_logger
 
+log = get_logger()
 router = APIRouter(prefix="/schema")
 
 
@@ -31,6 +33,7 @@ async def get_schema(
     branch: Optional[str] = None,
 ) -> SchemaReadAPI:
     branch = await get_branch(session=session, branch=branch)
+    log.info("schema_request", branch=branch.name)
 
     full_schema = registry.schema.get_full(branch=branch)
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import glob
 import importlib
-import logging
 import os
 import shutil
 import sys
@@ -27,12 +26,13 @@ from infrahub.exceptions import (
     RepositoryError,
     TransformError,
 )
+from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_client import GraphQLError, InfrahubClient, ValidationError
 
 # pylint: disable=too-few-public-methods,too-many-lines
 
-LOGGER = logging.getLogger("infrahub.git")
+LOGGER = get_logger("infrahub.git")
 
 COMMITS_DIRECTORY_NAME = "commits"
 BRANCHES_DIRECTORY_NAME = "branches"
