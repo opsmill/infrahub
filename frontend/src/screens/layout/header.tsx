@@ -1,19 +1,16 @@
+import { useReactiveVar } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual } from "date-fns";
-import { useAtom } from "jotai";
 import React, { Fragment, useEffect } from "react";
-
 import { Link } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Avatar } from "../../components/avatar";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/date-picker";
-import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
-import { graphQLClient } from "../../graphql/graphqlClient";
-import { timeState } from "../../state/atoms/time.atom";
+import { dateVar } from "../../graphql/variables/dateVar";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
 
@@ -22,8 +19,8 @@ interface Props {
 }
 
 export default function Header(props: Props) {
-  const [date, setDate] = useAtom(timeState);
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
+  const date = useReactiveVar(dateVar);
 
   const { setSidebarOpen } = props;
 
@@ -33,20 +30,15 @@ export default function Header(props: Props) {
 
       // Store the new QSP date only if it's not defined OR if it's different
       if (!date || (date && !isEqual(newQspDate, date))) {
-        setDate(newQspDate);
+        dateVar(newQspDate);
       }
     }
 
-    // Remve the date from the store
+    // Remove the date from the state
     if (!qspDate) {
-      setDate(null);
+      dateVar(null);
     }
-
-    // Update gql endpoint
-    if (date !== undefined) {
-      graphQLClient.setEndpoint(CONFIG.GRAPHQL_URL(undefined, date));
-    }
-  }, [date, qspDate, setDate]);
+  }, [date, qspDate]);
 
   const handleDateChange = (newDate: any) => {
     if (newDate) {

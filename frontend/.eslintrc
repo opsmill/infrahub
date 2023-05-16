@@ -1,6 +1,7 @@
 {
   "env": {
     "browser": true,
+    "node": true,
     "es2021": true
   },
   "settings": {
@@ -55,5 +56,13 @@
     "unused-imports/no-unused-imports-ts": 2,
     "semi": "error",
     "no-trailing-spaces": "error"
+    // "indent": [
+    //   "error",
+    //   2,
+    //   {
+    //     "SwitchCase": 1,
+    //     "MemberExpression": 2
+    //   }
+    // ]
   }
 }

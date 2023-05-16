@@ -1,87 +1,83 @@
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import getObjectRelationshipsDetails from "../../graphql/queries/objects/objectRelationshipDetails";
-import { branchState } from "../../state/atoms/branch.atom";
-import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { timeState } from "../../state/atoms/time.atom";
-import RelationshipDetails from "./relationship-details";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { QSP } from "../../config/qsp";
+import { getObjectRelationshipsDetails } from "../../graphql/queries/objects/getObjectRelationshipDetails";
+import useQuery from "../../graphql/useQuery";
+import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
+import ErrorScreen from "../error-screen/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
+import RelationshipDetails from "./relationship-details";
 
-interface Props {
+interface RelationshipsDetailsProps {
   parentNode: any;
   parentSchema: iNodeSchema;
-  refreshObject: Function;
 }
 
-export default function RelationshipsDetails(props: Props) {
-  const { objectname, objectid } = useParams();
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
+  const { parentNode, parentSchema } = props;
 
+  const { objectname, objectid } = useParams();
+  const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
+
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const relationshipSchema = schema?.relationships?.find((r) => r?.name === qspTab);
-  const [date] = useAtom(timeState);
-  const [branch] = useAtom(branchState);
+  const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);
+  const columns = getAttributeColumnsFromNodeOrGenericSchema(
+    schemaList,
+    generics,
+    relationshipSchema?.peer!
+  );
 
-  const [
-    ,
-    // isLoading
-    setIsLoading,
-  ] = useState(true);
-  const [
-    ,
-    // hasError
-    setHasError,
-  ] = useState(false);
-  const [relationships, setRelationships] = useState();
+  const queryString = getObjectRelationshipsDetails({
+    ...schema,
+    relationship: relationshipTab,
+    objectid,
+    columns,
+  });
 
-  const fetchRelationshipDetails = useCallback(async () => {
-    setRelationships(undefined);
-    try {
-      if (!qspTab) {
-        return;
-      }
+  const query = gql`
+    ${queryString}
+  `;
 
-      setIsLoading(true);
+  const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
 
-      const data = await getObjectRelationshipsDetails(
-        schema,
-        schemaList,
-        generics,
-        objectid!,
-        qspTab
-      );
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
-      setRelationships(data);
-    } catch (err) {
-      setHasError(true);
-    }
+  if (error) {
+    console.error(`Error while loading the ${relationshipTab}:`, error);
 
-    setIsLoading(false);
-  }, [objectid, schema, qspTab, generics, schemaList]);
+    toast(
+      <Alert type={ALERT_TYPES.ERROR} message={`Error while loading the ${relationshipTab}`} />
+    );
 
-  useEffect(() => {
-    if (schema) {
-      fetchRelationshipDetails();
-    }
-  }, [fetchRelationshipDetails, schema, date, branch]);
+    return <ErrorScreen />;
+  }
 
-  if (!qspTab) {
+  if (!data || !relationshipTab) {
     return null;
   }
+
+  const result = data[schema.name];
+
+  const relationships = result?.length ? result[0][relationshipTab] : null;
 
   return (
     <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">
       <RelationshipDetails
-        parentNode={props.parentNode}
+        parentNode={parentNode}
         mode="TABLE"
-        parentSchema={props.parentSchema}
-        refreshObject={props.refreshObject}
+        parentSchema={parentSchema}
         relationshipsData={relationships}
         relationshipSchema={relationshipSchema}
+        refetch={refetch}
       />
     </div>
   );

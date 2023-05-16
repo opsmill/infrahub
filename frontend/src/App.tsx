@@ -1,3 +1,4 @@
+import { ApolloProvider } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -5,14 +6,13 @@ import { Route, Routes } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
-
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
 import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
 import { QSP } from "./config/qsp";
 import SentryClient from "./config/sentry";
-import { BRANCH_QUERY, iBranchData } from "./graphql/defined_queries/branch";
-import { graphQLClient } from "./graphql/graphqlClient";
+import graphqlClient from "./graphql/graphqlClientApollo";
+import GET_BRANCHES from "./graphql/queries/branches/getBranches";
 import Layout from "./screens/layout/layout";
 import SignIn from "./screens/sign-in/sign-in";
 import { branchState } from "./state/atoms/branch.atom";
@@ -32,6 +32,7 @@ import { fetchUrl } from "./utils/fetch";
 
 const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
 
+// TODO: Use only 1 hook and 1 callback for all 3 requests (branches, schema, config)
 function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
@@ -58,7 +59,7 @@ function App() {
       toast(
         <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />
       );
-      console.error("err: ", err);
+      console.error("Error while fetching the config: ", err);
       return undefined;
     }
   };
@@ -79,10 +80,12 @@ function App() {
    * Fetch branches from the backend, sort, and return them
    */
   const fetchBranches = async () => {
-    const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
-      const data: iBranchData = await graphQLClient.request(BRANCH_QUERY);
-      return sortByName(data.branch || []);
+      const { data }: any = await graphqlClient.query({
+        query: GET_BRANCHES,
+      });
+
+      return data.branch ?? [];
     } catch (err) {
       toast(
         <Alert
@@ -90,7 +93,7 @@ function App() {
           message={"Something went wrong when fetching the branch details"}
         />
       );
-      console.error("err: ", err);
+      console.error("Error while fetching branches: ", err);
       return [];
     }
   };
@@ -126,7 +129,7 @@ function App() {
           message={"Something went wrong when fetching the schema details"}
         />
       );
-      console.error("err: ", err);
+      console.error("Error while fetching the schema: ", err);
       return {
         schema: [],
         generics: [],
@@ -167,7 +170,7 @@ function App() {
   }, [setSchemaInState, branch]);
 
   return (
-    <>
+    <ApolloProvider client={graphqlClient}>
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/" element={<Layout />}>
@@ -188,7 +191,7 @@ function App() {
         newestOnTop
         position="bottom-right"
       />
-    </>
+    </ApolloProvider>
   );
 }
 

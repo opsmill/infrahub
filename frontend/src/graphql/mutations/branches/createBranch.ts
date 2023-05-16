@@ -1,9 +1,6 @@
-import { graphQLClient } from "../../graphqlClient";
-import { objectToString } from "../../../utils/common";
-
 declare const Handlebars: any;
 
-const mutationTemplate = Handlebars.compile(`
+export const createBranch = Handlebars.compile(`
 mutation {
   branch_create (
     data: { {{{data}}} }
@@ -12,13 +9,3 @@ mutation {
   }
 }
 `);
-
-const createBranch = async (data: any) => {
-  const mutation = mutationTemplate({
-    data: objectToString(data),
-  });
-
-  return graphQLClient.request(mutation);
-};
-
-export default createBranch;

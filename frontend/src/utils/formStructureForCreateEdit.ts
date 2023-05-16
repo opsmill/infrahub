@@ -5,7 +5,7 @@ import {
   getFormInputControlTypeFromSchemaAttributeKind,
   SchemaAttributeType,
 } from "../screens/edit-form-hook/dynamic-control-types";
-import { iGenericSchema, iGenericSchemaMapping, iNodeSchema } from "../state/atoms/schema.atom";
+import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 import { iPeerDropdownOptions } from "./dropdownOptionsForRelatedPeers";
 
@@ -15,7 +15,6 @@ const getFormStructureForCreateEdit = (
   generics: iGenericSchema[],
   dropdownOptions: iPeerDropdownOptions,
   schemaKindNameMap: iSchemaKindNameMap,
-  genericSchemaMap: iGenericSchemaMapping,
   row?: any
 ): DynamicFieldData[] => {
   if (!schema) {

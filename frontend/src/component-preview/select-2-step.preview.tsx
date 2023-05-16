@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Select2Step, iTwoStepDropdownData } from "../components/select-2-step";
 import { SelectOption } from "../components/select";
+import { Select2Step, iTwoStepDropdownData } from "../components/select-2-step";
 
 const optionsLeft: SelectOption[] = [
   {

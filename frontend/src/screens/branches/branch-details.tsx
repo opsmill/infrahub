@@ -1,61 +1,50 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import getBranchDetails from "../../graphql/queries/branches/getBranchDetails";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { formatDistanceToNow } from "date-fns";
-import { Pill } from "../../components/pill";
-import { Badge } from "../../components/badge";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { toast } from "react-toastify";
-import { BUTTON_TYPES, Button } from "../../components/button";
+import { gql } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
-import rebaseBranch from "../../graphql/mutations/branches/rebaseBranch";
-import validateBranch from "../../graphql/mutations/branches/validateBranch";
-import deleteBranch from "../../graphql/mutations/branches/deleteBranch";
-import { constructPath } from "../../utils/fetch";
-import mergeBranch from "../../graphql/mutations/branches/mergeBranch";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
+import { Badge } from "../../components/badge";
+import { BUTTON_TYPES, Button } from "../../components/button";
 import ModalDelete from "../../components/modal-delete";
+import { Pill } from "../../components/pill";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
+import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
+import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
+import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
+import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
+import useQuery from "../../graphql/useQuery";
+import { objectToString } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
+import ErrorScreen from "../error-screen/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
 
-  const [branch, setBranch] = useState({} as any);
-  const [isLoadingBranch, setIsLoadingBranch] = useState(true);
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   const [displayModal, setDisplayModal] = useState(false);
   const [detailsContent, setDetailsContent] = useState({});
 
   const navigate = useNavigate();
 
-  const fetchBranchDetails = useCallback(async () => {
-    if (!branchname) return;
-
-    try {
-      const branchDetails = await getBranchDetails(branchname);
-
-      if (!branchDetails?.name) {
-        navigate("/branches");
-      }
-
-      setBranch(branchDetails);
-      setIsLoadingBranch(false);
-    } catch (err) {
-      console.error("err: ", err);
-      setIsLoadingBranch(false);
-    }
-  }, [branchname, navigate]);
-
-  useEffect(() => {
-    fetchBranchDetails();
-  }, [fetchBranchDetails]);
-
   const branchAction = async ({ successMessage, errorMessage, request, options }: any) => {
     if (!branchname) return;
 
     try {
       setIsLoadingRequest(true);
-      const result = await request(options);
+
+      const mutationString = request({ data: objectToString(options) });
+
+      const result = await graphqlClient.mutate({
+        mutation: gql`
+          ${mutationString}
+        `,
+      });
+
       setDetailsContent(result);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />);
@@ -69,9 +58,21 @@ export const BranchDetails = () => {
     setIsLoadingRequest(false);
   };
 
+  const queryString = getBranchDetails();
+
+  const { loading, error, data } = useQuery(
+    gql`
+      ${queryString}
+    `
+  );
+
+  const branch = data?.branch?.filter((branch: any) => branch.name === branchname)[0];
+
   return (
     <div className="bg-white p-6">
-      {isLoadingBranch && <LoadingScreen />}
+      {loading && <LoadingScreen />}
+
+      {error && <ErrorScreen />}
 
       {displayModal && (
         <ModalDelete
@@ -102,7 +103,7 @@ export const BranchDetails = () => {
         />
       )}
 
-      {!isLoadingBranch && branch?.name && (
+      {!loading && branch?.name && (
         <>
           <div className="border-t border-b border-gray-200 px-2 py-2 sm:p-0 mb-6">
             <dl className="divide-y divide-gray-200">

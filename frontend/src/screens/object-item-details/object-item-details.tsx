@@ -8,28 +8,29 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 
+import { gql } from "@apollo/client";
 import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import getObjectDetails from "../../graphql/queries/objects/objectDetails";
+import { getObjectDetails } from "../../graphql/queries/objects/getObjectDetails";
+import useQuery from "../../graphql/useQuery";
 import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
-import { timeState } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details";
@@ -37,18 +38,34 @@ import RelationshipsDetails from "./relationships-details";
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [date] = useAtom(timeState);
   const [branch] = useAtom(branchState);
-
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
-
-  const [objectDetails, setObjectDetails] = useState<any | undefined>();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+
+  const relationships = schema?.relationships?.filter(
+    (relationship) => relationship.cardinality === "one"
+  );
+
+  const queryString = schema
+    ? getObjectDetails({
+        ...schema,
+        relationships,
+        objectid,
+      })
+    : // Empty query to make the gql parsing work
+      // TODO: Find another solution for queries while loading schema
+      "query { ok }";
+
+  const { loading, error, data } = useQuery(
+    gql`
+      ${queryString}
+    `,
+    { skip: !schema }
+  );
+
   const atttributeRelationships =
     schema?.relationships?.filter((relationship) => {
       if (relationship.kind === "Generic" && relationship.cardinality === "one") {
@@ -89,35 +106,22 @@ export default function ObjectItemDetails() {
 
   const navigate = useNavigate();
 
-  const fetchObjectDetails = useCallback(async () => {
-    setHasError(false);
-    setIsLoading(true);
-    setObjectDetails(undefined);
-    try {
-      const data = await getObjectDetails(schema, objectid!);
-      setObjectDetails(data);
-    } catch (err) {
-      setHasError(true);
-    }
-    setIsLoading(false);
-  }, [objectid, schema]);
-
-  useEffect(() => {
-    if (schema) {
-      fetchObjectDetails();
-    }
-  }, [fetchObjectDetails, schema, date, branch]);
-
-  if (hasError) {
+  if (error) {
     return <ErrorScreen />;
   }
 
-  if (isLoading || !schema) {
+  if (loading || !schema) {
     return <LoadingScreen />;
   }
 
-  if (!objectDetails) {
+  if (!data || (data && !data[schema.name])) {
     return <NoDataFound />;
+  }
+
+  const objectDetailsData = data[schema.name][0];
+
+  if (!objectDetailsData) {
+    return null;
   }
 
   return (
@@ -132,7 +136,7 @@ export default function ObjectItemDetails() {
           className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
           aria-hidden="true"
         />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetails.display_label}</p>
+        <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetailsData.display_label}</p>
       </div>
 
       <Tabs
@@ -151,11 +155,14 @@ export default function ObjectItemDetails() {
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {objectDetails.id}
+                {objectDetailsData.id}
               </dd>
             </div>
             {schema.attributes?.map((attribute) => {
-              if (!objectDetails[attribute.name] || !objectDetails[attribute.name].is_visible) {
+              if (
+                !objectDetailsData[attribute.name] ||
+                !objectDetailsData[attribute.name].is_visible
+              ) {
                 return null;
               }
 
@@ -173,58 +180,62 @@ export default function ObjectItemDetails() {
                         "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0",
                         attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                       )}>
-                      {typeof objectDetails[attribute.name]?.value !== "boolean"
-                        ? objectDetails[attribute.name].value
-                          ? objectDetails[attribute.name].value
+                      {typeof objectDetailsData[attribute.name]?.value !== "boolean"
+                        ? objectDetailsData[attribute.name].value
+                          ? objectDetailsData[attribute.name].value
                           : "-"
                         : ""}
-                      {typeof objectDetails[attribute.name]?.value === "boolean" && (
+                      {typeof objectDetailsData[attribute.name]?.value === "boolean" && (
                         <>
-                          {objectDetails[attribute.name]?.value === true && (
+                          {objectDetailsData[attribute.name]?.value === true && (
                             <CheckIcon className="h-4 w-4" />
                           )}
-                          {objectDetails[attribute.name]?.value === false && (
+                          {objectDetailsData[attribute.name]?.value === false && (
                             <XMarkIcon className="h-4 w-4" />
                           )}
                         </>
                       )}
                     </dd>
 
-                    {objectDetails[attribute.name] && (
+                    {objectDetailsData[attribute.name] && (
                       <MetaDetailsTooltip
                         items={[
                           {
                             label: "Updated at",
-                            value: objectDetails[attribute.name].updated_at,
+                            value: objectDetailsData[attribute.name].updated_at,
                             type: "date",
                           },
                           {
                             label: "Update time",
                             value: `${new Date(
-                              objectDetails[attribute.name].updated_at
+                              objectDetailsData[attribute.name].updated_at
                             ).toLocaleDateString()} ${new Date(
-                              objectDetails[attribute.name].updated_at
+                              objectDetailsData[attribute.name].updated_at
                             ).toLocaleTimeString()}`,
                             type: "text",
                           },
                           {
                             label: "Source",
-                            value: objectDetails[attribute.name].source,
+                            value: objectDetailsData[attribute.name].source,
                             type: "link",
                           },
                           {
                             label: "Owner",
-                            value: objectDetails[attribute.name].owner,
+                            value: objectDetailsData[attribute.name].owner,
                             type: "link",
                           },
                           {
                             label: "Is protected",
-                            value: objectDetails[attribute.name].is_protected ? "True" : "False",
+                            value: objectDetailsData[attribute.name].is_protected
+                              ? "True"
+                              : "False",
                             type: "text",
                           },
                           {
                             label: "Is inherited",
-                            value: objectDetails[attribute.name].is_inherited ? "True" : "False",
+                            value: objectDetailsData[attribute.name].is_inherited
+                              ? "True"
+                              : "False",
                             type: "text",
                           },
                         ]}
@@ -248,7 +259,7 @@ export default function ObjectItemDetails() {
                       />
                     )}
 
-                    {objectDetails[attribute.name].is_protected && (
+                    {objectDetailsData[attribute.name].is_protected && (
                       <LockClosedIcon className="h-5 w-5 ml-2" />
                     )}
                   </div>
@@ -258,12 +269,11 @@ export default function ObjectItemDetails() {
 
             {atttributeRelationships?.map((relationshipSchema: any) => (
               <RelationshipDetails
-                parentNode={objectDetails}
+                parentNode={objectDetailsData}
                 mode="DESCRIPTION-LIST"
                 parentSchema={schema}
-                refreshObject={fetchObjectDetails}
                 key={relationshipSchema.name}
-                relationshipsData={objectDetails[relationshipSchema.name]}
+                relationshipsData={objectDetailsData[relationshipSchema.name]}
                 relationshipSchema={relationshipSchema}
               />
             ))}
@@ -271,19 +281,13 @@ export default function ObjectItemDetails() {
         </div>
       )}
 
-      {qspTab && (
-        <RelationshipsDetails
-          parentNode={objectDetails}
-          parentSchema={schema}
-          refreshObject={fetchObjectDetails}
-        />
-      )}
+      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} parentSchema={schema} />}
 
       <SlideOver
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{objectDetails.display_label}</span>
+              <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
@@ -303,7 +307,7 @@ export default function ObjectItemDetails() {
               <svg className="h-1.5 w-1.5 mr-1 fill-blue-500" viewBox="0 0 6 6" aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              ID: {objectDetails.id}
+              ID: {objectDetailsData.id}
             </div>
           </div>
         }
@@ -314,7 +318,7 @@ export default function ObjectItemDetails() {
             setShowEditDrawer(false);
           }}
           onUpdateComplete={() => {
-            fetchObjectDetails();
+            // fetchObjectDetails();
           }}
           objectid={objectid!}
           objectname={objectname!}
@@ -340,18 +344,15 @@ export default function ObjectItemDetails() {
           closeDrawer={() => {
             setShowMetaEditModal(false);
           }}
-          onUpdateComplete={() => {
-            setShowMetaEditModal(false);
-            fetchObjectDetails();
-          }}
+          onUpdateComplete={() => setShowMetaEditModal(false)}
           attributeOrRelationshipToEdit={
-            objectDetails[metaEditFieldDetails?.attributeOrRelationshipName]
+            objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
           schemaList={schemaList}
           schema={schema}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}
-          row={objectDetails}
+          row={objectDetailsData}
         />
       </SlideOver>
     </div>

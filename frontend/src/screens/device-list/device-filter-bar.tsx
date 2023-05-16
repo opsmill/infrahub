@@ -1,7 +1,7 @@
+import { useReactiveVar } from "@apollo/client";
 import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
-import { useAtom } from "jotai";
 import { useState } from "react";
-import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
+import { comboxBoxFilterVar, iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import FilterCombobox from "../filters/filter-combobox";
 import FilterComboEnum from "../filters/filter-enum";
@@ -18,8 +18,10 @@ interface Props {
 }
 
 export default function DeviceFilterBar(props: Props) {
-  const [currentFilters, setCurrentFilters] = useAtom(comboxBoxFilterState);
+  const currentFilters = useReactiveVar(comboxBoxFilterVar);
+
   const [showFilters, setShowFilters] = useState(false);
+
   return (
     <div className="bg-white">
       <div
@@ -42,7 +44,7 @@ export default function DeviceFilterBar(props: Props) {
               </div>
               <div className="pl-6">
                 <button
-                  onClick={() => setCurrentFilters([])}
+                  onClick={() => comboxBoxFilterVar([])}
                   type="button"
                   className="text-gray-500">
                   Clear all
@@ -52,7 +54,7 @@ export default function DeviceFilterBar(props: Props) {
             <div aria-hidden="true" className="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block" />
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
-                {currentFilters.map((filter) => (
+                {currentFilters.map((filter: iComboBoxFilter) => (
                   <span
                     key={filter.name}
                     className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900">
@@ -60,7 +62,9 @@ export default function DeviceFilterBar(props: Props) {
                     <button
                       type="button"
                       onClick={() =>
-                        setCurrentFilters(currentFilters.filter((row) => row !== filter))
+                        comboxBoxFilterVar(
+                          currentFilters.filter((row: iComboBoxFilter) => row !== filter)
+                        )
                       }
                       className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500">
                       <span className="sr-only">Remove filter for {filter.display_label}</span>

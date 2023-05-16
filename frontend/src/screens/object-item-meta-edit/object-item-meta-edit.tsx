@@ -1,8 +1,8 @@
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
+import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { getFormStructureForMetaEdit } from "../../utils/formStructureForCreateEdit";
-import updateObjectWithId from "../../utils/updateObjectWithId";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 
 // const optionsLeft: SelectOption[] = [

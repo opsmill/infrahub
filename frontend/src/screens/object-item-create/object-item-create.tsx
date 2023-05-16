@@ -1,15 +1,20 @@
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
-import { genericSchemaState, genericsState, schemaState } from "../../state/atoms/schema.atom";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { createObject } from "../../graphql/mutations/objects/createObject";
+import useQuery from "../../graphql/useQuery";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import createObject from "../../utils/createObject";
-import getDropdownOptionsForRelatedPeers from "../../utils/dropdownOptionsForRelatedPeers";
+import { getDropdownOptionsForRelatedPeers } from "../../utils/dropdownOptionsForRelatedPeers";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
+import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
-import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
+import ErrorScreen from "../error-screen/error-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
+import NoDataFound from "../no-data-found/no-data-found";
 
 interface iProps {
   objectname: string;
@@ -18,51 +23,94 @@ interface iProps {
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  let { objectname } = props;
+  const { objectname, onCreate, onCancel } = props;
+
   const [schemaList] = useAtom(schemaState);
-  const [genericsList] = useAtom(genericsState);
-  const [genericSchemaMap] = useAtom(genericSchemaState);
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
+  const [genericsList] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const [formStructure, setFormStructure] = useState<DynamicFieldData[]>();
 
-  const initForm = useCallback(async () => {
-    const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]);
-    const peerDropdownOptions = await getDropdownOptionsForRelatedPeers(peers);
-    const formStructure = getFormStructureForCreateEdit(
-      schema,
-      schemaList,
-      genericsList,
-      peerDropdownOptions,
-      schemaKindNameMap,
-      genericSchemaMap
-    );
-    setFormStructure(formStructure);
-  }, [genericSchemaMap, genericsList, schema, schemaKindNameMap, schemaList]);
+  const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
 
-  useEffect(() => {
-    if (schema) {
-      initForm();
+  const queryString = getDropdownOptionsForRelatedPeers({
+    peers,
+  });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
+
+  if (error) {
+    return <ErrorScreen />;
+  }
+
+  if (loading || !schema) {
+    return <LoadingScreen />;
+  }
+
+  if (!data) {
+    return <NoDataFound />;
+  }
+
+  const objectDetailsData = data[schema.name];
+
+  const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]) => {
+    if (peers.includes(k)) {
+      return { ...acc, [k]: v };
     }
-  }, [schema, initForm]);
+
+    return acc;
+  }, {});
+
+  const formStructure = getFormStructureForCreateEdit(
+    schema,
+    schemaList,
+    genericsList,
+    peerDropdownOptions,
+    schemaKindNameMap,
+    objectDetailsData
+  );
 
   async function onSubmit(data: any) {
     const newObject = getMutationDetailsFromFormData(schema, data, "create");
-    if (Object.keys(newObject).length) {
-      try {
-        await createObject(schema, newObject);
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);
-        if (props.onCreate) {
-          props.onCreate();
-        }
-      } catch (err: any) {
-        console.error("Something went wrong while creating the object: ", err);
-        toast(
-          <Alert type={ALERT_TYPES.ERROR} message={"An error occured"} details={err.message} />
-        );
+
+    if (!Object.keys(newObject).length) {
+      return;
+    }
+
+    try {
+      const mutationString = createObject({
+        name: schema.name,
+        data: getStringJSONWithoutQuotes(newObject),
+      });
+
+      const mutation = gql`
+        ${mutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation,
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);
+
+      if (onCreate) {
+        onCreate();
       }
-    } else {
-      console.info("Nothing to create");
+
+      refetch();
+    } catch (error: any) {
+      console.error("An error occured while creating the object: ", error);
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={"An error occured while creating the object"}
+          details={error.message}
+        />
+      );
     }
   }
 
@@ -72,7 +120,7 @@ export default function ObjectItemCreate(props: iProps) {
         <div className="flex-1">
           <EditFormHookComponent
             onSubmit={onSubmit}
-            onCancel={() => (props.onCancel ? props.onCancel() : null)}
+            onCancel={() => (onCancel ? onCancel() : null)}
             fields={formStructure}
           />
         </div>

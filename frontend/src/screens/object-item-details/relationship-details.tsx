@@ -1,3 +1,4 @@
+import { gql } from "@apollo/client";
 import {
   EyeSlashIcon,
   LockClosedIcon,
@@ -8,12 +9,18 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import ModalDelete from "../../components/modal-delete";
 import { RoundedButton } from "../../components/rounded-button";
 import { SelectOption } from "../../components/select";
 import SlideOver from "../../components/slide-over";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
+import { branchState } from "../../state/atoms/branch.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -22,33 +29,30 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
+import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import { getObjectDetailsUrl } from "../../utils/objects";
-import updateObjectWithId from "../../utils/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit.component";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { branchState } from "../../state/atoms/branch.atom";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 
 type iRelationDetailsProps = {
   parentNode: any;
   parentSchema: iNodeSchema;
-  refreshObject: Function;
   relationshipsData: any;
   relationshipSchema: any;
   mode: "TABLE" | "DESCRIPTION-LIST";
+  refetch?: Function;
 };
 
 const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
+  const { relationshipsData, relationshipSchema, refetch } = props;
+
   const { objectname, objectid } = useParams();
   const [branch] = useAtom(branchState);
-  const { relationshipsData, relationshipSchema, refreshObject } = props;
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -119,23 +123,59 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   const handleDeleteRelationship = async (id: string) => {
-    const newList = relationshipsData
-      .map((item: any) => ({ id: item.id }))
-      .filter((item: any) => item.id !== id);
+    console.log("id: ", id);
+    // const newList = relationshipsData
+    //   .map((item: any) => ({ id: item.id }))
+    //   .filter((item: any) => item.id !== id);
 
-    await updateObjectWithId(objectid!, schema, {
-      [relationshipSchema.name]: newList,
-    });
-
-    refreshObject();
+    // await updateObjectWithId(objectid!, schema, {
+    //   [relationshipSchema.name]: newList,
+    // });
 
     setShowAddDrawer(false);
+
     toast(
       <Alert
         type={ALERT_TYPES.SUCCESS}
         message={`Association with ${relationshipSchema.peer} removed`}
       />
     );
+  };
+
+  const handleSubmit = async (data: any) => {
+    if (data?.id) {
+      const newList = [
+        ...relationshipsData.map((row: any) => ({
+          id: row.id,
+        })),
+        { id: data.id },
+      ];
+
+      const mustationString = updateObjectWithId({
+        name: schema.name,
+        data: getStringJSONWithoutQuotes({
+          id: objectid,
+          [relationshipSchema.name]: newList,
+        }),
+      });
+
+      await graphqlClient.mutate({
+        mutation: gql`
+          ${mustationString}
+        `,
+      });
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`Association with ${relationshipSchema.peer} added`}
+        />
+      );
+
+      setShowAddDrawer(false);
+
+      refetch && refetch();
+    }
   };
 
   return (
@@ -485,27 +525,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             onCancel={() => {
               setShowAddDrawer(false);
             }}
-            onSubmit={async (data) => {
-              if (data?.id) {
-                const newList = [
-                  ...relationshipsData.map((row: any) => ({
-                    id: row.id,
-                  })),
-                  { id: data.id },
-                ];
-                await updateObjectWithId(objectid!, schema, {
-                  [relationshipSchema.name]: newList,
-                });
-                props.refreshObject();
-                toast(
-                  <Alert
-                    type={ALERT_TYPES.SUCCESS}
-                    message={`Association with ${relationshipSchema.peer} added`}
-                  />
-                );
-                setShowAddDrawer(false);
-              }
-            }}
+            onSubmit={handleSubmit}
             fields={formFields}
           />
         </SlideOver>
@@ -535,10 +555,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             closeDrawer={() => {
               setShowRelationMetaEditModal(false);
             }}
-            onUpdateComplete={() => {
-              setShowRelationMetaEditModal(false);
-              props.refreshObject();
-            }}
+            onUpdateComplete={() => setShowRelationMetaEditModal(false)}
             attributeOrRelationshipToEdit={rowForMetaEdit}
             schemaList={schemaList}
             schema={schema}
@@ -607,10 +624,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               closeDrawer={() => {
                 setRelatedObjectToEdit(undefined);
               }}
-              onUpdateComplete={async () => {
-                setRelatedObjectToEdit(undefined);
-                await refreshObject();
-              }}
+              onUpdateComplete={async () => setRelatedObjectToEdit(undefined)}
               objectid={relatedObjectToEdit.id}
               objectname={(() => {
                 const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
