@@ -312,8 +312,7 @@ def generate_graphql_edged_object(schema: NodeSchema, node: Type[InfrahubObject]
     }
 
     main_attrs = {
-        "cursor": graphene.String(required=False),
-        "node": graphene.Field.mounted(graphene.List(of_type=node, required=True)),
+        "node": graphene.Field(node, required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
