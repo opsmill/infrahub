@@ -331,7 +331,7 @@ def generate_graphql_paginated_object(schema: NodeSchema, edge: Type[InfrahubObj
     }
 
     main_attrs = {
-        "total": graphene.Int(required=False),
+        "count": graphene.Int(required=False),
         "has_next": graphene.Boolean(required=False),
         "edges": graphene.Field.mounted(graphene.List(of_type=edge, required=True)),
         "Meta": type("Meta", (object,), meta_attrs),
