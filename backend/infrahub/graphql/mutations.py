@@ -79,17 +79,7 @@ class InfrahubMutationMixin:
         try:
             obj = await node_class.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(session=session, **data)
-
-            # Check if the new object is conform with the uniqueness constraints
-            for unique_attr in cls._meta.schema.unique_attributes:
-                attr = getattr(obj, unique_attr.name)
-                nodes = await NodeManager.query(
-                    cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, session=session
-                )
-                if nodes:
-                    raise ValidationError(
-                        {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
-                    )
+            await cls.validate_constraints(session=session, node=obj)
 
             await obj.save(session=session)
 
@@ -148,6 +138,19 @@ class InfrahubMutationMixin:
 
         return obj, cls(ok=ok)
 
+    @classmethod
+    async def validate_constraints(cls, session: AsyncSession, node: Node) -> None:
+        """Check if the new object is conform with the uniqueness constraints."""
+        for unique_attr in cls._meta.schema.unique_attributes:
+            attr = getattr(node, unique_attr.name)
+            nodes = await NodeManager.query(
+                cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, session=session
+            )
+            if nodes:
+                raise ValidationError(
+                    {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
+                )
+
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
@@ -190,6 +193,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         # Create the new repository in the database.
         obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
         await obj.new(session=session, **data)
+        await cls.validate_constraints(session=session, node=obj)
         await obj.save(session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
