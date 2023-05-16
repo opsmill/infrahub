@@ -110,6 +110,16 @@ def pylint(context: Context):
 
 
 @task
+def ruff(context: Context):
+    """This will run ruff."""
+
+    print(f" - [{NAMESPACE}] Check code with ruff")
+    exec_cmd = f"ruff check {MAIN_DIRECTORY}"
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
+
+
+@task
 def lint(context: Context):
     """This will run all linter."""
     black(context)
@@ -117,6 +127,7 @@ def lint(context: Context):
     flake8(context)
     pylint(context)
     mypy(context)
+    ruff(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 

@@ -5,6 +5,7 @@ from invoke import (  # type: ignore  # pylint: disable=import-error
 )
 
 # flake8: noqa: W605
+from .utils import REPO_BASE
 
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
@@ -24,9 +25,10 @@ def generate_doc(context: Context):
     )
 
     print(f" - [{NAMESPACE}] Generate CLI documentation")
-    for command in CLI_COMMANDS:
-        exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/20_components/30_infrahub_cli/{command[2]}.md'
-        context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        for command in CLI_COMMANDS:
+            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/20_components/30_infrahub_cli/{command[2]}.md'
+            context.run(exec_cmd, pty=True)
 
 
 # ----------------------------------------------------------------------------
@@ -38,7 +40,8 @@ def format_black(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with black")
     exec_cmd = f"black {MAIN_DIRECTORY}/"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task
@@ -47,7 +50,8 @@ def format_autoflake(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with autoflake")
     exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task
@@ -56,7 +60,8 @@ def format_isort(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with isort")
     exec_cmd = f"isort {MAIN_DIRECTORY}"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task(name="format")
@@ -79,7 +84,8 @@ def black(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with black")
     exec_cmd = f"black --check --diff {MAIN_DIRECTORY}"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task
@@ -88,7 +94,8 @@ def flake8(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with flake8")
     exec_cmd = f"flake8 --ignore=E203,E501,W503,W504,E701,E251,E231 {MAIN_DIRECTORY}"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task
@@ -97,7 +104,8 @@ def isort(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with isort")
     exec_cmd = f"isort --check --diff {MAIN_DIRECTORY}"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task
@@ -106,7 +114,8 @@ def mypy(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"mypy --show-error-codes {MAIN_DIRECTORY}"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task
@@ -115,7 +124,18 @@ def pylint(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with pylint")
     exec_cmd = f"pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
-    context.run(exec_cmd, pty=True)
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
+
+
+@task
+def ruff(context: Context):
+    """This will run ruff."""
+
+    print(f" - [{NAMESPACE}] Check code with ruff")
+    exec_cmd = f"ruff check {MAIN_DIRECTORY}"
+    with context.cd(REPO_BASE):
+        context.run(exec_cmd, pty=True)
 
 
 @task
@@ -125,6 +145,7 @@ def lint(context: Context):
     isort(context)
     flake8(context)
     pylint(context)
+    ruff(context)
     # mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
