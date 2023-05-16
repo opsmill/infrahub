@@ -22,7 +22,7 @@ async def test_git_rpc_create_successful(git_upstream_repo_02):
     response = await handle_git_rpc_message(message=message, client=None)
 
     assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.CREATED.value
+    assert response.status == RPCStatusCode.CREATED
 
 
 async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
@@ -36,7 +36,7 @@ async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
     response = await handle_git_rpc_message(message=message, client=None)
 
     assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.BAD_REQUEST.value
+    assert response.status == RPCStatusCode.BAD_REQUEST
 
 
 async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubRepository, tmp_path):
@@ -59,7 +59,7 @@ async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubReposito
     commit_main_after = repo.get_commit_value(branch_name="main")
 
     assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.OK.value
+    assert response.status == RPCStatusCode.OK
     assert commit_main_before != commit_main_after
 
 

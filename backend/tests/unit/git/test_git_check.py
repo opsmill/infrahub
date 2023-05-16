@@ -25,7 +25,7 @@ async def test_git_check_python_success(client, git_repo_checks: InfrahubReposit
     response = await handle_git_check_message(message=message, client=client)
 
     assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.OK.value
+    assert response.status == RPCStatusCode.OK
     assert response.response["passed"] is False
     assert response.response["errors"] == [{"branch": "main", "level": "ERROR", "message": "Not Valid"}]
 
@@ -46,4 +46,4 @@ async def test_git_check_python_missing(client, git_repo_checks: InfrahubReposit
     response = await handle_git_check_message(message=message, client=client)
 
     assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.INTERNAL_ERROR.value
+    assert response.status == RPCStatusCode.INTERNAL_ERROR
