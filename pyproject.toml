@@ -180,7 +180,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 
 select = [
-    # "DTZ",
+    "DTZ",
     "E",
     "F",
     # "TCH",

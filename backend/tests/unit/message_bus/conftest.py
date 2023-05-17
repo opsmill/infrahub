@@ -1,7 +1,7 @@
 import pickle
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from aio_pika import DeliveryMode, Message
@@ -30,6 +30,6 @@ def incoming_data_message_01():
         # content_encoding="text",
         delivery_mode=DeliveryMode.PERSISTENT,
         message_id=str(uuid.uuid4()),
-        timestamp=datetime.utcfromtimestamp(int(time.time())),
+        timestamp=datetime.fromtimestamp(int(time.time()), tz=timezone.utc),
         type=MessageType.DATA.value,
     )
