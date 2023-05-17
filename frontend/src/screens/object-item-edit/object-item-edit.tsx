@@ -1,8 +1,9 @@
-import { gql, useQuery, useReactiveVar } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
+import useQuery from "../../graphql/hooks/useQuery";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { updateObjectDetails } from "../../graphql/queries/objects/updateObjectDetails";
 import { branchVar } from "../../graphql/variables/branchVar";
