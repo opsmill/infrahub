@@ -52,7 +52,7 @@ export default function ObjectItemEditComponent(props: Props) {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  const { loading, error, data, refetch } = useQuery(
+  const { loading, error, data } = useQuery(
     gql`
       ${queryString}
     `,
@@ -117,8 +117,6 @@ export default function ObjectItemEditComponent(props: Props) {
         closeDrawer();
 
         onUpdateComplete();
-
-        refetch();
 
         return;
       } catch (e) {

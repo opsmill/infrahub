@@ -126,16 +126,19 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   const handleDeleteRelationship = async (id: string) => {
-    console.log("id: ", id);
-    // const newList = relationshipsData
-    //   .map((item: any) => ({ id: item.id }))
-    //   .filter((item: any) => item.id !== id);
+    const newList = relationshipsData
+      .map((item: any) => ({ id: item.id }))
+      .filter((item: any) => item.id !== id);
 
-    // await updateObjectWithId(objectid!, schema, {
-    //   [relationshipSchema.name]: newList,
-    // });
+    await updateObjectWithId(objectid!, schema, {
+      [relationshipSchema.name]: newList,
+    });
 
     setShowAddDrawer(false);
+
+    if (refetch) {
+      refetch();
+    }
 
     toast(
       <Alert
@@ -146,6 +149,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   };
 
   const handleSubmit = async (data: any) => {
+    console.log("data: ", data);
     if (data?.id) {
       const newList = [
         ...relationshipsData.map((row: any) => ({
@@ -173,6 +177,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           date,
         },
       });
+
+      if (refetch) {
+        refetch();
+      }
 
       toast(
         <Alert
@@ -633,14 +641,17 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               closeDrawer={() => {
                 setRelatedObjectToEdit(undefined);
               }}
-              onUpdateComplete={async () => setRelatedObjectToEdit(undefined)}
+              onUpdateComplete={async () => {
+                setRelatedObjectToEdit(undefined);
+                if (refetch) {
+                  refetch();
+                }
+              }}
               objectid={relatedObjectToEdit.id}
               objectname={(() => {
                 const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
-                console.log(relatedKind);
                 const relatedSchema = schemaList.find((s) => s.kind === relatedKind);
                 const kind = schemaKindName[relatedSchema!.kind];
-                console.log("Kind: ", kind);
                 return kind;
               })()}
             />
