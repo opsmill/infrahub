@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import {
   EyeSlashIcon,
   LockClosedIcon,
@@ -20,7 +20,8 @@ import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { branchState } from "../../state/atoms/branch.atom";
+import { branchVar } from "../../graphql/variables/branchVar";
+import { dateVar } from "../../graphql/variables/dateVar";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -52,15 +53,17 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { relationshipsData, relationshipSchema, refetch } = props;
 
   const { objectname, objectid } = useParams();
-  const [branch] = useAtom(branchState);
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
+  const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
   const [rowForMetaEdit, setRowForMetaEdit] = useState<any>();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
+
+  const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   let options: SelectOption[] = [];
 
@@ -123,16 +126,34 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   const handleDeleteRelationship = async (id: string) => {
-    console.log("id: ", id);
-    // const newList = relationshipsData
-    //   .map((item: any) => ({ id: item.id }))
-    //   .filter((item: any) => item.id !== id);
+    const newList = relationshipsData
+      .map((item: any) => ({ id: item.id }))
+      .filter((item: any) => item.id !== id);
 
-    // await updateObjectWithId(objectid!, schema, {
-    //   [relationshipSchema.name]: newList,
-    // });
+    const mutationString = updateObjectWithId({
+      name: schema.name,
+      data: getStringJSONWithoutQuotes({
+        id: objectid,
+        [relationshipSchema.name]: newList,
+      }),
+    });
+
+    const mutation = gql`
+      ${mutationString}
+    `;
+
+    await graphqlClient.mutate({
+      mutation,
+      context: { branch: branch?.name, date },
+    });
 
     setShowAddDrawer(false);
+
+    setRelatedRowToDelete(undefined);
+
+    if (refetch) {
+      refetch();
+    }
 
     toast(
       <Alert
@@ -159,11 +180,21 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         }),
       });
 
+      const mutation = gql`
+        ${mustationString}
+      `;
+
       await graphqlClient.mutate({
-        mutation: gql`
-          ${mustationString}
-        `,
+        mutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
       });
+
+      if (refetch) {
+        refetch();
+      }
 
       toast(
         <Alert
@@ -624,14 +655,17 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               closeDrawer={() => {
                 setRelatedObjectToEdit(undefined);
               }}
-              onUpdateComplete={async () => setRelatedObjectToEdit(undefined)}
+              onUpdateComplete={async () => {
+                setRelatedObjectToEdit(undefined);
+                if (refetch) {
+                  refetch();
+                }
+              }}
               objectid={relatedObjectToEdit.id}
               objectname={(() => {
                 const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
-                console.log(relatedKind);
                 const relatedSchema = schemaList.find((s) => s.kind === relatedKind);
                 const kind = schemaKindName[relatedSchema!.kind];
-                console.log("Kind: ", kind);
                 return kind;
               })()}
             />

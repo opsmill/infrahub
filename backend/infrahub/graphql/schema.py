@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from graphene import Boolean, Field, List, ObjectType, String
+from graphene import ID, Boolean, Field, List, ObjectType, String
 from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
 
 from .mutations import (
@@ -24,7 +24,7 @@ async def default_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
 
 
 class InfrahubBaseQuery(ObjectType):
-    branch = List(BranchType)
+    branch = List(BranchType, ids=List(ID), name=String())
 
     diff = Field(
         BranchDiffType,

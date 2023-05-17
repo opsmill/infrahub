@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.4.2"
+version = "0.4.3"
 description = ""
 authors = ["Damien Garros <damien@opsmill.com>"]
 
@@ -180,7 +180,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 
 select = [
-    # "DTZ",
+    "DTZ",
     "E",
     "F",
     # "TCH",

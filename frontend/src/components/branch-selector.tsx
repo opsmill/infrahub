@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import {
   CircleStackIcon,
@@ -15,7 +15,8 @@ import { QSP } from "../config/qsp";
 import { Branch } from "../generated/graphql";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { createBranch } from "../graphql/mutations/branches/createBranch";
-import { branchState } from "../state/atoms/branch.atom";
+import { branchVar } from "../graphql/variables/branchVar";
+import { dateVar } from "../graphql/variables/dateVar";
 import { branchesState } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
 import { ALERT_TYPES, Alert } from "./alert";
@@ -27,14 +28,15 @@ import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 
 export default function BranchSelector() {
-  const [branch, setBranch] = useAtom(branchState);
   const [branches] = useAtom(branchesState);
   const [branchInQueryString, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
 
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");
   const [originBranch, setOriginBranch] = useState();
-  const [branchedFrom] = useState(); // TODO: Add camendar component
+  const [branchedFrom] = useState(); // TODO: Add calendar component
   const [isDataOnly, setIsDataOnly] = useState(true);
 
   const getCurrentBranch = useCallback((): Branch => {
@@ -50,14 +52,14 @@ export default function BranchSelector() {
   }, [branch, branchInQueryString, branches]);
 
   useEffect(() => {
-    // On page load, if no branch is set in state (branchState). Fetching it from QSP and setting it in state.
+    // On page load, if no branch is set in reactive var. Fetching it from QSP and setting it in state.
     if (!branch && branchInQueryString && branches.length) {
       const selectedBranch = branches.find((b) => b.name === branchInQueryString);
       if (selectedBranch) {
-        setBranch(selectedBranch);
+        branchVar(selectedBranch);
       }
     }
-  }, [branch, branchInQueryString, branches, setBranch]);
+  }, [branch, branchInQueryString, branches]);
 
   const valueLabel = (
     <>
@@ -85,19 +87,16 @@ export default function BranchSelector() {
   /**
    * Update GraphQL client endpoint whenever branch changes
    */
-  const onBranchChange = useCallback(
-    (branch: Branch) => {
-      setBranch(branch);
+  const onBranchChange = useCallback((branch: Branch) => {
+    branchVar(branch);
 
-      if (branch?.is_default) {
-        // undefined is needed to remove a parameter from the QSP
-        setBranchInQueryString(undefined);
-      } else {
-        setBranchInQueryString(branch.name);
-      }
-    },
-    [setBranch, setBranchInQueryString]
-  );
+    if (branch?.is_default) {
+      // undefined is needed to remove a parameter from the QSP
+      setBranchInQueryString(undefined);
+    } else {
+      setBranchInQueryString(branch.name);
+    }
+  }, []);
 
   const handleBranchedFrom = (newBranch: any) => setOriginBranch(newBranch);
 
@@ -149,10 +148,16 @@ export default function BranchSelector() {
 
       const mustationString = createBranch({ data: objectToString(newBranch) });
 
+      const mutation = gql`
+        ${mustationString}
+      `;
+
       await graphqlClient.mutate({
-        mutation: gql`
-          ${mustationString}
-        `,
+        mutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
       });
 
       close();

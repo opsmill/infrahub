@@ -1,6 +1,6 @@
 import glob
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from invoke import Context, task  # type: ignore  # pylint: disable=import-error
 
@@ -11,7 +11,7 @@ from .utils import git_info
 def run(context: Context, directory: str = "utilities", dataset: str = "dataset03"):
     """Launch a performance test using Locust. Gunicorn must be running"""
     PERFORMANCE_FILE_PREFIX = "locust_"
-    NOW = datetime.now()
+    NOW = datetime.now(tz=timezone.utc)
     date_format = NOW.strftime("%Y-%m-%d-%H-%M-%S")
 
     local_dir = os.path.dirname(os.path.abspath(__file__))

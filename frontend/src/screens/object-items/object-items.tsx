@@ -3,16 +3,15 @@ import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getObjectItems } from "../../graphql/queries/objects/getObjectItems";
-import useQuery from "../../graphql/useQuery";
-import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
-
 import { StringParam, useQueryParam } from "use-query-params";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { branchState } from "../../state/atoms/branch.atom";
+import useQuery from "../../graphql/hooks/useQuery";
+import { getObjectItems } from "../../graphql/queries/objects/getObjectItems";
+import { branchVar } from "../../graphql/variables/branchVar";
+import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
@@ -32,8 +31,7 @@ import ObjectItemCreate from "../object-item-create/object-item-create";
 export default function ObjectItems() {
   const { objectname } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const [branch] = useAtom(branchState);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const branch = useReactiveVar(branchVar);
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
   // const [currentFilters] = useAtom(comboxBoxFilterState);
   const [filtersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
@@ -43,6 +41,7 @@ export default function ObjectItems() {
   const filters = filtersInQueryString
     ? JSON.parse(window.atob(filtersInQueryString))
     : currentFilters;
+  const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.

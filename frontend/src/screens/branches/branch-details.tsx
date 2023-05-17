@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
@@ -11,12 +11,13 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import ModalDelete from "../../components/modal-delete";
 import { Pill } from "../../components/pill";
 import graphqlClient from "../../graphql/graphqlClientApollo";
+import useQuery from "../../graphql/hooks/useQuery";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
 import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
 import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
-import useQuery from "../../graphql/useQuery";
+import { dateVar } from "../../graphql/variables/dateVar";
 import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
@@ -24,6 +25,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
+  const date = useReactiveVar(dateVar);
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   const [displayModal, setDisplayModal] = useState(false);
@@ -39,10 +41,16 @@ export const BranchDetails = () => {
 
       const mutationString = request({ data: objectToString(options) });
 
+      const mutation = gql`
+        ${mutationString}
+      `;
+
       const result = await graphqlClient.mutate({
-        mutation: gql`
-          ${mutationString}
-        `,
+        mutation,
+        context: {
+          branch: branchname,
+          date,
+        },
       });
 
       setDetailsContent(result);
