@@ -29,7 +29,6 @@ export default function ObjectItems() {
   const { objectname } = useParams();
   const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
-  console.log("OBJECT ITEMS branch: ", branch);
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
