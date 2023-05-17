@@ -141,6 +141,88 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     assert result.data["branch_create"]["object"]["is_data_only"] is False
 
 
+async def test_branch_query(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
+    schema = await generate_graphql_schema(session=session, include_subscription=False)
+
+    create_branch = """
+    mutation {
+        branch_create(data: { name: "branch3", description: "my description" }) {
+            ok
+            object {
+                id
+                name
+            }
+        }
+    }
+    """
+    branch3_result = await graphql(
+        schema,
+        source=create_branch,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+    branch3 = branch3_result.data["branch_create"]["object"]
+    query = """
+    query {
+        branch {
+            id
+            name
+        }
+    }
+    """
+    all_branches = await graphql(
+        schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+    name_query = (
+        """
+    query {
+        branch(name: "%s" ) {
+            id
+            name
+        }
+    }
+    """
+        % branch3["name"]
+    )
+    name_response = await graphql(
+        schema,
+        source=name_query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+    id_query = """
+    query {
+        branch(ids: %s ) {
+            id
+            name
+        }
+    }
+    """ % [
+        branch3["id"]
+    ]
+    id_query = id_query.replace("'", '"')
+
+    id_response = await graphql(
+        schema,
+        source=id_query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert len(all_branches.data["branch"]) == 2
+    assert len(name_response.data["branch"]) == 1
+    assert len(id_response.data["branch"]) == 1
+    assert name_response.data["branch"][0]["name"] == "branch3"
+    assert id_response.data["branch"][0]["name"] == "branch3"
+
+
 async def test_branch_create_invalid_names(
     db, session, default_branch: Branch, car_person_schema, register_core_models_schema
 ):

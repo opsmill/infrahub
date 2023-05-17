@@ -188,18 +188,28 @@ class StandardNode(BaseModel):
         return cls(**attrs)
 
     @classmethod
-    async def get_list(cls, session: AsyncSession, limit: int = 1000) -> List[SelfNode]:
-        query = (
-            """
-        MATCH (n:%s)
+    async def get_list(cls, session: AsyncSession, limit: int = 1000, **kwargs) -> List[SelfNode]:
+        params = {"limit": limit}
+
+        filters = []
+        if ids := kwargs.get("ids"):
+            filters.append("n.uuid in $ids_value")
+            params["ids_value"] = ids
+        if name_filter := kwargs.get("name"):
+            filters.append("n.name = $name")
+            params["name"] = name_filter
+
+        where = ""
+        if filters:
+            where = f"WHERE {' AND '.join(filters)}"
+
+        query = f"""
+        MATCH (n:{cls.get_type()})
+        {where}
         RETURN n
         ORDER BY ID(n)
         LIMIT $limit
         """
-            % cls.get_type()
-        )
-
-        params = {"limit": limit}
 
         results = await execute_read_query_async(session=session, query=query, params=params)
         return [cls._convert_node_to_obj(node.values()[0]) for node in results]

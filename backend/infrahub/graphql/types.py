@@ -367,8 +367,7 @@ class BranchType(InfrahubObjectType):
         async with db.session(database=config.SETTINGS.database.database) as session:
             context["infrahub_session"] = session
 
-            # at, branch = extract_global_kwargs(kwargs)
-            objs = await Branch.get_list(session=session)
+            objs = await Branch.get_list(session=session, **kwargs)
 
             if not objs:
                 return []
