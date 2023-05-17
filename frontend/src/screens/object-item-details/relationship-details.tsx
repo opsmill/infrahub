@@ -130,11 +130,26 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       .map((item: any) => ({ id: item.id }))
       .filter((item: any) => item.id !== id);
 
-    await updateObjectWithId(objectid!, schema, {
-      [relationshipSchema.name]: newList,
+    const mutationString = updateObjectWithId({
+      name: schema.name,
+      data: getStringJSONWithoutQuotes({
+        id: objectid,
+        [relationshipSchema.name]: newList,
+      }),
+    });
+
+    const mutation = gql`
+      ${mutationString}
+    `;
+
+    await graphqlClient.mutate({
+      mutation,
+      context: { branch: branch?.name, date },
     });
 
     setShowAddDrawer(false);
+
+    setRelatedRowToDelete(undefined);
 
     if (refetch) {
       refetch();
@@ -149,7 +164,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   };
 
   const handleSubmit = async (data: any) => {
-    console.log("data: ", data);
     if (data?.id) {
       const newList = [
         ...relationshipsData.map((row: any) => ({
