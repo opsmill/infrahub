@@ -58,12 +58,11 @@ export default function ObjectItemDetails() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  const { loading, error, data } = useQuery(
-    gql`
-      ${queryString}
-    `,
-    { skip: !schema }
-  );
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
 
   const atttributeRelationships =
     schema?.relationships?.filter((relationship) => {
@@ -317,7 +316,7 @@ export default function ObjectItemDetails() {
             setShowEditDrawer(false);
           }}
           onUpdateComplete={() => {
-            // fetchObjectDetails();
+            refetch();
           }}
           objectid={objectid!}
           objectname={objectname!}

@@ -3,11 +3,11 @@ import { CONFIG } from "../config/config";
 
 const defaultOptions: DefaultOptions = {
   watchQuery: {
-    fetchPolicy: "network-only",
+    fetchPolicy: "no-cache",
     errorPolicy: "ignore",
   },
   query: {
-    fetchPolicy: "network-only",
+    fetchPolicy: "no-cache",
     errorPolicy: "all",
   },
 };
@@ -15,12 +15,6 @@ const defaultOptions: DefaultOptions = {
 const graphqlClient = new ApolloClient({
   uri: (operation) => {
     const context = operation.getContext();
-    console.log("context: ", context);
-
-    console.log(
-      "CONFIG.GRAPHQL_URL(context?.branch, context?.date);: ",
-      CONFIG.GRAPHQL_URL(context?.branch, context?.date)
-    );
 
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
