@@ -6,10 +6,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import useQuery from "../../graphql/hooks/useQuery";
 import { getObjectItems } from "../../graphql/queries/objects/getObjectItems";
-import useQuery from "../../graphql/useQuery";
+import { branchVar } from "../../graphql/variables/branchVar";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
-import { branchState } from "../../state/atoms/branch.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
@@ -28,10 +28,11 @@ import ObjectItemCreate from "../object-item-create/object-item-create";
 export default function ObjectItems() {
   const { objectname } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const [branch] = useAtom(branchState);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const branch = useReactiveVar(branchVar);
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+
+  const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.

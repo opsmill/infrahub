@@ -1,4 +1,4 @@
-import { ApolloProvider } from "@apollo/client";
+import { ApolloProvider, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -13,9 +13,9 @@ import { QSP } from "./config/qsp";
 import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
 import GET_BRANCHES from "./graphql/queries/branches/getBranches";
+import { branchVar } from "./graphql/variables/branchVar";
 import Layout from "./screens/layout/layout";
 import SignIn from "./screens/sign-in/sign-in";
-import { branchState } from "./state/atoms/branch.atom";
 import { branchesState } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 import {
@@ -37,12 +37,11 @@ function App() {
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
   const [, setGenericSchema] = useAtom(genericSchemaState);
-
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
-  const [branch] = useAtom(branchState);
   const [, setBranches] = useAtom(branchesState);
   const [config, setConfig] = useAtom(configState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const branch = useReactiveVar(branchVar);
 
   /**
    * Sentry configuration

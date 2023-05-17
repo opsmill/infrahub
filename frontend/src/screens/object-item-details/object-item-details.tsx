@@ -1,3 +1,4 @@
+import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   CheckIcon,
@@ -11,17 +12,15 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-
-import { gql } from "@apollo/client";
 import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
+import useQuery from "../../graphql/hooks/useQuery";
 import { getObjectDetails } from "../../graphql/queries/objects/getObjectDetails";
-import useQuery from "../../graphql/useQuery";
-import { branchState } from "../../state/atoms/branch.atom";
+import { branchVar } from "../../graphql/variables/branchVar";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
@@ -38,11 +37,11 @@ import RelationshipsDetails from "./relationships-details";
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const [branch] = useAtom(branchState);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const [schemaList] = useAtom(schemaState);
+  const branch = useReactiveVar(branchVar);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   const relationships = schema?.relationships?.filter(
@@ -59,12 +58,11 @@ export default function ObjectItemDetails() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  const { loading, error, data } = useQuery(
-    gql`
-      ${queryString}
-    `,
-    { skip: !schema }
-  );
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
 
   const atttributeRelationships =
     schema?.relationships?.filter((relationship) => {
@@ -318,7 +316,7 @@ export default function ObjectItemDetails() {
             setShowEditDrawer(false);
           }}
           onUpdateComplete={() => {
-            // fetchObjectDetails();
+            refetch();
           }}
           objectid={objectid!}
           objectname={objectname!}
