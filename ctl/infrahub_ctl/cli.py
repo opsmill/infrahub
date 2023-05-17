@@ -140,7 +140,7 @@ def run(
     concurrent: int = typer.Option(
         4, help="Maximum number of requets to execute at the same time.", envvar="INFRAHUBCTL_CONCURRENT_EXECUTION"
     ),
-    timeout: int = typer.Option(10, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    timeout: int = typer.Option(30, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
 ) -> None:
     """Execute a script."""
     config.load_and_exit(config_file=config_file)
