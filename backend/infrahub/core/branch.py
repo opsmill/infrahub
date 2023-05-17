@@ -148,7 +148,7 @@ class Branch(StandardNode):
 
         params = {"name": name}
 
-        results = await execute_read_query_async(session=session, query=query, params=params)
+        results = await execute_read_query_async(session=session, query=query, params=params, name="branch_get_by_name")
 
         if len(results) == 0:
             raise BranchNotFound(identifier=name)

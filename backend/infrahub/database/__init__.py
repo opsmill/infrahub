@@ -10,7 +10,7 @@ from neo4j.exceptions import ClientError
 
 import infrahub.config as config
 
-from .metrics import QUERY_READ_METRICS, QUERY_WRITE_METRICS
+from .metrics import QUERY_EXECUTION_METRICS
 
 validated_database = {}
 
@@ -63,23 +63,28 @@ async def get_db(retry: int = 0):
     return driver
 
 
-@QUERY_READ_METRICS.time()
 async def execute_read_query_async(
     session: AsyncSession,
     query: str,
     params: Optional[dict] = None,
+    name: Optional[str] = "undefined",
 ):
-    async def work(tx, params: dict):
-        response = await tx.run(query, params)
-        return [item async for item in response]
+    with QUERY_EXECUTION_METRICS.labels("read", name).time():
 
-    return await session.execute_read(work, params)
+        async def work(tx, params: dict):
+            response = await tx.run(query, params)
+            return [item async for item in response]
+
+        return await session.execute_read(work, params)
 
 
-@QUERY_WRITE_METRICS.time()
-async def execute_write_query_async(session: AsyncSession, query: str, params: Optional[dict] = None):
-    async def work(tx, params: dict):
-        response = await tx.run(query, params)
-        return await response.values()
+async def execute_write_query_async(
+    session: AsyncSession, query: str, params: Optional[dict] = None, name: Optional[str] = "undefined"
+):
+    with QUERY_EXECUTION_METRICS.labels("write", name).time():
 
-    return await session.execute_write(work, params)
+        async def work(tx, params: dict):
+            response = await tx.run(query, params)
+            return await response.values()
+
+        return await session.execute_write(work, params)

@@ -164,7 +164,7 @@ class StandardNode(BaseModel):
 
         params = {"node_id": id}
 
-        results = await execute_read_query_async(session=session, query=query, params=params)
+        results = await execute_read_query_async(session=session, query=query, params=params, name="standard_get")
         if len(results):
             return results[0].values()[0]
 
@@ -211,7 +211,7 @@ class StandardNode(BaseModel):
         LIMIT $limit
         """
 
-        results = await execute_read_query_async(session=session, query=query, params=params)
+        results = await execute_read_query_async(session=session, query=query, params=params, name="standard-get-list")
         return [cls._convert_node_to_obj(node.values()[0]) for node in results]
 
 
