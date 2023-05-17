@@ -16,7 +16,7 @@ const graphqlClient = new ApolloClient({
   uri: (operation) => {
     const context = operation.getContext();
 
-    return CONFIG.GRAPHQL_URL(context?.branch);
+    return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
   cache: new InMemoryCache(),
   defaultOptions,
