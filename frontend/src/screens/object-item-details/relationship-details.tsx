@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import {
   EyeSlashIcon,
   LockClosedIcon,
@@ -20,7 +20,7 @@ import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { branchState } from "../../state/atoms/branch.atom";
+import { branchVar } from "../../graphql/variables/branchVar";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -52,15 +52,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { relationshipsData, relationshipSchema, refetch } = props;
 
   const { objectname, objectid } = useParams();
-  const [branch] = useAtom(branchState);
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
+  const branch = useReactiveVar(branchVar);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
   const [rowForMetaEdit, setRowForMetaEdit] = useState<any>();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
+
+  const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   let options: SelectOption[] = [];
 

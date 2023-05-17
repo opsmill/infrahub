@@ -1,12 +1,13 @@
-import { useQuery as useApolloQuery } from "@apollo/client";
-import { useAtom } from "jotai";
-import { branchState } from "../../state/atoms/branch.atom";
+import { useQuery as useApolloQuery, useReactiveVar } from "@apollo/client";
+import { branchVar } from "../variables/branchVar";
+import { dateVar } from "../variables/dateVar";
 
 const useQuery = (QUERY: any, options?: any) => {
-  const [branch] = useAtom(branchState);
-  console.log("branch: ", branch);
+  const branch = useReactiveVar(branchVar);
+  console.log("USE QUERY branch: ", branch);
+  const date = useReactiveVar(dateVar);
 
-  return useApolloQuery(QUERY, { ...options, context: { branch: branch?.name } });
+  return useApolloQuery(QUERY, { ...options, context: { branch: branch?.name, date } });
 };
 
 export default useQuery;
