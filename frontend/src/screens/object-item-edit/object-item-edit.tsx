@@ -1,10 +1,12 @@
-import { gql, useQuery } from "@apollo/client";
+import { gql, useQuery, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { updateObjectDetails } from "../../graphql/queries/objects/updateObjectDetails";
+import { branchVar } from "../../graphql/variables/branchVar";
+import { dateVar } from "../../graphql/variables/dateVar";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
@@ -27,6 +29,8 @@ export default function ObjectItemEditComponent(props: Props) {
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
+  const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
@@ -98,8 +102,13 @@ export default function ObjectItemEditComponent(props: Props) {
           }),
         });
 
+        const mutation = gql`
+          ${mutationString}
+        `;
+
         await graphqlClient.mutate({
-          mutation: gql(mutationString),
+          mutation,
+          context: { branch: branch?.name, date },
         });
 
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} updated`} />);

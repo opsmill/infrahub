@@ -21,6 +21,7 @@ import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { branchVar } from "../../graphql/variables/branchVar";
+import { dateVar } from "../../graphql/variables/dateVar";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -55,6 +56,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
   const [rowForMetaEdit, setRowForMetaEdit] = useState<any>();
@@ -160,10 +162,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         }),
       });
 
+      const mutation = gql`
+        ${mustationString}
+      `;
+
       await graphqlClient.mutate({
-        mutation: gql`
-          ${mustationString}
-        `,
+        mutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
       });
 
       toast(

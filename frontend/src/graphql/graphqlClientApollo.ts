@@ -15,6 +15,12 @@ const defaultOptions: DefaultOptions = {
 const graphqlClient = new ApolloClient({
   uri: (operation) => {
     const context = operation.getContext();
+    console.log("context: ", context);
+
+    console.log(
+      "CONFIG.GRAPHQL_URL(context?.branch, context?.date);: ",
+      CONFIG.GRAPHQL_URL(context?.branch, context?.date)
+    );
 
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },

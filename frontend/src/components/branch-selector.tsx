@@ -16,6 +16,7 @@ import { Branch } from "../generated/graphql";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { createBranch } from "../graphql/mutations/branches/createBranch";
 import { branchVar } from "../graphql/variables/branchVar";
+import { dateVar } from "../graphql/variables/dateVar";
 import { branchesState } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
 import { ALERT_TYPES, Alert } from "./alert";
@@ -30,11 +31,12 @@ export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
   const [branchInQueryString, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
 
   const [newBranchName, setNewBranchName] = useState("");
   const [newBranchDescription, setNewBranchDescription] = useState("");
   const [originBranch, setOriginBranch] = useState();
-  const [branchedFrom] = useState(); // TODO: Add camendar component
+  const [branchedFrom] = useState(); // TODO: Add calendar component
   const [isDataOnly, setIsDataOnly] = useState(true);
 
   const getCurrentBranch = useCallback((): Branch => {
@@ -146,10 +148,16 @@ export default function BranchSelector() {
 
       const mustationString = createBranch({ data: objectToString(newBranch) });
 
+      const mutation = gql`
+        ${mustationString}
+      `;
+
       await graphqlClient.mutate({
-        mutation: gql`
-          ${mustationString}
-        `,
+        mutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
       });
 
       close();
