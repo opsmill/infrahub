@@ -49,9 +49,17 @@ export default function DeviceFilterBar(props: Props) {
     peers,
   });
 
-  const query = gql`
-    ${queryString}
-  `;
+  const query = peers.length
+    ? gql`
+        ${queryString}
+      `
+    : gql`
+        {
+          device {
+            id
+          }
+        }
+      `;
 
   const { loading, error, data } = useQuery(query, { skip: !props.schema });
 
@@ -106,7 +114,7 @@ export default function DeviceFilterBar(props: Props) {
 
   useEffect(() => {
     getFilterFields();
-  }, [data]);
+  }, [data, filtersInQueryString]);
 
   const onSubmit = (data: any) => {
     const keys = Object.keys(data);
