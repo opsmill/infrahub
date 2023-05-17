@@ -23,6 +23,11 @@ async def default_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
     return await info.return_type.of_type.graphene_type.get_list(**kwargs, fields=fields, context=info.context)
 
 
+async def default_paginated_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+    return await info.return_type.graphene_type.get_paginated_list(**kwargs, fields=fields, context=info.context)
+
+
 class InfrahubBaseQuery(ObjectType):
     branch = List(BranchType, ids=List(ID), name=String())
 

@@ -103,6 +103,7 @@ class AnalyticsSettings(BaseSettings):
 
 class ExperimentalFeaturesSettings(BaseSettings):
     pull_request: bool = False
+    paginated: bool = False
 
     class Config:
         env_prefix = "INFRAHUB_EXPERIMENTAL_"
