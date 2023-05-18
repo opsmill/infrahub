@@ -39,7 +39,7 @@ const getFormStructureForCreateEdit = (
         ? "select"
         : getFormInputControlTypeFromSchemaAttributeKind(attribute.kind as SchemaAttributeType),
       label: attribute.label ? attribute.label : attribute.name,
-      value: row && row[attribute.name] ? row[attribute.name].value : "",
+      value: row && row[attribute.name] ? row[attribute.name].value : attribute.default_value,
       options: {
         values: options,
       },
