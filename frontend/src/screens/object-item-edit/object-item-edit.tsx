@@ -36,7 +36,10 @@ export default function ObjectItemEditComponent(props: Props) {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   const relationships = schema?.relationships?.filter(
-    (relationship) => relationship.cardinality === "one"
+    (relationship) =>
+      relationship.cardinality === "one" ||
+      relationship.kind === "Attribute" ||
+      relationship.kind === "Parent"
   );
 
   const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);

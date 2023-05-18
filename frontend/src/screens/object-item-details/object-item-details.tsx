@@ -45,7 +45,10 @@ export default function ObjectItemDetails() {
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   const relationships = schema?.relationships?.filter(
-    (relationship) => relationship.cardinality === "one"
+    (relationship) =>
+      relationship.cardinality === "one" ||
+      relationship.kind === "Attribute" ||
+      relationship.kind === "Parent"
   );
 
   const queryString = schema
