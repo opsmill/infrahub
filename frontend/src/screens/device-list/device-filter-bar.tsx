@@ -54,9 +54,12 @@ export default function DeviceFilterBar(props: Props) {
         ${queryString}
       `
     : gql`
-        {
-          device {
-            id
+        query {
+          __type(name: "DataSource") {
+            fields {
+              name
+              description
+            }
           }
         }
       `;
@@ -90,7 +93,11 @@ export default function DeviceFilterBar(props: Props) {
           },
         });
       } else if (filter.kind === "Object") {
-        if (filter.object_kind && peerDropdownOptions[schemaKindName[filter.object_kind]]) {
+        if (
+          filter.object_kind &&
+          peerDropdownOptions &&
+          peerDropdownOptions[schemaKindName[filter.object_kind]]
+        ) {
           const options = peerDropdownOptions[schemaKindName[filter.object_kind]].map(
             (row: any) => ({
               name: row.display_label,
