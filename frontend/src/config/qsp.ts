@@ -1,5 +1,6 @@
 export const QSP = {
   BRANCH: "branch",
+  FILTER: "filters",
   DATETIME: "at",
   TAB: "tab",
   BRANCH_TAB: "branch_tab",
