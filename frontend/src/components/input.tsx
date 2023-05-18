@@ -12,7 +12,8 @@ import { classNames } from "../utils/common";
 // }
 
 // Forward ref used for Combobox.Input in Select
-export const Input = forwardRef((props: any) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+export const Input = forwardRef((props: any, ref: any) => {
   const { className, onChange, error, ...propsToPass } = props;
 
   return (

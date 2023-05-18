@@ -1,7 +1,8 @@
 import { forwardRef } from "react";
 import { classNames } from "../utils/common";
 
-export const Textarea = forwardRef((props: any) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+export const Textarea = forwardRef((props: any, ref: any) => {
   const { className, onChange, error, ...propsToPass } = props;
 
   return (
