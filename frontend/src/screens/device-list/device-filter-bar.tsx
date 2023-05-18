@@ -1,7 +1,7 @@
 import { gql, useQuery, useReactiveVar } from "@apollo/client";
 import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
 import { useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Button } from "../../components/button";
@@ -32,7 +32,6 @@ export default function DeviceFilterBar(props: Props) {
 
   const [showFilters, setShowFilters] = useState(false);
   const [schemaKindName] = useAtom(schemaKindNameState);
-  const [filterFields, setFilterFields] = useState<DynamicFieldData[]>([]);
   const [filtersInQueryString, setFiltersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
 
   const filters = filtersInQueryString
@@ -66,62 +65,53 @@ export default function DeviceFilterBar(props: Props) {
 
   const { loading, error, data } = useQuery(query, { skip: !props.schema });
 
-  const getFilterFields = async () => {
-    const peerDropdownOptions: any = data;
-    const formFields: DynamicFieldData[] = [];
+  const peerDropdownOptions: any = data;
+  const formFields: DynamicFieldData[] = [];
 
-    props.schema.filters?.forEach((filter) => {
-      const currentValue = filters?.find((f: iComboBoxFilter) => f.name === filter.name);
-      if (filter.kind === "Text" && !filter.enum) {
-        formFields.push({
-          label: filter.name,
-          name: filter.name,
-          type: "text",
-          value: currentValue ?? "",
-        });
-      } else if (filter.kind === "Text" && filter.enum) {
+  props.schema.filters?.forEach((filter) => {
+    const currentValue = filters?.find((f: iComboBoxFilter) => f.name === filter.name);
+    if (filter.kind === "Text" && !filter.enum) {
+      formFields.push({
+        label: filter.name,
+        name: filter.name,
+        type: "text",
+        value: currentValue ?? "",
+      });
+    } else if (filter.kind === "Text" && filter.enum) {
+      formFields.push({
+        label: filter.name,
+        name: filter.name,
+        type: "select",
+        value: currentValue ?? "",
+        options: {
+          values: filter.enum?.map((row: any) => ({
+            name: row,
+            id: row,
+          })),
+        },
+      });
+    } else if (filter.kind === "Object") {
+      if (
+        filter.object_kind &&
+        peerDropdownOptions &&
+        peerDropdownOptions[schemaKindName[filter.object_kind]]
+      ) {
+        const options = peerDropdownOptions[schemaKindName[filter.object_kind]].map((row: any) => ({
+          name: row.display_label,
+          id: row.id,
+        }));
         formFields.push({
           label: filter.name,
           name: filter.name,
           type: "select",
-          value: currentValue ?? "",
+          value: currentValue ? currentValue.value : "",
           options: {
-            values: filter.enum?.map((row: any) => ({
-              name: row,
-              id: row,
-            })),
+            values: options,
           },
         });
-      } else if (filter.kind === "Object") {
-        if (
-          filter.object_kind &&
-          peerDropdownOptions &&
-          peerDropdownOptions[schemaKindName[filter.object_kind]]
-        ) {
-          const options = peerDropdownOptions[schemaKindName[filter.object_kind]].map(
-            (row: any) => ({
-              name: row.display_label,
-              id: row.id,
-            })
-          );
-          formFields.push({
-            label: filter.name,
-            name: filter.name,
-            type: "select",
-            value: currentValue ? currentValue.value : "",
-            options: {
-              values: options,
-            },
-          });
-        }
       }
-    });
-    setFilterFields(formFields);
-  };
-
-  useEffect(() => {
-    getFilterFields();
-  }, [data, filtersInQueryString]);
+    }
+  });
 
   const onSubmit = (data: any) => {
     const keys = Object.keys(data);
@@ -330,7 +320,7 @@ export default function DeviceFilterBar(props: Props) {
                 <form className="flex-1" onSubmit={handleSubmit(onSubmit)}>
                   <FormProvider {...formMethods}>
                     <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                      {filterFields.map((field: any, index: number) => (
+                      {formFields.map((field: any, index: number) => (
                         <FilterField
                           key={index}
                           field={field}
