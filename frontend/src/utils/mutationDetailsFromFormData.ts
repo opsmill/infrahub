@@ -13,10 +13,12 @@ const getMutationDetailsFromFormData = (
 
   schema.attributes?.forEach((attribute) => {
     const updatedValue = updateObject[attribute.name].value;
-    if (mode === "update") {
-      const existingValue = JSON.stringify(existingObject[attribute.name]);
-      if (mode === "update" && (!updatedValue || JSON.stringify(updatedValue) === existingValue))
+    if (mode === "update" && existingObject) {
+      const existingValue = existingObject[attribute.name].value;
+      console.log("Existing value: ", existingValue, " Updated value: ", updatedValue);
+      if (mode === "update" && (!updatedValue || updatedValue === existingValue)) {
         delete updateObject[attribute.name];
+      }
     }
   });
 
@@ -29,17 +31,23 @@ const getMutationDetailsFromFormData = (
 
       if (mode === "update") {
         if (isOneToOne) {
-          const existingValue = JSON.stringify(existingObject[relationship.name]);
-          const updatedValue = JSON.stringify(updateObject[relationship.name]);
+          const existingValue = existingObject[relationship.name]?.id;
+          const updatedValue = updateObject[relationship.name]?.id;
           if (updatedValue === existingValue) {
             delete updateObject[relationship.name];
           }
         } else {
-          // const existingValue = existingObject[relationship.name].map((r: any) => r.id).sort();
-          // const updatedIds = updateObject[relationship.name].list.map((value: any) => value.value).sort();
-          // if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
-          //   delete updateObject[relationship.name];
-          // }
+          const existingValue = existingObject[relationship.name]?.map((r: any) => r.id).sort();
+          const updatedIds = updateObject[relationship.name]?.list
+            ?.map((value: any) => value.id)
+            .sort();
+          if (
+            existingValue &&
+            updatedIds &&
+            JSON.stringify(updatedIds) === JSON.stringify(existingValue)
+          ) {
+            delete updateObject[relationship.name];
+          }
         }
       }
 
