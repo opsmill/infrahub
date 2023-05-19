@@ -373,6 +373,7 @@ class BaseNodeSchema(BaseSchemaModel):
     kind: str
     description: Optional[str]
     default_filter: Optional[str]
+    order_by: Optional[List[str]]
     display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
@@ -708,6 +709,12 @@ internal_schema = {
                     "optional": True,
                 },
                 {
+                    "name": "order_by",
+                    "kind": "List",
+                    "description": "List of attributes to use to order the results by default",
+                    "optional": True,
+                },
+                {
                     "name": "inherit_from",
                     "kind": "List",
                     "description": "List of Generic Kind that this node is inheriting from",
@@ -866,6 +873,12 @@ internal_schema = {
                     "optional": True,
                 },
                 {
+                    "name": "order_by",
+                    "kind": "List",
+                    "description": "List of attributes to use to order the results by default",
+                    "optional": True,
+                },
+                {
                     "name": "display_labels",
                     "kind": "List",
                     "description": "List of attributes to use to generate the display label",
@@ -948,6 +961,7 @@ core_models = {
             "name": "criticality",
             "kind": "Criticality",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
@@ -960,6 +974,7 @@ core_models = {
             "name": "tag",
             "kind": "Tag",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
@@ -971,6 +986,7 @@ core_models = {
             "name": "organization",
             "kind": "Organization",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "branch": True,
             "attributes": [
@@ -986,6 +1002,7 @@ core_models = {
             "name": "account",
             "kind": "Account",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
@@ -1023,6 +1040,7 @@ core_models = {
             "name": "group",
             "kind": "Group",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "inherit_from": ["DataOwner"],
             "display_labels": ["label__value"],
             "branch": True,
@@ -1039,6 +1057,7 @@ core_models = {
             "name": "status",
             "kind": "Status",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "branch": True,
             "attributes": [
@@ -1051,6 +1070,7 @@ core_models = {
             "name": "role",
             "kind": "Role",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "branch": True,
             "attributes": [
@@ -1063,6 +1083,7 @@ core_models = {
             "name": "location",
             "kind": "Location",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1077,6 +1098,7 @@ core_models = {
             "name": "repository",
             "kind": "Repository",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
             "inherit_from": ["DataOwner", "DataSource"],
@@ -1127,6 +1149,7 @@ core_models = {
             "name": "rfile",
             "kind": "RFile",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
@@ -1158,6 +1181,7 @@ core_models = {
             "name": "check",
             "kind": "Check",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
@@ -1192,6 +1216,7 @@ core_models = {
             "name": "transform_python",
             "kind": "TransformPython",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
@@ -1227,6 +1252,7 @@ core_models = {
             "name": "graphql_query",
             "kind": "GraphQLQuery",
             "default_filter": "name__value",
+            "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
             "attributes": [

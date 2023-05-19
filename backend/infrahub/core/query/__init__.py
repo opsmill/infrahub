@@ -142,14 +142,13 @@ class Query(ABC):
     raise_error_if_empty: bool = False
     insert_return: bool = True
 
-    order_by: Optional[List[str]] = None
-
     def __init__(
         self,
         branch: Optional[Branch] = None,
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        order_by: Optional[List[str]] = None,
     ):
         if branch:
             self.branch = branch
@@ -162,6 +161,7 @@ class Query(ABC):
 
         self.limit = limit
         self.offset = offset
+        self.order_by = order_by
 
         # Initialize internal variables
         self.params: dict = {}
@@ -219,10 +219,10 @@ class Query(ABC):
 
         query_str = "\n".join(tmp_query_lines)
 
-        if not var:
-            return query_str
+        if var:
+            return "\n" + self.get_params_for_neo4j_shell() + "\n\n" + query_str
 
-        return self.insert_variables_in_query(query=query_str, variables=self.params)
+        return query_str
 
     def get_count_query(self, var: bool = False) -> str:
         tmp_query_lines = self.query_lines.copy()
@@ -244,6 +244,23 @@ class Query(ABC):
                 query = query.replace(f"${key}", f'"{value}"')
 
         return query
+
+    def get_params_for_neo4j_shell(self):
+        """Generate string to define some parameters in Neo4j browser interface.
+        It's especially useful to later execute a query that includes some variables.
+
+        The params string must be executed on its own window in Neo4j, before executing the query.
+        """
+
+        params = []
+
+        for key, value in self.params.items():
+            if isinstance(value, (int, list)):
+                params.append(f"{key}: {str(value)}")
+            else:
+                params.append(f'{key}: "{value}"')
+
+        return ":params { " + ", ".join(params) + " }"
 
     async def execute(self, session: AsyncSession) -> SelfQuery:
         # Ensure all mandatory params have been provided
