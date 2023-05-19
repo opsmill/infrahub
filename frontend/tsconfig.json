@@ -28,6 +28,7 @@
     "sourceRoot": "/"
   },
   "include": [
-    "src"
+    "src",
+    "mocks"
   ]
 }

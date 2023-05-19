@@ -1,12 +1,11 @@
-import { Tabs } from "../../../components/tabs";
+import { formatISO, parseISO } from "date-fns";
 import { StringParam, useQueryParam } from "use-query-params";
-import { DataDiff } from "./data-diff";
-import { QSP } from "../../../config/qsp";
-import { SchemaDiff } from "./schema-diff";
-import { formatISO } from "date-fns/esm";
-import { parseISO } from "date-fns";
 import { Filters } from "../../../components/filters";
+import { Tabs } from "../../../components/tabs";
+import { QSP } from "../../../config/qsp";
 import { DynamicFieldData } from "../../edit-form-hook/dynamic-control-types";
+import { DataDiff } from "./data-diff";
+import { SchemaDiff } from "./schema-diff";
 
 const DIFF_TABS = {
   CONVERSATIONS: "conversation",
