@@ -253,9 +253,13 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            results = await execute_read_query_async(query=self.get_query(), params=self.params, session=session)
+            results = await execute_read_query_async(
+                query=self.get_query(), params=self.params, session=session, name=self.name
+            )
         elif self.type == QueryType.WRITE:
-            results = await execute_write_query_async(query=self.get_query(), params=self.params, session=session)
+            results = await execute_write_query_async(
+                query=self.get_query(), params=self.params, session=session, name=self.name
+            )
         else:
             raise ValueError(f"unknown value for {self.type}")
 

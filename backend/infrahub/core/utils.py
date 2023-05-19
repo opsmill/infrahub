@@ -119,7 +119,7 @@ async def get_paths_between_nodes(
         "destination_id": element_id_to_id(destination_id),
     }
 
-    return await execute_read_query_async(session=session, query=query, params=params)
+    return await execute_read_query_async(session=session, query=query, params=params, name="get_paths_between_nodes")
 
 
 async def count_relationships(session: AsyncSession) -> int:
