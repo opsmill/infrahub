@@ -33,7 +33,7 @@ services:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
       - "INFRAHUB_ADDRESS=http://infrahub-server:8000"
       - "INFRAHUB_PRODUCTION=false"
-      - "INFRAHUB_LOG_LEVEL=debug"
+      - "INFRAHUB_LOG_LEVEL=DEBUG"
     volumes:
       - ../:/source
       - "git_data:/opt/infrahub/git"
