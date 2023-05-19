@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Tuple, Type, Union
 
 import graphene
+from graphql import GraphQLResolveInfo
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
@@ -73,6 +74,47 @@ async def default_resolver(*args, **kwargs):
     at = info.context.get("infrahub_at")
     branch = info.context.get("infrahub_branch")
     # account = info.context.get("infrahub_account", None)
+    db = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+
+    # Extract the schema of the node on the other end of the relationship from the GQL Schema
+    node_rel = node_schema.get_relationship(info.field_name)
+
+    # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    filters = {
+        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+    }
+
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        objs = await NodeManager.query_peers(
+            session=new_session,
+            id=parent["id"],
+            schema=node_rel,
+            filters=filters,
+            fields=fields,
+            at=at,
+            branch=branch,
+        )
+
+        if node_rel.cardinality == "many":
+            return [await obj.to_graphql(session=new_session, fields=fields) for obj in objs]
+
+        # If cardinality is one
+        if not objs:
+            return None
+
+        return await objs[0].to_graphql(session=new_session, fields=fields)
+
+
+async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs):
+    # Extract the InfraHub schema by inspecting the GQL Schema
+    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch = info.context.get("infrahub_branch")
     db = info.context.get("infrahub_database")
 
     # Extract the name of the fields in the GQL query
@@ -208,15 +250,15 @@ async def generate_object_types(
                 peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch.name)
 
             if rel.cardinality == "one":
-                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
-                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
+                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=relationship_resolver)
+                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=relationship_resolver)
 
             elif rel.cardinality == "many":
-                node_type._meta.fields[rel.name] = graphene.Field.mounted(
-                    graphene.List(of_type=peer_type, required=True, **peer_filters)
+                node_type._meta.fields[rel.name] = graphene.Field(
+                    graphene.List(of_type=peer_type, required=True), **peer_filters, resolver=relationship_resolver
                 )
-                related_node_type._meta.fields[rel.name] = graphene.Field.mounted(
-                    graphene.List(of_type=peer_type, required=True, **peer_filters)
+                related_node_type._meta.fields[rel.name] = graphene.Field(
+                    graphene.List(of_type=peer_type, required=True), **peer_filters, resolver=relationship_resolver
                 )
 
 
@@ -275,7 +317,6 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
         "schema": schema,
         "name": schema.kind,
         "description": schema.description,
-        "default_resolver": default_resolver,
         "interfaces": set(),
     }
 
@@ -425,7 +466,6 @@ def generate_related_graphql_object(
         "schema": schema,
         "name": f"Related{schema.kind}",
         "description": schema.description,
-        "default_resolver": default_resolver,
         "interfaces": {RelatedNodeInterface},
     }
 
