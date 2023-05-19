@@ -196,7 +196,6 @@ class NodeListGetLocalAttributeValueQuery(Query):
 
 class NodeListGetAttributeQuery(Query):
     name: str = "node_list_get_attribute"
-    order_by: List[str] = ["a.name"]
 
     property_type_mapping = {
         "HAS_VALUE": ("r2", "av"),
@@ -222,7 +221,7 @@ class NodeListGetAttributeQuery(Query):
         self.include_source = include_source
         self.include_owner = include_owner
 
-        super().__init__(*args, **kwargs)
+        super().__init__(order_by=["a.name"], *args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["ids"] = self.ids
@@ -447,8 +446,6 @@ class NodeListGetInfoQuery(Query):
 class NodeGetListQuery(Query):
     name = "node_get_list"
 
-    order_by: List[str] = ["id(n)"]
-
     def __init__(self, schema: NodeSchema, filters: Optional[dict] = None, *args, **kwargs):
         self.schema = schema
         self.filters = filters
@@ -456,69 +453,71 @@ class NodeGetListQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        filter_has_id = False
 
-        self.params.update(branch_params)
+        self.add_to_query("MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n:Node)")
 
-        node_filter = ""
+        # Filter by Node Kind
+        where_clause = ["$node_kind IN LABELS(n)"]
+        self.params["node_kind"] = self.schema.kind
+
+        # Check 'id' is part of the filter
+        # if 'id' is present, we can skip ordering, filtering etc ..
         if self.filters and "id" in self.filters:
-            node_filter = "{ uuid: $uuid }"
+            filter_has_id = True
+            where_clause.append("n.uuid = $uuid")
             self.params["uuid"] = self.filters["id"]
 
-        query = """
-        MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n:%s %s)
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """ % (
-            self.schema.kind,
-            node_filter,
-            branch_filter,
-        )
+        # Add the Branch filters
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+        where_clause.append('all(r IN relationships(p) WHERE r.status = "active" AND (%s))' % branch_filter)
 
-        self.add_to_query(query)
-
+        self.add_to_query("WHERE " + " AND ".join(where_clause))
         self.return_labels = ["n", "rb"]
 
-        if not self.filters:
+        if filter_has_id:
             return
 
-        # if Filters are provided
-        #  Go over all the fields, remove the first part of the query to identify the field
-        #  { "name__name": value }
+        if self.filters:
+            # if Filters are provided
+            #  Go over all the fields, remove the first part of the query to identify the field
+            #  { "name__name": value }
 
-        filter_cnt = 0
-        for field_name in self.schema.valid_input_names:
-            attr_filters = {
-                key.replace(f"{field_name}__", ""): value
-                for key, value in self.filters.items()
-                if key.startswith(f"{field_name}__")
-            }
-            if not attr_filters:
-                continue
+            filter_cnt = 0
+            for field_name in self.schema.valid_input_names:
+                attr_filters = {
+                    key.replace(f"{field_name}__", ""): value
+                    for key, value in self.filters.items()
+                    if key.startswith(f"{field_name}__")
+                }
+                if not attr_filters:
+                    continue
 
-            filter_cnt += 1
+                filter_cnt += 1
 
-            field = self.schema.get_field(field_name)
+                field = self.schema.get_field(field_name)
 
-            field_filters, field_params = await field.get_query_filter(
-                session=session,
-                name=field_name,
-                include_match=False,
-                filters=attr_filters,
-                branch=self.branch,
-                param_prefix=f"filter{filter_cnt}",
-            )
-            self.params.update(field_params)
-
-            for field_filter in field_filters:
-                query = """
-                WITH n, rb
-                MATCH p = (n)%s
-                WHERE all(r IN relationships(p) WHERE (%s))
-                """ % (
-                    field_filter,
-                    branch_filter,
+                field_filters, field_params = await field.get_query_filter(
+                    session=session,
+                    name=field_name,
+                    include_match=False,
+                    filters=attr_filters,
+                    branch=self.branch,
+                    param_prefix=f"filter{filter_cnt}",
                 )
-                self.add_to_query(query)
+                self.params.update(field_params)
+
+                for field_filter in field_filters:
+                    query = """
+                    WITH n, rb
+                    MATCH p = (n)%s
+                    WHERE all(r IN relationships(p) WHERE (%s))
+                    """ % (
+                        field_filter,
+                        branch_filter,
+                    )
+                    self.add_to_query(query)
 
     def get_node_ids(self) -> List[str]:
         return [str(result.get("n").get("uuid")) for result in self.get_results()]

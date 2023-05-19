@@ -6,9 +6,7 @@ from infrahub.core.query import Query, QueryResult, sort_results_by_time
 
 
 class Query01(Query):
-
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-
         self.order_by = ["at.name", "r2.from"]
 
         query = """
