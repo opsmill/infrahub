@@ -336,18 +336,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         cls,
         name: str,
         filter_name: str,
-        filter_value: str,
         branch=None,
+        filter_value: Optional[Any] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> Tuple[List[QueryElement], Dict, List[str]]:
+    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 
-        query_filter = []
-        query_params = {}
-        query_where = []
+        query_filter: List[QueryElement] = []
+        query_params: Dict[str, Any] = {}
+        query_where: List[str] = []
 
-        if not isinstance(filter_value, (str, bool, int)):
+        if filter_value and not isinstance(filter_value, (str, bool, int)):
             raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
 
         param_prefix = param_prefix or f"attr_{name}"
@@ -360,12 +360,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 QueryRel(labels=[cls._rel_to_node_label]),
                 QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}),
                 QueryRel(labels=["HAS_VALUE"]),
-                QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"}),
+                QueryNode(name="av", labels=["AttributeValue"]),
             ]
         )
-
         query_params[f"{param_prefix}_name"] = name
-        query_params[f"{param_prefix}_value"] = filter_value
+
+        if filter_value is not None:
+            query_filter[-1].params = {"value": f"${param_prefix}_value"}
+            query_params[f"{param_prefix}_value"] = filter_value
 
         return query_filter, query_params, query_where
 

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, U
 
 from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
@@ -455,6 +456,7 @@ class NodeGetListQuery(Query):
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         filter_has_id = False
+        self.order_by = []
 
         self.add_to_query("MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n:Node)")
 
@@ -496,31 +498,62 @@ class NodeGetListQuery(Query):
                 field = self.schema.get_field(field_name)
 
                 for field_attr_name, field_attr_value in attr_filters.items():
-                    field_filter, field_params, field_where = await field.get_query_filter(
+                    subquery, subquery_params, subquery_result_name = await build_subquery_filter(
                         session=session,
+                        field=field,
                         name=field_name,
-                        include_match=True,
                         filter_name=field_attr_name,
                         filter_value=field_attr_value,
+                        branch_filter=branch_filter,
                         branch=self.branch,
-                        param_prefix=f"filter{filter_cnt}",
+                        subquery_idx=filter_cnt,
                     )
-                    self.params.update(field_params)
+                    self.params.update(subquery_params)
 
-                    field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
-
-                    filter_str = "-".join([str(item) for item in field_filter])
-                    where_str = " AND ".join(field_where)
-
-                    query = """
-                    WITH n, rb
-                    MATCH p = %s
-                    WHERE %s
-                    """ % (
-                        filter_str,
-                        where_str,
+                    with_str = ", ".join(
+                        [
+                            f"{subquery_result_name} as {label}" if label == "n" else label
+                            for label in self.return_labels
+                        ]
                     )
-                    self.add_to_query(query)
+
+                    self.add_to_query("CALL {")
+                    self.add_to_query(subquery)
+                    self.add_to_query("}")
+                    self.add_to_query(f"WITH {with_str}")
+
+        if self.schema.order_by:
+            order_cnt = 1
+
+            for order_by_value in self.schema.order_by:
+                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+
+                field = self.schema.get_field(order_by_field_name)
+
+                subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                    session=session,
+                    field=field,
+                    name=order_by_field_name,
+                    order_by=order_by_next_name,
+                    branch_filter=branch_filter,
+                    branch=self.branch,
+                    subquery_idx=order_cnt,
+                )
+                self.order_by.append(subquery_result_name)
+                self.params.update(subquery_params)
+
+                with_str = ", ".join(
+                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
+                )
+
+                self.add_to_query("CALL {")
+                self.add_to_query(subquery)
+                self.add_to_query("}")
+
+                order_cnt += 1
+
+        else:
+            self.order_by.append("n.uuid")
 
     def get_node_ids(self) -> List[str]:
         return [str(result.get("n").get("uuid")) for result in self.get_results()]

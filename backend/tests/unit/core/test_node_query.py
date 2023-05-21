@@ -65,10 +65,12 @@ async def test_query_NodeGetListQuery_filter_relationship(
     assert len(query.get_node_ids()) == 2
 
 
-async def test_query_NodeGetListQuery_filter_multiple(
+async def test_query_NodeGetListQuery_filter_and_sort(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
     schema = registry.schema.get(name="Car", branch=branch)
+    schema.order_by = ["owner__name__value", "is_electric__value"]
+
     query = await NodeGetListQuery.init(
         session=session,
         branch=branch,

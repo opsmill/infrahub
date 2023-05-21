@@ -286,15 +286,17 @@ class RelationshipSchema(BaseSchemaModel):
         self,
         session: AsyncSession,
         filter_name: str,
-        filter_value: str,
+        filter_value: Optional[Any] = None,
         name: Optional[str] = None,  # pylint: disable=unused-argument
         branch: Branch = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> Tuple[List[str], Dict, List[str]]:
-        query_filter = []
-        query_params = {}
-        query_where = []
+    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
+        """Generate Query String Snippet to filter the right node."""
+
+        query_filter: List[QueryElement] = []
+        query_params: Dict[str, Any] = {}
+        query_where: List[str] = []
 
         prefix = param_prefix or f"rel_{self.name}"
 
@@ -312,11 +314,13 @@ class RelationshipSchema(BaseSchemaModel):
                     QueryRel(name="r1", labels=[rel_type]),
                     QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
                     QueryRel(name="r2", labels=[rel_type]),
-                    QueryNode(name="peer", labels=["Node"], params={"uuid": f"${prefix}_peer_id"}),
+                    QueryNode(name="peer", labels=["Node"]),
                 ]
             )
 
-            query_params[f"{prefix}_peer_id"] = filter_value
+            if filter_value is not None:
+                query_filter[-1].params = {"uuid": f"${prefix}_peer_id"}
+                query_params[f"{prefix}_peer_id"] = filter_value
 
             return query_filter, query_params, query_where
 

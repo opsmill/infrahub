@@ -64,8 +64,7 @@ class QueryElement:
         main_str = "%s%s%s" % (self.name or "", self.labels_as_str, self.params_as_str)
         if self.type == QueryElementType.NODE:
             return "(%s)" % main_str
-        if self.type == QueryElementType.RELATIONSHIP:
-            return "[%s]" % main_str
+        return "[%s]" % main_str
 
     @property
     def labels_as_str(self) -> str:

@@ -456,7 +456,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
             self.update_return_labels(["rl", "peer", "r1", "r2"])
 
-        else:
+        if not clean_filters:
             self.params["identifier"] = self.schema.identifier
             rel_type = self.schema.get_class().rel_type
 
