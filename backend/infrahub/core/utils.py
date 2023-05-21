@@ -152,6 +152,13 @@ def element_id_to_id(element_id: str) -> int:
     return int(element_id.split(":")[2])
 
 
+def extract_field_filters(field_name: str, filters: dict) -> dict:
+    """Extract the filters for a given field (attribute or relationship) from a filters dict."""
+    return {
+        key.replace(f"{field_name}__", ""): value for key, value in filters.items() if key.startswith(f"{field_name}__")
+    }
+
+
 # --------------------------------------------------------------------------------
 # CODE IMPORTED FROM:
 #   https://github.com/graphql-python/graphene/blob/9c3e4bb7da001aac48002a3b7d83dcd072087770/graphene/utils/subclass_with_meta.py#L18

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, U
 
 from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -486,11 +487,7 @@ class NodeGetListQuery(Query):
 
             filter_cnt = 0
             for field_name in self.schema.valid_input_names:
-                attr_filters = {
-                    key.replace(f"{field_name}__", ""): value
-                    for key, value in self.filters.items()
-                    if key.startswith(f"{field_name}__")
-                }
+                attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
                 if not attr_filters:
                     continue
 
@@ -498,24 +495,30 @@ class NodeGetListQuery(Query):
 
                 field = self.schema.get_field(field_name)
 
-                field_filters, field_params = await field.get_query_filter(
-                    session=session,
-                    name=field_name,
-                    include_match=False,
-                    filters=attr_filters,
-                    branch=self.branch,
-                    param_prefix=f"filter{filter_cnt}",
-                )
-                self.params.update(field_params)
+                for field_attr_name, field_attr_value in attr_filters.items():
+                    field_filter, field_params, field_where = await field.get_query_filter(
+                        session=session,
+                        name=field_name,
+                        include_match=True,
+                        filter_name=field_attr_name,
+                        filter_value=field_attr_value,
+                        branch=self.branch,
+                        param_prefix=f"filter{filter_cnt}",
+                    )
+                    self.params.update(field_params)
 
-                for field_filter in field_filters:
+                    field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
+
+                    filter_str = "-".join([str(item) for item in field_filter])
+                    where_str = " AND ".join(field_where)
+
                     query = """
                     WITH n, rb
-                    MATCH p = (n)%s
-                    WHERE all(r IN relationships(p) WHERE (%s))
+                    MATCH p = %s
+                    WHERE %s
                     """ % (
-                        field_filter,
-                        branch_filter,
+                        filter_str,
+                        where_str,
                     )
                     self.add_to_query(query)
 

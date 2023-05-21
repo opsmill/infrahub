@@ -8,6 +8,7 @@ from pydantic import BaseModel, Extra, Field, root_validator, validator
 from typing_extensions import Self
 
 from infrahub.core import registry
+from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import BaseEnum, duplicates, intersection
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
-
+    from infrahub.core.query import QueryElement
 
 # pylint: disable=no-self-argument,redefined-builtin,too-many-lines
 
@@ -253,7 +254,7 @@ class AttributeSchema(BaseSchemaModel):
 
     async def get_query_filter(
         self, session: AsyncSession, *args, **kwargs  # pylint: disable=unused-argument
-    ) -> Tuple[List[str], Dict]:
+    ) -> Tuple[List[QueryElement], Dict, List[str]]:
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
@@ -284,84 +285,78 @@ class RelationshipSchema(BaseSchemaModel):
     async def get_query_filter(
         self,
         session: AsyncSession,
+        filter_name: str,
+        filter_value: str,
         name: Optional[str] = None,  # pylint: disable=unused-argument
-        filters: Optional[dict] = None,
         branch: Branch = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> Tuple[List[str], Dict]:
-        query_filters = []
+    ) -> Tuple[List[str], Dict, List[str]]:
+        query_filter = []
         query_params = {}
+        query_where = []
 
         prefix = param_prefix or f"rel_{self.name}"
-
-        if not filters:
-            return query_filters, query_params
-
-        peer_schema = await self.get_peer_schema()
 
         query_params[f"{prefix}_rel_name"] = self.identifier
 
         rel_type = self.get_class().rel_type
+        peer_schema = await self.get_peer_schema()
 
-        if "id" in filters.keys():
-            query_filter = ""
-            if include_match:
-                query_filter += "MATCH (n)"
+        if include_match:
+            query_filter.append(QueryNode(name="n"))
 
-            query_filter += (
-                "-[r1:%s]-(rl:Relationship { name: $%s_rel_name })-[r2:%s]-(peer:Node { uuid: $%s_peer_id })"
-                % (
-                    rel_type,
-                    prefix,
-                    rel_type,
-                    prefix,
-                )
+        if filter_name == "id":
+            query_filter.extend(
+                [
+                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryNode(name="peer", labels=["Node"], params={"uuid": f"${prefix}_peer_id"}),
+                ]
             )
 
-            query_filters.append(query_filter)
-            query_params[f"{prefix}_peer_id"] = filters["id"]
+            query_params[f"{prefix}_peer_id"] = filter_value
+
+            return query_filter, query_params, query_where
+
+        if "__" not in filter_name:
+            return query_filter, query_params, query_where
 
         # -------------------------------------------------------------------
-        # Check if any of the filters are matching an existing field
+        # Check if the filter is matching
         # -------------------------------------------------------------------
-        for field_name in peer_schema.valid_input_names:
-            query_filter = ""
+        filter_field_name, filter_next_name = filter_name.split("__", maxsplit=1)
 
-            attr_filters = {
-                key.replace(f"{field_name}__", ""): value
-                for key, value in filters.items()
-                if key.startswith(f"{field_name}__")
-            }
-            if not attr_filters:
-                continue
+        if filter_field_name not in peer_schema.valid_input_names:
+            return query_filter, query_params, query_where
 
-            if include_match:
-                query_filter += "MATCH (n)"
+        query_filter.extend(
+            [
+                QueryRel(name="r1", labels=[rel_type]),
+                QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                QueryRel(name="r2", labels=[rel_type]),
+                QueryNode(name="peer", labels=["Node"]),
+            ]
+        )
 
-            # TODO Validate if filters are valid
-            query_filter += "-[r1:%s]-(rl:Relationship { name: $%s_rel_name })-[r2:%s]-(peer:Node)" % (
-                rel_type,
-                prefix,
-                rel_type,
-            )
+        field = peer_schema.get_field(filter_field_name)
 
-            field = peer_schema.get_field(field_name)
+        field_filter, field_params, field_where = await field.get_query_filter(
+            session=session,
+            name=filter_field_name,
+            filter_name=filter_next_name,
+            filter_value=filter_value,
+            branch=branch,
+            include_match=False,
+            param_prefix=prefix if param_prefix else None,
+        )
 
-            field_filter, field_params = await field.get_query_filter(
-                session=session,
-                name=field_name,
-                filters=attr_filters,
-                branch=branch,
-                include_match=False,
-                param_prefix=prefix if param_prefix else None,
-            )
+        query_filter.extend(field_filter)
+        query_where.extend(field_where)
+        query_params.update(field_params)
 
-            for filter in field_filter:
-                query_filters.append(query_filter + filter)
-                query_params.update(field_params)
-
-        return query_filters, query_params
+        return query_filter, query_params, query_where
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
