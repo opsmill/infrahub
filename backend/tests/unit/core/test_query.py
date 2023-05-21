@@ -2,7 +2,13 @@ import pendulum
 import pytest
 from neo4j import AsyncSession
 
-from infrahub.core.query import Query, QueryResult, sort_results_by_time
+from infrahub.core.query import (
+    Query,
+    QueryNode,
+    QueryRel,
+    QueryResult,
+    sort_results_by_time,
+)
 
 
 class Query01(Query):
@@ -192,3 +198,24 @@ async def test_sort_results_by_time(neo4j_factory):
 
     results = sort_results_by_time(results=[qr3, qr2, qr1], rel_label="r")
     assert list(results) == [qr3, qr1, qr2]
+
+
+def test_query_node():
+    assert str(QueryNode()) == "()"
+    assert str(QueryNode(name="n")) == "(n)"
+    assert str(QueryNode(name="n", labels=["MyObject"])) == "(n:MyObject)"
+    assert str(QueryNode(labels=["MyObject"])) == "(:MyObject)"
+    assert str(QueryNode(name="n", labels=["MyObject", "OtherClass"])) == "(n:MyObject:OtherClass)"
+    assert str(QueryNode(name="n", labels=["MyObject"], params={"name": "john"})) == '(n:MyObject { name: "john" })'
+    assert str(QueryNode(name="n", labels=["MyObject"], params={"name": "$myvar"})) == "(n:MyObject { name: $myvar })"
+
+
+def test_query_rel():
+    assert str(QueryRel()) == "[]"
+    assert str(QueryRel(name="r2")) == "[r2]"
+    assert str(QueryRel(name="r2", labels=["HAS_VALUE"])) == "[r2:HAS_VALUE]"
+    assert str(QueryRel(labels=["HAS_VALUE"])) == "[:HAS_VALUE]"
+    assert str(QueryRel(name="r2", labels=["HAS_VALUE", "IS_RELATED"])) == "[r2:HAS_VALUE:IS_RELATED]"
+    assert str(QueryRel(name="r2", labels=["HAS_VALUE"], params={"name": "john"})) == '[r2:HAS_VALUE { name: "john" }]'
+    assert str(QueryRel(labels=["HAS_VALUE"], params={"name": "john"})) == '[:HAS_VALUE { name: "john" }]'
+    assert str(QueryRel(labels=["HAS_VALUE"], params={"name": "$myvar"})) == "[:HAS_VALUE { name: $myvar }]"

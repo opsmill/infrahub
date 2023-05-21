@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Generator, List, Optional, TypeVar, Union
 
@@ -45,6 +46,59 @@ def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[Que
         results_dict[record_id] = result
 
     return [value for _, value in sorted(results_dict.items(), reverse=False)]
+
+
+class QueryElementType(Enum):
+    NODE = "node"
+    RELATIONSHIP = "relationship"
+
+
+@dataclass
+class QueryElement:
+    type: QueryElementType
+    name: Optional[str] = None
+    labels: Optional[List[str]] = None
+    params: Optional[dict] = None
+
+    def __str__(self):
+        main_str = "%s%s%s" % (self.name or "", self.labels_as_str, self.params_as_str)
+        if self.type == QueryElementType.NODE:
+            return "(%s)" % main_str
+        if self.type == QueryElementType.RELATIONSHIP:
+            return "[%s]" % main_str
+
+    @property
+    def labels_as_str(self) -> str:
+        if not self.labels:
+            return ""
+
+        return ":" + ":".join(self.labels)
+
+    @property
+    def params_as_str(self) -> str:
+        if not self.params:
+            return ""
+
+        params_list = []
+        for key, value in self.params.items():
+            if isinstance(value, str) and not value.startswith("$"):
+                value_str = f'"{value}"'
+            else:
+                value_str = value
+
+            params_list.append(f"{key}: {value_str}")
+
+        return " { " + ",".join(params_list) + " }"
+
+
+@dataclass
+class QueryNode(QueryElement):
+    type: QueryElementType = QueryElementType.NODE
+
+
+@dataclass
+class QueryRel(QueryElement):
+    type: QueryElementType = QueryElementType.RELATIONSHIP
 
 
 class QueryType(Enum):
@@ -171,6 +225,14 @@ class Query(ABC):
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
+
+    def update_return_labels(self, value: Union[str, List[str]]) -> None:
+        if isinstance(value, str) and value not in self.return_labels:
+            self.return_labels.append(value)
+            return
+        if isinstance(value, list):
+            for item in value:
+                self.update_return_labels(value=item)
 
     @classmethod
     async def init(
