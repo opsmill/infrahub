@@ -452,8 +452,6 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             )
             self.add_to_query(query)
 
-            # TODO Would be good to add a function to add to return labels without duplicate
-
             self.update_return_labels(["rl", "peer", "r1", "r2"])
 
         if not clean_filters:
