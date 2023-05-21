@@ -55,7 +55,8 @@ nodes:
   - name: device
     kind: Device
     default_filter: name__value
-    order_by: ["name__value"]
+    order_by:
+      - name__value
     display_labels:
       - name__value
     attributes:
@@ -103,7 +104,8 @@ nodes:
     kind: InterfaceL3
     display_labels:
       - name__value
-    order_by: ["name__value"]
+    order_by:
+      - name__value
     inherit_from: ["Interface", "Endpoint"]
     relationships:
       - name: ip_addresses
@@ -115,7 +117,8 @@ nodes:
     kind: InterfaceL2
     display_labels:
       - name__value
-    order_by: ["name__value"]
+    order_by:
+      - name__value
     inherit_from: ["Interface", "Endpoint"]
     attributes:
       - name: l2_mode
@@ -140,7 +143,8 @@ nodes:
   - name: ipaddress
     kind: IPAddress
     default_filter: address__value
-    order_by: ["address__value"]
+    order_by:
+      - "address__value"
     display_labels:
       - address__value
     attributes:
@@ -158,7 +162,8 @@ nodes:
   - name: vlan
     kind: VLAN
     default_filter: name__value
-    order_by: ["name__value"]
+    order_by:
+      - name__value
     display_labels:
       - name__value
     attributes:
@@ -194,7 +199,8 @@ nodes:
   - name: circuit
     kind: Circuit
     default_filter: circuit_id__value
-    order_by: ["circuit_id__value"]
+    order_by:
+      - circuit_id__value
     display_labels:
       - circuit_id__value
     attributes:
@@ -272,7 +278,8 @@ nodes:
   - name: bgp_peer_group
     kind: BGPPeerGroup
     default_filter: name__value
-    order_by: ["name__value"]
+    order_by:
+      - name__value
     display_labels:
       - name__value
     attributes:
@@ -302,6 +309,9 @@ nodes:
         kind: Attribute
   - name: bgp_session
     kind: BGPSession
+    order_by:
+      - device__name__value
+      - remote_as__asn__value
     attributes:
       - name: type
         kind: Text
