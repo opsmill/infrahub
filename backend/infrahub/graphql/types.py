@@ -43,23 +43,9 @@ class GetListMixin:
         async with db.session(database=config.SETTINGS.database.database) as session:
             context["infrahub_session"] = session
 
-            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
+            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
 
-            filter_ids = kwargs.get("ids")
-
-            if filter_ids:
-                objs = await NodeManager.get_many(
-                    session=session,
-                    ids=filter_ids,
-                    fields=fields,
-                    at=at,
-                    branch=branch,
-                    account=account,
-                    include_source=True,
-                    include_owner=True,
-                )
-                objs = objs.values()
-            elif filters:
+            if filters:
                 objs = await NodeManager.query(
                     session=session,
                     schema=cls._meta.schema,

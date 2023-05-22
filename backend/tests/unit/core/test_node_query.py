@@ -35,6 +35,18 @@ async def test_query_NodeGetListQuery_filter_id(
     assert len(query.get_node_ids()) == 1
 
 
+async def test_query_NodeGetListQuery_filter_ids(
+    session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    person_schema = registry.schema.get(name="Person", branch=branch)
+    person_schema.order_by = ["height__value"]
+    query = await NodeGetListQuery.init(
+        session=session, branch=branch, schema=person_schema, filters={"ids": [person_jim_main.id, person_john_main.id,  person_albert_main.id]}
+    )
+    await query.execute(session=session)
+    assert query.get_node_ids() == [person_albert_main.id, person_jim_main.id, person_john_main.id]
+
+
 async def test_query_NodeGetListQuery_filter_height(
     session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
