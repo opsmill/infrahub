@@ -108,7 +108,7 @@ async def default_resolver(*args, **kwargs):
         return await objs[0].to_graphql(session=new_session, fields=fields)
 
 
-async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs):
+async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Optional[Union[Dict, List]]:
     # Extract the InfraHub schema by inspecting the GQL Schema
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
@@ -149,7 +149,12 @@ async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs
         return await objs[0].to_graphql(session=new_session, fields=fields)
 
 
-async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs):
+async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+    """Resolver for relationships of cardinality=one for Edged responses
+
+    This resolver is used for paginated responses and as such we redefined the requested
+    fields by only reusing information below the 'node' key.
+    """
     # Extract the InfraHub schema by inspecting the GQL Schema
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
