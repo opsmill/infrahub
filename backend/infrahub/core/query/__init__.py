@@ -105,10 +105,27 @@ class QueryType(Enum):
     WRITE = "write"
 
 
+def cleanup_return_labels(labels):
+    """Cleanup a list of return labels by checking if there is an alias defined.
+    if an alias is defined with `value AS alias` we extract just the alias from the label
+    """
+    clean_labels = []
+    for label in labels:
+        idx = label.lower().find(" as ")
+        if idx > 0:
+            clean_idx = idx + 4
+            clean_label = label[clean_idx:]
+            clean_labels.append(clean_label.strip())
+        else:
+            clean_labels.append(label)
+
+    return clean_labels
+
+
 class QueryResult:
     def __init__(self, data: List[Union[Node, Relationship]], labels: List[str]):
         self.data = data
-        self.labels = labels
+        self.labels = cleanup_return_labels(labels)
         self.branch_score: int = 0
         self.time_score: int = 0
         self.permission_score = PermissionLevel.DEFAULT

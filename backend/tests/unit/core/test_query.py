@@ -7,6 +7,7 @@ from infrahub.core.query import (
     QueryNode,
     QueryRel,
     QueryResult,
+    cleanup_return_labels,
     sort_results_by_time,
 )
 
@@ -24,6 +25,12 @@ class Query01(Query):
         self.params["uuid"] = "5ffa45d4"
 
         self.add_to_query(query)
+
+
+def test_cleanup_return_labels():
+    assert cleanup_return_labels(["r", "n", "l"]) == ["r", "n", "l"]
+    assert cleanup_return_labels(["r.uuid", "n", "l"]) == ["r.uuid", "n", "l"]
+    assert cleanup_return_labels(["ID(r) as  myid", "n", "l"]) == ["myid", "n", "l"]
 
 
 async def test_query_base(session):
