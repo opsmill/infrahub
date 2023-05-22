@@ -848,7 +848,7 @@ async def generate_filters(
     """
 
     if top_level:
-        filters = {"ids": graphene.List(graphene.ID)}
+        filters = {"ids": graphene.List(graphene.ID), "offset": graphene.Int(), "limit": graphene.Int()}
     else:
         filters = {"id": graphene.ID()}
 
