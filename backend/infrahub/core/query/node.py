@@ -460,11 +460,30 @@ class NodeGetListQuery(Query):
 
         final_return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
 
-        self.add_to_query("MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n:Node)")
+        # Add the Branch filters
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
 
-        # Filter by Node Kind
-        where_clause = ["$node_kind IN LABELS(n)"]
+        query = (
+            """
+        MATCH p = (n:Node)
+        WHERE $node_kind IN LABELS(n)
+        CALL {
+            WITH n
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %s
+            RETURN n as n1, r as r1
+            ORDER BY [r.branch, r.from] ASC
+            LIMIT 1
+        }
+        WITH n1 as n, r1 as rb
+        """
+            % branch_filter
+        )
+        self.add_to_query(query)
         self.params["node_kind"] = self.schema.kind
+
+        where_clause = ['rb.status = "active"']
 
         # Check 'id' is part of the filter
         # if 'id' is present, we can skip ordering, filtering etc ..
@@ -472,11 +491,6 @@ class NodeGetListQuery(Query):
             filter_has_id = True
             where_clause.append("n.uuid = $uuid")
             self.params["uuid"] = self.filters["id"]
-
-        # Add the Branch filters
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
-        where_clause.append('all(r IN relationships(p) WHERE r.status = "active" AND (%s))' % branch_filter)
 
         self.add_to_query("WHERE " + " AND ".join(where_clause))
         self.return_labels = ["n", "rb"]

@@ -2,6 +2,7 @@ from neo4j import AsyncSession
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeGetListQuery,
@@ -52,6 +53,22 @@ async def test_query_NodeGetListQuery_filter_boolean(
     )
     await query.execute(session=session)
     assert len(query.get_node_ids()) == 3
+
+
+async def test_query_NodeGetListQuery_deleted_node(
+    session: AsyncSession, car_accord_main, car_camry_main: Node, car_volt_main, car_yaris_main, branch: Branch
+):
+    node_to_delete = await NodeManager.get_one(id=car_camry_main.id, session=session, branch=branch)
+    await node_to_delete.delete(session=session)
+
+    schema = registry.schema.get(name="Car", branch=branch)
+    schema.order_by = ["owner__name__value"]
+
+    query = await NodeGetListQuery.init(
+        session=session, branch=branch, schema=schema, filters={"is_electric__value": False}
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 2
 
 
 async def test_query_NodeGetListQuery_filter_relationship(
