@@ -164,7 +164,7 @@ class Branch(StandardNode):
         if not self.origin_branch or self.origin_branch == self.name:
             return None
 
-        return await get_branch(self.origin_branch, session=session)
+        return await get_branch(branch=self.origin_branch, session=session)
 
     def get_branches_in_scope(self) -> List[str]:
         """Return the list of all the branches that are constituing this branch.
