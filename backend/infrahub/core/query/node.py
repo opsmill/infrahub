@@ -420,7 +420,7 @@ class NodeListGetInfoQuery(Query):
         query = (
             """
         MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n)
-        WHERE all(r IN relationships(p) WHERE ((n.uuid IN $ids) AND %s))
+        WHERE (n.uuid IN $ids) AND all(r IN relationships(p) WHERE (%s))
         """
             % branch_filter
         )
@@ -458,6 +458,8 @@ class NodeGetListQuery(Query):
         filter_has_id = False
         self.order_by = []
 
+        final_return_labels = ["n.uuid", "rb.branch", "rb.element_id"]
+
         self.add_to_query("MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n:Node)")
 
         # Filter by Node Kind
@@ -480,6 +482,7 @@ class NodeGetListQuery(Query):
         self.return_labels = ["n", "rb"]
 
         if filter_has_id:
+            self.return_labels = final_return_labels
             return
 
         if self.filters:
@@ -555,5 +558,7 @@ class NodeGetListQuery(Query):
         else:
             self.order_by.append("n.uuid")
 
+        self.return_labels = final_return_labels
+
     def get_node_ids(self) -> List[str]:
-        return [str(result.get("n").get("uuid")) for result in self.get_results()]
+        return [str(result.get("n.uuid")) for result in self.get_results()]
