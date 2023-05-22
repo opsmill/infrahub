@@ -66,7 +66,7 @@ export const BranchDetails = () => {
     setIsLoadingRequest(false);
   };
 
-  const queryString = getBranchDetails();
+  const queryString = getBranchDetails({});
 
   const { loading, error, data } = useQuery(
     gql`

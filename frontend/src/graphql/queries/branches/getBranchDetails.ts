@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+declare const Handlebars: any;
 
 // TODO: Not working for now, needs the backend to be implemented
 // const template = Handlebars.compile(`query {

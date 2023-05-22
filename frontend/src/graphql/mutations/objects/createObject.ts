@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+declare const Handlebars: any;
 
 export const createObject = Handlebars.compile(`mutation {{kind.value}}Create {
   {{name}}_create (data: {{{data}}}) {

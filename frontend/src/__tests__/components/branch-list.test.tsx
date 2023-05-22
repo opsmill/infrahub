@@ -1,6 +1,6 @@
 import { MockedProvider } from "@apollo/client/testing";
 import { cleanup, render, screen } from "@testing-library/react";
-import Apollo, { QUERY } from "../../components/branch-list";
+import Apollo, { QUERY } from "../../components/tests/branch-list-test";
 
 afterAll(cleanup);
 

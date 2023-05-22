@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+declare const Handlebars: any;
 
 export const getObjectRelationshipsDetails = Handlebars.compile(`query {{kind.value}} {
   {{name}} (ids: ["{{objectid}}"]) {

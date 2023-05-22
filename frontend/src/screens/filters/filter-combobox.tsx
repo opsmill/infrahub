@@ -11,7 +11,7 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
 
-import Handlebars from "handlebars";
+declare const Handlebars: any;
 
 interface Props {
   filter: components["schemas"]["FilterSchema"];
