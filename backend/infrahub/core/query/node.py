@@ -494,7 +494,7 @@ class NodeGetListQuery(Query):
             self.params["uuid"] = self.filters["id"]
         elif self.filters and "ids" in self.filters:
             where_clause.append("n.uuid IN $node_ids")
-            self.params[f"node_ids"] = self.filters["ids"]
+            self.params["node_ids"] = self.filters["ids"]
 
         self.add_to_query("WHERE " + " AND ".join(where_clause))
         self.return_labels = ["n", "rb"]
