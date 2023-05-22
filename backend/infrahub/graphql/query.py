@@ -9,7 +9,7 @@ from infrahub.core import get_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 
-from .generator import generate_query_mixin
+from .generator import generate_paginated_query_mixin, generate_query_mixin
 from .schema import InfrahubBaseQuery
 
 if TYPE_CHECKING:
@@ -53,6 +53,15 @@ async def execute_query(
 
 async def get_gql_query(session: AsyncSession, branch: Union[Branch, str] = None) -> type[InfrahubBaseQuery]:
     QueryMixin = await generate_query_mixin(session=session, branch=branch)
+
+    class Query(InfrahubBaseQuery, QueryMixin):
+        pass
+
+    return Query
+
+
+async def get_paginated_gql_query(session: AsyncSession, branch: Union[Branch, str]) -> type[InfrahubBaseQuery]:
+    QueryMixin = await generate_paginated_query_mixin(session=session, branch=branch)
 
     class Query(InfrahubBaseQuery, QueryMixin):
         pass

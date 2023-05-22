@@ -108,7 +108,7 @@ class Registry:
     def set_graphql_type(
         self,
         name: str,
-        graphql_type: Union[Type[InfrahubObject], Type[graphene.Interface]],
+        graphql_type: Union[Type[InfrahubObject], Type[graphene.Interface], Type[graphene.ObjectType]],
         branch: Optional[str] = None,
     ) -> bool:
         return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)

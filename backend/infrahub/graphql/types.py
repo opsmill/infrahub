@@ -86,6 +86,61 @@ class GetListMixin:
 
             return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
 
+    @classmethod
+    async def get_paginated_list(cls, fields: dict, context: dict, **kwargs):
+        at = context.get("infrahub_at")
+        branch = context.get("infrahub_branch")
+        account = context.get("infrahub_account", None)
+        db = context.get("infrahub_database")
+        async with db.session(database=config.SETTINGS.database.database) as session:
+            context["infrahub_session"] = session
+
+            count = 0
+            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
+
+            filter_ids = kwargs.get("ids")
+            node_fields = fields["edges"]["node"]
+            if filter_ids:
+                objs = await NodeManager.get_many(
+                    session=session,
+                    ids=filter_ids,
+                    fields=node_fields,
+                    at=at,
+                    branch=branch,
+                    account=account,
+                    include_source=True,
+                    include_owner=True,
+                )
+                objs = objs.values()
+            elif filters:
+                objs = await NodeManager.query(
+                    session=session,
+                    schema=cls._meta.schema,
+                    filters=filters,
+                    fields=node_fields,
+                    at=at,
+                    branch=branch,
+                    account=account,
+                    include_source=True,
+                    include_owner=True,
+                )
+            else:
+                objs = await NodeManager.query(
+                    session=session,
+                    schema=cls._meta.schema,
+                    fields=node_fields,
+                    at=at,
+                    branch=branch,
+                    account=account,
+                    include_source=True,
+                    include_owner=True,
+                )
+            if not objs:
+                return []
+            objects = [{"node": await obj.to_graphql(session=session, fields=node_fields)} for obj in objs]
+            response = {"count": count, "edges": objects}
+            return response
+
 
 # -------------------------------------------------------
 # GraphQL Union Type Object
