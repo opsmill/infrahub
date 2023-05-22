@@ -69,6 +69,7 @@ class AttributeCreateQuery(AttributeQuery):
         self.params["uuid"] = str(uuid.uuid4())
         self.params["name"] = self.attr.name
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
 
     def query_add_match(self):
         query = """
@@ -82,13 +83,13 @@ class AttributeCreateQuery(AttributeQuery):
     def query_add_create(self):
         query = """
         CREATE (a:Attribute:AttributeLocal { uuid: $uuid, name: $name, type: $attribute_type })
-        CREATE (n)-[r1:%s { branch: $branch, status: "active", from: $at, to: null }]->(a)
+        CREATE (n)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(a)
         MERGE (av:AttributeValue { type: $attribute_type, value: $value })
-        CREATE (a)-[r2:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
+        CREATE (a)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
         MERGE (ip:Boolean { value: $is_protected })
         MERGE (iv:Boolean { value: $is_visible })
-        CREATE (a)-[:IS_PROTECTED { branch: $branch, status: "active", from: $at, to: null }]->(ip)
-        CREATE (a)-[:IS_VISIBLE { branch: $branch, status: "active", from: $at, to: null }]->(iv)
+        CREATE (a)-[:IS_PROTECTED { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(ip)
+        CREATE (a)-[:IS_VISIBLE { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(iv)
         """ % (
             self.attr._rel_to_node_label,
             self.attr._rel_to_value_label,
@@ -115,7 +116,7 @@ class AttributeCreateQuery(AttributeQuery):
 
     def query_add_create_source(self):
         query = """
-        CREATE (a)-[:HAS_SOURCE { branch: $branch, status: "active", from: $at, to: null }]->(src)
+        CREATE (a)-[:HAS_SOURCE { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(src)
         """
 
         self.add_to_query(query)
@@ -127,7 +128,7 @@ class AttributeCreateQuery(AttributeQuery):
 
     def query_add_create_owner(self):
         query = """
-        CREATE (a)-[:HAS_OWNER { branch: $branch, status: "active", from: $at, to: null }]->(owner)
+        CREATE (a)-[:HAS_OWNER { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(owner)
         """
 
         self.add_to_query(query)
@@ -204,6 +205,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
         self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.attr.branch.name
+        self.params["branch_level"] = self.attr.branch.hierarchy_level
         self.params["at"] = at.to_string()
         self.params["value"] = self.attr.to_db()
         self.params["attribute_type"] = self.attr.get_kind()
@@ -212,7 +214,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
             """
         MATCH (a { uuid: $attr_uuid })
         MERGE (av:AttributeValue { type: $attribute_type, value: $value })
-        CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(av)
+        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
         """
             % self.attr._rel_to_value_label
         )
@@ -247,6 +249,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.attr.branch.name
+        self.params["branch_level"] = self.attr.branch.hierarchy_level
         self.params["at"] = at.to_string()
         self.params["flag_value"] = getattr(self.attr, self.flag_name)
         self.params["flag_type"] = self.attr.get_kind()
@@ -255,7 +258,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
             """
         MATCH (a { uuid: $attr_uuid })
         MERGE (flag:Boolean { value: $flag_value })
-        CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(flag)
+        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
         """
             % self.flag_name.upper()
         )
@@ -287,6 +290,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.attr.branch.name
+        self.params["branch_level"] = self.attr.branch.hierarchy_level
         self.params["at"] = at.to_string()
         self.params["prop_name"] = self.prop_name
         self.params["prop_id"] = self.prop_id
@@ -297,7 +301,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
             """
         MATCH (a { uuid: $attr_uuid })
         MATCH (np { uuid: $prop_id })
-        CREATE (a)-[r:%s { branch: $branch, status: "active", from: $at, to: null }]->(np)
+        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(np)
         """
             % rel_name
         )

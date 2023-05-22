@@ -452,8 +452,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         query = [
             'CREATE (%s:Node:%s { uuid: "%s", kind: "%s" })' % (short_id, kind, node_id, kind),
-            'CREATE (%s)-[:IS_PART_OF { branch: "%s", status: "active", from: "%s", to: null }]->(root)'
-            % (short_id, self._branch.name, create_at.to_string()),
+            'CREATE (%s)-[:IS_PART_OF { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(root)'
+            % (short_id, self._branch.name, self._branch.hierarchy_level, create_at.to_string()),
         ]
 
         for attr_name in self._schema.attribute_names:
@@ -465,24 +465,38 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 % (attr_short, attr_uuid, attr.get_kind(), attr.name)
             )
             query.append(
-                'CREATE (%s)-[:%s { branch: "%s", status: "active", from: "%s", to: null }]->(%s)'
-                % (short_id, attr._rel_to_node_label, self._branch.name, create_at.to_string(), attr_short)
+                'CREATE (%s)-[:%s { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(%s)'
+                % (
+                    short_id,
+                    attr._rel_to_node_label,
+                    self._branch.name,
+                    self._branch.hierarchy_level,
+                    create_at.to_string(),
+                    attr_short,
+                )
             )
             query.append(
                 'MERGE (%svalue:AttributeValue { type: "%s" , value: "%s" })'
                 % (attr_short, attr.get_kind(), attr.to_db())
             )
             query.append(
-                'CREATE (%s)-[:%s { branch: "%s", status: "active", from: "%s", to: null }]->(%svalue)'
-                % (attr_short, attr._rel_to_value_label, self._branch.name, create_at.to_string(), attr_short)
+                'CREATE (%s)-[:%s { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(%svalue)'
+                % (
+                    attr_short,
+                    attr._rel_to_value_label,
+                    self._branch.name,
+                    self._branch.hierarchy_level,
+                    create_at.to_string(),
+                    attr_short,
+                )
             )
             query.append(
-                'CREATE (%s)-[:IS_VISIBLE { branch: "%s", status: "active", from: "%s", to: null }]->(bool_true)'
-                % (attr_short, self._branch.name, create_at.to_string())
+                'CREATE (%s)-[:IS_VISIBLE { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(bool_true)'
+                % (attr_short, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
             )
             query.append(
-                'CREATE (%s)-[:IS_PROTECTED { branch: "%s", status: "active", from: "%s", to: null }]->(bool_false)'
-                % (attr_short, self._branch.name, create_at.to_string())
+                'CREATE (%s)-[:IS_PROTECTED { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(bool_false)'
+                % (attr_short, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
             )
 
         for rel_name in self._schema.relationship_names:
@@ -497,20 +511,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     'CREATE (%s:Relationship { uuid: "%s", name: "%s"})' % (rel_short, rel_uuid, rel.schema.identifier)
                 )
                 query.append(
-                    'CREATE (%s)-[:IS_RELATED { branch: "%s", status: "active", from: "%s", to: null }]->(%s)'
-                    % (short_id, self._branch.name, create_at.to_string(), rel_short)
+                    'CREATE (%s)-[:IS_RELATED { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(%s)'
+                    % (short_id, self._branch.name, self._branch.hierarchy_level, create_at.to_string(), rel_short)
                 )
                 query.append(
-                    'CREATE (%s)-[:IS_RELATED { branch: "%s", status: "active", from: "%s", to: null }]->(%s)'
-                    % (short_peer, self._branch.name, create_at.to_string(), rel_short)
+                    'CREATE (%s)-[:IS_RELATED { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(%s)'
+                    % (short_peer, self._branch.name, self._branch.hierarchy_level, create_at.to_string(), rel_short)
                 )
                 query.append(
-                    'CREATE (%s)-[:IS_VISIBLE { branch: "%s", status: "active", from: "%s", to: null }]->(bool_true)'
-                    % (short_id, self._branch.name, create_at.to_string())
+                    'CREATE (%s)-[:IS_VISIBLE { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(bool_true)'
+                    % (short_id, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
                 )
                 query.append(
-                    'CREATE (%s)-[:IS_PROTECTED { branch: "%s", status: "active", from: "%s", to: null }]->(bool_false)'
-                    % (short_id, self._branch.name, create_at.to_string())
+                    'CREATE (%s)-[:IS_PROTECTED { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(bool_false)'
+                    % (short_id, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
                 )
 
         self.id = node_id

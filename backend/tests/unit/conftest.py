@@ -96,21 +96,22 @@ async def simple_dataset_01(session: AsyncSession, empty_database) -> dict:
     }
 
     query = """
-    MATCH (b:Branch { name: $branch })
+    MATCH (root:Root)
+
     CREATE (c:Car { uuid: "5ffa45d4" })
-    CREATE (c)-[r:IS_PART_OF {from: $time1}]->(b)
+    CREATE (c)-[r:IS_PART_OF {branch: $branch, branch_level: 1, from: $time1}]->(root)
 
     CREATE (at1:Attribute:AttributeLocal { uuid: "ee04c93a", type: "Str", name: "name"})
     CREATE (at2:Attribute:AttributeLocal { uuid: "924786c3", type: "Int", name: "nbr_seats"})
-    CREATE (c)-[:HAS_ATTRIBUTE {branch: $branch, from: $time1}]->(at1)
-    CREATE (c)-[:HAS_ATTRIBUTE {branch: $branch, from: $time1}]->(at2)
+    CREATE (c)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, from: $time1}]->(at1)
+    CREATE (c)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, from: $time1}]->(at2)
 
     CREATE (av11:AttributeValue { uuid: "f6b745c3", value: "accord"})
     CREATE (av12:AttributeValue { uuid: "36100ef6", value: "volt"})
     CREATE (av21:AttributeValue { uuid: "d8d49788",value: 5})
-    CREATE (at1)-[:HAS_VALUE {branch: $branch, from: $time1, to: $time2}]->(av11)
-    CREATE (at1)-[:HAS_VALUE {branch: $branch, from: $time2 }]->(av12)
-    CREATE (at2)-[:HAS_VALUE {branch: $branch, from: $time1 }]->(av21)
+    CREATE (at1)-[:HAS_VALUE {branch: $branch, branch_level: 1, from: $time1, to: $time2}]->(av11)
+    CREATE (at1)-[:HAS_VALUE {branch: $branch, branch_level: 1, from: $time2 }]->(av12)
+    CREATE (at2)-[:HAS_VALUE {branch: $branch, branch_level: 1, from: $time1 }]->(av21)
 
     RETURN c, at1, at2
     """
@@ -185,7 +186,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     MATCH (root:Root)
 
     CREATE (c1:Node:Car { uuid: "c1", kind: "Car" })
-    CREATE (c1)-[:IS_PART_OF { branch: $main_branch, from: $time_m60, status: "active" }]->(root)
+    CREATE (c1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active" }]->(root)
 
     CREATE (bool_true:Boolean { value: true })
     CREATE (bool_false:Boolean { value: false })
@@ -198,137 +199,137 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats"})
     CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric"})
     CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color"})
-    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(c1at1)
-    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(c1at2)
-    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(c1at3)
-    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(c1at4)
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at1)
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at2)
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at3)
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at4)
 
     CREATE (c1av11:AttributeValue { value: "accord"})
     CREATE (c1av12:AttributeValue { value: "volt"})
     CREATE (c1av21:AttributeValue { value: 5})
     CREATE (c1av22:AttributeValue { value: 4})
 
-    CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60, to: $time_m20}]->(c1av11)
-    CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c1av12)
-    CREATE (c1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m20}]->(c1av11)
+    CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c1av12)
+    CREATE (c1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (c1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c1at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(c1av21)
-    CREATE (c1at2)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m20 }]->(c1av22)
-    CREATE (c1at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m20 }]->(bool_true)
-    CREATE (c1at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (c1at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(c1av21)
+    CREATE (c1at2)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(c1av22)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $main_branch,branch_level: 1,  status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (c1at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60}]->(atvt)
-    CREATE (c1at3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atvt)
+    CREATE (c1at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (c1at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c1at4)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60}]->(atv44)
-    CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (c1at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atv44)
+    CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c2:Node:Car { uuid: "c2", kind: "Car" })
-    CREATE (c2)-[:IS_PART_OF {branch: $main_branch, from: $time_m20, status: "active"}]->(root)
+    CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
     CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
     CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats"})
     CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric"})
     CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color"})
-    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m20}]->(c2at1)
-    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m20}]->(c2at2)
-    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m20}]->(c2at3)
-    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m20}]->(c2at4)
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at1)
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at2)
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at3)
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at4)
 
     CREATE (c2av11:AttributeValue { value: "odyssey" })
     CREATE (c2av21:AttributeValue { value: 8 })
 
-    CREATE (c2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c2av11)
-    CREATE (c2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (c2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av11)
+    CREATE (c2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c2at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(c2av21)
-    CREATE (c2at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (c2at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av21)
+    CREATE (c2at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c2at3)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(atvf)
-    CREATE (c2at3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (c2at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atvf)
+    CREATE (c2at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c2at4)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m20 }]->(atv44)
-    CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (c2at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atv44)
+    CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c3:Node:Car { uuid: "c3", kind: "Car" })
-    CREATE (c3)-[:IS_PART_OF {branch: $branch1, from: $time_m40, status: "active"}]->(root)
+    CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
     CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
     CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats"})
     CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric"})
     CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color"})
-    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, status: "active", from: $time_m40}]->(c3at1)
-    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, status: "active", from: $time_m40}]->(c3at2)
-    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, status: "active", from: $time_m40}]->(c3at3)
-    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, status: "active", from: $time_m40}]->(c3at4)
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at1)
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at2)
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at3)
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at4)
 
     CREATE (c3av11:AttributeValue { uuid: "c3av11", value: "volt"})
     CREATE (c3av21:AttributeValue { uuid: "c3av21", value: 4})
 
-    CREATE (c3at1)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av11)
-    CREATE (c3at1)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at1)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bool_true)
+    CREATE (c3at1)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(c3av11)
+    CREATE (c3at1)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (c3at2)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(c3av21)
-    CREATE (c3at2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at2)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bool_true)
+    CREATE (c3at2)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(c3av21)
+    CREATE (c3at2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (c3at3)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(atvf)
-    CREATE (c3at3)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at3)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bool_true)
+    CREATE (c3at3)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atvf)
+    CREATE (c3at3)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at3)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (c3at4)-[:HAS_VALUE {branch: $branch1, status: "active", from: $time_m40 }]->(atv44)
-    CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m40 }]->(bool_true)
+    CREATE (c3at4)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atv44)
+    CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
-    CREATE (p1)-[:IS_PART_OF { branch: $main_branch, from: $time_m60, status: "active"}]->(root)
+    CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
-    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p1at1)
+    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(p1av11)
-    CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
+    CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
-    CREATE (p2)-[:IS_PART_OF {branch: $main_branch, from: $time_m60, status: "active"}]->(root)
+    CREATE (p2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
-    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p2at1)
+    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
-    CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(p2av11)
-    CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
+    CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
-    CREATE (p3)-[:IS_PART_OF {branch: $main_branch, from: $time_m60, status: "active"}]->(root)
+    CREATE (p3)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
-    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m60}]->(p3at1)
+    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
     CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
-    CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60 }]->(p3av11)
-    CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
+    CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (r1:Relationship { uuid: "r1", name: "car__person"})
-    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
-    CREATE (c1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m60 }]->(r1)
-    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
-    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m30 }]->(bool_true)
-    CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m60 }]->(bool_true)
-    CREATE (r1)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
+    CREATE (c1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
+    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
+    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m30 }]->(bool_true)
+    CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
     CREATE (r2:Relationship { uuid: "r2", name: "car__person"})
-    CREATE (p1)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
-    CREATE (c2)-[:IS_RELATED { branch: $branch1, status: "active", from: $time_m20 }]->(r2)
-    CREATE (r2)-[:IS_PROTECTED {branch: $branch1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
+    CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
+    CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
 
     RETURN c1, c2, c3
     """
@@ -486,36 +487,36 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     // TAG 1 - BLUE
     CREATE (t1:Node:Tag { uuid: "p1", kind: "Tag" })
-    CREATE (t1)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
+    CREATE (t1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
     CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name"})
-    CREATE (t1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t1at1)
+    CREATE (t1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t1at1)
 
-    CREATE (t1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(blue)
-    CREATE (t1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (t1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (t1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(blue)
+    CREATE (t1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (t1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 2 - RED
     CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag" })
-    CREATE (t2)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
+    CREATE (t2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
     CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name"})
-    CREATE (t2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t2at1)
+    CREATE (t2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t2at1)
 
-    CREATE (t2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(red)
-    CREATE (t2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (t2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (t2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(red)
+    CREATE (t2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (t2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 3 - GREEN
     CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag" })
-    CREATE (t3)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
+    CREATE (t3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
     CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name"})
-    CREATE (t3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(t3at1)
+    CREATE (t3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t3at1)
 
-    CREATE (t3at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(green)
-    CREATE (t3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (t3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (t3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(green)
+    CREATE (t3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (t3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // PERSON 1
     //  Created in the main branch at m120
@@ -524,48 +525,48 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //  firstname value in main keeps changing every 20s using the day of the week
 
     CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
-    CREATE (p1)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
+    CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
     CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
-    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p1at1)
-    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p1at2)
+    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at1)
+    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at2)
 
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, from: $time_m100 }]->(mon)
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m100, from: $time_m80 }]->(tue)
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m80, from: $time_m60 }]->(wed)
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m60, from: $time_m40 }]->(thu)
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m40 }]->(fri)
-    CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, from: $time_m100 }]->(mon)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m100, from: $time_m80 }]->(tue)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m80, from: $time_m60 }]->(wed)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, from: $time_m40 }]->(thu)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m40 }]->(fri)
+    CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
-    CREATE (p1at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(jan)
-    CREATE (p1at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p1at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (p1at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(jan)
+    CREATE (p1at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p1at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person1 (p1) and Tag Blue (t1) >> relp1t1
     CREATE (relp1t1:Relationship { uuid: "relp1t1", name: "person__tag"})
-    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t1)
-    CREATE (t1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t1)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t1)
+    CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t1)
 
-    CREATE (relp1t1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp1t1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (relp1t1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp1t1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person1 (p1) and Tag Green (t3) >> relp1t3
     CREATE (relp1t3:Relationship { uuid: "relp1t3", name: "person__tag"})
-    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t3)
-    CREATE (t3)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1t3)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t3)
+    CREATE (t3)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t3)
 
-    CREATE (relp1t3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp1t3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (relp1t3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp1t3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "primary_tag" between Person1 (p1) and Tag Blue (t1) >> relp1pri
     CREATE (relp1pri:Relationship { uuid: "relp1pri", name: "person_primary_tag"})
-    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1pri)
-    CREATE (t1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp1pri)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1pri)
+    CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1pri)
 
-    CREATE (relp1pri)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp1pri)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (relp1pri)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp1pri)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // PERSON 2
     //  Created in the main branch at m120
@@ -575,32 +576,32 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //  firstname value in branch2 changes again at m20 after the branch has been rebased
 
     CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
-    CREATE (p2)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
+    CREATE (p2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
     CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
-    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p2at1)
-    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p2at2)
+    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at1)
+    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at2)
 
-    CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(tue)
-    CREATE (p2at1)-[:HAS_VALUE {branch: $branch2, status: "active", from: $time_m80, to: $time_m20 }]->(wed)
-    CREATE (p2at1)-[:HAS_VALUE {branch: $branch2, status: "active", from: $time_m20 }]->(thu)
+    CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(tue)
+    CREATE (p2at1)-[:HAS_VALUE {branch: $branch2, branch_level: 2, status: "active", from: $time_m80, to: $time_m20 }]->(wed)
+    CREATE (p2at1)-[:HAS_VALUE {branch: $branch2, branch_level: 2, status: "active", from: $time_m20 }]->(thu)
 
-    CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
-    CREATE (p2at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(feb)
-    CREATE (p2at2)-[:HAS_VALUE {branch: $branch2, status: "active", from: $time_m80 }]->(mar)
-    CREATE (p2at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p2at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (p2at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(feb)
+    CREATE (p2at2)-[:HAS_VALUE {branch: $branch2, branch_level: 2, status: "active", from: $time_m80 }]->(mar)
+    CREATE (p2at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p2at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person2 (p2) and Tag Green (t3) >> relp2t3
     CREATE (relp2t3:Relationship { uuid: "relp2t3", name: "person__tag"})
-    CREATE (p2)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp2t3)
-    CREATE (t3)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp2t3)
+    CREATE (p2)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp2t3)
+    CREATE (t3)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp2t3)
 
-    CREATE (relp2t3)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp2t3)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (relp2t3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp2t3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // PERSON 3
     //  Created in the main branch at m120
@@ -608,28 +609,28 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //    primary Tag: Red
 
     CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
-    CREATE (p3)-[:IS_PART_OF { branch: $main_branch, from: $time_m120, status: "active" }]->(root)
+    CREATE (p3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
     CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
-    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p3at1)
-    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, status: "active", from: $time_m120}]->(p3at2)
+    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at1)
+    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at2)
 
-    CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120, to: $time_m20}]->(tue)
-    CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(tue)
+    CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
-    CREATE (p3at2)-[:HAS_VALUE {branch: $main_branch, status: "active", from: $time_m120 }]->(feb)
-    CREATE (p3at2)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p3at2)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (p3at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(feb)
+    CREATE (p3at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (p3at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "primary_tag" between Person3 (p3) and Tag Red (t2) >> relp3pri
     CREATE (relp3pri:Relationship { uuid: "relp3pri", name: "person_primary_tag"})
-    CREATE (p1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp3pri)
-    CREATE (t1)-[:IS_RELATED { branch: $main_branch, status: "active", from: $time_m120 }]->(relp3pri)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp3pri)
+    CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp3pri)
 
-    CREATE (relp3pri)-[:IS_PROTECTED {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp3pri)-[:IS_VISIBLE {branch: $main_branch, status: "active", from: $time_m120 }]->(bool_true)
+    CREATE (relp3pri)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
+    CREATE (relp3pri)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     RETURN t1, t2, t3, p1, p2, p3
     """
