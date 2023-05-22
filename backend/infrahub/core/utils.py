@@ -40,7 +40,7 @@ async def add_relationship(
         "dst_node_id": element_id_to_id(dst_node_id),
         "at": at.to_string(),
         "branch": branch_name or config.SETTINGS.main.default_branch,
-        "branch": branch_level or 1,
+        "branch_level": branch_level or 1,
         "status": status.value,
     }
 
