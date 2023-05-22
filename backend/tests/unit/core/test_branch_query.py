@@ -31,7 +31,7 @@ async def test_DiffRelationshipQuery(session, base_dataset_02):
 
 
 async def test_DiffRelationshipPropertyQuery(session, base_dataset_02):
-    branch1 = await get_branch(get_branch="branch1", session=session)
+    branch1 = await get_branch(branch="branch1", session=session)
 
     # Execute the query with default timestamp from the creation of the branch to now
     # 4 changes are expected
