@@ -165,7 +165,7 @@ class Registry:
 
         raise BranchNotFound(identifier=branch)
 
-    async def get_branch(self, branch: Optional[Union[Branch, str]], session: Optional[AsyncSession]) -> Branch:
+    async def get_branch(self, session: Optional[AsyncSession], branch: Optional[Union[Branch, str]] = None) -> Branch:
         """Return a branch object based on its name.
 
         First the function will check in the registry
