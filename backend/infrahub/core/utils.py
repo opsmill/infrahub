@@ -18,6 +18,7 @@ async def add_relationship(
     rel_type: str,
     session: AsyncSession,
     branch_name: Optional[str] = None,
+    branch_level: Optional[int] = None,
     at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
 ):
@@ -26,7 +27,7 @@ async def add_relationship(
     MATCH (s) WHERE ID(s) = $src_node_id
     MATCH (d) WHERE ID(d) = $dst_node_id
     WITH s,d
-    CREATE (s)-[r:%s { branch: $branch, from: $at, to: null, status: $status }]->(d)
+    CREATE (s)-[r:%s { branch: $branch, branch_level: $branch_level, from: $at, to: null, status: $status }]->(d)
     RETURN ID(r)
     """
         % str(rel_type).upper()
@@ -39,6 +40,7 @@ async def add_relationship(
         "dst_node_id": element_id_to_id(dst_node_id),
         "at": at.to_string(),
         "branch": branch_name or config.SETTINGS.main.default_branch,
+        "branch_level": branch_level or 1,
         "status": status.value,
     }
 
@@ -119,7 +121,7 @@ async def get_paths_between_nodes(
         "destination_id": element_id_to_id(destination_id),
     }
 
-    return await execute_read_query_async(session=session, query=query, params=params)
+    return await execute_read_query_async(session=session, query=query, params=params, name="get_paths_between_nodes")
 
 
 async def count_relationships(session: AsyncSession) -> int:

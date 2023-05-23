@@ -108,7 +108,7 @@ class Registry:
     def set_graphql_type(
         self,
         name: str,
-        graphql_type: Union[Type[InfrahubObject], Type[graphene.Interface]],
+        graphql_type: Union[Type[InfrahubObject], Type[graphene.Interface], Type[graphene.ObjectType]],
         branch: Optional[str] = None,
     ) -> bool:
         return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
@@ -165,7 +165,7 @@ class Registry:
 
         raise BranchNotFound(identifier=branch)
 
-    async def get_branch(self, branch: Optional[Union[Branch, str]], session: Optional[AsyncSession]) -> Branch:
+    async def get_branch(self, session: Optional[AsyncSession], branch: Optional[Union[Branch, str]] = None) -> Branch:
         """Return a branch object based on its name.
 
         First the function will check in the registry

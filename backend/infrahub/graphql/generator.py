@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import graphene
+from graphql import GraphQLResolveInfo
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
@@ -12,7 +13,7 @@ from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.types import ATTRIBUTE_TYPES
 
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
-from .schema import default_list_resolver
+from .schema import default_list_resolver, default_paginated_list_resolver
 from .types import (
     InfrahubInterface,
     InfrahubObject,
@@ -107,6 +108,90 @@ async def default_resolver(*args, **kwargs):
         return await objs[0].to_graphql(session=new_session, fields=fields)
 
 
+async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Optional[Union[Dict, List]]:
+    # Extract the InfraHub schema by inspecting the GQL Schema
+    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch = info.context.get("infrahub_branch")
+    db = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+
+    # Extract the schema of the node on the other end of the relationship from the GQL Schema
+    node_rel = node_schema.get_relationship(info.field_name)
+
+    # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    filters = {
+        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+    }
+
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        objs = await NodeManager.query_peers(
+            session=new_session,
+            id=parent["id"],
+            schema=node_rel,
+            filters=filters,
+            fields=fields,
+            at=at,
+            branch=branch,
+        )
+
+        if node_rel.cardinality == "many":
+            return [await obj.to_graphql(session=new_session, fields=fields) for obj in objs]
+
+        # If cardinality is one
+        if not objs:
+            return None
+
+        return await objs[0].to_graphql(session=new_session, fields=fields)
+
+
+async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+    """Resolver for relationships of cardinality=one for Edged responses
+
+    This resolver is used for paginated responses and as such we redefined the requested
+    fields by only reusing information below the 'node' key.
+    """
+    # Extract the InfraHub schema by inspecting the GQL Schema
+    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch = info.context.get("infrahub_branch")
+    db = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+    node_fields = fields["node"]
+    # Extract the schema of the node on the other end of the relationship from the GQL Schema
+    node_rel = node_schema.get_relationship(info.field_name)
+
+    # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    filters = {
+        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+    }
+    response: Dict[str, Any] = {"node": None}
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        objs = await NodeManager.query_peers(
+            session=new_session,
+            id=parent["id"],
+            schema=node_rel,
+            filters=filters,
+            fields=node_fields,
+            at=at,
+            branch=branch,
+        )
+
+        if not objs:
+            return response
+
+        response["node"] = await objs[0].to_graphql(session=new_session, fields=node_fields)
+        return response
+
+
 def load_attribute_types_in_registry(branch: Branch):
     for data_type in ATTRIBUTE_TYPES.values():
         registry.set_graphql_type(
@@ -148,7 +233,7 @@ async def generate_object_types(
             continue
 
         related_interface = generate_related_interface_object(
-            schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner
+            schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner, name_prefix="Related"
         )
 
         registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
@@ -208,16 +293,149 @@ async def generate_object_types(
                 peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch.name)
 
             if rel.cardinality == "one":
-                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
-                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
+                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=relationship_resolver)
+                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=relationship_resolver)
 
             elif rel.cardinality == "many":
-                node_type._meta.fields[rel.name] = graphene.Field.mounted(
-                    graphene.List(of_type=peer_type, required=True, **peer_filters)
+                node_type._meta.fields[rel.name] = graphene.Field(
+                    graphene.List(of_type=peer_type, required=True), **peer_filters, resolver=relationship_resolver
                 )
-                related_node_type._meta.fields[rel.name] = graphene.Field.mounted(
-                    graphene.List(of_type=peer_type, required=True, **peer_filters)
+                related_node_type._meta.fields[rel.name] = graphene.Field(
+                    graphene.List(of_type=peer_type, required=True), **peer_filters, resolver=relationship_resolver
                 )
+
+
+async def generate_paginated_object_types(
+    session: AsyncSession, branch: Union[Branch, str]
+):  # pylint: disable=too-many-branches,too-many-statements
+    """Generate all GraphQL objects for the schema and store them in the internal registry."""
+
+    branch = await get_branch(session=session, branch=branch)
+
+    full_schema = await registry.schema.get_full_safe(branch=branch)
+
+    group_memberships = defaultdict(list)
+
+    load_attribute_types_in_registry(branch=branch)
+
+    # Generate all GraphQL Interface & RelatedInterface Object first and store them in the registry
+    for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, GenericSchema):
+            continue
+        interface = generate_interface_object(schema=node_schema, branch=branch)
+        registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
+
+    # Define DataOwner and DataOwner
+    data_source = registry.get_graphql_type(name="DataSource", branch=branch)
+    data_owner = registry.get_graphql_type(name="DataOwner", branch=branch)
+    define_relationship_property(branch=branch, data_source=data_source, data_owner=data_owner)
+    relationship_property = registry.get_graphql_type(name="RelationshipProperty", branch=branch)
+    for data_type in ATTRIBUTE_TYPES.values():
+        gql_type = registry.get_graphql_type(name=data_type.get_graphql_type_name(), branch=branch)
+        gql_type._meta.fields["source"] = graphene.Field(data_source)
+        gql_type._meta.fields["owner"] = graphene.Field(data_owner)
+
+    # Generate all RelatedInterfaceType and store them in the registry
+    for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, GenericSchema):
+            continue
+
+        related_interface = generate_related_interface_object(
+            schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner, name_prefix="Related"
+        )
+        nested_interface = generate_related_interface_object(
+            schema=node_schema,
+            branch=branch,
+            data_source=data_source,
+            data_owner=data_owner,
+            name_prefix="NestedPaginated",
+        )
+
+        registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
+        registry.set_graphql_type(name=nested_interface._meta.name, graphql_type=nested_interface, branch=branch.name)
+
+    # Generate all GraphQL ObjectType & RelatedObjectType and store them in the registry
+    for node_name, node_schema in full_schema.items():
+        if isinstance(node_schema, NodeSchema):
+            node_type = generate_graphql_object(schema=node_schema, branch=branch)
+            related_node_type = generate_related_graphql_object(
+                schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner
+            )
+
+            node_type_edged = generate_graphql_edged_object(schema=node_schema, node=node_type)
+            nested_node_type_edged = generate_graphql_edged_object(
+                schema=node_schema, node=node_type, relation_property=relationship_property
+            )
+
+            node_type_paginated = generate_graphql_paginated_object(schema=node_schema, edge=node_type_edged)
+            node_type_nested_paginated = generate_graphql_paginated_object(
+                schema=node_schema, edge=nested_node_type_edged, nested=True
+            )
+
+            registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
+            registry.set_graphql_type(
+                name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name
+            )
+            registry.set_graphql_type(name=node_type_edged._meta.name, graphql_type=node_type_edged, branch=branch.name)
+            registry.set_graphql_type(
+                name=nested_node_type_edged._meta.name, graphql_type=nested_node_type_edged, branch=branch.name
+            )
+
+            registry.set_graphql_type(
+                name=node_type_paginated._meta.name, graphql_type=node_type_paginated, branch=branch.name
+            )
+            registry.set_graphql_type(
+                name=node_type_nested_paginated._meta.name, graphql_type=node_type_nested_paginated, branch=branch.name
+            )
+
+            # Register this model to all the groups it belongs to.
+            if node_schema.groups:
+                for group_name in node_schema.groups:
+                    group_memberships[group_name].append(f"Related{node_schema.kind}")
+
+    # Generate all the Groups with associated ObjectType / RelatedObjectType
+    for node_name, node_schema in full_schema.items():
+        if (
+            not isinstance(node_schema, GroupSchema)
+            or node_name not in group_memberships
+            or not group_memberships[node_name]
+        ):
+            continue
+        group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []), branch=branch)
+        registry.set_graphql_type(name=group._meta.name, graphql_type=group, branch=branch.name)
+
+    # Extend all types and related types with Relationships
+    for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, (NodeSchema, GenericSchema)):
+            continue
+        node_type = registry.get_graphql_type(name=node_name, branch=branch.name)
+        related_node_type = registry.get_graphql_type(name=f"NestedPaginated{node_name}", branch=branch.name)
+
+        for rel in node_schema.relationships:
+            peer_schema = await rel.get_peer_schema()
+
+            peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
+
+            if rel.cardinality == "one":
+                if isinstance(peer_schema, GroupSchema):
+                    peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
+                else:
+                    peer_type = registry.get_graphql_type(name=f"NestedEdged{peer_schema.kind}", branch=branch.name)
+                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=single_relationship_resolver)
+                related_node_type._meta.fields[rel.name] = graphene.Field(
+                    peer_type, resolver=single_relationship_resolver
+                )
+
+            elif rel.cardinality == "many":
+                if isinstance(peer_schema, GroupSchema):
+                    peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
+                else:
+                    peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
+                node_type._meta.fields[rel.name] = graphene.Field(
+                    peer_type, required=False, resolver=default_paginated_list_resolver, **peer_filters
+                )
+
+                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, required=False, **peer_filters)
 
 
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
@@ -238,6 +456,30 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
         class_attrs[node_schema.name] = graphene.List(
             of_type=node_type,
             resolver=default_list_resolver,
+            **node_filters,
+        )
+
+    return type("QueryMixin", (object,), class_attrs)
+
+
+async def generate_paginated_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
+    class_attrs = {}
+
+    full_schema = await registry.schema.get_full_safe(branch=branch)
+
+    # Generate all Graphql objectType and store them in the registry
+    await generate_object_types(session=session, branch=branch)
+
+    for node_name, node_schema in full_schema.items():
+        if not isinstance(node_schema, NodeSchema):
+            continue
+
+        node_type = registry.get_graphql_type(name=f"Paginated{node_name}", branch=branch)
+        node_filters = await generate_filters(session=session, schema=node_schema, top_level=True)
+
+        class_attrs[node_schema.name] = graphene.Field(
+            node_type,
+            resolver=default_paginated_list_resolver,
             **node_filters,
         )
 
@@ -275,7 +517,6 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
         "schema": schema,
         "name": schema.kind,
         "description": schema.description,
-        "default_resolver": default_resolver,
         "interfaces": set(),
     }
 
@@ -300,12 +541,39 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
 
-def generate_graphql_edged_object(schema: NodeSchema, node: Type[InfrahubObject]) -> Type[InfrahubObject]:
+def define_relationship_property(branch: Branch, data_source: InfrahubObject, data_owner: InfrahubObject) -> None:
+    type_name = "RelationshipProperty"
+
+    meta_attrs = {
+        "name": type_name,
+        "description": "Defines properties for relationships",
+    }
+
+    main_attrs = {
+        "is_visible": graphene.Boolean(required=False),
+        "is_protected": graphene.Boolean(required=False),
+        "source": graphene.Field(data_source),
+        "owner": graphene.Field(data_owner),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    relationship_property = type(type_name, (graphene.ObjectType,), main_attrs)
+
+    registry.set_graphql_type(name=type_name, graphql_type=relationship_property, branch=branch.name)
+
+
+def generate_graphql_edged_object(
+    schema: NodeSchema, node: Type[InfrahubObject], relation_property: Optional[graphene.ObjectType] = None
+) -> Type[InfrahubObject]:
     """Generate a ednged GraphQL object Type from a Infrahub NodeSchema for pagination."""
+
+    object_name = f"Edged{schema.kind}"
+    if relation_property:
+        object_name = f"NestedEdged{schema.kind}"
 
     meta_attrs = {
         "schema": schema,
-        "name": f"Edged{schema.kind}",
+        "name": object_name,
         "description": schema.description,
         "default_resolver": default_resolver,
         "interfaces": set(),
@@ -313,18 +581,28 @@ def generate_graphql_edged_object(schema: NodeSchema, node: Type[InfrahubObject]
 
     main_attrs = {
         "node": graphene.Field(node, required=False),
+        "updated_at": graphene.DateTime(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
-    return type(f"Edged{schema.kind}", (InfrahubObject,), main_attrs)
+    if relation_property:
+        main_attrs["properties"] = graphene.Field(relation_property)
+
+    return type(object_name, (InfrahubObject,), main_attrs)
 
 
-def generate_graphql_paginated_object(schema: NodeSchema, edge: Type[InfrahubObject]) -> Type[InfrahubObject]:
+def generate_graphql_paginated_object(
+    schema: NodeSchema, edge: Type[InfrahubObject], nested: bool = False
+) -> Type[InfrahubObject]:
     """Generate a paginated GraphQL object Type from a Infrahub NodeSchema."""
+
+    object_name = f"Paginated{schema.kind}"
+    if nested:
+        object_name = f"NestedPaginated{schema.kind}"
 
     meta_attrs = {
         "schema": schema,
-        "name": f"Paginated{schema.kind}",
+        "name": object_name,
         "description": schema.description,
         "default_resolver": default_resolver,
         "interfaces": set(),
@@ -333,11 +611,11 @@ def generate_graphql_paginated_object(schema: NodeSchema, edge: Type[InfrahubObj
     main_attrs = {
         "count": graphene.Int(required=False),
         "has_next": graphene.Boolean(required=False),
-        "edges": graphene.Field.mounted(graphene.List(of_type=edge, required=True)),
+        "edges": graphene.List(of_type=edge),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
-    return type(f"Paginated{schema.kind}", (InfrahubObject,), main_attrs)
+    return type(object_name, (InfrahubObject,), main_attrs)
 
 
 def generate_union_object(
@@ -387,10 +665,10 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
 
 
 def generate_related_interface_object(
-    schema: GenericSchema, branch: Branch, data_source: InfrahubObject, data_owner: InfrahubObject
+    schema: GenericSchema, branch: Branch, data_source: InfrahubObject, data_owner: InfrahubObject, name_prefix: str
 ) -> Type[graphene.Interface]:
     meta_attrs = {
-        "name": f"Related{schema.kind}",
+        "name": f"{name_prefix}{schema.kind}",
         "description": schema.description,
     }
 
@@ -413,7 +691,7 @@ def generate_related_interface_object(
 
     main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
-    return type(f"Related{schema.kind}", (InfrahubInterface,), main_attrs)
+    return type(f"{name_prefix}{schema.kind}", (InfrahubInterface,), main_attrs)
 
 
 def generate_related_graphql_object(
@@ -425,7 +703,6 @@ def generate_related_graphql_object(
         "schema": schema,
         "name": f"Related{schema.kind}",
         "description": schema.description,
-        "default_resolver": default_resolver,
         "interfaces": {RelatedNodeInterface},
     }
 
@@ -616,7 +893,7 @@ async def generate_filters(
     """
 
     if top_level:
-        filters = {"ids": graphene.List(graphene.ID)}
+        filters = {"ids": graphene.List(graphene.ID), "offset": graphene.Int(), "limit": graphene.Int()}
     else:
         filters = {"id": graphene.ID()}
 

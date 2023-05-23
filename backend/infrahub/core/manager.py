@@ -113,6 +113,34 @@ class NodeManager:
         return list(response.values()) if node_ids else []
 
     @classmethod
+    async def count(
+        cls,
+        session: AsyncSession,
+        schema: NodeSchema,
+        filters: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        account=None,  # pylint: disable=unused-argument
+    ) -> int:
+        """Return the total number of nodes using a given filter
+
+        Args:
+            schema (NodeSchema): Infrahub Schema or Name of a schema present in the registry.
+            filters (dict, optional): filters provided in a dictionary
+            at (Timestamp or Str, optional): Timestamp for the query. Defaults to None.
+            branch (Branch or Str, optional): Branch to query. Defaults to None.
+
+        Returns:
+            int: The number of responses found
+        """
+
+        branch = await get_branch(branch=branch, session=session)
+        at = Timestamp(at)
+
+        query = await NodeGetListQuery.init(session=session, schema=schema, branch=branch, filters=filters, at=at)
+        return await query.count(session=session)
+
+    @classmethod
     async def query_peers(
         cls,
         id: UUID,
@@ -351,11 +379,16 @@ class SchemaBranch:
 
     async def get_graphql_schema(self, session: AsyncSession) -> GraphQLSchema:
         from infrahub.graphql import (  # pylint: disable=import-outside-toplevel
+            generate_graphql_paginated_schema,
             generate_graphql_schema,
         )
 
+        schema_creator = generate_graphql_schema
+        if config.SETTINGS.experimental_features.paginated:
+            schema_creator = generate_graphql_paginated_schema
+
         if not self._graphql_schema:
-            self._graphql_schema = await generate_graphql_schema(session=session, branch=self.name)
+            self._graphql_schema = await schema_creator(session=session, branch=self.name)
 
         return self._graphql_schema
 

@@ -110,13 +110,14 @@ class NodeCreateQuery(NodeQuery):
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["uuid"] = str(uuid.uuid4())
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()
 
         query = (
             """
         MATCH (root:Root)
         CREATE (n:Node:%s { uuid: $uuid, kind: $kind })
-        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "active", from: $at }]->(root)
+        CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(root)
         """
             % self.node.get_kind()
         )
@@ -147,11 +148,12 @@ class NodeDeleteQuery(NodeQuery):
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
 
         query = """
         MATCH (root:Root)
         MATCH (n { uuid: $uuid })
-        CREATE (n)-[r:IS_PART_OF { branch: $branch, status: "deleted", from: $at }]->(root)
+        CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(root)
         """
 
         self.params["at"] = self.at.to_string()
