@@ -1,15 +1,28 @@
-import "@testing-library/jest-dom";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import renderer from "react-test-renderer";
+
 import { BUTTON_TYPES, Button } from "../../components/button";
 
-afterEach(cleanup);
+afterAll(cleanup);
 
-describe("Button component", () => {
-  it("should create a button component", () => {
+describe("Buttons component", () => {
+  it("should create a button component and verify the snapshot", () => {
+    const component = renderer.create(
+      <Button buttonType={BUTTON_TYPES.VALIDATE}>{"That's working"}</Button>
+    );
+
+    const tree = component.toJSON();
+
+    expect(tree).toMatchSnapshot();
+  });
+
+  it("should create a button component and verify the rendered content", () => {
     render(<Button buttonType={BUTTON_TYPES.VALIDATE}>{"That's working"}</Button>);
 
-    const linkElement = screen.getByText(/That's working/i);
+    expect(screen.getByText(/That's working/i)).toBeTruthy();
 
-    expect(linkElement).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/That's working/i));
+
+    expect(screen.getByText(/That's working/i)).toBeTruthy();
   });
 });

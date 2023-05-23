@@ -3,6 +3,7 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { getFormStructureForMetaEdit } from "../../utils/formStructureForCreateEdit";
+import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 
 // const optionsLeft: SelectOption[] = [
@@ -76,7 +77,7 @@ export default function ObjectItemMetaEdit(props: Props) {
     schemaList
   );
   async function onSubmit(data: any) {
-    let updateObject: any = {
+    let updatedObject: any = {
       id: props.row.id,
     };
     if (type === "relationship") {
@@ -96,20 +97,27 @@ export default function ObjectItemMetaEdit(props: Props) {
             };
           }
         });
-        updateObject[attributeOrRelationshipName] = newRelationshipList;
+        updatedObject[attributeOrRelationshipName] = newRelationshipList;
       } else {
-        updateObject[attributeOrRelationshipName] = {
+        updatedObject[attributeOrRelationshipName] = {
           id: props.row[attributeOrRelationshipName].id,
           ...data,
         };
       }
     } else {
-      updateObject[attributeOrRelationshipName] = {
+      updatedObject[attributeOrRelationshipName] = {
         ...data,
       };
     }
+
     try {
-      await updateObjectWithId(row.id!, schema, updateObject);
+      await updateObjectWithId({
+        name: schema.name,
+        data: getStringJSONWithoutQuotes({
+          id: row.id,
+          ...updatedObject,
+        }),
+      });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
     } catch {
       console.error("Something went wrong while updating the object");

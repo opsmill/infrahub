@@ -53,7 +53,7 @@ export const DatePicker = (props: any) => {
     }
   }, [date]);
 
-  const CustomInput = forwardRef(({ onClick }: any, ref) => (
+  const CustomInput = forwardRef(({ onClick }: any, ref: any) => (
     <Input
       onClick={onClick}
       ref={ref}
