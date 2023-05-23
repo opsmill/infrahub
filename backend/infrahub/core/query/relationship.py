@@ -412,7 +412,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=too-many-statements
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
         self.order_by = []
@@ -439,8 +439,16 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         )
 
         self.add_to_query(query)
-
         where_clause = ['r1.status = "active"', 'r2.status = "active"']
+
+        clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
+
+        if clean_filters and "id" in clean_filters or "ids" in clean_filters:
+            where_clause.append("peer.uuid IN $peer_ids")
+            self.params["peer_ids"] = clean_filters.get("ids", [])
+            if clean_filters.get("id", None):
+                self.params["peer_ids"].append(clean_filters.get("id"))
+
         self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["rl", "peer", "r1", "r2"]
@@ -449,8 +457,10 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         # FILTER Results
         # ----------------------------------------------------------------------------
         filter_cnt = 0
-        clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
         for peer_filter_name, peer_filter_value in clean_filters.items():
+            if "__" not in peer_filter_name:
+                continue
+
             filter_cnt += 1
 
             filter_field_name, filter_next_name = peer_filter_name.split("__", maxsplit=1)

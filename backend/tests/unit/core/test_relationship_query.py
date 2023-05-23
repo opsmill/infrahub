@@ -212,6 +212,60 @@ async def test_query_RelationshipGetPeerQuery_with_filter(
     assert query.get_peer_ids() == sorted([car_volt_main.id, car_prius_main.id])
 
 
+async def test_query_RelationshipGetPeerQuery_with_id(
+    session: AsyncSession,
+    person_john_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_prius_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    person_schema = registry.get_schema(name="Person")
+    rel_schema = person_schema.get_relationship("cars")
+
+    query = await RelationshipGetPeerQuery.init(
+        session=session,
+        source_id=person_john_main.id,
+        schema=rel_schema,
+        filters={"cars__id": car_accord_main.id},
+        rel=Relationship,
+        branch=branch,
+        at=Timestamp(),
+    )
+
+    await query.execute(session=session)
+    assert query.get_peer_ids() == sorted([car_accord_main.id])
+
+
+async def test_query_RelationshipGetPeerQuery_with_ids(
+    session: AsyncSession,
+    person_john_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_prius_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    person_schema = registry.get_schema(name="Person")
+    rel_schema = person_schema.get_relationship("cars")
+
+    query = await RelationshipGetPeerQuery.init(
+        session=session,
+        source_id=person_john_main.id,
+        schema=rel_schema,
+        filters={"cars__ids": [car_accord_main.id, car_prius_main.id]},
+        rel=Relationship,
+        branch=branch,
+        at=Timestamp(),
+    )
+
+    await query.execute(session=session)
+    assert query.get_peer_ids() == sorted([car_prius_main.id, car_accord_main.id])
+
+
 async def test_query_RelationshipGetPeerQuery_with_sort(
     session: AsyncSession,
     person_john_main,
