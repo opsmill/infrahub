@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, U
 
 from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
+from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -196,7 +198,6 @@ class NodeListGetLocalAttributeValueQuery(Query):
 
 class NodeListGetAttributeQuery(Query):
     name: str = "node_list_get_attribute"
-    order_by: List[str] = ["a.name"]
 
     property_type_mapping = {
         "HAS_VALUE": ("r2", "av"),
@@ -222,7 +223,7 @@ class NodeListGetAttributeQuery(Query):
         self.include_source = include_source
         self.include_owner = include_owner
 
-        super().__init__(*args, **kwargs)
+        super().__init__(order_by=["a.name"], *args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["ids"] = self.ids
@@ -419,7 +420,7 @@ class NodeListGetInfoQuery(Query):
         query = (
             """
         MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n)
-        WHERE all(r IN relationships(p) WHERE ((n.uuid IN $ids) AND %s))
+        WHERE (n.uuid IN $ids) AND all(r IN relationships(p) WHERE (%s))
         """
             % branch_filter
         )
@@ -447,8 +448,6 @@ class NodeListGetInfoQuery(Query):
 class NodeGetListQuery(Query):
     name = "node_get_list"
 
-    order_by: List[str] = ["id(n)"]
-
     def __init__(self, schema: NodeSchema, filters: Optional[dict] = None, *args, **kwargs):
         self.schema = schema
         self.filters = filters
@@ -456,69 +455,128 @@ class NodeGetListQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        filter_has_single_id = False
+        self.order_by = []
 
+        final_return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
+
+        # Add the Branch filters
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        node_filter = ""
-        if self.filters and "id" in self.filters:
-            node_filter = "{ uuid: $uuid }"
-            self.params["uuid"] = self.filters["id"]
-
-        query = """
-        MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n:%s %s)
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """ % (
-            self.schema.kind,
-            node_filter,
-            branch_filter,
+        query = (
+            """
+        MATCH p = (n:Node)
+        WHERE $node_kind IN LABELS(n)
+        CALL {
+            WITH n
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %s
+            RETURN n as n1, r as r1
+            ORDER BY [r.branch_level, r.from] DESC
+            LIMIT 1
+        }
+        WITH n1 as n, r1 as rb
+        """
+            % branch_filter
         )
-
         self.add_to_query(query)
+        self.params["node_kind"] = self.schema.kind
 
+        where_clause = ['rb.status = "active"']
+
+        # Check 'id' or 'ids' is part of the filter
+        # if 'id' is present, we can skip ordering, filtering etc ..
+        # if 'ids' is present, we keep the the filtering and the ordering
+        if self.filters and "id" in self.filters:
+            filter_has_single_id = True
+            where_clause.append("n.uuid = $uuid")
+            self.params["uuid"] = self.filters["id"]
+        elif self.filters and "ids" in self.filters:
+            where_clause.append("n.uuid IN $node_ids")
+            self.params["node_ids"] = self.filters["ids"]
+
+        self.add_to_query("WHERE " + " AND ".join(where_clause))
         self.return_labels = ["n", "rb"]
 
-        if not self.filters:
+        if filter_has_single_id:
+            self.return_labels = final_return_labels
             return
 
-        # if Filters are provided
-        #  Go over all the fields, remove the first part of the query to identify the field
-        #  { "name__name": value }
+        if self.filters:
+            # if Filters are provided
+            #  Go over all the fields, remove the first part of the query to identify the field
+            #  { "name__name": value }
 
-        filter_cnt = 0
-        for field_name in self.schema.valid_input_names:
-            attr_filters = {
-                key.replace(f"{field_name}__", ""): value
-                for key, value in self.filters.items()
-                if key.startswith(f"{field_name}__")
-            }
-            if not attr_filters:
-                continue
+            filter_cnt = 0
+            for field_name in self.schema.valid_input_names:
+                attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
+                if not attr_filters:
+                    continue
 
-            filter_cnt += 1
+                filter_cnt += 1
 
-            field = self.schema.get_field(field_name)
+                field = self.schema.get_field(field_name)
 
-            field_filters, field_params = await field.get_query_filter(
-                session=session,
-                name=field_name,
-                include_match=False,
-                filters=attr_filters,
-                branch=self.branch,
-                param_prefix=f"filter{filter_cnt}",
-            )
-            self.params.update(field_params)
+                for field_attr_name, field_attr_value in attr_filters.items():
+                    subquery, subquery_params, subquery_result_name = await build_subquery_filter(
+                        session=session,
+                        field=field,
+                        name=field_name,
+                        filter_name=field_attr_name,
+                        filter_value=field_attr_value,
+                        branch_filter=branch_filter,
+                        branch=self.branch,
+                        subquery_idx=filter_cnt,
+                    )
+                    self.params.update(subquery_params)
 
-            for field_filter in field_filters:
-                query = """
-                WITH n, rb
-                MATCH p = (n)%s
-                WHERE all(r IN relationships(p) WHERE (%s))
-                """ % (
-                    field_filter,
-                    branch_filter,
+                    with_str = ", ".join(
+                        [
+                            f"{subquery_result_name} as {label}" if label == "n" else label
+                            for label in self.return_labels
+                        ]
+                    )
+
+                    self.add_to_query("CALL {")
+                    self.add_to_query(subquery)
+                    self.add_to_query("}")
+                    self.add_to_query(f"WITH {with_str}")
+
+        if self.schema.order_by:
+            order_cnt = 1
+
+            for order_by_value in self.schema.order_by:
+                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+
+                field = self.schema.get_field(order_by_field_name)
+
+                subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                    session=session,
+                    field=field,
+                    name=order_by_field_name,
+                    order_by=order_by_next_name,
+                    branch_filter=branch_filter,
+                    branch=self.branch,
+                    subquery_idx=order_cnt,
                 )
-                self.add_to_query(query)
+                self.order_by.append(subquery_result_name)
+                self.params.update(subquery_params)
+
+                with_str = ", ".join(
+                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
+                )
+
+                self.add_to_query("CALL {")
+                self.add_to_query(subquery)
+                self.add_to_query("}")
+
+                order_cnt += 1
+
+        else:
+            self.order_by.append("n.uuid")
+
+        self.return_labels = final_return_labels
 
     def get_node_ids(self) -> List[str]:
-        return [str(result.get("n").get("uuid")) for result in self.get_results()]
+        return [str(result.get("n.uuid")) for result in self.get_results()]

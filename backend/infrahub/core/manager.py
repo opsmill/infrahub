@@ -238,7 +238,7 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(session=session, ids=ids, branch=branch, account=account, at=at)
         await query.execute(session=session)
-        nodes_info = query.get_nodes()
+        nodes_info_by_id = {node.node_uuid: node async for node in query.get_nodes()}
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
@@ -280,8 +280,11 @@ class NodeManager:
 
         nodes = {}
 
-        async for node in nodes_info:
-            node_id = node.node_uuid
+        for node_id in ids:  # pylint: disable=too-many-nested-blocks
+            if node_id not in nodes_info_by_id:
+                continue
+
+            node = nodes_info_by_id[node_id]
             attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
             if not node.schema:

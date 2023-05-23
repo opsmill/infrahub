@@ -426,30 +426,35 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             if key.startswith(f"{self.schema.name}__")
         }
 
-        if clean_filters:
-            peer_filters, peer_params = await self.schema.get_query_filter(
-                session=session, filters=clean_filters, branch=self.branch, include_match=False
+        for peer_filter_name, peer_filter_value in clean_filters.items():
+            peer_filter, peer_params, peer_where = await self.schema.get_query_filter(
+                session=session,
+                filter_name=peer_filter_name,
+                filter_value=peer_filter_value,
+                branch=self.branch,
+                include_match=True,
             )
             self.params.update(peer_params)
 
-            for field_filter in peer_filters:
-                query = """
-                WITH %s
-                MATCH p = (n)%s
-                WHERE all(r IN relationships(p) WHERE (%s))
-                """ % (
-                    ",".join(self.return_labels),
-                    field_filter,
-                    branch_filter,
-                )
-                self.add_to_query(query)
+            peer_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
 
-                # TODO Would be good to add a function to add to return labels without duplicate
-                for item in ["rl", "peer", "r1", "r2"]:
-                    if item not in self.return_labels:
-                        self.return_labels.append(item)
+            filter_str = "-".join([str(item) for item in peer_filter])
+            where_str = " AND ".join(peer_where)
 
-        else:
+            query = """
+            WITH %s
+            MATCH p = %s
+            WHERE %s
+            """ % (
+                ",".join(self.return_labels),
+                filter_str,
+                where_str,
+            )
+            self.add_to_query(query)
+
+            self.update_return_labels(["rl", "peer", "r1", "r2"])
+
+        if not clean_filters:
             self.params["identifier"] = self.schema.identifier
             rel_type = self.schema.get_class().rel_type
 
@@ -465,7 +470,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             )
             self.add_to_query(query)
 
-            self.return_labels.extend(["rl", "peer", "r1", "r2"])
+            self.update_return_labels(["rl", "peer", "r1", "r2"])
 
         # Add Flag Properties
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -485,7 +490,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             ),
         )
         self.add_to_query(query)
-        self.return_labels.extend(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
+        self.update_return_labels(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
 
         # Add Node Properties
         # We must query them one by one otherwise the second one won't return
@@ -509,7 +514,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                 ),
             )
             self.add_to_query(query)
-            self.return_labels.extend([f"rel_{node_prop}", node_prop])
+            self.update_return_labels([f"rel_{node_prop}", node_prop])
 
     def get_peer_ids(self) -> List[str]:
         """Return a list of UUID of nodes associated with this relationship."""

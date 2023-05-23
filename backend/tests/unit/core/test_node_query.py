@@ -2,6 +2,7 @@ from neo4j import AsyncSession
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeGetListQuery,
@@ -34,6 +35,21 @@ async def test_query_NodeGetListQuery_filter_id(
     assert len(query.get_node_ids()) == 1
 
 
+async def test_query_NodeGetListQuery_filter_ids(
+    session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    person_schema = registry.schema.get(name="Person", branch=branch)
+    person_schema.order_by = ["height__value"]
+    query = await NodeGetListQuery.init(
+        session=session,
+        branch=branch,
+        schema=person_schema,
+        filters={"ids": [person_jim_main.id, person_john_main.id, person_albert_main.id]},
+    )
+    await query.execute(session=session)
+    assert query.get_node_ids() == [person_albert_main.id, person_jim_main.id, person_john_main.id]
+
+
 async def test_query_NodeGetListQuery_filter_height(
     session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
@@ -54,6 +70,22 @@ async def test_query_NodeGetListQuery_filter_boolean(
     assert len(query.get_node_ids()) == 3
 
 
+async def test_query_NodeGetListQuery_deleted_node(
+    session: AsyncSession, car_accord_main, car_camry_main: Node, car_volt_main, car_yaris_main, branch: Branch
+):
+    node_to_delete = await NodeManager.get_one(id=car_camry_main.id, session=session, branch=branch)
+    await node_to_delete.delete(session=session)
+
+    schema = registry.schema.get(name="Car", branch=branch)
+    schema.order_by = ["owner__name__value"]
+
+    query = await NodeGetListQuery.init(
+        session=session, branch=branch, schema=schema, filters={"is_electric__value": False}
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 2
+
+
 async def test_query_NodeGetListQuery_filter_relationship(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
@@ -65,10 +97,12 @@ async def test_query_NodeGetListQuery_filter_relationship(
     assert len(query.get_node_ids()) == 2
 
 
-async def test_query_NodeGetListQuery_filter_multiple(
+async def test_query_NodeGetListQuery_filter_and_sort(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
     schema = registry.schema.get(name="Car", branch=branch)
+    schema.order_by = ["owner__name__value", "is_electric__value"]
+
     query = await NodeGetListQuery.init(
         session=session,
         branch=branch,
@@ -77,6 +111,26 @@ async def test_query_NodeGetListQuery_filter_multiple(
     )
     await query.execute(session=session)
     assert len(query.get_node_ids()) == 1
+
+
+async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
+    session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    node = await NodeManager.get_one(id=car_volt_main.id, session=session, branch=branch)
+    node.is_electric.value = False
+    await node.save(session=session)
+
+    schema = registry.schema.get(name="Car", branch=branch)
+    schema.order_by = ["owner__name__value", "is_electric__value"]
+
+    query = await NodeGetListQuery.init(
+        session=session,
+        branch=branch,
+        schema=schema,
+        filters={"owner__name__value": "John", "is_electric__value": False},
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 2
 
 
 async def test_query_NodeListGetInfoQuery(

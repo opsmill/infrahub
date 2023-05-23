@@ -9,6 +9,7 @@ import ujson
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
+from infrahub.core.query import QueryElement, QueryNode, QueryRel
 from infrahub.core.query.attribute import (
     AttributeCreateQuery,
     AttributeGetQuery,
@@ -334,43 +335,41 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def get_query_filter(  # pylint: disable=unused-argument
         cls,
         name: str,
-        filters: Optional[dict] = None,
+        filter_name: str,
         branch=None,
+        filter_value: Optional[Union[str, int, bool]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
-    ) -> Tuple[List[str], Dict]:
+    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 
-        query_filters = []
-        query_params = {}
+        query_filter: List[QueryElement] = []
+        query_params: Dict[str, Any] = {}
+        query_where: List[str] = []
+
+        if filter_value and not isinstance(filter_value, (str, bool, int)):
+            raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
 
         param_prefix = param_prefix or f"attr_{name}"
 
-        if not filters:
-            return query_filters, query_params
+        if include_match:
+            query_filter.append(QueryNode(name="n"))
 
-        for attr_name, value in filters.items():
-            query_filter = ""
+        query_filter.extend(
+            [
+                QueryRel(labels=[cls._rel_to_node_label]),
+                QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}),
+                QueryRel(labels=["HAS_VALUE"]),
+                QueryNode(name="av", labels=["AttributeValue"]),
+            ]
+        )
+        query_params[f"{param_prefix}_name"] = name
 
-            if not isinstance(value, (str, bool, int)):
-                raise TypeError(f"filter {attr_name}: {value} ({type(value)}) is not supported.")
+        if filter_value is not None:
+            query_filter[-1].params = {"value": f"${param_prefix}_value"}
+            query_params[f"{param_prefix}_value"] = filter_value
 
-            if include_match:
-                query_filter += "MATCH (n)"
-
-            # TODO Validate if filters are valid
-            query_filter += "-[:%s]-(i:Attribute { name: $%s_name } )" % (
-                cls._rel_to_node_label,
-                param_prefix,
-            )
-            query_filter += "-[:HAS_VALUE]-(av { value: $%s_value })" % (param_prefix)
-
-            query_params[f"{param_prefix}_name"] = name
-            query_params[f"{param_prefix}_value"] = value
-
-            query_filters.append(query_filter)
-
-        return query_filters, query_params
+        return query_filter, query_params, query_where
 
     async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
         """Generate GraphQL Payload for this attribute."""

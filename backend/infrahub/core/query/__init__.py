@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Generator, List, Optional, TypeVar, Union
 
@@ -47,15 +48,84 @@ def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[Que
     return [value for _, value in sorted(results_dict.items(), reverse=False)]
 
 
+class QueryElementType(Enum):
+    NODE = "node"
+    RELATIONSHIP = "relationship"
+
+
+@dataclass
+class QueryElement:
+    type: QueryElementType
+    name: Optional[str] = None
+    labels: Optional[List[str]] = None
+    params: Optional[dict] = None
+
+    def __str__(self):
+        main_str = "%s%s%s" % (self.name or "", self.labels_as_str, self.params_as_str)
+        if self.type == QueryElementType.NODE:
+            return "(%s)" % main_str
+        return "[%s]" % main_str
+
+    @property
+    def labels_as_str(self) -> str:
+        if not self.labels:
+            return ""
+
+        return ":" + ":".join(self.labels)
+
+    @property
+    def params_as_str(self) -> str:
+        if not self.params:
+            return ""
+
+        params_list = []
+        for key, value in self.params.items():
+            if isinstance(value, str) and not value.startswith("$"):
+                value_str = f'"{value}"'
+            else:
+                value_str = value
+
+            params_list.append(f"{key}: {value_str}")
+
+        return " { " + ",".join(params_list) + " }"
+
+
+@dataclass
+class QueryNode(QueryElement):
+    type: QueryElementType = QueryElementType.NODE
+
+
+@dataclass
+class QueryRel(QueryElement):
+    type: QueryElementType = QueryElementType.RELATIONSHIP
+
+
 class QueryType(Enum):
     READ = "read"
     WRITE = "write"
 
 
+def cleanup_return_labels(labels):
+    """Cleanup a list of return labels by checking if there is an alias defined.
+    if an alias is defined with `value AS alias` we extract just the alias from the label
+    """
+    clean_labels = []
+    for label in labels:
+        idx = label.lower().find(" as ")
+        if idx > 0:
+            clean_idx = idx + 4
+            clean_label = label[clean_idx:]
+            clean_labels.append(clean_label.strip())
+        else:
+            clean_labels.append(label)
+
+    return clean_labels
+
+
 class QueryResult:
     def __init__(self, data: List[Union[Node, Relationship]], labels: List[str]):
         self.data = data
-        self.labels = labels
+        self.labels = cleanup_return_labels(labels)
         self.branch_score: int = 0
         self.time_score: int = 0
         self.permission_score = PermissionLevel.DEFAULT
@@ -142,14 +212,13 @@ class Query(ABC):
     raise_error_if_empty: bool = False
     insert_return: bool = True
 
-    order_by: Optional[List[str]] = None
-
     def __init__(
         self,
         branch: Optional[Branch] = None,
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        order_by: Optional[List[str]] = None,
     ):
         if branch:
             self.branch = branch
@@ -162,6 +231,7 @@ class Query(ABC):
 
         self.limit = limit
         self.offset = offset
+        self.order_by = order_by
 
         # Initialize internal variables
         self.params: dict = {}
@@ -171,6 +241,14 @@ class Query(ABC):
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
+
+    def update_return_labels(self, value: Union[str, List[str]]) -> None:
+        if isinstance(value, str) and value not in self.return_labels:
+            self.return_labels.append(value)
+            return
+        if isinstance(value, list):
+            for item in value:
+                self.update_return_labels(value=item)
 
     @classmethod
     async def init(
@@ -219,10 +297,10 @@ class Query(ABC):
 
         query_str = "\n".join(tmp_query_lines)
 
-        if not var:
-            return query_str
+        if var:
+            return "\n" + self.get_params_for_neo4j_shell() + "\n\n" + query_str
 
-        return self.insert_variables_in_query(query=query_str, variables=self.params)
+        return query_str
 
     def get_count_query(self, var: bool = False) -> str:
         tmp_query_lines = self.query_lines.copy()
@@ -244,6 +322,23 @@ class Query(ABC):
                 query = query.replace(f"${key}", f'"{value}"')
 
         return query
+
+    def get_params_for_neo4j_shell(self):
+        """Generate string to define some parameters in Neo4j browser interface.
+        It's especially useful to later execute a query that includes some variables.
+
+        The params string must be executed on its own window in Neo4j, before executing the query.
+        """
+
+        params = []
+
+        for key, value in self.params.items():
+            if isinstance(value, (int, list)):
+                params.append(f"{key}: {str(value)}")
+            else:
+                params.append(f'{key}: "{value}"')
+
+        return ":params { " + ", ".join(params) + " }"
 
     async def execute(self, session: AsyncSession) -> SelfQuery:
         # Ensure all mandatory params have been provided

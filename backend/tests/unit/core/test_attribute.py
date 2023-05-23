@@ -141,30 +141,30 @@ async def test_node_property_getter(session, default_branch, criticality_schema)
 
 
 async def test_string_attr_query_filter(session, default_branch):
-    filters, params = String.get_query_filter(name="description")
-    assert filters == []
-    assert params == {}
-
-    filters, params = String.get_query_filter(name="description", filters={"value": "test"})
+    filters, params, matchs = String.get_query_filter(name="description", filter_name="value", filter_value="test")
     expected_response = [
-        "MATCH (n)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_description_name } )-[:HAS_VALUE]-(av { value: $attr_description_value })"
+        "(n)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute { name: $attr_description_name })",
+        "[:HAS_VALUE]",
+        "(av:AttributeValue { value: $attr_description_value })",
     ]
-    assert filters == expected_response
+    assert [str(item) for item in filters] == expected_response
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
+    assert matchs == []
 
-    filters, params = String.get_query_filter(name="description", filters={"value": "test"})
+    filters, params, matchs = String.get_query_filter(
+        name="description", filter_name="value", filter_value="test", include_match=False
+    )
     expected_response = [
-        "MATCH (n)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_description_name } )-[:HAS_VALUE]-(av { value: $attr_description_value })"
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute { name: $attr_description_name })",
+        "[:HAS_VALUE]",
+        "(av:AttributeValue { value: $attr_description_value })",
     ]
-    assert filters == expected_response
+    assert [str(item) for item in filters] == expected_response
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
-
-    filters, params = String.get_query_filter(name="description", filters={"value": "test"}, include_match=False)
-    expected_response = [
-        "-[:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_description_name } )-[:HAS_VALUE]-(av { value: $attr_description_value })"
-    ]
-    assert filters == expected_response
-    assert params == {"attr_description_name": "description", "attr_description_value": "test"}
+    assert matchs == []
 
 
 async def test_base_serialization(session, default_branch, all_attribute_types_schema):

@@ -15,6 +15,8 @@ async def test_delete_all_nodes(session: AsyncSession):
 
 def test_element_id_to_id():
     assert element_id_to_id("4:c0814fa2-df5b-4d66-ba5f-9a01817f16fb:167") == 167
+    assert element_id_to_id("198") == 198
+    assert element_id_to_id(167) == 167
 
 
 async def test_get_paths_between_nodes(session: AsyncSession, empty_database):

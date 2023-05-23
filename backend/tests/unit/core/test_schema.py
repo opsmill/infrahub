@@ -274,25 +274,74 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     person = registry.get_schema(name="Person")
     rel = person.relationships[0]
 
-    filters, params = await rel.get_query_filter(session=session)
-    assert filters == []
-    assert params == {}
-
     # Filter relationships by NAME__VALUE
-    filters, params = await rel.get_query_filter(session=session, filters={"name__value": "alice"})
+    filters, params, matchs = await rel.get_query_filter(
+        session=session, filter_name="name__value", filter_value="alice"
+    )
     expected_response = [
-        "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(peer:Node)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $attr_name_name } )-[:HAS_VALUE]-(av { value: $attr_name_value })"
+        "(n)",
+        "[r1:IS_RELATED]",
+        "(rl:Relationship { name: $rel_cars_rel_name })",
+        "[r2:IS_RELATED]",
+        "(peer:Node)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute { name: $attr_name_name })",
+        "[:HAS_VALUE]",
+        "(av:AttributeValue { value: $attr_name_value })",
     ]
-    assert filters == expected_response
+    assert [str(item) for item in filters] == expected_response
     assert params == {"attr_name_name": "name", "attr_name_value": "alice", "rel_cars_rel_name": "car__person"}
+    assert matchs == []
 
     # Filter relationship by ID
-    filters, params = await rel.get_query_filter(session=session, name="bob", filters={"id": "XXXX-YYYY"})
+    filters, params, matchs = await rel.get_query_filter(
+        session=session, name="bob", filter_name="id", filter_value="XXXX-YYYY"
+    )
     expected_response = [
-        "MATCH (n)-[r1:IS_RELATED]-(rl:Relationship { name: $rel_cars_rel_name })-[r2:IS_RELATED]-(peer:Node { uuid: $rel_cars_peer_id })"
+        "(n)",
+        "[r1:IS_RELATED]",
+        "(rl:Relationship { name: $rel_cars_rel_name })",
+        "[r2:IS_RELATED]",
+        "(peer:Node { uuid: $rel_cars_peer_id })",
     ]
-    assert filters == expected_response
+    assert [str(item) for item in filters] == expected_response
     assert params == {"rel_cars_peer_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
+    assert matchs == []
+
+
+async def test_rel_schema_query_filter_no_value(session, default_branch, car_person_schema):
+    person = registry.get_schema(name="Person")
+    rel = person.relationships[0]
+
+    # Filter relationships by NAME__VALUE
+    filters, params, matchs = await rel.get_query_filter(session=session, filter_name="name__value")
+    expected_response = [
+        "(n)",
+        "[r1:IS_RELATED]",
+        "(rl:Relationship { name: $rel_cars_rel_name })",
+        "[r2:IS_RELATED]",
+        "(peer:Node)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute { name: $attr_name_name })",
+        "[:HAS_VALUE]",
+        "(av:AttributeValue)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_name_name": "name", "rel_cars_rel_name": "car__person"}
+    assert matchs == []
+
+    # Filter relationship by ID
+    filters, params, matchs = await rel.get_query_filter(session=session, name="bob", filter_name="id")
+    expected_response = [
+        "(n)",
+        "[r1:IS_RELATED]",
+        "(rl:Relationship { name: $rel_cars_rel_name })",
+        "[r2:IS_RELATED]",
+        "(peer:Node)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"rel_cars_rel_name": "car__person"}
+    assert matchs == []
 
 
 def test_core_models():

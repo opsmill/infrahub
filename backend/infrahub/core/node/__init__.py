@@ -347,8 +347,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await query.execute(session=session)
         result = query.get_result()
 
-        if result.get("rb").get("branch") == self._branch.name:
-            await update_relationships_to([result.get("rb").element_id], to=delete_at, session=session)
+        if result.get("rb.branch") == self._branch.name:
+            await update_relationships_to([result.get("rb_id")], to=delete_at, session=session)
 
         query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
         await query.execute(session=session)

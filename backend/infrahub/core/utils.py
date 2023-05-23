@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from inspect import isclass
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
@@ -148,8 +148,21 @@ async def delete_all_nodes(session: AsyncSession):
     return await execute_write_query_async(session=session, query=query, params=params)
 
 
-def element_id_to_id(element_id: str) -> int:
+def element_id_to_id(element_id: Union[str, int]) -> int:
+    if isinstance(element_id, int):
+        return element_id
+
+    if isinstance(element_id, str) and ":" not in element_id:
+        return int(element_id)
+
     return int(element_id.split(":")[2])
+
+
+def extract_field_filters(field_name: str, filters: dict) -> dict:
+    """Extract the filters for a given field (attribute or relationship) from a filters dict."""
+    return {
+        key.replace(f"{field_name}__", ""): value for key, value in filters.items() if key.startswith(f"{field_name}__")
+    }
 
 
 # --------------------------------------------------------------------------------

@@ -220,7 +220,6 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 
 class DiffNodePropertiesByIDSRangeQuery(Query):
     name: str = "diff_node_properties_range_ids"
-    order_by: List[str] = ["a.name"]
 
     def __init__(
         self,
@@ -236,7 +235,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
         self.time_from = Timestamp(diff_from)
         self.time_to = Timestamp(diff_to)
 
-        super().__init__(*args, **kwargs)
+        super().__init__(order_by=["a.name"], *args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["ids"] = self.ids

@@ -43,45 +43,19 @@ class GetListMixin:
         async with db.session(database=config.SETTINGS.database.database) as session:
             context["infrahub_session"] = session
 
-            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
+            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
 
-            filter_ids = kwargs.get("ids")
-
-            if filter_ids:
-                objs = await NodeManager.get_many(
-                    session=session,
-                    ids=filter_ids,
-                    fields=fields,
-                    at=at,
-                    branch=branch,
-                    account=account,
-                    include_source=True,
-                    include_owner=True,
-                )
-                objs = objs.values()
-            elif filters:
-                objs = await NodeManager.query(
-                    session=session,
-                    schema=cls._meta.schema,
-                    filters=filters,
-                    fields=fields,
-                    at=at,
-                    branch=branch,
-                    account=account,
-                    include_source=True,
-                    include_owner=True,
-                )
-            else:
-                objs = await NodeManager.query(
-                    session=session,
-                    schema=cls._meta.schema,
-                    fields=fields,
-                    at=at,
-                    branch=branch,
-                    account=account,
-                    include_source=True,
-                    include_owner=True,
-                )
+            objs = await NodeManager.query(
+                session=session,
+                schema=cls._meta.schema,
+                filters=filters or None,
+                fields=fields,
+                at=at,
+                branch=branch,
+                account=account,
+                include_source=True,
+                include_owner=True,
+            )
 
             if not objs:
                 return []
@@ -100,7 +74,7 @@ class GetListMixin:
             response: Dict[str, Any] = {"edges": []}
             offset = kwargs.pop("offset", None)
             limit = kwargs.pop("limit", None)
-            filters = {key: value for key, value in kwargs.items() if "__" in key and value}
+            filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
             if "count" in fields:
                 response["count"] = await NodeManager.count(
                     session=session,
@@ -109,50 +83,22 @@ class GetListMixin:
                     at=at,
                     branch=branch,
                 )
-            filter_ids = kwargs.get("ids")
             node_fields = fields["edges"]["node"]
 
-            if filter_ids:
-                objs = await NodeManager.get_many(
-                    session=session,
-                    ids=filter_ids,
-                    fields=node_fields,
-                    at=at,
-                    branch=branch,
-                    account=account,
-                    include_source=True,
-                    include_owner=True,
-                )
-                objs = objs.values()
-                # Temporary counter until limit is in place in the get_many method
-                response["count"] = len(objs)
-            elif filters:
-                objs = await NodeManager.query(
-                    session=session,
-                    schema=cls._meta.schema,
-                    filters=filters,
-                    fields=node_fields,
-                    at=at,
-                    branch=branch,
-                    limit=limit,
-                    offset=offset,
-                    account=account,
-                    include_source=True,
-                    include_owner=True,
-                )
-            else:
-                objs = await NodeManager.query(
-                    session=session,
-                    schema=cls._meta.schema,
-                    fields=node_fields,
-                    at=at,
-                    branch=branch,
-                    limit=limit,
-                    offset=offset,
-                    account=account,
-                    include_source=True,
-                    include_owner=True,
-                )
+            objs = await NodeManager.query(
+                session=session,
+                schema=cls._meta.schema,
+                filters=filters or None,
+                fields=node_fields,
+                at=at,
+                branch=branch,
+                limit=limit,
+                offset=offset,
+                account=account,
+                include_source=True,
+                include_owner=True,
+            )
+
             if objs:
                 objects = [{"node": await obj.to_graphql(session=session, fields=node_fields)} for obj in objs]
                 response["edges"] = objects
