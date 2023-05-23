@@ -17,6 +17,7 @@ async def build_subquery_filter(
     filter_name: str,
     filter_value: Any,
     branch_filter: str,
+    node_alias: str = "n",
     name: Optional[str] = None,
     branch: Branch = None,
     subquery_idx: int = 1,
@@ -27,7 +28,7 @@ async def build_subquery_filter(
     field_filter, field_params, field_where = await field.get_query_filter(
         session=session,
         name=name,
-        include_match=True,
+        include_match=False,
         filter_name=filter_name,
         filter_value=filter_value,
         branch=branch,
@@ -48,15 +49,14 @@ async def build_subquery_filter(
         rel_names.append(rel_name)
 
     field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
-    filter_str = "-".join([str(item) for item in field_filter])
+    filter_str = f"({node_alias})-" + "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
     order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ]"
-
     query = f"""
-    WITH n
+    WITH {node_alias}
     MATCH p = {filter_str}
     WHERE {where_str}
-    RETURN n as {prefix}
+    RETURN {node_alias} as {prefix}
     ORDER BY {order_str} DESC
     LIMIT 1
     """
