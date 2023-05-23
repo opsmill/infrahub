@@ -9,7 +9,9 @@ from uuid import UUID, uuid4
 from neo4j.graph import Relationship as Neo4jRelationship
 
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.utils import build_subquery_filter
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.utils import extract_field_filters
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -414,104 +416,95 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        peer_schema = await self.schema.get_peer_schema()
+
         self.params["source_id"] = self.source_id
+        self.params["rel_identifier"] = self.schema.identifier
+        self.params["peer_kind"] = peer_schema.kind
 
-        query = "MATCH (n { uuid: $source_id })"
-        self.add_to_query(query)
-        self.return_labels = ["n"]
-
-        clean_filters = {
-            key.replace(f"{self.schema.name}__", ""): value
-            for key, value in self.filters.items()
-            if key.startswith(f"{self.schema.name}__")
+        query = (
+            """
+        MATCH (rl { name: $rel_identifier })
+        CALL {
+            WITH rl
+            MATCH p = (source:Node { uuid: $source_id })-[f0r1:IS_RELATED]-(rl)-[f0r2:IS_RELATED]-(peer:Node)
+            WHERE $peer_kind IN LABELS(peer) AND peer.uuid <> $source_id AND all(r IN relationships(p) WHERE (%s))
+            RETURN peer as peer, rl as rl1, f0r1 as r1, f0r2 as r2
+            ORDER BY [f0r1.branch_level, f0r2.branch_level, f0r2.from,  f0r2.from]
+            LIMIT 1
         }
-
-        for peer_filter_name, peer_filter_value in clean_filters.items():
-            peer_filter, peer_params, peer_where = await self.schema.get_query_filter(
-                session=session,
-                filter_name=peer_filter_name,
-                filter_value=peer_filter_value,
-                branch=self.branch,
-                include_match=True,
-            )
-            self.params.update(peer_params)
-
-            peer_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
-
-            filter_str = "-".join([str(item) for item in peer_filter])
-            where_str = " AND ".join(peer_where)
-
-            query = """
-            WITH %s
-            MATCH p = %s
-            WHERE %s
-            """ % (
-                ",".join(self.return_labels),
-                filter_str,
-                where_str,
-            )
-            self.add_to_query(query)
-
-            self.update_return_labels(["rl", "peer", "r1", "r2"])
-
-        if not clean_filters:
-            self.params["identifier"] = self.schema.identifier
-            rel_type = self.schema.get_class().rel_type
-
-            query = """
-            WITH %s
-            MATCH p = (n)-[r1:%s]->(rl:Relationship { name: $identifier })<-[r2:%s]-(peer:Node)
-            WHERE all(r IN relationships(p) WHERE (%s))
-            """ % (
-                ",".join(self.return_labels),
-                rel_type,
-                rel_type,
-                branch_filter,
-            )
-            self.add_to_query(query)
-
-            self.update_return_labels(["rl", "peer", "r1", "r2"])
-
-        # Add Flag Properties
-        rels_filter, rels_params = self.branch.get_query_filter_relationships(
-            rel_labels=["rel_is_visible", "rel_is_protected"], at=self.at.to_string(), include_outside_parentheses=True
+        WITH peer, rl1 as rl, r1, r2
+        """
+            % branch_filter
         )
-        self.params.update(rels_params)
+
+        self.add_to_query(query)
+
+        where_clause = ['r1.status = "active"', 'r2.status = "active"']
+        self.add_to_query("WHERE " + " AND ".join(where_clause))
+
+        self.return_labels = ["rl", "peer", "r1", "r2"]
+
+        filter_cnt = 0
+        clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
+        for peer_filter_name, peer_filter_value in clean_filters.items():
+            filter_cnt += 1
+
+            filter_field_name, filter_next_name = peer_filter_name.split("__", maxsplit=1)
+
+            if filter_field_name not in peer_schema.valid_input_names:
+                continue
+
+            field = peer_schema.get_field(filter_field_name)
+
+            subquery, subquery_params, subquery_result_name = await build_subquery_filter(
+                session=session,
+                node_alias="peer",
+                field=field,
+                name=filter_field_name,
+                filter_name=filter_next_name,
+                filter_value=peer_filter_value,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=filter_cnt,
+            )
+            self.params.update(subquery_params)
+
+            with_str = ", ".join(
+                [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
+            )
+
+            self.add_to_query("CALL {")
+            self.add_to_query(subquery)
+            self.add_to_query("}")
+            self.add_to_query(f"WITH {with_str}")
 
         query = """
-        WITH %s
         MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
         MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
-        WHERE %s
+        WHERE all(r IN [ rel_is_visible, rel_is_protected] WHERE (%s))
         """ % (
-            ",".join(self.return_labels),
-            "\n AND ".join(
-                rels_filter,
-            ),
+            branch_filter,
         )
+
         self.add_to_query(query)
+
         self.update_return_labels(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
 
         # Add Node Properties
         # We must query them one by one otherwise the second one won't return
         for node_prop in ["source", "owner"]:
-            rels_filter, rels_params = self.branch.get_query_filter_relationships(
-                rel_labels=[f"rel_{node_prop}"], at=self.at.to_string(), include_outside_parentheses=True
-            )
-            self.params.update(rels_params)
-
             query = """
             WITH %s
             OPTIONAL MATCH (rl)-[rel_%s:HAS_%s]-(%s)
-            WHERE %s
+            WHERE all(r IN [ rel_%s ] WHERE (%s))
             """ % (
                 ",".join(self.return_labels),
                 node_prop,
                 node_prop.upper(),
                 node_prop,
-                "\n AND ".join(
-                    rels_filter,
-                ),
+                node_prop,
+                branch_filter,
             )
             self.add_to_query(query)
             self.update_return_labels([f"rel_{node_prop}", node_prop])
