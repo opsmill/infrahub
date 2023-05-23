@@ -69,6 +69,7 @@ async def build_subquery_order(
     field: Union[AttributeSchema, RelationshipSchema],
     order_by: str,
     branch_filter: str,
+    node_alias: str = "n",
     name: Optional[str] = None,
     branch: Branch = None,
     subquery_idx: int = 1,
@@ -107,12 +108,12 @@ async def build_subquery_order(
     field_filter[-1].name = "last"
 
     field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
-    filter_str = "(n)-" + "-".join([str(item) for item in field_filter])
+    filter_str = f"({node_alias})-" + "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
     order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ]"
 
     query = f"""
-    WITH n
+    WITH {node_alias}
     MATCH p = {filter_str}
     WHERE {where_str}
     RETURN last.value as {prefix}
