@@ -209,7 +209,7 @@ async def test_query_RelationshipGetPeerQuery_with_filter(
 
     await query.execute(session=session)
 
-    assert query.get_peer_ids() == [car_volt_main.id, car_prius_main.id]
+    assert query.get_peer_ids() == sorted([car_volt_main.id, car_prius_main.id])
 
 
 async def test_query_RelationshipGetPeerQuery_with_sort(
@@ -269,7 +269,7 @@ async def test_query_RelationshipGetPeerQuery_deleted_node(
     )
 
     await query.execute(session=session)
-    assert query.get_peer_ids() == [car_accord_main.id, car_prius_main.id]
+    assert query.get_peer_ids() == sorted([car_accord_main.id, car_prius_main.id])
 
 
 async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
