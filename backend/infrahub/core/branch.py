@@ -61,13 +61,14 @@ class AddNodeToBranch(Query):
         MATCH (root:Root)
         MATCH (d) WHERE ID(d) = $node_id
         WITH root,d
-        CREATE (d)-[r:IS_PART_OF { branch: $branch, from: $now, to: null, status: $status }]->(root)
+        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, to: null, status: $status }]->(root)
         RETURN ID(r)
         """
 
         self.params["node_id"] = element_id_to_id(self.node_id)
         self.params["now"] = self.at.to_string()
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["status"] = RelationshipStatus.ACTIVE.value
 
         self.add_to_query(query)
@@ -109,6 +110,7 @@ class Branch(StandardNode):
     description: str = ""
     origin_branch: str = "main"
     branched_from: Optional[str]
+    hierarchy_level: int = 2
     created_at: Optional[str]
     is_default: bool = False
     is_protected: bool = False
@@ -522,7 +524,7 @@ class Branch(StandardNode):
     async def merge_graph(self, session: AsyncSession, at: Optional[Union[str, Timestamp]] = None):
         rel_ids_to_update = []
 
-        default_branch = registry.branch[config.SETTINGS.main.default_branch]
+        default_branch: Branch = registry.branch[config.SETTINGS.main.default_branch]
 
         at = Timestamp(at)
 
@@ -559,6 +561,7 @@ class Branch(StandardNode):
                         rel_type="HAS_ATTRIBUTE",
                         at=at,
                         branch_name=default_branch.name,
+                        branch_level=default_branch.hierarchy_level,
                         session=session,
                     )
                     rel_ids_to_update.append(attr.rel_id)
@@ -569,6 +572,7 @@ class Branch(StandardNode):
                         dst_node_id=attr.db_id,
                         rel_type="HAS_ATTRIBUTE",
                         branch_name=default_branch.name,
+                        branch_level=default_branch.hierarchy_level,
                         at=at,
                         status=RelationshipStatus.DELETED,
                         session=session,
@@ -586,6 +590,7 @@ class Branch(StandardNode):
                             rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
+                            branch_level=default_branch.hierarchy_level,
                             session=session,
                         )
                         rel_ids_to_update.append(prop.rel_id)
@@ -597,6 +602,7 @@ class Branch(StandardNode):
                             rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
+                            branch_level=default_branch.hierarchy_level,
                             session=session,
                         )
                         rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
@@ -608,6 +614,7 @@ class Branch(StandardNode):
                             rel_type=prop_type,
                             at=at,
                             branch_name=default_branch.name,
+                            branch_level=default_branch.hierarchy_level,
                             status=RelationshipStatus.DELETED,
                             session=session,
                         )
@@ -632,6 +639,7 @@ class Branch(StandardNode):
                             rel_type="IS_RELATED",
                             at=at,
                             branch_name=default_branch.name,
+                            branch_level=default_branch.hierarchy_level,
                             status=rel_status,
                             session=session,
                         )
@@ -648,6 +656,7 @@ class Branch(StandardNode):
                         rel_type=prop.type,
                         at=at,
                         branch_name=default_branch.name,
+                        branch_level=default_branch.hierarchy_level,
                         session=session,
                     )
                     rel_ids_to_update.append(prop.rel_id)

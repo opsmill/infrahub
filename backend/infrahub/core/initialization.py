@@ -82,6 +82,7 @@ async def create_default_branch(session: AsyncSession) -> Branch:
         name=config.SETTINGS.main.default_branch,
         status="OPEN",
         description="Default Branch",
+        hierarchy_level=1,
         is_default=True,
         is_data_only=False,
     )
@@ -94,8 +95,11 @@ async def create_default_branch(session: AsyncSession) -> Branch:
 
 
 async def create_branch(branch_name: str, session: AsyncSession, description: str = "") -> Branch:
+    """Create a new Branch, currently all the branches are based on Main
+
+    Because all branches are based on main, the hierarchy_level of hardcoded to 2."""
     description = description or f"Branch {branch_name}"
-    branch = Branch(name=branch_name, status="OPEN", description=description, is_default=False)
+    branch = Branch(name=branch_name, status="OPEN", hierarchy_level=2, description=description, is_default=False)
 
     origin_schema = registry.schema.get_schema_branch(name=branch.origin_branch)
     new_schema = origin_schema.duplicate(name=branch.name)

@@ -165,6 +165,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["uuid"] = str(uuid4())
 
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
 
         self.params["is_protected"] = self.rel.is_protected
@@ -180,12 +181,12 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         query_create = """
         CREATE (rl:Relationship { uuid: $uuid, name: $name})
-        CREATE (s)-[r1:%s { branch: $branch, status: "active", from: $at, to: null }]->(rl)
-        CREATE (d)-[r2:%s { branch: $branch, status: "active", from: $at, to: null  }]->(rl)
+        CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(rl)
+        CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null  }]->(rl)
         MERGE (ip:Boolean { value: $is_protected })
         MERGE (iv:Boolean { value: $is_visible })
-        CREATE (rl)-[r3:IS_PROTECTED { branch: $branch, status: "active", from: $at, to: null }]->(ip)
-        CREATE (rl)-[r4:IS_VISIBLE { branch: $branch, status: "active", from: $at, to: null }]->(iv)
+        CREATE (rl)-[r3:IS_PROTECTED { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(ip)
+        CREATE (rl)-[r4:IS_VISIBLE { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(iv)
         """ % (
             self.rel_type,
             self.rel_type,
@@ -212,7 +213,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
     def query_add_node_property_create(self, name: str):
         query = """
-        CREATE (rl)-[:HAS_%s { branch: $branch, status: "active", from: $at, to: null }]->(%s)
+        CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(%s)
         """ % (
             name.upper(),
             name,
@@ -240,6 +241,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
 
         query = """
@@ -280,7 +282,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def query_add_flag_property_create(self, name: str):
         query = """
-        CREATE (rl)-[:%s { branch: $branch, status: "active", from: $at, to: null }]->(prop_%s)
+        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(prop_%s)
         """ % (
             name.upper(),
             name,
@@ -294,7 +296,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def query_add_node_property_create(self, name: str):
         query = """
-        CREATE (rl)-[:%s { branch: $branch, status: "active", from: $at, to: null }]->(prop_%s)
+        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(prop_%s)
         """ % (
             "HAS_" + name.upper(),
             name,
@@ -322,6 +324,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["name"] = self.schema.identifier
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
 
         # -----------------------------------------------------------------------
@@ -344,8 +347,8 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         # Create all the DELETE relationships, including properties
         # -----------------------------------------------------------------------
         query = """
-        CREATE (s)-[r1:%s { branch: $branch, status: "deleted", from: $at, to: null }]->(rl)
-        CREATE (d)-[r2:%s { branch: $branch, status: "deleted", from: $at, to: null  }]->(rl)
+        CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(rl)
+        CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null  }]->(rl)
         """ % (
             self.rel_type,
             self.rel_type,
@@ -355,7 +358,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
         for prop_name, prop in self.data.properties.items():
             self.add_to_query(
-                'CREATE (prop_%s)-[rel_prop_%s:%s { branch: $branch, status: "deleted", from: $at, to: null  }]->(rl)'
+                'CREATE (prop_%s)-[rel_prop_%s:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null  }]->(rl)'
                 % (prop_name, prop_name, prop_name.upper()),
             )
             self.return_labels.append(f"rel_prop_{prop_name}")
@@ -373,11 +376,12 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
         self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
 
         query = """
         MATCH (s { uuid: $source_id })-[]-(rl:Relationship {name: $name})-[]-(d { uuid: $destination_id })
-        CREATE (s)-[r1:%s { branch: $branch, status: "deleted", from: $at, to: null }]->(rl)
-        CREATE (d)-[r2:%s { branch: $branch, status: "deleted", from: $at, to: null  }]->(rl)
+        CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(rl)
+        CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null  }]->(rl)
         """ % (
             self.rel_type,
             self.rel_type,
