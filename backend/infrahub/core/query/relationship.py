@@ -421,7 +421,6 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         self.params["source_id"] = self.source_id
         self.params["rel_identifier"] = self.schema.identifier
-        self.params["peer_kind"] = peer_schema.kind
 
         query = (
             """
@@ -429,7 +428,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         CALL {
             WITH rl
             MATCH p = (source:Node { uuid: $source_id })-[f0r1:IS_RELATED]-(rl)-[f0r2:IS_RELATED]-(peer:Node)
-            WHERE $peer_kind IN LABELS(peer) AND peer.uuid <> $source_id AND all(r IN relationships(p) WHERE (%s))
+            WHERE peer.uuid <> $source_id AND all(r IN relationships(p) WHERE (%s))
             RETURN peer as peer, rl as rl1, f0r1 as r1, f0r2 as r2
             ORDER BY [f0r1.branch_level, f0r2.branch_level, f0r2.from,  f0r2.from] DESC
             LIMIT 1
@@ -519,7 +518,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         # ----------------------------------------------------------------------------
         # ORDER Results
         # ----------------------------------------------------------------------------
-        if peer_schema.order_by:
+        if hasattr(peer_schema, "order_by") and peer_schema.order_by:
             order_cnt = 1
 
             for order_by_value in peer_schema.order_by:
