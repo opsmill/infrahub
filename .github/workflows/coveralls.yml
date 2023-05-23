@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:truthy
+# yamllint disable rule:truthy rule:line-length
 name: Coveralls report
 on:
   push:
@@ -38,5 +38,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
+          carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
           parallel-finished: true
