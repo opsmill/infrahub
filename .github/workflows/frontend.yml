@@ -27,10 +27,18 @@ jobs:
       - name: "Run unit tests"
         working-directory: ./frontend
         run: "npm run test"
-        # - name: "Start backend"
-        #   run: |
-        #     cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-        #     invoke demo.dev-start demo.build demo.init demo.start
-        # - name: "Run integration tests"
-        #   working-directory: ./frontend
-        #   run: "npm run cypress:run"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: frontend-unit
+          parallel: true
+          file: frontend/coverage/lcov.info
+          # - name: "Start backend"
+          #   run: |
+          #     cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+          #     invoke demo.dev-start demo.build demo.init demo.start
+          # - name: "Run integration tests"
+          #   working-directory: ./frontend
+          #   run: "npm run cypress:run"
