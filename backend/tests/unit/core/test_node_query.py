@@ -112,6 +112,7 @@ async def test_query_NodeGetListQuery_filter_and_sort(
     await query.execute(session=session)
     assert len(query.get_node_ids()) == 1
 
+
 async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):

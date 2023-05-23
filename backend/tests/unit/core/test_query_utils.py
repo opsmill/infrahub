@@ -25,7 +25,7 @@ async def test_build_subquery_filter_attribute_text(
     MATCH p = (n)-[f1r1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[f1r2:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
     WHERE all(r IN relationships(p) WHERE (PLACEHOLDER))
     RETURN n as filter1
-    ORDER BY [ f1r1.from, f1r2.from ]
+    ORDER BY [ f1r1.branch_level, f1r1.from, f1r2.branch_level, f1r2.from ] DESC
     LIMIT 1
     """
     assert query == expected_query
@@ -54,7 +54,7 @@ async def test_build_subquery_filter_attribute_int(
     MATCH p = (n)-[f2r1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[f2r2:HAS_VALUE]-(av:AttributeValue { value: $filter2_value })
     WHERE all(r IN relationships(p) WHERE (PLACEHOLDER))
     RETURN n as filter2
-    ORDER BY [ f2r1.from, f2r2.from ]
+    ORDER BY [ f2r1.branch_level, f2r1.from, f2r2.branch_level, f2r2.from ] DESC
     LIMIT 1
     """
     assert query == expected_query
@@ -83,7 +83,7 @@ async def test_build_subquery_filter_relationship(session, default_branch: Branc
     MATCH p = (n)-[f1r1:IS_RELATED]-(rl:Relationship { name: $filter1_rel_name })-[f1r2:IS_RELATED]-(peer:Node)-[f1r3:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[f1r4:HAS_VALUE]-(av:AttributeValue { value: $filter1_value })
     WHERE all(r IN relationships(p) WHERE (PLACEHOLDER))
     RETURN n as filter1
-    ORDER BY [ f1r1.from, f1r2.from, f1r3.from, f1r4.from ]
+    ORDER BY [ f1r1.branch_level, f1r1.from, f1r2.branch_level, f1r2.from, f1r3.branch_level, f1r3.from, f1r4.branch_level, f1r4.from ] DESC
     LIMIT 1
     """
     assert query == expected_query
@@ -114,7 +114,7 @@ async def test_build_subquery_order_relationship(session, default_branch: Branch
     MATCH p = (n)-[ord1r1:IS_RELATED]-(:Relationship { name: $order1_rel_name })-[ord1r2:IS_RELATED]-(:Node)-[ord1r3:HAS_ATTRIBUTE]-(:Attribute { name: $order1_name })-[ord1r4:HAS_VALUE]-(last:AttributeValue)
     WHERE all(r IN relationships(p) WHERE (PLACEHOLDER))
     RETURN last.value as order1
-    ORDER BY [ ord1r1.from, ord1r2.from, ord1r3.from, ord1r4.from ]
+    ORDER BY [ ord1r1.branch_level, ord1r1.from, ord1r2.branch_level, ord1r2.from, ord1r3.branch_level, ord1r3.from, ord1r4.branch_level, ord1r4.from ] DESC
     LIMIT 1
     """
     assert query == expected_query
