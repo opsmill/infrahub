@@ -15,6 +15,8 @@ from infrahub.types import ATTRIBUTE_TYPES
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
 from .schema import default_list_resolver, default_paginated_list_resolver
 from .types import (
+    RELATIONS_PROPERTY_MAP,
+    RELATIONS_PROPERTY_MAP_REVERSED,
     InfrahubInterface,
     InfrahubObject,
     InfrahubUnion,
@@ -28,7 +30,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
 
-# pylint: disable=protected-access,too-many-locals
+# pylint: disable=protected-access,too-many-locals,too-many-lines
 
 
 class DeleteInput(graphene.InputObjectType):
@@ -165,7 +167,12 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
-    node_fields = fields["node"]
+    node_fields = fields.get("node", {})
+    property_fields = fields.get("properties", {})
+    for key, value in property_fields.items():
+        mapped_name = RELATIONS_PROPERTY_MAP[key]
+        node_fields[mapped_name] = value
+
     # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
 
@@ -173,7 +180,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     filters = {
         f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
     }
-    response: Dict[str, Any] = {"node": None}
+    response: Dict[str, Any] = {"node": {}, "properties": {}}
     async with db.session(database=config.SETTINGS.database.database) as new_session:
         objs = await NodeManager.query_peers(
             session=new_session,
@@ -188,7 +195,82 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         if not objs:
             return response
 
-        response["node"] = await objs[0].to_graphql(session=new_session, fields=node_fields)
+        node_graph = await objs[0].to_graphql(session=new_session, fields=node_fields)
+        for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
+            value = node_graph.pop(key, None)
+            if value:
+                response["properties"][mapped] = value
+        response["node"] = node_graph
+
+        return response
+
+
+async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+    """Resolver for relationships of cardinality=many for Edged responses
+
+    This resolver is used for paginated responses and as such we redefined the requested
+    fields by only reusing information below the 'node' key.
+    """
+    # Extract the InfraHub schema by inspecting the GQL Schema
+    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch = info.context.get("infrahub_branch")
+    db = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+    edges = fields.get("edges", {})
+    node_fields = edges.get("node", {})
+    property_fields = edges.get("properties", {})
+    for key, value in property_fields.items():
+        mapped_name = RELATIONS_PROPERTY_MAP[key]
+        node_fields[mapped_name] = value
+
+    # Extract the schema of the node on the other end of the relationship from the GQL Schema
+    node_rel = node_schema.get_relationship(info.field_name)
+
+    # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    filters = {
+        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+    }
+    response: Dict[str, Any] = {"edges": [], "count": None}
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        if "count" in fields:
+            response["count"] = await NodeManager.count_peers(
+                session=new_session,
+                id=parent["id"],
+                schema=node_rel,
+                filters=filters,
+                at=at,
+                branch=branch,
+            )
+        objs = await NodeManager.query_peers(
+            session=new_session,
+            id=parent["id"],
+            schema=node_rel,
+            filters=filters,
+            fields=node_fields,
+            at=at,
+            branch=branch,
+        )
+
+        if not objs:
+            return response
+        node_graph = [await obj.to_graphql(session=new_session, fields=node_fields) for obj in objs]
+
+        entries = []
+        for node in node_graph:
+            entry = {"node": {}, "properties": {}}
+            for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
+                value = node.pop(key, None)
+                if value:
+                    entry["properties"][mapped] = value
+            entry["node"] = node
+            entries.append(entry)
+        response["edges"] = entries
+
         return response
 
 
@@ -432,7 +514,7 @@ async def generate_paginated_object_types(
                 else:
                     peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
                 node_type._meta.fields[rel.name] = graphene.Field(
-                    peer_type, required=False, resolver=default_paginated_list_resolver, **peer_filters
+                    peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                 )
 
                 related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, required=False, **peer_filters)

@@ -141,6 +141,27 @@ class NodeManager:
         return await query.count(session=session)
 
     @classmethod
+    async def count_peers(
+        cls,
+        id: str,
+        schema: RelationshipSchema,
+        filters: dict,
+        session: AsyncSession,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+    ) -> int:
+        branch = await get_branch(branch=branch, session=session)
+        at = Timestamp(at)
+
+        rel = Relationship(schema=schema, branch=branch, node_id=id)
+
+        query = await RelationshipGetPeerQuery.init(
+            session=session, source_id=id, schema=schema, filters=filters, rel=rel, at=at
+        )
+        await query.execute(session=session)
+        return await query.count(session=session)
+
+    @classmethod
     async def query_peers(
         cls,
         id: UUID,
