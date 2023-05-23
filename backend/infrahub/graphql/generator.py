@@ -284,7 +284,7 @@ async def generate_object_types(
         related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch.name)
 
         for rel in node_schema.relationships:
-            peer_schema = await rel.get_peer_schema()
+            peer_schema = await rel.get_peer_schema(branch=branch)
 
             peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
             if isinstance(peer_schema, GroupSchema):
@@ -412,7 +412,7 @@ async def generate_paginated_object_types(
         related_node_type = registry.get_graphql_type(name=f"NestedPaginated{node_name}", branch=branch.name)
 
         for rel in node_schema.relationships:
-            peer_schema = await rel.get_peer_schema()
+            peer_schema = await rel.get_peer_schema(branch=branch)
 
             peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
 
