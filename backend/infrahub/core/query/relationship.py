@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from neo4j.graph import Relationship as Neo4jRelationship
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.utils import build_subquery_filter
+from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
 
@@ -415,8 +415,9 @@ class RelationshipGetPeerQuery(RelationshipQuery):
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
+        self.order_by = []
 
-        peer_schema = await self.schema.get_peer_schema()
+        peer_schema = await self.schema.get_peer_schema(branch=self.branch)
 
         self.params["source_id"] = self.source_id
         self.params["rel_identifier"] = self.schema.identifier
@@ -430,7 +431,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             MATCH p = (source:Node { uuid: $source_id })-[f0r1:IS_RELATED]-(rl)-[f0r2:IS_RELATED]-(peer:Node)
             WHERE $peer_kind IN LABELS(peer) AND peer.uuid <> $source_id AND all(r IN relationships(p) WHERE (%s))
             RETURN peer as peer, rl as rl1, f0r1 as r1, f0r2 as r2
-            ORDER BY [f0r1.branch_level, f0r2.branch_level, f0r2.from,  f0r2.from]
+            ORDER BY [f0r1.branch_level, f0r2.branch_level, f0r2.from,  f0r2.from] DESC
             LIMIT 1
         }
         WITH peer, rl1 as rl, r1, r2
@@ -445,6 +446,9 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         self.return_labels = ["rl", "peer", "r1", "r2"]
 
+        # ----------------------------------------------------------------------------
+        # FILTER Results
+        # ----------------------------------------------------------------------------
         filter_cnt = 0
         clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
         for peer_filter_name, peer_filter_value in clean_filters.items():
@@ -479,6 +483,9 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             self.add_to_query("}")
             self.add_to_query(f"WITH {with_str}")
 
+        # ----------------------------------------------------------------------------
+        # QUERY Properties
+        # ----------------------------------------------------------------------------
         query = """
         MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
         MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
@@ -508,6 +515,43 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             )
             self.add_to_query(query)
             self.update_return_labels([f"rel_{node_prop}", node_prop])
+
+        # ----------------------------------------------------------------------------
+        # ORDER Results
+        # ----------------------------------------------------------------------------
+        if peer_schema.order_by:
+            order_cnt = 1
+
+            for order_by_value in peer_schema.order_by:
+                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+
+                field = peer_schema.get_field(order_by_field_name)
+
+                subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                    session=session,
+                    field=field,
+                    node_alias="peer",
+                    name=order_by_field_name,
+                    order_by=order_by_next_name,
+                    branch_filter=branch_filter,
+                    branch=self.branch,
+                    subquery_idx=order_cnt,
+                )
+                self.order_by.append(subquery_result_name)
+                self.params.update(subquery_params)
+
+                with_str = ", ".join(
+                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
+                )
+
+                self.add_to_query("CALL {")
+                self.add_to_query(subquery)
+                self.add_to_query("}")
+
+                order_cnt += 1
+
+        else:
+            self.order_by.append("peer.uuid")
 
     def get_peer_ids(self) -> List[str]:
         """Return a list of UUID of nodes associated with this relationship."""
