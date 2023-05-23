@@ -4,6 +4,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Pagination } from "../../components/pagination";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
@@ -17,10 +18,7 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import {
-  getSchemaObjectColumns,
-  getSchemaRelationshipColumns,
-} from "../../utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectUrl } from "../../utils/objects";
 import DeviceFilterBar from "../device-list/device-filter-bar";
 import ErrorScreen from "../error-screen/error-screen";
@@ -33,20 +31,27 @@ export default function ObjectItems() {
   const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
-  // const [currentFilters] = useAtom(comboxBoxFilterState);
   const [filtersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
-
+  const [paginationInQueryString] = useQueryParam(QSP.PAGINATION, StringParam);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  const filters = filtersInQueryString
-    ? JSON.parse(window.atob(filtersInQueryString))
-    : currentFilters;
+  const pagination = paginationInQueryString ? JSON.parse(paginationInQueryString ?? "{}") : {};
+
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+
+  const filters = filtersInQueryString ? JSON.parse(filtersInQueryString) : currentFilters;
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
   const filterString = filters
     .map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`)
+    .join(",");
+
+  const paginationString = [
+    { name: "offset", value: pagination?.offset ?? 0 },
+    { name: "limit", value: pagination?.limit ?? 20 },
+  ]
+    .map((row: any) => `${row.name}: ${row.value}`)
     .join(",");
 
   // Get all the needed columns (attributes + relationships with a cardinality of "one")
@@ -56,22 +61,33 @@ export default function ObjectItems() {
 
   const queryString = schema
     ? getObjectItems({
-        ...schema,
-        filterString,
-        relationships: getSchemaRelationshipColumns(schema),
+        kind: schema.kind,
+        name: schema.name,
+        attributes: schema.attributes,
+        // relationships: getSchemaRelationshipColumns(schema),
+        filters: filterString,
+        pagination: paginationString,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  const { loading, error, data } = useQuery(
+  const {
+    loading,
+    error,
+    data = {},
+  } = useQuery(
     gql`
       ${queryString}
     `,
     { skip: !schema }
   );
 
-  const rows = data && data[schema?.name];
+  const result = data ? data[schema?.name] ?? {} : {};
+
+  const { count, edges } = result;
+
+  const rows = edges?.map((edge: any) => edge.node);
 
   if (error) {
     return <ErrorScreen />;
@@ -83,7 +99,7 @@ export default function ObjectItems() {
         {schema && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              {schema.kind} ({rows?.length})
+              {schema.kind} ({count})
             </h1>
             <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
               A list of all the {schema.kind} in your infrastructure.
@@ -142,6 +158,8 @@ export default function ObjectItems() {
                 </table>
 
                 {!rows?.length && <NoDataFound />}
+
+                <Pagination count={count} />
               </div>
             </div>
           </div>

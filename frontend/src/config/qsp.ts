@@ -1,6 +1,7 @@
 export const QSP = {
   BRANCH: "branch",
   FILTER: "filters",
+  PAGINATION: "pagination",
   DATETIME: "at",
   TAB: "tab",
   BRANCH_TAB: "branch_tab",

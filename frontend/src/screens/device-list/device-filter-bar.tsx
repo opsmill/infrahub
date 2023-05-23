@@ -34,9 +34,7 @@ export default function DeviceFilterBar(props: Props) {
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [filtersInQueryString, setFiltersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
 
-  const filters = filtersInQueryString
-    ? JSON.parse(window.atob(filtersInQueryString))
-    : currentFilters;
+  const filters = filtersInQueryString ? JSON.parse(filtersInQueryString) : currentFilters;
 
   const peers: string[] = [];
   (props.schema.filters || []).forEach((f) => {
@@ -128,7 +126,7 @@ export default function DeviceFilterBar(props: Props) {
     }
     comboxBoxFilterVar(filters);
     if (filters.length) {
-      setFiltersInQueryString(window.btoa(JSON.stringify(filters)));
+      setFiltersInQueryString(JSON.stringify(filters));
     } else {
       setFiltersInQueryString(undefined);
     }
@@ -217,7 +215,7 @@ export default function DeviceFilterBar(props: Props) {
                         const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
                         comboxBoxFilterVar(newFilters);
                         if (newFilters.length) {
-                          setFiltersInQueryString(window.btoa(JSON.stringify(newFilters)));
+                          setFiltersInQueryString(JSON.stringify(newFilters));
                         } else {
                           setFiltersInQueryString(undefined);
                         }
@@ -227,7 +225,7 @@ export default function DeviceFilterBar(props: Props) {
                       //   const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
                       //   setCurrentFilters(newFilters);
                       // if (newFilters.length) {
-                      //   setFiltersInQueryString(window.btoa(JSON.stringify(newFilters)));
+                      //   setFiltersInQueryString(JSON.stringify(newFilters));
                       // } else {
                       //   setFiltersInQueryString(undefined);
                       // }
