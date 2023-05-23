@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import graphene
 from graphql import GraphQLResolveInfo
@@ -108,7 +108,7 @@ async def default_resolver(*args, **kwargs):
         return await objs[0].to_graphql(session=new_session, fields=fields)
 
 
-async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs):
+async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Optional[Union[Dict, List]]:
     # Extract the InfraHub schema by inspecting the GQL Schema
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
@@ -147,6 +147,49 @@ async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs
             return None
 
         return await objs[0].to_graphql(session=new_session, fields=fields)
+
+
+async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+    """Resolver for relationships of cardinality=one for Edged responses
+
+    This resolver is used for paginated responses and as such we redefined the requested
+    fields by only reusing information below the 'node' key.
+    """
+    # Extract the InfraHub schema by inspecting the GQL Schema
+    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch = info.context.get("infrahub_branch")
+    db = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+    node_fields = fields["node"]
+    # Extract the schema of the node on the other end of the relationship from the GQL Schema
+    node_rel = node_schema.get_relationship(info.field_name)
+
+    # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    filters = {
+        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+    }
+    response: Dict[str, Any] = {"node": None}
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        objs = await NodeManager.query_peers(
+            session=new_session,
+            id=parent["id"],
+            schema=node_rel,
+            filters=filters,
+            fields=node_fields,
+            at=at,
+            branch=branch,
+        )
+
+        if not objs:
+            return response
+
+        response["node"] = await objs[0].to_graphql(session=new_session, fields=node_fields)
+        return response
 
 
 def load_attribute_types_in_registry(branch: Branch):
@@ -378,8 +421,10 @@ async def generate_paginated_object_types(
                     peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
                 else:
                     peer_type = registry.get_graphql_type(name=f"NestedEdged{peer_schema.kind}", branch=branch.name)
-                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
-                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=default_resolver)
+                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=single_relationship_resolver)
+                related_node_type._meta.fields[rel.name] = graphene.Field(
+                    peer_type, resolver=single_relationship_resolver
+                )
 
             elif rel.cardinality == "many":
                 if isinstance(peer_schema, GroupSchema):
