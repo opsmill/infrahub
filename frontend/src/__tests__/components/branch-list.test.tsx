@@ -1,19 +1,9 @@
 import { MockedProvider } from "@apollo/client/testing";
 import { cleanup, render, screen } from "@testing-library/react";
+import { branchesMocks } from "../../../mocks/branches";
 import Apollo, { QUERY } from "../../components/tests/branch-list-test";
 
 afterAll(cleanup);
-
-const branch1 = {
-  id: "123",
-  name: "test-branch",
-  description: "Test branch",
-  origin_branch: "main",
-  branched_from: "main",
-  created_at: 123,
-  branched_at: 123,
-  is_data_only: true,
-};
 
 const mocks: any[] = [
   {
@@ -22,7 +12,7 @@ const mocks: any[] = [
     },
     result: {
       data: {
-        branch: [branch1],
+        branch: branchesMocks,
       },
     },
   },
