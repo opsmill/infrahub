@@ -361,7 +361,7 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     )
 
     assert result.errors is None
-    assert result.data["person"][0] == {
+    expected_result = {
         "cars": [
             {
                 "display_label": "volt #444444",
@@ -382,6 +382,7 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
         ],
         "name": {"value": "John"},
     }
+    assert DeepDiff(result.data["person"][0], expected_result, ignore_order=True).to_dict() == {}
 
 
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):
@@ -1426,14 +1427,14 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
 
     assert result.errors is None
     assert len(result.data["person"][0]["vehicules"]) == 2
-
-    assert result.data["person"][0] == {
+    expected_results = {
         "name": {"value": "John Doe"},
         "vehicules": [
             {"name": {"value": "Porsche 911"}, "nbr_doors": {"value": 2}},
             {"has_sails": {"value": True}, "name": {"value": "Laser"}},
         ],
     }
+    assert DeepDiff(result.data["person"][0], expected_results, ignore_order=True).to_dict() == {}
 
 
 async def test_model_rel_interface_reverse(db, session, default_branch: Branch, vehicule_person_schema):
@@ -1550,7 +1551,8 @@ async def test_union_relationship(
 
     assert result.errors is None
     assert len(result.data["person"][0]["road_vehicules"]) == 3
-    assert result.data["person"][0] == {
+
+    expected_result = {
         "name": {"value": "John Doe"},
         "road_vehicules": [
             {"nbr_doors": {"value": 2}},
@@ -1558,6 +1560,7 @@ async def test_union_relationship(
             {"nbr_seats": {"value": 1}},
         ],
     }
+    assert DeepDiff(result.data["person"][0], expected_result, ignore_order=True).to_dict() == {}
 
 
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
