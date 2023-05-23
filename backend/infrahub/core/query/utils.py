@@ -50,14 +50,14 @@ async def build_subquery_filter(
     field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
     filter_str = "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
-    order_str = "[ " + ", ".join([f"{rel}.from" for rel in rel_names]) + " ]"
+    order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ]"
 
     query = f"""
     WITH n
     MATCH p = {filter_str}
     WHERE {where_str}
     RETURN n as {prefix}
-    ORDER BY {order_str}
+    ORDER BY {order_str} DESC
     LIMIT 1
     """
 
@@ -109,14 +109,14 @@ async def build_subquery_order(
     field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
     filter_str = "(n)-" + "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
-    order_str = "[ " + ", ".join([f"{rel}.from" for rel in rel_names]) + " ]"
+    order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ]"
 
     query = f"""
     WITH n
     MATCH p = {filter_str}
     WHERE {where_str}
     RETURN last.value as {prefix}
-    ORDER BY {order_str}
+    ORDER BY {order_str} DESC
     LIMIT 1
     """
 

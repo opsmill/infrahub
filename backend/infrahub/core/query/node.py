@@ -473,7 +473,7 @@ class NodeGetListQuery(Query):
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
             WHERE %s
             RETURN n as n1, r as r1
-            ORDER BY [r.branch, r.from] ASC
+            ORDER BY [r.branch_level, r.from] DESC
             LIMIT 1
         }
         WITH n1 as n, r1 as rb
