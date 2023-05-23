@@ -254,7 +254,7 @@ class AttributeSchema(BaseSchemaModel):
 
     async def get_query_filter(
         self, session: AsyncSession, *args, **kwargs  # pylint: disable=unused-argument
-    ) -> Tuple[List[QueryElement], Dict, List[str]]:
+    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         return self.get_class().get_query_filter(*args, **kwargs)
 
 
@@ -286,7 +286,7 @@ class RelationshipSchema(BaseSchemaModel):
         self,
         session: AsyncSession,
         filter_name: str,
-        filter_value: Optional[Any] = None,
+        filter_value: Optional[Union[str, int, bool]] = None,
         name: Optional[str] = None,  # pylint: disable=unused-argument
         branch: Branch = None,
         include_match: bool = True,

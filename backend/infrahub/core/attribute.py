@@ -337,7 +337,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         name: str,
         filter_name: str,
         branch=None,
-        filter_value: Optional[Any] = None,
+        filter_value: Optional[Union[str, int, bool]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
