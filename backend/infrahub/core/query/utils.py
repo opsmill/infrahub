@@ -19,7 +19,7 @@ async def build_subquery_filter(
     branch_filter: str,
     name: Optional[str] = None,
     branch: Branch = None,
-    subquery_idx: Optional[str] = 1,
+    subquery_idx: int = 1,
 ) -> Tuple[str, dict[str, Any], str]:
     params = {}
     prefix = f"filter{subquery_idx}"
@@ -71,7 +71,7 @@ async def build_subquery_order(
     branch_filter: str,
     name: Optional[str] = None,
     branch: Branch = None,
-    subquery_idx: Optional[str] = 1,
+    subquery_idx: int = 1,
 ) -> Tuple[str, dict[str, Any], str]:
     params = {}
     prefix = f"order{subquery_idx}"
