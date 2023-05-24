@@ -44,7 +44,7 @@ SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 INTERNAL_SCHEMA_NODE_KINDS = [node["kind"] for node in internal_schema["nodes"]]
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,too-many-lines
 
 
 class NodeManager:
@@ -141,6 +141,26 @@ class NodeManager:
         return await query.count(session=session)
 
     @classmethod
+    async def count_peers(
+        cls,
+        id: str,
+        schema: RelationshipSchema,
+        filters: dict,
+        session: AsyncSession,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+    ) -> int:
+        branch = await get_branch(branch=branch, session=session)
+        at = Timestamp(at)
+
+        rel = Relationship(schema=schema, branch=branch, node_id=id)
+
+        query = await RelationshipGetPeerQuery.init(
+            session=session, source_id=id, schema=schema, filters=filters, rel=rel, at=at
+        )
+        return await query.count(session=session)
+
+    @classmethod
     async def query_peers(
         cls,
         id: UUID,
@@ -167,7 +187,7 @@ class NodeManager:
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
-            peer_schema = await schema.get_peer_schema()
+            peer_schema = await schema.get_peer_schema(branch=branch)
             if peer_schema.display_labels:
                 display_label_fields = peer_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)

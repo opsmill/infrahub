@@ -279,8 +279,8 @@ class RelationshipSchema(BaseSchemaModel):
     def get_class(self):
         return Relationship
 
-    async def get_peer_schema(self):
-        return registry.get_schema(name=self.peer)
+    async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
+        return registry.schema.get(name=self.peer, branch=branch)
 
     async def get_query_filter(
         self,
@@ -303,7 +303,7 @@ class RelationshipSchema(BaseSchemaModel):
         query_params[f"{prefix}_rel_name"] = self.identifier
 
         rel_type = self.get_class().rel_type
-        peer_schema = await self.get_peer_schema()
+        peer_schema = await self.get_peer_schema(branch=branch)
 
         if include_match:
             query_filter.append(QueryNode(name="n"))
