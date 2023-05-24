@@ -158,7 +158,6 @@ class NodeManager:
         query = await RelationshipGetPeerQuery.init(
             session=session, source_id=id, schema=schema, filters=filters, rel=rel, at=at
         )
-        await query.execute(session=session)
         return await query.count(session=session)
 
     @classmethod
