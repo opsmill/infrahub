@@ -420,7 +420,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   }}>
                                   <img
                                     alt="unlink"
-                                    src={process.env.PUBLIC_URL + "/images/icons/unlink.png"}
+                                    src={import.meta.env.PUBLIC_URL + "/images/icons/unlink.png"}
                                     className="w-5 h-5 hover:w-6 hover:h-6"
                                   />
                                 </div>

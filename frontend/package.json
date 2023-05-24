@@ -3,14 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "test:watch": "react-scripts test --watch",
+    "start": "vite",
+    "build": "tsc && vite build",
+    "serve": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
     "cypress": "cypress open",
     "cypress:run": "cypress run --component",
     "cypress:ci": "cypress:run",
-    "eject": "react-scripts eject",
     "codegen": "graphql-codegen --config codegen.yml",
     "codegen:openapi": "npx openapi-typescript http://localhost:8000/openapi.json --output src/infraops.d.ts",
     "prettier": "prettier './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
@@ -41,7 +42,6 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.43.5",
     "react-router-dom": "^6.8.1",
-    "react-scripts": "5.0.1",
     "react-toastify": "^9.1.2",
     "typescript": "^4.9.5",
     "use-query-params": "^2.2.1",
@@ -51,11 +51,13 @@
     "@graphql-codegen/cli": "^3.0.0",
     "@graphql-codegen/typescript": "^3.0.0",
     "@testing-library/react": "^14.0.0",
-    "@types/jest": "^29.5.1",
     "@types/ramda": "^0.28.23",
     "@types/react-datepicker": "^4.10.0",
     "@types/react-test-renderer": "^18.0.0",
     "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "autoprefixer": "^10.4.14",
+    "c8": "^7.13.0",
     "cypress": "11.2.0",
     "eslint": "^8.36.0",
     "eslint-config-prettier": "^8.8.0",
@@ -65,17 +67,21 @@
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-unused-imports": "^2.0.0",
-    "handlebars-jest": "^1.0.0",
     "husky": "^8.0.3",
-    "jsdom": "^21.1.1",
+    "jsdom": "^21.1.2",
     "lint-staged": "^13.2.0",
     "openapi-typescript": "^6.1.1",
+    "postcss": "^8.4.23",
     "prettier": "2.8.8",
     "pretty-quick": "^3.1.3",
     "react-test-renderer": "^18.2.0",
-    "tailwindcss": "^3.2.6",
+    "tailwindcss": "^3.3.2",
     "ts-node": "^10.9.1",
-    "typescript": "^4.9.5"
+    "typescript": "^4.9.5",
+    "vite": "^4.3.8",
+    "vite-plugin-svgr": "^3.2.0",
+    "vite-tsconfig-paths": "^4.2.0",
+    "vitest": "^0.31.1"
   },
   "browserslist": {
     "production": [
@@ -88,10 +94,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "jest": {
-    "moduleNameMapper": {
-      "https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js": "handlebars"
-    }
   }
 }

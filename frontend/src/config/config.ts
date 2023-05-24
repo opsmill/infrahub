@@ -1,5 +1,5 @@
 export const INFRAHUB_API_SERVER_URL =
-  process.env.REACT_APP_INFRAHUB_API_SERVER_URL || "http://localhost:8000";
+  import.meta.env.REACT_APP_INFRAHUB_API_SERVER_URL || "http://localhost:8000";
 
 export const CONFIG = {
   GRAPHQL_URL: (branch: string | null | undefined, date?: Date | null | undefined) => {
