@@ -20,6 +20,9 @@
     "@typescript-eslint",
     "unused-imports"
   ],
+  "ignorePatterns": [
+    "tsconfig.json"
+  ],
   "rules": {
     "quotes": [
       "error",
