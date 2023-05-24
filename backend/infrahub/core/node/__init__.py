@@ -520,11 +520,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
                 query.append(
                     'CREATE (%s)-[:IS_VISIBLE { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(bool_true)'
-                    % (short_id, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
+                    % (rel_short, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
                 )
                 query.append(
                     'CREATE (%s)-[:IS_PROTECTED { branch: "%s", branch_level: %s, status: "active", from: "%s", to: null }]->(bool_false)'
-                    % (short_id, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
+                    % (rel_short, self._branch.name, self._branch.hierarchy_level, create_at.to_string())
                 )
 
         self.id = node_id
