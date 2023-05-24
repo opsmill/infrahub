@@ -493,7 +493,9 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     query = """
     query {
         person {
+        __typename
             edges {
+            __typename
                 node {
                     __typename
                     name {
@@ -501,7 +503,9 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
                         __typename
                     }
                     cars {
+                    __typename
                         edges {
+                        __typename
                             node {
                                 __typename
                                 name {
@@ -509,6 +513,7 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
                                     value
                                 }
                                 owner {
+                                    __typename
                                     node {
                                         __typename
                                         name {
@@ -539,9 +544,13 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
 
     result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert result.data["person"]["__typename"] == "PaginatedPerson"
+    assert result.data["person"]["edges"][0]["__typename"] == "EdgedPerson"
     assert result.data["person"]["edges"][0]["node"]["__typename"] == "Person"
     assert result.data["person"]["edges"][0]["node"]["name"]["__typename"] == "TextAttribute"
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["__typename"] == "Car"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["__typename"] == "NestedEdgedPerson"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["__typename"] == "TextAttribute"
 
 
 async def test_query_filter_ids(db, session, default_branch: Branch, criticality_schema):
