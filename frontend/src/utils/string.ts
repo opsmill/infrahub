@@ -6,10 +6,14 @@
  * JSON.stringify(data)
  * '{"a":1,"b":[{"tags":["Tag A"]},{"tags":["Tag B"]}]}'
  *
- * getStringJSONWithoutQuotes(data)
+ * stringifyWithoutQuotes(data)
  * '{a:1,b:[{tags:["Tag A"]},{tags:["Tag B"]}]}'
  */
 
-export const getStringJSONWithoutQuotes = (obj: object): string => {
+export const stringifyWithoutQuotes = (obj: object): string => {
   return JSON.stringify(obj, null, 4).replace(/"([^"]+)":/g, "$1:");
+};
+
+export const cleanTabsAndNewLines = (string: string) => {
+  return string.replaceAll(/\t*\n*/g, "").replaceAll(/\s+/g, " ");
 };

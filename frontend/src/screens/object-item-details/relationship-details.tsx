@@ -30,8 +30,8 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
-import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import { getObjectDetailsUrl } from "../../utils/objects";
+import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -132,7 +132,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
     const mutationString = updateObjectWithId({
       name: schema.name,
-      data: getStringJSONWithoutQuotes({
+      data: stringifyWithoutQuotes({
         id: objectid,
         [relationshipSchema.name]: newList,
       }),
@@ -174,7 +174,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
       const mustationString = updateObjectWithId({
         name: schema.name,
-        data: getStringJSONWithoutQuotes({
+        data: stringifyWithoutQuotes({
           id: objectid,
           [relationshipSchema.name]: newList,
         }),
