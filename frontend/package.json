@@ -90,9 +90,8 @@
     ]
   },
   "jest": {
-    "transform": {},
-    "transformIgnorePatterns": [
-      "node_modules/(?!(@react-native|react-native|decode-uri-component|filter-obj|split-on-first|query-string)/)"
-    ]
+    "moduleNameMapper": {
+      "https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js": "handlebars"
+    }
   }
 }

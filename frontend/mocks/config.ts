@@ -1,0 +1,23 @@
+export const configMocks = {
+  main: {
+    default_branch: "main",
+    internal_address: "http://infrahub-server:8000",
+  },
+  logging: {
+    remote: {
+      enable: false,
+      frontend_dsn: null,
+      api_server_dsn: null,
+      git_agent_dsn: null,
+    },
+  },
+  analytics: {
+    enable: true,
+    address: null,
+    api_key: null,
+  },
+  experimental_features: {
+    pull_request: false,
+    paginated: true,
+  },
+};

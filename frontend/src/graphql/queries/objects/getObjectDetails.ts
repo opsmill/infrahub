@@ -1,4 +1,4 @@
-declare const Handlebars: any;
+import Handlebars from "handlebars/runtime";
 
 export const getObjectDetails = Handlebars.compile(`query {{kind.value}} {
     {{name}} (ids: ["{{objectid}}"]) {
