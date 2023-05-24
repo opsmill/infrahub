@@ -232,9 +232,12 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
     node_rel = node_schema.get_relationship(info.field_name)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    offset = kwargs.pop("offset", None)
+    limit = kwargs.pop("limit", None)
     filters = {
         f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
     }
+
     response: Dict[str, Any] = {"edges": [], "count": None}
     async with db.session(database=config.SETTINGS.database.database) as new_session:
         if "count" in fields:
@@ -252,6 +255,8 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
             schema=node_rel,
             filters=filters,
             fields=node_fields,
+            offset=offset,
+            limit=limit,
             at=at,
             branch=branch,
         )
@@ -974,10 +979,11 @@ async def generate_filters(
         dict: A Dictionnary containing all the filters with their name as the key and their Type as value
     """
 
+    filters: Dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
     if top_level:
-        filters = {"ids": graphene.List(graphene.ID), "offset": graphene.Int(), "limit": graphene.Int()}
+        filters["ids"] = graphene.List(graphene.ID)
     else:
-        filters = {"id": graphene.ID()}
+        filters["id"] = graphene.ID()
 
     if isinstance(schema, GroupSchema):
         return filters

@@ -44,7 +44,7 @@ SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 INTERNAL_SCHEMA_NODE_KINDS = [node["kind"] for node in internal_schema["nodes"]]
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,too-many-lines
 
 
 class NodeManager:

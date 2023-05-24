@@ -403,12 +403,10 @@ class RelationshipGetPeerQuery(RelationshipQuery):
     def __init__(
         self,
         filters: Optional[dict] = None,
-        limit: Optional[int] = None,
         *args,
         **kwargs,
     ):
         self.filters = filters or {}
-        self.limit = limit
 
         super().__init__(*args, **kwargs)
 
