@@ -13,13 +13,15 @@
     "eslint:recommended",
     "plugin:react/recommended",
     // "plugin:prettier/recommended",
-    "react-app/jest",
     "prettier"
   ],
   "parser": "@typescript-eslint/parser",
   "plugins": [
     "@typescript-eslint",
     "unused-imports"
+  ],
+  "ignorePatterns": [
+    "tsconfig.json"
   ],
   "rules": {
     "quotes": [

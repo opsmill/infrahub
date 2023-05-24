@@ -30,7 +30,7 @@ jobs:
         run: npm install
       - name: "Run unit tests"
         working-directory: ./frontend
-        run: "npm run test"
+        run: "npm run test:coverage"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:

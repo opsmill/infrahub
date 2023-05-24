@@ -11,7 +11,7 @@ export default function SignIn() {
             <div>
               <img
                 className="w-28 h-auto rounded-lg"
-                src={process.env.PUBLIC_URL + "/images/logo.png"}
+                src={import.meta.env.PUBLIC_URL + "/images/logo.png"}
                 alt="Your Company"
               />
               <h2 className="mt-8 text-2xl font-bold leading-9 tracking-tight text-gray-900">
@@ -98,7 +98,7 @@ export default function SignIn() {
         {/* <div className="relative hidden w-0 flex-1 lg:block">
           <img
             className="absolute inset-0 h-full w-full object-cover blur-sm"
-            src={process.env.PUBLIC_URL + "/images/background4.jpg"}
+            src={import.meta.env.PUBLIC_URL + "/images/background4.jpg"}
             alt=""
           />
         </div> */}

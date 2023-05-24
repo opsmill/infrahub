@@ -10,6 +10,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import UnlinkImage from "../../../public/images/icons/unlink.png";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
@@ -30,8 +31,8 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
-import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import { getObjectDetailsUrl } from "../../utils/objects";
+import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -132,7 +133,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
     const mutationString = updateObjectWithId({
       name: schema.name,
-      data: getStringJSONWithoutQuotes({
+      data: stringifyWithoutQuotes({
         id: objectid,
         [relationshipSchema.name]: newList,
       }),
@@ -174,7 +175,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
       const mustationString = updateObjectWithId({
         name: schema.name,
-        data: getStringJSONWithoutQuotes({
+        data: stringifyWithoutQuotes({
           id: objectid,
           [relationshipSchema.name]: newList,
         }),
@@ -420,7 +421,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   }}>
                                   <img
                                     alt="unlink"
-                                    src={process.env.PUBLIC_URL + "/images/icons/unlink.png"}
+                                    src={UnlinkImage}
                                     className="w-5 h-5 hover:w-6 hover:h-6"
                                   />
                                 </div>

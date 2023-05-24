@@ -9,8 +9,8 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { getDropdownOptionsForRelatedPeers } from "../../utils/dropdownOptionsForRelatedPeers";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
-import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
+import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -83,7 +83,7 @@ export default function ObjectItemCreate(props: iProps) {
     try {
       const mutationString = createObject({
         name: schema.name,
-        data: getStringJSONWithoutQuotes(newObject),
+        data: stringifyWithoutQuotes(newObject),
       });
 
       const mutation = gql`
