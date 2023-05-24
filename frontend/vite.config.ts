@@ -14,7 +14,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     coverage: {
-      reporter: ["text", "html", "lcovonly"],
+      reporter: ["text", "lcovonly"],
       exclude: ["node_modules/", "mocks/", "cypress/"],
     },
   },
