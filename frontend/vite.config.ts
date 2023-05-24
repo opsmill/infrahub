@@ -16,6 +16,7 @@ export default defineConfig({
     coverage: {
       reporter: ["text", "lcovonly"],
       exclude: ["node_modules/", "mocks/", "cypress/"],
+      all: true,
     },
   },
 });
