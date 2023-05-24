@@ -10,6 +10,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import UnlinkImage from "../../../public/images/icons/unlink.png";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Link } from "../../components/link";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
@@ -420,7 +421,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   }}>
                                   <img
                                     alt="unlink"
-                                    src={import.meta.env.PUBLIC_URL + "/images/icons/unlink.png"}
+                                    src={UnlinkImage}
                                     className="w-5 h-5 hover:w-6 hover:h-6"
                                   />
                                 </div>
