@@ -131,7 +131,6 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
     assert result.data["criticality"]["edges"][0]["node"]["display_label"] == "Low"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_display_label_multiple_items(db, session, default_branch: Branch, data_schema):
     SCHEMA = {
         "name": "criticality",
@@ -157,13 +156,19 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
     query = """
     query {
         criticality {
-            id
-            display_label
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -171,11 +176,13 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 2
-    assert sorted([node["display_label"] for node in result.data["criticality"]]) == ["low 4", "medium 3"]
+    assert len(result.data["criticality"]["edges"]) == 2
+    assert sorted([node["node"]["display_label"] for node in result.data["criticality"]["edges"]]) == [
+        "low 4",
+        "medium 3",
+    ]
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_display_label_default_value(db, session, default_branch: Branch, data_schema):
     SCHEMA = {
         "name": "criticality",
@@ -197,13 +204,19 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
     query = """
     query {
         criticality {
-            id
-            display_label
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -211,11 +224,10 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 1
-    assert result.data["criticality"][0]["display_label"] == f"Criticality(ID: {obj1.id})"
+    assert len(result.data["criticality"]["edges"]) == 1
+    assert result.data["criticality"]["edges"][0]["node"]["display_label"] == f"Criticality(ID: {obj1.id})"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_all_attributes(db, session, default_branch: Branch, data_schema, all_attribute_types_schema):
     obj1 = await Node.init(session=session, schema="AllAttributeTypes")
     await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
@@ -228,16 +240,22 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     query = """
     query {
         all_attribute_types {
-            name { value }
-            mystring { value }
-            mybool { value }
-            myint { value }
-            mylist { value }
+            edges {
+                node {
+                    name { value }
+                    mystring { value }
+                    mybool { value }
+                    myint { value }
+                    mylist { value }
+                }
+            }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -245,9 +263,9 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     )
 
     assert result.errors is None
-    assert len(result.data["all_attribute_types"]) == 2
+    assert len(result.data["all_attribute_types"]["edges"]) == 2
 
-    results = {item["name"]["value"]: item for item in result.data["all_attribute_types"]}
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["all_attribute_types"]["edges"]}
 
     assert results["obj1"]["mystring"]["value"] == obj1.mystring.value
     assert results["obj1"]["mybool"]["value"] == obj1.mybool.value
@@ -260,7 +278,7 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     assert results["obj2"]["mylist"]["value"] == obj2.mylist.value
 
 
-@pytest.mark.skip(reason="pending convertion")
+@pytest.mark.skip(reason="Test failing after conversion")
 async def test_nested_query(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -285,19 +303,29 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
     query = """
     query {
         person {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -306,10 +334,10 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
 
     assert result.errors is None
 
-    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
+    assert len(result_per_name["John"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
 
 
 @pytest.mark.skip(reason="pending convertion")
@@ -441,7 +469,6 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     }
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -466,22 +493,37 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     query = """
     query {
         person {
+        __typename
+            edges {
             __typename
-            name {
-                value
-                __typename
-            }
-            cars {
-                __typename
-                name {
-                    __typename
-                    value
-                }
-                owner {
+                node {
                     __typename
                     name {
                         value
                         __typename
+                    }
+                    cars {
+                    __typename
+                        edges {
+                        __typename
+                            node {
+                                __typename
+                                name {
+                                    __typename
+                                    value
+                                }
+                                owner {
+                                    __typename
+                                    node {
+                                        __typename
+                                        name {
+                                            value
+                                            __typename
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -489,7 +531,9 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -498,14 +542,17 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
 
     assert result.errors is None
 
-    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert result.data["person"][0]["__typename"] == "Person"
-    assert result.data["person"][0]["name"]["__typename"] == "TextAttribute"
-    assert result_per_name["John"]["cars"][0]["__typename"] == "RelatedCar"
+    assert result.data["person"]["__typename"] == "PaginatedPerson"
+    assert result.data["person"]["edges"][0]["__typename"] == "EdgedPerson"
+    assert result.data["person"]["edges"][0]["node"]["__typename"] == "Person"
+    assert result.data["person"]["edges"][0]["node"]["name"]["__typename"] == "TextAttribute"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["__typename"] == "Car"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["__typename"] == "NestedEdgedPerson"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["__typename"] == "TextAttribute"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_filter_ids(db, session, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -521,8 +568,12 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
         """
     query {
         criticality(ids: ["%s"]) {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
@@ -531,7 +582,9 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -539,13 +592,17 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 1
+    assert len(result.data["criticality"]["edges"]) == 1
 
     query = """
     query {
         criticality(ids: ["%s", "%s"]) {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
@@ -555,7 +612,9 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -563,10 +622,9 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 2
+    assert len(result.data["criticality"]["edges"]) == 2
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_filter_local_attrs(db, session, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -578,14 +636,20 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
     query = """
     query {
         criticality(name__value: "low") {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -593,10 +657,9 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 1
+    assert len(result.data["criticality"]["edges"]) == 1
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_multiple_filters(db, session, default_branch: Branch, car_person_manufacturer_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -629,15 +692,21 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     query01 = """
     query {
         car(owner__name__value: "John", nbr_seats__value: 4) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query01,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -645,21 +714,27 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c1.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c1.id
 
     query02 = """
     query {
         car(is_electric__value: true, nbr_seats__value: 4) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query02,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -667,21 +742,27 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c3.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c3.id
 
     query03 = """
     query {
         car(owner__name__value: "John", manufacturer__name__value: "ford", ) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query03,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -689,15 +770,19 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c2.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c2.id
 
     query04 = """
     query {
         car(owner__id: "%s", manufacturer__id: "%s", ) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
@@ -707,7 +792,9 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query04,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -715,8 +802,8 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c2.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c2.id
 
 
 @pytest.mark.skip(reason="pending convertion")
