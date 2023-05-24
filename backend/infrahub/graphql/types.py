@@ -25,6 +25,15 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import GroupSchema, NodeSchema
 
+RELATIONS_PROPERTY_MAP: Dict[str, str] = {
+    "is_visible": "_relation__is_visible",
+    "is_protected": "_relation__is_protected",
+    "owner": "_relation__owner",
+    "source": "_relation__source",
+}
+
+RELATIONS_PROPERTY_MAP_REVERSED = {value: key for key, value in RELATIONS_PROPERTY_MAP.items()}
+
 # -------------------------------------------------------
 # Various Mixins
 # -------------------------------------------------------
@@ -83,7 +92,8 @@ class GetListMixin:
                     at=at,
                     branch=branch,
                 )
-            node_fields = fields["edges"]["node"]
+            edges = fields.get("edges", {})
+            node_fields = edges.get("node", {})
 
             objs = await NodeManager.query(
                 session=session,
