@@ -15,7 +15,14 @@ export default defineConfig({
     environment: "jsdom",
     coverage: {
       reporter: ["text", "lcovonly"],
-      exclude: ["node_modules/", "mocks/", "cypress/"],
+      exclude: [
+        "node_modules/",
+        "mocks/",
+        "cypress/",
+        "**/**.d.ts",
+        "**/__tests__/**",
+        "**/**component-preview",
+      ],
       all: true,
     },
   },
