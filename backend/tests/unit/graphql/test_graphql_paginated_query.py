@@ -806,7 +806,6 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     assert result.data["car"]["edges"][0]["node"]["id"] == c2.id
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_filter_relationships(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -831,19 +830,31 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     query = """
     query {
         person(name__value: "John") {
-            name {
-                value
-            }
-            cars(name__value: "volt") {
-                name {
-                    value
+            count
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars(name__value: "volt") {
+                        count
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -851,10 +862,12 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     )
 
     assert result.errors is None
-    assert len(result.data["person"]) == 1
-    assert result.data["person"][0]["name"]["value"] == "John"
-    assert len(result.data["person"][0]["cars"]) == 1
-    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+    assert len(result.data["person"]["edges"]) == 1
+    assert result.data["person"]["count"] == 1
+    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["cars"]["count"] == 1
+    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
 @pytest.mark.skip(reason="pending convertion")
