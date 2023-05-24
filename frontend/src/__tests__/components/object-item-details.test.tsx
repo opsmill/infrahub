@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { Provider } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
+import React from "react";
+import { describe, it } from "vitest";
 import { schemaMocks } from "../../../mocks/schema";
 import ObjectItemDetails from "../../components/tests/object-item-details";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -24,9 +26,11 @@ const ObjectItemDetailsProvider = () => {
   );
 };
 
-test("should not increment on max (100)", () => {
-  render(<ObjectItemDetailsProvider />);
+describe("Object item details", () => {
+  it("should compute a correct query", () => {
+    render(<ObjectItemDetailsProvider />);
 
-  const query = screen.getByText(/Query:.*/);
-  console.log("query: ", query);
+    const query = screen.getByText(/Query:.*/);
+    console.log("query: ", query);
+  });
 });
