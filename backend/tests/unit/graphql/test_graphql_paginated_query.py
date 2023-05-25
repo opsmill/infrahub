@@ -1684,7 +1684,6 @@ async def test_model_node_interface(db, session, default_branch: Branch, car_sch
     assert sorted([car["node"]["nbr_doors"]["value"] for car in result.data["car"]["edges"]]) == [2, 4]
 
 
-@pytest.mark.skip(reason="pending convertion - review use of fragments")
 async def test_model_rel_interface(db, session, default_branch: Branch, vehicule_person_schema):
     d1 = await Node.init(session=session, schema="Car")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
@@ -1701,21 +1700,29 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
     query = """
     query {
         person {
-            name {
-                value
-            }
-            vehicules {
-                name {
-                    value
-                }
-                ... on RelatedCar {
-                    nbr_doors {
+            edges {
+                node {
+                    name {
                         value
                     }
-                }
-                ... on RelatedBoat {
-                    has_sails {
-                        value
+                    vehicules {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                                ... on Car {
+                                    nbr_doors {
+                                        value
+                                    }
+                                }
+                                ... on Boat {
+                                    has_sails {
+                                        value
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1724,7 +1731,9 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
     """
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        schema=await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1732,15 +1741,17 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
     )
 
     assert result.errors is None
-    assert len(result.data["person"][0]["vehicules"]) == 2
+    assert len(result.data["person"]["edges"][0]["node"]["vehicules"]["edges"]) == 2
     expected_results = {
         "name": {"value": "John Doe"},
-        "vehicules": [
-            {"name": {"value": "Porsche 911"}, "nbr_doors": {"value": 2}},
-            {"has_sails": {"value": True}, "name": {"value": "Laser"}},
-        ],
+        "vehicules": {
+            "edges": [
+                {"node": {"name": {"value": "Porsche 911"}, "nbr_doors": {"value": 2}}},
+                {"node": {"has_sails": {"value": True}, "name": {"value": "Laser"}}},
+            ]
+        },
     }
-    assert DeepDiff(result.data["person"][0], expected_results, ignore_order=True).to_dict() == {}
+    assert DeepDiff(result.data["person"]["edges"][0]["node"], expected_results, ignore_order=True).to_dict() == {}
 
 
 async def test_model_rel_interface_reverse(db, session, default_branch: Branch, vehicule_person_schema):

@@ -430,16 +430,24 @@ async def generate_paginated_object_types(
         related_interface = generate_related_interface_object(
             schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner, name_prefix="Related"
         )
-        nested_interface = generate_related_interface_object(
+        node_interface = registry.get_graphql_type(name=node_name, branch=branch)
+
+        nested_edged_interface = generate_nested_interface_object(
             schema=node_schema,
-            branch=branch,
-            data_source=data_source,
-            data_owner=data_owner,
-            name_prefix="NestedPaginated",
+            base_interface=node_interface,
+            relation_property=relationship_property,
+        )
+
+        nested_interface = generate_paginated_interface_object(
+            schema=node_schema,
+            base_interface=nested_edged_interface,
         )
 
         registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
         registry.set_graphql_type(name=nested_interface._meta.name, graphql_type=nested_interface, branch=branch.name)
+        registry.set_graphql_type(
+            name=nested_edged_interface._meta.name, graphql_type=nested_edged_interface, branch=branch.name
+        )
 
     # Generate all GraphQL ObjectType & RelatedObjectType and store them in the registry
     for node_name, node_schema in full_schema.items():
@@ -651,7 +659,9 @@ def define_relationship_property(branch: Branch, data_source: InfrahubObject, da
 
 
 def generate_graphql_edged_object(
-    schema: NodeSchema, node: Type[InfrahubObject], relation_property: Optional[graphene.ObjectType] = None
+    schema: NodeSchema,
+    node: Type[InfrahubObject],
+    relation_property: Optional[InfrahubObject] = None,
 ) -> Type[InfrahubObject]:
     """Generate a ednged GraphQL object Type from a Infrahub NodeSchema for pagination."""
 
@@ -780,6 +790,50 @@ def generate_related_interface_object(
     main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
     return type(f"{name_prefix}{schema.kind}", (InfrahubInterface,), main_attrs)
+
+
+def generate_nested_interface_object(
+    schema: GenericSchema,
+    relation_property: graphene.ObjectType,
+    base_interface: graphene.ObjectType,
+) -> Type[InfrahubObject]:
+    meta_attrs = {
+        "name": f"NestedEdged{schema.kind}",
+        "schema": schema,
+        "description": schema.description,
+    }
+
+    main_attrs = {
+        "display_label": graphene.String(required=False),
+        "node": graphene.Field(base_interface, required=False),
+        "_updated_at": graphene.DateTime(required=False),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    if relation_property:
+        main_attrs["properties"] = graphene.Field(relation_property)
+
+    return type(f"NestedEdged{schema.kind}", (InfrahubObject,), main_attrs)
+
+
+def generate_paginated_interface_object(
+    schema: GenericSchema,
+    base_interface: Type[graphene.ObjectType],
+) -> Type[InfrahubObject]:
+    meta_attrs = {
+        "name": f"NestedPaginated{schema.kind}",
+        "schema": schema,
+        "description": schema.description,
+    }
+
+    main_attrs = {
+        "count": graphene.Int(required=False),
+        "has_next": graphene.Boolean(required=False),
+        "edges": graphene.List(of_type=base_interface),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    return type(f"NestedPaginated{schema.kind}", (InfrahubObject,), main_attrs)
 
 
 def generate_related_graphql_object(
