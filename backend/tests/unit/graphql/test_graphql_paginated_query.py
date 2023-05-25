@@ -278,7 +278,6 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     assert results["obj2"]["mylist"]["value"] == obj2.mylist.value
 
 
-@pytest.mark.skip(reason="Test failing after conversion")
 async def test_nested_query(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -340,7 +339,6 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
     assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_double_nested_query(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -365,16 +363,27 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     query = """
     query {
         person {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
-                }
-                owner {
+            edges {
+                node {
                     name {
                         value
+                    }
+                    cars {
+                        count
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                                owner {
+                                    node {
+                                        name {
+                                            value
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -382,7 +391,9 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -391,14 +402,16 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
 
     assert result.errors is None
 
-    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
-    assert result_per_name["John"]["cars"][0]["owner"]["name"]["value"] == "John"
+    assert len(result_per_name["John"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
+    assert result_per_name["John"]["cars"]["count"] == 2
+    assert result_per_name["Jane"]["cars"]["count"] == 1
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["value"] == "John"
 
 
-@pytest.mark.skip(reason="pending convertion")
+@pytest.mark.skip(reason="pending convertion - issue with sorting")
 async def test_display_label_nested_query(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -870,7 +883,7 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
-@pytest.mark.skip(reason="pending convertion")
+@pytest.mark.skip(reason="pending convertion - issue with generics")
 async def test_query_filter_relationships_with_generic(db, session, default_branch: Branch, car_person_schema_generics):
     ecar = registry.get_schema(name="ElectricCar")
     gcar = registry.get_schema(name="GazCar")
@@ -922,7 +935,6 @@ async def test_query_filter_relationships_with_generic(db, session, default_bran
     assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_filter_relationship_id(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -948,12 +960,20 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
         """
     query {
         person(name__value: "John") {
-            name {
-                value
-            }
-            cars(id: "%s") {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars(id: "%s") {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -963,7 +983,9 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -971,13 +993,12 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     )
 
     assert result.errors is None
-    assert len(result.data["person"]) == 1
-    assert result.data["person"][0]["name"]["value"] == "John"
-    assert len(result.data["person"][0]["cars"]) == 1
-    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+    assert len(result.data["person"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_oneway_relationship(db, session, default_branch: Branch, person_tag_schema):
     t1 = await Node.init(session=session, schema="Tag")
     await t1.new(session=session, name="Blue", description="The Blue tag")
@@ -992,17 +1013,27 @@ async def test_query_oneway_relationship(db, session, default_branch: Branch, pe
     query = """
     query {
         person {
-            id
-            tags {
-                name {
-                    value
+            edges {
+                node {
+                    id
+                    tags {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1010,10 +1041,9 @@ async def test_query_oneway_relationship(db, session, default_branch: Branch, pe
     )
 
     assert result.errors is None
-    assert len(result.data["person"][0]["tags"]) == 2
+    assert len(result.data["person"]["edges"][0]["node"]["tags"]["edges"]) == 2
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_at_specific_time(db, session, default_branch: Branch, person_tag_schema):
     t1 = await Node.init(session=session, schema="Tag")
     await t1.new(session=session, name="Blue", description="The Blue tag")
@@ -1030,14 +1060,20 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     query = """
     query {
         tag {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1045,23 +1081,29 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     )
 
     assert result.errors is None
-    assert len(result.data["tag"]) == 2
-    names = sorted([tag["name"]["value"] for tag in result.data["tag"]])
+    assert len(result.data["tag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["tag"]["edges"]])
     assert names == ["Blue", "Green"]
 
     # Now query at a specific time
     query = """
     query {
         tag {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={
             "infrahub_session": session,
@@ -1074,12 +1116,11 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     )
 
     assert result.errors is None
-    assert len(result.data["tag"]) == 2
-    names = sorted([tag["name"]["value"] for tag in result.data["tag"]])
+    assert len(result.data["tag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["tag"]["edges"]])
     assert names == ["Blue", "Red"]
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_attribute_updated_at(db, session, default_branch: Branch, person_tag_schema):
     p11 = await Node.init(session=session, schema="Person")
     await p11.new(session=session, firstname="John", lastname="Doe")
@@ -1088,20 +1129,26 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                updated_at
-            }
-            lastname {
-                value
-                updated_at
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                        updated_at
+                    }
+                    lastname {
+                        value
+                        updated_at
+                    }
+                }
             }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1109,15 +1156,20 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["updated_at"]
-    assert result1.data["person"][0]["firstname"]["updated_at"] == result1.data["person"][0]["lastname"]["updated_at"]
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+    assert (
+        result1.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+        == result1.data["person"]["edges"][0]["node"]["lastname"]["updated_at"]
+    )
 
     p12 = await NodeManager.get_one(session=session, id=p11.id)
     p12.firstname.value = "Jim"
     await p12.save(session=session)
 
     result2 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1125,11 +1177,13 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     )
 
     assert result2.errors is None
-    assert result2.data["person"][0]["firstname"]["updated_at"]
-    assert result2.data["person"][0]["firstname"]["updated_at"] != result2.data["person"][0]["lastname"]["updated_at"]
+    assert result2.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+    assert (
+        result2.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+        != result2.data["person"]["edges"][0]["node"]["lastname"]["updated_at"]
+    )
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_node_updated_at(db, session, default_branch: Branch, person_tag_schema):
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, firstname="John", lastname="Doe")
@@ -1138,13 +1192,19 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     query = """
     query {
         person {
-            _updated_at
-            id
+            edges {
+                node {
+                    _updated_at
+                    id
+                }
+            }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1152,14 +1212,16 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["_updated_at"]
+    assert result1.data["person"]["edges"][0]["node"]["_updated_at"]
 
     p2 = await Node.init(session=session, schema="Person")
     await p2.new(session=session, firstname="Jane", lastname="Doe")
     await p2.save(session=session)
 
     result2 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1167,13 +1229,19 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     )
 
     assert result2.errors is None
-    assert result2.data["person"][0]["_updated_at"]
-    assert result2.data["person"][1]["_updated_at"]
-    assert result2.data["person"][1]["_updated_at"] == Timestamp(result2.data["person"][1]["_updated_at"]).to_string()
-    assert result2.data["person"][0]["_updated_at"] != result2.data["person"][1]["_updated_at"]
+    assert result2.data["person"]["edges"][0]["node"]["_updated_at"]
+    assert result2.data["person"]["edges"][1]["node"]["_updated_at"]
+    assert (
+        result2.data["person"]["edges"][1]["node"]["_updated_at"]
+        == Timestamp(result2.data["person"]["edges"][1]["node"]["_updated_at"]).to_string()
+    )
+    assert (
+        result2.data["person"]["edges"][0]["node"]["_updated_at"]
+        != result2.data["person"]["edges"][1]["node"]["_updated_at"]
+    )
 
 
-@pytest.mark.skip(reason="pending convertion")
+@pytest.mark.skip(reason="pending convertion - missing _relation__updated_at")
 async def test_query_relationship_updated_at(db, session, default_branch: Branch, person_tag_schema):
     t1 = await Node.init(session=session, schema="Tag")
     await t1.new(session=session, name="Blue", description="The Blue tag")
@@ -1231,7 +1299,6 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_attribute_node_property_source(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
@@ -1242,12 +1309,16 @@ async def test_query_attribute_node_property_source(
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                source {
-                    name {
+            edges {
+                node {
+                    id
+                    firstname {
                         value
+                        source {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -1255,7 +1326,9 @@ async def test_query_attribute_node_property_source(
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1263,11 +1336,12 @@ async def test_query_attribute_node_property_source(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["source"]
-    assert result1.data["person"][0]["firstname"]["source"]["name"]["value"] == first_account.name.value
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["source"]
+    assert (
+        result1.data["person"]["edges"][0]["node"]["firstname"]["source"]["name"]["value"] == first_account.name.value
+    )
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_attribute_node_property_owner(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
@@ -1278,12 +1352,16 @@ async def test_query_attribute_node_property_owner(
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                owner {
-                    name {
+            edges {
+                node {
+                    id
+                    firstname {
                         value
+                        owner {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -1291,7 +1369,9 @@ async def test_query_attribute_node_property_owner(
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1299,11 +1379,10 @@ async def test_query_attribute_node_property_owner(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["owner"]
-    assert result1.data["person"][0]["firstname"]["owner"]["name"]["value"] == first_account.name.value
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["owner"]
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["owner"]["name"]["value"] == first_account.name.value
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_relationship_node_property(db, session, default_branch: Branch, car_person_schema, first_account):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -1337,19 +1416,29 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     query = """
     query {
         person {
-            id
-            name {
-                value
-            }
-            cars {
-                _relation__owner {
+            edges {
+                node {
                     id
-                }
-                _relation__source {
-                    id
-                }
-                name {
-                    value
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                owner {
+                                    id
+                                }
+                                source {
+                                    id
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1357,7 +1446,9 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     """
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1366,23 +1457,22 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
 
     assert result.errors is None
 
-    results = {item["name"]["value"]: item for item in result.data["person"]}
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["person"]["edges"]}
     assert sorted(list(results.keys())) == ["Jane", "John"]
-    assert len(results["John"]["cars"]) == 1
-    assert len(results["Jane"]["cars"]) == 1
+    assert len(results["John"]["cars"]["edges"]) == 1
+    assert len(results["Jane"]["cars"]["edges"]) == 1
 
-    assert results["John"]["cars"][0]["name"]["value"] == "volt"
-    assert results["John"]["cars"][0]["_relation__owner"]
-    assert results["John"]["cars"][0]["_relation__owner"]["id"] == first_account.id
-    assert results["John"]["cars"][0]["_relation__source"] is None
+    assert results["John"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert results["John"]["cars"]["edges"][0]["properties"]["owner"]
+    assert results["John"]["cars"]["edges"][0]["properties"]["owner"]["id"] == first_account.id
+    assert results["John"]["cars"]["edges"][0]["properties"]["source"] is None
 
-    assert results["Jane"]["cars"][0]["name"]["value"] == "bolt"
-    assert results["Jane"]["cars"][0]["_relation__owner"] is None
-    assert results["Jane"]["cars"][0]["_relation__source"]
-    assert results["Jane"]["cars"][0]["_relation__source"]["id"] == first_account.id
+    assert results["Jane"]["cars"]["edges"][0]["node"]["name"]["value"] == "bolt"
+    assert results["Jane"]["cars"]["edges"][0]["properties"]["owner"] is None
+    assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]
+    assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]["id"] == first_account.id
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_attribute_flag_property(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
@@ -1398,20 +1488,26 @@ async def test_query_attribute_flag_property(
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                is_protected
-            }
-            lastname {
-                value
-                is_visible
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                        is_protected
+                    }
+                    lastname {
+                        value
+                        is_visible
+                    }
+                }
             }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1419,11 +1515,10 @@ async def test_query_attribute_flag_property(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["is_protected"] is True
-    assert result1.data["person"][0]["lastname"]["is_visible"] is False
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["is_protected"] is True
+    assert result1.data["person"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_branches(db, session, default_branch: Branch, register_core_models_schema):
     query = """
     query {
@@ -1436,7 +1531,9 @@ async def test_query_branches(db, session, default_branch: Branch, register_core
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1447,7 +1544,6 @@ async def test_query_branches(db, session, default_branch: Branch, register_core
     assert result1.data["branch"][0]["name"] == "main"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_multiple_branches(db, session, default_branch: Branch, register_core_models_schema):
     query = """
     query {
@@ -1466,7 +1562,9 @@ async def test_query_multiple_branches(db, session, default_branch: Branch, regi
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1478,7 +1576,6 @@ async def test_query_multiple_branches(db, session, default_branch: Branch, regi
     assert result1.data["branch2"][0]["name"] == "main"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_multiple_queries(db, session, default_branch: Branch, person_tag_schema):
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, firstname="John", lastname="Doe")
@@ -1491,21 +1588,32 @@ async def test_multiple_queries(db, session, default_branch: Branch, person_tag_
     query = """
     query {
         firstperson: person(firstname__value: "John") {
-            id
-            firstname {
-                value
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                    }
+                }
             }
         }
         secondperson: person(firstname__value: "Jane") {
-            id
-            firstname {
-                value
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                    }
+                }
             }
+
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1513,11 +1621,10 @@ async def test_multiple_queries(db, session, default_branch: Branch, person_tag_
     )
 
     assert result1.errors is None
-    assert result1.data["firstperson"][0]["firstname"]["value"] == "John"
-    assert result1.data["secondperson"][0]["firstname"]["value"] == "Jane"
+    assert result1.data["firstperson"]["edges"][0]["node"]["firstname"]["value"] == "John"
+    assert result1.data["secondperson"]["edges"][0]["node"]["firstname"]["value"] == "Jane"
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_model_node_interface(db, session, default_branch: Branch, car_schema):
     d1 = await Node.init(session=session, schema="Car")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
@@ -1530,20 +1637,26 @@ async def test_model_node_interface(db, session, default_branch: Branch, car_sch
     query = """
     query {
         car {
-            name {
-                value
-            }
-            description {
-                value
-            }
-            nbr_doors {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    description {
+                        value
+                    }
+                    nbr_doors {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1551,11 +1664,14 @@ async def test_model_node_interface(db, session, default_branch: Branch, car_sch
     )
 
     assert result.errors is None
-    assert sorted([car["name"]["value"] for car in result.data["car"]]) == ["Porsche 911", "Renaud Clio"]
-    assert sorted([car["nbr_doors"]["value"] for car in result.data["car"]]) == [2, 4]
+    assert sorted([car["node"]["name"]["value"] for car in result.data["car"]["edges"]]) == [
+        "Porsche 911",
+        "Renaud Clio",
+    ]
+    assert sorted([car["node"]["nbr_doors"]["value"] for car in result.data["car"]["edges"]]) == [2, 4]
 
 
-@pytest.mark.skip(reason="pending convertion")
+@pytest.mark.skip(reason="pending convertion - review use of fragments")
 async def test_model_rel_interface(db, session, default_branch: Branch, vehicule_person_schema):
     d1 = await Node.init(session=session, schema="Car")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
@@ -1604,17 +1720,16 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
 
     assert result.errors is None
     assert len(result.data["person"][0]["vehicules"]) == 2
-
-    assert result.data["person"][0] == {
+    expected_results = {
         "name": {"value": "John Doe"},
         "vehicules": [
             {"name": {"value": "Porsche 911"}, "nbr_doors": {"value": 2}},
             {"has_sails": {"value": True}, "name": {"value": "Laser"}},
         ],
     }
+    assert DeepDiff(result.data["person"][0], expected_results, ignore_order=True).to_dict() == {}
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_model_rel_interface_reverse(db, session, default_branch: Branch, vehicule_person_schema):
     d1 = await Node.init(session=session, schema="Car")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
@@ -1631,12 +1746,21 @@ async def test_model_rel_interface_reverse(db, session, default_branch: Branch, 
     query = """
     query {
         boat {
-            name {
-                value
-            }
-            owners {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    owners {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+
+                    }
                 }
             }
         }
@@ -1644,7 +1768,9 @@ async def test_model_rel_interface_reverse(db, session, default_branch: Branch, 
     """
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1652,10 +1778,10 @@ async def test_model_rel_interface_reverse(db, session, default_branch: Branch, 
     )
 
     assert result.errors is None
-    assert len(result.data["boat"][0]["owners"]) == 1
+    assert len(result.data["boat"]["edges"][0]["node"]["owners"]["edges"]) == 1
 
 
-@pytest.mark.skip(reason="pending convertion")
+@pytest.mark.skip(reason="pending convertion - review use of fragments")
 async def test_union_relationship(
     db, session, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
 ):
@@ -1730,7 +1856,8 @@ async def test_union_relationship(
 
     assert result.errors is None
     assert len(result.data["person"][0]["road_vehicules"]) == 3
-    assert result.data["person"][0] == {
+
+    expected_result = {
         "name": {"value": "John Doe"},
         "road_vehicules": [
             {"nbr_doors": {"value": 2}},
@@ -1738,6 +1865,7 @@ async def test_union_relationship(
             {"nbr_seats": {"value": 1}},
         ],
     }
+    assert DeepDiff(result.data["person"][0], expected_result, ignore_order=True).to_dict() == {}
 
 
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
@@ -1821,7 +1949,6 @@ async def test_union_root(
     assert len(result.data["on_road"]) == 3
 
 
-@pytest.mark.skip(reason="pending convertion")
 async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
     query = """
     query {
@@ -1855,7 +1982,9 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
     """
     main_branch = await Branch.get_by_name(name="main", session=session)
 
-    schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
+    schema = await generate_graphql_paginated_schema(
+        branch=default_branch, session=session, include_mutation=False, include_subscription=False
+    )
 
     result = await graphql(
         schema=schema,
