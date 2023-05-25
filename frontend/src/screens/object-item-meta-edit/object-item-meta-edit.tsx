@@ -3,7 +3,7 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { getFormStructureForMetaEdit } from "../../utils/formStructureForCreateEdit";
-import { getStringJSONWithoutQuotes } from "../../utils/getStringJSONWithoutQuotes";
+import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 
 // const optionsLeft: SelectOption[] = [
@@ -113,7 +113,7 @@ export default function ObjectItemMetaEdit(props: Props) {
     try {
       await updateObjectWithId({
         name: schema.name,
-        data: getStringJSONWithoutQuotes({
+        data: stringifyWithoutQuotes({
           id: row.id,
           ...updatedObject,
         }),

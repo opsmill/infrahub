@@ -894,6 +894,15 @@ async def car_volt_main(session: AsyncSession, default_branch: Branch, person_jo
 
 
 @pytest.fixture
+async def car_prius_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
+    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    await car.new(session=session, name="pruis", nbr_seats=5, is_electric=True, owner=person_john_main.id)
+    await car.save(session=session)
+
+    return car
+
+
+@pytest.fixture
 async def car_camry_main(session: AsyncSession, default_branch: Branch, person_jane_main: Node) -> Node:
     car = await Node.init(session=session, schema="Car", branch=default_branch)
     await car.new(session=session, name="camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
