@@ -7,7 +7,7 @@ tasks:
     command: |
       gp ports await 8000
       URL_8000=`gp url 8000`
-      export REACT_APP_INFRAHUB_API_SERVER_URL=$URL_8000
+      export VITE_INFRAHUB_API_SERVER_URL=$URL_8000
       npm start
   - name: CLI
     before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
