@@ -30,6 +30,7 @@ RELATIONS_PROPERTY_MAP: Dict[str, str] = {
     "is_protected": "_relation__is_protected",
     "owner": "_relation__owner",
     "source": "_relation__source",
+    "updated_at": "_relation__updated_at",
 }
 
 RELATIONS_PROPERTY_MAP_REVERSED = {value: key for key, value in RELATIONS_PROPERTY_MAP.items()}
