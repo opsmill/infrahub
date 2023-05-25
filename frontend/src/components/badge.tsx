@@ -5,6 +5,7 @@ export enum BADGE_TYPES {
   VALIDATE,
   CANCEL,
   WARNING,
+  LIGHT,
 }
 
 // type BadgeProps = {}
@@ -33,6 +34,12 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
         ${onClick ? "cursor-pointer hover:bg-yellow-100" : ""}
       `;
     }
+    case BADGE_TYPES.LIGHT: {
+      return `
+        bg-white text-gray-800
+        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+      `;
+    }
     default: {
       return `
         bg-gray-100 text-gray-900
@@ -45,7 +52,7 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
 export const Badge = (props: any) => {
   const { type, className, children, onDelete, value, onClick } = props;
 
-  const customClassName = getClasseName(type, onClick);
+  const customClassName = getClasseName(type, onClick || onDelete);
 
   const handleClick = (event: any) => {
     event.stopPropagation();
@@ -55,7 +62,7 @@ export const Badge = (props: any) => {
       return onClick(value);
     }
 
-    if (onDelete && value) {
+    if (onDelete) {
       return onDelete(value);
     }
 

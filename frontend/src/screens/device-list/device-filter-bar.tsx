@@ -4,6 +4,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { StringParam, useQueryParam } from "use-query-params";
+import { BADGE_TYPES, Badge } from "../../components/badge";
 import { Button } from "../../components/button";
 import { QSP } from "../../config/qsp";
 import { comboxBoxFilterVar, iComboBoxFilter } from "../../graphql/variables/filtersVar";
@@ -27,7 +28,10 @@ interface Props {
   schema: iNodeSchema;
 }
 
+// TODO: Functionnal programming update
+// TODO: Pagination with infitie scrolling for the select
 export default function DeviceFilterBar(props: Props) {
+  const { schema } = props;
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
 
   const [showFilters, setShowFilters] = useState(false);
@@ -37,11 +41,13 @@ export default function DeviceFilterBar(props: Props) {
   const filters = filtersInQueryString ? JSON.parse(filtersInQueryString) : currentFilters;
 
   const peers: string[] = [];
-  (props.schema.filters || []).forEach((f) => {
+
+  (schema.filters || []).forEach((f) => {
     if (f.kind === "Object" && f.object_kind) {
       peers.push(schemaKindName[f.object_kind]);
     }
   });
+
   const queryString = getDropdownOptionsForRelatedPeers({
     peers,
   });
@@ -61,12 +67,13 @@ export default function DeviceFilterBar(props: Props) {
         }
       `;
 
-  const { loading, error, data } = useQuery(query, { skip: !props.schema });
+  const { loading, error, data = {} } = useQuery(query, { skip: !schema });
 
   const peerDropdownOptions: any = data;
+
   const formFields: DynamicFieldData[] = [];
 
-  props.schema.filters?.forEach((filter) => {
+  schema.filters?.forEach((filter) => {
     const currentValue = filters?.find((f: iComboBoxFilter) => f.name === filter.name);
     if (filter.kind === "Text" && !filter.enum) {
       formFields.push({
@@ -94,10 +101,13 @@ export default function DeviceFilterBar(props: Props) {
         peerDropdownOptions &&
         peerDropdownOptions[schemaKindName[filter.object_kind]]
       ) {
-        const options = peerDropdownOptions[schemaKindName[filter.object_kind]].map((row: any) => ({
-          name: row.display_label,
-          id: row.id,
+        const { edges } = peerDropdownOptions[schemaKindName[filter.object_kind]];
+
+        const options = edges.map((row: any) => ({
+          name: row.node.display_label,
+          id: row.node.id,
         }));
+
         formFields.push({
           label: filter.name,
           name: filter.name,
@@ -113,9 +123,12 @@ export default function DeviceFilterBar(props: Props) {
 
   const onSubmit = (data: any) => {
     const keys = Object.keys(data);
+
     const filters: iComboBoxFilter[] = [];
+
     for (let filterKey of keys) {
       const filterValue = data[filterKey];
+
       if (data[filterKey]) {
         filters.push({
           display_label: filterKey,
@@ -124,7 +137,9 @@ export default function DeviceFilterBar(props: Props) {
         });
       }
     }
+
     comboxBoxFilterVar(filters);
+
     if (filters.length) {
       setFiltersInQueryString(JSON.stringify(filters));
     } else {
@@ -133,6 +148,7 @@ export default function DeviceFilterBar(props: Props) {
   };
 
   const formMethods = useForm();
+
   const {
     handleSubmit,
     reset,
@@ -154,13 +170,33 @@ export default function DeviceFilterBar(props: Props) {
     return <ErrorScreen />;
   }
 
-  if (loading || !props.schema) {
+  if (loading || !schema) {
     return <LoadingScreen />;
   }
 
   if (!data) {
     return <NoDataFound />;
   }
+
+  const handleClickReset = () => {
+    comboxBoxFilterVar([]);
+    reset();
+    setFiltersInQueryString(undefined);
+  };
+
+  const handleClickRemoveFilter = (filter: any) => {
+    const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
+
+    comboxBoxFilterVar(newFilters);
+
+    if (newFilters.length) {
+      setFiltersInQueryString(JSON.stringify(newFilters));
+    } else {
+      setFiltersInQueryString(undefined);
+    }
+
+    resetField(filter.name);
+  };
 
   return (
     <div className="bg-white">
@@ -173,71 +209,24 @@ export default function DeviceFilterBar(props: Props) {
         <div className="bg-gray-100">
           <div className="mx-auto py-3 sm:flex sm:items-center sm:px-6 lg:px-8">
             <div className="flex space-x-6 divide-x divide-gray-200 text-sm">
-              <div>
-                <div className="group flex items-center font-medium text-blue-500">
-                  <FunnelIcon
-                    className="mr-2 h-5 w-5 flex-none text-blue-400 group-hover:text-blue-500"
-                    aria-hidden="true"
-                  />
-                  {filters.length} Filters
-                </div>
+              <div className="group flex items-center align-middle font-medium text-blue-500">
+                {filters.length} Filters
               </div>
-              <div className="pl-6">
-                <button
-                  onClick={() => {
-                    comboxBoxFilterVar([]);
-                    reset();
-                    setFiltersInQueryString(undefined);
-                  }}
-                  // onClick={() => {
-                  //   reset();
-                  //   setCurrentFilters([]);
-                  //   setFiltersInQueryString(undefined);
-                  // }}
-                  type="button"
-                  className="text-gray-500">
-                  Clear all
-                </button>
+              <div className="pl-4">
+                <Button onClick={handleClickReset}>Clear all</Button>
               </div>
             </div>
             <div aria-hidden="true" className="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block" />
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
-                {/* {currentFilters.map((filter: iComboBoxFilter) => ( */}
-                {filters.map((filter: iComboBoxFilter) => (
-                  <span
-                    key={filter.name}
-                    className="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white py-1.5 pl-3 pr-2 text-sm font-medium text-gray-900">
-                    <span>{filter.display_label}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
-                        comboxBoxFilterVar(newFilters);
-                        if (newFilters.length) {
-                          setFiltersInQueryString(JSON.stringify(newFilters));
-                        } else {
-                          setFiltersInQueryString(undefined);
-                        }
-                        resetField(filter.name);
-                      }}
-                      // onClick={() => {
-                      //   const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
-                      //   setCurrentFilters(newFilters);
-                      // if (newFilters.length) {
-                      //   setFiltersInQueryString(JSON.stringify(newFilters));
-                      // } else {
-                      //   setFiltersInQueryString(undefined);
-                      // }
-                      // resetField(filter.name);
-                      // }}
-                      className="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500">
-                      <span className="sr-only">Remove filter for {filter.display_label}</span>
-                      <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
-                        <path strokeLinecap="round" strokeWidth="1.5" d="M1 1l6 6m0-6L1 7" />
-                      </svg>
-                    </button>
-                  </span>
+                {filters.map((filter: iComboBoxFilter, index: number) => (
+                  <Badge
+                    key={index}
+                    onDelete={() => handleClickRemoveFilter(filter)}
+                    vaue={filter}
+                    type={BADGE_TYPES.LIGHT}>
+                    {filter.display_label}: {filter.value}
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -318,11 +307,11 @@ export default function DeviceFilterBar(props: Props) {
                 <form className="flex-1" onSubmit={handleSubmit(onSubmit)}>
                   <FormProvider {...formMethods}>
                     <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                      {formFields.map((field: any, index: number) => (
+                      {formFields.map((field: DynamicFieldData, index: number) => (
                         <FilterField
                           key={index}
                           field={field}
-                          error={resolve(field.name, errors)}
+                          error={resolve("field.name", errors)}
                         />
                       ))}
                     </div>

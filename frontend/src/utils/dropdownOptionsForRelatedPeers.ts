@@ -36,8 +36,13 @@ export interface iPeerDropdownOptions {
 export const getDropdownOptionsForRelatedPeers = Handlebars.compile(`query DropdownFormOptions {
     {{#each peers}}
     {{this}} {
-        id
-        display_label
+      count
+      edges {
+        node {
+          id
+          display_label
+        }
+      }
     }
     {{/each}}
 }`);

@@ -42,16 +42,15 @@ export default function ObjectItems() {
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
-  const filterString = filters
-    .map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`)
-    .join(",");
-
-  const paginationString = [
-    { name: "offset", value: pagination?.offset },
-    { name: "limit", value: pagination?.limit },
-  ]
-    .map((row: any) => `${row.name}: ${row.value}`)
-    .join(",");
+  const filtersString = [
+    // Add object filters
+    ...filters.map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`),
+    // Add pagination filters
+    ...[
+      { name: "offset", value: pagination?.offset },
+      { name: "limit", value: pagination?.limit },
+    ].map((row: any) => `${row.name}: ${row.value}`),
+  ].join(",");
 
   // Get all the needed columns (attributes + relationships with a cardinality of "one")
   const columns = getSchemaObjectColumns(schema);
@@ -64,8 +63,7 @@ export default function ObjectItems() {
         name: schema.name,
         attributes: schema.attributes,
         // relationships: getSchemaRelationshipColumns(schema),
-        filters: filterString,
-        pagination: paginationString,
+        filters: filtersString,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema

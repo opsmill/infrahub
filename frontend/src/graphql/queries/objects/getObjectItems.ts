@@ -2,7 +2,7 @@ declare const Handlebars: any;
 
 export const getObjectItems = Handlebars.compile(`
 query {{kind}} {
-  {{name}}{{#if filters}}({{{filters}}}){{/if}}{{#if pagination}}({{{pagination}}}){{/if}} {
+  {{name}}{{#if filters}}({{{filters}}}){{/if}} {
     count
     edges {
       node {
