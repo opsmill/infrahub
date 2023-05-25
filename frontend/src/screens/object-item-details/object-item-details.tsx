@@ -115,11 +115,11 @@ export default function ObjectItemDetails() {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schema.name])) {
+  if (!data || (data && !data[schema.name] && !data[schema.name]?.edges)) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data[schema.name][0];
+  const objectDetailsData = data[schema.name]?.edges[0]?.node;
 
   if (!objectDetailsData) {
     return null;
