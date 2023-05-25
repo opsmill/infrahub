@@ -34,7 +34,6 @@ export default function ObjectItems() {
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
   const [filtersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
   const [pagination] = usePagination();
-  console.log("### OBJECT ITEMS pagination: ", pagination);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];

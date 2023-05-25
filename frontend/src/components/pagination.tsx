@@ -9,18 +9,14 @@ export const Pagination = (props: tPaginationType) => {
   const { count = 0 } = props;
 
   const [pagination, setPagination] = usePagination();
-  console.log("### PAGINATION pagination: ", pagination);
 
   const { offset, limit } = pagination;
 
   const pagesCount = Math.floor(count / limit);
-  console.log("### PAGINATION pagesCount: ", pagesCount);
 
   const currentPage = offset / limit;
-  console.log("### PAGINATION currentPage: ", currentPage);
 
   const handlePageChange = (page: any) => {
-    console.log("### PAGINATION page: ", page);
     const { nextSelectedPage } = page;
 
     const newPagination = {
