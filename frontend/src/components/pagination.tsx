@@ -1,6 +1,5 @@
 import ReactPaginate from "react-paginate";
-import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../config/qsp";
+import usePagination from "../hooks/usePagination";
 
 type tPaginationType = {
   count?: number;
@@ -9,23 +8,28 @@ type tPaginationType = {
 export const Pagination = (props: tPaginationType) => {
   const { count = 0 } = props;
 
-  const [paginationInQueryString, setPagination] = useQueryParam(QSP.PAGINATION, StringParam);
+  const [pagination, setPagination] = usePagination();
+  console.log("### PAGINATION pagination: ", pagination);
 
-  const pagination = paginationInQueryString ? JSON.parse(paginationInQueryString ?? "{}") : {};
-
-  const { offset = 0, limit = 20 } = pagination;
+  const { offset, limit } = pagination;
 
   const pagesCount = Math.floor(count / limit);
+  console.log("### PAGINATION pagesCount: ", pagesCount);
 
   const currentPage = offset / limit;
+  console.log("### PAGINATION currentPage: ", currentPage);
 
-  const handlePageChange = ({ selected }: any) => {
+  const handlePageChange = (page: any) => {
+    console.log("### PAGINATION page: ", page);
+    const { nextSelectedPage } = page;
+
     const newPagination = {
-      offset: selected * limit,
       limit,
+      offset: nextSelectedPage * limit,
     };
 
-    setPagination(JSON.stringify(newPagination));
+    console.log("### PAGINATION newPagination: ", newPagination);
+    setPagination(newPagination);
   };
 
   return (
@@ -46,14 +50,19 @@ export const Pagination = (props: tPaginationType) => {
             marginPagesDisplayed={2}
             pageCount={pagesCount}
             previousLabel="Previous"
-            pageClassName="cursor-pointer relative inline-flex items-center border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            previousClassName="cursor-pointer relative inline-flex items-center rounded-l-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            pageClassName="cursor-pointer relative inline-flex items-center border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            pageLinkClassName="cursor-pointer px-4 py-2"
+            previousClassName="cursor-pointer relative inline-flex items-center rounded-l-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            previousLinkClassName="cursor-pointer px-4 py-2"
             nextLabel="Next"
-            nextClassName="cursor-pointer relative inline-flex items-center rounded-r-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            nextClassName="cursor-pointer relative inline-flex items-center rounded-r-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            nextLinkClassName="cursor-pointer px-4 py-2"
             breakLabel="..."
-            breakClassName="cursor-pointer relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+            breakClassName="cursor-pointer relative inline-flex items-center text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+            breakLinkClassName="cursor-pointer px-4 py-2"
             containerClassName="flex"
-            activeClassName="bg-blue-500 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 hover:bg-blue-500"
+            activeClassName="bg-blue-500 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 hover:bg-blue-400"
+            activeLinkClassName="cursor-pointer px-4 py-2"
           />
         </div>
       </div>

@@ -9,10 +9,11 @@ import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import useQuery from "../../graphql/hooks/useQuery";
 import { getObjectItems } from "../../graphql/queries/objects/getObjectItems";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
+import usePagination from "../../hooks/usePagination";
+import useQuery from "../../hooks/useQuery";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
@@ -32,10 +33,9 @@ export default function ObjectItems() {
   const branch = useReactiveVar(branchVar);
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
   const [filtersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
-  const [paginationInQueryString] = useQueryParam(QSP.PAGINATION, StringParam);
+  const [pagination] = usePagination();
+  console.log("### OBJECT ITEMS pagination: ", pagination);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
-
-  const pagination = paginationInQueryString ? JSON.parse(paginationInQueryString ?? "{}") : {};
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
@@ -48,8 +48,8 @@ export default function ObjectItems() {
     .join(",");
 
   const paginationString = [
-    { name: "offset", value: pagination?.offset ?? 0 },
-    { name: "limit", value: pagination?.limit ?? 20 },
+    { name: "offset", value: pagination?.offset },
+    { name: "limit", value: pagination?.limit },
   ]
     .map((row: any) => `${row.name}: ${row.value}`)
     .join(",");
