@@ -1,7 +1,7 @@
+/// <reference types="cypress" />
+
 import React from "react";
 import App from "../../../src/App";
-
-declare const cy: any;
 
 describe("Branches screen", () => {
   const branchName = "test-branch-6";
