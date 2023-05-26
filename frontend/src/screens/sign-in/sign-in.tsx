@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import "./sign-in.css";
 
+import logoImage from "../../images/logo.png";
+
 export default function SignIn() {
   const navigate = useNavigate();
   return (
@@ -9,11 +11,7 @@ export default function SignIn() {
         <div className="flex flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24 rounded-xl login-container shadow-lg">
           <div className="mx-auto w-full max-w-sm lg:w-96">
             <div>
-              <img
-                className="w-28 h-auto rounded-lg"
-                src={import.meta.env.PUBLIC_URL + "/images/logo.png"}
-                alt="Your Company"
-              />
+              <img className="w-28 h-auto rounded-lg" src={logoImage} alt="Your Company" />
               <h2 className="mt-8 text-2xl font-bold leading-9 tracking-tight text-gray-900">
                 Sign in to your account
               </h2>

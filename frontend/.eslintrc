@@ -12,6 +12,7 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:cypress/recommended",
     // "plugin:prettier/recommended",
     "prettier"
   ],
