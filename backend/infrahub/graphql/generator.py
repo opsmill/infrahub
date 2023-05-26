@@ -504,7 +504,6 @@ async def generate_paginated_object_types(
         if not isinstance(node_schema, (NodeSchema, GenericSchema)):
             continue
         node_type = registry.get_graphql_type(name=node_name, branch=branch.name)
-        related_node_type = registry.get_graphql_type(name=f"NestedPaginated{node_name}", branch=branch.name)
 
         for rel in node_schema.relationships:
             peer_schema = await rel.get_peer_schema(branch=branch)
@@ -517,9 +516,6 @@ async def generate_paginated_object_types(
                 else:
                     peer_type = registry.get_graphql_type(name=f"NestedEdged{peer_schema.kind}", branch=branch.name)
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=single_relationship_resolver)
-                related_node_type._meta.fields[rel.name] = graphene.Field(
-                    peer_type, resolver=single_relationship_resolver
-                )
 
             elif rel.cardinality == "many":
                 if isinstance(peer_schema, GroupSchema):
@@ -529,8 +525,6 @@ async def generate_paginated_object_types(
                 node_type._meta.fields[rel.name] = graphene.Field(
                     peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                 )
-
-                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, required=False, **peer_filters)
 
 
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
