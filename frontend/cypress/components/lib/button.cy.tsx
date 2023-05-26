@@ -1,7 +1,7 @@
+/// <reference types="cypress" />
+
 import React from "react";
 import { BUTTON_TYPES, Button } from "../../../src/components/button";
-
-declare const cy: any;
 
 describe("Button component", () => {
   it("should render VALIDATE button correctly", () => {

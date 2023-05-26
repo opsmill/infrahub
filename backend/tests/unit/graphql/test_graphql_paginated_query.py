@@ -1241,7 +1241,6 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     )
 
 
-@pytest.mark.skip(reason="pending convertion - missing _relation__updated_at")
 async def test_query_relationship_updated_at(db, session, default_branch: Branch, person_tag_schema):
     t1 = await Node.init(session=session, schema="Tag")
     await t1.new(session=session, name="Blue", description="The Blue tag")
@@ -1253,19 +1252,31 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     query = """
     query {
         person {
-            id
-            tags {
-                _updated_at
-                _relation__updated_at
-                name {
-                    value
+            edges {
+                node {
+                    id
+                    tags {
+                        edges {
+                            node {
+                                _updated_at
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                updated_at
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1273,14 +1284,16 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
     assert result1.errors is None
-    assert result1.data["person"] == []
+    assert result1.data["person"]["edges"] == []
 
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
     await p1.save(session=session)
 
     result2 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1288,14 +1301,14 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
     assert result2.errors is None
-    assert len(result2.data["person"][0]["tags"]) == 2
+    assert len(result2.data["person"]["edges"][0]["node"]["tags"]["edges"]) == 2
     assert (
-        result2.data["person"][0]["tags"][0]["_updated_at"]
-        != result2.data["person"][0]["tags"][0]["_relation__updated_at"]
+        result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        != result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]
     )
     assert (
-        result2.data["person"][0]["tags"][0]["_updated_at"]
-        == Timestamp(result2.data["person"][0]["tags"][0]["_updated_at"]).to_string()
+        result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        == Timestamp(result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]).to_string()
     )
 
 

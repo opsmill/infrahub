@@ -1,7 +1,7 @@
+/// <reference types="cypress" />
+
 import React from "react";
 import { PILL_TYPES, Pill } from "../../../src/components/pill";
-
-declare const cy: any;
 
 describe("Pill component", () => {
   it("should render VALIDATE pill correctly", () => {
