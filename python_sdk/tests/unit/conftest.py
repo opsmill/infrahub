@@ -67,7 +67,7 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
-async def location_data01():
+async def location_data01_no_pagination():
     data = {
         "id": "llllllll-llll-llll-llll-llllllllllll",
         "display_label": "dfw1",
@@ -100,7 +100,7 @@ async def location_data01():
 
 
 @pytest.fixture
-async def location_data02():
+async def location_data02_no_pagination():
     data = {
         "id": "llllllll-llll-llll-llll-llllllllllll",
         "display_label": "dfw1",
@@ -153,6 +153,126 @@ async def location_data02():
 
 
 @pytest.fixture
+async def location_data01():
+    data = {
+        "node": {
+            "id": "llllllll-llll-llll-llll-llllllllllll",
+            "display_label": "dfw1",
+            "name": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "DFW"},
+            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "type": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "SITE"},
+            "primary_tag": {
+                "properties": {
+                    "is_protected": True,
+                    "is_visible": True,
+                    "owner": None,
+                    "source": None,
+                },
+                "node": {
+                    "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+                    "display_label": "red",
+                    "__typename": "RelatedTag",
+                },
+            },
+            "tags": {
+                "count": 1,
+                "edges": [
+                    {
+                        "properties": {
+                            "is_protected": True,
+                            "is_visible": True,
+                            "owner": None,
+                            "source": None,
+                        },
+                        "node": {
+                            "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                            "display_label": "blue",
+                            "__typename": "RelatedTag",
+                        },
+                    }
+                ],
+            },
+        }
+    }
+
+    return data
+
+
+@pytest.fixture
+async def location_data02():
+    data = {
+        "node": {
+            "id": "llllllll-llll-llll-llll-llllllllllll",
+            "display_label": "dfw1",
+            "name": {
+                "is_protected": True,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": "dfw1",
+            },
+            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "type": {
+                "is_protected": True,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": "SITE",
+            },
+            "primary_tag": {
+                "properties": {
+                    "is_protected": True,
+                    "is_visible": True,
+                    "owner": None,
+                    "source": {
+                        "__typename": "Account",
+                        "display_label": "CRM",
+                        "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                    },
+                },
+                "node": {
+                    "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+                    "display_label": "red",
+                    "__typename": "Tag",
+                },
+            },
+            "tags": {
+                "count": 1,
+                "edges": [
+                    {
+                        "properties": {
+                            "is_protected": True,
+                            "is_visible": True,
+                            "owner": None,
+                            "source": {
+                                "__typename": "Account",
+                                "display_label": "CRM",
+                                "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                            },
+                        },
+                        "node": {
+                            "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                            "display_label": "blue",
+                            "__typename": "Tag",
+                        },
+                    }
+                ],
+            },
+        }
+    }
+
+    return data
+
+
+@pytest.fixture
 async def tag_schema() -> NodeSchema:
     data = {
         "name": "tag",
@@ -167,7 +287,7 @@ async def tag_schema() -> NodeSchema:
 
 
 @pytest.fixture
-async def tag_blue_data():
+async def tag_blue_data_no_pagination():
     data = {
         "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         "display_label": "blue",
@@ -184,7 +304,7 @@ async def tag_blue_data():
 
 
 @pytest.fixture
-async def tag_red_data():
+async def tag_red_data_no_pagination():
     data = {
         "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
         "display_label": "red",
@@ -201,7 +321,7 @@ async def tag_red_data():
 
 
 @pytest.fixture
-async def tag_green_data():
+async def tag_green_data_no_pagination():
     data = {
         "id": "gggggggg-gggg-gggg-gggg-gggggggggggg",
         "display_label": "green",
@@ -213,6 +333,75 @@ async def tag_green_data():
             "value": "green",
         },
         "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+    }
+    return data
+
+
+@pytest.fixture
+async def tag_blue_data():
+    data = {
+        "node": {
+            "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "display_label": "blue",
+            "name": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": "blue",
+            },
+            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        }
+    }
+    return data
+
+
+@pytest.fixture
+async def tag_red_data():
+    data = {
+        "node": {
+            "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+            "display_label": "red",
+            "name": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": "red",
+            },
+            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        }
+    }
+    return data
+
+
+@pytest.fixture
+async def tag_green_data():
+    data = {
+        "node": {
+            "id": "gggggggg-gggg-gggg-gggg-gggggggggggg",
+            "display_label": "green",
+            "name": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": "green",
+            },
+            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        }
     }
     return data
 
@@ -276,7 +465,7 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_repositories_query_no_pagination(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
             "repository": [
@@ -308,7 +497,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_query_repository_all_01(
+async def mock_query_repository_all_01_no_pagination(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ) -> HTTPXMock:
     response = {
@@ -327,6 +516,82 @@ async def mock_query_repository_all_01(
                     "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
                 },
             ]
+        }
+    }
+
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-all"})
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response1 = {
+        "data": {
+            "repository": {
+                "count": 1,
+                "edges": [
+                    {
+                        "node": {
+                            "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                            "name": {"value": "infrahub-demo-edge"},
+                            "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
+                            "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                        }
+                    }
+                ],
+            }
+        }
+    }
+    response2 = {
+        "data": {
+            "repository": {
+                "count": 1,
+                "edges": [
+                    {
+                        "node": {
+                            "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                            "name": {"value": "infrahub-demo-edge"},
+                            "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
+                            "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                        }
+                    }
+                ],
+            }
+        }
+    }
+
+    httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json=response1)
+    httpx_mock.add_response(method="POST", url="http://mock/graphql/cr1234", json=response2)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_query_repository_all_01(
+    httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
+) -> HTTPXMock:
+    response = {
+        "data": {
+            "repository": {
+                "count": 2,
+                "edges": [
+                    {
+                        "node": {
+                            "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                            "name": {"value": "infrahub-demo-edge"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
+                            "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                        },
+                    },
+                    {
+                        "node": {
+                            "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                            "name": {"value": "infrahub-demo-core"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                            "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                        }
+                    },
+                ],
+            }
         }
     }
 

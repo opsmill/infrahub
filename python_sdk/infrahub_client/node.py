@@ -121,20 +121,25 @@ class RelatedNodeBase:
             data = {"id": data}
 
         if isinstance(data, dict):
-            self._id = data.get("id", None)
-            self._display_label = data.get("display_label", None)
-            self._typename = data.get("__typename", None)
-            self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
+            node_data = data.get("node", data)
+            properties_data = data.get("properties", data)
 
+            self._id = node_data.get("id", None)
+            self._display_label = node_data.get("display_label", None)
+            self._typename = node_data.get("__typename", None)
+
+            self.updated_at: Optional[str] = data.get("updated_at", data.get("_relation__updated_at", None))
+
+            # FIXME, we won't need that once we are only supporting paginated results
             if self._typename and self._typename.startswith("Related"):
                 self._typename = self._typename[7:]
 
             for prop in self._properties:
-                if value := data.get(prop, None):
-                    setattr(self, prop, value)
-                    continue
+                # if value := properties_data.get(prop, None):
+                #     setattr(self, prop, value)
+                #     continue
 
-                prop_data = data.get(f"_relation__{prop}", None)
+                prop_data = properties_data.get(prop, properties_data.get(f"_relation__{prop}", None))
                 if prop_data and isinstance(prop_data, dict) and "id" in prop_data:
                     setattr(self, prop, prop_data["id"])
                 elif prop_data and isinstance(prop_data, (str, bool)):
@@ -316,11 +321,23 @@ class RelationshipManager(RelationshipManagerBase):
         if data is None:
             return
 
-        if not isinstance(data, list):
+        if not self.client.pagination and not isinstance(data, list):
             raise ValueError(f"{name} found a {type(data)} instead of a list")
 
-        for item in data:
-            self.peers.append(RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item))
+        if isinstance(data, list):
+            for item in data:
+                self.peers.append(
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        elif isinstance(data, dict) and "edges" in data:
+            for item in data["edges"]:
+                self.peers.append(
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        else:
+            raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
     def __getitem__(self, item: int) -> RelatedNode:
         return self.peers[item]  # type: ignore[return-value]
@@ -358,13 +375,23 @@ class RelationshipManagerSync(RelationshipManagerBase):
         if data is None:
             return
 
-        if not isinstance(data, list):
+        if not self.client.pagination and not isinstance(data, list):
             raise ValueError(f"{name} found a {type(data)} instead of a list")
 
-        for item in data:
-            self.peers.append(
-                RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
-            )
+        if isinstance(data, list):
+            for item in data:
+                self.peers.append(
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        elif isinstance(data, dict) and "edges" in data:
+            for item in data["edges"]:
+                self.peers.append(
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        else:
+            raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
     def __getitem__(self, item: int) -> RelatedNodeSync:
         return self.peers[item]  # type: ignore[return-value]
@@ -532,6 +559,10 @@ class InfrahubNode(InfrahubNodeBase):
     ) -> None:
         self._client = client
         self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
+
+        if self._client.pagination and isinstance(data, dict) and "node" in data:
+            data = data.get("node")
+
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
@@ -622,6 +653,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
     ) -> None:
         self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
+
+        if self._client.pagination and isinstance(data, dict) and "node" in data:
+            data = data.get("node")
+
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
