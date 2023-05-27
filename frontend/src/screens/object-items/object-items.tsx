@@ -68,6 +68,8 @@ export default function ObjectItems() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
+  console.log("queryString: ", queryString);
+
   const {
     loading,
     error,
@@ -79,7 +81,8 @@ export default function ObjectItems() {
     { skip: !schema }
   );
 
-  const rows = data[schema?.name];
+  console.log("data: ", data);
+  const rows = data && data[schema?.name];
 
   if (error) {
     return <ErrorScreen />;
@@ -91,7 +94,7 @@ export default function ObjectItems() {
         {schema && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              {schema.kind} ({rows.length})
+              {schema.kind} ({rows?.length})
             </h1>
             <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
               A list of all the {schema.kind} in your infrastructure.
@@ -138,7 +141,7 @@ export default function ObjectItems() {
                           <td
                             key={row.id + "-" + attribute.name}
                             className={classNames(
-                              index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                              index !== rows?.length - 1 ? "border-b border-gray-200" : "",
                               "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                             )}>
                             {getObjectItemDisplayValue(row, attribute)}
