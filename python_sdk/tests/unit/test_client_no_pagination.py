@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 from pytest_httpx import HTTPXMock
 
@@ -6,10 +8,27 @@ from infrahub_client.data import RepositoryData
 from infrahub_client.exceptions import FilterNotFound, NodeNotFound
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 
-async_client_methods = [method for method in dir(InfrahubClient) if not method.startswith("_")]
-sync_client_methods = [method for method in dir(InfrahubClientSync) if not method.startswith("_")]
-
 client_types = ["standard", "sync"]
+
+
+@dataclass
+class BothClients:
+    sync: InfrahubClientSync
+    standard: InfrahubClient
+
+
+@pytest.fixture
+async def client() -> InfrahubClient:
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=False)
+
+
+@pytest.fixture
+async def clients() -> BothClients:
+    both = BothClients(
+        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=False),
+        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination=False),
+    )
+    return both
 
 
 async def test_get_repositories(

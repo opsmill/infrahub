@@ -30,24 +30,24 @@ class BothClients:
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True)
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=False)
 
 
 @pytest.fixture
 async def clients() -> BothClients:
     both = BothClients(
-        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True),
-        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination=True),
+        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=False),
+        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination=False),
     )
     return both
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_init_node_data_graphql(client, location_schema, location_data01, client_type):
+async def test_init_node_data_graphql(client, location_schema, location_data01_no_pagination, client_type):
     if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
     else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
 
     assert node.name.value == "DFW"
     assert node.name.is_protected is True
@@ -287,19 +287,25 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_update_input_data__with_relationships_01(
-    client, location_schema, location_data01, tag_schema, tag_blue_data, tag_green_data, client_type
+    client,
+    location_schema,
+    location_data01_no_pagination,
+    tag_schema,
+    tag_blue_data_no_pagination,
+    tag_green_data_no_pagination,
+    client_type,
 ):
     if client_type == "standard":
-        location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     else:
-        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
-    location.primary_tag = tag_green_data
+    location.primary_tag = tag_green_data_no_pagination
     location.tags.add(tag_green)
     location.tags.remove(tag_blue)
 
@@ -314,12 +320,14 @@ async def test_update_input_data__with_relationships_01(
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_update_input_data_with_relationships_02(client, location_schema, location_data02, client_type):
+async def test_update_input_data_with_relationships_02(
+    client, location_schema, location_data02_no_pagination, client_type
+):
     if client_type == "standard":
-        location = InfrahubNode(client=client, schema=location_schema, data=location_data02)
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data02_no_pagination)
 
     else:
-        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data02)
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data02_no_pagination)
 
     assert location._generate_input_data()["data"] == {
         "data": {
@@ -355,15 +363,15 @@ async def test_update_input_data_with_relationships_02(client, location_schema, 
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_update_input_data_empty_relationship(
-    client, location_schema, location_data01, tag_schema, tag_blue_data, client_type
+    client, location_schema, location_data01_no_pagination, tag_schema, tag_blue_data_no_pagination, client_type
 ):
     if client_type == "standard":
-        location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     else:
-        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     location.tags.remove(tag_blue)
     location.primary_tag = None
@@ -380,17 +388,23 @@ async def test_update_input_data_empty_relationship(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_node_get_relationship_from_store(
-    client, location_schema, location_data01, tag_schema, tag_red_data, tag_blue_data, client_type
+    client,
+    location_schema,
+    location_data01_no_pagination,
+    tag_schema,
+    tag_red_data_no_pagination,
+    tag_blue_data_no_pagination,
+    client_type,
 ):
     if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data)
-        tag_blue = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_blue_data)
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data_no_pagination)
+        tag_blue = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     client.store.set(key=tag_red.id, node=tag_red)
     client.store.set(key=tag_blue.id, node=tag_blue)
@@ -403,12 +417,12 @@ async def test_node_get_relationship_from_store(
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_node_get_relationship_not_in_store(client, location_schema, location_data01, client_type):
+async def test_node_get_relationship_not_in_store(client, location_schema, location_data01_no_pagination, client_type):
     if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
 
     else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
 
     with pytest.raises(NodeNotFound):
         node.primary_tag.peer  # pylint: disable=pointless-statement
@@ -423,16 +437,16 @@ async def test_node_fetch_relationship(
     mock_schema_query_01,
     clients,
     location_schema,
-    location_data01,
+    location_data01_no_pagination,
     tag_schema,
-    tag_red_data,
-    tag_blue_data,
+    tag_red_data_no_pagination,
+    tag_blue_data_no_pagination,
     client_type,
 ):  # pylint: disable=unused-argument
     response1 = {
         "data": {
             "tag": [
-                tag_red_data,
+                tag_red_data_no_pagination,
             ]
         }
     }
@@ -442,7 +456,7 @@ async def test_node_fetch_relationship(
     response2 = {
         "data": {
             "tag": [
-                tag_blue_data,
+                tag_blue_data_no_pagination,
             ]
         }
     }
@@ -450,11 +464,11 @@ async def test_node_fetch_relationship(
     httpx_mock.add_response(method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-tag-get"})
 
     if client_type == "standard":
-        node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01)
+        node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01_no_pagination)
         await node.primary_tag.fetch()  # type: ignore[attr-defined]
         await node.tags.fetch()  # type: ignore[attr-defined]
     else:
-        node = InfrahubNodeSync(client=clients.sync, schema=location_schema, data=location_data01)  # type: ignore[assignment]
+        node = InfrahubNodeSync(client=clients.sync, schema=location_schema, data=location_data01_no_pagination)  # type: ignore[assignment]
         node.primary_tag.fetch()  # type: ignore[attr-defined]
         node.tags.fetch()  # type: ignore[attr-defined]
 
