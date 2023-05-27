@@ -46,8 +46,6 @@ jobs:
         run: "poetry run invoke backend.black"
       - name: "Isort Tests"
         run: "poetry run invoke backend.isort"
-      - name: "Flake8 Tests"
-        run: "poetry run invoke backend.flake8"
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
       - name: "Unit Tests"

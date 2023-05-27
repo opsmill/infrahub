@@ -70,16 +70,6 @@ def black(context: Context):
 
 
 @task
-def flake8(context: Context):
-    """This will run flake8 for the specified name and Python version."""
-
-    print(f" - [{NAMESPACE}] Check code with flake8")
-    exec_cmd = f"flake8 --ignore=E203,E501,W503,W504,E701,E251,E231 {MAIN_DIRECTORY}"
-    with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
-
-
-@task
 def isort(context: Context):
     """Run isort to check that Python files adherence to import standards."""
 
@@ -124,7 +114,6 @@ def lint(context: Context):
     """This will run all linter."""
     black(context)
     isort(context)
-    flake8(context)
     pylint(context)
     mypy(context)
     ruff(context)
