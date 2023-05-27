@@ -33,14 +33,12 @@ interface Props {
 export default function DeviceFilterBar(props: Props) {
   const { schema } = props;
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
-  console.log("currentFilters: ", currentFilters);
 
   const [showFilters, setShowFilters] = useState(false);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [filtersInQueryString, setFiltersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
 
   const filters = filtersInQueryString ? JSON.parse(filtersInQueryString) : currentFilters;
-  console.log("filters: ", filters);
 
   const peers: string[] = [];
 
