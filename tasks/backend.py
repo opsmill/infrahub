@@ -144,10 +144,3 @@ def lint(context: Context):
 def format_and_lint(context: Context):
     format_all(context)
     lint(context)
-
-
-@task(default=True)
-def format_and_lint(context: Context):
-    format_all(context)
-    lint(context)
-    lint(context)
