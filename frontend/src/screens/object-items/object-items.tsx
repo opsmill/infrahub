@@ -68,8 +68,6 @@ export default function ObjectItems() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  console.log("queryString: ", queryString);
-
   const {
     loading,
     error,
@@ -81,7 +79,6 @@ export default function ObjectItems() {
     { skip: !schema }
   );
 
-  console.log("data: ", data);
   const rows = data && data[schema?.name];
 
   if (error) {
