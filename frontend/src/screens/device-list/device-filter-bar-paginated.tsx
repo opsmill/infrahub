@@ -101,9 +101,11 @@ export default function DeviceFilterBar(props: Props) {
         peerDropdownOptions &&
         peerDropdownOptions[schemaKindName[filter.object_kind]]
       ) {
-        const options = peerDropdownOptions[schemaKindName[filter.object_kind]].map((row: any) => ({
-          name: row.display_label,
-          id: row.id,
+        const { edges } = peerDropdownOptions[schemaKindName[filter.object_kind]];
+
+        const options = edges.map((row: any) => ({
+          name: row.node.display_label,
+          id: row.node.id,
         }));
 
         formFields.push({

@@ -13,6 +13,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { configState } from "../../state/atoms/config.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
@@ -21,6 +22,7 @@ import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue
 import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectUrl } from "../../utils/objects";
 import DeviceFilterBar from "../device-list/device-filter-bar";
+import DeviceFilterBarPaginated from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -28,6 +30,7 @@ import ObjectItemCreate from "../object-item-create/object-item-create";
 
 export default function ObjectItems() {
   const { objectname } = useParams();
+  const [config] = useAtom(configState);
   const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
@@ -104,7 +107,11 @@ export default function ObjectItems() {
         </RoundedButton>
       </div>
 
-      {schema && <DeviceFilterBar schema={schema} />}
+      {schema && config?.experimental_features?.paginated && (
+        <DeviceFilterBarPaginated schema={schema} />
+      )}
+
+      {schema && !config?.experimental_features?.paginated && <DeviceFilterBar schema={schema} />}
 
       {loading && !rows && <LoadingScreen />}
 
