@@ -63,8 +63,9 @@ async def test_init_client_sync():
     assert True
 
 
-async def test_get_repositories(mock_branches_list_query, mock_repositories_query):  # pylint: disable=unused-argument
-    client = await InfrahubClient.init(address="http://mock", insert_tracker=True)
+async def test_get_repositories(
+    client, mock_branches_list_query, mock_repositories_query
+):  # pylint: disable=unused-argument
     repos = await client.get_list_repositories()
 
     expected_response = RepositoryData(

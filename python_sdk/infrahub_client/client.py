@@ -20,7 +20,11 @@ from infrahub_client.exceptions import (
 )
 from infrahub_client.graphql import Query
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
-from infrahub_client.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
+from infrahub_client.queries import (
+    MUTATION_COMMIT_UPDATE,
+    QUERY_ALL_REPOSITORIES,
+    QUERY_ALL_REPOSITORIES_NO_PAGINATION,
+)
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
@@ -513,6 +517,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     async def get_list_repositories(
         self, branches: Optional[Dict[str, BranchData]] = None
     ) -> Dict[str, RepositoryData]:
+        if not self.pagination:
+            return await self.get_list_repositories_no_pagination(branches=branches)
+
         if not branches:
             branches = await self.branch.all()  # type: ignore
 
@@ -523,6 +530,43 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             tasks.append(
                 self.execute_graphql(
                     query=QUERY_ALL_REPOSITORIES, branch_name=branch_name, tracker="query-repository-all"
+                )
+            )
+            # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
+
+        responses = await asyncio.gather(*tasks)
+
+        repositories = {}
+
+        for branch_name, response in zip(branch_names, responses):
+            repos = response["repository"]["edges"]
+            for repository in repos:
+                repo_name = repository["node"]["name"]["value"]
+                if repo_name not in repositories:
+                    repositories[repo_name] = RepositoryData(
+                        id=repository["node"]["id"],
+                        name=repo_name,
+                        location=repository["node"]["location"]["value"],
+                        branches={},
+                    )
+
+                repositories[repo_name].branches[branch_name] = repository["node"]["commit"]["value"]
+
+        return repositories
+
+    async def get_list_repositories_no_pagination(
+        self, branches: Optional[Dict[str, BranchData]] = None
+    ) -> Dict[str, RepositoryData]:
+        if not branches:
+            branches = await self.branch.all()  # type: ignore
+
+        branch_names = sorted(branches.keys())  # type: ignore
+
+        tasks = []
+        for branch_name in branch_names:
+            tasks.append(
+                self.execute_graphql(
+                    query=QUERY_ALL_REPOSITORIES_NO_PAGINATION, branch_name=branch_name, tracker="query-repository-all"
                 )
             )
             # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API

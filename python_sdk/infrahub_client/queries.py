@@ -1,4 +1,4 @@
-QUERY_ALL_REPOSITORIES = """
+QUERY_ALL_REPOSITORIES_NO_PAGINATION = """
 query {
     repository {
         id
@@ -10,6 +10,28 @@ query {
         }
         commit {
             value
+        }
+    }
+}
+"""
+
+QUERY_ALL_REPOSITORIES = """
+query {
+    repository {
+        count
+        edges {
+            node {
+                id
+                name {
+                    value
+                }
+                location {
+                    value
+                }
+                commit {
+                    value
+                }
+            }
         }
     }
 }
