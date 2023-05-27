@@ -44,6 +44,7 @@ class BaseClient:
         test_client: Optional[TestClient] = None,
         default_branch: str = "main",
         insert_tracker: bool = False,
+        pagination: bool = False,
         max_concurrent_execution: int = 5,
     ):
         self.address = address
@@ -55,6 +56,7 @@ class BaseClient:
         self.default_branch = default_branch
         self.log = log or logging.getLogger("infrahub_client")
         self.insert_tracker = insert_tracker
+        self.pagination = pagination
         self.headers = {"content-type": "application/json"}
         self.max_concurrent_execution = max_concurrent_execution
 
