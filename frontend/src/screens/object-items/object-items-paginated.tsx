@@ -4,11 +4,12 @@ import { useAtom } from "jotai";
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Pagination } from "../../components/pagination";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { getObjectItems } from "../../graphql/queries/objects/getObjectItems";
+import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import usePagination from "../../hooks/usePagination";
@@ -57,7 +58,7 @@ export default function ObjectItems() {
   const navigate = useNavigate();
 
   const queryString = schema
-    ? getObjectItems({
+    ? getObjectItemsPaginated({
         kind: schema.kind,
         name: schema.name,
         attributes: schema.attributes,
@@ -79,7 +80,11 @@ export default function ObjectItems() {
     { skip: !schema }
   );
 
-  const rows = data[schema?.name];
+  const result = data ? data[schema?.name] ?? {} : {};
+
+  const { count, edges } = result;
+
+  const rows = edges?.map((edge: any) => edge.node);
 
   if (error) {
     return <ErrorScreen />;
@@ -91,7 +96,7 @@ export default function ObjectItems() {
         {schema && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              {schema.kind} ({rows.length})
+              {schema.kind} ({count})
             </h1>
             <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
               A list of all the {schema.kind} in your infrastructure.
@@ -150,6 +155,8 @@ export default function ObjectItems() {
                 </table>
 
                 {!rows?.length && <NoDataFound />}
+
+                <Pagination count={count} />
               </div>
             </div>
           </div>

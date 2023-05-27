@@ -1,7 +1,7 @@
 import { ApolloProvider, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
-import { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -173,7 +173,7 @@ function App() {
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/" element={<Layout />}>
-          {MAIN_ROUTES.map((route) => (
+          {MAIN_ROUTES(config).map((route) => (
             <Route index key={route.path} path={route.path} element={route.element} />
           ))}
 
