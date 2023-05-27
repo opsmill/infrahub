@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 
 export const getObjectItems = Handlebars.compile(`
 query {{kind}} {
-  {{name}}{{#if filterString}}({{{filterString}}}){{/if}} {
+  {{name}}{{#if filters}}({{{filters}}}){{/if}} {
     id
     display_label
     {{#each attributes}}

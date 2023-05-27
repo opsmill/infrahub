@@ -11,7 +11,6 @@ import { QSP } from "../../config/qsp";
 import { getObjectItems } from "../../graphql/queries/objects/getObjectItems";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
-import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { configState } from "../../state/atoms/config.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
@@ -35,7 +34,6 @@ export default function ObjectItems() {
   const branch = useReactiveVar(branchVar);
   const currentFilters = useReactiveVar(comboxBoxFilterVar);
   const [filtersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
-  const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
@@ -44,15 +42,9 @@ export default function ObjectItems() {
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
-  const filtersString = [
-    // Add object filters
-    ...filters.map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`),
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-  ].join(",");
+  const filtersString = filters
+    .map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`)
+    .join(",");
 
   // Get all the needed columns (attributes + relationships with a cardinality of "one")
   const columns = getSchemaObjectColumns(schema);
