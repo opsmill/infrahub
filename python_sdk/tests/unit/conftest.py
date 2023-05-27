@@ -20,15 +20,29 @@ class BothClients:
 
 
 @pytest.fixture
+async def client_no_pagination() -> InfrahubClient:
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True)
+
+
+@pytest.fixture
+async def clients_no_pagination() -> BothClients:
+    both = BothClients(
+        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True),
+        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True),
+    )
+    return both
+
+
+@pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True)
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True)
 
 
 @pytest.fixture
 async def clients() -> BothClients:
     both = BothClients(
-        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True),
-        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True),
+        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True),
+        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination=True),
     )
     return both
 
