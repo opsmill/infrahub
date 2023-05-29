@@ -1,17 +1,8 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "types": [
-      "vite/client",
-      "vite-plugin-svgr/client",
-      "vitest/globals",
-      "cypress"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["vite/client", "vite-plugin-svgr/client", "vitest/globals", "cypress"],
     "allowJs": false,
     "skipLibCheck": false,
     "esModuleInterop": false,
@@ -33,9 +24,5 @@
     // relative to your source root folder.
     "sourceRoot": "/"
   },
-  "include": [
-    "src",
-    "mocks",
-    ""
-  ]
+  "include": ["src", "mocks"]
 }

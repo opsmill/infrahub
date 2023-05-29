@@ -24,6 +24,7 @@ export type Config = {
   analytics: AnalyticsConfig;
   logging: LoggingConfig;
   main: MainConfig;
+  experimental_features: { [key: string]: boolean };
 };
 
 export const configState = atom<Config | undefined>(undefined);

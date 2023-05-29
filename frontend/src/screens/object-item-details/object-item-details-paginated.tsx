@@ -18,7 +18,7 @@ import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { getObjectDetails } from "../../graphql/queries/objects/getObjectDetails";
+import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
@@ -52,7 +52,7 @@ export default function ObjectItemDetails() {
   );
 
   const queryString = schema
-    ? getObjectDetails({
+    ? getObjectDetailsPaginated({
         ...schema,
         relationships,
         objectid,
@@ -89,7 +89,7 @@ export default function ObjectItemDetails() {
       label: schema?.label,
       name: schema?.label,
     },
-    ...(schema?.relationships || [])
+    ...(schema?.relationships ?? [])
       .filter((relationship) => {
         if (relationship.kind === "Generic" && relationship.cardinality === "many") {
           return true;
@@ -115,11 +115,11 @@ export default function ObjectItemDetails() {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schema.name] && !data[schema.name])) {
+  if (!data || (data && !data[schema.name] && !data[schema.name]?.edges)) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data[schema.name][0];
+  const objectDetailsData = data[schema.name]?.edges[0]?.node;
 
   if (!objectDetailsData) {
     return null;
@@ -274,7 +274,7 @@ export default function ObjectItemDetails() {
                 mode="DESCRIPTION-LIST"
                 parentSchema={schema}
                 key={relationshipSchema.name}
-                relationshipsData={objectDetailsData[relationshipSchema.name]}
+                relationshipsData={objectDetailsData[relationshipSchema.name]?.node}
                 relationshipSchema={relationshipSchema}
               />
             ))}
