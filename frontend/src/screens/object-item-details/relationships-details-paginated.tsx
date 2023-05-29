@@ -41,13 +41,11 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     columns,
   });
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
-  console.log("data: ", data);
 
   if (loading) {
     return <LoadingScreen />;
@@ -67,9 +65,11 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     return null;
   }
 
-  const result = data[schema.name]?.edges?.node;
+  const result = data[schema.name]?.edges;
 
-  const relationships = result?.length ? result[0][relationshipTab] : null;
+  const relationships = result?.length
+    ? result[0]?.node[relationshipTab]?.edges?.map((edge: any) => edge?.node)
+    : null;
 
   return (
     <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">
