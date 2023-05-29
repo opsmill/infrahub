@@ -89,7 +89,7 @@ export default function ObjectItemDetails() {
       label: schema?.label,
       name: schema?.label,
     },
-    ...(schema?.relationships || [])
+    ...(schema?.relationships ?? [])
       .filter((relationship) => {
         if (relationship.kind === "Generic" && relationship.cardinality === "many") {
           return true;
@@ -274,7 +274,7 @@ export default function ObjectItemDetails() {
                 mode="DESCRIPTION-LIST"
                 parentSchema={schema}
                 key={relationshipSchema.name}
-                relationshipsData={objectDetailsData[relationshipSchema.name]}
+                relationshipsData={objectDetailsData[relationshipSchema.name]?.node}
                 relationshipSchema={relationshipSchema}
               />
             ))}

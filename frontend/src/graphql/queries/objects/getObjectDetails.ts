@@ -70,7 +70,6 @@ export const getObjectDetailsPaginated = Handlebars.compile(`query {{kind.value}
             }
         }
         {{/each}}
-
         {{#each relationships}}
           {{this.name}} {
               node {
