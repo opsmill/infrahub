@@ -13,11 +13,6 @@ describe("Config fetch", () => {
       cy.intercept("GET", "/config", config).as("getConfig");
     });
 
-    // Intercept and wait config query
-    cy.fixture("schema").then((schema) => {
-      cy.intercept("GET", "/schema", schema).as("getSchema");
-    });
-
     cy.mount(<App />);
 
     cy.wait("@getConfig").then(({ response }) => {
@@ -28,7 +23,7 @@ describe("Config fetch", () => {
   it("should load the schema", () => {
     cy.viewport(1920, 1080);
 
-    // Intercept and wait config query
+    // Intercept and wait schema query
     cy.fixture("schema").then((schema) => {
       cy.log("schema:", schema);
       cy.intercept("GET", "/schema", schema).as("getSchema");
