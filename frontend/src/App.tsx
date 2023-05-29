@@ -1,7 +1,7 @@
 import { ApolloProvider, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
-import { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
