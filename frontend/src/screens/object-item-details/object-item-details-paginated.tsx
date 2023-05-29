@@ -9,7 +9,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Button } from "../../components/button";
@@ -32,7 +32,7 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
-import RelationshipsDetails from "./relationships-details";
+import RelationshipsDetails from "./relationships-details-paginated";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
