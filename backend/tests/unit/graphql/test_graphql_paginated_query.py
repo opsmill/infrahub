@@ -411,7 +411,6 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["value"] == "John"
 
 
-@pytest.mark.xfail(reason="Doesn't consistently return the cars in the same order")
 async def test_display_label_nested_query(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -471,7 +470,8 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     )
 
     assert result.errors is None
-    assert result.data["person"]["edges"][0]["node"] == {
+
+    expected_result = {
         "cars": {
             "edges": [
                 {
@@ -502,6 +502,8 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
         },
         "name": {"value": "John"},
     }
+
+    assert DeepDiff(result.data["person"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
 
 
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):
