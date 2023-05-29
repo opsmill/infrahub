@@ -49,7 +49,7 @@ export default function DeviceFilterBar(props: Props) {
   });
 
   const queryString = getDropdownOptionsForRelatedPeers({
-    peers,
+    peers: peers.filter(Boolean),
   });
 
   const query = peers.length
