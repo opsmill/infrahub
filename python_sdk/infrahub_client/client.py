@@ -32,7 +32,7 @@ from infrahub_client.timestamp import Timestamp
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,too-many-lines
 
 
 class BaseClient:
@@ -49,6 +49,7 @@ class BaseClient:
         default_branch: str = "main",
         insert_tracker: bool = False,
         pagination: bool = False,
+        pagination_size: int = 50,
         max_concurrent_execution: int = 5,
     ):
         self.address = address
@@ -61,6 +62,7 @@ class BaseClient:
         self.log = log or logging.getLogger("infrahub_client")
         self.insert_tracker = insert_tracker
         self.pagination = pagination
+        self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
         self.max_concurrent_execution = max_concurrent_execution
 
@@ -111,13 +113,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 kind=kind, at=at, branch=branch, id=id, populate_store=populate_store, **kwargs
             )
 
-        branch = branch or self.default_branch
-        schema = await self.schema.get(kind=kind, branch=branch)
-
-        at = Timestamp(at)
-
-        node = InfrahubNode(client=self, schema=schema, branch=branch)
-
         if id:
             filters = {"ids": [id]}
         elif kwargs:
@@ -125,24 +120,14 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         else:
             raise ValueError("At least one filter must be provided to get()")
 
-        node.validate_filters(filters=filters)
-        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
-        query = Query(query=query_data)
-        response = await self.execute_graphql(
-            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
-        )
+        results = await self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)
 
-        if len(response[schema.name]["edges"]) == 0:
+        if len(results) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
-        if len(response[schema.name]["edges"]) > 1:
+        if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
-        obj = InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name]["edges"][0])
-
-        if populate_store and obj.id:
-            self.store.set(key=obj.id, node=obj)
-
-        return obj
+        return results[0]
 
     async def get_no_pagination(
         self,
@@ -194,6 +179,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         populate_store: bool = False,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
     ) -> List[InfrahubNode]:
         """Retrieve all nodes of a given kind
 
@@ -208,27 +195,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if not self.pagination:
             return await self.all_no_pagination(kind=kind, at=at, branch=branch, populate_store=populate_store)
 
-        schema = await self.schema.get(kind=kind)
-
-        branch = branch or self.default_branch
-        at = Timestamp(at)
-
-        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data()
-        query = Query(query=query_data)
-        response = await self.execute_graphql(
-            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
+        return await self.filters(
+            kind=kind, at=at, branch=branch, populate_store=populate_store, offset=offset, limit=limit
         )
-
-        nodes = [
-            InfrahubNode(client=self, schema=schema, branch=branch, data=item)
-            for item in response[schema.name]["edges"]
-        ]
-
-        if populate_store:
-            for node in nodes:
-                if node.id:
-                    self.store.set(key=node.id, node=node)
-        return nodes
 
     async def all_no_pagination(
         self,
@@ -272,6 +241,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         populate_store: bool = False,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
         **kwargs: Any,
     ) -> List[InfrahubNode]:
         if not self.pagination:
@@ -287,17 +258,54 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         node = InfrahubNode(client=self, schema=schema, branch=branch)
         filters = kwargs
 
-        if not filters:
-            raise ValueError("At least one filter must be provided to filters()")
+        if filters:
+            node.validate_filters(filters=filters)
 
-        node.validate_filters(filters=filters)
-        query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
-        query = Query(query=query_data)
-        response = await self.execute_graphql(
-            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-filters"
-        )
+        nodes = []
+        # If Offset or Limit was provided we just query as it
+        # If not, we'll query all nodes based on the size of the batch
+        if offset or limit:
+            query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
+                offset=offset, limit=limit, filters=filters
+            )
+            query = Query(query=query_data)
+            response = await self.execute_graphql(
+                query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-page1"
+            )
 
-        nodes = [InfrahubNode(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]]
+            nodes = [
+                InfrahubNode(client=self, schema=schema, branch=branch, data=item)
+                for item in response[schema.name]["edges"]
+            ]
+        else:
+            has_remaining_items = True
+            page_number = 1
+            while has_remaining_items:
+                page_offset = (page_number - 1) * self.pagination_size
+
+                query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
+                    offset=page_offset, limit=self.pagination_size, filters=filters
+                )
+                query = Query(query=query_data)
+                response = await self.execute_graphql(
+                    query=query.render(),
+                    branch_name=branch,
+                    at=at,
+                    tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
+                )
+
+                nodes.extend(
+                    [
+                        InfrahubNode(client=self, schema=schema, branch=branch, data=item)
+                        for item in response[schema.name]["edges"]
+                    ]
+                )
+
+                remaining_items = response[schema.name].get("count", 0) - (page_offset + self.pagination_size)
+                if remaining_items < 0:
+                    has_remaining_items = False
+
+                page_number += 1
 
         if populate_store:
             for node in nodes:
@@ -612,78 +620,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
 
-    def all(
-        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, populate_store: bool = False
-    ) -> List[InfrahubNodeSync]:
-        """Retrieve all nodes of a given kind
-
-        Args:
-            kind (str): kind of the nodes to query
-            at (Timestamp, optional): Time of the query. Defaults to Now.
-            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
-
-        Returns:
-            List[InfrahubNodeSync]: List of Nodes
-        """
-        if not self.pagination:
-            return self.all_no_pagination(kind=kind, at=at, branch=branch, populate_store=populate_store)
-
-        schema = self.schema.get(kind=kind)
-
-        branch = branch or self.default_branch
-        at = Timestamp(at)
-
-        query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data()
-        query = Query(query=query_data)
-        response = self.execute_graphql(
-            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
-        )
-
-        nodes = [
-            InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item)
-            for item in response[schema.name]["edges"]
-        ]
-
-        if populate_store:
-            for node in nodes:
-                if node.id:
-                    self.store.set(key=node.id, node=node)
-        return nodes
-
-    def all_no_pagination(
-        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, populate_store: bool = False
-    ) -> List[InfrahubNodeSync]:
-        """Retrieve all nodes of a given kind
-
-        Args:
-            kind (str): kind of the nodes to query
-            at (Timestamp, optional): Time of the query. Defaults to Now.
-            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
-
-        Returns:
-            List[InfrahubNodeSync]: List of Nodes
-        """
-        schema = self.schema.get(kind=kind)
-
-        branch = branch or self.default_branch
-        at = Timestamp(at)
-
-        query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data_no_pagination()
-        query = Query(query=query_data)
-        response = self.execute_graphql(
-            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
-        )
-
-        nodes = [
-            InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
-        ]
-
-        if populate_store:
-            for node in nodes:
-                if node.id:
-                    self.store.set(key=node.id, node=node)
-        return nodes
-
     def create(
         self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs: Any
     ) -> InfrahubNodeSync:
@@ -784,12 +720,72 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
+    def all(
+        self,
+        kind: str,
+        at: Optional[Timestamp] = None,
+        branch: Optional[str] = None,
+        populate_store: bool = False,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> List[InfrahubNodeSync]:
+        """Retrieve all nodes of a given kind
+
+        Args:
+            kind (str): kind of the nodes to query
+            at (Timestamp, optional): Time of the query. Defaults to Now.
+            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+
+        Returns:
+            List[InfrahubNodeSync]: List of Nodes
+        """
+        if not self.pagination:
+            return self.all_no_pagination(kind=kind, at=at, branch=branch, populate_store=populate_store)
+
+        return self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, offset=offset, limit=limit)
+
+    def all_no_pagination(
+        self, kind: str, at: Optional[Timestamp] = None, branch: Optional[str] = None, populate_store: bool = False
+    ) -> List[InfrahubNodeSync]:
+        """Retrieve all nodes of a given kind
+
+        Args:
+            kind (str): kind of the nodes to query
+            at (Timestamp, optional): Time of the query. Defaults to Now.
+            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+
+        Returns:
+            List[InfrahubNodeSync]: List of Nodes
+        """
+        schema = self.schema.get(kind=kind)
+
+        branch = branch or self.default_branch
+        at = Timestamp(at)
+
+        query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data_no_pagination()
+        query = Query(query=query_data)
+        response = self.execute_graphql(
+            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-all"
+        )
+
+        nodes = [
+            InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
+        ]
+
+        if populate_store:
+            for node in nodes:
+                if node.id:
+                    self.store.set(key=node.id, node=node)
+        return nodes
+
     def filters(
         self,
         kind: str,
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         populate_store: bool = False,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
         **kwargs: Any,
     ) -> List[InfrahubNodeSync]:
         if not self.pagination:
@@ -803,24 +799,61 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         node = InfrahubNodeSync(client=self, schema=schema, branch=branch)
         filters = kwargs
 
-        if not filters:
-            raise ValueError("At least one filter must be provided to filters()")
+        if filters:
+            node.validate_filters(filters=filters)
 
-        node.validate_filters(filters=filters)
-        query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
-        query = Query(query=query_data)
-        response = self.execute_graphql(
-            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-filters"
-        )
+        nodes = []
+        # If Offset or Limit was provided we just query as it
+        # If not, we'll query all nodes based on the size of the batch
+        if offset or limit:
+            query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
+                offset=offset, limit=limit, filters=filters
+            )
+            query = Query(query=query_data)
+            response = self.execute_graphql(
+                query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-page1"
+            )
 
-        nodes = [
-            InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item) for item in response[schema.name]
-        ]
+            nodes = [
+                InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item)
+                for item in response[schema.name]["edges"]
+            ]
+
+        else:
+            has_remaining_items = True
+            page_number = 1
+            while has_remaining_items:
+                page_offset = (page_number - 1) * self.pagination_size
+
+                query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
+                    offset=page_offset, limit=self.pagination_size, filters=filters
+                )
+                query = Query(query=query_data)
+                response = self.execute_graphql(
+                    query=query.render(),
+                    branch_name=branch,
+                    at=at,
+                    tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
+                )
+
+                nodes.extend(
+                    [
+                        InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item)
+                        for item in response[schema.name]["edges"]
+                    ]
+                )
+
+                remaining_items = response[schema.name].get("count", 0) - (page_offset + self.pagination_size)
+                if remaining_items < 0:
+                    has_remaining_items = False
+
+                page_number += 1
 
         if populate_store:
             for node in nodes:
                 if node.id:
                     self.store.set(key=node.id, node=node)
+
         return nodes
 
     def filters_no_pagination(
@@ -875,13 +908,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 kind=kind, at=at, branch=branch, id=id, populate_store=populate_store, **kwargs
             )
 
-        branch = branch or self.default_branch
-        schema = self.schema.get(kind=kind, branch=branch)
-
-        at = Timestamp(at)
-
-        node = InfrahubNodeSync(client=self, schema=schema, branch=branch)
-
         if id:
             filters = {"ids": [id]}
         elif kwargs:
@@ -889,24 +915,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         else:
             raise ValueError("At least one filter must be provided to get()")
 
-        node.validate_filters(filters=filters)
-        query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(filters=filters)
-        query = Query(query=query_data)
-        response = self.execute_graphql(
-            query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
-        )
+        results = self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)
 
-        if len(response[schema.name]["edges"]) == 0:
+        if len(results) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
-        if len(response[schema.name]["edges"]) > 1:
+        if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
-        obj = InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name]["edges"][0])
-
-        if populate_store and obj.id:
-            self.store.set(key=obj.id, node=obj)
-
-        return obj
+        return results[0]
 
     def get_no_pagination(
         self,

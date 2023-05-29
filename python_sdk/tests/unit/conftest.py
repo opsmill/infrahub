@@ -20,29 +20,17 @@ class BothClients:
 
 
 @pytest.fixture
-async def client_no_pagination() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True)
-
-
-@pytest.fixture
-async def clients_no_pagination() -> BothClients:
-    both = BothClients(
-        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True),
-        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True),
-    )
-    return both
-
-
-@pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True)
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True, pagination_size=3)
 
 
 @pytest.fixture
 async def clients() -> BothClients:
     both = BothClients(
-        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=True),
-        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination=True),
+        standard=await InfrahubClient.init(
+            address="http://mock", insert_tracker=True, pagination=True, pagination_size=3
+        ),
+        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination=True, pagination_size=3),
     )
     return both
 
@@ -566,7 +554,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_query_repository_all_01(
+async def mock_query_repository_page1_1(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ) -> HTTPXMock:
     response = {
@@ -595,7 +583,101 @@ async def mock_query_repository_all_01(
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-all"})
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_query_repository_page1_empty(
+    httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
+) -> HTTPXMock:
+    response: dict = {"data": {"repository": {"edges": []}}}
+
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_query_repository_page1_2(
+    httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
+) -> HTTPXMock:
+    response = {
+        "data": {
+            "repository": {
+                "count": 5,
+                "edges": [
+                    {
+                        "node": {
+                            "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                            "name": {"value": "infrahub-demo-edge"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
+                            "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                        },
+                    },
+                    {
+                        "node": {
+                            "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                            "name": {"value": "infrahub-demo-core"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                            "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                        }
+                    },
+                    {
+                        "node": {
+                            "id": "cccccccc-5ebb-456c-a946-bf64e930710a",
+                            "name": {"value": "infrahub-demo-core"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                            "commit": {"value": "ccccccccccccccccccccccccccccccc"},
+                        }
+                    },
+                ],
+            }
+        }
+    }
+
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_query_repository_page2_2(
+    httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
+) -> HTTPXMock:
+    response = {
+        "data": {
+            "repository": {
+                "count": 5,
+                "edges": [
+                    {
+                        "node": {
+                            "id": "dddddddd-87db-479d-ad73-07d80ba96a0f",
+                            "name": {"value": "infrahub-demo-edge"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
+                            "commit": {"value": "dddddddddddddddddddd"},
+                        },
+                    },
+                    {
+                        "node": {
+                            "id": "eeeeeeee-5ebb-456c-a946-bf64e930710a",
+                            "name": {"value": "infrahub-demo-core"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                            "commit": {"value": "eeeeeeeeeeeeeeeeeeeeee"},
+                        }
+                    },
+                ],
+            }
+        }
+    }
+
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page2"}
+    )
     return httpx_mock
 
 

@@ -178,7 +178,7 @@ class RelatedNodeBase:
         return data
 
     @classmethod
-    def _generate_query_data(self) -> Dict:
+    def _generate_query_data(cls) -> Dict:
         data: Dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
 
         properties = {}
@@ -514,11 +514,18 @@ class InfrahubNodeBase:
 
         return {self._schema.name: data}
 
-    def generate_query_data(self, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Union[Any, Dict]]:
+    def generate_query_data(
+        self, filters: Optional[Dict[str, Any]] = None, offset: Optional[int] = None, limit: Optional[int] = None
+    ) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {"count": None, "edges": {"node": {"id": None, "display_label": None}}}
 
-        if filters:
-            data["@filters"] = filters
+        data["@filters"] = filters or {}
+
+        if offset:
+            data["@filters"]["offset"] = offset
+
+        if limit:
+            data["@filters"]["limit"] = offset
 
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)

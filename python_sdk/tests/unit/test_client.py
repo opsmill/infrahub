@@ -79,7 +79,49 @@ async def test_get_repositories(
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_method_all(clients, mock_query_repository_all_01, client_type):  # pylint: disable=unused-argument
+async def test_method_all_with_limit(
+    clients, mock_query_repository_page1_2, client_type
+):  # pylint: disable=unused-argument
+    if client_type == "standard":
+        repos = await clients.standard.all(kind="Repository", limit=3)
+        assert not clients.standard.store._store["Repository"]
+
+        repos = await clients.standard.all(kind="Repository", populate_store=True, limit=3)
+        assert len(clients.standard.store._store["Repository"]) == 3
+    else:
+        repos = clients.sync.all(kind="Repository", limit=3)
+        assert not clients.sync.store._store["Repository"]
+
+        repos = clients.sync.all(kind="Repository", populate_store=True, limit=3)
+        assert len(clients.sync.store._store["Repository"]) == 3
+
+    assert len(repos) == 3
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_method_all_multiple_pages(
+    clients, mock_query_repository_page1_2, mock_query_repository_page2_2, client_type
+):  # pylint: disable=unused-argument
+    if client_type == "standard":
+        repos = await clients.standard.all(kind="Repository")
+        assert not clients.standard.store._store["Repository"]
+
+        repos = await clients.standard.all(kind="Repository", populate_store=True)
+        assert len(clients.standard.store._store["Repository"]) == 5
+    else:
+        repos = clients.sync.all(kind="Repository")
+        assert not clients.sync.store._store["Repository"]
+
+        repos = clients.sync.all(kind="Repository", populate_store=True)
+        assert len(clients.sync.store._store["Repository"]) == 5
+
+    assert len(repos) == 5
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_method_all_single_page(
+    clients, mock_query_repository_page1_1, client_type
+):  # pylint: disable=unused-argument
     if client_type == "standard":
         repos = await clients.standard.all(kind="Repository")
         assert not clients.standard.store._store["Repository"]
@@ -102,19 +144,25 @@ async def test_method_get_by_id(
 ):  # pylint: disable=unused-argument
     response = {
         "data": {
-            "repository": [
-                {
-                    "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
-                    "name": {"value": "infrahub-demo-core"},
-                    "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
-                    "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
-                }
-            ]
+            "repository": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                            "name": {"value": "infrahub-demo-core"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                            "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                        }
+                    }
+                ]
+            }
         }
     }
 
     response_id = "bfae43e8-5ebb-456c-a946-bf64e930710a"
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+    )
 
     if client_type == "standard":
         repo = await clients.standard.get(kind="Repository", id=response_id)
@@ -140,18 +188,24 @@ async def test_method_get_by_name(
 ):  # pylint: disable=unused-argument
     response = {
         "data": {
-            "repository": [
-                {
-                    "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
-                    "name": {"value": "infrahub-demo-core"},
-                    "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
-                    "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
-                }
-            ]
+            "repository": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                            "name": {"value": "infrahub-demo-core"},
+                            "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
+                            "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                        }
+                    }
+                ]
+            }
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+    )
 
     if client_type == "standard":
         repo = await clients.standard.get(kind="Repository", name__value="infrahub-demo-core")
@@ -164,11 +218,8 @@ async def test_method_get_by_name(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_not_found(
-    httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type
+    httpx_mock: HTTPXMock, clients, mock_query_repository_page1_empty, client_type
 ):  # pylint: disable=unused-argument
-    response: dict = {"data": {"repository": []}}
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
-
     with pytest.raises(NodeNotFound):
         if client_type == "standard":
             await clients.standard.get(kind="Repository", name__value="infrahub-demo-core")
@@ -178,29 +229,8 @@ async def test_method_get_not_found(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_found_many(
-    httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type
+    httpx_mock: HTTPXMock, clients, mock_schema_query_01, mock_query_repository_page1_1, client_type
 ):  # pylint: disable=unused-argument
-    response: dict = {
-        "data": {
-            "repository": [
-                {
-                    "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
-                    "name": {"value": "infrahub-demo-core"},
-                    "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
-                    "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
-                },
-                {
-                    "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
-                    "name": {"value": "infrahub-demo-edge"},
-                    "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
-                    "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
-                },
-            ]
-        }
-    }
-
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-get"})
-
     with pytest.raises(IndexError):
         if client_type == "standard":
             await clients.standard.get(kind="Repository", id="bfae43e8-5ebb-456c-a946-bf64e930710a")
@@ -224,31 +254,8 @@ async def test_method_get_invalid_filter(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_filters_many(
-    httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type
+    httpx_mock: HTTPXMock, clients, mock_query_repository_page1_1, client_type
 ):  # pylint: disable=unused-argument
-    response = {
-        "data": {
-            "repository": [
-                {
-                    "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
-                    "name": {"value": "infrahub-demo-core"},
-                    "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
-                    "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
-                },
-                {
-                    "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
-                    "name": {"value": "infrahub-demo-edge"},
-                    "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
-                    "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
-                },
-            ]
-        }
-    }
-
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-filters"}
-    )
-
     if client_type == "standard":
         repos = await clients.standard.filters(
             kind="Repository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
@@ -281,13 +288,8 @@ async def test_method_filters_many(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_filters_empty(
-    httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type
+    httpx_mock: HTTPXMock, clients, mock_query_repository_page1_empty, client_type
 ):  # pylint: disable=unused-argument
-    response: dict = {"data": {"repository": []}}
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-filters"}
-    )
-
     if client_type == "standard":
         repos = await clients.standard.filters(
             kind="Repository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]

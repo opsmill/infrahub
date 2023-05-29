@@ -147,6 +147,7 @@ async def test_query_data_no_filters(client, location_schema, client_type):
 
     assert node.generate_query_data() == {
         "location": {
+            "@filters": {},
             "count": None,
             "edges": {
                 "node": {
@@ -523,23 +524,29 @@ async def test_node_fetch_relationship(
 ):  # pylint: disable=unused-argument
     response1 = {
         "data": {
-            "tag": [
-                tag_red_data,
-            ]
+            "tag": {
+                "count": 1,
+                "edges": [
+                    tag_red_data,
+                ],
+            }
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-tag-get"})
+    httpx_mock.add_response(method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-tag-page1"})
 
     response2 = {
         "data": {
-            "tag": [
-                tag_blue_data,
-            ]
+            "tag": {
+                "count": 1,
+                "edges": [
+                    tag_blue_data,
+                ],
+            }
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-tag-get"})
+    httpx_mock.add_response(method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-tag-page1"})
 
     if client_type == "standard":
         node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01)
