@@ -21,7 +21,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectUrl } from "../../utils/objects";
-import DeviceFilterBar from "../device-list/device-filter-bar";
+import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";

@@ -7,7 +7,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { BADGE_TYPES, Badge } from "../../components/badge";
 import { Button } from "../../components/button";
 import { QSP } from "../../config/qsp";
-import { getDropdownOptionsForRelatedPeers } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { comboxBoxFilterVar, iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -43,12 +43,12 @@ export default function DeviceFilterBar(props: Props) {
   const peers: string[] = [];
 
   (schema.filters || []).forEach((f) => {
-    if (f.kind === "Object" && f.object_kind) {
+    if (f.kind === "Object" && f.object_kind && schemaKindName[f.object_kind]) {
       peers.push(schemaKindName[f.object_kind]);
     }
   });
 
-  const queryString = getDropdownOptionsForRelatedPeers({
+  const queryString = getDropdownOptionsForRelatedPeersPaginated({
     peers,
   });
 
