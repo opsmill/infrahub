@@ -13,7 +13,7 @@ from infrahub_client.node import (
     RelationshipManagerBase,
 )
 
-# pylint: disable=no-member
+# pylint: disable=no-member,redefined-outer-name,duplicate-code
 # type: ignore[attr-defined]
 
 async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_")]

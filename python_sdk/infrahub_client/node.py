@@ -181,7 +181,7 @@ class RelatedNodeBase:
     def _generate_query_data(cls) -> Dict:
         data: Dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
 
-        properties = {}
+        properties: Dict[str, Any] = {}
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
@@ -299,7 +299,7 @@ class RelationshipManagerBase:
             "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
         }
 
-        properties = {}
+        properties: Dict[str, Any] = {}
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
@@ -535,9 +535,9 @@ class InfrahubNodeBase:
 
         for rel_name in self._relationships:
             rel_schema = self._schema.get_relationship(name=rel_name)
-            if rel_schema.cardinality == "one":
+            if rel_schema and rel_schema.cardinality == "one":
                 rel_data = RelatedNode._generate_query_data()
-            elif rel_schema.cardinality == "many":
+            elif rel_schema and rel_schema.cardinality == "many":
                 rel_data = RelationshipManager._generate_query_data()
             data["edges"]["node"][rel_name] = rel_data
 

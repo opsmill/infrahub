@@ -113,6 +113,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 kind=kind, at=at, branch=branch, id=id, populate_store=populate_store, **kwargs
             )
 
+        branch = branch or self.default_branch
+
         if id:
             filters = {"ids": [id]}
         elif kwargs:
@@ -120,7 +122,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         else:
             raise ValueError("At least one filter must be provided to get()")
 
-        results = await self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)
+        results = await self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)  # type: ignore[arg-type]
 
         if len(results) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
@@ -908,6 +910,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 kind=kind, at=at, branch=branch, id=id, populate_store=populate_store, **kwargs
             )
 
+        branch = branch or self.default_branch
+
         if id:
             filters = {"ids": [id]}
         elif kwargs:
@@ -915,7 +919,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         else:
             raise ValueError("At least one filter must be provided to get()")
 
-        results = self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)
+        results = self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)  # type: ignore[arg-type]
 
         if len(results) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)

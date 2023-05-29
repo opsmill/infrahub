@@ -8,6 +8,8 @@ from infrahub_client.data import RepositoryData
 from infrahub_client.exceptions import FilterNotFound, NodeNotFound
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 
+# pylint: disable=redefined-outer-name,duplicate-code
+
 client_types = ["standard", "sync"]
 
 
