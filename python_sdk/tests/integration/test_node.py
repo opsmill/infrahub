@@ -16,7 +16,7 @@ class TestInfrahubNode:
 
     @pytest.fixture(scope="class")
     async def test_client(self):
-        # pylint: disable=import-outside-topleve
+        # pylint: disable=import-outside-toplevel
         config.SETTINGS.experimental_features.paginated = self.pagination
 
         from infrahub.api.main import app
