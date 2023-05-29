@@ -132,12 +132,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
         )
 
-        if len(response[schema.name]) == 0:
+        if len(response[schema.name]["edges"]) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
-        if len(response[schema.name]) > 1:
+        if len(response[schema.name]["edges"]) > 1:
             raise IndexError("More than 1 node returned")
 
-        obj = InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+        obj = InfrahubNode(client=self, schema=schema, branch=branch, data=response[schema.name]["edges"][0])
 
         if populate_store and obj.id:
             self.store.set(key=obj.id, node=obj)
@@ -870,6 +870,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         populate_store: bool = False,
         **kwargs: Any,
     ) -> InfrahubNodeSync:
+        if not self.pagination:
+            return self.get_no_pagination(
+                kind=kind, at=at, branch=branch, id=id, populate_store=populate_store, **kwargs
+            )
+
         branch = branch or self.default_branch
         schema = self.schema.get(kind=kind, branch=branch)
 
@@ -891,12 +896,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-get"
         )
 
-        if len(response[schema.name]) == 0:
+        if len(response[schema.name]["edges"]) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
-        if len(response[schema.name]) > 1:
+        if len(response[schema.name]["edges"]) > 1:
             raise IndexError("More than 1 node returned")
 
-        obj = InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name][0])
+        obj = InfrahubNodeSync(client=self, schema=schema, branch=branch, data=response[schema.name]["edges"][0])
 
         if populate_store and obj.id:
             self.store.set(key=obj.id, node=obj)
@@ -914,10 +919,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     ) -> InfrahubNodeSync:
         branch = branch or self.default_branch
         schema = self.schema.get(kind=kind, branch=branch)
-        if not self.pagination:
-            return self.get_no_pagination(
-                kind=kind, at=at, branch=branch, id=id, populate_store=populate_store, **kwargs
-            )
 
         at = Timestamp(at)
 
