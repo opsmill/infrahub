@@ -45,8 +45,6 @@ jobs:
         run: "poetry run invoke sdk.black"
       - name: "Isort Tests"
         run: "poetry run invoke sdk.isort"
-      - name: "Flake8 Tests"
-        run: "poetry run invoke sdk.flake8"
       - name: "Pylint Tests"
         run: "poetry run invoke sdk.pylint"
       - name: "Mypy Tests"

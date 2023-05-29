@@ -23,7 +23,7 @@ import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import GroupSchema, NodeSchema
+from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 
 RELATIONS_PROPERTY_MAP: Dict[str, str] = {
     "is_visible": "_relation__is_visible",
@@ -194,7 +194,7 @@ class InfrahubObject(ObjectType, GetListMixin):
     def __init_subclass_with_meta__(
         cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options
     ):  # pylint: disable=arguments-differ
-        if not isinstance(schema, NodeSchema):
+        if not isinstance(schema, (NodeSchema, GenericSchema)):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:
