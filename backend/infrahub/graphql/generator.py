@@ -158,6 +158,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     fields by only reusing information below the 'node' key.
     """
     # Extract the InfraHub schema by inspecting the GQL Schema
+
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
     # Extract the contextual information from the request context
@@ -175,12 +176,11 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
     # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
-
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     filters = {
         f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
     }
-    response: Dict[str, Any] = {"node": {}, "properties": {}}
+    response: Dict[str, Any] = {"node": None, "properties": {}}
     async with db.session(database=config.SETTINGS.database.database) as new_session:
         objs = await NodeManager.query_peers(
             session=new_session,
@@ -201,7 +201,6 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
             if value:
                 response["properties"][mapped] = value
         response["node"] = node_graph
-
         return response
 
 

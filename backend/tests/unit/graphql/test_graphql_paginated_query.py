@@ -411,7 +411,6 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["value"] == "John"
 
 
-@pytest.mark.skip(reason="pending convertion - issue with sorting")
 async def test_display_label_nested_query(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="Car")
     person = registry.get_schema(name="Person")
@@ -436,22 +435,34 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     query = """
     query {
         person(name__value: "John") {
-            name {
-                value
-            }
-            cars {
-                id
-                display_label
-                owner {
-                    id
-                    display_label
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                owner {
+                                    node {
+                                        id
+                                        display_label
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_paginated_schema(
+            session=session, branch=default_branch, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -459,27 +470,40 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     )
 
     assert result.errors is None
-    assert result.data["person"][0] == {
-        "cars": [
-            {
-                "display_label": "volt #444444",
-                "id": str(c1.id),
-                "owner": {
-                    "display_label": "John",
-                    "id": str(p1.id),
+
+    expected_result = {
+        "cars": {
+            "edges": [
+                {
+                    "node": {
+                        "display_label": "volt #444444",
+                        "id": str(c1.id),
+                        "owner": {
+                            "node": {
+                                "display_label": "John",
+                                "id": str(p1.id),
+                            }
+                        },
+                    }
                 },
-            },
-            {
-                "display_label": "bolt #444444",
-                "id": str(c2.id),
-                "owner": {
-                    "display_label": "John",
-                    "id": str(p1.id),
+                {
+                    "node": {
+                        "display_label": "bolt #444444",
+                        "id": str(c2.id),
+                        "owner": {
+                            "node": {
+                                "display_label": "John",
+                                "id": str(p1.id),
+                            }
+                        },
+                    }
                 },
-            },
-        ],
+            ],
+        },
         "name": {"value": "John"},
     }
+
+    assert DeepDiff(result.data["person"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
 
 
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):
