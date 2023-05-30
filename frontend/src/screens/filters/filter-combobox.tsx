@@ -5,25 +5,16 @@ import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { graphQLClient } from "../../graphql/graphqlClient";
+import { getFilters } from "../../graphql/queries/objects/getFilters";
 import { comboxBoxFilterVar } from "../../graphql/variables/filtersVar";
 import { components } from "../../infraops";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
 
-declare const Handlebars: any;
-
 interface Props {
   filter: components["schemas"]["FilterSchema"];
 }
-
-const template = Handlebars.compile(`query {{kind.value}} {
-    {{name}} {
-        id
-        display_label
-    }
-}
-`);
 
 export default function FilterCombobox(props: Props) {
   const { filter } = props;
@@ -43,7 +34,7 @@ export default function FilterCombobox(props: Props) {
       setHasError(false);
       setIsLoading(true);
       // TODO: Extract GQL function in the graphql/ fodler
-      const queryString = template(schema);
+      const queryString = getFilters(schema);
       const query = gql`
         ${queryString}
       `;

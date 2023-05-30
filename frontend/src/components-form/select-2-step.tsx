@@ -2,9 +2,9 @@ import { gql } from "@apollo/client";
 import { useCallback, useEffect, useState } from "react";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
+import { getDropdownOptionsForRelatedPeers } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
-import { getDropdownOptionsForRelatedPeers } from "../utils/dropdownOptionsForRelatedPeers";
 import { OpsSelect } from "./select";
 
 export interface iTwoStepDropdownData {

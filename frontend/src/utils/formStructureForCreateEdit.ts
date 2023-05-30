@@ -1,4 +1,5 @@
 import { SelectOption } from "../components/select";
+import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
   ControlType,
   DynamicFieldData,
@@ -7,7 +8,6 @@ import {
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
-import { iPeerDropdownOptions } from "./dropdownOptionsForRelatedPeers";
 
 const getFormStructureForCreateEdit = (
   schema: iNodeSchema,

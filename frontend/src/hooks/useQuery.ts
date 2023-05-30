@@ -1,6 +1,6 @@
 import { useQuery as useApolloQuery, useReactiveVar } from "@apollo/client";
-import { branchVar } from "../variables/branchVar";
-import { dateVar } from "../variables/dateVar";
+import { branchVar } from "../graphql/variables/branchVar";
+import { dateVar } from "../graphql/variables/dateVar";
 
 const useQuery = (QUERY: any, options?: any) => {
   const branch = useReactiveVar(branchVar);

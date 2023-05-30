@@ -16,9 +16,13 @@ branch2 = "branch2"
 QUERY_GET_ALL_DEVICES = """
     query {
         device {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
@@ -27,17 +31,25 @@ QUERY_GET_ALL_DEVICES = """
 QUERY_SPINE1_INTF = """
     query($intf_name: String!) {
         device(name__value: "spine1") {
-            id
-            name {
-                value
-            }
-            interfaces(name__value: $intf_name) {
-                id
-                name {
-                    value
-                }
-                description {
-                    value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    interfaces(name__value: $intf_name) {
+                        edges {
+                            node {
+                                id
+                                name {
+                                    value
+                                }
+                                description {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -149,7 +161,7 @@ class TestUserWorkflow01:
         result = response.json()["data"]
 
         assert "device" in result.keys()
-        assert len(result["device"]) == 2
+        assert len(result["device"]["edges"]) == 2
 
         # Initialize the start time
         pytest.state["time_start"] = pendulum.now(tz="UTC")
@@ -172,13 +184,13 @@ class TestUserWorkflow01:
         assert response.status_code == 200
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
-        result = response.json()["data"]
+        result = response.json()["data"]["device"]["edges"][0]
 
-        intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
         assert len(intfs) == 1
 
-        pytest.state["spine1_lo0_id"] = intfs[0]["id"]
-        pytest.state["spine1_lo0_description_start"] = intfs[0]["description"]["value"]
+        pytest.state["spine1_lo0_id"] = intfs[0]["node"]["id"]
+        pytest.state["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
     def test_query_spine1_ethernet1(self, client, init_db_infra, dataset01):
         """
@@ -197,11 +209,15 @@ class TestUserWorkflow01:
         assert response.json()["data"] is not None
         result = response.json()["data"]
 
-        intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+        intfs = [
+            intf
+            for intf in result["device"]["edges"][0]["node"]["interfaces"]["edges"]
+            if intf["node"]["name"]["value"] == intf_name
+        ]
         assert len(intfs) == 1
 
-        pytest.state["spine1_eth1_id"] = intfs[0]["id"]
-        pytest.state["spine1_eth1_description_start"] = intfs[0]["description"]["value"]
+        pytest.state["spine1_eth1_id"] = intfs[0]["node"]["id"]
+        pytest.state["spine1_eth1_description_start"] = intfs[0]["node"]["description"]["value"]
 
     def test_create_first_branch(self, client, init_db_infra, dataset01):
         """
@@ -251,12 +267,12 @@ class TestUserWorkflow01:
         assert response.status_code == 200
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
-        result = response.json()["data"]
+        result = response.json()["data"]["device"]["edges"][0]
 
-        intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
         assert len(intfs) == 1
 
-        assert intfs[0]["description"]["value"] == new_description
+        assert intfs[0]["node"]["description"]["value"] == new_description
 
         pytest.state["time_after_intf_update_branch1"] = pendulum.now("UTC").to_iso8601_string()
 
@@ -292,12 +308,12 @@ class TestUserWorkflow01:
         assert response.status_code == 200
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
-        result = response.json()["data"]
+        result = response.json()["data"]["device"]["edges"][0]
 
-        intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
         assert len(intfs) == 1
 
-        assert intfs[0]["description"]["value"] == new_description
+        assert intfs[0]["node"]["description"]["value"] == new_description
 
     def test_validate_diff_after_description_update(self, client, dataset01):
         with client:
@@ -414,12 +430,12 @@ class TestUserWorkflow01:
         assert response.status_code == 200
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
-        result = response.json()["data"]
+        result = response.json()["data"]["device"]["edges"][0]
 
-        intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
         assert len(intfs) == 1
 
-        assert intfs[0]["description"]["value"] == new_description
+        assert intfs[0]["node"]["description"]["value"] == new_description
 
     @pytest.mark.xfail(reason="FIXME: Need to investigate, Previous value is not correct")
     def test_validate_diff_again_after_description_update(self, client, dataset01):
@@ -467,7 +483,6 @@ class TestUserWorkflow01:
             "root['id']",
             "root['elements']['description']['id']",
             "root['elements']['description']['value']['changed_at']",
-            # "root['elements']['description']['value']['value']['previous']",
         ]
 
         assert (
@@ -503,12 +518,14 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
+            result = response.json()["data"]["device"]["edges"][0]
 
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
+            ]
             assert len(intfs) == 1
 
-            old_description = intfs[0]["description"]["value"]
+            old_description = intfs[0]["node"]["description"]["value"]
 
             # Update the description in MAIN
             variables = {
@@ -534,12 +551,14 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
+            result = response.json()["data"]["device"]["edges"][0]
 
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
+            ]
             assert len(intfs) == 1
 
-            assert intfs[0]["description"]["value"] == new_description
+            assert intfs[0]["node"]["description"]["value"] == new_description
 
             # Query the new description in BRANCH2 to check its value
             response = client.post(
@@ -551,11 +570,13 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
+            result = response.json()["data"]["device"]["edges"][0]
 
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
+            ]
             assert len(intfs) == 1
-            assert intfs[0]["description"]["value"] == old_description
+            assert intfs[0]["node"]["description"]["value"] == old_description
 
     def test_rebase_branch2(self, client, dataset01):
         """
@@ -580,11 +601,13 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
+            result = response.json()["data"]["device"]["edges"][0]
 
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
+            ]
             assert len(intfs) == 1
-            main_description = intfs[0]["description"]["value"]
+            main_description = intfs[0]["node"]["description"]["value"]
 
             # Query the new description in BRANCH2 to check its value
             response = client.post(
@@ -595,10 +618,12 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+            result = response.json()["data"]["device"]["edges"][0]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
+            ]
             assert len(intfs) == 1
-            assert intfs[0]["description"]["value"] == main_description
+            assert intfs[0]["node"]["description"]["value"] == main_description
 
     def test_query_spine1_lo0_at_start_time(self, client, dataset01):
         intf_name = "Loopback0"
@@ -617,13 +642,15 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
+            result = response.json()["data"]["device"]["edges"][0]
 
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf_name]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
+            ]
             assert len(intfs) == 1
-            assert intfs[0]["name"]["value"] == "Loopback0"
+            assert intfs[0]["node"]["name"]["value"] == "Loopback0"
 
-            pytest.state["spine1_lo0_description_start"] = intfs[0]["description"]["value"]
+            pytest.state["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
     def test_add_new_interface_in_first_branch(self, client, dataset01):
         with client:
@@ -703,12 +730,14 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
+            result = response.json()["data"]["device"]["edges"][0]
 
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf1_name]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf1_name
+            ]
             assert len(intfs) == 1
 
-            assert intfs[0]["description"]["value"] == expected_description
+            assert intfs[0]["node"]["description"]["value"] == expected_description
 
             # Query the new Interface in Main which should match the previous version in branch1
             response = client.post(
@@ -724,7 +753,9 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            result = response.json()["data"]
+            result = response.json()["data"]["device"]["edges"][0]
 
-            intfs = [intf for intf in result["device"][0]["interfaces"] if intf["name"]["value"] == intf2_name]
+            intfs = [
+                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf2_name
+            ]
             assert len(intfs) == 1

@@ -1,4 +1,4 @@
-declare const Handlebars: any;
+import Handlebars from "handlebars";
 
 export const rebaseBranch = Handlebars.compile(`
 mutation {

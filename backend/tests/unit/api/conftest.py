@@ -41,12 +41,20 @@ async def car_person_data(session, register_core_models_schema, car_person_schem
     query = """
     query {
         person {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

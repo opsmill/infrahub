@@ -14,10 +14,10 @@ async def test_query_endpoint_default_branch(session, client, client_headers, de
     assert response.json()["data"] is not None
     result = response.json()["data"]
 
-    result_per_name = {result["name"]["value"]: result for result in result["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
+    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
 
 
 async def test_query_endpoint_branch1(session, client, client_headers, default_branch, car_person_data):
@@ -35,10 +35,10 @@ async def test_query_endpoint_branch1(session, client, client_headers, default_b
     assert response.json()["data"] is not None
     result = response.json()["data"]
 
-    result_per_name = {result["name"]["value"]: result for result in result["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
+    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
 
 
 async def test_query_endpoint_wrong_query(

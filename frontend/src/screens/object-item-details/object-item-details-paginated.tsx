@@ -11,16 +11,14 @@ import {
 import { useAtom } from "jotai";
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { getObjectDetails } from "../../graphql/queries/objects/getObjectDetails";
+import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
@@ -54,7 +52,7 @@ export default function ObjectItemDetails() {
   );
 
   const queryString = schema
-    ? getObjectDetails({
+    ? getObjectDetailsPaginated({
         ...schema,
         relationships,
         objectid,
@@ -91,7 +89,7 @@ export default function ObjectItemDetails() {
       label: schema?.label,
       name: schema?.label,
     },
-    ...(schema?.relationships || [])
+    ...(schema?.relationships ?? [])
       .filter((relationship) => {
         if (relationship.kind === "Generic" && relationship.cardinality === "many") {
           return true;
@@ -109,18 +107,7 @@ export default function ObjectItemDetails() {
 
   const navigate = useNavigate();
 
-  if (!loading && schema && error) {
-    // error.graphQLErrors.forEach((err) =>
-    //   toast(<Alert message={err.message} type={ALERT_TYPES.ERROR} />)
-    // );
-
-    toast(
-      <Alert
-        message={"An eror occured while retrieving the object details"}
-        type={ALERT_TYPES.ERROR}
-      />
-    );
-
+  if (error) {
     return <ErrorScreen />;
   }
 
@@ -128,11 +115,11 @@ export default function ObjectItemDetails() {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schema.name] && !data[schema.name])) {
+  if (!data || (data && !data[schema.name] && !data[schema.name]?.edges)) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data[schema.name][0];
+  const objectDetailsData = data[schema.name]?.edges[0]?.node;
 
   if (!objectDetailsData) {
     return null;
@@ -287,7 +274,7 @@ export default function ObjectItemDetails() {
                 mode="DESCRIPTION-LIST"
                 parentSchema={schema}
                 key={relationshipSchema.name}
-                relationshipsData={objectDetailsData[relationshipSchema.name]}
+                relationshipsData={objectDetailsData[relationshipSchema.name]?.node}
                 relationshipSchema={relationshipSchema}
               />
             ))}

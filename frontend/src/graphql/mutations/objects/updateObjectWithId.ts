@@ -1,4 +1,4 @@
-declare const Handlebars: any;
+import Handlebars from "handlebars";
 
 export const updateObjectWithId = Handlebars.compile(`
 mutation {{kind.value}}Update {
