@@ -29,7 +29,7 @@ import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details";
 import RelationshipsDetails from "./relationships-details-paginated";
@@ -342,9 +342,7 @@ export default function ObjectItemDetails() {
         open={showMetaEditModal}
         setOpen={setShowMetaEditModal}>
         <ObjectItemMetaEdit
-          closeDrawer={() => {
-            setShowMetaEditModal(false);
-          }}
+          closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => setShowMetaEditModal(false)}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]

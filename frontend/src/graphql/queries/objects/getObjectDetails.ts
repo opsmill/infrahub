@@ -46,41 +46,42 @@ export const getObjectDetails = Handlebars.compile(`query {{kind.value}} {
 }
 `);
 
-export const getObjectDetailsPaginated = Handlebars.compile(`query {{kind.value}} {
+export const getObjectDetailsPaginated = Handlebars.compile(`
+query {{kind.value}} {
   {{name}} (ids: ["{{objectid}}"]) {
     edges {
       node {
         id
         display_label
         {{#each attributes}}
-        {{this.name}} {
-            value
-            updated_at
-            is_protected
-            is_visible
-            source {
-              id
-              display_label
-              __typename
-            }
-            owner {
-              id
-              display_label
-              __typename
-            }
-        }
-        {{/each}}
-        {{#each relationships}}
           {{this.name}} {
-              node {
+              value
+              updated_at
+              is_protected
+              is_visible
+              source {
+                id
+                display_label
+                __typename
+              }
+              owner {
                 id
                 display_label
                 __typename
               }
           }
-      {{/each}}
+          {{/each}}
+          {{#each relationships}}
+            {{this.name}} {
+                node {
+                  id
+                  display_label
+                  __typename
+                }
+            }
+        {{/each}}
+      }
     }
   }
-}
 }
 `);

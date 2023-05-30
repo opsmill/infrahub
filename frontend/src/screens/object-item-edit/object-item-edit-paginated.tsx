@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
+import { getObjectDetailsAndPeers } from "../../graphql/queries/objects/getObjectDetailsAndPeers";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
@@ -45,7 +45,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
 
   const queryString = schema
-    ? getObjectDetailsPaginated({
+    ? getObjectDetailsAndPeers({
         ...schema,
         relationships,
         objectid,
@@ -62,6 +62,15 @@ export default function ObjectItemEditComponent(props: Props) {
   const { loading, error, data } = useQuery(query, { skip: !schema });
 
   if (error) {
+    console.error("An error occured while retrieving the object details: ", error);
+
+    toast(
+      <Alert
+        message="An error occured while retrieving the object details"
+        type={ALERT_TYPES.ERROR}
+      />
+    );
+
     return <ErrorScreen />;
   }
 
@@ -74,15 +83,11 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   const objectDetailsData = data[schema.name]?.edges[0]?.node;
-  console.log("objectDetailsData: ", objectDetailsData);
 
-  const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]) => {
+  const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
     if (peers.includes(k)) {
-      return { ...acc, [k]: v };
+      return { ...acc, [k]: v.edges?.map((edge: any) => edge.node) };
     }
-
-    console.log("peerDropdownOptions: ", peerDropdownOptions);
-
     return acc;
   }, {});
 
