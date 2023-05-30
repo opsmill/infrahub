@@ -171,6 +171,7 @@ class TestInfrahubNode:
         init_db_base,
         tag_green: Node,
         tag_red: Node,
+        tag_blue: Node,
         gqlquery02: Node,
         repo99: Node,
     ):
@@ -188,4 +189,4 @@ class TestInfrahubNode:
         assert repodb.id == repo99.id
 
         tags = await nodedb.tags.get(session=session)
-        assert tags[0].peer_id == tag_green.id
+        assert sorted([tag.peer_id for tag in tags]) == sorted([tag_green.id, tag_blue.id])
