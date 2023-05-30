@@ -3,7 +3,9 @@ import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
@@ -74,6 +76,13 @@ export default function ObjectItems() {
   const rows = data && data[schema?.name];
 
   if (error) {
+    toast(
+      <Alert
+        message={"An eror occured while retrieving the objects list"}
+        type={ALERT_TYPES.ERROR}
+      />
+    );
+
     return <ErrorScreen />;
   }
 

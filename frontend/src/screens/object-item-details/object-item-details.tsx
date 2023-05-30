@@ -11,7 +11,9 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
@@ -107,7 +109,18 @@ export default function ObjectItemDetails() {
 
   const navigate = useNavigate();
 
-  if (error) {
+  if (!loading && schema && error) {
+    // error.graphQLErrors.forEach((err) =>
+    //   toast(<Alert message={err.message} type={ALERT_TYPES.ERROR} />)
+    // );
+
+    toast(
+      <Alert
+        message={"An eror occured while retrieving the object details"}
+        type={ALERT_TYPES.ERROR}
+      />
+    );
+
     return <ErrorScreen />;
   }
 
