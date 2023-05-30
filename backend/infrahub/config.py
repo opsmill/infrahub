@@ -117,6 +117,7 @@ class SecuritySettings(BaseSettings):
     secret_key: str = Field(
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
+    initial_admin_password: str = Field(default="infrahub", description="The initial password for the admin user")
 
     class Config:
         env_prefix = "INFRAHUB_SECURITY_"

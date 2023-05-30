@@ -164,7 +164,13 @@ async def first_time_initialization(session: AsyncSession):
     # default_grp = obj = Node(group_schema).new(name="default").save()
 
     obj = await Node.init(session=session, schema=account_schema)
-    await obj.new(session=session, name="admin", type="User", password="infrahub", groups=[admin_grp])
+    await obj.new(
+        session=session,
+        name="admin",
+        type="User",
+        password=config.SETTINGS.security.initial_admin_password,
+        groups=[admin_grp],
+    )
     await obj.save(session=session)
     LOGGER.info(f"Created Account: {obj.name.value}")
 
