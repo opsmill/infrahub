@@ -7,19 +7,19 @@ RUN mkdir /source
 
 # Install Python to resolve an issue with @parcel/watch
 # https://github.com/parcel-bundler/parcel/issues/6880
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y g++ python3 make build-essential && \
-    apt-get clean all && \
-    rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && \
+#     apt-get upgrade -y && \
+#     apt-get install --no-install-recommends -y g++ python3 make build-essential && \
+#     apt-get clean all && \
+#     rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g npm@latest
 COPY frontend/package.json  frontend/package-lock.json /source/
 
 WORKDIR /source
 
-RUN npm install
+RUN npm install --omit=dev
 COPY frontend/ /source/
 
-RUN  npm install serve
-RUN npm run build
+# RUN  npm install serve
+# RUN npm run build
