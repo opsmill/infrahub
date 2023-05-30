@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Awaitable, Callable, List, Optional
 
+import bcrypt
+import jwt
 from starlette import authentication as auth
 from starlette.authentication import AuthenticationError
 from starlette.requests import HTTPConnection
 
-import infrahub.config as config
+from infrahub import config, models
+from infrahub.core import get_branch
 from infrahub.core.account import get_account, validate_token
+from infrahub.core.manager import NodeManager
+from infrahub.exceptions import AuthorizationError, NodeNotFound
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -16,6 +22,43 @@ if TYPE_CHECKING:
 # from ..exceptions import InvalidCredentials
 
 # Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
+
+
+async def authenticate_with_password(
+    session: AsyncSession, credentials: models.PasswordCredential, branch: Optional[str] = None
+) -> models.UserToken:
+    selected_branch = await get_branch(session=session, branch=branch)
+    response = await NodeManager.query(
+        schema="Account",
+        session=session,
+        branch=selected_branch,
+        filters={"name__value": credentials.username},
+        limit=1,
+    )
+    if not response:
+        raise NodeNotFound(
+            branch_name=selected_branch.name,
+            node_type="Account",
+            identifier=credentials.username,
+            message="That login user doesn't exist in the system",
+        )
+    user = response[0]
+    valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), user.password.value.encode("UTF-8"))
+    if not valid_credentials:
+        raise AuthorizationError("Incorrect password")
+    now = datetime.now(tz=timezone.utc)
+    expires = now + timedelta(seconds=config.SETTINGS.security.access_token_lifetime)
+    access_data = {
+        "sub": credentials.username,
+        "iat": now,
+        "nbf": now,
+        "exp": expires,
+        "fresh": False,
+        "type": "access",
+        "user_claims": {"roles": ["read-write"]},
+    }
+    access_token = jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
+    return models.UserToken(access_token=access_token)
 
 
 class InvalidCredentials(AuthenticationError):

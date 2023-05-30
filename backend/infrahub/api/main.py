@@ -17,7 +17,7 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub import __version__
-from infrahub.api import diff, internal, schema, transformation
+from infrahub.api import auth, diff, internal, schema, transformation
 from infrahub.api.background import BackgroundRunner
 from infrahub.api.dependencies import get_session
 from infrahub.auth import BaseTokenAuth
@@ -26,7 +26,7 @@ from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import AuthorizationError, BranchNotFound, NodeNotFound
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
@@ -48,6 +48,7 @@ log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
+app.include_router(auth.router)
 app.include_router(schema.router)
 app.include_router(transformation.router)
 app.include_router(internal.router)
@@ -112,6 +113,20 @@ app.add_middleware(CorrelationIdMiddleware)
 
 @app.exception_handler(BranchNotFound)
 async def api_exception_handler(_: Request, exc: BranchNotFound) -> JSONResponse:
+    """Generic API Exception handler."""
+    error_code, error = exc.api_response()
+    return JSONResponse(status_code=error_code, content=error)
+
+
+@app.exception_handler(NodeNotFound)
+async def api_exception_handler_node_not_found(_: Request, exc: NodeNotFound) -> JSONResponse:
+    """Generic API Exception handler."""
+    error_code, error = exc.api_response()
+    return JSONResponse(status_code=error_code, content=error)
+
+
+@app.exception_handler(AuthorizationError)
+async def api_exception_handler_authorization_error(_: Request, exc: AuthorizationError) -> JSONResponse:
     """Generic API Exception handler."""
     error_code, error = exc.api_response()
     return JSONResponse(status_code=error_code, content=error)

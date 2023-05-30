@@ -8,6 +8,8 @@ from typing import List, Optional
 import toml
 from pydantic import BaseSettings, Field, ValidationError
 
+from infrahub.utils import generate_uuid
+
 SETTINGS = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
@@ -110,6 +112,17 @@ class ExperimentalFeaturesSettings(BaseSettings):
         case_sensitive = False
 
 
+class SecuritySettings(BaseSettings):
+    access_token_lifetime: int = Field(default=3600, description="Lifetime of access token in seconds")
+    secret_key: str = Field(
+        default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
+    )
+
+    class Config:
+        env_prefix = "INFRAHUB_SECURITY_"
+        case_sensitive = False
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
@@ -121,6 +134,7 @@ class Settings(BaseSettings):
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
+    security: SecuritySettings = SecuritySettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 

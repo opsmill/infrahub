@@ -1007,6 +1007,7 @@ core_models = {
             "inherit_from": ["DataOwner", "DataSource"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
+                {"name": "password", "kind": "HashedPassword", "unique": False},
                 {"name": "label", "kind": "Text", "optional": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {
