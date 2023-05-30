@@ -19,7 +19,10 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
+import {
+  getSchemaObjectColumns,
+  getSchemaRelationshipColumns,
+} from "../../utils/getSchemaObjectColumns";
 import { getObjectUrl } from "../../utils/objects";
 import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
@@ -62,7 +65,7 @@ export default function ObjectItems() {
         kind: schema.kind,
         name: schema.name,
         attributes: schema.attributes,
-        // relationships: getSchemaRelationshipColumns(schema),
+        relationships: getSchemaRelationshipColumns(schema),
         filters: filtersString,
       })
     : // Empty query to make the gql parsing work

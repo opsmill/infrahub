@@ -36,7 +36,9 @@ query {{kind}} {
 
         {{#each relationships}}
           {{this.name}} {
+            node {
               display_label
+            }
           }
         {{/each}}
       }
