@@ -8,12 +8,20 @@ async def test_graphql_endpoint(session, client, client_headers, default_branch:
     query = """
     query {
         person {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -33,10 +41,10 @@ async def test_graphql_endpoint(session, client, client_headers, default_branch:
     assert response.json()["data"] is not None
     result = response.json()["data"]
 
-    result_per_name = {result["name"]["value"]: result for result in result["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
+    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
 
 
 @pytest.mark.xfail(reason="Need to investigate, Currently working alone but failing when it's part of the test suite")
