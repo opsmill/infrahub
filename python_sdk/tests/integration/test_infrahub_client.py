@@ -1,5 +1,3 @@
-import importlib
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -25,7 +23,6 @@ class TestInfrahubClient:
         # pylint: disable=import-outside-toplevel
         from infrahub.api import main
 
-        importlib.reload(main)
         return TestClient(main.app)
 
     @pytest.fixture

@@ -148,9 +148,6 @@ class TestInfrahubNode:
         assert nodedb.name.value == node.name.value  # type: ignore[attr-defined]
         assert nodedb.name.is_protected is True
 
-    @pytest.mark.xfail(
-        reason="The test is failing mostlikely because of a bug on the backend side, Need to investigate and fix"
-    )
     async def test_node_update(
         self, session, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo99: Node
     ):
@@ -167,9 +164,6 @@ class TestInfrahubNode:
         tags = await nodedb.tags.get(session=session)
         assert len(tags) == 2
 
-    @pytest.mark.xfail(
-        reason="The test is failing mostlikely because of a bug on the backend side, Need to investigate and fix"
-    )
     async def test_node_update_2(
         self,
         session,
@@ -190,8 +184,8 @@ class TestInfrahubNode:
         await node.save()
 
         nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
-        repodb = await nodedb.repository.get(session=session)
+        repodb = await nodedb.repository.get_peer(session=session)
         assert repodb.id == repo99.id
 
         tags = await nodedb.tags.get(session=session)
-        assert tags[0].id == tag_green.id
+        assert tags[0].peer_id == tag_green.id

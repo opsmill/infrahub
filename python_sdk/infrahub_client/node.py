@@ -121,12 +121,15 @@ class RelatedNodeBase:
             data = {"id": data}
 
         if isinstance(data, dict):
+            # To support both with and without pagination, we split data into node_data and properties_data
+            # We should probably clean that once we'll remove the code without pagination.
             node_data = data.get("node", data)
             properties_data = data.get("properties", data)
 
-            self._id = node_data.get("id", None)
-            self._display_label = node_data.get("display_label", None)
-            self._typename = node_data.get("__typename", None)
+            if node_data:
+                self._id = node_data.get("id", None)
+                self._display_label = node_data.get("display_label", None)
+                self._typename = node_data.get("__typename", None)
 
             self.updated_at: Optional[str] = data.get("updated_at", data.get("_relation__updated_at", None))
 
@@ -135,10 +138,6 @@ class RelatedNodeBase:
                 self._typename = self._typename[7:]
 
             for prop in self._properties:
-                # if value := properties_data.get(prop, None):
-                #     setattr(self, prop, value)
-                #     continue
-
                 prop_data = properties_data.get(prop, properties_data.get(f"_relation__{prop}", None))
                 if prop_data and isinstance(prop_data, dict) and "id" in prop_data:
                     setattr(self, prop, prop_data["id"])
