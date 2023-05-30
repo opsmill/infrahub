@@ -43,9 +43,13 @@ services:
       context: ../
       dockerfile: development/Dockerfile-frontend
     image: "opsmill/${INFRAHUB_BUILD_NAME}-frontend:${IMAGE_VER}"
-    command: npx serve -s build
+    command: >
+      bash -c "npm i --omit=dev && npm run build-serve"
     depends_on:
       - infrahub-server
+    volumes:
+      - ../frontend/:/source
+      - /source/node_modules/
     tty: true
 volumes:
   git_data:
