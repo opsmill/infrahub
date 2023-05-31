@@ -2,7 +2,7 @@ import os
 from enum import Enum, EnumMeta
 from itertools import groupby
 from typing import Any, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 KWARGS_TO_DROP = ["session"]
 
@@ -14,6 +14,10 @@ def is_valid_uuid(value: Any) -> bool:
         return True
     except ValueError:
         return False
+
+
+def generate_uuid() -> str:
+    return str(uuid4())
 
 
 def duplicates(input_list: list) -> list:

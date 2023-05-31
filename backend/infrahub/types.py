@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib
-from typing import Dict
+from typing import Dict, Type
 
 import graphene
 from graphene.types.generic import GenericScalar
@@ -102,6 +102,15 @@ class Password(InfrahubDataType):
     graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
     infrahub = "String"
+
+
+class HashedPassword(InfrahubDataType):
+    label: str = "Password"
+    graphql = graphene.String
+    graphql_query = "TextAttributeType"
+    graphql_input = "TextAttributeInput"
+    graphql_filter = graphene.String
+    infrahub = "HashedPassword"
 
 
 class URL(InfrahubDataType):
@@ -233,13 +242,14 @@ class Boolean(InfrahubDataType):
     infrahub = "Boolean"
 
 
-ATTRIBUTE_TYPES: Dict[str, InfrahubDataType] = {
+ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "ID": ID,
     "Text": Text,
     "TextArea": TextArea,
     "DateTime": DateTime,
     "Email": Email,
     "Password": Password,
+    "HashedPassword": HashedPassword,
     "URL": URL,
     "File": File,
     "MacAddress": MacAddress,

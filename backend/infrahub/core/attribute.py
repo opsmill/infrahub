@@ -21,6 +21,7 @@ from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
+from infrahub.helpers import hash_password
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -420,6 +421,16 @@ class AnyAttribute(BaseAttribute):
 
 class String(BaseAttribute):
     type = str
+
+
+class HashedPassword(BaseAttribute):
+    type = str
+
+    @classmethod
+    def serialize(cls, value: str) -> str:
+        """Serialize the value before storing it in the database."""
+
+        return hash_password(value)
 
 
 class Integer(BaseAttribute):

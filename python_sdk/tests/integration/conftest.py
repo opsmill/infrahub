@@ -102,7 +102,7 @@ async def tag_green(session: AsyncSession) -> Node:
 @pytest.fixture
 async def first_account(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="Account")
-    await obj.new(session=session, name="First Account", type="Git")
+    await obj.new(session=session, name="First Account", type="Git", password="TestPassword123")
     await obj.save(session=session)
     return obj
 
@@ -110,7 +110,7 @@ async def first_account(session: AsyncSession) -> Node:
 @pytest.fixture
 async def second_account(session: AsyncSession) -> Node:
     obj = await Node.init(session=session, schema="Account")
-    await obj.new(session=session, name="Second Account", type="Git")
+    await obj.new(session=session, name="Second Account", type="Git", password="TestPassword123")
     await obj.save(session=session)
     return obj
 

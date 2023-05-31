@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 
 class Error(Exception):
@@ -90,6 +90,8 @@ class BranchNotFound(Error):
 
 
 class NodeNotFound(Error):
+    HTTP_CODE: int = 404
+
     def __init__(self, branch_name, node_type, identifier, message=None):
         self.branch_name = branch_name
         self.node_type = node_type
@@ -102,6 +104,15 @@ class NodeNotFound(Error):
         {self.message}
         {self.branch_name} | {self.node_type} | {self.identifier}
         """
+
+
+class AuthorizationError(Error):
+    HTTP_CODE: int = 401
+    message: str = "Access to the requested resource was denied"
+
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or self.message
+        super().__init__(self.message)
 
 
 class SchemaNotFound(Error):
