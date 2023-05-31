@@ -72,16 +72,11 @@ export default function ObjectItems() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  const {
-    loading,
-    error,
-    data = {},
-  } = useQuery(
-    gql`
-      ${queryString}
-    `,
-    { skip: !schema }
-  );
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data = {} } = useQuery(query, { skip: !schema });
 
   const result = data ? data[schema?.name] ?? {} : {};
 

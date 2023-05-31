@@ -1,4 +1,4 @@
-export const accountDetailsMocks = `query  {
+export const accountDetailsMocksQuery = `query  {
       account (ids: ["1234"]) {
           id
           display_label
