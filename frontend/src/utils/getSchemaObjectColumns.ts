@@ -14,10 +14,35 @@ export const getSchemaRelationshipColumns = (schema: iNodeSchema | iGenericSchem
   // Relationship kind to show in LIST VIEW - Attribute, Parent
   const relationships = (schema.relationships || [])
     .filter((relationship) => relationship.kind === "Attribute" || relationship.kind === "Parent")
-    .map((row) => ({
-      label: row.label ?? "",
-      name: row.name,
+    .map((relationship) => ({
+      label: relationship.label ?? "",
+      name: relationship.name,
+      paginated: relationship.cardinality === "many",
     }));
+  return relationships;
+};
+
+export const getSchemaRelationshipsTabs = (schema: iNodeSchema | iGenericSchema) => {
+  if (!schema) {
+    return [];
+  }
+
+  // Relationship kind to show in LIST VIEW - Attribute, Parent
+  const relationships = (schema.relationships || [])
+    .filter((relationship) => {
+      if (relationship.kind === "Generic" && relationship.cardinality === "many") {
+        return true;
+      }
+      if (relationship.kind === "Component" && relationship.cardinality === "many") {
+        return true;
+      }
+      return false;
+    })
+    .map((relationship) => ({
+      label: relationship.label,
+      name: relationship.name,
+    }));
+
   return relationships;
 };
 

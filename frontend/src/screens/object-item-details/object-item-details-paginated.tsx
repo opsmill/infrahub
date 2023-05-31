@@ -26,6 +26,10 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
+import {
+  getSchemaRelationshipColumns,
+  getSchemaRelationshipsTabs,
+} from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -44,12 +48,17 @@ export default function ObjectItemDetails() {
   const branch = useReactiveVar(branchVar);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  const relationships = schema?.relationships?.filter(
-    (relationship) =>
-      relationship.cardinality === "one" ||
-      relationship.kind === "Attribute" ||
-      relationship.kind === "Parent"
-  );
+  const relationships = getSchemaRelationshipColumns(schema);
+
+  const relationshipsTabs = getSchemaRelationshipsTabs(schema);
+
+  const tabs = [
+    {
+      label: schema?.label,
+      name: schema?.label,
+    },
+    ...relationshipsTabs,
+  ];
 
   const queryString = schema
     ? getObjectDetailsPaginated({
@@ -67,47 +76,10 @@ export default function ObjectItemDetails() {
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
 
-  const atttributeRelationships =
-    schema?.relationships?.filter((relationship) => {
-      if (relationship.kind === "Generic" && relationship.cardinality === "one") {
-        return true;
-      }
-      if (relationship.kind === "Attribute") {
-        return true;
-      }
-      if (relationship.kind === "Component" && relationship.cardinality === "one") {
-        return true;
-      }
-      if (relationship.kind === "Parent") {
-        return true;
-      }
-      return false;
-    }) ?? [];
-
-  const tabs = [
-    {
-      label: schema?.label,
-      name: schema?.label,
-    },
-    ...(schema?.relationships ?? [])
-      .filter((relationship) => {
-        if (relationship.kind === "Generic" && relationship.cardinality === "many") {
-          return true;
-        }
-        if (relationship.kind === "Component" && relationship.cardinality === "many") {
-          return true;
-        }
-        return false;
-      })
-      .map((relationship) => ({
-        label: relationship.label,
-        name: relationship.name,
-      })),
-  ];
-
   const navigate = useNavigate();
 
   if (error) {
+    console.error("Error while loading the object details: ", error);
     return <ErrorScreen />;
   }
 
@@ -268,16 +240,26 @@ export default function ObjectItemDetails() {
               );
             })}
 
-            {atttributeRelationships?.map((relationshipSchema: any) => (
-              <RelationshipDetails
-                parentNode={objectDetailsData}
-                mode="DESCRIPTION-LIST"
-                parentSchema={schema}
-                key={relationshipSchema.name}
-                relationshipsData={objectDetailsData[relationshipSchema.name]?.node}
-                relationshipSchema={relationshipSchema}
-              />
-            ))}
+            {relationships?.map((relationship: any) => {
+              const relationshipSchema = schema?.relationships?.find(
+                (relation) => relation?.name === relationship?.name
+              );
+
+              const relationshipData = relationship?.paginated
+                ? objectDetailsData[relationship.name]?.edges?.map((edge: any) => edge?.node)
+                : objectDetailsData[relationship.name]?.node;
+
+              return (
+                <RelationshipDetails
+                  parentNode={objectDetailsData}
+                  mode="DESCRIPTION-LIST"
+                  parentSchema={schema}
+                  key={relationship.name}
+                  relationshipsData={relationshipData}
+                  relationshipSchema={relationshipSchema}
+                />
+              );
+            })}
           </dl>
         </div>
       )}

@@ -55,7 +55,7 @@ export default function ObjectItems() {
     ].map((row: any) => `${row.name}: ${row.value}`),
   ].join(",");
 
-  // Get all the needed columns (attributes + relationships with a cardinality of "one")
+  // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns(schema);
 
   const navigate = useNavigate();
@@ -90,6 +90,7 @@ export default function ObjectItems() {
   const rows = edges?.map((edge: any) => edge.node);
 
   if (error) {
+    console.log("Error while loading objects list: ", error);
     return <ErrorScreen />;
   }
 
