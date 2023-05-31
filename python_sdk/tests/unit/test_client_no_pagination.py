@@ -36,7 +36,7 @@ async def clients() -> BothClients:
 async def test_get_repositories(
     mock_branches_list_query, mock_repositories_query_no_pagination
 ):  # pylint: disable=unused-argument
-    client = await InfrahubClient.init(address="http://mock", insert_tracker=True)
+    client = await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=False)
     repos = await client.get_list_repositories()
 
     expected_response = RepositoryData(

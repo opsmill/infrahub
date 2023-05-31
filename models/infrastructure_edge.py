@@ -130,11 +130,11 @@ ORGANIZATIONS = (
 INTERFACE_OBJS: Dict[str, List[InfrahubNode]] = defaultdict(list)
 
 ACCOUNTS = (
-    ("pop-builder", "Script", ("operator",)),
-    ("CRM Synchronization", "Script", ("operator",)),
-    ("Jack Bauer", "User", ("operator",)),
-    ("Chloe O'Brian", "User", ("operator",)),
-    ("David Palmer", "User", ("operator",)),
+    ("pop-builder", "Script", "Password123"),
+    ("CRM Synchronization", "Script", "Password123"),
+    ("Jack Bauer", "User", "Password123"),
+    ("Chloe O'Brian", "User", "Password123"),
+    ("David Palmer", "User", "Password123"),
 )
 
 ACCOUNT_GROUPS = (
@@ -639,15 +639,23 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     get_circuits_query = """
     query($site_name: String!) {
         circuit_endpoint(site__name__value: $site_name) {
-            id
-            circuit {
-                id
-                circuit_id {
-                    value
-                }
-                provider {
-                    name {
-                        value
+            edges {
+                node {
+                    id
+                    circuit {
+                        node {
+                            id
+                            circuit_id {
+                                value
+                            }
+                            provider {
+                                node {
+                                    name {
+                                        value
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -658,14 +666,16 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
         branch_name=new_branch_name, query=get_circuits_query, variables={"site_name": site_name}
     )
     colt_circuits = [
-        circuit for circuit in circuits["circuit_endpoint"] if circuit["circuit"]["provider"]["name"]["value"] == "Colt"
+        circuit
+        for circuit in circuits["circuit_endpoint"]["edges"]
+        if circuit["node"]["circuit"]["node"]["provider"]["node"]["name"]["value"] == "Colt"
     ]
 
     for item in colt_circuits:
-        circuit_endpoint = await client.get(branch=new_branch_name, kind="CircuitEndpoint", id=item["id"])
+        circuit_endpoint = await client.get(branch=new_branch_name, kind="CircuitEndpoint", id=item["node"]["id"])
         await circuit_endpoint.delete()
 
-        circuit = await client.get(branch=new_branch_name, kind="Circuit", id=item["circuit"]["id"])
+        circuit = await client.get(branch=new_branch_name, kind="Circuit", id=item["node"]["circuit"]["node"]["id"])
         await circuit.delete()
 
 
@@ -689,7 +699,9 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         store.set(key=group[0], node=obj)
 
     for account in ACCOUNTS:
-        obj = await client.create(branch=branch, kind="Account", data={"name": account[0], "type": account[1]})
+        obj = await client.create(
+            branch=branch, kind="Account", data={"name": account[0], "password": account[2], "type": account[1]}
+        )
         batch.add(task=obj.save, node=obj)
         store.set(key=account[0], node=obj)
 
