@@ -1277,7 +1277,7 @@ async def register_account_schema(session) -> None:
 @pytest.fixture
 async def first_account(session: AsyncSession, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="Account")
-    await obj.new(session=session, name="First Account", type="Git")
+    await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123")
     await obj.save(session=session)
     return obj
 
@@ -1285,7 +1285,7 @@ async def first_account(session: AsyncSession, register_account_schema) -> Node:
 @pytest.fixture
 async def second_account(session: AsyncSession, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="Account")
-    await obj.new(session=session, name="Second Account", type="Git")
+    await obj.new(session=session, name="Second Account", type="Git", password="SecondPassword123")
     await obj.save(session=session)
     return obj
 

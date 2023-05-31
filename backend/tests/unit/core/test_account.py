@@ -8,7 +8,7 @@ async def test_validate_user_create(session, default_branch, register_core_model
     account_token_schema = registry.get_schema(name="AccountToken", branch=default_branch)
 
     user1 = await Node.init(session=session, schema=account_schema)
-    await user1.new(session=session, name="user1")
+    await user1.new(session=session, name="user1", password="User1Password123")
     await user1.save(session=session)
     token1 = await Node.init(session=session, schema=account_token_schema)
     await token1.new(session=session, token="123456789", account=user1)
@@ -20,7 +20,7 @@ async def test_validate_token(session, default_branch, register_core_models_sche
     account_token_schema = registry.get_schema(name="AccountToken", branch=default_branch)
 
     user1 = await Node.init(session=session, schema=account_schema)
-    await user1.new(session=session, name="user1")
+    await user1.new(session=session, name="user1", password="User1Password123")
     await user1.save(session=session)
     token1 = await Node.init(session=session, schema=account_token_schema)
     await token1.new(session=session, token="123456789", account=user1)

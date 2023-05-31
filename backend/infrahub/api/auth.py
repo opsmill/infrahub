@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends
 from neo4j import AsyncSession
 
@@ -14,6 +12,5 @@ router = APIRouter(prefix="/auth")
 async def login_user(
     credentials: models.PasswordCredential,
     session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
 ) -> models.UserToken:
-    return await authenticate_with_password(session=session, credentials=credentials, branch=branch)
+    return await authenticate_with_password(session=session, credentials=credentials)

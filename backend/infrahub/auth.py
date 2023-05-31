@@ -48,8 +48,9 @@ async def authenticate_with_password(
         raise AuthorizationError("Incorrect password")
     now = datetime.now(tz=timezone.utc)
     expires = now + timedelta(seconds=config.SETTINGS.security.access_token_lifetime)
+
     access_data = {
-        "sub": credentials.username,
+        "sub": user.id,
         "iat": now,
         "nbf": now,
         "exp": expires,

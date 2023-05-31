@@ -52,7 +52,7 @@ class TestInfrahubNode:
 
     async def test_node_delete_node(self, session, client: InfrahubClient, init_db_base, location_schema):
         obj = await Node.init(session=session, schema="Account")
-        await obj.new(session=session, name="delete-my-account", type="Git")
+        await obj.new(session=session, name="delete-my-account", type="Git", password="delete-my-password")
         await obj.save(session=session)
         node_pre_delete = await client.get(kind="Account", name__value="delete-my-account")
         assert node_pre_delete
