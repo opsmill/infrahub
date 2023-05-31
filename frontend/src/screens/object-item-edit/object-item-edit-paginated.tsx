@@ -11,6 +11,7 @@ import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
+import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -35,12 +36,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  const relationships = schema?.relationships?.filter(
-    (relationship) =>
-      relationship.cardinality === "one" ||
-      relationship.kind === "Attribute" ||
-      relationship.kind === "Parent"
-  );
+  const relationships = getSchemaRelationshipColumns(schema);
 
   const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
 
@@ -86,7 +82,10 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
     if (peers.includes(k)) {
-      return { ...acc, [k]: v.edges?.map((edge: any) => edge.node) };
+      return {
+        ...acc,
+        [k]: v.edges?.map((edge: any) => edge.node),
+      };
     }
     return acc;
   }, {});

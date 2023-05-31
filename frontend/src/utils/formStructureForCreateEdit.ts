@@ -101,9 +101,13 @@ const getFormStructureForCreateEdit = (
             return value.id;
           } else if (relationship.cardinality === "one" && isInherited) {
             return value;
-          } else {
-            return value.map((item: any) => item.id);
+          } else if (value.edges) {
+            return value.edges.map((item: any) => item?.node?.id);
+          } else if (value.node) {
+            return value.node.map((item: any) => item?.node?.id);
           }
+
+          return "";
         })(),
         options: {
           values: options,
