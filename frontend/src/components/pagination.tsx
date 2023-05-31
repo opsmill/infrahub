@@ -24,7 +24,6 @@ export const Pagination = (props: tPaginationType) => {
       offset: nextSelectedPage * limit,
     };
 
-    console.log("### PAGINATION newPagination: ", newPagination);
     setPagination(newPagination);
   };
 
@@ -34,7 +33,7 @@ export const Pagination = (props: tPaginationType) => {
         <div>
           <p className="text-sm text-gray-700">
             Showing <span className="font-medium">{offset + 1}</span> to{" "}
-            <span className="font-medium">{limit}</span> of{" "}
+            <span className="font-medium">{offset + limit}</span> of{" "}
             <span className="font-medium">{count}</span> results
           </p>
         </div>
