@@ -15,7 +15,7 @@ const getMutationDetailsFromFormData = (
     const updatedValue = updateObject[attribute.name].value;
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name].value;
-      console.log("Existing value: ", existingValue, " Updated value: ", updatedValue);
+
       if (mode === "update" && (!updatedValue || updatedValue === existingValue)) {
         delete updateObject[attribute.name];
       }
@@ -32,15 +32,21 @@ const getMutationDetailsFromFormData = (
       if (mode === "update") {
         if (isOneToOne) {
           const existingValue = existingObject[relationship.name]?.id;
+
           const updatedValue = updateObject[relationship.name]?.id;
+
           if (updatedValue === existingValue) {
             delete updateObject[relationship.name];
           }
         } else {
-          const existingValue = existingObject[relationship.name]?.map((r: any) => r.id).sort();
+          const existingValue = existingObject[relationship.name]
+            ? existingObject[relationship.name]?.edges.map((r: any) => r.node?.id).sort()
+            : existingObject[relationship.name]?.map((r: any) => r.id).sort();
+
           const updatedIds = updateObject[relationship.name]?.list
             ?.map((value: any) => value.id)
             .sort();
+
           if (
             existingValue &&
             updatedIds &&

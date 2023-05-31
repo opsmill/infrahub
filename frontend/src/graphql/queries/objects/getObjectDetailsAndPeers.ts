@@ -26,12 +26,18 @@ query {{kind.value}} {
           }
           {{/each}}
           {{#each relationships}}
-            {{this.name}} {
+            {{this.name}}{{#if this.paginated}}(limit: 100){{/if}} {
+              {{#if this.paginated}}
+                edges {
+              {{/if}}
                 node {
                   id
                   display_label
                   __typename
                 }
+              {{#if this.paginated}}
+                }
+              {{/if}}
             }
         {{/each}}
       }
