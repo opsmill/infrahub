@@ -28,3 +28,29 @@ export const getObjectRelationshipsDetails = Handlebars.compile(`query {{kind.va
   }
 }
 `);
+
+export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query {{kind.value}} {
+  {{name}} (ids: ["{{objectid}}"]) {
+    edges {
+      node {
+        {{relationship}}{{#if filters}}({{{filters}}}){{/if}} {
+          count
+          edges {
+            node {
+              id
+              display_label
+              {{#each columns}}
+              {{this.name}} {
+                value
+              }
+              {{/each}}
+              __typename
+              _updated_at
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`);

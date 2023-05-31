@@ -24,7 +24,6 @@ export const Pagination = (props: tPaginationType) => {
       offset: nextSelectedPage * limit,
     };
 
-    console.log("### PAGINATION newPagination: ", newPagination);
     setPagination(newPagination);
   };
 
@@ -34,7 +33,7 @@ export const Pagination = (props: tPaginationType) => {
         <div>
           <p className="text-sm text-gray-700">
             Showing <span className="font-medium">{offset + 1}</span> to{" "}
-            <span className="font-medium">{limit}</span> of{" "}
+            <span className="font-medium">{offset + limit}</span> of{" "}
             <span className="font-medium">{count}</span> results
           </p>
         </div>
@@ -57,7 +56,7 @@ export const Pagination = (props: tPaginationType) => {
             breakClassName="cursor-pointer relative inline-flex items-center text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
             breakLinkClassName="cursor-pointer px-4 py-2"
             containerClassName="flex"
-            activeClassName="bg-blue-500 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 hover:bg-blue-400"
+            activeClassName="bg-blue-500 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 hover:bg-blue-500"
             activeLinkClassName="cursor-pointer px-4 py-2"
           />
         </div>

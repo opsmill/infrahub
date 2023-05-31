@@ -1,7 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Pagination } from "../../components/pagination";
@@ -19,13 +19,16 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
+import {
+  getSchemaObjectColumns,
+  getSchemaRelationshipColumns,
+} from "../../utils/getSchemaObjectColumns";
 import { getObjectUrl } from "../../utils/objects";
 import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import ObjectItemCreate from "../object-item-create/object-item-create";
+import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 
 export default function ObjectItems() {
   const { objectname } = useParams();
@@ -52,7 +55,7 @@ export default function ObjectItems() {
     ].map((row: any) => `${row.name}: ${row.value}`),
   ].join(",");
 
-  // Get all the needed columns (attributes + relationships with a cardinality of "one")
+  // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns(schema);
 
   const navigate = useNavigate();
@@ -62,7 +65,7 @@ export default function ObjectItems() {
         kind: schema.kind,
         name: schema.name,
         attributes: schema.attributes,
-        // relationships: getSchemaRelationshipColumns(schema),
+        relationships: getSchemaRelationshipColumns(schema),
         filters: filtersString,
       })
     : // Empty query to make the gql parsing work
@@ -87,6 +90,7 @@ export default function ObjectItems() {
   const rows = edges?.map((edge: any) => edge.node);
 
   if (error) {
+    console.log("Error while loading objects list: ", error);
     return <ErrorScreen />;
   }
 

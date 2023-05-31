@@ -9,6 +9,7 @@ cypress/videos
 cypress/screenshots
 
 # production
+/build
 /dist
 
 # misc

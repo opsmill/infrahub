@@ -36,7 +36,15 @@ query {{kind}} {
 
         {{#each relationships}}
           {{this.name}} {
-              display_label
+            {{#if this.paginated}}
+              edges {
+            {{/if}}
+              node {
+                display_label
+              }
+            {{#if this.paginated}}
+              }
+            {{/if}}
           }
         {{/each}}
       }
