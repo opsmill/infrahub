@@ -50,7 +50,7 @@ def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
         if value is None:
             lines.append(f"{offset_str}{key}")
         elif isinstance(value, dict):
-            if "@filters" in value:
+            if "@filters" in value and value["@filters"]:
                 filters_str = ", ".join(
                     [f"{key}: {convert_to_graphql_as_string(value)}" for key, value in value[FILTERS_KEY].items()]
                 )
