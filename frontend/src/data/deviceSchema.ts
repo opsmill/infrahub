@@ -409,19 +409,19 @@ export const C_deviceAttributeColumns = [
 ];
 
 export const C_deviceRelationshipColumns = [
-  { label: "Site", name: "site" },
-  { label: "Status", name: "status" },
-  { label: "Role", name: "role" },
-  { label: "Asn", name: "asn" },
-  { label: "Tags", name: "tags" },
+  { label: "Site", name: "site", paginated: false },
+  { label: "Status", name: "status", paginated: false },
+  { label: "Role", name: "role", paginated: false },
+  { label: "Asn", name: "asn", paginated: false },
+  { label: "Tags", name: "tags", paginated: true },
 ];
 export const C_deviceObjectColumns = [
   { label: "Name", name: "name" },
   { label: "Description", name: "description" },
   { label: "Type", name: "type" },
-  { label: "Site", name: "site" },
-  { label: "Status", name: "status" },
-  { label: "Role", name: "role" },
-  { label: "Asn", name: "asn" },
-  { label: "Tags", name: "tags" },
+  { label: "Site", name: "site", paginated: false },
+  { label: "Status", name: "status", paginated: false },
+  { label: "Role", name: "role", paginated: false },
+  { label: "Asn", name: "asn", paginated: false },
+  { label: "Tags", name: "tags", paginated: true },
 ];
