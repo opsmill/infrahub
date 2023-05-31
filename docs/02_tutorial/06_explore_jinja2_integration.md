@@ -68,6 +68,6 @@ After making these changes, you should be able to render the RFIle for the branc
 [`/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1`](http://localhost:8000/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1)
 !!!
 
-#### 3. Merge the Branch `update-ethernet1`
+#### 4. Merge the Branch `update-ethernet1`
 
-After merging the branch `update-ethernet1`, regenerate the configuration for `ord1-edge1` in `main` and validate that the 2 changes are not available in `main`
+After merging the branch `update-ethernet1`, regenerate the configuration for `ord1-edge1` in `main` and validate that the 2 changes are now available in `main`
