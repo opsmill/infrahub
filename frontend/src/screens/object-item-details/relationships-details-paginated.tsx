@@ -4,8 +4,10 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../components/alert";
+import { Pagination } from "../../components/pagination";
 import { QSP } from "../../config/qsp";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
+import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
@@ -23,6 +25,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
 
   const { objectname, objectid } = useParams();
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
+  const [pagination] = usePagination();
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
 
@@ -34,11 +37,19 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     relationshipSchema?.peer!
   );
 
+  const filtersString = [
+    { name: "offset", value: pagination?.offset },
+    { name: "limit", value: pagination?.limit },
+  ]
+    .map((row: any) => `${row.name}: ${row.value}`)
+    .join(",");
+
   const queryString = getObjectRelationshipsDetailsPaginated({
     ...schema,
     relationship: relationshipTab,
     objectid,
     columns,
+    filters: filtersString,
   });
 
   const query = gql`
@@ -81,6 +92,8 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
         relationshipSchema={relationshipSchema}
         refetch={refetch}
       />
+
+      <Pagination count={result[0]?.node[relationshipTab]?.count} />
     </div>
   );
 }

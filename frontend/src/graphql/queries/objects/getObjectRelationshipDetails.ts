@@ -33,7 +33,8 @@ export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query 
   {{name}} (ids: ["{{objectid}}"]) {
     edges {
       node {
-        {{relationship}} {
+        {{relationship}}{{#if filters}}({{{filters}}}){{/if}} {
+          count
           edges {
             node {
               id
@@ -55,10 +56,11 @@ export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query 
 `);
 
 export const getObjectRelationshipsDetailsOnePaginated = Handlebars.compile(`query {{kind.value}} {
-  {{name}} (ids: ["{{objectid}}"]) {
+  {{name}} (ids: ["{{objectid}}"]{{#if filters}},{{{filters}}}{{/if}}) {
     edges {
       node {
-        {{relationship}} {
+        {{relationship}}{{#if filters}}({{{filters}}}){{/if}} {
+          count
           edges {
             node {
               id
