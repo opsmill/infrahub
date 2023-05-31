@@ -994,7 +994,7 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
             ],
             "relationships": [
-                {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1090,7 +1090,7 @@ core_models = {
                 {"name": "type", "kind": "Text"},
             ],
             "relationships": [
-                {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1113,7 +1113,7 @@ core_models = {
             ],
             "relationships": [
                 {"name": "account", "peer": "Account", "kind": "Attribute", "optional": True, "cardinality": "one"},
-                {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
                 {
                     "name": "rfiles",
                     "peer": "RFile",
@@ -1173,7 +1173,7 @@ core_models = {
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1208,7 +1208,7 @@ core_models = {
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1244,7 +1244,7 @@ core_models = {
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1268,7 +1268,7 @@ core_models = {
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
     ],
