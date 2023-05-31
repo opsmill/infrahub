@@ -75,6 +75,9 @@ class Attribute:
 
         return {"data": data, "variables": variables}
 
+    def _generate_query_data_no_pagination(self) -> Optional[Dict]:
+        return self._generate_query_data()
+
     def _generate_query_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {"value": None}
 
@@ -118,20 +121,24 @@ class RelatedNodeBase:
             data = {"id": data}
 
         if isinstance(data, dict):
-            self._id = data.get("id", None)
-            self._display_label = data.get("display_label", None)
-            self._typename = data.get("__typename", None)
-            self.updated_at: Optional[bool] = data.get("_relation__updated_at", None)
+            # To support both with and without pagination, we split data into node_data and properties_data
+            # We should probably clean that once we'll remove the code without pagination.
+            node_data = data.get("node", data)
+            properties_data = data.get("properties", data)
 
+            if node_data:
+                self._id = node_data.get("id", None)
+                self._display_label = node_data.get("display_label", None)
+                self._typename = node_data.get("__typename", None)
+
+            self.updated_at: Optional[str] = data.get("updated_at", data.get("_relation__updated_at", None))
+
+            # FIXME, we won't need that once we are only supporting paginated results
             if self._typename and self._typename.startswith("Related"):
                 self._typename = self._typename[7:]
 
             for prop in self._properties:
-                if value := data.get(prop, None):
-                    setattr(self, prop, value)
-                    continue
-
-                prop_data = data.get(f"_relation__{prop}", None)
+                prop_data = properties_data.get(prop, properties_data.get(f"_relation__{prop}", None))
                 if prop_data and isinstance(prop_data, dict) and "id" in prop_data:
                     setattr(self, prop, prop_data["id"])
                 elif prop_data and isinstance(prop_data, (str, bool)):
@@ -167,6 +174,20 @@ class RelatedNodeBase:
             if getattr(self, prop_name) is not None:
                 data[f"_relation__{prop_name}"] = getattr(self, prop_name)
 
+        return data
+
+    @classmethod
+    def _generate_query_data(cls) -> Dict:
+        data: Dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
+
+        properties: Dict[str, Any] = {}
+        for prop_name in PROPERTIES_FLAG:
+            properties[prop_name] = None
+        for prop_name in PROPERTIES_OBJECT:
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
+
+        if properties:
+            data["properties"] = properties
         return data
 
 
@@ -260,7 +281,7 @@ class RelationshipManagerBase:
         return [peer._generate_input_data() for peer in self.peers]
 
     @classmethod
-    def _generate_query_data(cls) -> Dict:
+    def _generate_query_data_no_pagination(cls) -> Dict:
         data: Dict[str, Any] = {"id": None, "display_label": None, "__typename": None}
 
         for prop_name in PROPERTIES_FLAG:
@@ -268,6 +289,23 @@ class RelationshipManagerBase:
         for prop_name in PROPERTIES_OBJECT:
             data[f"_relation__{prop_name}"] = {"id": None, "display_label": None, "__typename": None}
 
+        return data
+
+    @classmethod
+    def _generate_query_data(cls) -> Dict:
+        data: Dict[str, Any] = {
+            "count": None,
+            "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
+        }
+
+        properties: Dict[str, Any] = {}
+        for prop_name in PROPERTIES_FLAG:
+            properties[prop_name] = None
+        for prop_name in PROPERTIES_OBJECT:
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
+
+        if properties:
+            data["edges"]["properties"] = properties
         return data
 
 
@@ -282,11 +320,23 @@ class RelationshipManager(RelationshipManagerBase):
         if data is None:
             return
 
-        if not isinstance(data, list):
+        if not self.client.pagination and not isinstance(data, list):
             raise ValueError(f"{name} found a {type(data)} instead of a list")
 
-        for item in data:
-            self.peers.append(RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item))
+        if isinstance(data, list):
+            for item in data:
+                self.peers.append(
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        elif isinstance(data, dict) and "edges" in data:
+            for item in data["edges"]:
+                self.peers.append(
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        else:
+            raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
     def __getitem__(self, item: int) -> RelatedNode:
         return self.peers[item]  # type: ignore[return-value]
@@ -324,13 +374,23 @@ class RelationshipManagerSync(RelationshipManagerBase):
         if data is None:
             return
 
-        if not isinstance(data, list):
+        if not self.client.pagination and not isinstance(data, list):
             raise ValueError(f"{name} found a {type(data)} instead of a list")
 
-        for item in data:
-            self.peers.append(
-                RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
-            )
+        if isinstance(data, list):
+            for item in data:
+                self.peers.append(
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        elif isinstance(data, dict) and "edges" in data:
+            for item in data["edges"]:
+                self.peers.append(
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                )
+
+        else:
+            raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
     def __getitem__(self, item: int) -> RelatedNodeSync:
         return self.peers[item]  # type: ignore[return-value]
@@ -433,7 +493,9 @@ class InfrahubNodeBase:
 
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
-    def generate_query_data(self, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Union[Any, Dict]]:
+    def generate_query_data_no_pagination(
+        self, filters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {"id": None, "display_label": None}
 
         if filters:
@@ -441,13 +503,42 @@ class InfrahubNodeBase:
 
         for attr_name in self._attributes:
             attr: Attribute = getattr(self, attr_name)
-            attr_data = attr._generate_query_data()
+            attr_data = attr._generate_query_data_no_pagination()
             if attr_data:
                 data[attr_name] = attr_data
 
         for rel_name in self._relationships:
-            rel_data = RelationshipManager._generate_query_data()
+            rel_data = RelationshipManager._generate_query_data_no_pagination()
             data[rel_name] = rel_data
+
+        return {self._schema.name: data}
+
+    def generate_query_data(
+        self, filters: Optional[Dict[str, Any]] = None, offset: Optional[int] = None, limit: Optional[int] = None
+    ) -> Dict[str, Union[Any, Dict]]:
+        data: Dict[str, Any] = {"count": None, "edges": {"node": {"id": None, "display_label": None}}}
+
+        data["@filters"] = filters or {}
+
+        if offset:
+            data["@filters"]["offset"] = offset
+
+        if limit:
+            data["@filters"]["limit"] = offset
+
+        for attr_name in self._attributes:
+            attr: Attribute = getattr(self, attr_name)
+            attr_data = attr._generate_query_data()
+            if attr_data:
+                data["edges"]["node"][attr_name] = attr_data
+
+        for rel_name in self._relationships:
+            rel_schema = self._schema.get_relationship(name=rel_name)
+            if rel_schema and rel_schema.cardinality == "one":
+                rel_data = RelatedNode._generate_query_data()
+            elif rel_schema and rel_schema.cardinality == "many":
+                rel_data = RelationshipManager._generate_query_data()
+            data["edges"]["node"][rel_name] = rel_data
 
         return {self._schema.name: data}
 
@@ -474,6 +565,10 @@ class InfrahubNode(InfrahubNodeBase):
     ) -> None:
         self._client = client
         self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
+
+        if self._client.pagination and isinstance(data, dict) and "node" in data:
+            data = data.get("node")
+
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
@@ -564,6 +659,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
     ) -> None:
         self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
+
+        if self._client.pagination and isinstance(data, dict) and "node" in data:
+            data = data.get("node")
+
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:

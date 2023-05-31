@@ -20,6 +20,20 @@ def query_data_no_filter():
 
 
 @pytest.fixture
+def query_data_empty_filter():
+    data = {
+        "device": {
+            "@filters": {},
+            "name": {"value": None},
+            "description": {"value": None},
+            "interfaces": {"name": {"value": None}},
+        }
+    }
+
+    return data
+
+
+@pytest.fixture
 def query_data_filters_01():
     data = {
         "device": {
@@ -158,6 +172,30 @@ def test_render_input_block(input_data_01):
 
 def test_query_rendering_no_vars(query_data_no_filter):
     query = Query(query=query_data_no_filter)
+
+    expected_query = """
+query {
+    device {
+        name {
+            value
+        }
+        description {
+            value
+        }
+        interfaces {
+            name {
+                value
+            }
+        }
+    }
+}
+"""
+    assert query.render_first_line() == "query {"
+    assert query.render() == expected_query
+
+
+def test_query_rendering_empty_filter(query_data_empty_filter):
+    query = Query(query=query_data_empty_filter)
 
     expected_query = """
 query {

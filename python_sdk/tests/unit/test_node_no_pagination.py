@@ -1,11 +1,11 @@
-import inspect
+from dataclasses import dataclass
 
 import pytest
 from pytest_httpx import HTTPXMock
 
+from infrahub_client.client import InfrahubClient, InfrahubClientSync
 from infrahub_client.exceptions import NodeNotFound
 from infrahub_client.node import (
-    SAFE_VALUE,
     InfrahubNode,
     InfrahubNodeBase,
     InfrahubNodeSync,
@@ -13,7 +13,7 @@ from infrahub_client.node import (
     RelationshipManagerBase,
 )
 
-# pylint: disable=no-member
+# pylint: disable=no-member,redefined-outer-name,duplicate-code
 # type: ignore[attr-defined]
 
 async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_")]
@@ -21,109 +21,33 @@ sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.st
 
 client_types = ["standard", "sync"]
 
-SAFE_GRAPHQL_VALUES = [
-    pytest.param("", id="allow-empty"),
-    pytest.param("user1", id="allow-normal"),
-    pytest.param("User Lastname", id="allow-space"),
-    pytest.param("020a1c39-6071-4bf8-9336-ffb7a001e665", id="allow-uuid"),
-    pytest.param("user.lastname", id="allow-dots"),
-    pytest.param("/opt/repos/backbone-links", id="allow-filepaths"),
-    pytest.param("https://github.com/opsmill/infrahub-demo-edge", id="allow-urls"),
-]
 
-UNSAFE_GRAPHQL_VALUES = [
-    pytest.param('No "quote"', id="disallow-quotes"),
-    pytest.param("Line \n break", id="disallow-linebreaks"),
-]
+@dataclass
+class BothClients:
+    sync: InfrahubClientSync
+    standard: InfrahubClient
 
 
-async def test_method_sanity():
-    """Validate that there is at least one public method and that both clients look the same."""
-    assert async_node_methods
-    assert async_node_methods == sync_node_methods
+@pytest.fixture
+async def client() -> InfrahubClient:
+    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=False)
 
 
-@pytest.mark.parametrize("value", SAFE_GRAPHQL_VALUES)
-def test_validate_graphql_value(value: str) -> None:
-    """All these values are safe and should not be converted"""
-    assert SAFE_VALUE.match(value)
-
-
-@pytest.mark.parametrize("value", UNSAFE_GRAPHQL_VALUES)
-def test_identify_unsafe_graphql_value(value: str) -> None:
-    """All these values are safe and should not be converted"""
-    assert not SAFE_VALUE.match(value)
-
-
-@pytest.mark.parametrize("method", async_node_methods)
-async def test_validate_method_signature(method):
-    async_method = getattr(InfrahubNode, method)
-    sync_method = getattr(InfrahubNodeSync, method)
-    async_sig = inspect.signature(async_method)
-    sync_sig = inspect.signature(sync_method)
-    assert async_sig.parameters == sync_sig.parameters
-    assert async_sig.return_annotation == sync_sig.return_annotation
+@pytest.fixture
+async def clients() -> BothClients:
+    both = BothClients(
+        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination=False),
+        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination=False),
+    )
+    return both
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_init_node_no_data(client, location_schema, client_type):
+async def test_init_node_data_graphql(client, location_schema, location_data01_no_pagination, client_type):
     if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema)
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
     else:
-        node = InfrahubNodeSync(client=client, schema=location_schema)
-    assert sorted(node._attributes) == ["description", "name", "type"]
-
-    assert hasattr(node, "name")
-    assert hasattr(node, "description")
-    assert hasattr(node, "type")
-
-
-@pytest.mark.parametrize("client_type", client_types)
-async def test_init_node_data_user(client, location_schema, client_type):
-    data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
-    if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=data)
-    else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-
-    assert node.name.value == "JFK1"
-    assert node.name.is_protected is None
-    assert node.description.value == "JFK Airport"
-    assert node.type.value == "SITE"
-
-
-@pytest.mark.parametrize("client_type", client_types)
-async def test_init_node_data_user_with_relationships(client, location_schema, client_type):
-    data = {
-        "name": {"value": "JFK1"},
-        "description": {"value": "JFK Airport"},
-        "type": {"value": "SITE"},
-        "primary_tag": "pppppppp",
-        "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
-    }
-    if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=data)
-    else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-
-    assert node.name.value == "JFK1"
-    assert node.name.is_protected is None
-    assert node.description.value == "JFK Airport"
-    assert node.type.value == "SITE"
-
-    assert isinstance(node.tags, RelationshipManagerBase)
-    assert len(node.tags.peers) == 2
-    assert isinstance(node.tags.peers[0], RelatedNodeBase)
-    assert isinstance(node.primary_tag, RelatedNodeBase)
-    assert node.primary_tag.id == "pppppppp"
-
-
-@pytest.mark.parametrize("client_type", client_types)
-async def test_init_node_data_graphql(client, location_schema, location_data01, client_type):
-    if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-    else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
 
     assert node.name.value == "DFW"
     assert node.name.is_protected is True
@@ -145,80 +69,63 @@ async def test_query_data_no_filters(client, location_schema, client_type):
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema)
 
-    assert node.generate_query_data() == {
+    assert node.generate_query_data_no_pagination() == {
         "location": {
-            "@filters": {},
-            "count": None,
-            "edges": {
-                "node": {
-                    "id": None,
+            "id": None,
+            "display_label": None,
+            "name": {
+                "is_protected": None,
+                "is_visible": None,
+                "owner": {"__typename": None, "display_label": None, "id": None},
+                "source": {"__typename": None, "display_label": None, "id": None},
+                "value": None,
+            },
+            "description": {
+                "is_protected": None,
+                "is_visible": None,
+                "owner": {"__typename": None, "display_label": None, "id": None},
+                "source": {"__typename": None, "display_label": None, "id": None},
+                "value": None,
+            },
+            "type": {
+                "is_protected": None,
+                "is_visible": None,
+                "owner": {"__typename": None, "display_label": None, "id": None},
+                "source": {"__typename": None, "display_label": None, "id": None},
+                "value": None,
+            },
+            "primary_tag": {
+                "id": None,
+                "display_label": None,
+                "__typename": None,
+                "_relation__is_protected": None,
+                "_relation__is_visible": None,
+                "_relation__owner": {
+                    "__typename": None,
                     "display_label": None,
-                    "name": {
-                        "is_protected": None,
-                        "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
-                        "value": None,
-                    },
-                    "description": {
-                        "is_protected": None,
-                        "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
-                        "value": None,
-                    },
-                    "type": {
-                        "is_protected": None,
-                        "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
-                        "value": None,
-                    },
-                    "primary_tag": {
-                        "properties": {
-                            "is_protected": None,
-                            "is_visible": None,
-                            "owner": {
-                                "__typename": None,
-                                "display_label": None,
-                                "id": None,
-                            },
-                            "source": {
-                                "__typename": None,
-                                "display_label": None,
-                                "id": None,
-                            },
-                        },
-                        "node": {
-                            "id": None,
-                            "display_label": None,
-                            "__typename": None,
-                        },
-                    },
-                    "tags": {
-                        "count": None,
-                        "edges": {
-                            "properties": {
-                                "is_protected": None,
-                                "is_visible": None,
-                                "owner": {
-                                    "__typename": None,
-                                    "display_label": None,
-                                    "id": None,
-                                },
-                                "source": {
-                                    "__typename": None,
-                                    "display_label": None,
-                                    "id": None,
-                                },
-                            },
-                            "node": {
-                                "id": None,
-                                "display_label": None,
-                                "__typename": None,
-                            },
-                        },
-                    },
+                    "id": None,
+                },
+                "_relation__source": {
+                    "__typename": None,
+                    "display_label": None,
+                    "id": None,
+                },
+            },
+            "tags": {
+                "id": None,
+                "display_label": None,
+                "__typename": None,
+                "_relation__is_protected": None,
+                "_relation__is_visible": None,
+                "_relation__owner": {
+                    "id": None,
+                    "__typename": None,
+                    "display_label": None,
+                },
+                "_relation__source": {
+                    "id": None,
+                    "__typename": None,
+                    "display_label": None,
                 },
             },
         },
@@ -380,19 +287,25 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_update_input_data__with_relationships_01(
-    client, location_schema, location_data01, tag_schema, tag_blue_data, tag_green_data, client_type
+    client,
+    location_schema,
+    location_data01_no_pagination,
+    tag_schema,
+    tag_blue_data_no_pagination,
+    tag_green_data_no_pagination,
+    client_type,
 ):
     if client_type == "standard":
-        location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     else:
-        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
-    location.primary_tag = tag_green_data
+    location.primary_tag = tag_green_data_no_pagination
     location.tags.add(tag_green)
     location.tags.remove(tag_blue)
 
@@ -407,12 +320,14 @@ async def test_update_input_data__with_relationships_01(
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_update_input_data_with_relationships_02(client, location_schema, location_data02, client_type):
+async def test_update_input_data_with_relationships_02(
+    client, location_schema, location_data02_no_pagination, client_type
+):
     if client_type == "standard":
-        location = InfrahubNode(client=client, schema=location_schema, data=location_data02)
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data02_no_pagination)
 
     else:
-        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data02)
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data02_no_pagination)
 
     assert location._generate_input_data()["data"] == {
         "data": {
@@ -448,15 +363,15 @@ async def test_update_input_data_with_relationships_02(client, location_schema, 
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_update_input_data_empty_relationship(
-    client, location_schema, location_data01, tag_schema, tag_blue_data, client_type
+    client, location_schema, location_data01_no_pagination, tag_schema, tag_blue_data_no_pagination, client_type
 ):
     if client_type == "standard":
-        location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     else:
-        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     location.tags.remove(tag_blue)
     location.primary_tag = None
@@ -473,17 +388,23 @@ async def test_update_input_data_empty_relationship(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_node_get_relationship_from_store(
-    client, location_schema, location_data01, tag_schema, tag_red_data, tag_blue_data, client_type
+    client,
+    location_schema,
+    location_data01_no_pagination,
+    tag_schema,
+    tag_red_data_no_pagination,
+    tag_blue_data_no_pagination,
+    client_type,
 ):
     if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data_no_pagination)
+        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data)
-        tag_blue = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_blue_data)
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
+        tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data_no_pagination)
+        tag_blue = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_blue_data_no_pagination)
 
     client.store.set(key=tag_red.id, node=tag_red)
     client.store.set(key=tag_blue.id, node=tag_blue)
@@ -496,12 +417,12 @@ async def test_node_get_relationship_from_store(
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_node_get_relationship_not_in_store(client, location_schema, location_data01, client_type):
+async def test_node_get_relationship_not_in_store(client, location_schema, location_data01_no_pagination, client_type):
     if client_type == "standard":
-        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01_no_pagination)
 
     else:
-        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01_no_pagination)
 
     with pytest.raises(NodeNotFound):
         node.primary_tag.peer  # pylint: disable=pointless-statement
@@ -516,44 +437,38 @@ async def test_node_fetch_relationship(
     mock_schema_query_01,
     clients,
     location_schema,
-    location_data01,
+    location_data01_no_pagination,
     tag_schema,
-    tag_red_data,
-    tag_blue_data,
+    tag_red_data_no_pagination,
+    tag_blue_data_no_pagination,
     client_type,
 ):  # pylint: disable=unused-argument
     response1 = {
         "data": {
-            "tag": {
-                "count": 1,
-                "edges": [
-                    tag_red_data,
-                ],
-            }
+            "tag": [
+                tag_red_data_no_pagination,
+            ]
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-tag-page1"})
+    httpx_mock.add_response(method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-tag-get"})
 
     response2 = {
         "data": {
-            "tag": {
-                "count": 1,
-                "edges": [
-                    tag_blue_data,
-                ],
-            }
+            "tag": [
+                tag_blue_data_no_pagination,
+            ]
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-tag-page1"})
+    httpx_mock.add_response(method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-tag-get"})
 
     if client_type == "standard":
-        node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01)
+        node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01_no_pagination)
         await node.primary_tag.fetch()  # type: ignore[attr-defined]
         await node.tags.fetch()  # type: ignore[attr-defined]
     else:
-        node = InfrahubNodeSync(client=clients.sync, schema=location_schema, data=location_data01)  # type: ignore[assignment]
+        node = InfrahubNodeSync(client=clients.sync, schema=location_schema, data=location_data01_no_pagination)  # type: ignore[assignment]
         node.primary_tag.fetch()  # type: ignore[attr-defined]
         node.tags.fetch()  # type: ignore[attr-defined]
 

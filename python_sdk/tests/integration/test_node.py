@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+import infrahub.config as config
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub_client import InfrahubClient
@@ -11,16 +12,20 @@ from infrahub_client.node import InfrahubNode
 
 
 class TestInfrahubNode:
+    pagination: bool = True
+
     @pytest.fixture(scope="class")
     async def test_client(self):
         # pylint: disable=import-outside-toplevel
+        config.SETTINGS.experimental_features.paginated = self.pagination
+
         from infrahub.api.main import app
 
         return TestClient(app)
 
     @pytest.fixture
     async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client)
+        return await InfrahubClient.init(test_client=test_client, pagination=self.pagination)
 
     async def test_node_create(self, client: InfrahubClient, init_db_base, location_schema):
         data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
@@ -159,9 +164,6 @@ class TestInfrahubNode:
         tags = await nodedb.tags.get(session=session)
         assert len(tags) == 2
 
-    @pytest.mark.xfail(
-        reason="The test is failing mostlikely because of a bug on the backend side, Need to investigate and fix"
-    )
     async def test_node_update_2(
         self,
         session,
@@ -169,6 +171,7 @@ class TestInfrahubNode:
         init_db_base,
         tag_green: Node,
         tag_red: Node,
+        tag_blue: Node,
         gqlquery02: Node,
         repo99: Node,
     ):
@@ -182,8 +185,8 @@ class TestInfrahubNode:
         await node.save()
 
         nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
-        repodb = await nodedb.repository.get(session=session)
+        repodb = await nodedb.repository.get_peer(session=session)
         assert repodb.id == repo99.id
 
         tags = await nodedb.tags.get(session=session)
-        assert tags[0].id == tag_green.id
+        assert sorted([tag.peer_id for tag in tags]) == sorted([tag_green.id, tag_blue.id])

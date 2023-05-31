@@ -2,32 +2,29 @@ import pytest
 from fastapi.testclient import TestClient
 
 import infrahub.config as config
-from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClient
-from infrahub_client.node import InfrahubNode
+from infrahub_client import InfrahubClientSync
+from infrahub_client.node import InfrahubNodeSync
 
 # pylint: disable=unused-argument
 
 
-class TestInfrahubClient:
+class TestInfrahubClientSync:
     pagination: bool = True
 
     @pytest.fixture(scope="class")
     async def test_client(self):
         config.SETTINGS.experimental_features.paginated = self.pagination
 
-        registry.delete_all()
-
         # pylint: disable=import-outside-toplevel
-        from infrahub.api import main
+        from infrahub.api.main import app
 
-        return TestClient(main.app)
+        return TestClient(app)
 
     @pytest.fixture
-    async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client, pagination=self.pagination)
+    def client(self, test_client):
+        return InfrahubClientSync.init(test_client=test_client, pagination=self.pagination)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):
@@ -76,22 +73,23 @@ class TestInfrahubClient:
         )
         await obj4.save(session=session)
 
-    async def test_query_branches(self, client: InfrahubClient, init_db_base, base_dataset):
-        branches = await client.branch.all()
+    async def test_query_branches(self, client: InfrahubClientSync, init_db_base, base_dataset):
+        branches = client.branch.all()
 
         assert "main" in branches
         assert "branch01" in branches
 
-    async def test_branch_delete(self, client: InfrahubClient, init_db_base, base_dataset, session):
+    async def test_branch_delete(self, client: InfrahubClientSync, init_db_base, base_dataset, session):
         async_branch = "async-delete-branch"
         await create_branch(branch_name=async_branch, session=session)
-        pre_delete = await client.branch.all()
-        await client.branch.delete(async_branch)
-        post_delete = await client.branch.all()
+
+        pre_delete = client.branch.all()
+        client.branch.delete(async_branch)
+        post_delete = client.branch.all()
         assert async_branch in pre_delete.keys()
         assert async_branch not in post_delete.keys()
 
-    async def test_get_all(self, client: InfrahubClient, session, init_db_base):
+    async def test_get_all(self, client: InfrahubClientSync, session, init_db_base):
         obj1 = await Node.init(schema="Location", session=session)
         await obj1.new(session=session, name="jfk1", description="new york", type="site")
         await obj1.save(session=session)
@@ -100,12 +98,12 @@ class TestInfrahubClient:
         await obj2.new(session=session, name="sfo1", description="san francisco", type="site")
         await obj2.save(session=session)
 
-        nodes = await client.all(kind="Location")
+        nodes = client.all(kind="Location")
         assert len(nodes) == 2
-        assert isinstance(nodes[0], InfrahubNode)
+        assert isinstance(nodes[0], InfrahubNodeSync)
         assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]  # type: ignore[attr-defined]
 
-    async def test_get_one(self, client: InfrahubClient, session, init_db_base):
+    async def test_get_one(self, client: InfrahubClientSync, session, init_db_base):
         obj1 = await Node.init(schema="Location", session=session)
         await obj1.new(session=session, name="jfk1", description="new york", type="site")
         await obj1.save(session=session)
@@ -114,6 +112,12 @@ class TestInfrahubClient:
         await obj2.new(session=session, name="sfo1", description="san francisco", type="site")
         await obj2.save(session=session)
 
-        node = await client.get(kind="Location", id=obj1.id)
-        assert isinstance(node, InfrahubNode)
+        node = client.get(kind="Location", id=obj1.id)
+        assert isinstance(node, InfrahubNodeSync)
         assert node.name.value == "jfk1"  # type: ignore[attr-defined]
+
+
+# @pytest.mark.skip(reason="Only working if run in standalone")
+# class TestNoPaginationInfrahubClientSync(TestInfrahubClientSync):
+
+#     pagination: bool = False
