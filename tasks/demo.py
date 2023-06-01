@@ -15,7 +15,7 @@ from .utils import project_ver
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", TOP_DIRECTORY_NAME)
-PYTHON_VER = os.getenv("PYTHON_VER", "3.10")
+PYTHON_VER = os.getenv("PYTHON_VER", "3.11")
 IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
 PWD = os.getcwd()

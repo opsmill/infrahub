@@ -13,7 +13,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8, < 3.11"
+python = "^3.8, < 3.12"
 rich = "^13.3"
 pendulum = "~2.1"
 typer = "^0.7"

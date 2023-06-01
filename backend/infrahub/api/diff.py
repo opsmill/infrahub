@@ -20,7 +20,7 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 router = APIRouter(prefix="/diff")
 
 
-class DiffElementType(enum.Flag):
+class DiffElementType(str, enum.Enum):
     ATTRIBUTE = "Attribute"
     RELATIONSHIP_ONE = "RelationshipOne"
     RELATIONSHIP_MANY = "RelationshipMany"
