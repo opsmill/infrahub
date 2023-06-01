@@ -11,7 +11,7 @@ class PermissionLevel(enum.Flag):
     DEFAULT = 0
 
 
-class DiffAction(enum.Flag):
+class DiffAction(enum.StrEnum):
     ADDED = "added"
 
     REMOVED = "removed"
@@ -19,7 +19,7 @@ class DiffAction(enum.Flag):
     UPDATED = "updated"
 
 
-class RelationshipStatus(enum.Flag):
+class RelationshipStatus(enum.StrEnum):
     ACTIVE = "active"
 
     DELETED = "deleted"
