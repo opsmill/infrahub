@@ -405,26 +405,34 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "repository": [
-                {
-                    "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
-                    "name": {"value": "infrahub-test-fixture-01"},
-                    "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
-                    "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
-                }
-            ]
+            "repository": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                            "name": {"value": "infrahub-test-fixture-01"},
+                            "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
+                            "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
+                        }
+                    }
+                ]
+            }
         }
     }
     response2 = {
         "data": {
-            "repository": [
-                {
-                    "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
-                    "name": {"value": "infrahub-test-fixture-01"},
-                    "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
-                    "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
-                }
-            ]
+            "repository": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
+                            "name": {"value": "infrahub-test-fixture-01"},
+                            "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
+                            "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
+                        }
+                    }
+                ]
+            }
         }
     }
 

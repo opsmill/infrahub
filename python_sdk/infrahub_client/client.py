@@ -48,7 +48,7 @@ class BaseClient:
         test_client: Optional[TestClient] = None,
         default_branch: str = "main",
         insert_tracker: bool = False,
-        pagination: bool = False,
+        pagination: bool = True,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
     ):
