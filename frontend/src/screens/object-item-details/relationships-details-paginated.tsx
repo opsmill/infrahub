@@ -52,6 +52,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     filters: filtersString,
   });
 
+  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;

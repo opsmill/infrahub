@@ -81,8 +81,22 @@ query {{kind.value}} {
                   display_label
                   __typename
                 }
-              {{#if this.paginated}}
+                properties {
+                  updated_at
+                  source {
+                    id
+                    display_label
+                    __typename
+                  }
+                  owner {
+                    id
+                    display_label
+                    __typename
+                  }
+                  __typename
                 }
+              {{#if this.paginated}}
+              }
               {{/if}}
             }
         {{/each}}

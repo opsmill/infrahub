@@ -35,7 +35,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import RelationshipDetails from "./relationship-details";
+import RelationshipDetails from "./relationship-details-paginated";
 import RelationshipsDetails from "./relationships-details-paginated";
 
 export default function ObjectItemDetails() {
@@ -70,6 +70,7 @@ export default function ObjectItemDetails() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
+  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
@@ -246,8 +247,10 @@ export default function ObjectItemDetails() {
               );
 
               const relationshipData = relationship?.paginated
-                ? objectDetailsData[relationship.name]?.edges?.map((edge: any) => edge?.node)
-                : objectDetailsData[relationship.name]?.node;
+                ? objectDetailsData[relationship.name]?.edges
+                : objectDetailsData[relationship.name];
+
+              console.log("relationshipData: ", relationshipData);
 
               return (
                 <RelationshipDetails

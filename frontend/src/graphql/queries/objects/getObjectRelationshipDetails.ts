@@ -45,7 +45,19 @@ export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query 
               }
               {{/each}}
               __typename
-              _updated_at
+            }
+            properties {
+              updated_at
+              source {
+                id
+                display_label
+                __typename
+              }
+              owner {
+                id
+                display_label
+                __typename
+              }
             }
           }
         }

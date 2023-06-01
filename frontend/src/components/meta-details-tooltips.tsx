@@ -23,6 +23,8 @@ interface Props {
 }
 
 export default function MetaDetailsTooltip(props: Props) {
+  const { position, header, items } = props;
+
   const navigate = useNavigate();
   const [schemaKindName] = useAtom(schemaKindNameState);
 
@@ -45,11 +47,11 @@ export default function MetaDetailsTooltip(props: Props) {
         <Popover.Panel
           className={classNames(
             "absolute z-10 bg-white rounded-lg border shadow-xl",
-            props.position === "LEFT" ? "right-0" : ""
+            position === "LEFT" ? "right-0" : ""
           )}>
           <div className="w-80 text-sm divide-y px-4">
-            {!!props.header && props.header}
-            {props.items.map((item) => {
+            {!!header && header}
+            {items.map((item) => {
               return (
                 <div key={item.label} className="flex justify-between w-full py-4">
                   <div>{item.label}: </div>

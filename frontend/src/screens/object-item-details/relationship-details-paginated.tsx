@@ -210,6 +210,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     }
   };
 
+  console.log("props.mode: ", props.mode);
+
+  console.log("relationshipSchema?.cardinality: ", relationshipSchema?.cardinality);
+
   return (
     <>
       <div key={relationshipSchema?.name}>
@@ -236,17 +240,17 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       navigate(
                         constructPath(
                           getObjectDetailsUrl(
-                            relationshipsData,
+                            relationshipsData.node,
                             schemaKindName,
-                            relationshipsData.id
+                            relationshipsData.node.id
                           )
                         )
                       )
                     }>
-                    {relationshipsData.display_label}
+                    {relationshipsData.node?.display_label}
                   </Link>
 
-                  {relationshipsData && (
+                  {relationshipsData.properties && (
                     <MetaDetailsTooltip
                       items={[
                         {
@@ -265,17 +269,17 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         },
                         {
                           label: "Source",
-                          value: relationshipsData._relation__source,
+                          value: relationshipsData.properties.source?.display_label,
                           type: "link",
                         },
                         {
                           label: "Owner",
-                          value: relationshipsData._relation__owner,
+                          value: relationshipsData.properties.owner?.display_label,
                           type: "link",
                         },
                         {
                           label: "Is protected",
-                          value: relationshipsData._relation__is_protected ? "True" : "False",
+                          value: relationshipsData.properties.is_protected ? "True" : "False",
                           type: "text",
                         },
                       ]}
@@ -299,11 +303,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     />
                   )}
 
-                  {relationshipsData._relation__is_protected && (
+                  {relationshipsData.properties?.is_protected && (
                     <LockClosedIcon className="h-5 w-5 ml-2" />
                   )}
 
-                  {relationshipsData._relation__is_visible === false && (
+                  {relationshipsData.properties?.is_visible === false && (
                     <EyeSlashIcon className="h-5 w-5 ml-2" />
                   )}
                 </dd>
@@ -334,23 +338,23 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           </tr>
                         </thead>
                         <tbody className="bg-white">
-                          {relationshipsData?.map((row: any, index: number) => (
+                          {relationshipsData?.map(({ node, properties }: any, index: number) => (
                             <tr
                               onClick={() =>
-                                navigate(getObjectDetailsUrl(row, schemaKindName, row.id))
+                                navigate(getObjectDetailsUrl(node, schemaKindName, node.id))
                               }
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer">
                               {columns?.map((column) => (
                                 <td
-                                  key={row.id + "-" + column.name}
+                                  key={node.id + "-" + column.name}
                                   className={classNames(
                                     index !== relationshipsData.length - 1
                                       ? "border-b border-gray-200"
                                       : "",
                                     "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                                   )}>
-                                  {getObjectItemDisplayValue(row, column)}
+                                  {getObjectItemDisplayValue(node, column)}
                                 </td>
                               ))}
                               <td
@@ -365,7 +369,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    setRowForMetaEdit(row);
+                                    setRowForMetaEdit(node);
                                     setShowRelationMetaEditModal(true);
                                   }}>
                                   <MetaDetailsTooltip
@@ -373,33 +377,31 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                     items={[
                                       {
                                         label: "Updated at",
-                                        value: row.properties.updated_at,
+                                        value: properties?.updated_at,
                                         type: "date",
                                       },
                                       {
                                         label: "Update time",
                                         value: `${new Date(
-                                          row.properties.updated_at
+                                          properties?.updated_at
                                         ).toLocaleDateString()} ${new Date(
-                                          row.properties.updated_at
+                                          properties?.updated_at
                                         ).toLocaleTimeString()}`,
                                         type: "text",
                                       },
                                       {
                                         label: "Source",
-                                        value: row.properties.source?.display_label,
+                                        value: properties?.source?.display_label,
                                         type: "link",
                                       },
                                       {
                                         label: "Owner",
-                                        value: row.properties.owner?.display_label,
+                                        value: properties?.owner?.display_label,
                                         type: "link",
                                       },
                                       {
                                         label: "Is protected",
-                                        value: row.properties.owner?.is_protected
-                                          ? "True"
-                                          : "False",
+                                        value: properties?.is_protected ? "True" : "False",
                                         type: "text",
                                       },
                                     ]}
@@ -410,7 +412,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    setRelatedObjectToEdit(row);
+                                    setRelatedObjectToEdit(node);
                                   }}>
                                   <PencilSquareIcon className="w-6 h-6 text-gray-600 hover:w-7 hover:h-7" />
                                 </div>
@@ -419,7 +421,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    setRelatedRowToDelete(row);
+                                    setRelatedRowToDelete(node);
                                   }}>
                                   <img
                                     alt="unlink"
@@ -447,61 +449,59 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 </dt>
                 <dl className="sm:divide-y sm:divide-gray-200">
                   <div className="sm:col-span-2 space-y-4">
-                    {relationshipsData.length === 0 && "-"}
-                    {relationshipsData?.map((item: any) => (
+                    {relationshipsData?.length === 0 && "-"}
+                    {relationshipsData?.map(({ node, properties }: any) => (
                       <dd
                         className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
-                        key={item.id}>
+                        key={node.id}>
                         <Link
                           onClick={() =>
                             navigate(
-                              constructPath(getObjectDetailsUrl(item, schemaKindName, item.id))
+                              constructPath(getObjectDetailsUrl(node, schemaKindName, node.id))
                             )
                           }>
-                          {item.display_label}
+                          {node.display_label}
                         </Link>
 
-                        {item && (
+                        {node && (
                           <MetaDetailsTooltip
                             items={[
                               {
                                 label: "Updated at",
-                                value: item._updated_at,
+                                value: properties.updated_at,
                                 type: "date",
                               },
                               {
                                 label: "Update time",
                                 value: `${new Date(
-                                  item._updated_at
+                                  properties.updated_at
                                 ).toLocaleDateString()} ${new Date(
-                                  item._updated_at
+                                  properties.updated_at
                                 ).toLocaleTimeString()}`,
                                 type: "text",
                               },
                               {
                                 label: "Source",
-                                value: item._relation__source,
+                                value: properties._relation__source,
                                 type: "link",
                               },
                               {
                                 label: "Owner",
-                                value: item._relation__owner,
+                                value: properties.owner?.display_label,
                                 type: "link",
                               },
                               {
                                 label: "Is protected",
-                                value: item._relation__is_protected ? "True" : "False",
+                                value: properties.is_protected ? "True" : "False",
                                 type: "text",
                               },
                             ]}
                           />
                         )}
 
-                        {item._relation__is_protected && (
-                          <LockClosedIcon className="h-5 w-5 ml-2" />
-                        )}
+                        {properties.is_protected && <LockClosedIcon className="h-5 w-5 ml-2" />}
 
-                        {item._relation__is_visible === false && (
+                        {properties.is_visible === false && (
                           <EyeSlashIcon className="h-5 w-5 ml-2" />
                         )}
                         {/* {<TrashIcon className="h-5 w-5 ml-2" onClick={async () => {
