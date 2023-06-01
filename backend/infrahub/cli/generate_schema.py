@@ -18,13 +18,16 @@ class ExportFormat(str, enum.Enum):
     JSONSCHEMA = "jsonschema"
 
 
-@app.command()
-def schema(
-    output_file: Path = typer.Argument("infrahub_schema.schema.json"), format: ExportFormat = ExportFormat.JSONSCHEMA
+@app.command(name="schema")
+def generate_schema(
+    output_file: Path = typer.Argument("infrahub_schema.schema.json"),
+    output_format: ExportFormat = ExportFormat.JSONSCHEMA,  # pylint: disable=unused-argument
 ):
     """Generate a the schema expected by infrahub for the schema `infrahubctl schema load`."""
 
-    from infrahub.api.schema import SchemaLoadAPI
+    from infrahub.api.schema import (  # pylint: disable=import-outside-toplevel
+        SchemaLoadAPI,
+    )
 
     schema_str = SchemaLoadAPI.schema_json()
     schema = json.loads(schema_str)
