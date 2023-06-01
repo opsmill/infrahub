@@ -1,4 +1,6 @@
 ---
+# yamllint disable rule:line-length
+
 version: "3.4"
 services:
   infrahub-server:
@@ -6,7 +8,8 @@ services:
       context: ../
       dockerfile: development/Dockerfile-backend
     image: "opsmill/${INFRAHUB_BUILD_NAME}-py${PYTHON_VER}:${IMAGE_VER}"
-    command: gunicorn --config /source/development/gunicorn.config.py infrahub.api.main:app
+    command: >
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.api.main:app
     depends_on:
       database:
         condition: service_healthy
