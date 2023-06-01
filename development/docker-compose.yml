@@ -6,7 +6,8 @@ services:
       context: ../
       dockerfile: development/Dockerfile-backend
     image: "opsmill/${INFRAHUB_BUILD_NAME}-py${PYTHON_VER}:${IMAGE_VER}"
-    command: gunicorn --config /source/development/gunicorn.config.py infrahub.api.main:app
+    command: >
+      gunicorn --config serve/gunicorn.config.py --logger-class serve.log.InfrahubLogger infrahub.api.main:app
     depends_on:
       database:
         condition: service_healthy
