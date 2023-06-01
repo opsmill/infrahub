@@ -65,11 +65,20 @@ async def _render(
         log.error(f"Unable to load YAML file {INFRAHUB_CONFIG_FILE} : {exc}")
         sys.exit(1)
 
-    if "rfiles" not in data or rfile not in data.get("rfiles", {}):
+    if "rfiles" not in data:
+        log.error(f"Unable to rfiles section in {INFRAHUB_CONFIG_FILE}")
+        sys.exit(1)
+
+    if not isinstance(data["rfiles"], list):
+        log.error(f"Invalid rfiles format in {INFRAHUB_CONFIG_FILE} expected 'list' not {type(data['rfiles'])}")
+        sys.exit(1)
+
+    filtered_rfile = [entry for entry in data["rfiles"] if entry["name"] == rfile]
+    if not filtered_rfile:
         log.error(f"Unable to find {rfile} in {INFRAHUB_CONFIG_FILE}")
         sys.exit(1)
 
-    rfile_data = data["rfiles"][rfile]
+    rfile_data = filtered_rfile[0]
 
     try:
         query = find_graphql_query(rfile_data.get("query"))
