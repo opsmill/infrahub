@@ -6,6 +6,10 @@ import toml
 import typer
 from pydantic import BaseSettings, ValidationError, root_validator
 
+DEFAULT_CONFIG_FILE = "infrahubctl.toml"
+ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
+DEFAULT_BRANCH_NAME = "main"
+
 
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
