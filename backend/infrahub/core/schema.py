@@ -40,6 +40,7 @@ DEFAULT_KIND_MAX_LENGTH = 32
 DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
+
 class FilterSchemaKind(str, BaseEnum):
     TEXT = "Text"
     LIST = "Text"
@@ -60,6 +61,7 @@ class RelationshipKind(str, BaseEnum):
     ATTRIBUTE = "Attribute"
     COMPONENT = "Component"
     PARENT = "Parent"
+
 
 # Generate a list of String based on Enums
 RELATIONSHIP_KINDS = [RelationshipKind.__members__[member].value for member in list(RelationshipKind.__members__)]
