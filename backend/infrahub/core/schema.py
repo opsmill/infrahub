@@ -241,7 +241,7 @@ class FilterSchema(BaseSchemaModel):
 class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
     name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str # AttributeKind
+    kind: str  # AttributeKind
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_value: Optional[Any]
