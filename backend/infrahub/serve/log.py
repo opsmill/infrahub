@@ -3,7 +3,7 @@ from gunicorn.glogging import Logger
 from infrahub.log import get_logger
 
 
-class InfrahubLogger(Logger):
+class GunicornLogger(Logger):
     def __init__(self, cfg):
         super().__init__(cfg)
         self.logger = get_logger("gunicorn")
