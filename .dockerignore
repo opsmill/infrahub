@@ -1,0 +1,13 @@
+*.pyc
+*.env
+script.py
+node_modules
+.venv
+.ruff_cache
+.mypy_cache
+.pytest_cache
+*.env
+
+# Direnv files (https://direnv.net/)
+.direnv/
+.envrc
