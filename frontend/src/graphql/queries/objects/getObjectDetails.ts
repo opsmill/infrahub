@@ -83,6 +83,8 @@ query {{kind.value}} {
                 }
                 properties {
                   updated_at
+                  is_protected
+                  is_visible
                   source {
                     id
                     display_label

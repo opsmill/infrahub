@@ -210,10 +210,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     }
   };
 
-  console.log("props.mode: ", props.mode);
-
-  console.log("relationshipSchema?.cardinality: ", relationshipSchema?.cardinality);
-
   return (
     <>
       <div key={relationshipSchema?.name}>
@@ -269,12 +265,12 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         },
                         {
                           label: "Source",
-                          value: relationshipsData.properties.source?.display_label,
+                          value: relationshipsData.properties.source,
                           type: "link",
                         },
                         {
                           label: "Owner",
-                          value: relationshipsData.properties.owner?.display_label,
+                          value: relationshipsData.properties.owner,
                           type: "link",
                         },
                         {

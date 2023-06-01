@@ -70,7 +70,6 @@ export default function ObjectItemDetails() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
@@ -249,8 +248,6 @@ export default function ObjectItemDetails() {
               const relationshipData = relationship?.paginated
                 ? objectDetailsData[relationship.name]?.edges
                 : objectDetailsData[relationship.name];
-
-              console.log("relationshipData: ", relationshipData);
 
               return (
                 <RelationshipDetails
