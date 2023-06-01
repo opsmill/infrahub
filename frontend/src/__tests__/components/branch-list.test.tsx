@@ -1,7 +1,7 @@
 import { MockedProvider } from "@apollo/client/testing";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterAll, describe, expect, it } from "vitest";
-import { branchesMocks } from "../../../mocks/branches";
+import { branchesMocks } from "../../../mocks/data/branches";
 import Apollo, { QUERY } from "../../components/tests/branch-list-test";
 
 afterAll(cleanup);
