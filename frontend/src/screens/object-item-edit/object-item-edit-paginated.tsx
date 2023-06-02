@@ -135,7 +135,7 @@ export default function ObjectItemEditComponent(props: Props) {
             type={ALERT_TYPES.ERROR}
           />
         );
-        console.error("Something went wrong while updating the object", e);
+        console.error("Something went wrong while updating the object:", e);
         return;
       }
     }
