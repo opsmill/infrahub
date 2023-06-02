@@ -7,12 +7,12 @@ export default defineConfig({
       framework: "react",
       bundler: "vite",
     },
-    reporter: "spec",
+    reporter: "lcovonly",
   },
   e2e: {
     setupNodeEvents(on) {
       on("file:preprocessor", vitePreprocessor());
     },
-    reporter: "spec",
+    reporter: "lcovonly",
   },
 });
