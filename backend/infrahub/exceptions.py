@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 
 class Error(Exception):
@@ -6,10 +6,11 @@ class Error(Exception):
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
 
-    def api_response(self) -> Tuple[int, Dict[str, Any]]:
-        """Return error code and response."""
-        return self.HTTP_CODE, {
-            "detail": str(self.message) or self.DESCRIPTION,
+    def api_response(self) -> Dict[str, Any]:
+        """Return error response."""
+        return {
+            "data": None,
+            "errors": [{"message": str(self.message) or self.DESCRIPTION, "extensions": {"code": self.HTTP_CODE}}],
         }
 
 
