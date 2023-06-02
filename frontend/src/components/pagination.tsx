@@ -24,9 +24,15 @@ export const Pagination = (props: tPaginationType) => {
   const handlePageChange = (page: any) => {
     const { nextSelectedPage } = page;
 
+    const newOffset = nextSelectedPage * limit || 0;
+
+    if (newOffset === offset) {
+      return;
+    }
+
     const newPagination = {
       limit,
-      offset: nextSelectedPage * limit,
+      offset: newOffset,
     };
 
     setPagination(newPagination);
