@@ -672,7 +672,6 @@ def generate_graphql_edged_object(
 
     main_attrs = {
         "node": graphene.Field(node, required=False),
-        "updated_at": graphene.DateTime(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
