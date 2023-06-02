@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
@@ -13,6 +14,23 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin
 
 
+# ---------------------------------------------------------------------------------
+# Repository Configuration file
+# ---------------------------------------------------------------------------------
+class InfrahubRepositoryRFileConfig(BaseModel):
+    name: str
+    query: str
+    template_repository: str
+    template_path: Path
+
+
+class InfrahubRepositoryConfig(BaseModel):
+    rfiles: Optional[List[InfrahubRepositoryRFileConfig]]
+
+
+# ---------------------------------------------------------------------------------
+# Main Infrahub Schema File
+# ---------------------------------------------------------------------------------
 class FilterSchema(BaseModel):
     name: str
     kind: str
