@@ -37,7 +37,7 @@ export default function ObjectItemCreate(props: iProps) {
         peers,
       })
     : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
+      // TODO: Find another solution for default query
       "query { ok }";
 
   const query = gql`
