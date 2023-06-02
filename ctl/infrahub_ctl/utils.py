@@ -49,30 +49,6 @@ def calculate_time_diff(value: str) -> Optional[str]:
     return time_value.diff_for_humans(other=pendulum.now(), absolute=True)
 
 
-def execute_query(
-    query: str,
-    server: str = "http://localhost",
-    variables: Optional[dict] = None,
-    branch: str = "main",
-    rebase: bool = False,
-    at: Optional[str] = None,
-    timeout: int = 10,
-    params: Optional[dict] = None,
-) -> dict:
-    """Execute a GraphQL Query via the GraphQL API endpoint."""
-    payload = {"query": query, "variables": variables}
-    params = params if params else {}
-
-    if at and "at" not in params:
-        params["at"] = at
-    if "rebase" not in params:
-        params["rebase"] = str(rebase)
-
-    response = httpx.post(f"{server}/graphql/{branch}", json=payload, timeout=timeout, params=params)
-    response.raise_for_status()
-    return response.json()
-
-
 def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> str:
     for query_file in glob.glob(f"{directory}/**/*.gql", recursive=True):
         filename = os.path.basename(query_file)
