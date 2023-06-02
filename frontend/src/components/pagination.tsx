@@ -1,9 +1,25 @@
 import ReactPaginate from "react-paginate";
 import usePagination from "../hooks/usePagination";
+import { Select, SelectDirection, SelectOption } from "./select";
 
 type tPaginationType = {
   count?: number;
 };
+
+const limitOptions: SelectOption[] = [
+  {
+    id: 10,
+    name: "10",
+  },
+  {
+    id: 20,
+    name: "20",
+  },
+  {
+    id: 50,
+    name: "50",
+  },
+];
 
 export const Pagination = (props: tPaginationType) => {
   const { count = 0 } = props;
@@ -38,15 +54,37 @@ export const Pagination = (props: tPaginationType) => {
     setPagination(newPagination);
   };
 
+  const handleLimitChange = (option: SelectOption) => {
+    if (option.id === limit) {
+      return;
+    }
+
+    const newPagination = {
+      limit: option.id,
+      offset,
+    };
+
+    setPagination(newPagination);
+  };
+
   return (
     <div className="sticky bottom-0 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-gray-700">
+        <div className="flex items-center">
+          <div className="text-sm text-gray-700">
             Showing <span className="font-medium">{offsetStart}</span> to{" "}
             <span className="font-medium">{offsetEnd}</span> of{" "}
             <span className="font-medium">{count}</span> results
-          </p>
+          </div>
+
+          <div className="w-[75px] ml-8">
+            <Select
+              options={limitOptions}
+              value={limit}
+              onChange={handleLimitChange}
+              direction={SelectDirection.OVER}
+            />
+          </div>
         </div>
         <div>
           <ReactPaginate
