@@ -1,6 +1,6 @@
 import ReactPaginate from "react-paginate";
 import usePagination from "../hooks/usePagination";
-import { Select, SelectOption } from "./select";
+import { Select, SelectDirection, SelectOption } from "./select";
 
 type tPaginationType = {
   count?: number;
@@ -78,7 +78,12 @@ export const Pagination = (props: tPaginationType) => {
           </div>
 
           <div className="w-[75px] ml-8">
-            <Select options={limitOptions} value={limit} onChange={handleLimitChange} />
+            <Select
+              options={limitOptions}
+              value={limit}
+              onChange={handleLimitChange}
+              direction={SelectDirection.OVER}
+            />
           </div>
         </div>
         <div>

@@ -11,16 +11,21 @@ export type SelectOption = {
   name: string;
 };
 
+export enum SelectDirection {
+  OVER,
+}
+
 type SelectProps = {
   value?: string | number;
   options: SelectOption[];
   onChange: (value: SelectOption) => void;
   disabled?: boolean;
   error?: FormFieldError;
+  direction?: SelectDirection;
 };
 
 export const Select = (props: SelectProps) => {
-  const { options, value, onChange, disabled, error } = props;
+  const { options, value, onChange, disabled, error, direction } = props;
 
   const [query, setQuery] = useState("");
 
@@ -62,7 +67,11 @@ export const Select = (props: SelectProps) => {
         </Combobox.Button>
 
         {filteredOptions.length > 0 && (
-          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Combobox.Options
+            className={classNames(
+              "absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm",
+              direction === SelectDirection.OVER ? "bottom-0" : ""
+            )}>
             {filteredOptions.map((option: any) => (
               <Combobox.Option
                 key={option.id}
