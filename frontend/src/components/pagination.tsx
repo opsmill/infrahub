@@ -12,9 +12,14 @@ export const Pagination = (props: tPaginationType) => {
 
   const { offset, limit } = pagination;
 
-  const pagesCount = Math.floor(count / limit);
+  // Set the number of page to 1 if there is no other pages
+  const pagesCount = Math.floor(count / limit) || 1;
 
-  const currentPage = offset / limit;
+  // Set the current page to 0 as it is an index
+  const currentPage = offset / limit ?? 0;
+
+  const offsetStart = offset + 1;
+  const offsetEnd = offset + limit > count ? count : offset + limit;
 
   const handlePageChange = (page: any) => {
     const { nextSelectedPage } = page;
@@ -32,8 +37,8 @@ export const Pagination = (props: tPaginationType) => {
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div>
           <p className="text-sm text-gray-700">
-            Showing <span className="font-medium">{offset + 1}</span> to{" "}
-            <span className="font-medium">{offset + limit}</span> of{" "}
+            Showing <span className="font-medium">{offsetStart}</span> to{" "}
+            <span className="font-medium">{offsetEnd}</span> of{" "}
             <span className="font-medium">{count}</span> results
           </p>
         </div>
