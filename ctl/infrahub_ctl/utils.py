@@ -3,12 +3,36 @@ import os
 from pathlib import Path
 from typing import List, Optional, Union
 
-import httpx
 import pendulum
+import yaml
 from git import Repo
 from pendulum.datetime import DateTime
 
-from infrahub_ctl.exceptions import QueryNotFoundError
+from infrahub_ctl.exceptions import (
+    FileNotFoundError,
+    FileNotValidError,
+    QueryNotFoundError,
+)
+
+
+def load_repository_config_file(repo_config_file: Path):
+    if not repo_config_file.is_file():
+        raise FileNotFoundError(name=repo_config_file)
+
+    try:
+        yaml_data = repo_config_file.read_text()
+        data = yaml.safe_load(yaml_data)
+    except yaml.YAMLError as exc:
+        raise FileNotValidError(name=repo_config_file) from exc
+
+    return data
+
+
+def parse_cli_vars(vars: Optional[List[str]]) -> dict:
+    if not vars:
+        return {}
+
+    return {var.split("=")[0]: var.split("=")[1] for var in vars if "=" in var}
 
 
 def calculate_time_diff(value: str) -> Optional[str]:
