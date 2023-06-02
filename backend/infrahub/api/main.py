@@ -26,7 +26,7 @@ from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
-from infrahub.exceptions import AuthorizationError, BranchNotFound, NodeNotFound
+from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
@@ -111,24 +111,13 @@ async def add_process_time_header(request: Request, call_next):
 app.add_middleware(CorrelationIdMiddleware)
 
 
-@app.exception_handler(BranchNotFound)
-async def api_exception_handler(_: Request, exc: BranchNotFound) -> JSONResponse:
+@app.exception_handler(Error)
+async def api_exception_handler_base_infrahub_error(request: Request, exc: Error) -> JSONResponse:
     """Generic API Exception handler."""
-    error_code, error = exc.api_response()
-    return JSONResponse(status_code=error_code, content=error)
-
-
-@app.exception_handler(NodeNotFound)
-async def api_exception_handler_node_not_found(_: Request, exc: NodeNotFound) -> JSONResponse:
-    """Generic API Exception handler."""
-    error_code, error = exc.api_response()
-    return JSONResponse(status_code=error_code, content=error)
-
-
-@app.exception_handler(AuthorizationError)
-async def api_exception_handler_authorization_error(_: Request, exc: AuthorizationError) -> JSONResponse:
-    """Generic API Exception handler."""
-    error_code, error = exc.api_response()
+    error_code = exc.HTTP_CODE
+    if request.url.path.startswith("/graphql"):
+        error_code = 200
+    error = exc.api_response()
     return JSONResponse(status_code=error_code, content=error)
 
 
