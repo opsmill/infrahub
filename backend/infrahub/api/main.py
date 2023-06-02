@@ -112,13 +112,11 @@ app.add_middleware(CorrelationIdMiddleware)
 
 
 @app.exception_handler(Error)
-async def api_exception_handler_base_infrahub_error(request: Request, exc: Error) -> JSONResponse:
+async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> JSONResponse:
     """Generic API Exception handler."""
-    error_code = exc.HTTP_CODE
-    if request.url.path.startswith("/graphql"):
-        error_code = 200
+
     error = exc.api_response()
-    return JSONResponse(status_code=error_code, content=error)
+    return JSONResponse(status_code=exc.HTTP_CODE, content=error)
 
 
 @app.get("/query/{query_id}")
