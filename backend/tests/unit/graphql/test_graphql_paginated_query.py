@@ -543,6 +543,9 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
                     __typename
                         edges {
                         __typename
+                            properties {
+                                __typename
+                            }
                             node {
                                 __typename
                                 name {
@@ -588,6 +591,7 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["__typename"] == "Car"
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["__typename"] == "NestedEdgedPerson"
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["__typename"] == "TextAttribute"
+    assert result_per_name["John"]["cars"]["edges"][0]["properties"]["__typename"] == "RelationshipProperty"
 
 
 async def test_query_filter_ids(db, session, default_branch: Branch, criticality_schema):
