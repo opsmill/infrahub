@@ -8,7 +8,7 @@ from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel, Field
 
-from infrahub.api.dependencies import get_session
+from infrahub.api.dependencies import get_current_user, get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, Diff, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
@@ -445,6 +445,7 @@ async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statement
     time_from: Optional[str] = None,
     time_to: Optional[str] = None,
     branch_only: bool = True,
+    _: str = Depends(get_current_user),
 ) -> Dict[str, List[BranchDiffNode]]:
     branch: Branch = await get_branch(session=session, branch=branch)
 
@@ -460,6 +461,7 @@ async def get_diff_schema(  # pylint: disable=too-many-branches,too-many-stateme
     time_from: Optional[str] = None,
     time_to: Optional[str] = None,
     branch_only: bool = True,
+    _: str = Depends(get_current_user),
 ) -> Dict[str, List[BranchDiffNode]]:
     branch: Branch = await get_branch(session=session, branch=branch)
 
@@ -475,6 +477,7 @@ async def get_diff_files(
     time_from: Optional[str] = None,
     time_to: Optional[str] = None,
     branch_only: bool = True,
+    _: str = Depends(get_current_user),
 ) -> Dict[str, Dict[str, BranchDiffRepository]]:
     branch: Branch = await get_branch(session=session, branch=branch)
 

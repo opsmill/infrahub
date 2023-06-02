@@ -50,6 +50,9 @@ from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
+from infrahub.api.dependencies import api_key_scheme, jwt_scheme
+from infrahub.auth import validate_authentication_token
+
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 
 
@@ -129,8 +132,15 @@ class InfrahubGraphQLApp:
         if scope["type"] == "http":
             request = Request(scope=scope, receive=receive)
             response: Optional[Response] = None
+            jwt_auth = await jwt_scheme(request)
+            api_key = await api_key_scheme(request)
 
             async with request.app.state.db.session(database=config.SETTINGS.database.database) as session:
+                jwt_token = None
+                if jwt_auth:
+                    jwt_token = jwt_auth.credentials
+                await validate_authentication_token(jwt_token=jwt_token, api_key=api_key, session=session)
+
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
                     branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
