@@ -7,12 +7,12 @@ import { classNames } from "../utils/common";
 import { Input } from "./input";
 
 export type SelectOption = {
-  id: string;
+  id: string | number;
   name: string;
 };
 
 type SelectProps = {
-  value?: string;
+  value?: string | number;
   options: SelectOption[];
   onChange: (value: SelectOption) => void;
   disabled?: boolean;
