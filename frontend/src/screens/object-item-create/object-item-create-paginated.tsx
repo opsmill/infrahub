@@ -32,15 +32,19 @@ export default function ObjectItemCreate(props: iProps) {
 
   const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
 
-  const queryString = getDropdownOptionsForRelatedPeersPaginated({
-    peers,
-  });
+  const queryString = peers.length
+    ? getDropdownOptionsForRelatedPeersPaginated({
+        peers,
+      })
+    : // Empty query to make the gql parsing work
+      // TODO: Find another solution for default query
+      "query { ok }";
 
   const query = gql`
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schema || !peers.length });
 
   if (error) {
     return <ErrorScreen />;
@@ -50,19 +54,21 @@ export default function ObjectItemCreate(props: iProps) {
     return <LoadingScreen />;
   }
 
-  if (!data) {
+  if (peers.length && !data) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data[schema.name];
+  const objectDetailsData = data && data[schema.name];
 
-  const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
-    if (peers.includes(k)) {
-      return { ...acc, [k]: v?.edges?.map((edge: any) => edge?.node) };
-    }
+  const peerDropdownOptions =
+    data &&
+    Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
+      if (peers.includes(k)) {
+        return { ...acc, [k]: v?.edges?.map((edge: any) => edge?.node) };
+      }
 
-    return acc;
-  }, {});
+      return acc;
+    }, {});
 
   const formStructure = getFormStructureForCreateEdit(
     schema,
