@@ -49,6 +49,7 @@ const getFormStructureForCreateEdit = (
     });
   });
 
+  // TODO: Get relationships from util function for consistency
   schema.relationships
     ?.filter(
       (relationship) =>
@@ -80,6 +81,7 @@ const getFormStructureForCreateEdit = (
           });
         }
       }
+
       formFields.push({
         name: relationship.name + (relationship.cardinality === "one" ? ".id" : ".list"),
         kind: "String",
@@ -95,7 +97,7 @@ const getFormStructureForCreateEdit = (
             return "";
           }
 
-          const value = row[relationship.name];
+          const value = row[relationship.name].node ?? row[relationship.name];
 
           if (relationship.cardinality === "one" && !isInherited) {
             return value.id;
