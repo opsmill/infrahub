@@ -1,4 +1,5 @@
 import asyncio
+from typing import TYPE_CHECKING
 
 import pydantic
 from graphene import Boolean, Field, InputObjectType, Int, List, Mutation, String
@@ -24,10 +25,13 @@ from infrahub.message_bus.events import (
     InfrahubGitRPC,
     send_event,
 )
-from infrahub.message_bus.rpc import InfrahubRpcClient
 
 from .types import BranchType
 from .utils import extract_fields
+
+if TYPE_CHECKING:
+    from infrahub.message_bus.rpc import InfrahubRpcClient
+
 
 # pylint: disable=unused-argument,too-few-public-methods
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeVar, Union
-from uuid import UUID
 
 from infrahub.core import registry
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
@@ -20,6 +19,8 @@ from infrahub.exceptions import ValidationError
 from infrahub.utils import intersection
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch

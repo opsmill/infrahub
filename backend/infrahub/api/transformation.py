@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from graphql import graphql
@@ -15,7 +15,9 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
     TransformMessageAction,
 )
-from infrahub.message_bus.rpc import InfrahubRpcClient
+
+if TYPE_CHECKING:
+    from infrahub.message_bus.rpc import InfrahubRpcClient
 
 router = APIRouter()
 

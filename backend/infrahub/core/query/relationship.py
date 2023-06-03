@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 from uuid import UUID, uuid4
 
-from neo4j.graph import Relationship as Neo4jRelationship
-
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
@@ -15,6 +13,7 @@ from infrahub.core.utils import extract_field_filters
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from neo4j.graph import Relationship as Neo4jRelationship
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node

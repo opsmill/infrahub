@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
-
-from pendulum.datetime import DateTime
+from typing import TYPE_CHECKING, Any
 
 from infrahub_client import Timestamp as BaseTimestamp
+
+if TYPE_CHECKING:
+    from pendulum.datetime import DateTime
 
 
 class Timestamp(BaseTimestamp):

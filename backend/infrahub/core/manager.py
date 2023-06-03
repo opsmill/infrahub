@@ -3,9 +3,7 @@ from __future__ import annotations
 import copy
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
-from uuid import UUID
 
-from graphql import GraphQLSchema
 from pydantic import BaseModel, Field
 
 import infrahub.config as config
@@ -36,6 +34,9 @@ from infrahub.lock import registry as lock_registry
 from infrahub.utils import deep_merge_dict, intersection
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
+    from graphql import GraphQLSchema
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch

@@ -3,17 +3,18 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections import defaultdict
-from typing import Any, MutableMapping
-
-from aio_pika.abc import (
-    AbstractChannel,
-    AbstractIncomingMessage,
-    AbstractQueue,
-    AbstractRobustConnection,
-)
+from typing import TYPE_CHECKING, Any, MutableMapping
 
 from . import get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
+
+if TYPE_CHECKING:
+    from aio_pika.abc import (
+        AbstractChannel,
+        AbstractIncomingMessage,
+        AbstractQueue,
+        AbstractRobustConnection,
+    )
 
 
 class InfrahubRpcClientBase:

@@ -7,7 +7,6 @@ import bcrypt
 import jwt
 from starlette import authentication as auth
 from starlette.authentication import AuthenticationError
-from starlette.requests import HTTPConnection
 
 from infrahub import config, models
 from infrahub.core import get_branch
@@ -17,6 +16,7 @@ from infrahub.exceptions import AuthorizationError, NodeNotFound
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from starlette.requests import HTTPConnection
 
 # from ..datatypes import AuthResult
 # from ..exceptions import InvalidCredentials

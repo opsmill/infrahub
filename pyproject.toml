@@ -185,7 +185,7 @@ select = [
     "DTZ",
     "E",
     "F",
-    # "TCH",
+    "TCH",
     "W",
 ]
 

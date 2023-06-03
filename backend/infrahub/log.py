@@ -1,10 +1,12 @@
 import logging
 import os
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import structlog
 from pydantic import parse_obj_as
-from structlog.types import Processor
+
+if TYPE_CHECKING:
+    from structlog.types import Processor
 
 INFRAHUB_PRODUCTION = parse_obj_as(bool, os.environ.get("INFRAHUB_PRODUCTION", True))
 INFRAHUB_LOG_LEVEL = os.environ.get("INFRAHUB_LOG_LEVEL", "INFO")

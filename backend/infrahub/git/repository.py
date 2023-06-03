@@ -6,8 +6,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
-from uuid import UUID
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import git
 import jinja2
@@ -29,6 +28,10 @@ from infrahub.exceptions import (
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_client import GraphQLError, InfrahubClient, ValidationError
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
 
 # pylint: disable=too-few-public-methods,too-many-lines
 

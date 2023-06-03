@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 import graphene
-from graphql import GraphQLSchema
 
 from infrahub.core import registry
 
@@ -17,6 +16,7 @@ from .schema import InfrahubBaseMutation
 from .subscription import InfrahubBaseSubscription
 
 if TYPE_CHECKING:
+    from graphql import GraphQLSchema
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch

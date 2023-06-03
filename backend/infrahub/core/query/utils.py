@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
-from neo4j import AsyncSession
-
 from infrahub.core.query import QueryNode, QueryRel
 
 if TYPE_CHECKING:
+    from neo4j import AsyncSession
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
 
