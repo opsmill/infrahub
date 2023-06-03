@@ -22,11 +22,7 @@ from infrahub_client.exceptions import GraphQLError
 from infrahub_client.schema import InfrahubRepositoryConfig
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
-from infrahub_ctl.exceptions import (
-    FileNotFoundError,
-    FileNotValidError,
-    QueryNotFoundError,
-)
+from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
 from infrahub_ctl.schema import app as schema
 from infrahub_ctl.utils import (
     find_graphql_query,
@@ -70,14 +66,14 @@ async def _run(script: Path, method: str, log: logging.Logger, branch: str, conc
     await func(client=client, log=log, branch=branch)
 
 
-def identify_faulty_jinja_code(tb, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
+def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
     response = []
 
     # The Traceback from rich is very helpfull to parse the entire stack trace
     # to will generate a Frame object for each exception in the trace
 
     # Extract only the Jinja related exceptioin from the stack
-    frames = [frame for frame in tb.trace.stacks[0].frames if frame.filename.endswith(".j2")]
+    frames = [frame for frame in traceback.trace.stacks[0].frames if frame.filename.endswith(".j2")]
 
     for frame in frames:
         code = "".join(linecache.getlines(frame.filename))
@@ -89,7 +85,7 @@ def identify_faulty_jinja_code(tb, nbr_context_lines: int = 3) -> List[Tuple[Fra
             line_range=(frame.lineno - nbr_context_lines, frame.lineno + nbr_context_lines),
             highlight_lines={frame.lineno},
             code_width=88,
-            theme=tb.theme,
+            theme=traceback.theme,
             dedent=False,
         )
         response.append((frame, syntax))
@@ -98,9 +94,9 @@ def identify_faulty_jinja_code(tb, nbr_context_lines: int = 3) -> List[Tuple[Fra
 
 
 @app.command()
-def render(
+def render(  # pylint: disable=too-many-branches,too-many-statements
     rfile: str,
-    vars: Optional[List[str]] = typer.Argument(
+    variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
     branch: str = typer.Option(None, help="Branch on which to rendre the RFile."),
@@ -109,7 +105,9 @@ def render(
 ) -> None:
     """Render a local Jinja Template (RFile) for debugging purpose."""
 
-    branch == get_branch(branch)
+    config.load_and_exit(config_file=config_file)
+
+    branch = get_branch(branch)
 
     console = Console()
 
@@ -120,10 +118,10 @@ def render(
         config_file_data = load_repository_config_file(repo_config_file=Path(config.INFRAHUB_REPO_CONFIG_FILE))
     except FileNotFoundError as exc:
         console.print(f"[red]{exc}")
-        raise typer.Abort()
+        raise typer.Exit(1) from exc
     except FileNotValidError as exc:
         console.print(f"[red]{exc}")
-        raise typer.Abort()
+        raise typer.Exit(1) from exc
 
     try:
         data = InfrahubRepositoryConfig(**config_file_data)
@@ -132,7 +130,7 @@ def render(
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]
             console.print(f"  {'/'.join(loc_str)} | {error['msg']} ({error['type']})")
-        raise typer.Abort()
+        raise typer.Exit(1) from exc
 
     # ------------------------------------------------------------------
     # Find the GraphQL Query and Retrive its data
@@ -140,7 +138,7 @@ def render(
     filtered_rfile = [entry for entry in data.rfiles if entry.name == rfile]
     if not filtered_rfile:
         console.print(f"[red]Unable to find {rfile} in {config.INFRAHUB_REPO_CONFIG_FILE}")
-        raise typer.Abort()
+        raise typer.Exit(1)
 
     rfile_data = filtered_rfile[0]
 
@@ -148,25 +146,31 @@ def render(
         query_str = find_graphql_query(rfile_data.query)
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
-        raise typer.Abort()
+        raise typer.Exit(1) from exc
 
-    variables = parse_cli_vars(vars)
+    variables_dict = parse_cli_vars(variables)
 
     client = InfrahubClientSync.init(address=config.SETTINGS.server_address, insert_tracker=True)
     try:
         response = client.execute_graphql(
-            query=query_str, branch_name=branch, variables=variables, raise_for_error=False
+            query=query_str, branch_name=branch, variables=variables_dict, raise_for_error=False
         )
     except GraphQLError as exc:
         console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
         for error in exc.errors:
             if isinstance(error, dict) and "message" in error and "locations" in error:
-                console.print(f"[yellow] - Message: {error['message']}")
-                console.print(f"[yellow]   Location: {error['locations']}")
+                console.print(f"[yellow] - Message: {error['message']}")  # type: ignore[typeddict-item]
+                console.print(f"[yellow]   Location: {error['locations']}")  # type: ignore[typeddict-item]
             elif isinstance(error, str) and "Branch:" in error:
                 console.print(f"[yellow] - {error}")
-                console.print(f"[yellow]   you can specify a different branch with --branch")
+                console.print("[yellow]   you can specify a different branch with --branch")
         raise typer.Abort()
+
+    if debug:
+        console.print("-" * 40)
+        console.print(f"Response for GraphQL Query {rfile_data.query}")
+        console.print(response)
+        console.print("-" * 40)
 
     # ------------------------------------------------------------------
     # Finally, render the template
@@ -174,29 +178,29 @@ def render(
     template_path = rfile_data.template_path
     if not template_path.is_file():
         console.print(f"[red]Unable to locate the template at {template_path}")
-        raise typer.Abort()
+        raise typer.Exit(1)
 
     templateLoader = jinja2.FileSystemLoader(searchpath=".")
     templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
     template = templateEnv.get_template(str(template_path))
 
     try:
-        rendered_tpl = template.render(data=response, **variables)
+        rendered_tpl = template.render(**variables, data=response)  # type: ignore[arg-type]
     except jinja2.TemplateSyntaxError as exc:
         console.print("[red]Syntax Erro detected on the template")
         console.print(f"[yellow]  {exc}")
-        raise typer.Abort()
+        raise typer.Exit(1) from exc
 
     except jinja2.UndefinedError as exc:
         console.print("[red]An error occured while rendering the jinja template")
-        tb = Traceback(show_locals=False)
-        errors = identify_faulty_jinja_code(tb=tb)
+        traceback = Traceback(show_locals=False)
+        errors = identify_faulty_jinja_code(traceback=traceback)
         for frame, syntax in errors:
             console.print(f"[yellow]{frame.filename} on line {frame.lineno}\n")
             console.print(syntax)
         console.print("")
-        console.print(tb.trace.stacks[0].exc_value)
-        raise typer.Abort()
+        console.print(traceback.trace.stacks[0].exc_value)
+        raise typer.Exit(1) from exc
 
     print(rendered_tpl)
 
