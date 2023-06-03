@@ -39,7 +39,8 @@ def get(
     input_str: str = typer.Argument(... if sys.stdin.isatty() else sys.stdin.read().strip()),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    config.load_and_exit(config_file_name=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file_name=config_file)
 
     try:
         location = parse_helper_get_input(text=input_str)

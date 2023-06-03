@@ -18,7 +18,8 @@ def askpass(
     text: Optional[List[str]] = typer.Argument(None),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    config.load_and_exit(config_file_name=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file_name=config_file)
 
     text = text or sys.stdin.read().strip()
     request_type = None
