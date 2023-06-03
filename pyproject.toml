@@ -181,6 +181,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 
 select = [
+    "C90",
     "DTZ",
     "E",
     "F",
@@ -189,6 +190,10 @@ select = [
 ]
 
 line-length = 215
+
+[tool.ruff.mccabe]
+# Target max-complexity=10
+max-complexity = 33
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
