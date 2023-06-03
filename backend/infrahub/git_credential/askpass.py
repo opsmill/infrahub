@@ -1,15 +1,11 @@
-import os
 import re
 import sys
-from asyncio import run as aiorun
 from typing import List, Optional
 
 import typer
 
 import infrahub.config as config
-from infrahub_client import InfrahubClient
-
-from .utils import QUERY
+from infrahub_client import InfrahubClientSync
 
 app = typer.Typer()
 
@@ -18,7 +14,12 @@ REGEX_PASSWORD = r"^Password.*\'(.*\:\/\/)(.*)@(.*)\'"
 
 
 @app.command()
-async def _askpass(text: Optional[List[str]] = typer.Argument(None)):
+def askpass(
+    text: Optional[List[str]] = typer.Argument(None),
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+):
+    config.load_and_exit(config_file_name=config_file)
+
     text = text or sys.stdin.read().strip()
     request_type = None
 
@@ -29,20 +30,14 @@ async def _askpass(text: Optional[List[str]] = typer.Argument(None)):
         location = re.search(REGEX_USERNAME, text).group(1)
         request_type = "username"
     elif re.match(pattern=REGEX_PASSWORD, string=text):
-        location = f"{re.search(REGEX_USERNAME, text).group(1)}{re.search(REGEX_USERNAME, text).group(3)}"
+        location = f"{re.search(REGEX_PASSWORD, text).group(1)}{re.search(REGEX_PASSWORD, text).group(3)}"
         request_type = "password"
 
     if not request_type:
-        sys.exit(1)
+        raise typer.Exit(f"Unable to identify the request type in '{text}'")
 
-    config.load_and_exit(config_file_name=os.environ.get("INFRAHUB_CONFIG", "infrahub.toml"))
+    client = InfrahubClientSync.init(address=config.SETTINGS.main.internal_address, insert_tracker=True)
+    repo = client.get(kind="Repository", location__value=location)
 
-    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address)
-    response = await client.execute_graphql(query=QUERY, variables={"repository_location": location})
-
-    print(response["repository"][request_type])
-
-
-@app.command()
-def askpass(text: Optional[List[str]] = typer.Argument(None)):
-    aiorun(_askpass(text=text))
+    attr = getattr(repo, request_type)
+    print(attr.value)
