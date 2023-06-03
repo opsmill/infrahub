@@ -1,10 +1,4 @@
-from invoke import (  # type: ignore  # pylint: disable=import-error
-    Collection,
-    Context,
-    task,
-)
-
-# flake8: noqa: W605
+from invoke import Context, task
 
 MAIN_DIRECTORY = "tasks"
 NAMESPACE = "MAIN"

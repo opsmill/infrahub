@@ -2,15 +2,9 @@
 import os
 from time import sleep
 
-from invoke import (  # type: ignore  # pylint: disable=import-error
-    Collection,
-    Context,
-    task,
-)
+from invoke import Context, task
 
 from .utils import project_ver
-
-# flake8: noqa: W605
 
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
@@ -62,7 +56,7 @@ def build(context, service=None, python_ver=PYTHON_VER, nocache=False):  # pylin
         python_ver (str): Define the Python version docker image to build from
         nocache (bool): Do not use cache when building the image
     """
-    print(f"Building images")
+    print("Building images")
 
     if service and service not in AVAILABLE_SERVICES:
         exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")

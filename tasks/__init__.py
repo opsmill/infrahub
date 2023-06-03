@@ -1,16 +1,9 @@
 """Replacement for Makefile."""
 import os
 
-from invoke import (  # type: ignore  # pylint: disable=import-error
-    Collection,
-    Context,
-    Exit,
-    task,
-)
+from invoke import Collection, Context, Exit, task
 
 from . import backend, ctl, demo, main, performance, sdk
-
-# flake8: noqa: W605
 
 ns = Collection()
 ns.add_collection(sdk)
@@ -59,7 +52,7 @@ def generate_schema_doc(context: Context):
 
         print(f"Schema generated for {schema_name}")
 
-    print(f"Schema documentation generated")
+    print("Schema documentation generated")
 
 
 @task(name="format")
