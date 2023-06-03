@@ -1,10 +1,5 @@
-from invoke import (  # type: ignore  # pylint: disable=import-error
-    Collection,
-    Context,
-    task,
-)
+from invoke import Context, task
 
-# flake8: noqa: W605
 from .utils import REPO_BASE
 
 MAIN_DIRECTORY = "backend"
