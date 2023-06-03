@@ -14,7 +14,7 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository):
 
     message = InfrahubTransformRPC(
         action=TransformMessageAction.JINJA2.value,
-        repository_id=uuid.uuid4(),
+        repository_id=str(uuid.uuid4()),
         repository_name=git_repo_jinja.name,
         commit=commit,
         branch_name="main",
@@ -33,7 +33,7 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository):
 
     message = InfrahubTransformRPC(
         action=TransformMessageAction.JINJA2.value,
-        repository_id=uuid.uuid4(),
+        repository_id=str(uuid.uuid4()),
         repository_name=git_repo_jinja.name,
         commit=commit,
         branch_name="main",
@@ -52,7 +52,7 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository):
 
     message = InfrahubTransformRPC(
         action=TransformMessageAction.JINJA2.value,
-        repository_id=uuid.uuid4(),
+        repository_id=str(uuid.uuid4()),
         repository_name=git_repo_jinja.name,
         commit=commit,
         branch_name="main",
