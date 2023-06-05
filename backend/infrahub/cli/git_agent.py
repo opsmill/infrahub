@@ -68,7 +68,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
                         clear_log_context()
                         if rpc.request_id:
                             set_log_data(key="request_id", value=rpc.request_id)
-                        log.debug("recieved_message", message_type=rpc.type)
+                        log.debug("received_message", message_type=rpc.type)
                         response = await handle_message(message=rpc, client=client)
 
                         log.info(
