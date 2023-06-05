@@ -107,13 +107,17 @@ class TestInfrahubClient:
 
     async def test_get_one(self, client: InfrahubClient, session, init_db_base):
         obj1 = await Node.init(schema="Location", session=session)
-        await obj1.new(session=session, name="jfk1", description="new york", type="site")
+        await obj1.new(session=session, name="jfk2", description="new york", type="site")
         await obj1.save(session=session)
 
         obj2 = await Node.init(schema="Location", session=session)
-        await obj2.new(session=session, name="sfo1", description="san francisco", type="site")
+        await obj2.new(session=session, name="sfo2", description="san francisco", type="site")
         await obj2.save(session=session)
 
-        node = await client.get(kind="Location", id=obj1.id)
-        assert isinstance(node, InfrahubNode)
-        assert node.name.value == "jfk1"  # type: ignore[attr-defined]
+        node1 = await client.get(kind="Location", id=obj1.id)
+        assert isinstance(node1, InfrahubNode)
+        assert node1.name.value == "jfk2"  # type: ignore[attr-defined]
+
+        node2 = await client.get(kind="Location", id="jfk2")
+        assert isinstance(node2, InfrahubNode)
+        assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
