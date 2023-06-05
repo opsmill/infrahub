@@ -6,7 +6,7 @@ from neo4j import AsyncSession
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
-from infrahub.api.dependencies import get_session
+from infrahub.api.dependencies import get_current_user, get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.exceptions import SchemaNotFound
@@ -50,6 +50,7 @@ async def load_schema(
     schema: SchemaLoadAPI,
     session: AsyncSession = Depends(get_session),
     branch: Optional[str] = None,
+    _: str = Depends(get_current_user),
 ):
     branch: Branch = await get_branch(session=session, branch=branch)
 

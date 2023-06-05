@@ -1026,11 +1026,11 @@ core_models = {
             "name": "account_token",
             "kind": "AccountToken",
             "default_filter": "token__value",
-            "display_labels": ["name__value"],
+            "display_labels": ["token__value"],
             "branch": True,
             "attributes": [
                 {"name": "token", "kind": "Text", "unique": True},
-                {"name": "expiration_date", "kind": "Text", "optional": True},  # Should be date here
+                {"name": "expiration", "kind": "DateTime", "optional": True},
             ],
             "relationships": [
                 {"name": "account", "peer": "Account", "optional": False, "cardinality": "one"},

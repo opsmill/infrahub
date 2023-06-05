@@ -19,7 +19,7 @@ import infrahub.config as config
 from infrahub import __version__
 from infrahub.api import auth, diff, internal, schema, transformation
 from infrahub.api.background import BackgroundRunner
-from infrahub.api.dependencies import get_session
+from infrahub.api.dependencies import get_current_user, get_session
 from infrahub.auth import BaseTokenAuth
 from infrahub.core import get_branch, registry
 from infrahub.core.initialization import initialization
@@ -128,6 +128,7 @@ async def graphql_query(
     branch: Optional[str] = None,
     at: Optional[str] = None,
     rebase: bool = False,
+    _: str = Depends(get_current_user),
 ):
     branch = await get_branch(session=session, branch=branch)
 
