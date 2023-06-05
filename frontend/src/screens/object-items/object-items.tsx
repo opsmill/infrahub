@@ -1,7 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";

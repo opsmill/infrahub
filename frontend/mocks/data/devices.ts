@@ -2,6 +2,388 @@ export const deviceDetailsMocksId = "bd3110b9-5923-45e9-b643-776b8151c074";
 export const deviceDetailsMocksASNName = "AS64496 64496";
 export const deviceDetailsMocksOwnerName = "Engineering Team";
 export const deviceDetailsMocksTagName = "green";
+export const interfaceLabelName = "Interfaces";
+export const interfacesArrayCount = 14;
+export const interfaceDescription = "Connected to atl1-edge1 Ethernet1";
+export const interfacesArray = [
+  {
+    node: {
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "40283f08-ec1c-42f8-93e7-d359e5878d9a",
+      display_label: "Ethernet1",
+      name: { value: "Ethernet1", __typename: "TextAttribute" },
+      description: {
+        value: interfaceDescription,
+        __typename: "TextAttribute",
+      },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:18.546535+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "43daf533-0099-480a-b7bb-12218c883b16",
+      display_label: "Ethernet11",
+      name: { value: "Ethernet11", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.080132+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "4aac95e1-631c-4608-b75d-7ed6539746f5",
+      display_label: "Ethernet8",
+      name: { value: "Ethernet8", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:21.378940+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "5183bc8b-c271-4c62-a3f7-cd225aed600e",
+      display_label: "Ethernet4",
+      name: { value: "Ethernet4", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:19.139467+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "5601f63f-baff-4ac2-99da-acb7a15d8f3f",
+      display_label: "Ethernet3",
+      name: { value: "Ethernet3", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:18.971388+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "569dcfa9-7690-464a-b6bc-91861cf34870",
+      display_label: "Ethernet7",
+      name: { value: "Ethernet7", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:21.193380+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "5df2b034-6f1f-4700-8e40-a17fb7131c0d",
+      display_label: "Ethernet10",
+      name: { value: "Ethernet10", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:21.909594+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "81cac377-1844-4e6c-b6cc-a04b44f93b33",
+      display_label: "Management0",
+      name: { value: "Management0", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 1000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:18.317816+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "d6e6567d-cd98-4708-abc8-e5a8bc18730e",
+      display_label: "Ethernet6",
+      name: { value: "Ethernet6", __typename: "TextAttribute" },
+      description: { value: null, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      __typename: "InterfaceL3",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:20.029709+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+];
+
+export const deviceDetailsMocksGenerics = [
+  {
+    id: "a1bb71ed-d266-47eb-ac07-dc3d69ec3363",
+    name: "interface",
+    kind: "Interface",
+    description: null,
+    default_filter: null,
+    order_by: null,
+    display_labels: ["name__value"],
+    attributes: [
+      {
+        id: "b45b2784-4cdf-4093-bea7-131ebff2f0b5",
+        name: "name",
+        kind: "Text",
+        label: "Name",
+        description: null,
+        default_value: null,
+        enum: null,
+        regex: null,
+        max_length: null,
+        min_length: null,
+        inherited: false,
+        unique: false,
+        branch: true,
+        optional: false,
+        order_weight: 1000,
+      },
+      {
+        id: "b3a4a5d7-dda8-4b35-a832-1a4e76369a36",
+        name: "description",
+        kind: "Text",
+        label: "Description",
+        description: null,
+        default_value: null,
+        enum: null,
+        regex: null,
+        max_length: null,
+        min_length: null,
+        inherited: false,
+        unique: false,
+        branch: true,
+        optional: true,
+        order_weight: 2000,
+      },
+      {
+        id: "5ddcd028-7a56-431b-a914-a858e765bd32",
+        name: "speed",
+        kind: "Number",
+        label: "Speed",
+        description: null,
+        default_value: null,
+        enum: null,
+        regex: null,
+        max_length: null,
+        min_length: null,
+        inherited: false,
+        unique: false,
+        branch: true,
+        optional: false,
+        order_weight: 3000,
+      },
+      {
+        id: "02a08e4c-2707-4931-aad8-143a562ab3bb",
+        name: "mtu",
+        kind: "Number",
+        label: "MTU",
+        description: null,
+        default_value: 1500,
+        enum: null,
+        regex: null,
+        max_length: null,
+        min_length: null,
+        inherited: false,
+        unique: false,
+        branch: true,
+        optional: false,
+        order_weight: 4000,
+      },
+      {
+        id: "5ca957dd-32a8-4c9e-b523-7f38062a4d1f",
+        name: "enabled",
+        kind: "Boolean",
+        label: "Enabled",
+        description: null,
+        default_value: true,
+        enum: null,
+        regex: null,
+        max_length: null,
+        min_length: null,
+        inherited: false,
+        unique: false,
+        branch: true,
+        optional: false,
+        order_weight: 5000,
+      },
+    ],
+    relationships: [
+      {
+        id: "8d97d969-5fe8-44d8-ae77-655b9e09d4fa",
+        name: "status",
+        peer: "Status",
+        kind: "Attribute",
+        label: "Status",
+        description: null,
+        identifier: "interface__status",
+        inherited: false,
+        cardinality: "one",
+        branch: true,
+        optional: false,
+        filters: [],
+        order_weight: 100000,
+      },
+      {
+        id: "89263029-246d-44a1-ba01-dfa912bddb95",
+        name: "role",
+        peer: "Role",
+        kind: "Attribute",
+        label: "Role",
+        description: null,
+        identifier: "interface__role",
+        inherited: false,
+        cardinality: "one",
+        branch: true,
+        optional: false,
+        filters: [],
+        order_weight: 101000,
+      },
+      {
+        id: "d5d1f167-888a-40ec-95d9-83c3dc6a63da",
+        name: "device",
+        peer: "Device",
+        kind: "Parent",
+        label: "Device",
+        description: null,
+        identifier: "device__interface",
+        inherited: false,
+        cardinality: "one",
+        branch: true,
+        optional: false,
+        filters: [],
+        order_weight: 102000,
+      },
+      {
+        id: "348f73a1-f693-4661-b96c-54e8b2eefc29",
+        name: "tags",
+        peer: "Tag",
+        kind: "Attribute",
+        label: "Tags",
+        description: null,
+        identifier: "interface__tag",
+        inherited: false,
+        cardinality: "many",
+        branch: true,
+        optional: true,
+        filters: [],
+        order_weight: 103000,
+      },
+    ],
+    branch: true,
+    label: "Interface",
+    used_by: ["InterfaceL2", "InterfaceL3"],
+  },
+];
 
 export const deviceDetailsMocksSchema = [
   {
@@ -79,20 +461,8 @@ export const deviceDetailsMocksSchema = [
         branch: true,
         optional: false,
         filters: [
-          {
-            name: "id",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "name__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
           {
             name: "description__value",
             kind: "Text",
@@ -100,13 +470,7 @@ export const deviceDetailsMocksSchema = [
             object_kind: null,
             description: null,
           },
-          {
-            name: "type__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "type__value", kind: "Text", enum: null, object_kind: null, description: null },
         ],
         order_weight: 100000,
       },
@@ -123,27 +487,9 @@ export const deviceDetailsMocksSchema = [
         branch: true,
         optional: false,
         filters: [
-          {
-            name: "id",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "name__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "label__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "label__value", kind: "Text", enum: null, object_kind: null, description: null },
           {
             name: "description__value",
             kind: "Text",
@@ -167,27 +513,9 @@ export const deviceDetailsMocksSchema = [
         branch: true,
         optional: false,
         filters: [
-          {
-            name: "id",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "name__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "label__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "label__value", kind: "Text", enum: null, object_kind: null, description: null },
           {
             name: "description__value",
             kind: "Text",
@@ -211,20 +539,8 @@ export const deviceDetailsMocksSchema = [
         branch: true,
         optional: true,
         filters: [
-          {
-            name: "id",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "name__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
           {
             name: "description__value",
             kind: "Text",
@@ -239,13 +555,7 @@ export const deviceDetailsMocksSchema = [
             object_kind: null,
             description: null,
           },
-          {
-            name: "mtu__value",
-            kind: "Number",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "mtu__value", kind: "Number", enum: null, object_kind: null, description: null },
           {
             name: "enabled__value",
             kind: "Boolean",
@@ -269,27 +579,9 @@ export const deviceDetailsMocksSchema = [
         branch: true,
         optional: true,
         filters: [
-          {
-            name: "id",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "name__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "asn__value",
-            kind: "Number",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "asn__value", kind: "Number", enum: null, object_kind: null, description: null },
           {
             name: "description__value",
             kind: "Text",
@@ -313,20 +605,8 @@ export const deviceDetailsMocksSchema = [
         branch: true,
         optional: true,
         filters: [
-          {
-            name: "id",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "name__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
+          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
+          { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
           {
             name: "description__value",
             kind: "Text",
@@ -343,20 +623,8 @@ export const deviceDetailsMocksSchema = [
     groups: [],
     branch: true,
     filters: [
-      {
-        name: "ids",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "name__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
+      { name: "ids", kind: "Text", enum: null, object_kind: null, description: null },
+      { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
       {
         name: "description__value",
         kind: "Text",
@@ -364,34 +632,10 @@ export const deviceDetailsMocksSchema = [
         object_kind: null,
         description: null,
       },
-      {
-        name: "type__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "site__id",
-        kind: "Object",
-        enum: null,
-        object_kind: "Location",
-        description: null,
-      },
-      {
-        name: "status__id",
-        kind: "Object",
-        enum: null,
-        object_kind: "Status",
-        description: null,
-      },
-      {
-        name: "role__id",
-        kind: "Object",
-        enum: null,
-        object_kind: "Role",
-        description: null,
-      },
+      { name: "type__value", kind: "Text", enum: null, object_kind: null, description: null },
+      { name: "site__id", kind: "Object", enum: null, object_kind: "Location", description: null },
+      { name: "status__id", kind: "Object", enum: null, object_kind: "Status", description: null },
+      { name: "role__id", kind: "Object", enum: null, object_kind: "Role", description: null },
       {
         name: "asn__id",
         kind: "Object",
@@ -399,13 +643,7 @@ export const deviceDetailsMocksSchema = [
         object_kind: "AutonomousSystem",
         description: null,
       },
-      {
-        name: "tags__id",
-        kind: "Object",
-        enum: null,
-        object_kind: "Tag",
-        description: null,
-      },
+      { name: "tags__id", kind: "Object", enum: null, object_kind: "Tag", description: null },
     ],
   },
 ];
@@ -742,6 +980,76 @@ export const deviceDetailsMocksData = {
               },
             ],
             __typename: "NestedPaginatedTag",
+          },
+          __typename: "Device",
+        },
+        __typename: "EdgedDevice",
+      },
+    ],
+    __typename: "PaginatedDevice",
+  },
+};
+
+export const deviceDetailsInterfacesMocksQuery = `
+query  {
+  device (ids: ["${deviceDetailsMocksId}"]) {
+    edges {
+      node {
+        interfaces(offset: 0,limit: 10) {
+          count
+          edges {
+            node {
+              id
+              display_label
+              name {
+                value
+              }
+              description {
+                value
+              }
+              speed {
+                value
+              }
+              mtu {
+                value
+              }
+              enabled {
+                value
+              }
+              __typename
+            }
+            properties {
+              updated_at
+              is_protected
+              is_visible
+              source {
+                id
+                display_label
+                __typename
+              }
+              owner {
+                id
+                display_label
+                __typename
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`;
+
+export const deviceDetailsInterfacesMocksData = {
+  device: {
+    edges: [
+      {
+        node: {
+          interfaces: {
+            count: interfacesArrayCount,
+            edges: interfacesArray,
+            __typename: "NestedPaginatedInterface",
           },
           __typename: "Device",
         },

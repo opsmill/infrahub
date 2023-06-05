@@ -2,6 +2,10 @@ import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Badge } from "../components/badge";
 
 export const getObjectItemDisplayValue = (row: any, attribute: any) => {
+  if (!row) {
+    return;
+  }
+
   if (row[attribute?.name]?.value === false) {
     return <XMarkIcon className="h-4 w-4" />;
   }
