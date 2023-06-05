@@ -28,6 +28,7 @@ from infrahub_client.queries import (
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
+from infrahub_client.utils import is_valid_uuid
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -114,9 +115,15 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             )
 
         branch = branch or self.default_branch
+        schema = await self.schema.get(kind=kind, branch=branch)
+
+        filters: Dict[str, Any] = {}
 
         if id:
-            filters = {"ids": [id]}
+            if not is_valid_uuid(id) and schema.default_filter:
+                filters[schema.default_filter] = id
+            else:
+                filters["ids"] = [id]
         elif kwargs:
             filters = kwargs
         else:
@@ -147,8 +154,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         node = InfrahubNode(client=self, schema=schema, branch=branch)
 
+        filters: Dict[str, Any] = {}
+
         if id:
-            filters = {"ids": [id]}
+            if not is_valid_uuid(id) and schema.default_filter:
+                filters[schema.default_filter] = id
+            else:
+                filters["ids"] = [id]
         elif kwargs:
             filters = kwargs
         else:
@@ -911,9 +923,15 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             )
 
         branch = branch or self.default_branch
+        schema = self.schema.get(kind=kind, branch=branch)
+
+        filters: Dict[str, Any] = {}
 
         if id:
-            filters = {"ids": [id]}
+            if not is_valid_uuid(id) and schema.default_filter:
+                filters[schema.default_filter] = id
+            else:
+                filters["ids"] = [id]
         elif kwargs:
             filters = kwargs
         else:
@@ -944,8 +962,13 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         node = InfrahubNodeSync(client=self, schema=schema, branch=branch)
 
+        filters: Dict[str, Any] = {}
+
         if id:
-            filters = {"ids": [id]}
+            if not is_valid_uuid(id) and schema.default_filter:
+                filters[schema.default_filter] = id
+            else:
+                filters["ids"] = [id]
         elif kwargs:
             filters = kwargs
         else:
