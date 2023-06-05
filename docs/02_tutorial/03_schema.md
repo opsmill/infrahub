@@ -5,7 +5,7 @@ tags: [tutorial]
 order: 650
 ---
 
-Infrahub can be easily extended by providing your own schema (or models), currently the version of infrahub we are using for the demo is barebone and doesn't support many models.
+Infrahub can be easily extended by providing your own schema (or models). The version of infrahub we currently use for the demo is barebone and doesn't include many models.
 
 ## Visualize the active Schema
 
@@ -66,7 +66,7 @@ invoke demo.load-infra-schema
 
 ## Load some real data into the database
 
-In order to have more meaninful data to explore, we'll use a sample topology of 6 devices as presented below that is leveraging all the new models we just added to the schema.
+In order to have more meaningful data to explore, we'll use a sample topology of 6 devices as presented below that is leveraging all the new models we just added to the schema.
 
 ![](../media/demo_edge.excalidraw.svg)
 
@@ -234,5 +234,5 @@ invoke demo.load-infra-data
 ==-
 
 !!!success Validate that everything is correct
-You should now be able to see 6 devices when you visit the list of devices at [http://localhost:3000/objects/device](http://localhost:3000/objects/device)
+You should now be able to see 10 devices when you visit the list of devices at [http://localhost:3000/objects/device](http://localhost:3000/objects/device)
 !!!

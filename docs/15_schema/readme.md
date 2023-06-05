@@ -2,17 +2,17 @@
 
 In Infrahub, the schema is at the center of most things and our goal is to provide as much flexibility as possible to the users to extend and customize the schema.
 
-Out of the box, Infrahub doesn't have a schema for most things and it's up to the user to load a schema that fits his/her needs. Over time we are planning to maintain some schemas for the common type of models that our users are using, but for now, we are providing one example of schema to model a simple network with some basic objects like Device, Interface, IPAddress etc ...
+Out of the box, Infrahub doesn't have a schema for most things and it's up to the users to load a schema that fits their needs. Over time we are planning to maintain different schemas for the common type of use cases, but for now, we are providing one example schema to model a simple network with basic objects like Device, Interface, IPAddress etc
 
-Unlike traditional databases that can only have 1 schema at a time, in Infrahub, it will be possible to have a different schema per branch(*). This is possible because the schema itself is stored in the database like any other object.
+Unlike traditional databases that can only have one schema at a time, in Infrahub, it will be possible to have a different schema per branch(*). This is possible because the schema itself is stored in the database like any other object.
 
-New schema can be uploaded via the REST API and individual parts of the schema can be modified via the GraphQL Interface and/or the Frontend.
+New schema can be uploaded via the REST API and individual parts of the schema can be modified via the GraphQL Interface or the Frontend.
 
 _(*) Not available yet_
 
 
 !!!info
-In the Tech Preview not all features of the schema are available yet, there are still some important changes coming like the support for: branches, namespace generic objects or schema dependencies.
+In the Tech Preview not all features of the schema are available yet, there are still some important changes coming like the support for: branches, namespaces and schema dependencies.
 !!!
 
 ## Node, Attributes, Relationships & Generics
@@ -23,7 +23,7 @@ The schema is composed of 4 primary type of object : [!badge Nodes] that are the
 - A [!badge Relationship] represents a unidirectional link between 2 [!badge Node], a [!badge Relationship] can be of cardinality `one` or `many`.
 - A [!badge Generics] can be used to share some attributes between multiple [!badge Node], if you're familiar with programming concept, it's close to class inheritance.
 
-In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Car`.
+In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Person`, identified by 'owner'.
 
 ```yaml
 nodes:
@@ -43,7 +43,7 @@ nodes:
         kind: Text
     relationships:
       - name: owner
-        peer: Car
+        peer: Person
         optional: false
         cardinality: one
         kind: Attribute
@@ -197,8 +197,3 @@ A schema file can be loaded into Infrahub with the `infrahubctl` command
 ```
 infrahubctl schema load <path to schema file>
 ```
-
-!!!warning
-Currently it's mandatory to reload the `API Server` after all modifications of the schema.<br>
-Simply stop and restart the `gunicorn` process to see the latest changes in the schema
-!!!

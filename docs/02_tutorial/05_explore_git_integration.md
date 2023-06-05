@@ -35,7 +35,7 @@ Once you have created a fork in Github, you'll need a Personal Access Token to a
 
 !!!
 If you already cloned the repo in the past, ensure there only the main branch is present in Github.
-If you other branches are present, it's recommanded to delete them for now.
+If other branches are present, it's recommanded to delete them for now.
 !!!
 
 ==- How to Delete a branch in Github
@@ -79,7 +79,7 @@ mutation {
 
 !!!success Validate that everything is correct
 In the UI, new objects that have been imported from the Git Repository should now be available:
-- The repository should be visible under [Objects / Repository](http://localhost:3000/objects/repository/)
+- The repository should be visible under [Objects / Repository](http://localhost:3000/objects/repository/). If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
 - 2 Rfile under [Objects / RFile](http://localhost:3000/objects/rfile/)
 - 5 GraphQL Queries under [Objects / Graphql Query](http://localhost:3000/objects/graphql_query/)
 !!!

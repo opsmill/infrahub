@@ -12,7 +12,7 @@ This tutorial will get you started with Infrahub and it will help you get famili
 - How to query for past state via the GraphQL interface
 
 
-> This tutorial doesn't require any prior knowledge, but a knowledge of Git, GraphQL and/or Python would be plus.
+> This tutorial doesn't require any prior knowledge, but knowledge of Git, GraphQL and Python will make things easier to understand.
 
 The tutorial is meant to be executed in order, as we'll be making some changes along the way that might be required later.
 

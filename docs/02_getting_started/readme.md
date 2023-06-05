@@ -1,11 +1,11 @@
 
 # Build a local Environment
 
-The project includes a local demo environment that can be used to experiment and/or demo Infrahub.
+The project includes a local demo environment that can be used to explore or demo Infrahub.
 
 The main requirements to run the Sandbox environment are:
-- Invoke (version 2 minimum)
-- Docker & Docker Compose
+- [Invoke](https://www.pyinvoke.org) (version 2 minimum)
+- [Docker & Docker Compose](https://docs.docker.com/engine/install/)
 
 ## Prepare the Local Environment
 

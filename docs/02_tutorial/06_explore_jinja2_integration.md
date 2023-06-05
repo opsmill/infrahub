@@ -6,7 +6,7 @@ order: 400
 ---
 
 Infrahub is natively able to render any Jinja templates dynamically, internal it's referred as `RFile` for `Rendered File`.
-Other systems are able to rendre Jinja templates but what makes Infrahub unique is the deep integration wit the `Unified Version Controled Sytems` and the Jinja Rendering engine that make it possible to prepare, and render, a change in a branch, including changes on the data AND on the template without impacting the rendering on the main branch.
+Other systems are able to render Jinja templates but what makes Infrahub unique is the deep integration wit the `Unified Version Controled Sytems` and the Jinja Rendering engine that make it possible to prepare, and render, a change in a branch, including changes on the data AND on the template without impacting the rendering on the main branch.
 
 !!!
 The `infrahub-demo-edge` repository that we integrated in the previous step, includes 1 RFile that can generate a full configuration for each device.
@@ -27,17 +27,17 @@ The `rfile` **device_startup** present in the repository, expect the name of the
 
 ## Create a new branch and modify the data AND the template
 
-Next, we'll create a new branch, and modify some data both in the data and in the template to explore the integration between the Jinja Template Renderer and the storage engine.
+Next, we'll create a new branch, and make modifications both in the data and in the template to explore the integration between the Jinja Template Renderer and the storage engine.
 
 #### 1. Create a new branch `update-ethernet1`
 
-From the frontend, create a new branch named `update-ethernet1` and be sure to uncheck the toggle `is Data Only` in the UI
+From the frontend, create a new branch named `update-ethernet1` and be sure to uncheck the toggle `is Data Only` in the UI.
 
 ![Create a new branch (not with Data Only)](../media/tutorial_rfile_branch_create.gif)
 
 #### 2. Update the interface Ethernet 1 for ord1-edge1
 
-Now we'll make a modification in the branch `update-ethernet1` that will be reflected in the rendered template, like updating the documentation.
+Now we'll make a change in the branch `update-ethernet1` that will be reflected in the rendered template, like updating the documentation.
 
 1. Navigate to the device `ord1-edge1` in the frontend and
 2. Navigate to the list of its interfaces in the `interfaces` Tab.
@@ -57,7 +57,7 @@ In Github:
 - Select the new branch in the branch menu dropdown
 - Select the file `device_startup_config.tpl.j2` at the root of the repository
 - Edit the file with the `pen` in the top right corner
-- Delete the lines 74 and 75
+- Delete the lines 77 and 78 (i.e. the last two lines of 'ip prefix-list BOGON-Prefixes')
 - Commit your changes in the branch `update-ethernet1` directly from github
 
 ![Update the template in Github](../media/tutorial_rfile_update_jinja.gif)

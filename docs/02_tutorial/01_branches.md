@@ -13,7 +13,7 @@ The default branch is called `main`.
 
 To get started, let's create a new branch that we'll call `cr1234`.
 
-You can create a new branch in the frontend by using the round button with a plus sign in the top right corner
+You can create a new branch in the frontend by using the button with a plus sign in the top right corner, next to the name of the current branch, i.e. 'main'.
 
 ![](../media/tutorial_branch_create.png)
 
@@ -32,7 +32,8 @@ Execute `invoke demo.cli-git` to start a shell session that will give you access
 
 ==- Create a new Branch using GraphQL
 
-Use the GraphQL query below to create a new branch named `cr1234`
+Use the GraphQL mutation below to create a new branch named `cr1234`. In GraphQL a 'mutation' is used
+whenever you want to change data, i.e. create, update or delete. For reading data a 'query' is used.
 
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/main
@@ -50,7 +51,7 @@ mutation {
 
 ### Modify the Admin Account via the UI
 
-> The name of the active branch in the top rigt corner should now be `cr1234`
+> The name of the active branch in the top right corner should now be `cr1234`
 1. Select Account under Object in the left menu (near the top)
 2. Select the `admin` account (should be the only one)
 3. Select the `edit` button on the top right corner
@@ -64,14 +65,14 @@ Go back to the detailed page for the Account `Admin` and try to switch branches 
 **You should be able to see the value of the label change when you change the branch.**
 !!!
 
-### Merge the branch cr1234 into Main
+### Merge the branch cr1234 into main
 
-Now that we have modify some data in a controled environment, and after validating that everything is right, we can integrate these changes in the `main` branch by merging the branch `cr1234` into main.
+Now that we have modified some data in a controlled environment, and after validating that everything is right, we can integrate these changes in the `main` branch by merging the branch `cr1234` into main.
 
 To merge a branch you need to :
 1. Navigate to the branch menu at the very bottom of the menu on the left (or [follow this link](http://localhost:3000/branches/))
 2. Select the branch `cr1234` in the list of available branches.
-3. Click the `merge` button
+3. Click the `Merge` button
 
 ![Branch merge](../media/tutorial_branch_merge.gif)
 
@@ -107,11 +108,9 @@ mutation {
 ```
 ==-
 
-![](../media/video1.mov)
-
 !!!success Validate that everything is correct
 Go back to the detailed page for the Account `Admin`.<br>
-**The object should now have the value previously defined in the branch.**
+**The object should now have the value previously defined in the branch. Try switching between the 'main' branch and 'cr1234'.**
 !!!
 
 

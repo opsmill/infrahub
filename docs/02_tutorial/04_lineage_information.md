@@ -5,7 +5,7 @@ tags: [tutorial]
 order: 600
 ---
 
-One of the specificity of Infrahub is that we can define `metadata` on all datapoints : attributes and relationships.
+One of the core features of Infrahub is that we can define `metadata` on all datapoints : attributes and relationships.
 
 The current supported metadata are :
 - **Source** : Where is the data coming from. (By default, it can be an `Account` or a `Repository`)
@@ -28,7 +28,7 @@ If you navigate to the detailed page of any device you'll be able to see that:
 ![](../media/tutorial_metadata_device.gif)
 
 !!!warning
-The frontend is currently not enforcing the `is_protected` metadata, it will be implemented in a later release.
+The system is currently not enforcing the `is_protected` metadata, it will be implemented in a later release.
 !!!
 
 ## Update the metadata for any given data point

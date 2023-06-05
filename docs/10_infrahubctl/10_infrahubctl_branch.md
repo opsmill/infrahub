@@ -19,9 +19,10 @@ $ infrahubctl branch [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `create`: Create a new branch.
+* `delete`: Delete a branch.
 * `diff`: Show the differences between a Branch and...
 * `list`: List all existing branches.
-* `merge`: Merge a Branch with main (NOT IMPLEMENTED...
+* `merge`: Merge a Branch with main.
 * `rebase`: Rebase a Branch with main.
 * `validate`: Validate if a branch has some conflict and...
 
@@ -43,6 +44,25 @@ $ infrahubctl branch create [OPTIONS] BRANCH_NAME [DESCRIPTION]
 **Options**:
 
 * `--data-only / --no-data-only`: [default: data-only]
+* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--help`: Show this message and exit.
+
+## `infrahubctl branch delete`
+
+Delete a branch.
+
+**Usage**:
+
+```console
+$ infrahubctl branch delete [OPTIONS] BRANCH_NAME
+```
+
+**Arguments**:
+
+* `BRANCH_NAME`: [required]
+
+**Options**:
+
 * `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
@@ -85,7 +105,7 @@ $ infrahubctl branch list [OPTIONS]
 
 ## `infrahubctl branch merge`
 
-Merge a Branch with main (NOT IMPLEMENTED YET).
+Merge a Branch with main.
 
 **Usage**:
 

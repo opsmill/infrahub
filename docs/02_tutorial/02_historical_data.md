@@ -5,7 +5,7 @@ tags: [tutorial]
 order: 700
 ---
 
-Infrahub is built around a immutable storage engine which means that all past value of the graph are never lost and it's always possible to go back in time.
+Infrahub is built around an immutable storage engine which means that past values of the graph remain intact and it's always possible to go back in time to view a previous state.
 
 ## Query the Admin account object before the merge.
 

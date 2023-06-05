@@ -11,7 +11,7 @@ order: 900
 
 ### API Server
 
-Language: python
+Language: Python
 
 The API Server is serving the REST API and the GraphQL endpoints.
 Internally the API Server is built with FastAPI as the web framework and Graphene to generate the GraphQL endpoints.
@@ -22,7 +22,7 @@ Multiple instance of the API Server can run at the same time to process more req
 
 ### Git Agent
 
-Language: python
+Language: Python
 
 The Git agent is responsible for managing all the content related to the Git repositories, it organizes the file systems in order to quickkly access any relevant commit. The Git Agent is periodically pulling the Git Server for updates and it's listening to the RPC channel on the event bus for tasks to execute.
 Some of the tasks that can be executed on the Git agent includes:
@@ -52,4 +52,4 @@ The message bus is based on RabbitMQ, it supports both a fanout channel to distr
 
 ### Git Server (Github/Gitlab)
 
-Any Git server. The most popular being : Github, Gitlab or Bitbucket
+Any Git server. The most popular being : GitHub, GitLab or Bitbucket

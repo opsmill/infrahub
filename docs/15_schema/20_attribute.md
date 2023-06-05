@@ -16,7 +16,7 @@ Below is the list of all available options to define an Attribute in the schema
 | **Name** | name |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Lenght: min 3, max 3 |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 3 |
 
 
 ## kind
@@ -26,8 +26,8 @@ Below is the list of all available options to define an Attribute in the schema
 | **Name** | kind |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Lenght: min 3, max 3 |
-| **Accepted Values** | `ID` `Text` `TextArea` `DateTime` `Email` `Password` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `Any` `String` `Integer` `Boolean`  |
+| **Constraints** | <br> Length: min 3, max 3 |
+| **Accepted Values** | `ID` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `Any` `String` `Integer` `Boolean`  |
 
 ## enum
 
@@ -76,7 +76,7 @@ Below is the list of all available options to define an Attribute in the schema
 | **Name** | label |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Lenght: min -, max - |
+| **Constraints** | <br> Length: min -, max - |
 
 
 ## description
@@ -86,7 +86,7 @@ Below is the list of all available options to define an Attribute in the schema
 | **Name** | description |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Lenght: min -, max - |
+| **Constraints** | <br> Length: min -, max - |
 
 
 ## unique
@@ -115,6 +115,16 @@ Below is the list of all available options to define an Attribute in the schema
 | ---- | --------------- |
 | **Name** | branch |
 | **Kind** | `Boolean` |
+| **Description** |  |
+| **Constraints** |  |
+
+
+## order_weight
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | order_weight |
+| **Kind** | `Number` |
 | **Description** |  |
 | **Constraints** |  |
 
