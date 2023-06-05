@@ -12,7 +12,9 @@ import {
   deviceDetailsMocksId,
   deviceDetailsMocksQuery,
   deviceDetailsMocksSchema,
+  interfaceDescription,
   interfaceLabelName,
+  interfacesArrayCount,
 } from "../../../mocks/data/devices";
 import { TestProvider } from "../../../mocks/jotai/atom";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
@@ -94,6 +96,14 @@ describe("List screen", () => {
     );
 
     cy.get(".border-transparent").should("have.text", interfaceLabelName);
+
     cy.get(".border-transparent").click();
+
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", interfacesArrayCount);
+
+    cy.get(".min-w-full > .bg-white > :nth-child(2) > :nth-child(2)").should(
+      "have.text",
+      interfaceDescription
+    );
   });
 });
