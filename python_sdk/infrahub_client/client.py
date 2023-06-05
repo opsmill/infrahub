@@ -117,11 +117,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         branch = branch or self.default_branch
         schema = await self.schema.get(kind=kind, branch=branch)
 
+        filters: Dict[str, Any] = {}
+
         if id:
             if not is_valid_uuid(id) and schema.default_filter:
-                filters = {schema.default_filter: id}
+                filters[schema.default_filter] = id
             else:
-                filters = {"ids": [id]}
+                filters["ids"] = [id]
         elif kwargs:
             filters = kwargs
         else:
@@ -918,11 +920,13 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         branch = branch or self.default_branch
         schema = self.schema.get(kind=kind, branch=branch)
 
+        filters: Dict[str, Any] = {}
+
         if id:
             if not is_valid_uuid(id) and schema.default_filter:
-                filters = {schema.default_filter: id}
+                filters[schema.default_filter] = id
             else:
-                filters = {"ids": [id]}
+                filters["ids"] = [id]
         elif kwargs:
             filters = kwargs
         else:
