@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.logger import logger
@@ -8,11 +8,13 @@ from starlette.responses import JSONResponse
 
 from infrahub.api.dependencies import get_session
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.exceptions import SchemaNotFound
 from infrahub.lock import registry as lock_registry
 from infrahub.log import get_logger
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
 log = get_logger()
 router = APIRouter(prefix="/schema")

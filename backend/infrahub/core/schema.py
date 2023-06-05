@@ -5,7 +5,6 @@ import keyword
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.query import QueryNode, QueryRel
@@ -15,6 +14,7 @@ from infrahub.utils import BaseEnum, duplicates, intersection
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryElement

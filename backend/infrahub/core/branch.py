@@ -38,10 +38,11 @@ from infrahub.message_bus.events import (
     InfrahubRPCResponse,
     RPCStatusCode,
 )
-from infrahub.message_bus.rpc import InfrahubRpcClient
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
+    from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import abc
-from typing import Dict, Union
+from typing import TYPE_CHECKING, Dict, Union
 
 from graphql import (  # pylint: disable=no-name-in-module
     ExecutionContext,
@@ -12,6 +11,10 @@ from graphql import (  # pylint: disable=no-name-in-module
     InlineFragmentNode,
     SelectionSetNode,
 )
+
+if TYPE_CHECKING:
+    import abc
+
 
 # async def extract_global_kwargs(kwargs: dict) -> Tuple[Timestamp, Branch, Node]:
 #     """Extract the timestamp, the branch and the account from the kwargs from GraphQL"""

@@ -1,7 +1,7 @@
 import copy
 import enum
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
@@ -13,7 +13,9 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, Diff, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
 from infrahub.core.manager import INTERNAL_SCHEMA_NODE_KINDS, NodeManager
-from infrahub.message_bus.rpc import InfrahubRpcClient
+
+if TYPE_CHECKING:
+    from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint    : disable=too-many-branches
 

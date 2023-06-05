@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
 import infrahub.config as config
-from infrahub.core.definitions import Brancher
 from infrahub.exceptions import BranchNotFound, DataTypeNotFound, Error
 from infrahub.lock import registry as lock_registry
 
@@ -15,6 +14,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
+    from infrahub.core.definitions import Brancher
     from infrahub.core.manager import SchemaManager
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
     from infrahub.graphql.mutations import BaseAttributeInput

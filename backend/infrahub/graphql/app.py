@@ -9,6 +9,7 @@ import json
 import logging
 from inspect import isawaitable
 from typing import (
+    TYPE_CHECKING,
     Any,
     AsyncGenerator,
     Awaitable,
@@ -22,7 +23,6 @@ from typing import (
     cast,
 )
 
-import graphene
 from graphql import (  # pylint: disable=no-name-in-module
     ExecutionContext,
     ExecutionResult,
@@ -35,23 +35,16 @@ from graphql import (  # pylint: disable=no-name-in-module
     subscribe,
     validate,
 )
-from graphql.language.ast import (  # pylint: disable=no-name-in-module,import-error
-    DocumentNode,
-    OperationDefinitionNode,
-)
 from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
     get_operation_ast,
 )
-from neo4j import AsyncSession
 from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
-from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
-
 
 try:
     # graphql-core==3.2.*
@@ -65,10 +58,21 @@ except ImportError:
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 from infrahub.utils import str_to_bool
+
+if TYPE_CHECKING:
+    import graphene
+    from graphql.language.ast import (  # pylint: disable=no-name-in-module,import-error
+        DocumentNode,
+        OperationDefinitionNode,
+    )
+    from neo4j import AsyncSession
+    from starlette.types import Receive, Scope, Send
+
+    from infrahub.core.branch import Branch
+
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"

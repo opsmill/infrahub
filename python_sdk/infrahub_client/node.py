@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
-from infrahub_client.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub_client.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
+    from infrahub_client.schema import AttributeSchema, NodeSchema, RelationshipSchema
 
 
 PROPERTIES_FLAG = ["is_visible", "is_protected"]
