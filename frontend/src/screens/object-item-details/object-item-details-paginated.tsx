@@ -74,6 +74,7 @@ export default function ObjectItemDetails() {
     ${queryString}
   `;
 
+  // TODO: Find a way to avoid querying object details if we are on a tab
   const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
 
   const navigate = useNavigate();

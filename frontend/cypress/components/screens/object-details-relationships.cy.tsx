@@ -5,17 +5,18 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import {
-  deviceDetailsMocksASNName,
+  deviceDetailsInterfacesMocksData,
+  deviceDetailsInterfacesMocksQuery,
   deviceDetailsMocksData,
+  deviceDetailsMocksGenerics,
   deviceDetailsMocksId,
-  deviceDetailsMocksOwnerName,
   deviceDetailsMocksQuery,
   deviceDetailsMocksSchema,
-  deviceDetailsMocksTagName,
+  interfaceLabelName,
 } from "../../../mocks/data/devices";
 import { TestProvider } from "../../../mocks/jotai/atom";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../../src/state/atoms/schema.atom";
 
 // URL for the current view
 const graphqlQueryItemsUrl = `/objects/device/${deviceDetailsMocksId}`;
@@ -25,6 +26,7 @@ const graphqlQueryItemsPath = "/objects/:objectname/:objectid";
 
 // Mock the apollo query and data
 const mocks: any[] = [
+  // Object details for initial render
   {
     request: {
       query: gql`
@@ -35,12 +37,38 @@ const mocks: any[] = [
       data: deviceDetailsMocksData,
     },
   },
+  // Object details when rendering relationships tab
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsMocksData,
+    },
+  },
+  // Relationships view
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsInterfacesMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsInterfacesMocksData,
+    },
+  },
 ];
 
 // Provide the initial value for jotai
 const ObjectDetailsProvider = () => {
   return (
-    <TestProvider initialValues={[[schemaState, deviceDetailsMocksSchema]]}>
+    <TestProvider
+      initialValues={[
+        [schemaState, deviceDetailsMocksSchema],
+        [genericsState, deviceDetailsMocksGenerics],
+      ]}>
       <ObjectDetails />
     </TestProvider>
   );
@@ -65,18 +93,7 @@ describe("List screen", () => {
       }
     );
 
-    cy.get(":nth-child(8) > .py-4 > .mt-1 > .cursor-pointer").should(
-      "have.text",
-      deviceDetailsMocksASNName
-    );
-
-    cy.get(":nth-child(8) > .py-4 > .mt-1 > .relative").click();
-
-    cy.get(":nth-child(5) > .underline").should("have.text", deviceDetailsMocksOwnerName);
-
-    cy.get(".sm\\:col-span-2 > :nth-child(1) > .cursor-pointer").should(
-      "have.text",
-      deviceDetailsMocksTagName
-    );
+    cy.get(".border-transparent").should("have.text", interfaceLabelName);
+    cy.get(".border-transparent").click();
   });
 });

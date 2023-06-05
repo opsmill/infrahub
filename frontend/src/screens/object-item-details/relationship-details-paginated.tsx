@@ -118,7 +118,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     relationshipSchema.peer
   );
 
-  if (relationshipsData && relationshipsData._relation__is_visible === false) {
+  if (relationshipsData && relationshipsData?.properties?.is_visible === false) {
     return null;
   }
 
