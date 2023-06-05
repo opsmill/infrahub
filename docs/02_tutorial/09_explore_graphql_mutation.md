@@ -32,7 +32,7 @@ Add a new interface `Ethernet9` to the device `ord1-edge1`
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/cr1234
 mutation {
-  interface_create(
+  interface_l3_create(
     data: {
       name: { value: "Ethernet9" }
       enabled: { value: true }

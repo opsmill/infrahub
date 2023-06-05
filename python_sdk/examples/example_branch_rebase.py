@@ -5,7 +5,8 @@ from infrahub_client import InfrahubClient
 
 async def main():
     client = await InfrahubClient.init(address="http://localhost:8000")
-    await client.branch.rebase(branch_name="new_branch")
+    await client.branch.rebase(branch_name="new-branch")
+
 
 if __name__ == "__main__":
     aiorun(main())

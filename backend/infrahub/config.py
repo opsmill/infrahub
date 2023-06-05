@@ -1,4 +1,4 @@
-"""Config Clas."""
+"""Config Class."""
 import os
 import os.path
 import sys

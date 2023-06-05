@@ -4,7 +4,7 @@ layout: default
 order: 600
 ---
 {% macro attribute_constraints(attr) -%}
-{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex or attr.min_length or attr.max_length %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Lenght: min {{attr.min_length | default("-")}}, max {{attr.min_length | default("-")}}{% endif %}
+{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex or attr.min_length or attr.max_length %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.min_length | default("-")}}{% endif %}
 {%- endmacro %}
 # Generic
 
