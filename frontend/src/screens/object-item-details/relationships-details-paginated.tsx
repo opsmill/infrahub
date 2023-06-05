@@ -13,7 +13,7 @@ import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schem
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
-import RelationshipDetails from "./relationship-details";
+import RelationshipDetails from "./relationship-details-paginated";
 
 interface RelationshipsDetailsProps {
   parentNode: any;
@@ -52,7 +52,6 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     filters: filtersString,
   });
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
@@ -79,9 +78,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
 
   const result = data[schema.name]?.edges;
 
-  const relationships = result?.length
-    ? result[0]?.node[relationshipTab]?.edges?.map((edge: any) => edge?.node)
-    : null;
+  const relationships = result?.length ? result[0]?.node[relationshipTab]?.edges : null;
 
   return (
     <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">

@@ -1,7 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -142,16 +142,18 @@ export default function ObjectItems() {
                         }
                         key={index}
                         className="hover:bg-gray-50 cursor-pointer">
-                        {columns?.map((attribute) => (
-                          <td
-                            key={row.id + "-" + attribute.name}
-                            className={classNames(
-                              index !== rows?.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                            )}>
-                            {getObjectItemDisplayValue(row, attribute)}
-                          </td>
-                        ))}
+                        {columns?.map((attribute) => {
+                          return (
+                            <td
+                              key={row.id + "-" + attribute.name}
+                              className={classNames(
+                                index !== rows?.length - 1 ? "border-b border-gray-200" : "",
+                                "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                              )}>
+                              {getObjectItemDisplayValue(row, attribute)}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
