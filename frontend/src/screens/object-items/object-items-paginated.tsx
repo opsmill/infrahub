@@ -76,7 +76,7 @@ export default function ObjectItems() {
     ${queryString}
   `;
 
-  const { loading, error, data = {} } = useQuery(query, { skip: !schema });
+  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schema });
 
   const result = data ? data[schema?.name] ?? {} : {};
 
@@ -193,6 +193,7 @@ export default function ObjectItems() {
             onCreate={() => setShowCreateDrawer(false)}
             onCancel={() => setShowCreateDrawer(false)}
             objectname={objectname!}
+            refetch={refetch}
           />
         </SlideOver>
       }

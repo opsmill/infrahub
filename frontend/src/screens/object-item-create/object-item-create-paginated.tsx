@@ -20,10 +20,11 @@ interface iProps {
   objectname: string;
   onCancel?: Function;
   onCreate: Function;
+  refetch: Function;
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  const { objectname, onCreate, onCancel } = props;
+  const { objectname, onCreate, onCancel, refetch } = props;
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
@@ -44,7 +45,7 @@ export default function ObjectItemCreate(props: iProps) {
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schema || !peers.length });
+  const { loading, error, data } = useQuery(query, { skip: !schema || !peers.length });
 
   if (error) {
     return <ErrorScreen />;
