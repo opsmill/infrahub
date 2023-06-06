@@ -15,6 +15,7 @@ from infrahub.git import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
+    GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
     Worktree,
@@ -527,6 +528,16 @@ async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository):
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name=commit)
     assert len(yaml_files) == 4
+
+
+async def test_find_graphql_queries(git_repo_10: InfrahubRepository):
+    repo = git_repo_10
+
+    commit = repo.get_commit_value(branch_name="main")
+
+    queries = await repo.find_graphql_queries(commit=commit)
+    assert len(queries) == 5
+    assert isinstance(queries[0], GraphQLQueryInformation)
 
 
 async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
