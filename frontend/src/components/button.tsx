@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import LoadingScreen from "../screens/loading-screen/loading-screen";
 import { classNames } from "../utils/common";
 
 type ButtonProps = {
@@ -8,6 +9,7 @@ type ButtonProps = {
   onClick?: Function;
   children?: any;
   disabled?: boolean;
+  isLoading?: boolean;
 };
 
 export enum BUTTON_TYPES {
@@ -78,7 +80,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
 export const Button = forwardRef((props: ButtonProps, ref: any) => {
-  const { buttonType, type, className = "", onClick, ...propsToPass } = props;
+  const { buttonType, type, className = "", onClick, isLoading, children, ...propsToPass } = props;
 
   const customClassName = getClasseName(buttonType);
 
@@ -95,8 +97,11 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       type={type ?? "button"}
       className={classNames(DEFAULT_CLASS(className), customClassName, className)}
       {...propsToPass}
-      onClick={handleClick}>
-      {props.children}
+      onClick={handleClick}
+      disabled={isLoading ? true : propsToPass.disabled}>
+      {isLoading && <LoadingScreen size="6" hideText />}
+
+      {!isLoading && children}
     </button>
   );
 });
