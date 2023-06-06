@@ -1,5 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
+import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -33,6 +34,7 @@ export default function ObjectItemCreate(props: iProps) {
   const [genericsList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
+  const [isLoading, setIsLoading] = useState(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
@@ -86,6 +88,8 @@ export default function ObjectItemCreate(props: iProps) {
   );
 
   async function onSubmit(data: any) {
+    setIsLoading(true);
+
     const newObject = getMutationDetailsFromFormData(schema, data, "create");
 
     if (!Object.keys(newObject).length) {
@@ -117,6 +121,8 @@ export default function ObjectItemCreate(props: iProps) {
       }
 
       refetch();
+
+      setIsLoading(false);
     } catch (error: any) {
       console.error("An error occured while creating the object: ", error);
 
@@ -127,6 +133,7 @@ export default function ObjectItemCreate(props: iProps) {
           details={error.message}
         />
       );
+      setIsLoading(false);
     }
   }
 
@@ -138,6 +145,7 @@ export default function ObjectItemCreate(props: iProps) {
             onSubmit={onSubmit}
             onCancel={() => (onCancel ? onCancel() : null)}
             fields={formStructure}
+            isLoading={isLoading}
           />
         </div>
       )}

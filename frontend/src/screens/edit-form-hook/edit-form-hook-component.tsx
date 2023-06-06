@@ -6,6 +6,7 @@ interface Props {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
   onCancel?: Function;
+  isLoading?: boolean;
 }
 
 export default function EditFormHookComponent(props: Props) {
