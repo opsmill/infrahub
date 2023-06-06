@@ -595,3 +595,7 @@ def test_extract_repo_file_information():
     assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
     assert file_info.relative_path_file == "/tmp/dir1/dir2/dir3/myfile.py"
     assert file_info.module_name == "dir2.dir3.myfile"
+
+
+def test_import_python_checks_from_module():
+    pass

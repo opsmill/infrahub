@@ -5,6 +5,7 @@ import importlib
 import os
 import shutil
 import sys
+import types
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 from uuid import UUID
@@ -28,7 +29,14 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import GraphQLError, InfrahubClient, ValidationError
+from infrahub.utils import is_valid_uuid
+from infrahub_client import (
+    GraphQLError,
+    InfrahubClient,
+    InfrahubNode,
+    NodeSchema,
+    ValidationError,
+)
 
 # pylint: disable=too-few-public-methods,too-many-lines
 
@@ -965,59 +973,127 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         # TODO need to identify Query that are not present anymore (once lineage is available)
 
-    async def import_python_checks_from_module(self, branch_name: str, module, file_path: str):
-        # TODO add function to validate if a check is valid
+    async def import_python_checks_from_module(
+        self, branch_name: str, module: types.ModuleType, file_path: str
+    ) -> None:
 
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
         schema = await self.client.schema.get(kind="Check", branch=branch_name)
+        schema_gqlquery = await self.client.schema.get(kind="GraphQLQuery", branch=branch_name)
 
-        checks_in_graph = await self.client.filters(kind="Check", branch=branch_name, repository__id=str(self.id))
-
-        checks_in_repo = {check.name.value: check for check in checks_in_graph}
+        checks_in_repo = {
+            check.name.value: check
+            for check in await self.client.filters(kind="Check", branch=branch_name, repository__id=str(self.id))
+        }
 
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
             check_name = check_class.__name__
 
+
+            # Retrieve the GraphQL Object
+            graphql_query = None
+            if is_valid_uuid(check_class.query):
+                graphql_query = self.client.get(
+                    kind="GraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
+                )
+            else:
+                filters = {schema_gqlquery.default_filter: check_class.query}
+                graphql_query = self.client.get(kind="GraphQLQuery", branch=branch_name, populate_store=True, **filters)
+
+            if not graphql_query:
+                raise
+
             if check_name not in checks_in_repo.keys():
                 LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
-                data = {
-                    "name": check_name,
-                    "repository": self.id,
-                    "query": check_class.query,
-                    "file_path": file_path,
-                    "class_name": check_name,
-                    "rebase": check_class.rebase,
-                    "timeout": check_class.timeout,
-                }
-                create_payload = self.client.schema.generate_payload_create(
+                await self.create_python_check(
                     schema=schema,
-                    data=data,
-                    source=self.id,
-                    is_protected=True,
+                    branch_name=branch_name,
+                    check_class=check_class,
+                    file_path=file_path,
+                    query=graphql_query,
                 )
-                obj = await self.client.create(kind="Check", branch=branch_name, **create_payload)
-                await obj.save()
 
-                continue
-
-            check_in_repo = checks_in_repo[check_name]
-            if (
-                check_in_repo.query != check_class.query
-                or check_in_repo.file_path.value != file_path
-                or check_in_repo.timeout.value != check_class.timeout
-                or check_in_repo.rebase.value != check_class.rebase
+            elif not self.compare_python_check(
+                heck_class=check_class,
+                file_path=file_path,
+                query=graphql_query,
+                existing_check=checks_in_repo[check_name],
             ):
-                LOGGER.info(
-                    f"{self.name}: New version of the Check '{check_name}' found on branch {branch_name}, updating"
-                )
+                LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
+                await self.update_python_check()
 
-                check_in_repo.query = check_class.query
-                check_in_repo.file_path.value = file_path
-                check_in_repo.timeout.value = check_class.timeout
-                check_in_repo.rebase.value = check_class.rebase
-                await check_in_repo.save()
+
+    async def create_python_check(
+        self, schema: NodeSchema, branch_name: str, check_class: InfrahubCheck, file_path: str, query: InfrahubNode
+    ) -> InfrahubNode:
+        check_name = check_class.__name__
+        data = {
+            "name": check_name,
+            "repository": self.id,
+            "query": query.id,
+            "file_path": file_path,
+            "class_name": check_name,
+            "rebase": check_class.rebase,
+            "timeout": check_class.timeout,
+        }
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema,
+            data=data,
+            source=self.id,
+            is_protected=True,
+        )
+        obj = await self.client.create(kind="Check", branch=branch_name, **create_payload)
+        await obj.save()
+
+        return obj
+
+    async def update_python_check(
+        self,
+        schema: NodeSchema,
+        branch_name: str,
+        check_class: InfrahubCheck,
+        file_path: str,
+        query: InfrahubNode,
+        existing_check: InfrahubNode,
+    ):
+        check_class.__name__
+
+        if existing_check.query.id != query.id:
+            existing_check.query.id = query.id
+
+        if existing_check.file_path.value != file_path:
+            existing_check.file_path.value = file_path
+
+        if existing_check.rebase.value != check_class.rebase:
+            existing_check.rebase.value = check_class.rebase
+
+        if existing_check.rebase.value != check_class.rebase:
+            existing_check.rebase.value = check_class.rebase
+
+        if existing_check.timeout.value != check_class.timeout:
+            existing_check.timeout.value = check_class.timeout
+
+
+        await existing_check.save()
+
+    async def compare_python_check(
+        self, check_class: InfrahubCheck, file_path: str, query: InfrahubNode, existing_check: InfrahubNode
+    ) -> bool:
+        """Compare an existing Python Check Object with a Check Class
+        and identify if we need to update the object in the database."""
+        check_name = check_class.__name__
+
+        if (
+            existing_check.query.id != query.id
+            or existing_check.file_path.value != file_path
+            or existing_check.timeout.value != check_class.timeout
+            or existing_check.rebase.value != check_class.rebase
+            or existing_check.class_name.value != check_name
+        ):
+            return False
+        return True
 
     async def import_python_transforms_from_module(self, branch_name: str, module, file_path: str):
         # TODO add function to validate if a check is valid
