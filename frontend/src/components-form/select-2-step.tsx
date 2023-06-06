@@ -38,15 +38,17 @@ export const OpsSelect2Step = (props: Props) => {
     value.parent ? options.find((option: SelectOption) => option.name === value.parent) : null
   );
 
-  const [selectedRight, setSelectedRight] = useState<SelectOption | null>(
-    value.child ? optionsRight.filter((option) => option.id === value.child)?.[0] : null
+  const [selectedRight, setSelectedRight] = useState<SelectOption | null | undefined>(
+    value.child ? optionsRight.find((option) => option.id === value.child) : null
   );
 
   useEffect(() => {
-    setSelectedRight(
-      value.child ? optionsRight.filter((option) => option.id === value.child)?.[0] : null
-    );
+    setSelectedRight(value.child ? optionsRight.find((option) => option.id === value.child) : null);
   }, [value.child, optionsRight]);
+
+  useEffect(() => {
+    setSelectedLeft(value.parent ? options.find((option) => option.name === value.parent) : null);
+  }, [value.parent]);
 
   useEffect(() => {
     if (value) {
@@ -95,7 +97,7 @@ export const OpsSelect2Step = (props: Props) => {
 
   useEffect(() => {
     setRightDropdownOptions();
-  }, [selectedLeft]);
+  }, [selectedLeft?.id]);
 
   return (
     <div className={classNames("grid grid-cols-6")}>
@@ -108,35 +110,28 @@ export const OpsSelect2Step = (props: Props) => {
         <OpsSelect
           error={error}
           disabled={false}
-          value={selectedLeft ? selectedLeft.id : value.parent}
-          options={options.map((o) => ({
-            name: o.name,
-            id: o.id,
-          }))}
+          value={selectedLeft?.id}
+          options={options}
           label=""
-          onChange={(e) => {
-            setSelectedLeft(options.filter((option) => option.id === e.id)[0]);
-            // setSelectedRight(null);
+          onChange={(value) => {
+            setSelectedLeft(options.filter((option) => option.id === value.id)[0]);
           }}
         />
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
-        {!!selectedLeft && optionsRight.length > 0 && (
+        {!!selectedLeft?.id && optionsRight.length > 0 && (
           <OpsSelect
             error={error}
             disabled={false}
-            value={selectedRight ? selectedRight.id : value.child}
-            options={optionsRight.map((o) => ({
-              name: o.name,
-              id: o.id,
-            }))}
+            value={selectedRight?.id}
+            options={optionsRight}
             label=""
-            onChange={(e) => {
-              const newOption = optionsRight.filter((option) => option.id === e.id)?.[0];
+            onChange={(value) => {
+              const newOption = optionsRight.find((option) => option.id === value.id);
               setSelectedRight(newOption);
               onChange({
                 parent: selectedLeft.id,
-                child: e.id,
+                child: value.id,
               });
             }}
           />
