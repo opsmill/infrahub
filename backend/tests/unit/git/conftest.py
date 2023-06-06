@@ -88,6 +88,23 @@ def git_upstream_repo_03(git_upstream_repo_01) -> Dict[str, str]:
     return git_upstream_repo_01
 
 
+
+@pytest.fixture
+def git_upstream_repo_10(herper, git_sources_dir) -> Dict[str, str]:
+    """Git Repository used as part of the  demo-edge tutorial."""
+
+    name = "infrahub-demo-edge"
+    fixtures_dir = herper.get_fixtures_dir()
+    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-05943ba.tar.tar.gz")
+
+    # Extract the fixture package in the source directory
+    file = tarfile.open(fixture_repo)
+    file.extractall(git_sources_dir)
+    file.close()
+
+    return dict(name=name, path=str(os.path.join(git_sources_dir, "infrahub-demo-edge")))
+
+
 @pytest.fixture
 async def git_repo_01(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote"""
@@ -372,6 +389,21 @@ async def git_repo_transforms(client, git_upstream_repo_02, git_repos_dir) -> In
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
+    return repo
+
+
+@pytest.fixture
+async def git_repo_10(client, git_upstream_repo_10, git_repos_dir) -> InfrahubRepository:
+    """Git Repository with git_upstream_repo_10 as remote"""
+
+    repo = await InfrahubRepository.new(
+        id=uuid.uuid4(),
+        name=git_upstream_repo_10["name"],
+        location=git_upstream_repo_10["path"],
+    )
+
+    repo.client = client
+
     return repo
 
 
