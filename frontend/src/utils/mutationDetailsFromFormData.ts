@@ -9,15 +9,16 @@ const getMutationDetailsFromFormData = (
   mode: MutationMode,
   existingObject?: any
 ) => {
-  const updateObject = R.clone(formData);
+  const updatedObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {
-    const updatedValue = updateObject[attribute.name].value;
+    const updatedValue = updatedObject[attribute.name].value;
+
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name].value;
 
-      if (mode === "update" && (!updatedValue || updatedValue === existingValue)) {
-        delete updateObject[attribute.name];
+      if (mode === "update" && updatedValue === existingValue) {
+        delete updatedObject[attribute.name];
       }
     }
   });
@@ -33,17 +34,17 @@ const getMutationDetailsFromFormData = (
         if (isOneToOne) {
           const existingValue = existingObject[relationship.name]?.id;
 
-          const updatedValue = updateObject[relationship.name]?.id;
+          const updatedValue = updatedObject[relationship.name]?.id;
 
           if (updatedValue === existingValue) {
-            delete updateObject[relationship.name];
+            delete updatedObject[relationship.name];
           }
         } else {
           const existingValue = existingObject[relationship.name]
             ? existingObject[relationship.name]?.edges.map((r: any) => r.node?.id).sort()
             : existingObject[relationship.name]?.map((r: any) => r.id).sort();
 
-          const updatedIds = updateObject[relationship.name]?.list
+          const updatedIds = updatedObject[relationship.name]?.list
             ?.map((value: any) => value.id)
             .sort();
 
@@ -52,34 +53,38 @@ const getMutationDetailsFromFormData = (
             updatedIds &&
             JSON.stringify(updatedIds) === JSON.stringify(existingValue)
           ) {
-            delete updateObject[relationship.name];
+            delete updatedObject[relationship.name];
           }
         }
       }
 
-      if (isOneToOne && updateObject[relationship.name] && !updateObject[relationship.name].id) {
-        delete updateObject[relationship.name];
+      if (isOneToOne && updatedObject[relationship.name] && !updatedObject[relationship.name].id) {
+        delete updatedObject[relationship.name];
       }
 
-      if (isOneToMany && updateObject[relationship.name] && updateObject[relationship.name].list) {
-        const fieldKeys = Object.keys(updateObject[relationship.name]).filter(
+      if (
+        isOneToMany &&
+        updatedObject[relationship.name] &&
+        updatedObject[relationship.name].list
+      ) {
+        const fieldKeys = Object.keys(updatedObject[relationship.name]).filter(
           (key) => key !== "list"
         );
 
-        updateObject[relationship.name] = updateObject[relationship.name].list.map((row: any) => {
+        updatedObject[relationship.name] = updatedObject[relationship.name].list.map((row: any) => {
           const objWithMetaFields: any = {
             id: row.id,
           };
 
           fieldKeys.forEach((key) => {
-            objWithMetaFields[key] = updateObject[relationship.name][key];
+            objWithMetaFields[key] = updatedObject[relationship.name][key];
           });
           return objWithMetaFields;
         });
       }
     });
 
-  return updateObject;
+  return updatedObject;
 };
 
 export default getMutationDetailsFromFormData;
