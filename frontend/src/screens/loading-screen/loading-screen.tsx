@@ -16,12 +16,7 @@ export default function LoadingScreen(props: Props) {
   return (
     <div
       className={classNames("flex-1 flex flex-col items-center justify-center", className ?? "")}>
-      <ReactLoading
-        className={color}
-        type={"spinningBubbles"}
-        height={size ?? 70}
-        width={size ?? 70}
-      />
+      <ReactLoading className={color} type={"bars"} height={size ?? 70} width={size ?? 70} />
       {!hideText && <div className="text-xl mt-2">Just a moment</div>}
     </div>
   );
