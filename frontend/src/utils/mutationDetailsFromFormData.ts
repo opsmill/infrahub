@@ -20,6 +20,10 @@ const getMutationDetailsFromFormData = (
         delete updateObject[attribute.name];
       }
     }
+
+    if (mode === "create" && !updatedValue) {
+      delete updateObject[attribute.name];
+    }
   });
 
   schema.relationships
