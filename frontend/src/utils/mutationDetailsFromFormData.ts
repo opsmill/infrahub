@@ -23,7 +23,7 @@ const getMutationDetailsFromFormData = (
     }
 
     if (mode === "create" && !updatedValue) {
-      delete updateObject[attribute.name];
+      delete updatedObject[attribute.name];
     }
   });
 
@@ -34,7 +34,7 @@ const getMutationDetailsFromFormData = (
 
       const isOneToMany = relationship.kind === "Attribute" && relationship.cardinality === "many";
 
-      if (mode === "update") {
+      if (mode === "update" && existingObject) {
         if (isOneToOne) {
           const existingValue = existingObject[relationship.name]?.id;
 
@@ -57,6 +57,20 @@ const getMutationDetailsFromFormData = (
             updatedIds &&
             JSON.stringify(updatedIds) === JSON.stringify(existingValue)
           ) {
+            delete updatedObject[relationship.name];
+          }
+        }
+      }
+
+      if (mode === "create") {
+        if (isOneToOne) {
+          if (!updatedObject[relationship.name]) {
+            delete updatedObject[relationship.name];
+          }
+        }
+
+        if (isOneToMany) {
+          if (!updatedObject[relationship.name].length) {
             delete updatedObject[relationship.name];
           }
         }
