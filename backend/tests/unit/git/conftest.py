@@ -88,7 +88,6 @@ def git_upstream_repo_03(git_upstream_repo_01) -> Dict[str, str]:
     return git_upstream_repo_01
 
 
-
 @pytest.fixture
 def git_upstream_repo_10(herper, git_sources_dir) -> Dict[str, str]:
     """Git Repository used as part of the  demo-edge tutorial."""

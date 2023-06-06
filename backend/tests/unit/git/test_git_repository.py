@@ -501,6 +501,9 @@ async def test_execute_python_transform_file_missing(client, git_repo_transforms
 async def test_find_files(git_repo_jinja: InfrahubRepository):
     repo = git_repo_jinja
 
+    with pytest.raises(ValueError):
+        await repo.find_files(extension="yml")
+
     yaml_files = await repo.find_files(extension="yml", branch_name="main")
     assert len(yaml_files) == 2
 
@@ -508,6 +511,21 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
     assert len(yaml_files) == 2
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
+    assert len(yaml_files) == 4
+
+
+async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository):
+    repo = git_repo_jinja
+
+    commit = repo.get_commit_value(branch_name="main")
+
+    yaml_files = await repo.find_files(extension="yml", commit=commit)
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension=["yml"], branch_name=commit)
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name=commit)
     assert len(yaml_files) == 4
 
 
@@ -618,7 +636,12 @@ async def test_create_python_check(
 
 
 async def test_compare_python_check(
-    helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, gql_query_data_02, check_data_01
+    helper,
+    git_repo_03_w_client: InfrahubRepository,
+    mock_schema_query_01,
+    gql_query_data_01,
+    gql_query_data_02,
+    check_data_01,
 ):
     repo = git_repo_03_w_client
 
@@ -641,7 +664,10 @@ async def test_compare_python_check(
 
     assert (
         await repo.compare_python_check(
-            check_class=check_class, file_path="checks/check01/newpath.py", query=query_01, existing_check=existing_check
+            check_class=check_class,
+            file_path="checks/check01/newpath.py",
+            query=query_01,
+            existing_check=existing_check,
         )
         is False
     )
