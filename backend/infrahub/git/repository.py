@@ -945,9 +945,12 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         schema = await self.client.schema.get(kind="RFile", branch=branch_name)
 
-        rfiles_in_graph = await self.client.filters(
-            kind="RFile", branch=branch_name, template_repository__id=str(self.id)
-        )
+        rfiles_in_graph = {
+            rfile.name.value: rfile
+            for rfile in await self.client.filters(
+                kind="RFile", branch=branch_name, template_repository__id=str(self.id)
+            )
+        }
 
         local_rfiles = {}
 
@@ -964,8 +967,15 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.error(exc.message)
                 continue
 
+            # Insert the ID of the current repository if required
             if item.template_repository == "self":
                 item.template_repository = self.id
+
+            # Query the GraphQL query and (eventually) replace the name with the ID
+            graphql_query = await self.client.get(
+                kind="GraphQLQuery", branch=branch_name, id=str(item.query), populate_store=True
+            )
+            item.query = graphql_query.id
 
             local_rfiles[item.name] = item
 
@@ -1020,7 +1030,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             existing_rfile.description.value = local_rfile.description
 
         if existing_rfile.query.id != local_rfile.query:
-            existing_rfile.query.id = local_rfile.query
+            existing_rfile.query = local_rfile.query
 
         if existing_rfile.template_path.value != local_rfile.template_path:
             existing_rfile.template_path.value = local_rfile.template_path
@@ -1048,7 +1058,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         for query_name in only_local:
             query = local_queries[query_name]
             LOGGER.info(f"{self.name} | New Graphql Query '{query_name}' found on branch {branch_name}, creating")
-            self.create_graphql_query(branch_name=branch_name, name=query_name, query_string=query.query)
+            await self.create_graphql_query(branch_name=branch_name, name=query_name, query_string=query.query)
 
         for query_name in present_in_both:
             local_query = local_queries[query_name]
@@ -1079,7 +1089,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         )
         obj = await self.client.create(kind="GraphQLQuery", branch=branch_name, **create_payload)
         await obj.save()
-
         return obj
 
     async def import_python_checks_from_module(
@@ -1112,7 +1121,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                         query=graphql_query,
                     )
 
-                elif not self.compare_python_check(
+                elif not await self.compare_python_check(
                     check_class=check_class,
                     file_path=file_path,
                     query=graphql_query,
@@ -1170,7 +1179,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         existing_check: InfrahubNode,
     ) -> None:
         if existing_check.query.id != query.id:
-            existing_check.query.id = query.id
+            existing_check.query = query.id
 
         if existing_check.file_path.value != file_path:
             existing_check.file_path.value = file_path
@@ -1222,10 +1231,15 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
             transform = transform_class()
 
+            # Query the GraphQL query and (eventually) replace the name with the ID
+            graphql_query = await self.client.get(
+                kind="GraphQLQuery", branch=branch_name, id=str(transform.query), populate_store=True
+            )
+
             item = TransformInformation(
                 name=transform.name,
-                repository=self.id,
-                query=transform.query,
+                repository=str(self.id),
+                query=str(graphql_query.id),
                 file_path=file_path,
                 url=transform.url,
                 transform_class=transform,
@@ -1233,7 +1247,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 rebase=transform.rebase,
                 timeout=transform.timeout,
             )
-            local_transforms[item.name] = local_transforms
+            local_transforms[item.name] = item
 
         present_in_both, only_graph, only_local = compare_lists(
             list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
@@ -1246,13 +1260,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             await self.create_python_transform(branch_name=branch_name, transform=local_transforms[transform_name])
 
         for transform_name in present_in_both:
-            if not self.compare_python_transform(
+            if not await self.compare_python_transform(
                 existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
             ):
                 LOGGER.info(
                     f"{self.name} | New version of the Python Transform '{transform_name}' found on branch {branch_name} ({commit[:8]}), updating"
                 )
-                self.update_python_transform(
+                await self.update_python_transform(
                     existing_transform=transforms_in_graph[transform_name],
                     local_transform=local_transforms[transform_name],
                 )
@@ -1290,7 +1304,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         cls, existing_transform: InfrahubNode, local_transform: TransformInformation
     ) -> bool:
         if existing_transform.query.id != local_transform.query:
-            existing_transform.query.id = local_transform.query
+            existing_transform.query = local_transform.query
 
         if existing_transform.file_path.value != local_transform.file_path:
             existing_transform.file_path.value = local_transform.file_path

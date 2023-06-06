@@ -57,7 +57,7 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
     file.extractall(git_sources_dir)
     file.close()
 
-    return dict(name=name, path=str(os.path.join(git_sources_dir, "infrahub-test-fixture-01")))
+    return dict(name=name, path=str(os.path.join(git_sources_dir, name)))
 
 
 @pytest.fixture
@@ -92,16 +92,16 @@ def git_upstream_repo_03(git_upstream_repo_01) -> Dict[str, str]:
 def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
     """Git Repository used as part of the  demo-edge tutorial."""
 
-    name = "infrahub-demo-edge"
+    name = "infrahub-demo-edge-develop"
     fixtures_dir = helper.get_fixtures_dir()
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-05943ba.tar.gz")
+    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-develop-5bf438e.tar.gz")
 
     # Extract the fixture package in the source directory
     file = tarfile.open(fixture_repo)
     file.extractall(git_sources_dir)
     file.close()
 
-    return dict(name=name, path=str(os.path.join(git_sources_dir, "infrahub-demo-edge")))
+    return dict(name=name, path=str(os.path.join(git_sources_dir, name)))
 
 
 @pytest.fixture
