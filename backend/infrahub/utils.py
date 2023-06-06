@@ -1,7 +1,7 @@
 import os
 from enum import Enum, EnumMeta
 from itertools import groupby
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import uuid4
 
 KWARGS_TO_DROP = ["session"]
@@ -26,6 +26,20 @@ def duplicates(input_list: list) -> list:
 def intersection(list1, list2) -> list:
     """Calculate the intersection between 2 lists."""
     return list(set(list1) & set(list2))
+
+
+def compare_lists(list1, list2) -> Tuple[list, list, list]:
+    """Compare 2 lists and return :
+    - the intersection of both
+    - the item present only in list1
+    - the item present only in list2
+    """
+
+    in_both = intersection(list1=list1, list2=list2)
+    in_list_1 = list(set(list1) - set(in_both))
+    in_list_2 = list(set(list2) - set(in_both))
+
+    return sorted(in_both), sorted(in_list_1), sorted(in_list_2)
 
 
 def get_fixtures_dir():

@@ -2,7 +2,13 @@ import os
 
 import pytest
 
-from infrahub.utils import deep_merge_dict, duplicates, get_fixtures_dir, str_to_bool
+from infrahub.utils import (
+    compare_lists,
+    deep_merge_dict,
+    duplicates,
+    get_fixtures_dir,
+    str_to_bool,
+)
 
 
 def test_duplicates():
@@ -13,6 +19,27 @@ def test_duplicates():
 
 def test_get_fixtures_dir():
     assert os.path.exists(get_fixtures_dir())
+
+
+def test_compare_lists():
+    list_a = ["black", "blue", "red"]
+    list_b = ["black", "green"]
+    list_c = ["purple", "yellow"]
+
+    both, in1, in2 = compare_lists(list_a, list_b)
+    assert both == ["black"]
+    assert in1 == ["blue", "red"]
+    assert in2 == ["green"]
+
+    both, in1, in2 = compare_lists(list_c, list_b)
+    assert both == []
+    assert in1 == list_c
+    assert in2 == list_b
+
+    both, in1, in2 = compare_lists(list_c, ["yellow"])
+    assert both == ["yellow"]
+    assert in1 == ["purple"]
+    assert in2 == []
 
 
 def test_deep_merge_dict():
