@@ -21,6 +21,7 @@ from infrahub.git import (
     extract_repo_file_information,
 )
 from infrahub.utils import find_first_file_in_directory
+from infrahub_client import InfrahubNode
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
@@ -597,5 +598,57 @@ def test_extract_repo_file_information():
     assert file_info.module_name == "dir2.dir3.myfile"
 
 
-def test_import_python_checks_from_module():
-    pass
+async def test_create_python_check(
+    helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, mock_check_create
+):
+    repo = git_repo_03_w_client
+
+    module = helper.import_module_in_fixtures(module="checks/check01")
+    check_class = getattr(module, "Check01")
+
+    gql_schema = await repo.client.schema.get(kind="GraphQLQuery")
+
+    query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
+
+    obj = await repo.create_python_check(
+        branch_name="main", check_class=check_class, file_path="checks/check01/check.py", query=query
+    )
+
+    assert isinstance(obj, InfrahubNode)
+
+
+async def test_compare_python_check(
+    helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, gql_query_data_02, check_data_01
+):
+    repo = git_repo_03_w_client
+
+    module = helper.import_module_in_fixtures(module="checks/check01")
+    check_class = getattr(module, "Check01")
+
+    gql_schema = await repo.client.schema.get(kind="GraphQLQuery")
+    check_schema = await repo.client.schema.get(kind="Check")
+
+    query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
+    query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
+    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
+
+    assert (
+        await repo.compare_python_check(
+            check_class=check_class, file_path="checks/check01/check.py", query=query_01, existing_check=existing_check
+        )
+        is True
+    )
+
+    assert (
+        await repo.compare_python_check(
+            check_class=check_class, file_path="checks/check01/newpath.py", query=query_01, existing_check=existing_check
+        )
+        is False
+    )
+
+    assert (
+        await repo.compare_python_check(
+            check_class=check_class, file_path="checks/check01/check.py", query=query_02, existing_check=existing_check
+        )
+        is False
+    )

@@ -1,6 +1,9 @@
 import asyncio
+import importlib
 import os
+import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 import ujson
@@ -45,6 +48,14 @@ class TestHelper:
         fixtures_dir = os.path.join(here, "fixtures")
 
         return os.path.abspath(fixtures_dir)
+
+    @staticmethod
+    def import_module_in_fixtures(module: str) -> Any:
+        """Import a python module from the fixtures directory."""
+
+        sys.path.append(TestHelper.get_fixtures_dir())
+        module_name = module.replace("/", ".")
+        return importlib.import_module(module_name)
 
 
 @pytest.fixture()

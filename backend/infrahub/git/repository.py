@@ -29,14 +29,7 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub.utils import is_valid_uuid
-from infrahub_client import (
-    GraphQLError,
-    InfrahubClient,
-    InfrahubNode,
-    NodeSchema,
-    ValidationError,
-)
+from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
 
 # pylint: disable=too-few-public-methods,too-many-lines
 
@@ -976,12 +969,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def import_python_checks_from_module(
         self, branch_name: str, module: types.ModuleType, file_path: str
     ) -> None:
-
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
-
-        schema = await self.client.schema.get(kind="Check", branch=branch_name)
-        schema_gqlquery = await self.client.schema.get(kind="GraphQLQuery", branch=branch_name)
 
         checks_in_repo = {
             check.name.value: check
@@ -989,44 +978,46 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         }
 
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
-            check_name = check_class.__name__
+            try:
+                check_name = check_class.__name__
 
-
-            # Retrieve the GraphQL Object
-            graphql_query = None
-            if is_valid_uuid(check_class.query):
-                graphql_query = self.client.get(
+                graphql_query = await self.client.get(
                     kind="GraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
                 )
-            else:
-                filters = {schema_gqlquery.default_filter: check_class.query}
-                graphql_query = self.client.get(kind="GraphQLQuery", branch=branch_name, populate_store=True, **filters)
 
-            if not graphql_query:
-                raise
+                if check_name not in checks_in_repo.keys():
+                    LOGGER.info(f"{self.name} | New Check '{check_name}' found on branch {branch_name}, creating")
+                    await self.create_python_check(
+                        branch_name=branch_name,
+                        check_class=check_class,
+                        file_path=file_path,
+                        query=graphql_query,
+                    )
 
-            if check_name not in checks_in_repo.keys():
-                LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
-                await self.create_python_check(
-                    schema=schema,
-                    branch_name=branch_name,
+                elif not self.compare_python_check(
                     check_class=check_class,
                     file_path=file_path,
                     query=graphql_query,
+                    existing_check=checks_in_repo[check_name],
+                ):
+                    LOGGER.info(
+                        f"{self.name} | New version of Check '{check_name}' found on branch {branch_name}, updating"
+                    )
+                    await self.update_python_check(
+                        check_class=check_class,
+                        file_path=file_path,
+                        query=graphql_query,
+                        existing_check=checks_in_repo[check_name],
+                    )
+
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                LOGGER.error(
+                    f"{self.name} | An error occured while processing the Check {check_class.__name__} from {file_path} : {exc} "
                 )
-
-            elif not self.compare_python_check(
-                heck_class=check_class,
-                file_path=file_path,
-                query=graphql_query,
-                existing_check=checks_in_repo[check_name],
-            ):
-                LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
-                await self.update_python_check()
-
+                continue
 
     async def create_python_check(
-        self, schema: NodeSchema, branch_name: str, check_class: InfrahubCheck, file_path: str, query: InfrahubNode
+        self, branch_name: str, check_class: InfrahubCheck, file_path: str, query: InfrahubNode
     ) -> InfrahubNode:
         check_name = check_class.__name__
         data = {
@@ -1038,6 +1029,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             "rebase": check_class.rebase,
             "timeout": check_class.timeout,
         }
+
+        schema = await self.client.schema.get(kind="Check", branch=branch_name)
+
         create_payload = self.client.schema.generate_payload_create(
             schema=schema,
             data=data,
@@ -1049,17 +1043,14 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return obj
 
+    @classmethod
     async def update_python_check(
-        self,
-        schema: NodeSchema,
-        branch_name: str,
+        cls,
         check_class: InfrahubCheck,
         file_path: str,
         query: InfrahubNode,
         existing_check: InfrahubNode,
-    ):
-        check_class.__name__
-
+    ) -> None:
         if existing_check.query.id != query.id:
             existing_check.query.id = query.id
 
@@ -1075,11 +1066,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if existing_check.timeout.value != check_class.timeout:
             existing_check.timeout.value = check_class.timeout
 
-
         await existing_check.save()
 
+    @classmethod
     async def compare_python_check(
-        self, check_class: InfrahubCheck, file_path: str, query: InfrahubNode, existing_check: InfrahubNode
+        cls, check_class: InfrahubCheck, file_path: str, query: InfrahubNode, existing_check: InfrahubNode
     ) -> bool:
         """Compare an existing Python Check Object with a Check Class
         and identify if we need to update the object in the database."""
@@ -1147,7 +1138,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 or transform_in_repo.rebase.value != transform.rebase
             ):
                 LOGGER.info(
-                    f"{self.name}: New version of the Python Transform '{transform.name}' found on branch {branch_name}, updating"
+                    f"{self.name} | New version of the Python Transform '{transform.name}' found on branch {branch_name}, updating"
                 )
                 transform_in_repo.query = transform.query
                 transform_in_repo.file_path.value = file_path

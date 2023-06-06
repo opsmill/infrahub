@@ -1,10 +1,13 @@
 import os
+import re
 import shutil
 import tarfile
 import uuid
+from pathlib import Path
 from typing import Dict
 
 import pytest
+import ujson
 from git import Repo
 from pytest_httpx import HTTPXMock
 
@@ -483,5 +486,182 @@ async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"mock": []}}
 
-    httpx_mock.add_response(method="GET", json=response, url="http://mock/query/my_query?branch=main&rebase=true")
+    httpx_mock.add_response(method="GET", json=response, url="http://mock/query/my_query?branch=main&rebase=True")
     return httpx_mock
+
+
+@pytest.fixture
+async def gql_query_data_01() -> dict:
+    data = {
+        "node": {
+            "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+            "display_label": "MyQuery",
+            "name": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": "MyQuery"},
+            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "query": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "query MyQuery { location { edges { node { name { value }}}}}",
+            },
+        }
+    }
+    return data
+
+
+@pytest.fixture
+async def gql_query_data_02() -> dict:
+    data = {
+        "node": {
+            "id": "mmmmmmmm-nnnn-bbbb-vvvv-cccccccccccc",
+            "display_label": "MyOtherQuery",
+            "name": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": "MyQuery"},
+            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "query": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "query MyOtherQuery { location { edges { node { name { value }}}}}",
+            },
+        }
+    }
+    return data
+
+
+@pytest.fixture
+async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+    response_text = Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_01.json")).read_text(
+        encoding="UTF-8"
+    )
+
+    httpx_mock.add_response(method="GET", url="http://mock/schema/?branch=main", json=ujson.loads(response_text))
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {
+        "data": {
+            "check_create": {
+                "ok": True,
+                "object": {
+                    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                },
+            }
+        }
+    }
+
+    httpx_mock.add_response(method="POST", url=re.compile(r"http(.*){3}mock\/graphql\/.*"), json=response)
+    return httpx_mock
+
+
+@pytest.fixture
+async def check_data_01() -> dict:
+    data = {
+        "node": {
+            "id": "d32f30f8-1d1e-4dfb-96d9-91234a9ffbe1",
+            "display_label": "Check01",
+            "name": {
+                "value": "Check01",
+                "is_protected": True,
+                "is_visible": True,
+                "source": {
+                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                    "display_label": "infrahub-demo-edge",
+                    "__typename": "Repository",
+                },
+                "owner": None,
+            },
+            "description": {
+                "value": None,
+                "is_protected": False,
+                "is_visible": True,
+                "source": None,
+                "owner": None,
+            },
+            "file_path": {
+                "value": "checks/check01/check.py",
+                "is_protected": True,
+                "is_visible": True,
+                "source": {
+                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                    "display_label": "infrahub-demo-edge",
+                    "__typename": "Repository",
+                },
+                "owner": None,
+            },
+            "class_name": {
+                "value": "Check01",
+                "is_protected": True,
+                "is_visible": True,
+                "source": {
+                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                    "display_label": "infrahub-demo-edge",
+                    "__typename": "Repository",
+                },
+                "owner": None,
+            },
+            "timeout": {
+                "value": 10,
+                "is_protected": True,
+                "is_visible": True,
+                "source": {
+                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                    "display_label": "infrahub-demo-edge",
+                    "__typename": "Repository",
+                },
+                "owner": None,
+            },
+            "rebase": {
+                "value": True,
+                "is_protected": True,
+                "is_visible": True,
+                "source": {
+                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                    "display_label": "infrahub-demo-edge",
+                    "__typename": "Repository",
+                },
+                "owner": None,
+            },
+            "repository": {
+                "node": {
+                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                    "display_label": "infrahub-demo-edge",
+                    "__typename": "Repository",
+                },
+                "properties": {
+                    "is_protected": True,
+                    "is_visible": True,
+                    "source": {
+                        "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                        "display_label": "infrahub-demo-edge",
+                        "__typename": "Repository",
+                    },
+                    "owner": None,
+                },
+            },
+            "query": {
+                "node": {
+                    "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+                    "display_label": "check_backbone_link_redundancy",
+                    "__typename": "GraphQLQuery",
+                },
+                "properties": {
+                    "is_protected": True,
+                    "is_visible": True,
+                    "source": {
+                        "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
+                        "display_label": "infrahub-demo-edge",
+                        "__typename": "Repository",
+                    },
+                    "owner": None,
+                },
+            },
+            "tags": {"edges": []},
+            "__typename": "Check",
+        },
+    }
+
+    return data
