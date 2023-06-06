@@ -24,6 +24,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
 
   const getFormFieldByInputType = (inputType: ControlType) => {
     const existingValue = getValues(name);
+
     switch (inputType) {
       case "text":
         return (
@@ -91,16 +92,17 @@ export const DynamicControl = (props: DynamicFieldData) => {
           id: o.id,
         }));
         const regex = /^Related/; // starts with Related
+
+        const selectValue = {
+          parent: value?.__typename?.replace(regex, ""),
+          child: value?.id,
+        };
+
         return (
           <OpsSelect2StepRegister
             {...props}
             options={selectOptions}
-            value={
-              existingValue ?? {
-                parent: value?.__typename?.replace(regex, ""),
-                child: value?.id,
-              }
-            }
+            value={selectValue}
             register={register}
             setValue={setValue}
           />
