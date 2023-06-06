@@ -1,4 +1,3 @@
-import { Select2StepPreview } from "../component-preview/select-2-step.preview";
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
 import ObjectItemDetails from "../screens/object-item-details/object-item-details";
@@ -37,13 +36,6 @@ export const MAIN_ROUTES = (config?: Config) => [
   {
     path: "/profile",
     element: <UserProfile />,
-  },
-];
-
-export const CUSTOM_COMPONENT_ROUTES = [
-  {
-    path: "/custom-components/select-2-step",
-    element: <Select2StepPreview />,
   },
 ];
 

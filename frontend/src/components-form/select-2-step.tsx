@@ -1,9 +1,16 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
+import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
-import { getDropdownOptionsForRelatedPeers } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import {
+  getDropdownOptionsForRelatedPeers,
+  getDropdownOptionsForRelatedPeersPaginated,
+} from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import { branchVar } from "../graphql/variables/branchVar";
+import { dateVar } from "../graphql/variables/dateVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
+import { configState } from "../state/atoms/config.atom";
 import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
 
@@ -21,10 +28,14 @@ interface Props {
 }
 
 export const OpsSelect2Step = (props: Props) => {
-  const { label, options, value, error } = props;
+  const { label, options, value, error, onChange } = props;
+  const [config] = useAtom(configState);
+  const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
+
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
-  const [selectedLeft, setSelectedLeft] = useState<SelectOption | null>(
-    value.parent ? options.filter((option) => option.name === value.parent)?.[0] : null
+  const [selectedLeft, setSelectedLeft] = useState<SelectOption | null | undefined>(
+    value.parent ? options.find((option: SelectOption) => option.name === value.parent) : null
   );
 
   const [selectedRight, setSelectedRight] = useState<SelectOption | null>(
@@ -39,7 +50,7 @@ export const OpsSelect2Step = (props: Props) => {
 
   useEffect(() => {
     if (value) {
-      props.onChange(value);
+      onChange(value);
     }
   }, []);
 
@@ -50,9 +61,13 @@ export const OpsSelect2Step = (props: Props) => {
       return;
     }
 
-    const queryString = getDropdownOptionsForRelatedPeers({
-      peers: [objectName],
-    });
+    const queryString = config?.experimental_features?.paginated
+      ? getDropdownOptionsForRelatedPeersPaginated({
+          peers: [objectName],
+        })
+      : getDropdownOptionsForRelatedPeers({
+          peers: [objectName],
+        });
 
     const query = gql`
       ${queryString}
@@ -60,9 +75,15 @@ export const OpsSelect2Step = (props: Props) => {
 
     const { data } = await graphqlClient.query({
       query,
+      context: {
+        date,
+        branch: branch?.name,
+      },
     });
 
-    const options = data[objectName];
+    const options = config?.experimental_features?.paginated
+      ? data[objectName]?.edges.map((edge: any) => edge.node)
+      : data[objectName];
 
     setOptionsRight(
       options.map((option: any) => ({
@@ -74,7 +95,7 @@ export const OpsSelect2Step = (props: Props) => {
 
   useEffect(() => {
     setRightDropdownOptions();
-  }, [selectedLeft, setRightDropdownOptions]);
+  }, [selectedLeft]);
 
   return (
     <div className={classNames("grid grid-cols-6")}>
@@ -113,7 +134,7 @@ export const OpsSelect2Step = (props: Props) => {
             onChange={(e) => {
               const newOption = optionsRight.filter((option) => option.id === e.id)?.[0];
               setSelectedRight(newOption);
-              props.onChange({
+              onChange({
                 parent: selectedLeft.id,
                 child: e.id,
               });
