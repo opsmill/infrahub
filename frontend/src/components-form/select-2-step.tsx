@@ -34,8 +34,8 @@ export const OpsSelect2Step = (props: Props) => {
   const date = useReactiveVar(dateVar);
 
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
-  const [selectedLeft, setSelectedLeft] = useState<SelectOption | null>(
-    value.parent ? options.filter((option) => option.name === value.parent)?.[0] : null
+  const [selectedLeft, setSelectedLeft] = useState<SelectOption | null | undefined>(
+    value.parent ? options.find((option: SelectOption) => option.name === value.parent) : null
   );
 
   const [selectedRight, setSelectedRight] = useState<SelectOption | null>(
@@ -95,7 +95,7 @@ export const OpsSelect2Step = (props: Props) => {
 
   useEffect(() => {
     setRightDropdownOptions();
-  }, [selectedLeft, setRightDropdownOptions]);
+  }, [selectedLeft]);
 
   return (
     <div className={classNames("grid grid-cols-6")}>
