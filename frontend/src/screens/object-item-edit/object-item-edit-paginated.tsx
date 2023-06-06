@@ -1,5 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
+import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -33,6 +34,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
+  const [isLoading, setIsLoading] = useState(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
@@ -100,6 +102,8 @@ export default function ObjectItemEditComponent(props: Props) {
   );
 
   async function onSubmit(data: any) {
+    setIsLoading(true);
+
     const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
 
     if (Object.keys(updatedObject).length) {
@@ -126,9 +130,11 @@ export default function ObjectItemEditComponent(props: Props) {
         closeDrawer();
 
         onUpdateComplete();
+        setIsLoading(false);
 
         return;
       } catch (e) {
+        setIsLoading(false);
         toast(
           <Alert
             message="Something went wrong while updating the object"
@@ -148,6 +154,7 @@ export default function ObjectItemEditComponent(props: Props) {
           onCancel={props.closeDrawer}
           onSubmit={onSubmit}
           fields={formStructure}
+          isLoading={isLoading}
         />
       )}
     </div>

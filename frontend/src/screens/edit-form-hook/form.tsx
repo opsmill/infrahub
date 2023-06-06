@@ -18,6 +18,7 @@ export type FormProps = {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
   onCancel?: Function;
+  isLoading?: boolean;
 };
 
 type FormFieldProps = {
@@ -25,7 +26,7 @@ type FormFieldProps = {
   error?: FormFieldError;
 };
 
-export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
+export const Form = ({ fields, onSubmit, onCancel, isLoading }: FormProps) => {
   const formMethods = useForm();
   const { handleSubmit, formState } = formMethods;
 
@@ -64,7 +65,7 @@ export const Form = ({ fields, onSubmit, onCancel }: FormProps) => {
             }}>
             Cancel
           </Button>
-          <Button type="submit" buttonType={BUTTON_TYPES.MAIN}>
+          <Button type="submit" buttonType={BUTTON_TYPES.MAIN} isLoading={isLoading}>
             Save
           </Button>
         </div>
