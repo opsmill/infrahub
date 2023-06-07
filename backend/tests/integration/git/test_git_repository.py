@@ -164,13 +164,13 @@ class TestInfrahubClient:
         assert modified_transform1.query.id == transform_query_value_before_change
 
         # FIXME not implemented yet
-        # with pytest.raises(NodeNotFound):
-        #     await client.get(kind="Check", id=obj1.id)
+        with pytest.raises(NodeNotFound):
+            await client.get(kind="Check", id=obj1.id)
 
         with pytest.raises(NodeNotFound):
             await client.get(kind="TransformPython", id=obj2.id)
 
-    async def test_import_all_yaml_files(self, session, client: InfrahubClient, repo: InfrahubRepository):
+    async def test_import_all_yaml_files(self, session, client: InfrahubClient, repo: InfrahubRepository, query_99):
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_yaml_files(branch_name="main", commit=commit)
 
@@ -181,3 +181,31 @@ class TestInfrahubClient:
         nbr_relationships_before = await count_relationships(session=session)
         await repo.import_all_yaml_files(branch_name="main", commit=commit)
         assert await count_relationships(session=session) == nbr_relationships_before
+
+        # 1. Modify an object to validate if its being properly updated
+        # 2. Add an object that doesn't exist in Git and validate that it's been deleted
+        rfile_template_path_value_before_change = rfiles[0].template_path.value
+        rfile_query_value_before_change = rfiles[0].query.id
+        rfiles[0].template_path.value = "my_path"
+        rfiles[0].query = query_99.id
+        await rfiles[0].save()
+
+        obj = await Node.init(schema="RFile", session=session)
+        await obj.new(
+            session=session,
+            name="soontobedeletedrfile",
+            query=str(query_99.id),
+            template_repository=str(repo.id),
+            template_path="mytmp.j2",
+        )
+        await obj.save(session=session)
+
+        await repo.import_all_yaml_files(branch_name="main", commit=commit)
+
+        modified_rfile = await client.get(kind="RFile", id=rfiles[0].id)
+        assert modified_rfile.template_path.value == rfile_template_path_value_before_change
+        assert modified_rfile.query.id == rfile_query_value_before_change
+
+        # FIXME not implemented yet
+        with pytest.raises(NodeNotFound):
+            await client.get(kind="RFile", id=obj.id)
