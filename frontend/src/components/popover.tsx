@@ -21,7 +21,7 @@ export const PopOver = ({ children, className, buttonComponent, title }: any) =>
         leaveTo="opacity-0 translate-y-1">
         <Popover.Panel
           className={classNames(
-            "absolute bg-white z-10 rounded-lg border shadow-xl mt-3 w-screen max-w-sm grid grid-cols-1 divide-y divide-gray-200",
+            "absolute z-10 bg-white rounded-lg border shadow-xl right-0 top-10 mt-3 w-screen max-w-sm grid grid-cols-1 divide-y divide-gray-200",
             className
           )}>
           {({ close }) => (
