@@ -13,7 +13,7 @@ describe("Branches screen", () => {
 
     cy.mount(<App />);
 
-    // Intercept and wait confug query
+    // Intercept and wait config query
     cy.intercept("GET", "/config", []).as("getConfig");
 
     cy.wait("@getConfig");
