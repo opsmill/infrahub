@@ -1,32 +1,32 @@
 ---
-label: Render config with Jinja2 templates
+label: Rendering configuration
 # icon: file-directory
 tags: [tutorial]
 order: 400
 ---
 
-Infrahub is natively able to render any Jinja templates dynamically, internal it's referred as `RFile` for `Rendered File`.
-Other systems are able to render Jinja templates but what makes Infrahub unique is the deep integration wit the `Unified Version Controled Sytems` and the Jinja Rendering engine that make it possible to prepare, and render, a change in a branch, including changes on the data AND on the template without impacting the rendering on the main branch.
+Infrahub can natively render any Jinja templates dynamically, internally it's referred to as `RFile` for `Rendered File`.
+There are many systems that can render Jinja Templates. What sets Infrahub apart is the deep integration with the `Unified Version Control System` and the Jinja Rendering engine. It allows users to prepare, and render, a change in a branch, including changes on the data AND on the template without affecting the rendering on the main branch. 
 
 !!!
-The `infrahub-demo-edge` repository that we integrated in the previous step, includes 1 RFile that can generate a full configuration for each device.
+The `infrahub-demo-edge` repository that we integrated in the previous step includes one RFile that can generate a full configuration for each device.
 !!!
 
 ## RFile
 
-A `RFile` is an internal concept that represent a Jinja Template coupled with a `GraphQL Query`. Combined together they are able to render any file in text format.
+An `RFile` is an internal concept that represents a Jinja Template coupled with a `GraphQL Query`. Combined, they can render any file in text format.
 
 ## Generate the configuration of a device
 
-The rendered configuration is available via the REST API under `/rfile/<rfile_name>` follow by any additional parameters expected in the GraphQL query.
+The rendered configuration is available via the REST API under `/rfile/<rfile_name>` followed by any additional parameters expected in the GraphQL query.
 
-The `rfile` **device_startup** present in the repository, expect the name of the device as a parameter `/rfile/<rfile_name>?device=<device_name>`, as an example, below are the URL for couple of devices:
+The `rfile` **device_startup** present in the repository, expect the name of the device as a parameter `/rfile/<rfile_name>?device=<device_name>`, as an example, below is the URL for couple of devices:
 
-- [Config for `ord1-edge1`](http://localhost:8000/rfile/device_startup?device=ord1-edge1)
-- [Config for `atl1-edge2`](http://localhost:8000/rfile/device_startup?device=atl1-edge2)
+- [Config for `ord1-edge1` (/rfile/device_startup?device=ord1-edge1)](http://localhost:8000/rfile/device_startup?device=ord1-edge1)
+- [Config for `atl1-edge2` (/rfile/device_startup?device=atl1-edge2)](http://localhost:8000/rfile/device_startup?device=atl1-edge2)
 
-## Create a new branch and modify the data AND the template
-
+In these examples `device_startup` is the name of an rfile defined in the `infrahub-demo-edge` repository. The query string `?device=atl1-edge2` includes all the arguments that are required by the GraphQL query associated with this rfile.
+## Create a new branch and change the data AND the template
 Next, we'll create a new branch, and make modifications both in the data and in the template to explore the integration between the Jinja Template Renderer and the storage engine.
 
 #### 1. Create a new branch `update-ethernet1`
