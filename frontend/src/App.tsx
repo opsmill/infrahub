@@ -67,8 +67,16 @@ function App() {
    * Set config in state atom
    */
   const setConfigInState = useCallback(async () => {
-    const config: Config = await fetchConfig();
-    setConfig(config);
+    try {
+      const config: Config = await fetchConfig();
+
+      setConfig(config);
+    } catch (error) {
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />
+      );
+      console.error("Error while fetching the config: ", error);
+    }
   }, [setConfig]);
 
   useEffect(() => {
@@ -93,6 +101,7 @@ function App() {
         />
       );
       console.error("Error while fetching branches: ", err);
+
       return [];
     }
   };
@@ -140,28 +149,36 @@ function App() {
    * Set schema in state atom
    */
   const setSchemaInState = useCallback(async () => {
-    const { schema, generics }: { schema: iNodeSchema[]; generics: iGenericSchema[] } =
-      await fetchSchema();
-    schema.forEach((s) => {
-      s.attributes = sortByOrderWeight(s.attributes || []);
-      s.relationships = sortByOrderWeight(s.relationships || []);
-    });
-    setSchema(schema);
-    setGenerics(generics);
+    try {
+      const { schema, generics }: { schema: iNodeSchema[]; generics: iGenericSchema[] } =
+        await fetchSchema();
+      schema.forEach((s) => {
+        s.attributes = sortByOrderWeight(s.attributes || []);
+        s.relationships = sortByOrderWeight(s.relationships || []);
+      });
+      setSchema(schema);
+      setGenerics(generics);
 
-    const schemaNames = R.map(R.prop("name"), schema);
-    const schemaKinds = R.map(R.prop("kind"), schema);
-    const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
-    const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
-    setSchemaKindNameState(schemaKindNameMap);
+      const schemaNames = R.map(R.prop("name"), schema);
+      const schemaKinds = R.map(R.prop("kind"), schema);
+      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
+      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+      setSchemaKindNameState(schemaKindNameMap);
 
-    const genericSchemaMapping: iGenericSchemaMapping = {};
-    schema.forEach((schemaNode: any) => {
-      if (schemaNode.used_by?.length) {
-        genericSchemaMapping[schemaNode.name] = schemaNode.used_by;
-      }
-    });
-    setGenericSchema(genericSchemaMapping);
+      const genericSchemaMapping: iGenericSchemaMapping = {};
+      schema.forEach((schemaNode: any) => {
+        if (schemaNode.used_by?.length) {
+          genericSchemaMapping[schemaNode.name] = schemaNode.used_by;
+        }
+      });
+      setGenericSchema(genericSchemaMapping);
+    } catch (error) {
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema"} />
+      );
+
+      console.error("Error while fetching the schema: ", error);
+    }
   }, [fetchSchema, setGenericSchema, setSchema, setSchemaKindNameState, setGenerics]);
 
   useEffect(() => {
