@@ -13,6 +13,7 @@ describe("Config fetch", () => {
     cy.viewport(1920, 1080);
 
     cy.intercept("GET", "/config", this.config).as("getConfig");
+
     cy.intercept("GET", "/schema", this.schema).as("getSchema");
 
     cy.mount(<App />);
@@ -22,8 +23,11 @@ describe("Config fetch", () => {
     });
 
     cy.wait("@getSchema").then(({ response }) => {
-      const schemaArray = response?.body;
+      const schemaArray = response?.body?.nodes;
+
       expect(schemaArray).to.have.lengthOf(1);
     });
+
+    cy.get("#headlessui-disclosure-panel-:r3: > a > .group").should("have.text", "Device");
   });
 });
