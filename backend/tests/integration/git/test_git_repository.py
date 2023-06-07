@@ -67,7 +67,7 @@ class TestInfrahubClient:
         # 2. Add a query that doesn't exist in GIt and validate that it's been deleted
         value_before_change = queries[0].query.value
         queries[0].query.value = "query myquery { location { edges { id }}}"
-        queries[0].save()
+        await queries[0].save()
 
         obj = await Node.init(schema="GraphQLQuery", session=session)
         await obj.new(
