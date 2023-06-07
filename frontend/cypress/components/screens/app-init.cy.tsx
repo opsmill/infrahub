@@ -28,6 +28,6 @@ describe("Config fetch", () => {
       expect(schemaArray).to.have.lengthOf(1);
     });
 
-    cy.get("#headlessui-disclosure-panel-:r3: > a > .group").should("have.text", "Device");
+    cy.get("#headlessui-disclosure-panel-\\:r3\\: > a > .group").should("have.text", "Device");
   });
 });
