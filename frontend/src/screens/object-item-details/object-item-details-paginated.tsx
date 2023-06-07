@@ -70,14 +70,12 @@ export default function ObjectItemDetails() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
   const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
-  console.log("data: ", data);
 
   const navigate = useNavigate();
 
