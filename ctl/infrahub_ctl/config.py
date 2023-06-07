@@ -6,12 +6,17 @@ import toml
 import typer
 from pydantic import BaseSettings, ValidationError, root_validator
 
+DEFAULT_CONFIG_FILE = "infrahubctl.toml"
+ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
+INFRAHUB_REPO_CONFIG_FILE = ".infrahub.yml"
+
 
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     server_address: str = "http://localhost:8000"
     api_key: Optional[str] = None
+    default_branch: str = "main"
 
     class Config:
         """Additional parameters to automatically map environment variable to some settings."""
@@ -19,6 +24,7 @@ class Settings(BaseSettings):
         fields = {
             "server_address": {"env": "INFRAHUB_ADDRESS"},
             "api_key": {"env": "INFRAHUB_API_KEY"},
+            "default_branch": {"env": "INFRAHUB_DEFAULT_BRANCH"},
         }
 
     @root_validator

@@ -3,11 +3,32 @@ import os
 from pathlib import Path
 from typing import List, Optional, Union
 
-import httpx
 import pendulum
+import yaml
+from git import Repo
 from pendulum.datetime import DateTime
 
-from infrahub_ctl.exceptions import QueryNotFoundError
+from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
+
+
+def load_repository_config_file(repo_config_file: Path) -> dict:
+    if not repo_config_file.is_file():
+        raise FileNotFoundError(repo_config_file)
+
+    try:
+        yaml_data = repo_config_file.read_text()
+        data = yaml.safe_load(yaml_data)
+    except yaml.YAMLError as exc:
+        raise FileNotValidError(name=str(repo_config_file)) from exc
+
+    return data
+
+
+def parse_cli_vars(variables: Optional[List[str]]) -> dict:
+    if not variables:
+        return {}
+
+    return {var.split("=")[0]: var.split("=")[1] for var in variables if "=" in var}
 
 
 def calculate_time_diff(value: str) -> Optional[str]:
@@ -22,30 +43,6 @@ def calculate_time_diff(value: str) -> Optional[str]:
 
     pendulum.set_locale("en")
     return time_value.diff_for_humans(other=pendulum.now(), absolute=True)
-
-
-def execute_query(
-    query: str,
-    server: str = "http://localhost",
-    variables: Optional[dict] = None,
-    branch: str = "main",
-    rebase: bool = False,
-    at: Optional[str] = None,
-    timeout: int = 10,
-    params: Optional[dict] = None,
-) -> dict:
-    """Execute a GraphQL Query via the GraphQL API endpoint."""
-    payload = {"query": query, "variables": variables}
-    params = params if params else {}
-
-    if at and "at" not in params:
-        params["at"] = at
-    if "rebase" not in params:
-        params["rebase"] = str(rebase)
-
-    response = httpx.post(f"{server}/graphql/{branch}", json=payload, timeout=timeout, params=params)
-    response.raise_for_status()
-    return response.json()
 
 
 def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> str:
@@ -87,6 +84,15 @@ def render_action_rich(value: str) -> str:
         return f"[red]{value.upper()}[/red]"
 
     return value.upper()
+
+
+def get_branch(branch: Optional[str] = None, directory: Union[str, Path] = ".") -> str:
+    """If branch isn't provide, return the name of the local Git branch."""
+    if branch:
+        return branch
+
+    repo = Repo(directory)
+    return str(repo.active_branch)
 
 
 def get_fixtures_dir() -> Path:
