@@ -12,7 +12,7 @@ import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
-import getMutationDetailsFromFormData from "../../utils/mutationDetailsFromFormData";
+import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";

@@ -298,12 +298,8 @@ export default function ObjectItemDetails() {
         open={showEditDrawer}
         setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
-          closeDrawer={() => {
-            setShowEditDrawer(false);
-          }}
-          onUpdateComplete={() => {
-            refetch();
-          }}
+          closeDrawer={() => setShowEditDrawer(false)}
+          onUpdateComplete={() => refetch()}
           objectid={objectid!}
           objectname={objectname!}
         />
@@ -326,7 +322,7 @@ export default function ObjectItemDetails() {
         setOpen={setShowMetaEditModal}>
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => setShowMetaEditModal(false)}
+          onUpdateComplete={() => refetch()}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }

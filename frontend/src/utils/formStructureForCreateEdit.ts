@@ -128,11 +128,11 @@ export default getFormStructureForCreateEdit;
 export const getFormStructureForMetaEdit = (
   row: any,
   type: "attribute" | "relationship",
-  attributeOrRelationshipName: any,
   schemaList: iNodeSchema[]
 ): DynamicFieldData[] => {
   const sourceOwnerFields =
     type === "attribute" ? ["owner", "source"] : ["_relation__owner", "_relation__source"];
+
   const booleanFields =
     type === "attribute"
       ? ["is_visible", "is_protected"]
@@ -191,6 +191,74 @@ export const getFormStructureForMetaEdit = (
         .filter((r) => !!r)
         .join(" "),
       value: row?.[f],
+      options: {
+        values: [],
+      },
+      config: {},
+    };
+  });
+
+  return [...sourceOwnerFormFields, ...booleanFormFields];
+};
+
+export const getFormStructureForMetaEditPaginated = (
+  row: any,
+  type: "attribute" | "relationship",
+  schemaList: iNodeSchema[]
+): DynamicFieldData[] => {
+  console.log("row: ", row);
+
+  const sourceOwnerFields = ["owner", "source"];
+
+  const booleanFields = ["is_visible", "is_protected"];
+
+  const relatedObjects: { [key: string]: string } = {
+    source: "DataSource",
+    owner: "DataOwner",
+    _relation__source: "DataSource",
+    _relation__owner: "DataOwner",
+  };
+
+  const sourceOwnerFormFields: DynamicFieldData[] = sourceOwnerFields.map((field) => {
+    const schemaOptions: SelectOption[] = [
+      ...schemaList
+        .filter((schema) => {
+          if ((schema.inherit_from || []).indexOf(relatedObjects[field]) > -1) {
+            return true;
+          } else {
+            return false;
+          }
+        })
+        .map((schema) => ({
+          name: schema.kind,
+          id: schema.name,
+        })),
+    ];
+
+    return {
+      name: field,
+      kind: "Text",
+      isAttribute: false,
+      isRelationship: false,
+      type: "select2step",
+      label: field.split("_").filter(Boolean).join(" "),
+      value: row?.properties?.[field],
+      options: {
+        values: schemaOptions,
+      },
+      config: {},
+    };
+  });
+
+  const booleanFormFields: DynamicFieldData[] = booleanFields.map((field) => {
+    return {
+      name: field,
+      kind: "Checkbox",
+      isAttribute: false,
+      isRelationship: false,
+      type: "checkbox",
+      label: field.split("_").filter(Boolean).join(" "),
+      value: row?.properties?.[field],
       options: {
         values: [],
       },
