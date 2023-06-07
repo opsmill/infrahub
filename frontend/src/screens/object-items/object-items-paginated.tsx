@@ -38,8 +38,6 @@ export default function ObjectItems() {
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  console.log("filters: ", filters);
-
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
   const filtersString = [
