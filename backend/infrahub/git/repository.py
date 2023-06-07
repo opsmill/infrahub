@@ -99,7 +99,29 @@ class RFileInformation(BaseModel):
 
 
 class CheckInformation(BaseModel):
-    pass
+    name: str
+    """Name of the check"""
+
+    repository: str = "self"
+    """ID of the associated repository or self"""
+
+    query: str
+    """ID or name of the GraphQL Query associated with this Check"""
+
+    file_path: str
+    """Path to the python file within the repo"""
+
+    class_name: str
+    """Name of the Python Class"""
+
+    check_class: Any
+    """Python Class of the Check"""
+
+    rebase: bool
+    """Flag to indicate if the query need to be rebased."""
+
+    timeout: int
+    """Timeout for the Check."""
 
 
 class TransformInformation(BaseModel):
@@ -1096,64 +1118,70 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
-        checks_in_repo = {
+        checks_in_graph = {
             check.name.value: check
             for check in await self.client.filters(kind="Check", branch=branch_name, repository__id=str(self.id))
         }
 
+        local_checks = {}
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
+            graphql_query = await self.client.get(
+                kind="GraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
+            )
             try:
-                check_name = check_class.__name__
-
-                graphql_query = await self.client.get(
-                    kind="GraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
-                )
-
-                if check_name not in checks_in_repo.keys():
-                    LOGGER.info(
-                        f"{self.name} | New Check '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
-                    )
-                    await self.create_python_check(
-                        branch_name=branch_name,
-                        check_class=check_class,
-                        file_path=file_path,
-                        query=graphql_query,
-                    )
-
-                elif not await self.compare_python_check(
+                item = CheckInformation(
+                    name=check_class.__name__,
+                    repository=str(self.id),
+                    class_name=check_class.__name__,
                     check_class=check_class,
                     file_path=file_path,
-                    query=graphql_query,
-                    existing_check=checks_in_repo[check_name],
-                ):
-                    LOGGER.info(
-                        f"{self.name} | New version of Check '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
-                    )
-                    await self.update_python_check(
-                        check_class=check_class,
-                        file_path=file_path,
-                        query=graphql_query,
-                        existing_check=checks_in_repo[check_name],
-                    )
-
+                    query=str(graphql_query.id),
+                    timeout=check_class.timeout,
+                    rebase=check_class.rebase,
+                )
+                local_checks[item.name] = item
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 LOGGER.error(
                     f"{self.name} | An error occured while processing the Check {check_class.__name__} from {file_path} : {exc} "
                 )
                 continue
 
-    async def create_python_check(
-        self, branch_name: str, check_class: InfrahubCheck, file_path: str, query: InfrahubNode
-    ) -> InfrahubNode:
-        check_name = check_class.__name__
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(checks_in_graph.keys()), list2=list(local_checks.keys())
+        )
+
+        for check_name in only_local:
+            LOGGER.info(
+                f"{self.name} | New Check '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
+            )
+            await self.create_python_check(branch_name=branch_name, check=local_checks[check_name])
+
+        for check_name in present_in_both:
+            if not await self.compare_python_check(
+                check=local_checks[check_name],
+                existing_check=checks_in_graph[check_name],
+            ):
+                LOGGER.info(
+                    f"{self.name} | New version of Check '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
+                )
+                await self.update_python_check(
+                    check=local_checks[check_name],
+                    existing_check=checks_in_graph[check_name],
+                )
+
+        for check_name in only_graph:
+            LOGGER.info(f"{self.name} | Check '{check_name}' not found locally in branch {branch_name}, deleting")
+            await checks_in_graph[check_name].delete()
+
+    async def create_python_check(self, branch_name: str, check: CheckInformation) -> InfrahubNode:
         data = {
-            "name": check_name,
-            "repository": self.id,
-            "query": query.id,
-            "file_path": file_path,
-            "class_name": check_name,
-            "rebase": check_class.rebase,
-            "timeout": check_class.timeout,
+            "name": check.name,
+            "repository": check.repository,
+            "query": check.query,
+            "file_path": check.file_path,
+            "class_name": check.class_name,
+            "rebase": check.rebase,
+            "timeout": check.timeout,
         }
 
         schema = await self.client.schema.get(kind="Check", branch=branch_name)
@@ -1171,42 +1199,34 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     async def update_python_check(
         self,
-        check_class: InfrahubCheck,
-        file_path: str,
-        query: InfrahubNode,
+        check: CheckInformation,
         existing_check: InfrahubNode,
     ) -> None:
-        if existing_check.query.id != query.id:
-            existing_check.query = {"id": query.id, "source": str(self.id), "is_protected": True}
+        if existing_check.query.id != check.query:
+            existing_check.query = {"id": check.query, "source": str(self.id), "is_protected": True}
 
-        if existing_check.file_path.value != file_path:
-            existing_check.file_path.value = file_path
+        if existing_check.file_path.value != check.file_path:
+            existing_check.file_path.value = check.file_path
 
-        if existing_check.rebase.value != check_class.rebase:
-            existing_check.rebase.value = check_class.rebase
+        if existing_check.rebase.value != check.rebase:
+            existing_check.rebase.value = check.rebase
 
-        if existing_check.rebase.value != check_class.rebase:
-            existing_check.rebase.value = check_class.rebase
-
-        if existing_check.timeout.value != check_class.timeout:
-            existing_check.timeout.value = check_class.timeout
+        if existing_check.timeout.value != check.timeout:
+            existing_check.timeout.value = check.timeout
 
         await existing_check.save()
 
     @classmethod
-    async def compare_python_check(
-        cls, check_class: InfrahubCheck, file_path: str, query: InfrahubNode, existing_check: InfrahubNode
-    ) -> bool:
+    async def compare_python_check(cls, check: CheckInformation, existing_check: InfrahubNode) -> bool:
         """Compare an existing Python Check Object with a Check Class
         and identify if we need to update the object in the database."""
-        check_name = check_class.__name__
 
         if (
-            existing_check.query.id != query.id
-            or existing_check.file_path.value != file_path
-            or existing_check.timeout.value != check_class.timeout
-            or existing_check.rebase.value != check_class.rebase
-            or existing_check.class_name.value != check_name
+            existing_check.query.id != check.query
+            or existing_check.file_path.value != check.file_path
+            or existing_check.timeout.value != check.timeout
+            or existing_check.rebase.value != check.rebase
+            or existing_check.class_name.value != check.class_name
         ):
             return False
         return True
