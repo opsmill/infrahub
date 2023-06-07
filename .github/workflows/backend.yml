@@ -57,8 +57,8 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
-      - name: "Integration Tests : User Workflows"
-        run: "poetry run pytest --cov=infrahub backend/tests/integration/user_workflows/"
+      - name: "Integration Tests"
+        run: "poetry run pytest --cov=infrahub backend/tests/integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:

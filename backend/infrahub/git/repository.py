@@ -5,8 +5,9 @@ import importlib
 import os
 import shutil
 import sys
+import types
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 import git
@@ -14,7 +15,9 @@ import jinja2
 import yaml
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
+from pydantic import ValidationError as PydanticValidationError
+from pydantic import validator
 
 import infrahub.config as config
 from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
@@ -28,7 +31,8 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import GraphQLError, InfrahubClient, ValidationError
+from infrahub.utils import compare_lists
+from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
 
 # pylint: disable=too-few-public-methods,too-many-lines
 
@@ -64,6 +68,89 @@ def initialize_repositories_directory() -> bool:
 
     LOGGER.debug(f"Repositories_directory already present at {repos_dir}")
     return False
+
+
+class GraphQLQueryInformation(BaseModel):
+    name: str
+    """Name of the query"""
+
+    filename: str
+    """Name of the file. Example: myquery.gql"""
+
+    query: str
+    """Query in string format"""
+
+
+class RFileInformation(BaseModel):
+    name: str
+    """Name of the RFile"""
+
+    description: Optional[str]
+    """Description of the RFile"""
+
+    query: str
+    """ID or name of the GraphQL Query associated with this RFile"""
+
+    template_repository: str = "self"
+    """ID of the associated repository or self"""
+
+    template_path: str
+    """Path to the template file within the repo"""
+
+
+class CheckInformation(BaseModel):
+    name: str
+    """Name of the check"""
+
+    repository: str = "self"
+    """ID of the associated repository or self"""
+
+    query: str
+    """ID or name of the GraphQL Query associated with this Check"""
+
+    file_path: str
+    """Path to the python file within the repo"""
+
+    class_name: str
+    """Name of the Python Class"""
+
+    check_class: Any
+    """Python Class of the Check"""
+
+    rebase: bool
+    """Flag to indicate if the query need to be rebased."""
+
+    timeout: int
+    """Timeout for the Check."""
+
+
+class TransformPythonInformation(BaseModel):
+    name: str
+    """Name of the Transform"""
+
+    repository: str
+    """ID or name of the repository this Transform is assocated with"""
+
+    file_path: str
+    """file_path of the TransformFunction within the repository"""
+
+    query: str
+    """ID or name of the GraphQLQuery this Transform is assocated with"""
+
+    url: str
+    """External URL for the Transform function"""
+
+    class_name: str
+    """Name of the Python Class of the Transform Function"""
+
+    transform_class: Any
+    """Python Class of the Transform"""
+
+    rebase: bool
+    """Flag to indicate if the query need to be rebased."""
+
+    timeout: int
+    """Timeout for the function."""
 
 
 class RepoFileInformation(BaseModel):
@@ -726,7 +813,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             self.create_commit_worktree(commit=commit)
             await self.update_commit_value(branch_name=branch_name, commit=commit)
 
-            await self.import_objects_from_files(branch_name=branch_name)
+            await self.import_objects_from_files(branch_name=branch_name, commit=commit)
 
         for branch_name in updated_branches:
             is_valid = await self.validate_remote_branch(branch_name=branch_name)
@@ -734,7 +821,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             commit_after = await self.pull(branch_name=branch_name)
-            await self.import_objects_from_files(branch_name=branch_name)
+            await self.import_objects_from_files(branch_name=branch_name, commit=commit_after)
 
             if commit_after is True:
                 LOGGER.warning(
@@ -863,225 +950,409 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return response
 
-    async def import_objects_from_files(self, branch_name: str):
+    async def import_objects_from_files(self, branch_name: str, commit: Optional[str] = None):
         if not self.client:
             LOGGER.warning("Unable to import the objects from the files because a valid client hasn't been provided.")
             return
 
-        await self.import_all_graphql_query(branch_name=branch_name)
-        await self.import_all_yaml_files(branch_name=branch_name)
-        await self.import_all_python_files(branch_name=branch_name)
+        if not commit:
+            commit = self.get_commit_value(branch_name=branch_name)
 
-    async def import_objects_rfiles(self, branch_name: str, data: dict):
-        LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ")
+        await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
+        await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
+        await self.import_all_python_files(branch_name=branch_name, commit=commit)
+
+    async def import_objects_rfiles(self, branch_name: str, commit: str, data: dict):
+        LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ({commit}) ")
 
         schema = await self.client.schema.get(kind="RFile", branch=branch_name)
 
-        rfiles_in_repo = await self.client.filters(kind="RFile", template_repository__id=str(self.id))
+        rfiles_in_graph = {
+            rfile.name.value: rfile
+            for rfile in await self.client.filters(
+                kind="RFile", branch=branch_name, template_repository__id=str(self.id)
+            )
+        }
 
+        local_rfiles = {}
+
+        # Process the list of local RFile to organize them by name
         for rfile in data:
-            # Insert the UUID of the repository in case they are referencing the local repo
-
             try:
+                item = RFileInformation(**rfile)
                 self.client.schema.validate_data_against_schema(schema=schema, data=rfile)
+            except PydanticValidationError as exc:
+                for error in exc.errors():
+                    LOGGER.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+                continue
             except ValidationError as exc:
                 LOGGER.error(exc.message)
                 continue
 
-            if rfile.get("template_repository") == "self" or "template_repository" not in rfile:
-                rfile["template_repository"] = self.id
+            # Insert the ID of the current repository if required
+            if item.template_repository == "self":
+                item.template_repository = self.id
 
-            current_names = [rfile.name.value for rfile in rfiles_in_repo]
-            if rfile["name"] not in current_names:
-                LOGGER.info(f"{self.name}: New RFile {rfile['name']!r} found on branch {branch_name!r}, creating")
-
-                create_payload = self.client.schema.generate_payload_create(
-                    schema=schema, data=rfile, source=self.id, is_protected=True
-                )
-                obj = await self.client.create(kind="RFile", branch=branch_name, **create_payload)
-                await obj.save()
-                continue
-
-            rfile_in_repo = [item for item in rfiles_in_repo if item.name.value == rfile["name"]][0]
-
-            description = (
-                rfile.get("description") if rfile.get("description") is not None else rfile_in_repo.description.value
+            # Query the GraphQL query and (eventually) replace the name with the ID
+            graphql_query = await self.client.get(
+                kind="GraphQLQuery", branch=branch_name, id=str(item.query), populate_store=True
             )
-            template_path = (
-                rfile.get("template_path")
-                if rfile.get("template_path") is not None
-                else rfile_in_repo.template_path.value
-            )
+            item.query = graphql_query.id
 
-            if description != rfile_in_repo.description.value or template_path != rfile_in_repo.template_path.value:
+            local_rfiles[item.name] = item
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(rfiles_in_graph.keys()), list2=list(local_rfiles.keys())
+        )
+
+        for rfile_name in only_local:
+            LOGGER.info(f"{self.name}: New RFile {rfile_name!r} found on branch {branch_name!r}, creating")
+            await self.create_rfile(branch_name=branch_name, data=local_rfiles[rfile_name])
+
+        for rfile_name in present_in_both:
+            if not await self.compare_rfile(
+                existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
+            ):
                 LOGGER.info(
-                    f"{self.name}: New version of the RFile '{rfile['name']}' found on branch {branch_name}, updating"
+                    f"{self.name} | New version of the RFile '{rfile_name}' found on branch {branch_name}, updating"
                 )
-                rfile_in_repo.name.value = rfile["name"]
-                rfile_in_repo.description.value = description
-                rfile_in_repo.template_path.value = template_path
-                await rfile_in_repo.save()
+                await self.update_rfile(
+                    existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
+                )
 
-    async def import_all_graphql_query(self, branch_name: str) -> None:
+        for rfile_name in only_graph:
+            LOGGER.info(f"{self.name} | RFile '{rfile_name}' not found locally in branch {branch_name}, deleting")
+            await rfiles_in_graph[rfile_name].delete()
+
+    async def create_rfile(self, branch_name: str, data: RFileInformation) -> InfrahubNode:
+        schema = await self.client.schema.get(kind="RFile", branch=branch_name)
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema, data=data.dict(), source=self.id, is_protected=True
+        )
+        obj = await self.client.create(kind="RFile", branch=branch_name, **create_payload)
+        await obj.save()
+        return obj
+
+    @classmethod
+    async def compare_rfile(cls, existing_rfile: InfrahubNode, local_rfile: RFileInformation) -> bool:
+        # pylint: disable=no-member
+        if (
+            existing_rfile.description.value != local_rfile.description
+            or existing_rfile.template_path.value != local_rfile.template_path
+            or existing_rfile.query.id != local_rfile.query
+        ):
+            return False
+
+        return True
+
+    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: RFileInformation) -> None:
+        # pylint: disable=no-member
+        if existing_rfile.description.value != local_rfile.description:
+            existing_rfile.description.value = local_rfile.description
+
+        if existing_rfile.query.id != local_rfile.query:
+            existing_rfile.query = {"id": local_rfile.query, "source": str(self.id), "is_protected": True}
+
+        if existing_rfile.template_path.value != local_rfile.template_path:
+            existing_rfile.template_path.value = local_rfile.template_path
+
+        await existing_rfile.save()
+
+    async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
 
         LOGGER.debug(f"{self.name} | Importing all GraphQL Queries in branch {branch_name}")
 
-        query_files = await self.find_files(extension=["gql"], branch_name=branch_name)
-        if not query_files:
+        local_queries = {query.name: query for query in await self.find_graphql_queries(commit=commit)}
+        if not local_queries:
             return
 
-        schema = await self.client.schema.get(kind="GraphQLQuery", branch=branch_name)
+        queries_in_graph = {
+            query.name.value: query
+            for query in await self.client.filters(kind="GraphQLQuery", branch=branch_name, repository__id=str(self.id))
+        }
 
-        queries_in_graph = await self.client.filters(
-            kind="GraphQLQuery", branch=branch_name, repository__id=str(self.id)
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(queries_in_graph.keys()), list2=list(local_queries.keys())
         )
-        queries = {query.name.value: query for query in queries_in_graph}
 
-        for query_file in query_files:
-            filename = os.path.basename(query_file)
-            query_name = os.path.splitext(filename)[0]
-            query_string = Path(query_file).read_text(encoding="UTF-8")
+        for query_name in only_local:
+            query = local_queries[query_name]
+            LOGGER.info(f"{self.name} | New Graphql Query '{query_name}' found on branch {branch_name}, creating")
+            await self.create_graphql_query(branch_name=branch_name, name=query_name, query_string=query.query)
 
-            if query_name not in queries.keys():
-                LOGGER.info(f"{self.name} | New Graphql Query '{query_name}' found on branch {branch_name}, creating")
-                data = {"name": query_name, "query": query_string, "repository": self.id}
-                create_payload = self.client.schema.generate_payload_create(
-                    schema=schema,
-                    data=data,
-                    source=self.id,
-                    is_protected=True,
-                )
-                obj = await self.client.create(kind="GraphQLQuery", branch=branch_name, **create_payload)
-                await obj.save()
-
-            elif query_string != queries[query_name].query:
-                query = queries[query_name]
+        for query_name in present_in_both:
+            local_query = local_queries[query_name]
+            graph_query = queries_in_graph[query_name]
+            if local_query.query != graph_query.query.value:
                 LOGGER.info(
                     f"{self.name} | New version of the Graphql Query '{query_name}' found on branch {branch_name}, updating"
                 )
-                query.query.value = query_string
-                await query.save()
+                graph_query.query.value = local_query.query
+                await graph_query.save()
 
-        # TODO need to identify Query that are not present anymore (once lineage is available)
+        for query_name in only_graph:
+            graph_query = queries_in_graph[query_name]
+            LOGGER.info(
+                f"{self.name} | Graphql Query '{query_name}' not found locally in branch {branch_name}, deleting"
+            )
+            await graph_query.delete()
 
-    async def import_python_checks_from_module(self, branch_name: str, module, file_path: str):
-        # TODO add function to validate if a check is valid
+    async def create_graphql_query(self, branch_name: str, name: str, query_string: str) -> InfrahubNode:
+        data = {"name": name, "query": query_string, "repository": self.id}
 
+        schema = await self.client.schema.get(kind="GraphQLQuery", branch=branch_name)
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema,
+            data=data,
+            source=self.id,
+            is_protected=True,
+        )
+        obj = await self.client.create(kind="GraphQLQuery", branch=branch_name, **create_payload)
+        await obj.save()
+        return obj
+
+    async def import_python_checks_from_module(
+        self, branch_name: str, commit: str, module: types.ModuleType, file_path: str
+    ) -> None:
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
-        schema = await self.client.schema.get(kind="Check", branch=branch_name)
+        checks_in_graph = {
+            check.name.value: check
+            for check in await self.client.filters(kind="Check", branch=branch_name, repository__id=str(self.id))
+        }
 
-        checks_in_graph = await self.client.filters(kind="Check", branch=branch_name, repository__id=str(self.id))
-
-        checks_in_repo = {check.name.value: check for check in checks_in_graph}
-
+        local_checks = {}
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
-            check_name = check_class.__name__
-
-            if check_name not in checks_in_repo.keys():
-                LOGGER.info(f"{self.name}: New Check '{check_name}' found on branch {branch_name}, creating")
-                data = {
-                    "name": check_name,
-                    "repository": self.id,
-                    "query": check_class.query,
-                    "file_path": file_path,
-                    "class_name": check_name,
-                    "rebase": check_class.rebase,
-                    "timeout": check_class.timeout,
-                }
-                create_payload = self.client.schema.generate_payload_create(
-                    schema=schema,
-                    data=data,
-                    source=self.id,
-                    is_protected=True,
+            graphql_query = await self.client.get(
+                kind="GraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
+            )
+            try:
+                item = CheckInformation(
+                    name=check_class.__name__,
+                    repository=str(self.id),
+                    class_name=check_class.__name__,
+                    check_class=check_class,
+                    file_path=file_path,
+                    query=str(graphql_query.id),
+                    timeout=check_class.timeout,
+                    rebase=check_class.rebase,
                 )
-                obj = await self.client.create(kind="Check", branch=branch_name, **create_payload)
-                await obj.save()
-
+                local_checks[item.name] = item
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                LOGGER.error(
+                    f"{self.name} | An error occured while processing the Check {check_class.__name__} from {file_path} : {exc} "
+                )
                 continue
 
-            check_in_repo = checks_in_repo[check_name]
-            if (
-                check_in_repo.query != check_class.query
-                or check_in_repo.file_path.value != file_path
-                or check_in_repo.timeout.value != check_class.timeout
-                or check_in_repo.rebase.value != check_class.rebase
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(checks_in_graph.keys()), list2=list(local_checks.keys())
+        )
+
+        for check_name in only_local:
+            LOGGER.info(
+                f"{self.name} | New Check '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
+            )
+            await self.create_python_check(branch_name=branch_name, check=local_checks[check_name])
+
+        for check_name in present_in_both:
+            if not await self.compare_python_check(
+                check=local_checks[check_name],
+                existing_check=checks_in_graph[check_name],
             ):
                 LOGGER.info(
-                    f"{self.name}: New version of the Check '{check_name}' found on branch {branch_name}, updating"
+                    f"{self.name} | New version of Check '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
+                )
+                await self.update_python_check(
+                    check=local_checks[check_name],
+                    existing_check=checks_in_graph[check_name],
                 )
 
-                check_in_repo.query = check_class.query
-                check_in_repo.file_path.value = file_path
-                check_in_repo.timeout.value = check_class.timeout
-                check_in_repo.rebase.value = check_class.rebase
-                await check_in_repo.save()
+        for check_name in only_graph:
+            LOGGER.info(f"{self.name} | Check '{check_name}' not found locally in branch {branch_name}, deleting")
+            await checks_in_graph[check_name].delete()
 
-    async def import_python_transforms_from_module(self, branch_name: str, module, file_path: str):
+    async def create_python_check(self, branch_name: str, check: CheckInformation) -> InfrahubNode:
+        data = {
+            "name": check.name,
+            "repository": check.repository,
+            "query": check.query,
+            "file_path": check.file_path,
+            "class_name": check.class_name,
+            "rebase": check.rebase,
+            "timeout": check.timeout,
+        }
+
+        schema = await self.client.schema.get(kind="Check", branch=branch_name)
+
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema,
+            data=data,
+            source=self.id,
+            is_protected=True,
+        )
+        obj = await self.client.create(kind="Check", branch=branch_name, **create_payload)
+        await obj.save()
+
+        return obj
+
+    async def update_python_check(
+        self,
+        check: CheckInformation,
+        existing_check: InfrahubNode,
+    ) -> None:
+        if existing_check.query.id != check.query:
+            existing_check.query = {"id": check.query, "source": str(self.id), "is_protected": True}
+
+        if existing_check.file_path.value != check.file_path:
+            existing_check.file_path.value = check.file_path
+
+        if existing_check.rebase.value != check.rebase:
+            existing_check.rebase.value = check.rebase
+
+        if existing_check.timeout.value != check.timeout:
+            existing_check.timeout.value = check.timeout
+
+        await existing_check.save()
+
+    @classmethod
+    async def compare_python_check(cls, check: CheckInformation, existing_check: InfrahubNode) -> bool:
+        """Compare an existing Python Check Object with a Check Class
+        and identify if we need to update the object in the database."""
+
+        if (
+            existing_check.query.id != check.query
+            or existing_check.file_path.value != check.file_path
+            or existing_check.timeout.value != check.timeout
+            or existing_check.rebase.value != check.rebase
+            or existing_check.class_name.value != check.class_name
+        ):
+            return False
+        return True
+
+    async def import_python_transforms_from_module(self, branch_name: str, commit: str, module, file_path: str):
         # TODO add function to validate if a check is valid
 
         if INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
-        schema = await self.client.schema.get(kind="TransformPython", branch=branch_name)
+        transforms_in_graph = {
+            transform.name.value: transform
+            for transform in await self.client.filters(
+                kind="TransformPython", branch=branch_name, repository__id=str(self.id)
+            )
+        }
 
-        transforms_in_graph = await self.client.filters(
-            kind="TransformPython", branch=branch_name, repository__id=str(self.id)
-        )
-
-        transforms_in_repo = {transform.name.value: transform for transform in transforms_in_graph}
+        local_transforms = {}
 
         for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
             transform = transform_class()
-            transform_class_name = transform_class.__name__
 
-            if transform.name not in transforms_in_repo.keys():
-                LOGGER.info(
-                    f"{self.name}: New Python Transform '{transform.name}' found on branch {branch_name}, creating"
-                )
-                data = {
-                    "name": transform.name,
-                    "repository": self.id,
-                    "query": transform.query,
-                    "file_path": file_path,
-                    "url": transform.url,
-                    "class_name": transform_class_name,
-                    "rebase": transform.rebase,
-                    "timeout": transform.timeout,
-                }
-                create_payload = self.client.schema.generate_payload_create(
-                    schema=schema,
-                    data=data,
-                    source=self.id,
-                    is_protected=True,
-                )
-                obj = await self.client.create(kind="TransformPython", branch=branch_name, **create_payload)
-                await obj.save()
-                continue
+            # Query the GraphQL query and (eventually) replace the name with the ID
+            graphql_query = await self.client.get(
+                kind="GraphQLQuery", branch=branch_name, id=str(transform.query), populate_store=True
+            )
 
-            transform_in_repo = transforms_in_repo[transform.name]
-            # pylint: disable=too-many-boolean-expressions
-            if (
-                transform_in_repo.query != transform.query
-                or transform_in_repo.file_path.value != file_path
-                or transform_in_repo.timeout.value != transform.timeout
-                or transform_in_repo.url.value != transform.url
-                or transform_in_repo.rebase.value != transform.rebase
+            item = TransformPythonInformation(
+                name=transform.name,
+                repository=str(self.id),
+                query=str(graphql_query.id),
+                file_path=file_path,
+                url=transform.url,
+                transform_class=transform,
+                class_name=transform_class.__name__,
+                rebase=transform.rebase,
+                timeout=transform.timeout,
+            )
+            local_transforms[item.name] = item
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
+        )
+
+        for transform_name in only_local:
+            LOGGER.info(
+                f"{self.name} | New Python Transform '{transform_name}' found on branch {branch_name} ({commit[:8]}), creating"
+            )
+            await self.create_python_transform(branch_name=branch_name, transform=local_transforms[transform_name])
+
+        for transform_name in present_in_both:
+            if not await self.compare_python_transform(
+                existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
             ):
                 LOGGER.info(
-                    f"{self.name}: New version of the Python Transform '{transform.name}' found on branch {branch_name}, updating"
+                    f"{self.name} | New version of the Python Transform '{transform_name}' found on branch {branch_name} ({commit[:8]}), updating"
                 )
-                transform_in_repo.query = transform.query
-                transform_in_repo.file_path.value = file_path
-                transform_in_repo.url.value = transform.url
-                transform_in_repo.rebase.value = transform.rebase
-                transform_in_repo.timeout.value = transform.timeout
-                await transform_in_repo.save()
+                await self.update_python_transform(
+                    existing_transform=transforms_in_graph[transform_name],
+                    local_transform=local_transforms[transform_name],
+                )
 
-    async def import_all_yaml_files(self, branch_name: str):
-        yaml_files = await self.find_files(extension=["yml", "yaml"], branch_name=branch_name)
+        for transform_name in only_graph:
+            LOGGER.info(
+                f"{self.name} | Python Transform '{transform_name}' not found locally in branch {branch_name} ({commit[:8]}), deleting"
+            )
+            await transforms_in_graph[transform_name].delete()
+
+    async def create_python_transform(self, branch_name: str, transform: TransformPythonInformation) -> InfrahubNode:
+        schema = await self.client.schema.get(kind="TransformPython", branch=branch_name)
+        data = {
+            "name": transform.name,
+            "repository": transform.repository,
+            "query": transform.query,
+            "file_path": transform.file_path,
+            "url": transform.url,
+            "class_name": transform.class_name,
+            "rebase": transform.rebase,
+            "timeout": transform.timeout,
+        }
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema,
+            data=data,
+            source=self.id,
+            is_protected=True,
+        )
+        obj = await self.client.create(kind="TransformPython", branch=branch_name, **create_payload)
+        await obj.save()
+        return obj
+
+    async def update_python_transform(
+        self, existing_transform: InfrahubNode, local_transform: TransformPythonInformation
+    ) -> bool:
+        if existing_transform.query.id != local_transform.query:
+            existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
+
+        if existing_transform.file_path.value != local_transform.file_path:
+            existing_transform.file_path.value = local_transform.file_path
+
+        if existing_transform.timeout.value != local_transform.timeout:
+            existing_transform.timeout.value = local_transform.timeout
+
+        if existing_transform.url.value != local_transform.url:
+            existing_transform.url.value = local_transform.url
+
+        if existing_transform.rebase.value != local_transform.rebase:
+            existing_transform.rebase.value = local_transform.rebase
+
+        await existing_transform.save()
+
+    @classmethod
+    async def compare_python_transform(
+        cls, existing_transform: InfrahubNode, local_transform: TransformPythonInformation
+    ) -> bool:
+        if (
+            existing_transform.query.id != local_transform.query
+            or existing_transform.file_path.value != local_transform.file_path
+            or existing_transform.timeout.value != local_transform.timeout
+            or existing_transform.url.value != local_transform.url
+            or existing_transform.rebase.value != local_transform.rebase
+        ):
+            return False
+        return True
+
+    async def import_all_yaml_files(self, branch_name: str, commit: str):
+        yaml_files = await self.find_files(extension=["yml", "yaml"], commit=commit)
 
         for yaml_file in yaml_files:
             LOGGER.debug(f"{self.name} | Checking {yaml_file}")
@@ -1110,11 +1381,12 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     continue
 
                 method = getattr(self, f"import_objects_{key}")
-                await method(branch_name=branch_name, data=data)
+                await method(branch_name=branch_name, commit=commit, data=data)
 
-    async def import_all_python_files(self, branch_name: str):
-        branch_wt = self.get_worktree(identifier=branch_name)
-        python_files = await self.find_files(extension=["py"], branch_name=branch_name)
+    async def import_all_python_files(self, branch_name: str, commit: str):
+        commit_wt = self.get_worktree(identifier=commit)
+
+        python_files = await self.find_files(extension=["py"], commit=commit)
 
         # Ensure the path for this repository is present in sys.path
         if self.directory_root not in sys.path:
@@ -1124,7 +1396,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             LOGGER.debug(f"{self.name} | Checking {python_file}")
 
             file_info = extract_repo_file_information(
-                full_filename=python_file, repo_directory=self.directory_root, worktree_directory=branch_wt.directory
+                full_filename=python_file, repo_directory=self.directory_root, worktree_directory=commit_wt.directory
             )
 
             try:
@@ -1134,14 +1406,23 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             await self.import_python_checks_from_module(
-                branch_name=branch_name, module=module, file_path=file_info.relative_path_file
+                branch_name=branch_name, commit=commit, module=module, file_path=file_info.relative_path_file
             )
             await self.import_python_transforms_from_module(
-                branch_name=branch_name, module=module, file_path=file_info.relative_path_file
+                branch_name=branch_name, commit=commit, module=module, file_path=file_info.relative_path_file
             )
 
-    async def find_files(self, extension: Union[str, List[str]], branch_name: str, recursive: bool = True):
-        branch_wt = self.get_worktree(identifier=branch_name)
+    async def find_files(
+        self,
+        extension: Union[str, List[str]],
+        branch_name: Optional[str] = None,
+        commit: Optional[str] = None,
+        recursive: bool = True,
+    ) -> List[str]:
+        """Return the absolute path of all files matching a specific extension in a given Branch or Commit."""
+        if not branch_name and not commit:
+            raise ValueError("Either branch_name or commit must be provided.")
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         files = []
 
@@ -1153,6 +1434,24 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 files.extend(glob.glob(f"{branch_wt.directory}/**/*.{ext}", recursive=recursive))
                 files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{ext}", recursive=recursive))
         return files
+
+    async def find_graphql_queries(self, commit: str) -> List[GraphQLQueryInformation]:
+        """Return the information about all GraphQL Queries present in a specific commit."""
+        queries: List[GraphQLQueryInformation] = []
+        query_files = await self.find_files(extension=["gql"], commit=commit)
+
+        for query_file in query_files:
+            filename = os.path.basename(query_file)
+            name = os.path.splitext(filename)[0]
+
+            queries.append(
+                GraphQLQueryInformation(
+                    name=name,
+                    filename=filename,
+                    query=Path(query_file).read_text(encoding="UTF-8"),
+                )
+            )
+        return queries
 
     async def render_jinja2_template(self, commit: str, location: str, data: dict):
         commit_worktree = self.get_commit_worktree(commit=commit)

@@ -15,12 +15,15 @@ from infrahub.git import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
+    CheckInformation,
+    GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
     Worktree,
     extract_repo_file_information,
 )
 from infrahub.utils import find_first_file_in_directory
+from infrahub_client import InfrahubNode
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
@@ -500,6 +503,9 @@ async def test_execute_python_transform_file_missing(client, git_repo_transforms
 async def test_find_files(git_repo_jinja: InfrahubRepository):
     repo = git_repo_jinja
 
+    with pytest.raises(ValueError):
+        await repo.find_files(extension="yml")
+
     yaml_files = await repo.find_files(extension="yml", branch_name="main")
     assert len(yaml_files) == 2
 
@@ -508,6 +514,31 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
     assert len(yaml_files) == 4
+
+
+async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository):
+    repo = git_repo_jinja
+
+    commit = repo.get_commit_value(branch_name="main")
+
+    yaml_files = await repo.find_files(extension="yml", commit=commit)
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension=["yml"], branch_name=commit)
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name=commit)
+    assert len(yaml_files) == 4
+
+
+async def test_find_graphql_queries(git_repo_10: InfrahubRepository):
+    repo = git_repo_10
+
+    commit = repo.get_commit_value(branch_name="main")
+
+    queries = await repo.find_graphql_queries(commit=commit)
+    assert len(queries) == 5
+    assert isinstance(queries[0], GraphQLQueryInformation)
 
 
 async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
@@ -595,3 +626,96 @@ def test_extract_repo_file_information():
     assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
     assert file_info.relative_path_file == "/tmp/dir1/dir2/dir3/myfile.py"
     assert file_info.module_name == "dir2.dir3.myfile"
+
+
+async def test_create_python_check(
+    helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, mock_check_create
+):
+    repo = git_repo_03_w_client
+
+    module = helper.import_module_in_fixtures(module="checks/check01")
+    check_class = getattr(module, "Check01")
+
+    gql_schema = await repo.client.schema.get(kind="GraphQLQuery")
+
+    query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
+
+    check = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/check.py",
+        query=str(query.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
+    )
+    obj = await repo.create_python_check(branch_name="main", check=check)
+
+    assert isinstance(obj, InfrahubNode)
+
+
+async def test_compare_python_check(
+    helper,
+    git_repo_03_w_client: InfrahubRepository,
+    mock_schema_query_01,
+    gql_query_data_01,
+    gql_query_data_02,
+    check_data_01,
+):
+    repo = git_repo_03_w_client
+
+    module = helper.import_module_in_fixtures(module="checks/check01")
+    check_class = getattr(module, "Check01")
+
+    gql_schema = await repo.client.schema.get(kind="GraphQLQuery")
+    check_schema = await repo.client.schema.get(kind="Check")
+
+    query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
+    query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
+    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
+
+    check01 = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/check.py",
+        query=str(query_01.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
+    )
+
+    assert await repo.compare_python_check(existing_check=existing_check, check=check01) is True
+
+    check02 = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/newpath.py",
+        query=str(query_01.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
+    )
+
+    assert (
+        await repo.compare_python_check(
+            existing_check=existing_check,
+            check=check02,
+        )
+        is False
+    )
+
+    check03 = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/check.py",
+        query=str(query_02.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
+    )
+
+    assert await repo.compare_python_check(check=check03, existing_check=existing_check) is False
