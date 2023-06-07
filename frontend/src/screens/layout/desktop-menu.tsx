@@ -1,18 +1,18 @@
 import { LinkIcon, Square3Stack3DIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS } from "../../config/constants";
-import { comboxBoxFilterState } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { DropDownMenuItem } from "./desktop-menu-item";
 
+import useFilters from "../../hooks/useFilters";
 import { constructPath } from "../../utils/fetch";
 import logo from "./logo.png";
 
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
-  const [, setCurrentFilters] = useAtom(comboxBoxFilterState);
-  const onClinkMenuItem = () => setCurrentFilters([]);
+  const [, setFilters] = useFilters();
+  const onClinkMenuItem = () => setFilters();
 
   const schemaItems = schema.map((item, index) => (
     <DropDownMenuItem
