@@ -18,7 +18,7 @@ services:
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
       - "INFRAHUB_PRODUCTION=false"
-      - "INFRAHUB_LOG_LEVEL=DEBUG"
+      - "INFRAHUB_LOG_LEVEL=INFO"
       - "PROMETHEUS_MULTIPROC_DIR=/prom_shared"
     volumes:
       - ../:/source
