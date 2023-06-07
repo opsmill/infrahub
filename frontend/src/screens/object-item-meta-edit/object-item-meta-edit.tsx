@@ -1,4 +1,5 @@
 import { gql, useReactiveVar } from "@apollo/client";
+import { useAtom } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -6,8 +7,13 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
+import { configState } from "../../state/atoms/config.atom";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
-import { getFormStructureForMetaEdit } from "../../utils/formStructureForCreateEdit";
+import {
+  getFormStructureForMetaEdit,
+  getFormStructureForMetaEditPaginated,
+} from "../../utils/formStructureForCreateEdit";
+import getMutationMetaDetailsFromFormData from "../../utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 interface Props {
@@ -30,57 +36,32 @@ export default function ObjectItemMetaEdit(props: Props) {
     schemaList,
     attributeOrRelationshipToEdit,
     onUpdateComplete,
+    closeDrawer,
   } = props;
 
+  const [config] = useAtom(configState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const formStructure = getFormStructureForMetaEdit(
-    attributeOrRelationshipToEdit,
-    type,
-    attributeOrRelationshipName,
-    schemaList
-  );
+  const formStructure = config?.experimental_features?.paginated
+    ? getFormStructureForMetaEditPaginated(attributeOrRelationshipToEdit, type, schemaList)
+    : getFormStructureForMetaEdit(attributeOrRelationshipToEdit, type, schemaList);
+
+  console.log("formStructure: ", formStructure);
 
   async function onSubmit(data: any) {
     setIsLoading(true);
+    console.log("data: ", data);
 
-    let updatedObject: any = {
-      id: props.row.id,
-    };
-
-    if (type === "relationship") {
-      const relationshipSchema = schema.relationships?.find(
-        (s) => s.name === attributeOrRelationshipName
-      );
-
-      if (relationshipSchema?.cardinality === "many") {
-        const newRelationshipList = row[attributeOrRelationshipName].map((item: any) => {
-          if (item.id === props.attributeOrRelationshipToEdit.id) {
-            return {
-              ...data,
-              id: item.id,
-            };
-          } else {
-            return {
-              id: item.id,
-            };
-          }
-        });
-
-        updatedObject[attributeOrRelationshipName] = newRelationshipList;
-      } else {
-        updatedObject[attributeOrRelationshipName] = {
-          id: props.row[attributeOrRelationshipName].id,
-          ...data,
-        };
-      }
-    } else {
-      updatedObject[attributeOrRelationshipName] = {
-        ...data,
-      };
-    }
+    const updatedObject = getMutationMetaDetailsFromFormData(
+      schema,
+      data,
+      row,
+      type,
+      attributeOrRelationshipName,
+      attributeOrRelationshipToEdit
+    );
 
     if (Object.keys(updatedObject).length) {
       try {
@@ -96,16 +77,20 @@ export default function ObjectItemMetaEdit(props: Props) {
           ${mutationString}
         `;
 
-        await graphqlClient.mutate({
+        const result = await graphqlClient.mutate({
           mutation,
           context: { branch: branch?.name, date },
         });
+
+        console.log("result: ", result);
 
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
 
         onUpdateComplete();
 
         setIsLoading(false);
+
+        closeDrawer();
 
         return;
       } catch (e) {
@@ -128,7 +113,7 @@ export default function ObjectItemMetaEdit(props: Props) {
   return (
     <div className="flex-1 bg-white flex">
       <EditFormHookComponent
-        onCancel={props.closeDrawer}
+        onCancel={closeDrawer}
         onSubmit={onSubmit}
         fields={formStructure}
         isLoading={isLoading}

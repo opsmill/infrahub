@@ -70,12 +70,14 @@ export default function ObjectItemDetails() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
+  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
   const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
+  console.log("data: ", data);
 
   const navigate = useNavigate();
 
@@ -298,12 +300,8 @@ export default function ObjectItemDetails() {
         open={showEditDrawer}
         setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
-          closeDrawer={() => {
-            setShowEditDrawer(false);
-          }}
-          onUpdateComplete={() => {
-            refetch();
-          }}
+          closeDrawer={() => setShowEditDrawer(false)}
+          onUpdateComplete={() => refetch()}
           objectid={objectid!}
           objectname={objectname!}
         />
@@ -326,7 +324,7 @@ export default function ObjectItemDetails() {
         setOpen={setShowMetaEditModal}>
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => setShowMetaEditModal(false)}
+          onUpdateComplete={() => refetch()}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
