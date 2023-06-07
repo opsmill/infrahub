@@ -1023,14 +1023,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    @classmethod
-    async def update_rfile(cls, existing_rfile: InfrahubNode, local_rfile: RFileInformation) -> None:
+    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: RFileInformation) -> None:
         # pylint: disable=no-member
         if existing_rfile.description.value != local_rfile.description:
             existing_rfile.description.value = local_rfile.description
 
         if existing_rfile.query.id != local_rfile.query:
-            existing_rfile.query = local_rfile.query
+            existing_rfile.query = {"id": local_rfile.query, "source": str(self.id), "is_protected": True}
 
         if existing_rfile.template_path.value != local_rfile.template_path:
             existing_rfile.template_path.value = local_rfile.template_path
@@ -1170,16 +1169,15 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return obj
 
-    @classmethod
     async def update_python_check(
-        cls,
+        self,
         check_class: InfrahubCheck,
         file_path: str,
         query: InfrahubNode,
         existing_check: InfrahubNode,
     ) -> None:
         if existing_check.query.id != query.id:
-            existing_check.query = query.id
+            existing_check.query = {"id": query.id, "source": str(self.id), "is_protected": True}
 
         if existing_check.file_path.value != file_path:
             existing_check.file_path.value = file_path
@@ -1299,12 +1297,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         await obj.save()
         return obj
 
-    @classmethod
     async def update_python_transform(
-        cls, existing_transform: InfrahubNode, local_transform: TransformInformation
+        self, existing_transform: InfrahubNode, local_transform: TransformInformation
     ) -> bool:
         if existing_transform.query.id != local_transform.query:
-            existing_transform.query = local_transform.query
+            existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
 
         if existing_transform.file_path.value != local_transform.file_path:
             existing_transform.file_path.value = local_transform.file_path
