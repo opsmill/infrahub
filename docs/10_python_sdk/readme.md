@@ -8,7 +8,7 @@ The Python Client is still under development and it doesn't have 100% feature pa
 
 ## Installation
 
-> The Python SDK is currently hosted in the same repository as infrahub, but once both reaches a better maturity state, the plan is to move the SDK into its own repository.
+> The Python SDK is currently hosted in the same repository as infrahub, but once both reaches a better maturity state, the plan is to make it easy to install the SDK as a stand alone package.
 
 ## Getting Started
 

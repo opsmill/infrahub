@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
-from uuid import UUID
 
 import ujson
 
@@ -24,6 +23,8 @@ from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch

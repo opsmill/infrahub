@@ -23,12 +23,13 @@ $ infrahub git-agent [OPTIONS] COMMAND [ARGS]...
 **Usage**:
 
 ```console
-$ infrahub git-agent start [OPTIONS] [CONFIG_FILE]
+$ infrahub git-agent start [OPTIONS] [CONFIG_FILE] [PORT]
 ```
 
 **Arguments**:
 
 * `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[PORT]`: Port used to expose a metrics endpoint  [default: 8000]
 
 **Options**:
 

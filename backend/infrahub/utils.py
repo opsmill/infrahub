@@ -1,19 +1,10 @@
 import os
 from enum import Enum, EnumMeta
 from itertools import groupby
-from typing import Any, List, Optional
-from uuid import UUID, uuid4
+from typing import List, Optional
+from uuid import uuid4
 
 KWARGS_TO_DROP = ["session"]
-
-
-def is_valid_uuid(value: Any) -> bool:
-    """Check if the input is a valid UUID."""
-    try:
-        UUID(str(value))
-        return True
-    except ValueError:
-        return False
 
 
 def generate_uuid() -> str:

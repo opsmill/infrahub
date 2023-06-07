@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import copy
+import enum
 import keyword
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.query import QueryNode, QueryRel
@@ -15,6 +15,7 @@ from infrahub.utils import BaseEnum, duplicates, intersection
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryElement
@@ -23,11 +24,21 @@ if TYPE_CHECKING:
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
 
-RELATIONSHIP_KINDS = ["Generic", "Attribute", "Component", "Parent"]
+# Generate an Enum for Pydantic based on a List of String
+attribute_dict = {attr.upper(): attr for attr in ATTRIBUTE_KIND_LABELS}
+AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
+
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
+
+DEFAULT_NAME_MIN_LENGTH = 2
+DEFAULT_NAME_MAX_LENGTH = 32
+DEFAULT_KIND_MIN_LENGTH = 3
+DEFAULT_KIND_MAX_LENGTH = 32
+DEFAULT_DESCRIPTION_LENGTH = 128
+DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 
 class FilterSchemaKind(str, BaseEnum):
@@ -50,6 +61,13 @@ class RelationshipKind(str, BaseEnum):
     ATTRIBUTE = "Attribute"
     COMPONENT = "Component"
     PARENT = "Parent"
+
+
+# Generate a list of String based on Enums
+RELATIONSHIP_KINDS = [RelationshipKind.__members__[member].value for member in list(RelationshipKind.__members__)]
+RELATIONSHIP_CARDINALITY = [
+    RelationshipCardinality.__members__[member].value for member in list(RelationshipCardinality.__members__)
+]
 
 
 class BaseSchemaModel(BaseModel):
@@ -222,10 +240,10 @@ class FilterSchema(BaseSchemaModel):
 
 class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str
-    kind: str
+    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    kind: str  # AttributeKind
     label: Optional[str]
-    description: Optional[str]
+    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_value: Optional[Any]
     enum: Optional[List]
     regex: Optional[str]
@@ -260,12 +278,12 @@ class AttributeSchema(BaseSchemaModel):
 
 class RelationshipSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str
-    peer: str
+    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
-    description: Optional[str]
-    identifier: Optional[str]
+    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
+    identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
@@ -368,9 +386,9 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 class BaseNodeSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str
-    kind: str
-    description: Optional[str]
+    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_filter: Optional[str]
     order_by: Optional[List[str]]
     display_labels: Optional[List[str]]
@@ -602,9 +620,9 @@ class NodeSchema(BaseNodeSchema):
 
 class GroupSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str
-    kind: str
-    description: Optional[str]
+    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
 
 
 # -----------------------------------------------------
@@ -661,33 +679,33 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
-                    "description": "Node name, must be unique and must be a all lowercase.",
+                    "description": "Node name, must be unique and must be all lowercase.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
-                    "min_length": 3,
-                    "max_length": 32,
+                    "min_length": DEFAULT_NAME_MIN_LENGTH,
+                    "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
                 {
                     "name": "kind",
                     "kind": "Text",
                     "description": "Node kind, must be unique and must be in CamelCase",
                     "regex": str(NODE_KIND_REGEX),
-                    "min_length": 3,
-                    "max_length": 32,
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {
                     "name": "label",
                     "kind": "Text",
                     "description": "Human friendly representation of the name/kind",
                     "optional": True,
-                    "max_length": 32,
+                    "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
                 {
                     "name": "description",
                     "kind": "Text",
                     #  "description": "",
                     "optional": True,
-                    "max_length": 128,
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
                 },
                 {
                     "name": "branch",
@@ -754,20 +772,26 @@ internal_schema = {
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
-                {"name": "name", "kind": "Text", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "regex": str(NODE_NAME_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
                 {
                     "name": "kind",
                     "kind": "Text",
                     "enum": ATTRIBUTE_KIND_LABELS,
-                    "min_length": 3,
-                    "max_length": 32,
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {"name": "enum", "kind": "List", "optional": True},
                 {"name": "regex", "kind": "Text", "optional": True},
                 {"name": "max_length", "kind": "Number", "optional": True},
                 {"name": "min_length", "kind": "Number", "optional": True},
-                {"name": "label", "kind": "Text", "optional": True, "max_length": 32},
-                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
+                {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
+                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
                 {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
                 {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
                 {"name": "branch", "kind": "Boolean", "default_value": True, "optional": True},
@@ -798,13 +822,25 @@ internal_schema = {
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
-                {"name": "name", "kind": "Text", "regex": str(NODE_NAME_REGEX), "min_length": 3, "max_length": 32},
-                {"name": "peer", "kind": "Text", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "regex": str(NODE_NAME_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
+                {
+                    "name": "peer",
+                    "kind": "Text",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
                 {"name": "kind", "kind": "Text", "enum": RELATIONSHIP_KINDS, "default_value": "Generic"},
-                {"name": "label", "kind": "Text", "optional": True, "max_length": 32},
-                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
-                {"name": "identifier", "kind": "Text", "max_length": 128, "optional": True},
-                {"name": "cardinality", "kind": "Text", "enum": ["one", "many"]},
+                {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
+                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {"name": "identifier", "kind": "Text", "max_length": DEFAULT_REL_IDENTIFIER_LENGTH, "optional": True},
+                {"name": "cardinality", "kind": "Text", "enum": RELATIONSHIP_CARDINALITY},
                 {"name": "order_weight", "kind": "Number", "optional": True},
                 {
                     "name": "optional",
@@ -849,10 +885,16 @@ internal_schema = {
                     "kind": "Text",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
-                    "min_length": 3,
-                    "max_length": 32,
+                    "min_length": DEFAULT_NAME_MIN_LENGTH,
+                    "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
-                {"name": "kind", "kind": "Text", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
+                {
+                    "name": "kind",
+                    "kind": "Text",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
                 {
                     "name": "label",
                     "kind": "Text",
@@ -883,7 +925,7 @@ internal_schema = {
                     "description": "List of attributes to use to generate the display label",
                     "optional": True,
                 },
-                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
+                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
                 {
                     "name": "used_by",
                     "kind": "List",
@@ -922,11 +964,17 @@ internal_schema = {
                     "kind": "Text",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
-                    "min_length": 3,
-                    "max_length": 32,
+                    "min_length": DEFAULT_NAME_MIN_LENGTH,
+                    "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
-                {"name": "kind", "kind": "Text", "regex": str(NODE_KIND_REGEX), "min_length": 3, "max_length": 32},
-                {"name": "description", "kind": "Text", "optional": True, "max_length": 128},
+                {
+                    "name": "kind",
+                    "kind": "Text",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
+                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
             ],
         },
     ]
@@ -1026,11 +1074,11 @@ core_models = {
             "name": "account_token",
             "kind": "AccountToken",
             "default_filter": "token__value",
-            "display_labels": ["name__value"],
+            "display_labels": ["token__value"],
             "branch": True,
             "attributes": [
                 {"name": "token", "kind": "Text", "unique": True},
-                {"name": "expiration_date", "kind": "Text", "optional": True},  # Should be date here
+                {"name": "expiration", "kind": "DateTime", "optional": True},
             ],
             "relationships": [
                 {"name": "account", "peer": "Account", "optional": False, "cardinality": "one"},

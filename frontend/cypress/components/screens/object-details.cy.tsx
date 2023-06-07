@@ -23,8 +23,6 @@ const graphqlQueryItemsUrl = `/objects/device/${deviceDetailsMocksId}`;
 // Path that will match the route to display the component
 const graphqlQueryItemsPath = "/objects/:objectname/:objectid";
 
-console.log("deviceDetailsMocksData: ", deviceDetailsMocksData);
-
 // Mock the apollo query and data
 const mocks: any[] = [
   {

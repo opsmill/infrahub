@@ -36,7 +36,7 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 
 type iRelationDetailsProps = {
@@ -118,7 +118,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     relationshipSchema.peer
   );
 
-  if (relationshipsData && relationshipsData._relation__is_visible === false) {
+  if (relationshipsData && relationshipsData?.properties?.is_visible === false) {
     return null;
   }
 

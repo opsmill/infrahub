@@ -1,14 +1,14 @@
 import { ApolloProvider, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
-import { CUSTOM_COMPONENT_ROUTES, MAIN_ROUTES } from "./config/constants";
+import { MAIN_ROUTES } from "./config/constants";
 import { QSP } from "./config/qsp";
 import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
@@ -174,10 +174,6 @@ function App() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/" element={<Layout />}>
           {MAIN_ROUTES(config).map((route) => (
-            <Route index key={route.path} path={route.path} element={route.element} />
-          ))}
-
-          {CUSTOM_COMPONENT_ROUTES.map((route) => (
             <Route index key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>

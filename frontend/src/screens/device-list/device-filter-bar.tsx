@@ -1,14 +1,13 @@
-import { gql, useQuery, useReactiveVar } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { ChevronDownIcon, ChevronRightIcon, FunnelIcon } from "@heroicons/react/20/solid";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { StringParam, useQueryParam } from "use-query-params";
 import { BADGE_TYPES, Badge } from "../../components/badge";
 import { Button } from "../../components/button";
-import { QSP } from "../../config/qsp";
 import { getDropdownOptionsForRelatedPeers } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import { comboxBoxFilterVar, iComboBoxFilter } from "../../graphql/variables/filtersVar";
+import useFilters from "../../hooks/useFilters";
+import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { resolve } from "../../utils/objects";
@@ -32,13 +31,10 @@ interface Props {
 // TODO: Pagination with infitie scrolling for the select
 export default function DeviceFilterBar(props: Props) {
   const { schema } = props;
-  const currentFilters = useReactiveVar(comboxBoxFilterVar);
 
   const [showFilters, setShowFilters] = useState(false);
   const [schemaKindName] = useAtom(schemaKindNameState);
-  const [filtersInQueryString, setFiltersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
-
-  const filters = filtersInQueryString ? JSON.parse(filtersInQueryString) : currentFilters;
+  const [filters, setFilters] = useFilters();
 
   const peers: string[] = [];
 
@@ -122,13 +118,13 @@ export default function DeviceFilterBar(props: Props) {
   const onSubmit = (data: any) => {
     const keys = Object.keys(data);
 
-    const filters: iComboBoxFilter[] = [];
+    const newFilters: iComboBoxFilter[] = [];
 
     for (let filterKey of keys) {
       const filterValue = data[filterKey];
 
       if (data[filterKey]) {
-        filters.push({
+        newFilters.push({
           display_label: filterKey,
           name: filterKey,
           value: filterValue,
@@ -136,13 +132,7 @@ export default function DeviceFilterBar(props: Props) {
       }
     }
 
-    comboxBoxFilterVar(filters);
-
-    if (filters.length) {
-      setFiltersInQueryString(JSON.stringify(filters));
-    } else {
-      setFiltersInQueryString(undefined);
-    }
+    setFilters(newFilters);
   };
 
   const formMethods = useForm();
@@ -177,21 +167,14 @@ export default function DeviceFilterBar(props: Props) {
   }
 
   const handleClickReset = () => {
-    comboxBoxFilterVar([]);
+    setFilters();
     reset();
-    setFiltersInQueryString(undefined);
   };
 
   const handleClickRemoveFilter = (filter: any) => {
     const newFilters = filters.filter((row: iComboBoxFilter) => row !== filter);
 
-    comboxBoxFilterVar(newFilters);
-
-    if (newFilters.length) {
-      setFiltersInQueryString(JSON.stringify(newFilters));
-    } else {
-      setFiltersInQueryString(undefined);
-    }
+    setFilters(newFilters);
 
     resetField(filter.name);
   };

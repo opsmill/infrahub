@@ -1,10 +1,12 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getDropdownOptionsForRelatedPeers } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import { branchVar } from "../../graphql/variables/branchVar";
+import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -28,6 +30,9 @@ export default function ObjectItemCreate(props: iProps) {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
+  const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
+
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
   const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
@@ -92,6 +97,10 @@ export default function ObjectItemCreate(props: iProps) {
 
       await graphqlClient.mutate({
         mutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
       });
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);

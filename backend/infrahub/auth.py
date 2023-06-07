@@ -7,7 +7,6 @@ import bcrypt
 import jwt
 from starlette import authentication as auth
 from starlette.authentication import AuthenticationError
-from starlette.requests import HTTPConnection
 
 from infrahub import config, models
 from infrahub.core import get_branch
@@ -17,11 +16,10 @@ from infrahub.exceptions import AuthorizationError, NodeNotFound
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from starlette.requests import HTTPConnection
 
 # from ..datatypes import AuthResult
 # from ..exceptions import InvalidCredentials
-
-# Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
 
 
 async def authenticate_with_password(
@@ -60,6 +58,41 @@ async def authenticate_with_password(
     }
     access_token = jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
     return models.UserToken(access_token=access_token)
+
+
+async def validate_authentication_token(
+    session: AsyncSession, jwt_token: Optional[str] = None, api_key: Optional[str] = None
+) -> str:
+    if api_key:
+        return await validate_api_key(session=session, token=api_key)
+    if jwt_token:
+        await validate_jwt_access_token(token=jwt_token)
+    return "anonymous"
+
+
+async def validate_jwt_access_token(token: str) -> str:
+    try:
+        payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
+        user_id = payload["sub"]
+
+    except Exception:
+        raise AuthorizationError("Invalid token") from None
+
+    if payload["type"] == "access":
+        return str(user_id)
+
+    raise AuthorizationError("Invalid token, current token is not an access token")
+
+
+async def validate_api_key(session: AsyncSession, token: str) -> str:
+    user = await validate_token(token=token, session=session)
+    if not user:
+        raise AuthorizationError("Invalid token")
+
+    return user
+
+
+# Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
 
 
 class InvalidCredentials(AuthenticationError):

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from graphene import ID, Boolean, Field, List, ObjectType, String
-from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
 
 from .mutations import (
     BranchCreate,
@@ -14,6 +13,10 @@ from .mutations import (
 )
 from .types import BranchDiffType, BranchType
 from .utils import extract_fields
+
+if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
+
 
 # pylint: disable=unused-argument
 

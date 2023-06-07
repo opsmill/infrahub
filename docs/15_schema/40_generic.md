@@ -15,7 +15,7 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | name |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Lenght: min 3, max 3 |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 3 |
 
 
 ## peer
@@ -25,7 +25,7 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | peer |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Lenght: min 3, max 3 |
+| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 3 |
 
 
 ## kind
@@ -45,7 +45,7 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | label |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Lenght: min -, max - |
+| **Constraints** | <br> Length: min -, max - |
 
 
 ## description
@@ -55,7 +55,7 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | description |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Lenght: min -, max - |
+| **Constraints** | <br> Length: min -, max - |
 
 
 ## identifier
@@ -65,7 +65,7 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | identifier |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Lenght: min -, max - |
+| **Constraints** | <br> Length: min -, max - |
 
 
 ## cardinality
@@ -77,6 +77,16 @@ Below is the list of all available options to define a Generic in the schema
 | **Description** |  |
 | **Constraints** |  |
 | **Accepted Values** | `one` `many`  |
+
+## order_weight
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | order_weight |
+| **Kind** | `Number` |
+| **Description** |  |
+| **Constraints** |  |
+
 
 ## optional
 

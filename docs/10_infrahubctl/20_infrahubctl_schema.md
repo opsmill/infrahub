@@ -36,6 +36,7 @@ $ infrahubctl schema load [OPTIONS] SCHEMA
 **Options**:
 
 * `--debug / --no-debug`: [default: no-debug]
+* `--branch TEXT`: Branch on which to load the schema.  [default: main]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 

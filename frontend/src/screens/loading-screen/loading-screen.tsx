@@ -1,16 +1,22 @@
-import loader from "./loading.gif";
+import ReactLoading from "react-loading";
+import { classNames } from "../../utils/common";
 
 interface Props {
-  size?: string;
+  size?: string | number;
   hideText?: boolean;
+  className?: string;
+  colorClass?: string;
 }
 
 export default function LoadingScreen(props: Props) {
-  const { hideText, size } = props;
-  const sizeClass = props.size ? `w-${size} h-${size}` : "w-20 h-20";
+  const { hideText, size, className, colorClass } = props;
+
+  const color = colorClass ?? "!fill-blue-500";
+
   return (
-    <div className="bg-white flex-1 flex flex-col items-center justify-center">
-      <img alt="Loading" className={`${sizeClass}`} src={loader} />
+    <div
+      className={classNames("flex-1 flex flex-col items-center justify-center", className ?? "")}>
+      <ReactLoading className={color} type={"bars"} height={size ?? 70} width={size ?? 70} />
       {!hideText && <div className="text-xl mt-2">Just a moment</div>}
     </div>
   );

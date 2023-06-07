@@ -1,7 +1,7 @@
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { Input } from "./input";
@@ -40,6 +40,12 @@ export const Select = (props: SelectProps) => {
           option?.name?.toString().toLowerCase().includes(query.toLowerCase())
         );
 
+  useEffect(() => {
+    const currentOption = options.find((option: any) => option?.id === value);
+
+    setSelectedOption(currentOption);
+  }, [options.length]);
+
   return (
     <Combobox
       as="div"
@@ -61,6 +67,7 @@ export const Select = (props: SelectProps) => {
           }}
           disabled={disabled}
           error={error}
+          className={"pr-8"}
         />
         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed">
           <ChevronDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />

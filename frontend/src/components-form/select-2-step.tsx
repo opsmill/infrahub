@@ -1,9 +1,16 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
+import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
-import { getDropdownOptionsForRelatedPeers } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import {
+  getDropdownOptionsForRelatedPeers,
+  getDropdownOptionsForRelatedPeersPaginated,
+} from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import { branchVar } from "../graphql/variables/branchVar";
+import { dateVar } from "../graphql/variables/dateVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
+import { configState } from "../state/atoms/config.atom";
 import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
 
@@ -21,25 +28,31 @@ interface Props {
 }
 
 export const OpsSelect2Step = (props: Props) => {
-  const { label, options, value, error } = props;
+  const { label, options, value, error, onChange } = props;
+  const [config] = useAtom(configState);
+  const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
+
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
-  const [selectedLeft, setSelectedLeft] = useState<SelectOption | null>(
-    value.parent ? options.filter((option) => option.name === value.parent)?.[0] : null
+  const [selectedLeft, setSelectedLeft] = useState<SelectOption | null | undefined>(
+    value.parent ? options.find((option: SelectOption) => option.name === value.parent) : null
   );
 
-  const [selectedRight, setSelectedRight] = useState<SelectOption | null>(
-    value.child ? optionsRight.filter((option) => option.id === value.child)?.[0] : null
+  const [selectedRight, setSelectedRight] = useState<SelectOption | null | undefined>(
+    value.child ? optionsRight.find((option) => option.id === value.child) : null
   );
 
   useEffect(() => {
-    setSelectedRight(
-      value.child ? optionsRight.filter((option) => option.id === value.child)?.[0] : null
-    );
+    setSelectedRight(value.child ? optionsRight.find((option) => option.id === value.child) : null);
   }, [value.child, optionsRight]);
 
   useEffect(() => {
+    setSelectedLeft(value.parent ? options.find((option) => option.name === value.parent) : null);
+  }, [value.parent]);
+
+  useEffect(() => {
     if (value) {
-      props.onChange(value);
+      onChange(value);
     }
   }, []);
 
@@ -50,9 +63,13 @@ export const OpsSelect2Step = (props: Props) => {
       return;
     }
 
-    const queryString = getDropdownOptionsForRelatedPeers({
-      peers: [objectName],
-    });
+    const queryString = config?.experimental_features?.paginated
+      ? getDropdownOptionsForRelatedPeersPaginated({
+          peers: [objectName],
+        })
+      : getDropdownOptionsForRelatedPeers({
+          peers: [objectName],
+        });
 
     const query = gql`
       ${queryString}
@@ -60,9 +77,15 @@ export const OpsSelect2Step = (props: Props) => {
 
     const { data } = await graphqlClient.query({
       query,
+      context: {
+        date,
+        branch: branch?.name,
+      },
     });
 
-    const options = data[objectName];
+    const options = config?.experimental_features?.paginated
+      ? data[objectName]?.edges.map((edge: any) => edge.node)
+      : data[objectName];
 
     setOptionsRight(
       options.map((option: any) => ({
@@ -74,7 +97,7 @@ export const OpsSelect2Step = (props: Props) => {
 
   useEffect(() => {
     setRightDropdownOptions();
-  }, [selectedLeft, setRightDropdownOptions]);
+  }, [selectedLeft?.id]);
 
   return (
     <div className={classNames("grid grid-cols-6")}>
@@ -87,35 +110,28 @@ export const OpsSelect2Step = (props: Props) => {
         <OpsSelect
           error={error}
           disabled={false}
-          value={selectedLeft ? selectedLeft.id : value.parent}
-          options={options.map((o) => ({
-            name: o.name,
-            id: o.id,
-          }))}
+          value={selectedLeft?.id}
+          options={options}
           label=""
-          onChange={(e) => {
-            setSelectedLeft(options.filter((option) => option.id === e.id)[0]);
-            // setSelectedRight(null);
+          onChange={(value) => {
+            setSelectedLeft(options.filter((option) => option.id === value.id)[0]);
           }}
         />
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
-        {!!selectedLeft && optionsRight.length > 0 && (
+        {!!selectedLeft?.id && optionsRight.length > 0 && (
           <OpsSelect
             error={error}
             disabled={false}
-            value={selectedRight ? selectedRight.id : value.child}
-            options={optionsRight.map((o) => ({
-              name: o.name,
-              id: o.id,
-            }))}
+            value={selectedRight?.id}
+            options={optionsRight}
             label=""
-            onChange={(e) => {
-              const newOption = optionsRight.filter((option) => option.id === e.id)?.[0];
+            onChange={(value) => {
+              const newOption = optionsRight.find((option) => option.id === value.id);
               setSelectedRight(newOption);
-              props.onChange({
+              onChange({
                 parent: selectedLeft.id,
-                child: e.id,
+                child: value.id,
               });
             }}
           />

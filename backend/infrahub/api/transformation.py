@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from graphql import graphql
 from neo4j import AsyncSession
 from starlette.responses import JSONResponse, PlainTextResponse
 
-from infrahub.api.dependencies import get_session
+from infrahub.api.dependencies import get_current_user, get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
@@ -15,7 +15,9 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
     TransformMessageAction,
 )
-from infrahub.message_bus.rpc import InfrahubRpcClient
+
+if TYPE_CHECKING:
+    from infrahub.message_bus.rpc import InfrahubRpcClient
 
 router = APIRouter()
 
@@ -28,6 +30,7 @@ async def transform_python(
     branch: Optional[str] = None,
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
+    _: str = Depends(get_current_user),
 ):
     branch = await get_branch(session=session, branch=branch)
 
@@ -104,6 +107,7 @@ async def generate_rfile(
     branch: Optional[str] = None,
     at: Optional[str] = None,
     rebase: Optional[bool] = False,
+    _: str = Depends(get_current_user),
 ):
     branch = await get_branch(session=session, branch=branch)
 

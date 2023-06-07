@@ -9,11 +9,11 @@ At its heart, Infrahub is built on 3 fundamental pillars
 
 # Getting Started
 
-Deploy the demo environment on your laptop
-Deploy an instance of Infrahub in the Cloud with GitPod
-Explore the Python SDK to easily interact with Infrahub
-Explore the capabilities of the schema
-Check the architecture document to understand how the application is built
+- Deploy the demo environment on your laptop
+- Deploy an instance of Infrahub in the Cloud with GitPod
+- Explore the Python SDK to easily interact with Infrahub
+- Explore the capabilities of the schema
+- Check the architecture document to understand how the application is built
 
 # Project Status
 
@@ -28,10 +28,10 @@ Having said that there are several features already available and you should be 
 - Extend the current schema
 - Query and modify data via the GraphQL interface
 - Access the previous state of the data and the extensions
+- Branch diff
 
 Missing features we are actively working on.
 - Object Profile and Inheritance
-- Branch diff
 - Pull requests
 - Branches support for the schema and schema migration
 - User management and permissions

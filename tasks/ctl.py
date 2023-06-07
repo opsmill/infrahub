@@ -1,13 +1,6 @@
-from invoke import (  # type: ignore  # pylint: disable=import-error
-    Collection,
-    Context,
-    task,
-)
+from invoke import Context, task
 
 from .utils import REPO_BASE
-
-# flake8: noqa: W605
-
 
 MAIN_DIRECTORY = "ctl"
 NAMESPACE = "CTL"

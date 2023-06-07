@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import infrahub.config as config
 from infrahub.exceptions import (
@@ -24,7 +25,9 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
     TransformMessageAction,
 )
-from infrahub_client import InfrahubClient
+
+if TYPE_CHECKING:
+    from infrahub_client import InfrahubClient
 
 LOGGER = logging.getLogger("infrahub.git")
 

@@ -181,14 +181,25 @@ disallow_untyped_defs = true
 [tool.ruff]
 
 select = [
+    "C90",
     "DTZ",
     "E",
     "F",
-    # "TCH",
+    "TCH",
     "W",
 ]
 
 line-length = 215
+
+[tool.ruff.mccabe]
+# Target max-complexity=10
+max-complexity = 33
+
+[tool.ruff.per-file-ignores]
+
+"backend/infrahub/git/repository.py" = [
+    "TCH003", # Pydantic needs UUID import to not only be available under YPE_CHECKING clause
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

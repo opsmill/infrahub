@@ -4,7 +4,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import graphene
-from graphql import GraphQLResolveInfo
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
@@ -26,6 +25,7 @@ from .types import (
 from .utils import extract_fields
 
 if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
     from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch

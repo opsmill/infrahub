@@ -13,8 +13,8 @@ Below is the list of all available options to define a node in the schema
 | ---- | --------------- |
 | **Name** | name |
 | **Kind** | `Text` |
-| **Description** | Node name, must be unique and must be a all lowercase. |
-| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Lenght: min 3, max 3 |
+| **Description** | Node name, must be unique and must be all lowercase. |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 2, max 2 |
 
 
 ## kind
@@ -24,7 +24,7 @@ Below is the list of all available options to define a node in the schema
 | **Name** | kind |
 | **Kind** | `Text` |
 | **Description** | Node kind, must be unique and must be in CamelCase |
-| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Lenght: min 3, max 3 |
+| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 3 |
 
 
 ## label
@@ -34,7 +34,7 @@ Below is the list of all available options to define a node in the schema
 | **Name** | label |
 | **Kind** | `Text` |
 | **Description** | Human friendly representation of the name/kind |
-| **Constraints** | <br> Lenght: min -, max - |
+| **Constraints** | <br> Length: min -, max - |
 
 
 ## description
@@ -44,7 +44,7 @@ Below is the list of all available options to define a node in the schema
 | **Name** | description |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Lenght: min -, max - |
+| **Constraints** | <br> Length: min -, max - |
 
 
 ## branch
@@ -74,6 +74,16 @@ Below is the list of all available options to define a node in the schema
 | **Name** | display_labels |
 | **Kind** | `List` |
 | **Description** | List of attributes to use to generate the display label |
+| **Constraints** |  |
+
+
+## order_by
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | order_by |
+| **Kind** | `List` |
+| **Description** | List of attributes to use to order the results by default |
 | **Constraints** |  |
 
 

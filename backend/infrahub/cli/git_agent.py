@@ -3,9 +3,9 @@ import logging
 import signal
 import sys
 from asyncio import run as aiorun
+from typing import TYPE_CHECKING
 
 import typer
-from aio_pika import IncomingMessage
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
@@ -20,6 +20,10 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub_client import InfrahubClient
+
+if TYPE_CHECKING:
+    from aio_pika import IncomingMessage
+
 
 app = typer.Typer()
 
@@ -64,7 +68,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
                         clear_log_context()
                         if rpc.request_id:
                             set_log_data(key="request_id", value=rpc.request_id)
-                        log.debug("recieved_message", message_type=rpc.type)
+                        log.debug("received_message", message_type=rpc.type)
                         response = await handle_message(message=rpc, client=client)
 
                         log.info(
