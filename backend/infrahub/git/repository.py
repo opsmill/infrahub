@@ -124,7 +124,7 @@ class CheckInformation(BaseModel):
     """Timeout for the Check."""
 
 
-class TransformInformation(BaseModel):
+class TransformPythonInformation(BaseModel):
     name: str
     """Name of the Transform"""
 
@@ -1254,7 +1254,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 kind="GraphQLQuery", branch=branch_name, id=str(transform.query), populate_store=True
             )
 
-            item = TransformInformation(
+            item = TransformPythonInformation(
                 name=transform.name,
                 repository=str(self.id),
                 query=str(graphql_query.id),
@@ -1295,7 +1295,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
             await transforms_in_graph[transform_name].delete()
 
-    async def create_python_transform(self, branch_name: str, transform: TransformInformation) -> InfrahubNode:
+    async def create_python_transform(self, branch_name: str, transform: TransformPythonInformation) -> InfrahubNode:
         schema = await self.client.schema.get(kind="TransformPython", branch=branch_name)
         data = {
             "name": transform.name,
@@ -1318,7 +1318,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return obj
 
     async def update_python_transform(
-        self, existing_transform: InfrahubNode, local_transform: TransformInformation
+        self, existing_transform: InfrahubNode, local_transform: TransformPythonInformation
     ) -> bool:
         if existing_transform.query.id != local_transform.query:
             existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
@@ -1339,7 +1339,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     @classmethod
     async def compare_python_transform(
-        cls, existing_transform: InfrahubNode, local_transform: TransformInformation
+        cls, existing_transform: InfrahubNode, local_transform: TransformPythonInformation
     ) -> bool:
         if (
             existing_transform.query.id != local_transform.query

@@ -15,6 +15,7 @@ from infrahub.git import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
+    CheckInformation,
     GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
@@ -639,9 +640,17 @@ async def test_create_python_check(
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
-    obj = await repo.create_python_check(
-        branch_name="main", check_class=check_class, file_path="checks/check01/check.py", query=query
+    check = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/check.py",
+        query=str(query.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
     )
+    obj = await repo.create_python_check(branch_name="main", check=check)
 
     assert isinstance(obj, InfrahubNode)
 
@@ -666,26 +675,47 @@ async def test_compare_python_check(
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
     existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
 
-    assert (
-        await repo.compare_python_check(
-            check_class=check_class, file_path="checks/check01/check.py", query=query_01, existing_check=existing_check
-        )
-        is True
+    check01 = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/check.py",
+        query=str(query_01.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
+    )
+
+    assert await repo.compare_python_check(existing_check=existing_check, check=check01) is True
+
+    check02 = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/newpath.py",
+        query=str(query_01.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
     )
 
     assert (
         await repo.compare_python_check(
-            check_class=check_class,
-            file_path="checks/check01/newpath.py",
-            query=query_01,
             existing_check=existing_check,
+            check=check02,
         )
         is False
     )
 
-    assert (
-        await repo.compare_python_check(
-            check_class=check_class, file_path="checks/check01/check.py", query=query_02, existing_check=existing_check
-        )
-        is False
+    check03 = CheckInformation(
+        name=check_class.__name__,
+        class_name=check_class.__name__,
+        check_class=check_class,
+        repository=str(repo.id),
+        file_path="checks/check01/check.py",
+        query=str(query_02.id),
+        timeout=check_class.timeout,
+        rebase=check_class.rebase,
     )
+
+    assert await repo.compare_python_check(check=check03, existing_check=existing_check) is False
