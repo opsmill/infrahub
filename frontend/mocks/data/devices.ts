@@ -1,4 +1,6 @@
 export const deviceDetailsMocksId = "bd3110b9-5923-45e9-b643-776b8151c074";
+export const deviceDetailsName = "atl1-edge1";
+export const deviceDetailsNewName = "awsome new device name";
 export const deviceDetailsMocksASNName = "AS64496 64496";
 export const deviceDetailsMocksOwnerName = "Engineering Team";
 export const deviceDetailsMocksTagName = "green";
@@ -832,9 +834,9 @@ export const deviceDetailsMocksData = {
       {
         node: {
           id: deviceDetailsMocksId,
-          display_label: "atl1-edge1",
+          display_label: deviceDetailsName,
           name: {
-            value: "atl1-edge1",
+            value: deviceDetailsName,
             updated_at: "2023-06-01T11:58:12.267670+00:00",
             is_protected: true,
             is_visible: true,
@@ -1057,5 +1059,46 @@ export const deviceDetailsInterfacesMocksData = {
       },
     ],
     __typename: "PaginatedDevice",
+  },
+};
+
+export const deviceDetailsUpdateMocksQuery = `
+mutation Update {
+  device_update (data: {
+    id: "bd3110b9-5923-45e9-b643-776b8151c074",
+    name: {
+        value: "new value here"
+    }
+}) {
+      ok
+  }
+}
+`;
+
+export const deviceDetailsUpdateMocksData = {
+  data: {
+    device_update: {
+      ok: true,
+      __typename: "DeviceUpdate",
+    },
+  },
+};
+
+export const deviceDetailsMocksDataAfterUpdate = {
+  ...deviceDetailsMocksData,
+  device: {
+    ...deviceDetailsMocksData.device,
+    edges: [
+      {
+        node: {
+          ...deviceDetailsMocksData.device.edges[0].node,
+          display_label: deviceDetailsNewName,
+          name: {
+            ...deviceDetailsMocksData.device.edges[0].node.name,
+            value: deviceDetailsNewName,
+          },
+        },
+      },
+    ],
   },
 };
