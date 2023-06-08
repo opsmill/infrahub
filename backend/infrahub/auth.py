@@ -74,7 +74,8 @@ async def validate_jwt_access_token(token: str) -> str:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
         user_id = payload["sub"]
-
+    except jwt.ExpiredSignatureError:
+        raise AuthorizationError("Expired Signature") from None
     except Exception:
         raise AuthorizationError("Invalid token") from None
 

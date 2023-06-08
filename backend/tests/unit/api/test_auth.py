@@ -2,6 +2,14 @@ import jwt
 
 from infrahub import config
 
+EXPIRED_TOKEN = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1YTVjYmNlZS1mN2IwLTRmNzc"
+    + "tYjk1Yi1jMjAwODYwOGU5MDAiLCJpYXQiOjE2ODYyMjIzNjUsIm5iZiI6MTY4NjIyMjM2N"
+    + "SwiZXhwIjoxNjg2MjIyNDI1LCJmcmVzaCI6ZmFsc2UsInR5cGUiOiJhY2Nlc3MiLCJ1c2V"
+    + "yX2NsYWltcyI6eyJyb2xlcyI6WyJyZWFkLXdyaXRlIl19fQ.7d2wSrrTkdAc2ZYjZwOgjR"
+    + "jr3c6n9_iN3Miei_zXJ-0"
+)
+
 
 async def test_password_based_login(session, default_branch, client, first_account):
     with client:
@@ -33,3 +41,11 @@ async def test_password_based_login_invalid_password(session, default_branch, cl
         "data": None,
         "errors": [{"extensions": {"code": 401}, "message": "Incorrect password"}],
     }
+
+
+async def test_use_expired_token(session, default_branch, client):
+    with client:
+        response = client.get("/rfile/testing", headers={"Authorization": f"Bearer {EXPIRED_TOKEN}"})
+
+    assert response.status_code == 401
+    assert response.json() == {"data": None, "errors": [{"message": "Expired Signature", "extensions": {"code": 401}}]}
