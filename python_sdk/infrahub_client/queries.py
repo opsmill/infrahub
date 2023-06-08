@@ -1,20 +1,3 @@
-QUERY_ALL_REPOSITORIES_NO_PAGINATION = """
-query {
-    repository {
-        id
-        name {
-            value
-        }
-        location {
-            value
-        }
-        commit {
-            value
-        }
-    }
-}
-"""
-
 QUERY_ALL_REPOSITORIES = """
 query {
     repository {

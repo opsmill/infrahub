@@ -75,9 +75,6 @@ class Attribute:
 
         return {"data": data, "variables": variables}
 
-    def _generate_query_data_no_pagination(self) -> Optional[Dict]:
-        return self._generate_query_data()
-
     def _generate_query_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {"value": None}
 
@@ -281,17 +278,6 @@ class RelationshipManagerBase:
         return [peer._generate_input_data() for peer in self.peers]
 
     @classmethod
-    def _generate_query_data_no_pagination(cls) -> Dict:
-        data: Dict[str, Any] = {"id": None, "display_label": None, "__typename": None}
-
-        for prop_name in PROPERTIES_FLAG:
-            data[f"_relation__{prop_name}"] = None
-        for prop_name in PROPERTIES_OBJECT:
-            data[f"_relation__{prop_name}"] = {"id": None, "display_label": None, "__typename": None}
-
-        return data
-
-    @classmethod
     def _generate_query_data(cls) -> Dict:
         data: Dict[str, Any] = {
             "count": None,
@@ -319,9 +305,6 @@ class RelationshipManager(RelationshipManagerBase):
 
         if data is None:
             return
-
-        if not self.client.pagination and not isinstance(data, list):
-            raise ValueError(f"{name} found a {type(data)} instead of a list")
 
         if isinstance(data, list):
             for item in data:
@@ -373,9 +356,6 @@ class RelationshipManagerSync(RelationshipManagerBase):
 
         if data is None:
             return
-
-        if not self.client.pagination and not isinstance(data, list):
-            raise ValueError(f"{name} found a {type(data)} instead of a list")
 
         if isinstance(data, list):
             for item in data:
@@ -493,26 +473,6 @@ class InfrahubNodeBase:
 
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
-    def generate_query_data_no_pagination(
-        self, filters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Union[Any, Dict]]:
-        data: Dict[str, Any] = {"id": None, "display_label": None}
-
-        if filters:
-            data["@filters"] = filters
-
-        for attr_name in self._attributes:
-            attr: Attribute = getattr(self, attr_name)
-            attr_data = attr._generate_query_data_no_pagination()
-            if attr_data:
-                data[attr_name] = attr_data
-
-        for rel_name in self._relationships:
-            rel_data = RelationshipManager._generate_query_data_no_pagination()
-            data[rel_name] = rel_data
-
-        return {self._schema.name: data}
-
     def generate_query_data(
         self, filters: Optional[Dict[str, Any]] = None, offset: Optional[int] = None, limit: Optional[int] = None
     ) -> Dict[str, Union[Any, Dict]]:
@@ -566,7 +526,7 @@ class InfrahubNode(InfrahubNodeBase):
         self._client = client
         self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
 
-        if self._client.pagination and isinstance(data, dict) and "node" in data:
+        if isinstance(data, dict) and "node" in data:
             data = data.get("node")
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
@@ -660,7 +620,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
 
-        if self._client.pagination and isinstance(data, dict) and "node" in data:
+        if isinstance(data, dict) and "node" in data:
             data = data.get("node")
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)

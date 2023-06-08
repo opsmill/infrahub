@@ -25,7 +25,7 @@ class TestInfrahubNode:
 
     @pytest.fixture
     async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client, pagination=self.pagination)
+        return await InfrahubClient.init(test_client=test_client)
 
     async def test_node_create(self, client: InfrahubClient, init_db_base, location_schema):
         data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}

@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -12,12 +11,8 @@ from infrahub_client.node import InfrahubNode
 
 
 class TestInfrahubClient:
-    pagination: bool = True
-
     @pytest.fixture(scope="class")
     async def test_client(self):
-        config.SETTINGS.experimental_features.paginated = self.pagination
-
         registry.delete_all()
 
         # pylint: disable=import-outside-toplevel
@@ -27,7 +22,7 @@ class TestInfrahubClient:
 
     @pytest.fixture
     async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client, pagination=self.pagination)
+        return await InfrahubClient.init(test_client=test_client)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):
