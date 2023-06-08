@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
@@ -9,6 +8,8 @@ from pydantic import BaseModel, Field
 from infrahub_client.exceptions import SchemaNotFound, ValidationError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
 
 # pylint: disable=redefined-builtin
