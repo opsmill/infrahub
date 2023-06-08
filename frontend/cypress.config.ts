@@ -1,5 +1,4 @@
 import { defineConfig } from "cypress";
-import vitePreprocessor from "cypress-vite";
 
 export default defineConfig({
   // downloadsFolder: "tests/downloads",
@@ -12,13 +11,16 @@ export default defineConfig({
       framework: "react",
       bundler: "vite",
     },
+    specPattern: "tests/integrations/**/*.cy.{js,jsx,ts,tsx}",
     reporter: "spec",
     video: false,
   },
   e2e: {
-    setupNodeEvents(on) {
-      on("file:preprocessor", vitePreprocessor());
-    },
+    // setupNodeEvents(on) {
+    //   on("file:preprocessor", vitePreprocessor());
+    // },
+    baseUrl: "http://localhost:3000/",
+    specPattern: "tests/e2e/**/*.cy.{js,jsx,ts,tsx}",
     reporter: "spec",
     video: false,
   },
