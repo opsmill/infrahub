@@ -52,11 +52,19 @@ class DatabaseSettings(BaseSettings):
 
 class BrokerSettings(BaseSettings):
     enable: bool = True
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
-    port: int = 5672
+    port: Optional[int] = Field(
+        default=None, min=1, max=65535, description="Specified if running on a non default port."
+    )
     namespace: str = "infrahub"
+
+    @property
+    def service_port(self) -> int:
+        default_ports: dict[bool, int] = {True: 5671, False: 5672}
+        return self.port or default_ports[self.tls_enabled]
 
     class Config:
         env_prefix = "INFRAHUB_BROKER_"

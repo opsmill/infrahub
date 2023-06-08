@@ -18,7 +18,7 @@ async def connect_to_broker():
         host=config.SETTINGS.broker.address,
         login=config.SETTINGS.broker.username,
         password=config.SETTINGS.broker.password,
-        port=config.SETTINGS.broker.port,
+        port=config.SETTINGS.broker.service_port,
     )
 
 
