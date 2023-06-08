@@ -1,0 +1,26 @@
+---
+# yamllint disable rule:truthy
+name: "yaml-lint"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/yaml-lint.yml"
+      - "**.yaml"
+      - "**.yml"
+  push:
+    branches:
+      - develop
+      - stable
+
+jobs:
+  yaml-lint:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup environment"
+        run: "pip install yamllint==1.29.0"
+      - name: "Linting: yamllint"
+        run: "yamllint ."
+
+
