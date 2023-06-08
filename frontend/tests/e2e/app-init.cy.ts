@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 describe("Main application", () => {
   it("should load", () => {
     cy.visit("/");
