@@ -12,8 +12,6 @@ import {
   deviceDetailsMocksSchema,
   deviceDetailsName,
   deviceDetailsNewName,
-  deviceDetailsUpdateMocksData,
-  deviceDetailsUpdateMocksQuery,
 } from "../../../mocks/data/devices";
 import { TestProvider } from "../../../mocks/jotai/atom";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
@@ -36,17 +34,6 @@ const mocks: any[] = [
     },
     result: {
       data: deviceDetailsMocksData,
-    },
-  },
-  // Mutation
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsUpdateMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsUpdateMocksData,
     },
   },
   // After mutation
@@ -72,8 +59,14 @@ const ObjectDetailsProvider = () => {
 };
 
 describe("Object details", () => {
-  it("should fetch the object details, open the edit form and update the object name", () => {
+  beforeEach(function () {
+    cy.fixture("device-detail-update-name").as("mutation");
+  });
+
+  it("should fetch the object details, open the edit form and update the object name", function () {
     cy.viewport(1920, 1080);
+
+    cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Mount the view with the default route and the mocked data
     cy.mount(
@@ -112,8 +105,8 @@ describe("Object details", () => {
     // Submit the form
     cy.get(".bg-blue-500").click();
 
-    // Verify that the button is in a loading state
-    cy.get(".bg-blue-500").should("not.have.text", "Save");
+    // Wait for the mutation to be done
+    cy.wait("@mutate");
 
     // Verify that the data is refetched
     cy.get(":nth-child(2) > div.flex > .mt-1").should("have.text", deviceDetailsNewName);
