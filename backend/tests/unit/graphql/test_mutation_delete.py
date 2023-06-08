@@ -2,7 +2,9 @@ from graphql import graphql
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import (
+    generate_graphql_paginated_schema as generate_graphql_schema,
+)
 
 
 async def test_delete_object(db, session, default_branch, car_person_schema):

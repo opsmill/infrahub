@@ -5,7 +5,9 @@ from neo4j import AsyncSession
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import (
+    generate_graphql_paginated_schema as generate_graphql_schema,
+)
 
 
 async def test_update_simple_object(db, session: AsyncSession, person_john_main: Node, branch: Branch):
@@ -229,8 +231,10 @@ async def test_update_single_relationship(
             object {
                 id
                 owner {
-                    name {
-                        value
+                    node {
+                        name {
+                            value
+                        }
                     }
                 }
             }
@@ -250,7 +254,7 @@ async def test_update_single_relationship(
 
     assert result.errors is None
     assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "Jim"
+    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -267,8 +271,10 @@ async def test_update_new_single_relationship_flag_property(
             object {
                 id
                 owner {
-                    name {
-                        value
+                    node {
+                        name {
+                            value
+                        }
                     }
                 }
             }
@@ -288,7 +294,7 @@ async def test_update_new_single_relationship_flag_property(
 
     assert result.errors is None
     assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "Jim"
+    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -307,8 +313,10 @@ async def test_update_delete_optional_relationship_cardinality_one(
             object {
                 id
                 owner {
-                    name {
-                        value
+                    node {
+                        name {
+                            value
+                        }
                     }
                 }
             }
@@ -328,7 +336,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
 
     assert result.errors is None
     assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "Jim"
+    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -340,8 +348,10 @@ async def test_update_delete_optional_relationship_cardinality_one(
             object {
                 id
                 owner {
-                    name {
-                        value
+                    node {
+                        name {
+                            value
+                        }
                     }
                 }
             }
@@ -360,7 +370,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
 
     assert result.errors is None
     assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"] is None
+    assert result.data["car_update"]["object"]["owner"]["node"] is None
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
     assert car_peer is None
@@ -376,8 +386,10 @@ async def test_update_existing_single_relationship_flag_property(
             object {
                 id
                 owner {
-                    name {
-                        value
+                    node {
+                        name {
+                            value
+                        }
                     }
                 }
             }
@@ -397,7 +409,7 @@ async def test_update_existing_single_relationship_flag_property(
 
     assert result.errors is None
     assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "John"
+    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -439,8 +451,10 @@ async def test_update_existing_single_relationship_node_property(
             object {
                 id
                 owner {
-                    name {
-                        value
+                    node {
+                        name {
+                            value
+                        }
                     }
                 }
             }
@@ -461,7 +475,7 @@ async def test_update_existing_single_relationship_node_property(
 
     assert result.errors is None
     assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["name"]["value"] == "John"
+    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
     car = await NodeManager.get_one(session=session, id=car_accord_with_source_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -488,8 +502,12 @@ async def test_update_relationship_many(
             object {
                 id
                 tags {
-                    name {
-                        value
+                    edges {
+                        node {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -509,7 +527,7 @@ async def test_update_relationship_many(
 
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 1
+    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(session=session))) == 1
@@ -522,8 +540,12 @@ async def test_update_relationship_many(
             object {
                 id
                 tags {
-                    name {
-                        value
+                    edges {
+                        node {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -544,7 +566,7 @@ async def test_update_relationship_many(
 
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 2
+    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(session=session)
@@ -559,8 +581,12 @@ async def test_update_relationship_many(
             object {
                 id
                 tags {
-                    name {
-                        value
+                    edges {
+                        node {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -581,7 +607,7 @@ async def test_update_relationship_many(
 
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 2
+    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 2
 
     p13 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p13.tags.get(session=session)
@@ -605,8 +631,12 @@ async def test_update_relationship_many2(
             object {
                 id
                 tags {
-                    name {
-                        value
+                    edges {
+                        node {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -626,7 +656,7 @@ async def test_update_relationship_many2(
 
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 1
+    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(session=session))) == 1
@@ -639,8 +669,12 @@ async def test_update_relationship_many2(
             object {
                 id
                 tags {
-                    name {
-                        value
+                    edges {
+                        node {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -661,7 +695,7 @@ async def test_update_relationship_many2(
 
     assert result.errors is None
     assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 2
+    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(session=session)

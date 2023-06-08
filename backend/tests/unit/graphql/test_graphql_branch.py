@@ -8,7 +8,9 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import (
+    generate_graphql_paginated_schema as generate_graphql_schema,
+)
 from infrahub.message_bus.events import (
     CheckMessageAction,
     GitMessageAction,
@@ -58,7 +60,7 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
 
 
 async def test_branch_create(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
-    schema = await generate_graphql_schema(session=session, include_subscription=False)
+    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
 
     query = """
     mutation {
@@ -142,7 +144,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
 
 
 async def test_branch_query(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
-    schema = await generate_graphql_schema(session=session, include_subscription=False)
+    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
 
     create_branch = """
     mutation {
@@ -226,7 +228,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
 async def test_branch_create_invalid_names(
     db, session, default_branch: Branch, car_person_schema, register_core_models_schema
 ):
-    schema = await generate_graphql_schema(session=session, include_subscription=False)
+    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
 
     query = """
     mutation($branch_name: String!) {
@@ -274,7 +276,7 @@ async def test_branch_create_with_repositories(
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
@@ -302,7 +304,7 @@ async def test_branch_rebase(db, session, default_branch: Branch, car_person_sch
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -329,7 +331,7 @@ async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, c
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -354,7 +356,7 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch1, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -390,7 +392,7 @@ async def test_branch_validate_with_repositories_success(
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch2, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
@@ -431,7 +433,7 @@ async def test_branch_validate_with_repositories_failed(
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch2, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
@@ -459,7 +461,7 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch1, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -501,7 +503,7 @@ async def test_branch_merge_with_repositories(db, session, rpc_client, base_data
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch2, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
@@ -604,7 +606,7 @@ async def test_branch_diff_with_repositories(db, session, rpc_client, base_datas
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch2, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
