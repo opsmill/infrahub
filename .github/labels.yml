@@ -56,9 +56,12 @@
   color: "cfd3d7"
 
 - name: "type/epic"
-  description: "Large body of work composed of multiple features and/or story"
+  description: "Large body of work composed of multiple tasks and/or features"
   color: "fbd39c"
 
+- name: "type/task"
+  description: "Body of work related to an epic"
+  color: "0b8e92"
 
 # ----------------------------------
 # EFFORT
