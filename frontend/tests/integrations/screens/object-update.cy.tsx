@@ -4,6 +4,8 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
+import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
+import { schemaState } from "../../../src/state/atoms/schema.atom";
 import {
   deviceDetailsMocksData,
   deviceDetailsMocksDataAfterUpdate,
@@ -12,10 +14,8 @@ import {
   deviceDetailsMocksSchema,
   deviceDetailsName,
   deviceDetailsNewName,
-} from "../../../mocks/data/devices";
-import { TestProvider } from "../../../mocks/jotai/atom";
-import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+} from "../../mocks/data/devices";
+import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const graphqlQueryItemsUrl = `/objects/device/${deviceDetailsMocksId}`;

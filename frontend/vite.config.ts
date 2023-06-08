@@ -24,7 +24,7 @@ export default defineConfig({
         "mocks/",
         "cypress/",
         "**/**.d.ts",
-        "**/__tests__/**",
+        "**/tests/**",
         "**/**component-preview",
       ],
       all: true,

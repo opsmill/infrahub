@@ -4,14 +4,11 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import {
-  graphqlQueriesMocksData,
-  graphqlQueriesMocksQuery,
-} from "../../../mocks/data/graphqlQueries";
-import { schemaMocks } from "../../../mocks/data/schema";
-import { TestProvider } from "../../../mocks/jotai/atom";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { graphqlQueriesMocksData, graphqlQueriesMocksQuery } from "../../mocks/data/graphqlQueries";
+import { schemaMocks } from "../../mocks/data/schema";
+import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const graphqlQueryItemsUrl = "/objects/graphql_query";
