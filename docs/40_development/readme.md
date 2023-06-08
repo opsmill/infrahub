@@ -79,13 +79,13 @@ npm run cypress:run:e2e
 
 Now we can:
 - verify if the content is correct:
-```.should("have.text", "Account");```
+```cy.get("...").should("have.text", "Account");```
 
 - verify the same thing but for inputs:
-```.should("have.value", "some value");```
+```cy.get("...").should("have.value", "some value");```
 
 - and also trigger a click:
-```.click()```
+```cy.get("...").click()```
 
 Full documentation: https://docs.cypress.io/guides/end-to-end-testing/writing-your-first-end-to-end-test
 
