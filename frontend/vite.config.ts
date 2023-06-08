@@ -19,7 +19,6 @@ export default defineConfig({
     environment: "jsdom",
     coverage: {
       reporter: ["text", "lcovonly"],
-      include: ["tests/**"],
       exclude: [
         "node_modules/",
         "mocks/",
