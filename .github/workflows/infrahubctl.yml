@@ -4,7 +4,7 @@ name: "infrahubctl"
 on:
   pull_request:
     paths:
-      - ".github/**"
+      - ".github/workflows/infrahubctl.yml"
       - "ctl/**"
       - "python_sdk/**"
       - pyproject.toml
