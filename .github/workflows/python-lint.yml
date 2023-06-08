@@ -4,7 +4,7 @@ name: "python-lint"
 on:
   pull_request:
     paths:
-      - ".github/**"
+      - ".github/workflows/python-lint.yml"
       - "**.py"
       - pyproject.toml
       - poetry.lock

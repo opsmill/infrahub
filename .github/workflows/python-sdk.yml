@@ -4,7 +4,7 @@ name: "Python SDK"
 on:
   pull_request:
     paths:
-      - ".github/**"
+      - ".github/workflows/python-sdk.yml"
       - "backend/**"
       - "python_sdk/**"
       - pyproject.toml
