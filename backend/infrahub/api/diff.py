@@ -160,7 +160,7 @@ async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: st
     return {node_id: await node.render_display_label(session=session) for node_id, node in nodes.items()}
 
 
-async def get_display_labels(nodes: Dict[str, List[str]], session: AsyncSession) -> Dict[str, str]:
+async def get_display_labels(nodes: Dict[str, Dict[str, List[str]]], session: AsyncSession) -> Dict[str, str]:
     """Query the display_labels of a group of nodes organized per branch and per kind."""
     response: Dict[str, str] = {}
     for branch_name, items in nodes.items():
@@ -301,26 +301,9 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
     nodes = await diff.get_nodes(session=session)
     rels = await diff.get_relationships(session=session)
 
-    # Node IDs organized per Branch and per Kind
-    node_ids = defaultdict(lambda: defaultdict(list))
-
     # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
-    rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = defaultdict(
-        lambda: defaultdict(lambda: defaultdict(list))
-    )
-    for branch_name, items in rels.items():
-        for item in items.values():
-            for sub_item in item.values():
-                for node_id, node in sub_item.nodes.items():
-                    rels_per_node[branch_name][node_id][sub_item.name].append(sub_item)
-                    if node_id not in node_ids[branch_name][node.kind]:
-                        node_ids[branch_name][node.kind].append(node_id)
-
-    # Extract the id of all nodes ahead of time in order to query all display labels
-    for branch_name, items in nodes.items():
-        for item in items.values():
-            if item.id not in node_ids[branch_name][item.kind]:
-                node_ids[branch_name][item.kind].append(item.id)
+    rels_per_node = await diff.get_relationships_per_node(session=session)
+    node_ids = await diff.get_node_id_per_kind(session=session)
 
     display_labels = await get_display_labels(nodes=node_ids, session=session)
 

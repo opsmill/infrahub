@@ -1270,6 +1270,45 @@ class Diff:
             if not self.branch_only or branch_name == self.branch.name
         }
 
+    async def get_relationships_per_node(
+        self, session: AsyncSession
+    ) -> Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]]:
+        rels = await self.get_relationships(session=session)
+
+        # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
+        rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(list))
+        )
+        for branch_name, items in rels.items():
+            for item in items.values():
+                for sub_item in item.values():
+                    for node_id, _ in sub_item.nodes.items():
+                        rels_per_node[branch_name][node_id][sub_item.name].append(sub_item)
+
+        return rels_per_node
+
+    async def get_node_id_per_kind(self, session: AsyncSession) -> Dict[str, Dict[str, List[str]]]:
+        # Node IDs organized per Branch and per Kind
+        rels = await self.get_relationships(session=session)
+        nodes = await self.get_nodes(session=session)
+
+        node_ids: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
+
+        for branch_name, items in rels.items():
+            for item in items.values():
+                for sub_item in item.values():
+                    for node_id, node in sub_item.nodes.items():
+                        if node_id not in node_ids[branch_name][node.kind]:
+                            node_ids[branch_name][node.kind].append(node_id)
+
+        # Extract the id of all nodes ahead of time in order to query all display labels
+        for branch_name, items in nodes.items():
+            for item in items.values():
+                if item.id not in node_ids[branch_name][item.kind]:
+                    node_ids[branch_name][item.kind].append(item.id)
+
+        return node_ids
+
     async def _calculated_diff_rels(self, session: AsyncSession):
         """Calculate the diff for all the relationships between Nodes.
 
