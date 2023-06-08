@@ -6,8 +6,8 @@ import {
   C_JSON2_OUTPUT,
   C_JSON3,
   C_JSON3_OUTPUT,
-} from "../../data/jsonSamples";
-import { stringifyWithoutQuotes } from "../../utils/string";
+} from "../../../src/data/jsonSamples";
+import { stringifyWithoutQuotes } from "../../../src/utils/string";
 
 describe("Convert JSON to JSON without quotes in the key names", () => {
   it("should work with nested objects", () => {

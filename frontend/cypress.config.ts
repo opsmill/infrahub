@@ -2,6 +2,11 @@ import { defineConfig } from "cypress";
 import vitePreprocessor from "cypress-vite";
 
 export default defineConfig({
+  // downloadsFolder: "tests/downloads",
+  // fileServerFolder: "tests/server",
+  fixturesFolder: "tests/fixtures",
+  // screenshotsFolder: "tests/screenshots",
+  // videosFolder: "tests/videos",
   component: {
     devServer: {
       framework: "react",
