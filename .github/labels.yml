@@ -10,54 +10,54 @@
 # ----------------------------------
 - name: "group/backend"
   description: "Issue related to the backend (API Server, Git Agent)"
-  color: "#b60205"
+  color: "b60205"
 
 - name: "group/frontend"
   description: "Issue related to the frontend (React)"
-  color: "#353755"
+  color: "353755"
 
 - name: "group/infrahubctl"
   description: "Issue related to the infrahubctl command line"
-  color: "#77ab64"
+  color: "77ab64"
 
 - name: "group/python-sdk"
   description: "Issue related to the Python SDK"
-  color: "#56e8e1"
+  color: "56e8e1"
 
 - name: "group/sync-engine"
   description: "Issue related to the Synchronization engine"
-  color: "#56e8e1"
+  color: "56e8e1"
 
 # ----------------------------------
 # TYPE
 # ----------------------------------
 - name: "type/feature"
   description: "New feature or request"
-  color: "#a2eeef"
+  color: "a2eeef"
 
 - name: "type/bug"
   description: "Something isn't working as expected"
-  color: "#d73a4a"
+  color: "d73a4a"
 
 - name: "type/documentation"
   description: "Improvements or additions to documentation"
-  color: "#0075ca"
+  color: "0075ca"
 
 - name: "type/housekeeping"
   description: "Maintenance task"
-  color: "#fef2c0"
+  color: "fef2c0"
 
 - name: "type/question"
   description: "Question or discussion"
-  color: "#d876e3"
+  color: "d876e3"
 
 - name: "type/duplicate"
   description: "This issue or pull request already exists"
-  color: "#cfd3d7"
+  color: "cfd3d7"
 
 - name: "type/epic"
   description: "Large body of work composed of multiple features and/or story"
-  color: "#fbd39c"
+  color: "fbd39c"
 
 
 # ----------------------------------
@@ -65,15 +65,15 @@
 # ----------------------------------
 - name: "effort/high"
   description: "This issue should be completed in more than a day"
-  color: "#c80464"
+  color: "c80464"
 
 - name: "effort/medium"
   description: "This issue should be completed in a less than a day"
-  color: "#676a43"
+  color: "676a43"
 
 - name: "effort/low"
   description: "This issue should be completed in a couple of hours"
-  color: "#eafee4"
+  color: "eafee4"
 
 # ----------------------------------
 # CI
@@ -81,4 +81,4 @@
 
 - name: "ci/skip-changelog"
   description: "Don't include this PR in the changelog"
-  color: "#c30664"
+  color: "c30664"
