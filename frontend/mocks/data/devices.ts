@@ -1062,28 +1062,6 @@ export const deviceDetailsInterfacesMocksData = {
   },
 };
 
-export const deviceDetailsUpdateMocksQuery = `
-mutation Update {
-  device_update (data: {
-    id: "bd3110b9-5923-45e9-b643-776b8151c074",
-    name: {
-        value: "new value here"
-    }
-}) {
-      ok
-  }
-}
-`;
-
-export const deviceDetailsUpdateMocksData = {
-  data: {
-    device_update: {
-      ok: true,
-      __typename: "DeviceUpdate",
-    },
-  },
-};
-
 export const deviceDetailsMocksDataAfterUpdate = {
   ...deviceDetailsMocksData,
   device: {

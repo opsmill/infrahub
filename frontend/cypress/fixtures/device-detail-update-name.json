@@ -1,0 +1,8 @@
+{
+  "data": {
+    "device_update": {
+      "ok": true,
+      "__typename": "DeviceUpdate"
+    }
+  }
+}
