@@ -2,7 +2,9 @@ from graphql import graphql
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import (
+    generate_graphql_paginated_schema as generate_graphql_schema,
+)
 
 
 async def test_create_simple_object(db, session, default_branch, car_person_schema):
@@ -130,13 +132,17 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     query = """
         query {
             person {
-                id
-                name {
-                    value
-                    is_protected
-                }
-                height {
-                    is_visible
+                edges {
+                    node {
+                        id
+                        name {
+                            value
+                            is_protected
+                        }
+                        height {
+                            is_visible
+                        }
+                    }
                 }
             }
         }
@@ -150,8 +156,8 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["name"]["is_protected"] is True
-    assert result1.data["person"][0]["height"]["is_visible"] is False
+    assert result1.data["person"]["edges"][0]["node"]["name"]["is_protected"] is True
+    assert result1.data["person"]["edges"][0]["node"]["height"]["is_visible"] is False
 
 
 async def test_create_object_with_node_property(
@@ -194,20 +200,24 @@ async def test_create_object_with_node_property(
     query = """
         query {
             person {
-                id
-                name {
-                    value
-                    source {
+                edges {
+                    node {
+                        id
                         name {
                             value
+                            source {
+                                name {
+                                    value
+                                }
+                            }
                         }
-                    }
-                }
-                height {
-                    id
-                    owner {
-                        name {
-                            value
+                        height {
+                            id
+                            owner {
+                                name {
+                                    value
+                                }
+                            }
                         }
                     }
                 }
@@ -223,8 +233,8 @@ async def test_create_object_with_node_property(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["name"]["source"]["name"]["value"] == "First Account"
-    assert result1.data["person"][0]["height"]["owner"]["name"]["value"] == "Second Account"
+    assert result1.data["person"]["edges"][0]["node"]["name"]["source"]["name"]["value"] == "First Account"
+    assert result1.data["person"]["edges"][0]["node"]["height"]["owner"]["name"]["value"] == "Second Account"
 
 
 async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
