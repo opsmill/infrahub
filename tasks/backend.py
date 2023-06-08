@@ -126,10 +126,10 @@ def ruff(context: Context):
 @task
 def lint(context: Context):
     """This will run all linter."""
+    ruff(context)
     black(context)
     isort(context)
     pylint(context)
-    ruff(context)
     # mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
