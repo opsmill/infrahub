@@ -31,8 +31,8 @@ jobs:
       # Drafts your next Release notes as Pull Requests are merged into "develop"
       - uses: release-drafter/release-drafter@v5
         # (Optional) specify config name to use, relative to .github/. Default: release-drafter.yml
-        # with:
-        #   config-name: my-config.yml
-        #   disable-autolabeler: true
+        with:
+          config-name: release-note.yml
+          disable-autolabeler: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
