@@ -4,10 +4,11 @@ name: github
 on:
   push:
     branches:
-      - 'main'
+      - "develop"
+      - "stable"
     paths:
-      - '.github/labels.yml'
-      - '.github/workflows/labels.yml'
+      - ".github/labels.yml"
+      - ".github/workflows/labels.yml"
 
 jobs:
   labeler:
