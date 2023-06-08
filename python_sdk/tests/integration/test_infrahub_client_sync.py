@@ -11,12 +11,8 @@ from infrahub_client.node import InfrahubNodeSync
 
 
 class TestInfrahubClientSync:
-    pagination: bool = True
-
     @pytest.fixture(scope="class")
     async def test_client(self):
-        config.SETTINGS.experimental_features.paginated = self.pagination
-
         # pylint: disable=import-outside-toplevel
         from infrahub.api.main import app
 
@@ -24,7 +20,7 @@ class TestInfrahubClientSync:
 
     @pytest.fixture
     def client(self, test_client):
-        return InfrahubClientSync.init(test_client=test_client, pagination=self.pagination)
+        return InfrahubClientSync.init(test_client=test_client)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):
