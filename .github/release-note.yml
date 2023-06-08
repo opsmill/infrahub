@@ -13,7 +13,7 @@ categories:
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 exclude-labels:
   - 'skip-changelog'
-change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
+change-title-escapes: '\<*_&'  # You can add # and @ to disable mentions, and add ` to disable code blocks.
 # version-resolver:
 #   major:
 #     labels:
