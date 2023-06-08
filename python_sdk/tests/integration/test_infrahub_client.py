@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
