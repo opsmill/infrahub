@@ -190,7 +190,7 @@ select = [
     "W",
 ]
 
-line-length = 215
+line-length = 170
 
 [tool.ruff.mccabe]
 # Target max-complexity=10
@@ -199,7 +199,7 @@ max-complexity = 33
 [tool.ruff.per-file-ignores]
 
 "backend/infrahub/git/repository.py" = [
-    "TCH003", # Pydantic needs UUID import to not only be available under YPE_CHECKING clause
+    "TCH003", # Pydantic needs UUID import to not only be available under TYPE_CHECKING clause
 ]
 
 [build-system]

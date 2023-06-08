@@ -107,8 +107,15 @@ class DiffRelationshipQuery(DiffQuery):
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
         MATCH p = ((sn)-[r1]->(rel:Relationship)<-[r2]-(dn))
-        WHERE (r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
-          AND all(r IN relationships(p) WHERE (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))))
+        WHERE (r1.branch = r2.branch AND
+            (r1.to = r2.to OR
+                (r1.to is NULL AND r2.to is NULL)
+            ) AND r1.from = r2.from AND r1.status = r2.status
+        AND all(r IN relationships(p) WHERE
+            (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to
+                AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
+            )
+        )
         """
 
         self.add_to_query(query)
@@ -164,10 +171,12 @@ class DiffRelationshipPropertyQuery(DiffQuery):
         query = (
             """
         MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
-        WHERE (r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL))
+        WHERE (r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
+            AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL))
         WITH *
         MATCH p = ((sn)-[r1]->(rel)<-[r2]-(dn))
-        WHERE r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status AND all(r IN relationships(p) WHERE ( %s ))
+        WHERE r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
+            AND r1.from = r2.from AND r1.status = r2.status AND all(r IN relationships(p) WHERE ( %s ))
         """
             % rels_filter
         )
