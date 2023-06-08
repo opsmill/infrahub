@@ -18,15 +18,15 @@
 
 - name: "group/infrahubctl"
   description: "Issue related to the infrahubctl command line"
-  color: "#77AB64"
+  color: "#77ab64"
 
 - name: "group/python-sdk"
   description: "Issue related to the Python SDK"
-  color: "#56E8E1"
+  color: "#56e8e1"
 
 - name: "group/sync-engine"
   description: "Issue related to the Synchronization engine"
-  color: "#56E8E1"
+  color: "#56e8e1"
 
 # ----------------------------------
 # TYPE
@@ -57,7 +57,7 @@
 
 - name: "type/epic"
   description: "Large body of work composed of multiple features and/or story"
-  color: "#FBD39C"
+  color: "#fbd39c"
 
 
 # ----------------------------------
@@ -65,15 +65,15 @@
 # ----------------------------------
 - name: "effort/high"
   description: "This issue should be completed in more than a day"
-  color: "#C80464"
+  color: "#c80464"
 
 - name: "effort/medium"
   description: "This issue should be completed in a less than a day"
-  color: "#676A43"
+  color: "#676a43"
 
 - name: "effort/low"
   description: "This issue should be completed in a couple of hours"
-  color: "#EAFEE4"
+  color: "#eafee4"
 
 # ----------------------------------
 # CI
@@ -81,4 +81,4 @@
 
 - name: "ci/skip-changelog"
   description: "Don't include this PR in the changelog"
-  color: "#C30664"
+  color: "#c30664"
