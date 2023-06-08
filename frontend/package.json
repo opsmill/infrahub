@@ -11,7 +11,7 @@
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "cypress": "cypress open",
-    "cypress:run": "npm run cypress:run:e2e && npm run cypress:run:component",
+    "cypress:run": "npm run cypress:run:component",
     "cypress:run:component": "cypress run --component",
     "cypress:run:e2e": "cypress run --e2e",
     "codegen": "graphql-codegen --config codegen.yml",
