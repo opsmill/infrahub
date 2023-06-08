@@ -371,8 +371,12 @@ class Branch(StandardNode):
             for idx, branch_name in enumerate(start_times.keys()):
                 filters_per_rel.extend(
                     [
-                        f"({rel}.branch = $branch{idx} AND {rel}.from >= $start_time{idx} AND {rel}.from <= $end_time{idx} AND ( r2.to is NULL or r2.to >= $end_time{idx}))",
-                        f"({rel}.branch = $branch{idx} AND {rel}.from >= $start_time{idx} AND {rel}.to <= $start_time{idx})",
+                        f"""({rel}.branch = $branch{idx}
+                             AND {rel}.from >= $start_time{idx}
+                             AND {rel}.from <= $end_time{idx}
+                             AND ( r2.to is NULL or r2.to >= $end_time{idx}))""",
+                        f"""({rel}.branch = $branch{idx} AND {rel}.from >= $start_time{idx}
+                            AND {rel}.to <= $start_time{idx})""",
                     ]
                 )
 
@@ -399,8 +403,11 @@ class Branch(StandardNode):
         params["end_time"] = end_time.to_string()
 
         filters_per_rel = [
-            f"({rel_label}.branch in $branches AND {rel_label}.from >= $start_time AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)",
-            f"({rel_label}.branch in $branches AND (({rel_label}.from >= $start_time AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time AND {rel_label}.to <= $end_time)))",
+            f"""({rel_label}.branch in $branches AND {rel_label}.from >= $start_time
+                 AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)""",
+            f"""({rel_label}.branch in $branches AND (({rel_label}.from >= $start_time
+                 AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time
+                 AND {rel_label}.to <= $end_time)))""",
         ]
 
         filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
