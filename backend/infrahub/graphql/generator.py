@@ -12,7 +12,7 @@ from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.types import ATTRIBUTE_TYPES
 
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
-from .schema import default_list_resolver, default_paginated_list_resolver
+from .schema import default_paginated_list_resolver
 from .types import (
     RELATIONS_PROPERTY_MAP,
     RELATIONS_PROPERTY_MAP_REVERSED,
@@ -286,112 +286,6 @@ def load_attribute_types_in_registry(branch: Branch):
 
 
 async def generate_object_types(
-    session: AsyncSession, branch: Union[Branch, str] = None
-):  # pylint: disable=too-many-branches
-    """Generate all GraphQL objects for the schema and store them in the internal registry."""
-
-    branch = await get_branch(session=session, branch=branch)
-
-    full_schema = await registry.schema.get_full_safe(branch=branch)
-
-    group_memberships = defaultdict(list)
-
-    load_attribute_types_in_registry(branch=branch)
-
-    # Generate all GraphQL Interface & RelatedInterface Object first and store them in the registry
-    for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, GenericSchema):
-            continue
-        interface = generate_interface_object(schema=node_schema, branch=branch)
-        registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
-
-    # Define DataOwner and DataOwner
-    data_source = registry.get_graphql_type(name="DataSource", branch=branch)
-    data_owner = registry.get_graphql_type(name="DataOwner", branch=branch)
-    for data_type in ATTRIBUTE_TYPES.values():
-        gql_type = registry.get_graphql_type(name=data_type.get_graphql_type_name(), branch=branch)
-        gql_type._meta.fields["source"] = graphene.Field(data_source)
-        gql_type._meta.fields["owner"] = graphene.Field(data_owner)
-
-    # Generate all RelatedInterfaceType and store them in the registry
-    for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, GenericSchema):
-            continue
-
-        related_interface = generate_related_interface_object(
-            schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner, name_prefix="Related"
-        )
-
-        registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
-
-    # Generate all GraphQL ObjectType & RelatedObjectType and store them in the registry
-    for node_name, node_schema in full_schema.items():
-        if isinstance(node_schema, NodeSchema):
-            node_type = generate_graphql_object(schema=node_schema, branch=branch)
-            related_node_type = generate_related_graphql_object(
-                schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner
-            )
-
-            node_type_edged = generate_graphql_edged_object(schema=node_schema, node=node_type)
-
-            node_type_paginated = generate_graphql_paginated_object(schema=node_schema, edge=node_type_edged)
-
-            registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
-            registry.set_graphql_type(
-                name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name
-            )
-            registry.set_graphql_type(name=node_type_edged._meta.name, graphql_type=node_type_edged, branch=branch.name)
-
-            registry.set_graphql_type(
-                name=node_type_paginated._meta.name, graphql_type=node_type_paginated, branch=branch.name
-            )
-
-            # Register this model to all the groups it belongs to.
-            if node_schema.groups:
-                for group_name in node_schema.groups:
-                    group_memberships[group_name].append(f"Related{node_schema.kind}")
-
-    # Generate all the Groups with associated ObjectType / RelatedObjectType
-    for node_name, node_schema in full_schema.items():
-        if (
-            not isinstance(node_schema, GroupSchema)
-            or node_name not in group_memberships
-            or not group_memberships[node_name]
-        ):
-            continue
-        group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []), branch=branch)
-        registry.set_graphql_type(name=group._meta.name, graphql_type=group, branch=branch.name)
-
-    # Extend all types and related types with Relationships
-    for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, (NodeSchema, GenericSchema)):
-            continue
-        node_type = registry.get_graphql_type(name=node_name, branch=branch.name)
-        related_node_type = registry.get_graphql_type(name=f"Related{node_name}", branch=branch.name)
-
-        for rel in node_schema.relationships:
-            peer_schema = await rel.get_peer_schema(branch=branch)
-
-            peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
-            if isinstance(peer_schema, GroupSchema):
-                peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
-            else:
-                peer_type = registry.get_graphql_type(name=f"Related{peer_schema.kind}", branch=branch.name)
-
-            if rel.cardinality == "one":
-                node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=relationship_resolver)
-                related_node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=relationship_resolver)
-
-            elif rel.cardinality == "many":
-                node_type._meta.fields[rel.name] = graphene.Field(
-                    graphene.List(of_type=peer_type, required=True), **peer_filters, resolver=relationship_resolver
-                )
-                related_node_type._meta.fields[rel.name] = graphene.Field(
-                    graphene.List(of_type=peer_type, required=True), **peer_filters, resolver=relationship_resolver
-                )
-
-
-async def generate_paginated_object_types(
     session: AsyncSession, branch: Union[Branch, str]
 ):  # pylint: disable=too-many-branches,too-many-statements
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
@@ -527,30 +421,6 @@ async def generate_paginated_object_types(
 
 
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
-    class_attrs = {}
-
-    full_schema = await registry.schema.get_full_safe(branch=branch)
-
-    # Generate all Graphql objectType and store them in the registry
-    await generate_object_types(session=session, branch=branch)
-
-    for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, NodeSchema):
-            continue
-
-        node_type = registry.get_graphql_type(name=node_name, branch=branch)
-        node_filters = await generate_filters(session=session, schema=node_schema, top_level=True)
-
-        class_attrs[node_schema.name] = graphene.List(
-            of_type=node_type,
-            resolver=default_list_resolver,
-            **node_filters,
-        )
-
-    return type("QueryMixin", (object,), class_attrs)
-
-
-async def generate_paginated_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
     full_schema = await registry.schema.get_full_safe(branch=branch)

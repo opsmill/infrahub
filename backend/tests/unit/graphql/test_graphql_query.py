@@ -22,14 +22,21 @@ async def test_simple_query(db, session, default_branch: Branch, criticality_sch
     query = """
     query {
         criticality {
-            name {
-                value
+            count
+            edges {
+                node {
+                    name {
+                        value
+                     }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            session=session, include_mutation=False, include_subscription=False, branch=default_branch
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -37,7 +44,45 @@ async def test_simple_query(db, session, default_branch: Branch, criticality_sch
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 2
+    assert result.data["criticality"]["count"] == 2
+    assert len(result.data["criticality"]["edges"]) == 2
+
+
+async def test_simple_query_with_offset_and_limit(db, session, default_branch: Branch, criticality_schema):
+    obj1 = await Node.init(session=session, schema=criticality_schema)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
+    obj2 = await Node.init(session=session, schema=criticality_schema)
+    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(session=session)
+
+    query = """
+    query {
+        criticality(offset: 0, limit:1) {
+            count
+            edges {
+                node {
+                    name {
+                        value
+                     }
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(
+            session=session, include_mutation=False, include_subscription=False, branch=default_branch
+        ),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["criticality"]["count"] == 2
+    assert len(result.data["criticality"]["edges"]) == 1
 
 
 async def test_display_label_one_item(db, session, default_branch: Branch, data_schema):
@@ -62,13 +107,19 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
     query = """
     query {
         criticality {
-            id
-            display_label
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -76,8 +127,8 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 1
-    assert result.data["criticality"][0]["display_label"] == "Low"
+    assert len(result.data["criticality"]["edges"]) == 1
+    assert result.data["criticality"]["edges"][0]["node"]["display_label"] == "Low"
 
 
 async def test_display_label_multiple_items(db, session, default_branch: Branch, data_schema):
@@ -105,13 +156,19 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
     query = """
     query {
         criticality {
-            id
-            display_label
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -119,8 +176,11 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 2
-    assert sorted([node["display_label"] for node in result.data["criticality"]]) == ["low 4", "medium 3"]
+    assert len(result.data["criticality"]["edges"]) == 2
+    assert sorted([node["node"]["display_label"] for node in result.data["criticality"]["edges"]]) == [
+        "low 4",
+        "medium 3",
+    ]
 
 
 async def test_display_label_default_value(db, session, default_branch: Branch, data_schema):
@@ -144,13 +204,19 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
     query = """
     query {
         criticality {
-            id
-            display_label
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -158,8 +224,8 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 1
-    assert result.data["criticality"][0]["display_label"] == f"Criticality(ID: {obj1.id})"
+    assert len(result.data["criticality"]["edges"]) == 1
+    assert result.data["criticality"]["edges"][0]["node"]["display_label"] == f"Criticality(ID: {obj1.id})"
 
 
 async def test_all_attributes(db, session, default_branch: Branch, data_schema, all_attribute_types_schema):
@@ -174,16 +240,22 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     query = """
     query {
         all_attribute_types {
-            name { value }
-            mystring { value }
-            mybool { value }
-            myint { value }
-            mylist { value }
+            edges {
+                node {
+                    name { value }
+                    mystring { value }
+                    mybool { value }
+                    myint { value }
+                    mylist { value }
+                }
+            }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -191,9 +263,9 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     )
 
     assert result.errors is None
-    assert len(result.data["all_attribute_types"]) == 2
+    assert len(result.data["all_attribute_types"]["edges"]) == 2
 
-    results = {item["name"]["value"]: item for item in result.data["all_attribute_types"]}
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["all_attribute_types"]["edges"]}
 
     assert results["obj1"]["mystring"]["value"] == obj1.mystring.value
     assert results["obj1"]["mybool"]["value"] == obj1.mybool.value
@@ -230,19 +302,29 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
     query = """
     query {
         person {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -251,10 +333,10 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
 
     assert result.errors is None
 
-    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
+    assert len(result_per_name["John"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
 
 
 async def test_double_nested_query(db, session, default_branch: Branch, car_person_schema):
@@ -281,16 +363,27 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     query = """
     query {
         person {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
-                }
-                owner {
+            edges {
+                node {
                     name {
                         value
+                    }
+                    cars {
+                        count
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                                owner {
+                                    node {
+                                        name {
+                                            value
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -298,7 +391,9 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -307,11 +402,13 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
 
     assert result.errors is None
 
-    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["cars"]) == 2
-    assert len(result_per_name["Jane"]["cars"]) == 1
-    assert result_per_name["John"]["cars"][0]["owner"]["name"]["value"] == "John"
+    assert len(result_per_name["John"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
+    assert result_per_name["John"]["cars"]["count"] == 2
+    assert result_per_name["Jane"]["cars"]["count"] == 1
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["value"] == "John"
 
 
 async def test_display_label_nested_query(db, session, default_branch: Branch, car_person_schema):
@@ -338,22 +435,34 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     query = """
     query {
         person(name__value: "John") {
-            name {
-                value
-            }
-            cars {
-                id
-                display_label
-                owner {
-                    id
-                    display_label
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                owner {
+                                    node {
+                                        id
+                                        display_label
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            session=session, branch=default_branch, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -361,28 +470,40 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     )
 
     assert result.errors is None
+
     expected_result = {
-        "cars": [
-            {
-                "display_label": "volt #444444",
-                "id": str(c1.id),
-                "owner": {
-                    "display_label": "John",
-                    "id": str(p1.id),
+        "cars": {
+            "edges": [
+                {
+                    "node": {
+                        "display_label": "volt #444444",
+                        "id": str(c1.id),
+                        "owner": {
+                            "node": {
+                                "display_label": "John",
+                                "id": str(p1.id),
+                            }
+                        },
+                    }
                 },
-            },
-            {
-                "display_label": "bolt #444444",
-                "id": str(c2.id),
-                "owner": {
-                    "display_label": "John",
-                    "id": str(p1.id),
+                {
+                    "node": {
+                        "display_label": "bolt #444444",
+                        "id": str(c2.id),
+                        "owner": {
+                            "node": {
+                                "display_label": "John",
+                                "id": str(p1.id),
+                            }
+                        },
+                    }
                 },
-            },
-        ],
+            ],
+        },
         "name": {"value": "John"},
     }
-    assert DeepDiff(result.data["person"][0], expected_result, ignore_order=True).to_dict() == {}
+
+    assert DeepDiff(result.data["person"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
 
 
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):
@@ -409,22 +530,40 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     query = """
     query {
         person {
+        __typename
+            edges {
             __typename
-            name {
-                value
-                __typename
-            }
-            cars {
-                __typename
-                name {
-                    __typename
-                    value
-                }
-                owner {
+                node {
                     __typename
                     name {
                         value
                         __typename
+                    }
+                    cars {
+                    __typename
+                        edges {
+                        __typename
+                            properties {
+                                __typename
+                            }
+                            node {
+                                __typename
+                                name {
+                                    __typename
+                                    value
+                                }
+                                owner {
+                                    __typename
+                                    node {
+                                        __typename
+                                        name {
+                                            value
+                                            __typename
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -432,7 +571,9 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -441,11 +582,16 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
 
     assert result.errors is None
 
-    result_per_name = {result["name"]["value"]: result for result in result.data["person"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert result.data["person"][0]["__typename"] == "Person"
-    assert result.data["person"][0]["name"]["__typename"] == "TextAttribute"
-    assert result_per_name["John"]["cars"][0]["__typename"] == "RelatedCar"
+    assert result.data["person"]["__typename"] == "PaginatedPerson"
+    assert result.data["person"]["edges"][0]["__typename"] == "EdgedPerson"
+    assert result.data["person"]["edges"][0]["node"]["__typename"] == "Person"
+    assert result.data["person"]["edges"][0]["node"]["name"]["__typename"] == "TextAttribute"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["__typename"] == "Car"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["__typename"] == "NestedEdgedPerson"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["__typename"] == "TextAttribute"
+    assert result_per_name["John"]["cars"]["edges"][0]["properties"]["__typename"] == "RelationshipProperty"
 
 
 async def test_query_filter_ids(db, session, default_branch: Branch, criticality_schema):
@@ -463,8 +609,12 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
         """
     query {
         criticality(ids: ["%s"]) {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
@@ -473,7 +623,9 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -481,13 +633,17 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 1
+    assert len(result.data["criticality"]["edges"]) == 1
 
     query = """
     query {
         criticality(ids: ["%s", "%s"]) {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
@@ -497,7 +653,9 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -505,7 +663,7 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 2
+    assert len(result.data["criticality"]["edges"]) == 2
 
 
 async def test_query_filter_local_attrs(db, session, default_branch: Branch, criticality_schema):
@@ -519,14 +677,20 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
     query = """
     query {
         criticality(name__value: "low") {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -534,7 +698,7 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]) == 1
+    assert len(result.data["criticality"]["edges"]) == 1
 
 
 async def test_query_multiple_filters(db, session, default_branch: Branch, car_person_manufacturer_schema):
@@ -569,15 +733,21 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     query01 = """
     query {
         car(owner__name__value: "John", nbr_seats__value: 4) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query01,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -585,21 +755,27 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c1.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c1.id
 
     query02 = """
     query {
         car(is_electric__value: true, nbr_seats__value: 4) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query02,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -607,21 +783,27 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c3.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c3.id
 
     query03 = """
     query {
         car(owner__name__value: "John", manufacturer__name__value: "ford", ) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query03,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -629,15 +811,19 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c2.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c2.id
 
     query04 = """
     query {
         car(owner__id: "%s", manufacturer__id: "%s", ) {
-            id
-            name {
-                value
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
@@ -647,7 +833,9 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query04,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -655,8 +843,8 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]) == 1
-    assert result.data["car"][0]["id"] == c2.id
+    assert len(result.data["car"]["edges"]) == 1
+    assert result.data["car"]["edges"][0]["node"]["id"] == c2.id
 
 
 async def test_query_filter_relationships(db, session, default_branch: Branch, car_person_schema):
@@ -683,19 +871,31 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     query = """
     query {
         person(name__value: "John") {
-            name {
-                value
-            }
-            cars(name__value: "volt") {
-                name {
-                    value
+            count
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars(name__value: "volt") {
+                        count
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -703,10 +903,12 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     )
 
     assert result.errors is None
-    assert len(result.data["person"]) == 1
-    assert result.data["person"][0]["name"]["value"] == "John"
-    assert len(result.data["person"][0]["cars"]) == 1
-    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+    assert len(result.data["person"]["edges"]) == 1
+    assert result.data["person"]["count"] == 1
+    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["cars"]["count"] == 1
+    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
 async def test_query_filter_relationships_with_generic(db, session, default_branch: Branch, car_person_schema_generics):
@@ -734,19 +936,30 @@ async def test_query_filter_relationships_with_generic(db, session, default_bran
     query = """
     query {
         person(name__value: "John") {
-            name {
-                value
-            }
-            cars(name__value: "volt") {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars(name__value: "volt") {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
+
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            session=session, branch=default_branch, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -754,10 +967,10 @@ async def test_query_filter_relationships_with_generic(db, session, default_bran
     )
 
     assert result.errors is None
-    assert len(result.data["person"]) == 1
-    assert result.data["person"][0]["name"]["value"] == "John"
-    assert len(result.data["person"][0]["cars"]) == 1
-    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+    assert len(result.data["person"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
 async def test_query_filter_relationship_id(db, session, default_branch: Branch, car_person_schema):
@@ -785,12 +998,20 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
         """
     query {
         person(name__value: "John") {
-            name {
-                value
-            }
-            cars(id: "%s") {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars(id: "%s") {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -800,7 +1021,9 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     )
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -808,10 +1031,10 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     )
 
     assert result.errors is None
-    assert len(result.data["person"]) == 1
-    assert result.data["person"][0]["name"]["value"] == "John"
-    assert len(result.data["person"][0]["cars"]) == 1
-    assert result.data["person"][0]["cars"][0]["name"]["value"] == "volt"
+    assert len(result.data["person"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
 async def test_query_oneway_relationship(db, session, default_branch: Branch, person_tag_schema):
@@ -828,17 +1051,27 @@ async def test_query_oneway_relationship(db, session, default_branch: Branch, pe
     query = """
     query {
         person {
-            id
-            tags {
-                name {
-                    value
+            edges {
+                node {
+                    id
+                    tags {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -846,7 +1079,7 @@ async def test_query_oneway_relationship(db, session, default_branch: Branch, pe
     )
 
     assert result.errors is None
-    assert len(result.data["person"][0]["tags"]) == 2
+    assert len(result.data["person"]["edges"][0]["node"]["tags"]["edges"]) == 2
 
 
 async def test_query_at_specific_time(db, session, default_branch: Branch, person_tag_schema):
@@ -865,14 +1098,20 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     query = """
     query {
         tag {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -880,23 +1119,29 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     )
 
     assert result.errors is None
-    assert len(result.data["tag"]) == 2
-    names = sorted([tag["name"]["value"] for tag in result.data["tag"]])
+    assert len(result.data["tag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["tag"]["edges"]])
     assert names == ["Blue", "Green"]
 
     # Now query at a specific time
     query = """
     query {
         tag {
-            name {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
             }
         }
     }
     """
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={
             "infrahub_session": session,
@@ -909,8 +1154,8 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     )
 
     assert result.errors is None
-    assert len(result.data["tag"]) == 2
-    names = sorted([tag["name"]["value"] for tag in result.data["tag"]])
+    assert len(result.data["tag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["tag"]["edges"]])
     assert names == ["Blue", "Red"]
 
 
@@ -922,20 +1167,26 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                updated_at
-            }
-            lastname {
-                value
-                updated_at
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                        updated_at
+                    }
+                    lastname {
+                        value
+                        updated_at
+                    }
+                }
             }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -943,15 +1194,20 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["updated_at"]
-    assert result1.data["person"][0]["firstname"]["updated_at"] == result1.data["person"][0]["lastname"]["updated_at"]
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+    assert (
+        result1.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+        == result1.data["person"]["edges"][0]["node"]["lastname"]["updated_at"]
+    )
 
     p12 = await NodeManager.get_one(session=session, id=p11.id)
     p12.firstname.value = "Jim"
     await p12.save(session=session)
 
     result2 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -959,8 +1215,11 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     )
 
     assert result2.errors is None
-    assert result2.data["person"][0]["firstname"]["updated_at"]
-    assert result2.data["person"][0]["firstname"]["updated_at"] != result2.data["person"][0]["lastname"]["updated_at"]
+    assert result2.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+    assert (
+        result2.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+        != result2.data["person"]["edges"][0]["node"]["lastname"]["updated_at"]
+    )
 
 
 async def test_query_node_updated_at(db, session, default_branch: Branch, person_tag_schema):
@@ -971,13 +1230,19 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     query = """
     query {
         person {
-            _updated_at
-            id
+            edges {
+                node {
+                    _updated_at
+                    id
+                }
+            }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -985,14 +1250,16 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["_updated_at"]
+    assert result1.data["person"]["edges"][0]["node"]["_updated_at"]
 
     p2 = await Node.init(session=session, schema="Person")
     await p2.new(session=session, firstname="Jane", lastname="Doe")
     await p2.save(session=session)
 
     result2 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1000,10 +1267,16 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     )
 
     assert result2.errors is None
-    assert result2.data["person"][0]["_updated_at"]
-    assert result2.data["person"][1]["_updated_at"]
-    assert result2.data["person"][1]["_updated_at"] == Timestamp(result2.data["person"][1]["_updated_at"]).to_string()
-    assert result2.data["person"][0]["_updated_at"] != result2.data["person"][1]["_updated_at"]
+    assert result2.data["person"]["edges"][0]["node"]["_updated_at"]
+    assert result2.data["person"]["edges"][1]["node"]["_updated_at"]
+    assert (
+        result2.data["person"]["edges"][1]["node"]["_updated_at"]
+        == Timestamp(result2.data["person"]["edges"][1]["node"]["_updated_at"]).to_string()
+    )
+    assert (
+        result2.data["person"]["edges"][0]["node"]["_updated_at"]
+        != result2.data["person"]["edges"][1]["node"]["_updated_at"]
+    )
 
 
 async def test_query_relationship_updated_at(db, session, default_branch: Branch, person_tag_schema):
@@ -1017,19 +1290,31 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     query = """
     query {
         person {
-            id
-            tags {
-                _updated_at
-                _relation__updated_at
-                name {
-                    value
+            edges {
+                node {
+                    id
+                    tags {
+                        edges {
+                            node {
+                                _updated_at
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                updated_at
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1037,14 +1322,16 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
     assert result1.errors is None
-    assert result1.data["person"] == []
+    assert result1.data["person"]["edges"] == []
 
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
     await p1.save(session=session)
 
     result2 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1052,14 +1339,14 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
     assert result2.errors is None
-    assert len(result2.data["person"][0]["tags"]) == 2
+    assert len(result2.data["person"]["edges"][0]["node"]["tags"]["edges"]) == 2
     assert (
-        result2.data["person"][0]["tags"][0]["_updated_at"]
-        != result2.data["person"][0]["tags"][0]["_relation__updated_at"]
+        result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        != result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]
     )
     assert (
-        result2.data["person"][0]["tags"][0]["_updated_at"]
-        == Timestamp(result2.data["person"][0]["tags"][0]["_updated_at"]).to_string()
+        result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        == Timestamp(result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]).to_string()
     )
 
 
@@ -1073,12 +1360,16 @@ async def test_query_attribute_node_property_source(
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                source {
-                    name {
+            edges {
+                node {
+                    id
+                    firstname {
                         value
+                        source {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -1086,7 +1377,9 @@ async def test_query_attribute_node_property_source(
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1094,8 +1387,10 @@ async def test_query_attribute_node_property_source(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["source"]
-    assert result1.data["person"][0]["firstname"]["source"]["name"]["value"] == first_account.name.value
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["source"]
+    assert (
+        result1.data["person"]["edges"][0]["node"]["firstname"]["source"]["name"]["value"] == first_account.name.value
+    )
 
 
 async def test_query_attribute_node_property_owner(
@@ -1108,12 +1403,16 @@ async def test_query_attribute_node_property_owner(
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                owner {
-                    name {
+            edges {
+                node {
+                    id
+                    firstname {
                         value
+                        owner {
+                            name {
+                                value
+                            }
+                        }
                     }
                 }
             }
@@ -1121,7 +1420,9 @@ async def test_query_attribute_node_property_owner(
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1129,8 +1430,8 @@ async def test_query_attribute_node_property_owner(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["owner"]
-    assert result1.data["person"][0]["firstname"]["owner"]["name"]["value"] == first_account.name.value
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["owner"]
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["owner"]["name"]["value"] == first_account.name.value
 
 
 async def test_query_relationship_node_property(db, session, default_branch: Branch, car_person_schema, first_account):
@@ -1166,19 +1467,29 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     query = """
     query {
         person {
-            id
-            name {
-                value
-            }
-            cars {
-                _relation__owner {
+            edges {
+                node {
                     id
-                }
-                _relation__source {
-                    id
-                }
-                name {
-                    value
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                            properties {
+                                owner {
+                                    id
+                                }
+                                source {
+                                    id
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1186,7 +1497,9 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
     """
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1195,20 +1508,20 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
 
     assert result.errors is None
 
-    results = {item["name"]["value"]: item for item in result.data["person"]}
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["person"]["edges"]}
     assert sorted(list(results.keys())) == ["Jane", "John"]
-    assert len(results["John"]["cars"]) == 1
-    assert len(results["Jane"]["cars"]) == 1
+    assert len(results["John"]["cars"]["edges"]) == 1
+    assert len(results["Jane"]["cars"]["edges"]) == 1
 
-    assert results["John"]["cars"][0]["name"]["value"] == "volt"
-    assert results["John"]["cars"][0]["_relation__owner"]
-    assert results["John"]["cars"][0]["_relation__owner"]["id"] == first_account.id
-    assert results["John"]["cars"][0]["_relation__source"] is None
+    assert results["John"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert results["John"]["cars"]["edges"][0]["properties"]["owner"]
+    assert results["John"]["cars"]["edges"][0]["properties"]["owner"]["id"] == first_account.id
+    assert results["John"]["cars"]["edges"][0]["properties"]["source"] is None
 
-    assert results["Jane"]["cars"][0]["name"]["value"] == "bolt"
-    assert results["Jane"]["cars"][0]["_relation__owner"] is None
-    assert results["Jane"]["cars"][0]["_relation__source"]
-    assert results["Jane"]["cars"][0]["_relation__source"]["id"] == first_account.id
+    assert results["Jane"]["cars"]["edges"][0]["node"]["name"]["value"] == "bolt"
+    assert results["Jane"]["cars"]["edges"][0]["properties"]["owner"] is None
+    assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]
+    assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]["id"] == first_account.id
 
 
 async def test_query_attribute_flag_property(
@@ -1226,20 +1539,26 @@ async def test_query_attribute_flag_property(
     query = """
     query {
         person {
-            id
-            firstname {
-                value
-                is_protected
-            }
-            lastname {
-                value
-                is_visible
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                        is_protected
+                    }
+                    lastname {
+                        value
+                        is_visible
+                    }
+                }
             }
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1247,8 +1566,8 @@ async def test_query_attribute_flag_property(
     )
 
     assert result1.errors is None
-    assert result1.data["person"][0]["firstname"]["is_protected"] is True
-    assert result1.data["person"][0]["lastname"]["is_visible"] is False
+    assert result1.data["person"]["edges"][0]["node"]["firstname"]["is_protected"] is True
+    assert result1.data["person"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
 
 async def test_query_branches(db, session, default_branch: Branch, register_core_models_schema):
@@ -1263,7 +1582,9 @@ async def test_query_branches(db, session, default_branch: Branch, register_core
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1292,7 +1613,9 @@ async def test_query_multiple_branches(db, session, default_branch: Branch, regi
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1316,21 +1639,32 @@ async def test_multiple_queries(db, session, default_branch: Branch, person_tag_
     query = """
     query {
         firstperson: person(firstname__value: "John") {
-            id
-            firstname {
-                value
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                    }
+                }
             }
         }
         secondperson: person(firstname__value: "Jane") {
-            id
-            firstname {
-                value
+            edges {
+                node {
+                    id
+                    firstname {
+                        value
+                    }
+                }
             }
+
         }
     }
     """
     result1 = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1338,8 +1672,8 @@ async def test_multiple_queries(db, session, default_branch: Branch, person_tag_
     )
 
     assert result1.errors is None
-    assert result1.data["firstperson"][0]["firstname"]["value"] == "John"
-    assert result1.data["secondperson"][0]["firstname"]["value"] == "Jane"
+    assert result1.data["firstperson"]["edges"][0]["node"]["firstname"]["value"] == "John"
+    assert result1.data["secondperson"]["edges"][0]["node"]["firstname"]["value"] == "Jane"
 
 
 async def test_model_node_interface(db, session, default_branch: Branch, car_schema):
@@ -1354,20 +1688,26 @@ async def test_model_node_interface(db, session, default_branch: Branch, car_sch
     query = """
     query {
         car {
-            name {
-                value
-            }
-            description {
-                value
-            }
-            nbr_doors {
-                value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    description {
+                        value
+                    }
+                    nbr_doors {
+                        value
+                    }
+                }
             }
         }
     }
     """
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1375,8 +1715,11 @@ async def test_model_node_interface(db, session, default_branch: Branch, car_sch
     )
 
     assert result.errors is None
-    assert sorted([car["name"]["value"] for car in result.data["car"]]) == ["Porsche 911", "Renaud Clio"]
-    assert sorted([car["nbr_doors"]["value"] for car in result.data["car"]]) == [2, 4]
+    assert sorted([car["node"]["name"]["value"] for car in result.data["car"]["edges"]]) == [
+        "Porsche 911",
+        "Renaud Clio",
+    ]
+    assert sorted([car["node"]["nbr_doors"]["value"] for car in result.data["car"]["edges"]]) == [2, 4]
 
 
 async def test_model_rel_interface(db, session, default_branch: Branch, vehicule_person_schema):
@@ -1395,21 +1738,29 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
     query = """
     query {
         person {
-            name {
-                value
-            }
-            vehicules {
-                name {
-                    value
-                }
-                ... on RelatedCar {
-                    nbr_doors {
+            edges {
+                node {
+                    name {
                         value
                     }
-                }
-                ... on RelatedBoat {
-                    has_sails {
-                        value
+                    vehicules {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                                ... on Car {
+                                    nbr_doors {
+                                        value
+                                    }
+                                }
+                                ... on Boat {
+                                    has_sails {
+                                        value
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1418,7 +1769,9 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
     """
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        schema=await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1426,15 +1779,17 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
     )
 
     assert result.errors is None
-    assert len(result.data["person"][0]["vehicules"]) == 2
+    assert len(result.data["person"]["edges"][0]["node"]["vehicules"]["edges"]) == 2
     expected_results = {
         "name": {"value": "John Doe"},
-        "vehicules": [
-            {"name": {"value": "Porsche 911"}, "nbr_doors": {"value": 2}},
-            {"has_sails": {"value": True}, "name": {"value": "Laser"}},
-        ],
+        "vehicules": {
+            "edges": [
+                {"node": {"name": {"value": "Porsche 911"}, "nbr_doors": {"value": 2}}},
+                {"node": {"has_sails": {"value": True}, "name": {"value": "Laser"}}},
+            ]
+        },
     }
-    assert DeepDiff(result.data["person"][0], expected_results, ignore_order=True).to_dict() == {}
+    assert DeepDiff(result.data["person"]["edges"][0]["node"], expected_results, ignore_order=True).to_dict() == {}
 
 
 async def test_model_rel_interface_reverse(db, session, default_branch: Branch, vehicule_person_schema):
@@ -1453,12 +1808,21 @@ async def test_model_rel_interface_reverse(db, session, default_branch: Branch, 
     query = """
     query {
         boat {
-            name {
-                value
-            }
-            owners {
-                name {
-                    value
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    owners {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+
+                    }
                 }
             }
         }
@@ -1466,7 +1830,9 @@ async def test_model_rel_interface_reverse(db, session, default_branch: Branch, 
     """
 
     result = await graphql(
-        await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False),
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
@@ -1474,9 +1840,10 @@ async def test_model_rel_interface_reverse(db, session, default_branch: Branch, 
     )
 
     assert result.errors is None
-    assert len(result.data["boat"][0]["owners"]) == 1
+    assert len(result.data["boat"]["edges"][0]["node"]["owners"]["edges"]) == 1
 
 
+@pytest.mark.skip(reason="pending convertion - review use of fragments")
 async def test_union_relationship(
     db, session, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
 ):
@@ -1539,7 +1906,9 @@ async def test_union_relationship(
     }
     """
 
-    schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
+    schema = await generate_graphql_schema(
+        branch=default_branch, session=session, include_mutation=False, include_subscription=False
+    )
 
     result = await graphql(
         schema=schema,
@@ -1630,7 +1999,9 @@ async def test_union_root(
     }
     """
 
-    schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
+    schema = await generate_graphql_schema(
+        branch=default_branch, session=session, include_mutation=False, include_subscription=False
+    )
 
     result = await graphql(
         schema=schema,
@@ -1677,7 +2048,9 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
     """
     main_branch = await Branch.get_by_name(name="main", session=session)
 
-    schema = await generate_graphql_schema(session=session, include_mutation=False, include_subscription=False)
+    schema = await generate_graphql_schema(
+        branch=default_branch, session=session, include_mutation=False, include_subscription=False
+    )
 
     result = await graphql(
         schema=schema,

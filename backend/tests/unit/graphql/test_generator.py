@@ -118,14 +118,19 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
     await generate_object_types(session=session, branch=default_branch)
 
     car = registry.get_graphql_type(name="Car", branch=default_branch)
-    related_car = registry.get_graphql_type(name="RelatedCar", branch=default_branch)
+    edged_car = registry.get_graphql_type(name="EdgedCar", branch=default_branch)
+    nested_edged_car = registry.get_graphql_type(name="NestedEdgedCar", branch=default_branch)
     person = registry.get_graphql_type(name="Person", branch=default_branch)
-    related_person = registry.get_graphql_type(name="RelatedPerson", branch=default_branch)
+    edged_person = registry.get_graphql_type(name="EdgedPerson", branch=default_branch)
+    nested_edged_person = registry.get_graphql_type(name="NestedEdgedPerson", branch=default_branch)
+    relationship_property = registry.get_graphql_type(name="RelationshipProperty", branch=default_branch)
 
     assert issubclass(car, InfrahubObject)
-    assert issubclass(related_car, InfrahubObject)
+    assert issubclass(edged_car, InfrahubObject)
+    assert issubclass(nested_edged_car, InfrahubObject)
     assert issubclass(person, InfrahubObject)
-    assert issubclass(related_person, InfrahubObject)
+    assert issubclass(edged_person, InfrahubObject)
+    assert issubclass(nested_edged_person, InfrahubObject)
 
     assert sorted(list(car._meta.fields.keys())) == [
         "_updated_at",
@@ -137,32 +142,23 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "nbr_seats",
         "owner",
     ]
-    assert sorted(list(related_car._meta.fields.keys())) == [
-        "_relation__is_protected",
-        "_relation__is_visible",
-        "_relation__owner",
-        "_relation__source",
-        "_relation__updated_at",
-        "_updated_at",
-        "color",
-        "display_label",
-        "id",
-        "is_electric",
-        "name",
-        "nbr_seats",
-        "owner",
-    ]
+
+    assert sorted(list(edged_car._meta.fields.keys())) == ["node"]
+    assert str(edged_car._meta.fields["node"].type) == "Car"
+    assert sorted(list(nested_edged_car._meta.fields.keys())) == ["node", "properties"]
+    assert str(nested_edged_car._meta.fields["node"].type) == "Car"
+    assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
+
     assert sorted(list(person._meta.fields.keys())) == ["_updated_at", "cars", "display_label", "height", "id", "name"]
-    assert sorted(list(related_person._meta.fields.keys())) == [
-        "_relation__is_protected",
-        "_relation__is_visible",
-        "_relation__owner",
-        "_relation__source",
-        "_relation__updated_at",
-        "_updated_at",
-        "cars",
-        "display_label",
-        "height",
-        "id",
-        "name",
+    assert sorted(list(edged_person._meta.fields.keys())) == ["node"]
+    assert str(edged_person._meta.fields["node"].type) == "Person"
+    assert sorted(list(nested_edged_person._meta.fields.keys())) == ["node", "properties"]
+    assert str(nested_edged_person._meta.fields["node"].type) == "Person"
+    assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
+    assert sorted(list(relationship_property._meta.fields.keys())) == [
+        "is_protected",
+        "is_visible",
+        "owner",
+        "source",
+        "updated_at",
     ]

@@ -403,11 +403,11 @@ class SchemaBranch:
 
     async def get_graphql_schema(self, session: AsyncSession) -> GraphQLSchema:
         from infrahub.graphql import (  # pylint: disable=import-outside-toplevel
-            generate_graphql_paginated_schema,
+            generate_graphql_schema,
         )
 
         if not self._graphql_schema:
-            self._graphql_schema = await generate_graphql_paginated_schema(session=session, branch=self.name)
+            self._graphql_schema = await generate_graphql_schema(session=session, branch=self.name)
 
         return self._graphql_schema
 

@@ -8,9 +8,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import (
-    generate_graphql_paginated_schema as generate_graphql_schema,
-)
+from infrahub.graphql import generate_graphql_schema
 from infrahub.message_bus.events import (
     CheckMessageAction,
     GitMessageAction,
