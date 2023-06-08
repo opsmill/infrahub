@@ -3,7 +3,7 @@ import os
 import os.path
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import toml
 from pydantic import BaseSettings, Field, ValidationError
@@ -63,7 +63,7 @@ class BrokerSettings(BaseSettings):
 
     @property
     def service_port(self) -> int:
-        default_ports: dict[bool, int] = {True: 5671, False: 5672}
+        default_ports: Dict[bool, int] = {True: 5671, False: 5672}
         return self.port or default_ports[self.tls_enabled]
 
     class Config:
