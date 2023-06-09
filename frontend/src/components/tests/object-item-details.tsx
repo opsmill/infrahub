@@ -1,6 +1,6 @@
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
-import { getObjectDetails } from "../../graphql/queries/objects/getObjectDetails";
+import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { cleanTabsAndNewLines } from "../../utils/string";
 
@@ -16,7 +16,7 @@ export default function ObjectItemDetails() {
       relationship.kind === "Parent"
   );
 
-  const queryString = getObjectDetails({
+  const queryString = getObjectDetailsPaginated({
     ...schema,
     relationships,
     objectid,
