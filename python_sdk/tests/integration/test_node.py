@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import infrahub.config as config
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub_client import InfrahubClient
@@ -17,7 +16,6 @@ class TestInfrahubNode:
     @pytest.fixture(scope="class")
     async def test_client(self):
         # pylint: disable=import-outside-toplevel
-        config.SETTINGS.experimental_features.paginated = self.pagination
 
         from infrahub.api.main import app
 
