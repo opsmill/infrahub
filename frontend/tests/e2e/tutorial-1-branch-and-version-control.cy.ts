@@ -1,10 +1,12 @@
 /// <reference types="cypress" />
 
-const MAIN_BRANCH_NAME = "main";
-const NEW_BRANCH_NAME = "cr1234";
-const ADMIN_ACCOUNT_NAME = "admin";
-const ADMIN_ACCOUNT_LABEL = "Admin";
-const NEW_ADMIN_ACCOUNT_LABEL = "Administrator";
+import {
+  ADMIN_ACCOUNT_LABEL,
+  ADMIN_ACCOUNT_NAME,
+  MAIN_BRANCH_NAME,
+  NEW_ADMIN_ACCOUNT_LABEL,
+  NEW_BRANCH_NAME,
+} from "../mocks/e2e/accounts";
 
 describe("Tutorial - Part 1", () => {
   beforeEach(() => {
