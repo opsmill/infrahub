@@ -866,6 +866,9 @@ async def test_merge_graph(session, base_dataset_02, register_core_models_schema
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 4
 
+    # It should be possible to merge a graph even without changes
+    await branch1.merge_graph(session=session)
+
 
 async def test_merge_graph_delete(session, base_dataset_02, register_core_models_schema):
     branch1 = await Branch.get_by_name(name="branch1", session=session)
