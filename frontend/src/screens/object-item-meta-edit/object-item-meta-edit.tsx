@@ -1,5 +1,4 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { useAtom } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -7,12 +6,8 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
-import { configState } from "../../state/atoms/config.atom";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
-import {
-  getFormStructureForMetaEdit,
-  getFormStructureForMetaEditPaginated,
-} from "../../utils/formStructureForCreateEdit";
+import { getFormStructureForMetaEditPaginated } from "../../utils/formStructureForCreateEdit";
 import getMutationMetaDetailsFromFormData from "../../utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -39,14 +34,15 @@ export default function ObjectItemMetaEdit(props: Props) {
     closeDrawer,
   } = props;
 
-  const [config] = useAtom(configState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const formStructure = config?.experimental_features?.paginated
-    ? getFormStructureForMetaEditPaginated(attributeOrRelationshipToEdit, type, schemaList)
-    : getFormStructureForMetaEdit(attributeOrRelationshipToEdit, type, schemaList);
+  const formStructure = getFormStructureForMetaEditPaginated(
+    attributeOrRelationshipToEdit,
+    type,
+    schemaList
+  );
 
   console.log("formStructure: ", formStructure);
 

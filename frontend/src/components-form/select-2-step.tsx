@@ -1,16 +1,11 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
-import {
-  getDropdownOptionsForRelatedPeers,
-  getDropdownOptionsForRelatedPeersPaginated,
-} from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import { getDropdownOptionsForRelatedPeersPaginated } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
-import { configState } from "../state/atoms/config.atom";
 import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
 
@@ -29,7 +24,6 @@ interface Props {
 
 export const OpsSelect2Step = (props: Props) => {
   const { label, options, value, error, onChange } = props;
-  const [config] = useAtom(configState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
 
@@ -63,13 +57,9 @@ export const OpsSelect2Step = (props: Props) => {
       return;
     }
 
-    const queryString = config?.experimental_features?.paginated
-      ? getDropdownOptionsForRelatedPeersPaginated({
-          peers: [objectName],
-        })
-      : getDropdownOptionsForRelatedPeers({
-          peers: [objectName],
-        });
+    const queryString = getDropdownOptionsForRelatedPeersPaginated({
+      peers: [objectName],
+    });
 
     const query = gql`
       ${queryString}
@@ -83,9 +73,7 @@ export const OpsSelect2Step = (props: Props) => {
       },
     });
 
-    const options = config?.experimental_features?.paginated
-      ? data[objectName]?.edges.map((edge: any) => edge.node)
-      : data[objectName];
+    const options = data[objectName]?.edges.map((edge: any) => edge.node);
 
     setOptionsRight(
       options.map((option: any) => ({
