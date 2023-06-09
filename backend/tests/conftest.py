@@ -27,7 +27,6 @@ def execute_before_any_test():
     config.load_and_exit()
     config.SETTINGS.database.database = TEST_DATABASE
     config.SETTINGS.broker.enable = False
-    config.SETTINGS.experimental_features.paginated = True
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
 
