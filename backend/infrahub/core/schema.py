@@ -1064,6 +1064,12 @@ core_models = {
                     "default_value": "User",
                     "enum": ["User", "Script", "Bot", "Git"],
                 },
+                {
+                    "name": "role",
+                    "kind": "Text",
+                    "default_value": "read-only",
+                    "enum": ["admin", "read-only", "read-write"],
+                },
             ],
             "relationships": [
                 {"name": "tokens", "peer": "AccountToken", "optional": True, "cardinality": "many"},

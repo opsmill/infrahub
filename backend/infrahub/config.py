@@ -21,6 +21,9 @@ class MainSettings(BaseSettings):
     # default_account_perm: str = "CAN_READ"
 
     internal_address: str = "http://localhost:8000"
+    allow_anonymous_access: bool = Field(
+        default=True, description="Indicates if the system allows anonymous read access"
+    )
 
     class Config:
         env_prefix = "INFRAHUB_"
@@ -113,6 +116,10 @@ class AnalyticsSettings(BaseSettings):
 
 class ExperimentalFeaturesSettings(BaseSettings):
     pull_request: bool = False
+    ignore_authentication_requirements: bool = Field(
+        default=True,
+        description="If set to true operations that would have been denied due to lack of authentication still works.",
+    )
 
     class Config:
         env_prefix = "INFRAHUB_EXPERIMENTAL_"

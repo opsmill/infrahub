@@ -3,7 +3,8 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from neo4j import AsyncSession
 
 from infrahub import config
-from infrahub.auth import validate_authentication_token
+from infrahub.auth import AccountSession, authentication_token
+from infrahub.exceptions import AuthorizationError, PermissionDeniedError
 
 jwt_scheme = HTTPBearer(auto_error=False)
 api_key_scheme = APIKeyHeader(name="X-INFRAHUB-KEY", auto_error=False)
@@ -18,12 +19,29 @@ async def get_session(request: Request) -> AsyncSession:
 
 
 async def get_current_user(
-    jwt_token: HTTPAuthorizationCredentials = Depends(jwt_scheme),
+    request: Request,
+    jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
     session: AsyncSession = Depends(get_session),
     api_key: str = Depends(api_key_scheme),
-) -> str:
+) -> AccountSession:
     """Return current user"""
-    if jwt_token:
-        return await validate_authentication_token(session=session, jwt_token=jwt_token.credentials, api_key=api_key)
+    jwt_token = None
+    if jwt_header:
+        jwt_token = jwt_header.credentials
 
-    return await validate_authentication_token(session=session, api_key=api_key)
+    account_session = await authentication_token(session=session, jwt_token=jwt_token, api_key=api_key)
+
+    if account_session.authenticated or request.url.path.startswith("/graphql"):
+        return account_session
+
+    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
+        # This feature will later be removed.
+        return account_session
+
+    if config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"]:
+        return account_session
+
+    if request.method.lower() == "post" and account_session.read_only:
+        raise PermissionDeniedError("You are not allowed to perform this operation")
+
+    raise AuthorizationError("Authentication is required")

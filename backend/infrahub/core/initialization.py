@@ -168,6 +168,7 @@ async def first_time_initialization(session: AsyncSession):
         session=session,
         name="admin",
         type="User",
+        role="admin",
         password=config.SETTINGS.security.initial_admin_password,
         groups=[admin_grp],
     )
