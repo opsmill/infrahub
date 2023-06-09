@@ -190,7 +190,7 @@ function App() {
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/" element={<Layout />}>
-          {MAIN_ROUTES(config).map((route) => (
+          {MAIN_ROUTES.map((route) => (
             <Route index key={route.path} path={route.path} element={route.element} />
           ))}
         </Route>

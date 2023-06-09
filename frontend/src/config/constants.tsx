@@ -1,25 +1,18 @@
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
-import ObjectItemDetails from "../screens/object-item-details/object-item-details";
 import ObjectItemDetailsPaginated from "../screens/object-item-details/object-item-details-paginated";
-import ObjectItems from "../screens/object-items/object-items";
 import ObjectItemsPaginated from "../screens/object-items/object-items-paginated";
 import OpsObjects from "../screens/ops-objects/ops-objects";
 import UserProfile from "../screens/user-profile/user-profile";
-import { Config } from "../state/atoms/config.atom";
 
-export const MAIN_ROUTES = (config?: Config) => [
+export const MAIN_ROUTES = [
   {
     path: "/objects/:objectname/:objectid",
-    element: config?.experimental_features?.paginated ? (
-      <ObjectItemDetailsPaginated />
-    ) : (
-      <ObjectItemDetails />
-    ),
+    element: <ObjectItemDetailsPaginated />,
   },
   {
     path: "/objects/:objectname",
-    element: config?.experimental_features?.paginated ? <ObjectItemsPaginated /> : <ObjectItems />,
+    element: <ObjectItemsPaginated />,
   },
   {
     path: "/schema",
