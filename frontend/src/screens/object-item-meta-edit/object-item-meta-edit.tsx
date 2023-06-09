@@ -44,11 +44,8 @@ export default function ObjectItemMetaEdit(props: Props) {
     schemaList
   );
 
-  console.log("formStructure: ", formStructure);
-
   async function onSubmit(data: any) {
     setIsLoading(true);
-    console.log("data: ", data);
 
     const updatedObject = getMutationMetaDetailsFromFormData(
       schema,
@@ -73,12 +70,10 @@ export default function ObjectItemMetaEdit(props: Props) {
           ${mutationString}
         `;
 
-        const result = await graphqlClient.mutate({
+        await graphqlClient.mutate({
           mutation,
           context: { branch: branch?.name, date },
         });
-
-        console.log("result: ", result);
 
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
 
