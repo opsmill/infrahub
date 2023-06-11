@@ -539,6 +539,9 @@ class Branch(StandardNode):
         diff = await Diff.init(branch=self, session=session)
         nodes = await diff.get_nodes(session=session)
 
+        if self.name not in nodes:
+            return
+
         origin_nodes_query = await NodeListGetInfoQuery.init(
             session=session, ids=list(nodes[self.name].keys()), branch=default_branch
         )
