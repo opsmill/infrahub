@@ -1,0 +1,33 @@
+---
+# yamllint disable rule:truthy
+name: "javascript-lint"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/javascript-lint.yml"
+      - "**.js"
+      - "**.ts"
+      - "**.tsx"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+  push:
+    branches:
+      - develop
+      - stable
+
+jobs:
+  javascript-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: Install NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run eslint

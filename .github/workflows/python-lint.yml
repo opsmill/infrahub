@@ -14,6 +14,15 @@ on:
       - stable
 
 jobs:
+  python-lint:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup environment"
+        run: "pip install black==23.1.0"
+      - name: "Linting: BLACK"
+        run: "black --check ."
   python-tests:
     runs-on: "ubuntu-20.04"
     steps:
