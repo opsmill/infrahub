@@ -10,6 +10,7 @@ packages = [
     { include = "infrahub_client", from = "python_sdk"},
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
     { include = "nornir_infrahub", from = "nornir_plugin"},
+    { include = "potenda", from = "sync/potenda"},
 ]
 
 [tool.poetry.dependencies]

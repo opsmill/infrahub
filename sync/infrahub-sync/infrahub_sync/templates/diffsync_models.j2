@@ -1,0 +1,23 @@
+from typing import Optional, Any
+
+from infrahub_sync.adapters.{{ adapter.name }} import {{ adapter.name.title() }}Model
+
+{% for nodekind, node in schema.items() %}
+{%   if node | get_identifier(config) and config | has_node(node.name) %}
+class {{ nodekind }}({{ adapter.name.title() }}Model):
+
+    _modelname = "{{ node.name}}"
+    _identifiers = {{ node | get_identifier(config) | list_to_set }}
+    _attributes = {{ node | get_attributes(config) | list_to_set }}
+
+{%     for attr in node.attributes %}
+{%       if config | has_field(node.name, attr.name) %}
+    {{ attr.name }}: {{ attr.kind }}
+{%       endif %}
+{%     endfor %}
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+{%   endif %}
+{% endfor %}
