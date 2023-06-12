@@ -15,10 +15,17 @@ VLAN_ROLES = ["server"]
 
 SITES = ["atl", "ord", "jfk", "den", "dfw", "iad", "bkk", "sfo", "iah", "mco"]
 
-DEVICES = (
-    ("edge1", "active", "7280R3", "profile1", "edge", ["red", "green"]),
-    ("edge2", "active", "7280R3", "profile1", "edge", ["red", "blue", "green"]),
+PLATFORMS = (
+    ("Cisco IOS", "ios", "ios", "cisco_ios", "ios"),
+    ("Cisco NXOS SSH", "nxos_ssh", "nxos_ssh", "cisco_nxos", "nxos"),
+    ("Juniper JunOS", "junos", "junos", "juniper_junos", "junos"),
 )
+
+DEVICES = (
+    ("edge1", "active", "7280R3", "profile1", "edge", ["red", "green"], "Juniper JunOS"),
+    ("edge2", "active", "ASR1002-HX", "profile1", "edge", ["red", "blue", "green"], "Cisco IOS"),
+)
+
 
 NETWORKS_POOL_INTERNAL = IPv4Network("10.0.0.0/8").subnets(new_prefix=16)
 LOOPBACK_POOL = next(NETWORKS_POOL_INTERNAL).hosts()
@@ -74,7 +81,7 @@ BACKBONE_CIRCUIT_IDS = [
     "DUFF-4654456",
 ]
 
-INTERFACE_MGMT_NAME = {"7280R3": "Management0"}
+INTERFACE_MGMT_NAME = {"7280R3": "Management0", "ASR1002-HX": "Management0"}
 
 INTERFACE_L3_NAMES = {
     "7280R3": [
@@ -89,9 +96,22 @@ INTERFACE_L3_NAMES = {
         "Ethernet9",
         "Ethernet10",
     ],
+    "ASR1002-HX": [
+        "Ethernet1",
+        "Ethernet2",
+        "Ethernet3",
+        "Ethernet4",
+        "Ethernet5",
+        "Ethernet6",
+        "Ethernet7",
+        "Ethernet8",
+        "Ethernet9",
+        "Ethernet10",
+    ],
 }
 INTERFACE_L2_NAMES = {
     "7280R3": ["Ethernet11", "Ethernet12"],
+    "ASR1002-HX": ["Ethernet11", "Ethernet12"],
 }
 
 INTERFACE_ROLES_MAPPING = {
@@ -209,6 +229,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         status_id = store.get(kind="Status", key=device[1]).id
         role_id = store.get(kind="Role", key=device[4]).id
         device_type = device[2]
+        platform_id = store.get(kind="Platform", key=device[6]).id
 
         obj = await client.create(
             branch=branch,
@@ -220,6 +241,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             role={"id": role_id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
             asn={"id": internal_as.id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
             tags=[store.get(kind="Tag", key=tag_name).id for tag_name in device[5]],
+            platform={"id": platform_id, "source": account_pop.id, "is_protected": True},
         )
         await obj.save()
 
@@ -689,7 +711,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     SITE_NAMES = site_names_generator(nbr_site=5)
 
     # ------------------------------------------
-    # Create User Accounts, Groups & Organizations
+    # Create User Accounts, Groups & Organizations & Platforms
     # ------------------------------------------
     batch = await client.create_batch()
 
@@ -711,6 +733,13 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=org[0], node=obj)
+
+    for platform in PLATFORMS:
+        obj = await client.create(
+            branch=branch, kind="Platform", data={"name": platform[0], "nornir_platform": platform[1], "napalm_driver": platform[2], "netmiko_device_type": platform[3], "ansible_network_os": platform[4]} 
+        )
+        batch.add(task=obj.save, node=obj)
+        store.set(key=platform[0], node=obj)
 
     # Create all Groups, Accounts and Organizations
     async for node, _ in batch.execute():
