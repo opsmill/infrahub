@@ -1,14 +1,15 @@
 /// <reference types="cypress" />
 
 import { NEW_ADMIN_ACCOUNT_LABEL } from "../mocks/e2e/accounts";
-import { screenshotConfig } from "../utils";
+import { SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Tutorial - Part 2", () => {
-  beforeEach(() => {
+  beforeEach(function () {
     cy.visit("/");
+    this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 
-  it("should check the historical data", () => {
+  it("should check the historical data", function () {
     // Access the accounts list
     cy.get("[href='/objects/account'] > .group").click();
 
@@ -20,10 +21,11 @@ describe("Tutorial - Part 2", () => {
 
     cy.get(".react-datepicker__input-container > .relative > .block").click();
 
-    cy.screenshot("tutorial_2_historical", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_2_historical", screenshotConfig);
+    }
 
     // TODO: Define a previous date and verify if the label is correctly the old one
-
     // cy.screenshot("tutorial_2_historical_set", screenshotConfig);
   });
 });

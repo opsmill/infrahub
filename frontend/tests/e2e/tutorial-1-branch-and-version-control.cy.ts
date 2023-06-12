@@ -7,14 +7,15 @@ import {
   NEW_ADMIN_ACCOUNT_LABEL,
   NEW_BRANCH_NAME,
 } from "../mocks/e2e/accounts";
-import { screenshotConfig } from "../utils";
+import { SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Tutorial - Part 1", () => {
-  beforeEach(() => {
+  beforeEach(function () {
     cy.visit("/");
+    this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 
-  it("should create a new branch", () => {
+  it("should create a new branch", function () {
     // The branch selector should contain the main branch name
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
 
@@ -24,7 +25,9 @@ describe("Tutorial - Part 1", () => {
     // Fill the new branch name
     cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME);
 
-    cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
+    }
 
     // Submit the form
     cy.get(".justify-center > .rounded-md").click();
@@ -33,14 +36,16 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", NEW_BRANCH_NAME);
   });
 
-  it("should update the Admin Account", () => {
+  it("should update the Admin Account", function () {
     // Select the Admin object in the menu
     cy.get("[href='/objects/account'] > .group").click();
 
     // Select the admin account
     cy.get(".bg-white > :nth-child(5) > :nth-child(1)").should("have.text", ADMIN_ACCOUNT_NAME);
 
-    cy.screenshot("tutorial_1_accounts", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_accounts", screenshotConfig);
+    }
 
     cy.get(".bg-white > :nth-child(5) > :nth-child(1)").click();
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
@@ -48,7 +53,9 @@ describe("Tutorial - Part 1", () => {
       ADMIN_ACCOUNT_NAME
     );
 
-    cy.screenshot("tutorial_1_account_details", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_account_details", screenshotConfig);
+    }
 
     // Open the edit panel
     cy.get(".md\\:pl-64 > .flex-col > .bg-white > :nth-child(2) > .rounded-md").click();
@@ -61,7 +68,9 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(3) > .relative > .block").clear();
     cy.get(":nth-child(3) > .relative > .block").type(NEW_ADMIN_ACCOUNT_LABEL);
 
-    cy.screenshot("tutorial_1_account_edit", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_account_edit", screenshotConfig);
+    }
 
     // Submit the form
     cy.get(".mt-6 > .bg-blue-500").click();
@@ -70,16 +79,20 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);
   });
 
-  it("should access the Admin Account diff", () => {
+  it("should access the Admin Account diff", function () {
     // List the branches
     cy.get("#headlessui-disclosure-panel-\\:r5\\: > a > .group").click();
 
-    cy.screenshot("tutorial_1_branch_list", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_branch_list", screenshotConfig);
+    }
 
     // Find and click on the new branch
     cy.contains(NEW_BRANCH_NAME).click();
 
-    cy.screenshot("tutorial_1_branch_details", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_branch_details", screenshotConfig);
+    }
 
     // The branch details should be ok
     cy.get(".divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
@@ -90,7 +103,9 @@ describe("Tutorial - Part 1", () => {
     // Open the tab to check the diff
     cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();
 
-    cy.screenshot("tutorial_1_branch_diff", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_branch_diff", screenshotConfig);
+    }
 
     // The old + new label should be displayed
     cy.get(

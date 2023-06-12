@@ -5,6 +5,7 @@ export default defineConfig({
   // fileServerFolder: "tests/server",
   fixturesFolder: "tests/fixtures",
   screenshotsFolder: "../docs/media/tutorial",
+  trashAssetsBeforeRuns: false,
   // videosFolder: "tests/videos",
   component: {
     devServer: {

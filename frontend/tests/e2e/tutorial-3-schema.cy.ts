@@ -1,16 +1,19 @@
 /// <reference types="cypress" />
 
-import { screenshotConfig } from "../utils";
+import { SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Tutorial - Part 3", () => {
-  beforeEach(() => {
+  beforeEach(function () {
     cy.visit("/");
+    this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 
-  it("should access the schema list", () => {
+  it("should access the schema list", function () {
     // Click on the schema link
     cy.get("#headlessui-disclosure-panel-\\:r3\\: > a > .group").click();
 
-    cy.screenshot("tutorial_3_schema", screenshotConfig);
+    if (this.screenshots) {
+      cy.screenshot("tutorial_3_schema", screenshotConfig);
+    }
   });
 });
