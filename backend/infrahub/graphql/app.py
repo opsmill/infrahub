@@ -45,7 +45,8 @@ from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, jwt_scheme
-from infrahub.auth import validate_authentication_token
+from infrahub.auth import AccountSession, authentication_token
+from infrahub.exceptions import AuthorizationError, PermissionDeniedError
 
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 
@@ -143,7 +144,7 @@ class InfrahubGraphQLApp:
                 jwt_token = None
                 if jwt_auth:
                     jwt_token = jwt_auth.credentials
-                await validate_authentication_token(jwt_token=jwt_token, api_key=api_key, session=session)
+                account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, session=session)
 
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
@@ -154,7 +155,9 @@ class InfrahubGraphQLApp:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
                 if request.method == "POST" and not response:
-                    response = await self._handle_http_request(request=request, session=session, branch=branch)
+                    response = await self._handle_http_request(
+                        request=request, session=session, branch=branch, account_session=account_session
+                    )
                 elif request.method == "GET" and not response:
                     response = await self._get_on_get(request)
                 elif request.method == "OPTIONS" and not response:
@@ -199,7 +202,9 @@ class InfrahubGraphQLApp:
 
         return context_value
 
-    async def _handle_http_request(self, request: Request, session: AsyncSession, branch: Branch) -> JSONResponse:
+    async def _handle_http_request(
+        self, request: Request, session: AsyncSession, branch: Branch, account_session: AccountSession
+    ) -> JSONResponse:
         try:
             operations = await _get_operation_from_request(request)
         except ValueError as exc:
@@ -212,6 +217,9 @@ class InfrahubGraphQLApp:
         query = operation["query"]
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
+        query_type = query.split(" ")[0]
+
+        self._validate_authentication(account_session=account_session, query_type=query_type)
 
         context_value = await self._get_context_value(session=session, request=request, branch=branch)
 
@@ -425,6 +433,25 @@ class InfrahubGraphQLApp:
 
         if WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
+
+    @staticmethod
+    def _validate_authentication(account_session: AccountSession, query_type: str) -> None:
+        if config.SETTINGS.experimental_features.ignore_authentication_requirements:
+            # This feature will later be removed
+            return
+
+        if account_session.authenticated:
+            if not account_session.read_only:
+                return
+            if account_session.read_only and query_type != "mutation":
+                return
+
+            raise PermissionDeniedError("The current account is not authorized to perform this operation")
+
+        if config.SETTINGS.main.allow_anonymous_access and query_type != "mutation":
+            return
+
+        raise AuthorizationError("Authentication is required to perform this operation")
 
 
 async def _get_operation_from_request(

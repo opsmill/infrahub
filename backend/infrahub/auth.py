@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable, List, Optional
 
 import bcrypt
 import jwt
+from pydantic import BaseModel
 from starlette import authentication as auth
 from starlette.authentication import AuthenticationError
 
@@ -20,6 +21,16 @@ if TYPE_CHECKING:
 
 # from ..datatypes import AuthResult
 # from ..exceptions import InvalidCredentials
+
+
+class AccountSession(BaseModel):
+    authenticated: bool = True
+    account_id: str
+    role: str = "read-only"
+
+    @property
+    def read_only(self) -> bool:
+        return self.role == "read-only"
 
 
 async def authenticate_with_password(
@@ -54,43 +65,45 @@ async def authenticate_with_password(
         "exp": expires,
         "fresh": False,
         "type": "access",
-        "user_claims": {"roles": ["read-write"]},
+        "user_claims": {"role": user.role.value},
     }
     access_token = jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
     return models.UserToken(access_token=access_token)
 
 
-async def validate_authentication_token(
+async def authentication_token(
     session: AsyncSession, jwt_token: Optional[str] = None, api_key: Optional[str] = None
-) -> str:
+) -> AccountSession:
     if api_key:
         return await validate_api_key(session=session, token=api_key)
     if jwt_token:
-        await validate_jwt_access_token(token=jwt_token)
-    return "anonymous"
+        return await validate_jwt_access_token(token=jwt_token)
+
+    return AccountSession(authenticated=False, account_id="anonymous")
 
 
-async def validate_jwt_access_token(token: str) -> str:
+async def validate_jwt_access_token(token: str) -> AccountSession:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
         user_id = payload["sub"]
+        role = payload["user_claims"]["role"]
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
     except Exception:
         raise AuthorizationError("Invalid token") from None
 
     if payload["type"] == "access":
-        return str(user_id)
+        return AccountSession(account_id=user_id, role=role)
 
     raise AuthorizationError("Invalid token, current token is not an access token")
 
 
-async def validate_api_key(session: AsyncSession, token: str) -> str:
-    user = await validate_token(token=token, session=session)
-    if not user:
+async def validate_api_key(session: AsyncSession, token: str) -> AccountSession:
+    account_id, role = await validate_token(token=token, session=session)
+    if not account_id:
         raise AuthorizationError("Invalid token")
 
-    return user
+    return AccountSession(account_id=account_id, role=role)
 
 
 # Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
@@ -189,7 +202,8 @@ class BaseTokenAuth(_BaseSchemeAuth):
         return [token]
 
     async def verify(self, session: AsyncSession, token: str) -> Optional[auth.BaseUser]:
-        if account_name := await validate_token(session=session, token=token):
+        account_name, _ = await validate_token(session=session, token=token)
+        if account_name:
             account = await get_account(session=session, account=account_name)
             return account
 

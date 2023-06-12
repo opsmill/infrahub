@@ -116,6 +116,15 @@ class AuthorizationError(Error):
         super().__init__(self.message)
 
 
+class PermissionDeniedError(Error):
+    HTTP_CODE: int = 403
+    message: str = "The requested operation was not authorized"
+
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or self.message
+        super().__init__(self.message)
+
+
 class SchemaNotFound(Error):
     def __init__(self, branch_name, identifier, message=None):
         self.branch_name = branch_name
