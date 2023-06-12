@@ -27,10 +27,10 @@ describe("Tutorial - Part 1", () => {
     cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
 
     // Submit the form
-    // cy.get('.justify-center > .rounded-md').click(); // TODO: Uncomment for CI
+    cy.get(".justify-center > .rounded-md").click();
 
     // Verify if the new branch is selected
-    // cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", NEW_BRANCH); // TODO: Uncomment for CI
+    cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", NEW_BRANCH_NAME);
   });
 
   it("should update the Admin Account", () => {
@@ -57,7 +57,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ADMIN_ACCOUNT_NAME);
 
     // Update the label
-    // cy.get(":nth-child(3) > .relative > .block").should("have.value", ADMIN_ACCOUNT_LABEL); // TODO: Uncomment for CI
+    cy.get(":nth-child(3) > .relative > .block").should("have.value", ADMIN_ACCOUNT_LABEL);
     cy.get(":nth-child(3) > .relative > .block").clear();
     cy.get(":nth-child(3) > .relative > .block").type(NEW_ADMIN_ACCOUNT_LABEL);
 
@@ -104,6 +104,6 @@ describe("Tutorial - Part 1", () => {
     cy.get(".isolate > .bg-gray-100").click();
 
     // Merge the branch
-    // cy.get('.bg-green-600').click(); // TODO: Uncomment for CI
+    cy.get(".bg-green-600").click();
   });
 });

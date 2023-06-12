@@ -31,7 +31,7 @@ describe("Tutorial - Part 6", () => {
     cy.screenshot("tutorial_6_branch_creation", screenshotConfig);
 
     // Submit form
-    // cy.get(".justify-center > .rounded-md").click(); // TODO: Uncomment for CI
+    cy.get(".justify-center > .rounded-md").click();
   });
 
   it("should update the device and an interface", () => {
