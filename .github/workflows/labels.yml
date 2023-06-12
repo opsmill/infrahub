@@ -1,4 +1,5 @@
 ---
+# yamllint disable rule:truthy
 name: github
 
 on:
