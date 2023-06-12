@@ -33,20 +33,20 @@ Next, we'll create a new branch, and make modifications both in the data and in 
 
 From the frontend, create a new branch named `update-ethernet1` and be sure to uncheck the toggle `is Data Only` in the UI.
 
-![Create a new branch (not with Data Only)](../media/tutorial_rfile_branch_create.gif)
+![Create a new branch (not with Data Only)](../media/tutorial/tutorial_6_branch_creation.png)
 
-#### 2. Update the interface Ethernet 1 for ord1-edge1
+#### 2. Update the interface Ethernet 1 for atl1-edge1
 
 Now we'll make a change in the branch `update-ethernet1` that will be reflected in the rendered template, like updating the documentation.
 
-1. Navigate to the device `ord1-edge1` in the frontend and
+1. Navigate to the device `atl1-edge1` in the frontend and
 2. Navigate to the list of its interfaces in the `interfaces` Tab.
 3. Select the interface `Ethernet1`
 4. Edit the interface `Ethernet` and
 5. Update its description to `New description in the branch`
 6. Save your change
 
-![Update the description for the interface Ethernet1](../media/tutorial_rfile_update_interface.gif)
+![Update the description for the interface Ethernet1](../media/tutorial/tutorial_6_interface_update.png)
 
 #### 3. Update the Jinja2 template in Github
 
