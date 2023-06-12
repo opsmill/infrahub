@@ -17,5 +17,5 @@ Using the time selection menu, next to the branch selection drop down, select a 
 When playing with the time around the time when the branch `cr1234` was merged into `main` you should be able to see the value changing in `main`.
 !!!
 
-![Change Time](../media/tutorial/tutorial_2_historical_set.png)
+<!-- ![Change Time](../media/tutorial/tutorial_2_historical_set.png) -->
 
