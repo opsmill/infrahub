@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Awaitable, Callable, List, Optional
+from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Optional
 
 import bcrypt
 import jwt
@@ -104,6 +104,53 @@ async def validate_api_key(session: AsyncSession, token: str) -> AccountSession:
         raise AuthorizationError("Invalid token")
 
     return AccountSession(account_id=account_id, role=role)
+
+
+def _validate_is_admin(account_session: AccountSession) -> None:
+    if account_session.role != "admin":
+        raise PermissionError("You are not authorized to perform this operation")
+
+
+def _validate_update_account(account_session: AccountSession, node_id: str, fields: List[str]) -> None:
+    if account_session.role == "admin":
+        return
+
+    if account_session.account_id != node_id:
+        # A regular account is not allowed to modify another account
+        raise PermissionError("You are not allowed to modify this account")
+
+    allowed_fields = ["description", "label", "password"]
+    for field in fields:
+        if field not in allowed_fields:
+            raise PermissionError(f"You are not allowed to modify '{field}'")
+
+
+def validate_mutation_permissions(operation: str, account_session: AccountSession) -> None:
+    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
+        # This feature will later be removed.
+        return
+
+    validation_map: Dict[str, Callable[[AccountSession], None]] = {
+        "AccountCreate": _validate_is_admin,
+        "AccountDelete": _validate_is_admin,
+    }
+    if validator := validation_map.get(operation):
+        validator(account_session)
+
+
+def validate_mutation_permissions_update_node(
+    operation: str, node_id: str, account_session: AccountSession, fields: List[str]
+) -> None:
+    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
+        # This feature will later be removed.
+        return
+
+    validation_map: Dict[str, Callable[[AccountSession, str, List[str]], None]] = {
+        "AccountUpdate": _validate_update_account,
+    }
+
+    if validator := validation_map.get(operation):
+        validator(account_session, node_id, fields)
 
 
 # Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
