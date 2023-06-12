@@ -217,9 +217,7 @@ class InfrahubGraphQLApp:
         query = operation["query"]
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
-        query_type = query.split(" ")[0]
-
-        self._validate_authentication(account_session=account_session, query_type=query_type)
+        self._validate_authentication(account_session=account_session, query=query)
 
         context_value = await self._get_context_value(session=session, request=request, branch=branch)
 
@@ -435,10 +433,12 @@ class InfrahubGraphQLApp:
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
     @staticmethod
-    def _validate_authentication(account_session: AccountSession, query_type: str) -> None:
+    def _validate_authentication(account_session: AccountSession, query: str) -> None:
         if config.SETTINGS.experimental_features.ignore_authentication_requirements:
             # This feature will later be removed
             return
+        document = parse(query)
+        query_type = document.definitions[0].operation.value
 
         if account_session.authenticated:
             if not account_session.read_only:
