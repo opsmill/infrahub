@@ -1,5 +1,7 @@
 /// <reference types="cypress" />
 
+import { screenshotConfig } from "../utils";
+
 describe("Tutorial - Part 4", () => {
   beforeEach(() => {
     cy.visit("/");
@@ -15,7 +17,15 @@ describe("Tutorial - Part 4", () => {
     // Click to open the metadata for the name
     cy.get(".sm\\:p-0 > :nth-child(1) > :nth-child(2) > div.items-center > .relative").click();
     cy.get(":nth-child(4) > .underline").should("have.text", "Pop-Builder");
-    cy.get(".sm\\:p-0 > :nth-child(1) > :nth-child(2) > div.items-center > .relative").click(); // Close the popin
+
+    cy.screenshot("tutorial_4_metadata", screenshotConfig);
+
+    // Click to open the edit panel
+    cy.get(".cursor-pointer > .w-5").click();
+
+    cy.screenshot("tutorial_4_metadata_edit", screenshotConfig);
+
+    cy.get(".bg-gray-500").click(); // Close the popin
 
     // Click to open the metadata for the role
     cy.get(":nth-child(7) > .py-4 > .mt-1 > .relative").click();
