@@ -3,12 +3,13 @@ import os
 
 from invoke import Collection, Context, Exit, task
 
-from . import backend, ctl, demo, main, performance, sdk
+from . import backend, ctl, demo, main, nornir, performance, sdk
 
 ns = Collection()
 ns.add_collection(sdk)
 ns.add_collection(performance)
 ns.add_collection(ctl)
+ns.add_collection(nornir)
 ns.add_collection(backend)
 ns.add_collection(demo)
 ns.add_collection(main)
@@ -59,6 +60,7 @@ def generate_schema_doc(context: Context):
 def format_all(context: Context):
     main.format_all(context)
     sdk.format_all(context)
+    nornir.format_all(context)
     backend.format_all(context)
     ctl.format_all(context)
 
@@ -67,6 +69,7 @@ def format_all(context: Context):
 def lint_all(context: Context):
     yamllint(context)
     sdk.lint(context)
+    nornir.lint(context)
     backend.lint(context)
     ctl.lint(context)
 
