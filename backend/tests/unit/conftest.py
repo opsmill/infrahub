@@ -16,7 +16,6 @@ from infrahub.core.initialization import (
     first_time_initialization,
     initialization,
 )
-from infrahub.core.manager import SchemaBranch, SchemaManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
@@ -26,6 +25,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting

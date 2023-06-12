@@ -5,12 +5,12 @@ from neo4j import AsyncSession
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.manager import SchemaManager
 from infrahub.core.models import NodeSchema as NodeSchemaModel
 from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
 from infrahub.core.node import Node
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema_manager import SchemaManager
 from infrahub.exceptions import DatabaseError
 
 LOGGER = logging.getLogger("infrahub")
