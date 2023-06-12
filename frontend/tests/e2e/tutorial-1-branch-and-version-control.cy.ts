@@ -7,11 +7,10 @@ import {
   NEW_ADMIN_ACCOUNT_LABEL,
   NEW_BRANCH_NAME,
 } from "../mocks/e2e/accounts";
+import { screenshotConfig } from "../utils";
 
 describe("Tutorial - Part 1", () => {
   beforeEach(() => {
-    cy.viewport(1920, 1080);
-
     cy.visit("/");
   });
 
@@ -24,6 +23,8 @@ describe("Tutorial - Part 1", () => {
 
     // Fill the new branch name
     cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME);
+
+    cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
 
     // Submit the form
     // cy.get('.justify-center > .rounded-md').click(); // TODO: Uncomment for CI
@@ -38,11 +39,16 @@ describe("Tutorial - Part 1", () => {
 
     // Select the admin account
     cy.get(".bg-white > :nth-child(5) > :nth-child(1)").should("have.text", ADMIN_ACCOUNT_NAME);
+
+    cy.screenshot("tutorial_1_accounts", screenshotConfig);
+
     cy.get(".bg-white > :nth-child(5) > :nth-child(1)").click();
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",
       ADMIN_ACCOUNT_NAME
     );
+
+    cy.screenshot("tutorial_1_account_details", screenshotConfig);
 
     // Open the edit panel
     cy.get(".md\\:pl-64 > .flex-col > .bg-white > :nth-child(2) > .rounded-md").click();
@@ -55,6 +61,8 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(3) > .relative > .block").clear();
     cy.get(":nth-child(3) > .relative > .block").type(NEW_ADMIN_ACCOUNT_LABEL);
 
+    cy.screenshot("tutorial_1_account_edit", screenshotConfig);
+
     // Submit the form
     cy.get(".mt-6 > .bg-blue-500").click();
 
@@ -66,8 +74,12 @@ describe("Tutorial - Part 1", () => {
     // List the branches
     cy.get("#headlessui-disclosure-panel-\\:r5\\: > a > .group").click();
 
+    cy.screenshot("tutorial_1_branch_list", screenshotConfig);
+
     // Find and click on the new branch
     cy.contains(NEW_BRANCH_NAME).click();
+
+    cy.screenshot("tutorial_1_branch_details", screenshotConfig);
 
     // The branch details should be ok
     cy.get(".divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
@@ -77,6 +89,8 @@ describe("Tutorial - Part 1", () => {
 
     // Open the tab to check the diff
     cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();
+
+    cy.screenshot("tutorial_1_branch_diff", screenshotConfig);
 
     // The old + new label should be displayed
     cy.get(

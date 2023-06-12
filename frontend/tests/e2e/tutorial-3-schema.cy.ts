@@ -2,8 +2,6 @@
 
 describe("Tutorial - Part 3", () => {
   beforeEach(() => {
-    cy.viewport(1920, 1080);
-
     cy.visit("/");
   });
 

@@ -4,7 +4,7 @@ export default defineConfig({
   // downloadsFolder: "tests/downloads",
   // fileServerFolder: "tests/server",
   fixturesFolder: "tests/fixtures",
-  // screenshotsFolder: "tests/screenshots",
+  screenshotsFolder: "../docs/media/tutorial",
   // videosFolder: "tests/videos",
   component: {
     devServer: {
@@ -14,6 +14,8 @@ export default defineConfig({
     specPattern: "tests/integrations/**/*.cy.{js,jsx,ts,tsx}",
     reporter: "spec",
     video: false,
+    viewportHeight: 720,
+    viewportWidth: 1280,
   },
   e2e: {
     // setupNodeEvents(on) {
@@ -23,5 +25,7 @@ export default defineConfig({
     specPattern: "tests/e2e/**/*.cy.{js,jsx,ts,tsx}",
     reporter: "spec",
     video: false,
+    viewportHeight: 720,
+    viewportWidth: 1280,
   },
 });

@@ -4,8 +4,6 @@ import { NEW_ADMIN_ACCOUNT_LABEL } from "../mocks/e2e/accounts";
 
 describe("Tutorial - Part 2", () => {
   beforeEach(() => {
-    cy.viewport(1920, 1080);
-
     cy.visit("/");
   });
 
