@@ -53,6 +53,38 @@ generics:
         kind: Attribute
         identifier: connected__endpoint
 nodes:
+  - name: platform
+    kind: Platform
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: nornir_platform
+        kind: Text
+        optional: true
+      - name: napalm_driver
+        kind: Text
+        optional: true
+      - name: netmiko_device_type
+        kind: Text
+        optional: true
+      - name: ansible_network_os
+        kind: Text
+        optional: true
+    relationships:
+      - name: devices
+        peer: Device
+        optional: true
+        cardinality: many
+        kind: Attribute
   - name: device
     kind: Device
     default_filter: name__value
@@ -100,6 +132,11 @@ nodes:
         peer: Tag
         optional: true
         cardinality: many
+        kind: Attribute
+      - name: platform
+        peer: Platform
+        optional: true
+        cardinality: one
         kind: Attribute
   - name: interface_l3
     kind: InterfaceL3
