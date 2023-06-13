@@ -4,7 +4,6 @@ from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.manager import SchemaBranch, SchemaManager
 from infrahub.core.schema import (
     FilterSchemaKind,
     GenericSchema,
@@ -14,6 +13,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 
 
 # -----------------------------------------------------------------

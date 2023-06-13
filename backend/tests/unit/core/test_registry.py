@@ -1,7 +1,7 @@
 from infrahub.core import get_branch, get_branch_from_registry, registry
 from infrahub.core.branch import Branch
-from infrahub.core.manager import SchemaManager
 from infrahub.core.schema import SchemaRoot, internal_schema
+from infrahub.core.schema_manager import SchemaManager
 
 
 async def test_get_branch_from_registry(session, default_branch):

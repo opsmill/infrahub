@@ -12,7 +12,8 @@ from infrahub.api.dependencies import get_current_user, get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, Diff, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
-from infrahub.core.manager import INTERNAL_SCHEMA_NODE_KINDS, NodeManager
+from infrahub.core.manager import NodeManager
+from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
