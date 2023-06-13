@@ -24,7 +24,7 @@ from infrahub.core.schema import (
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
 from infrahub.lock import registry as lock_registry
-from infrahub.utils import intersection
+from infrahub_client.utils import intersection
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema

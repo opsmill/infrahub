@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 import toml
 from pydantic import BaseSettings, Field, ValidationError
 
-from infrahub.utils import generate_uuid
+from infrahub_client.utils import generate_uuid
 
 SETTINGS = None
 

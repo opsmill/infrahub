@@ -11,7 +11,8 @@ from infrahub.core import registry
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import BaseEnum, duplicates, intersection
+from infrahub.utils import BaseEnum
+from infrahub_client.utils import duplicates, intersection
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
