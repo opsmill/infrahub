@@ -47,6 +47,7 @@ class BaseClient:
         insert_tracker: bool = False,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
+        api_token: Optional[str] = None,
     ):
         self.address = address
         self.client = None
@@ -59,6 +60,9 @@ class BaseClient:
         self.insert_tracker = insert_tracker
         self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
+        if api_token:
+            self.headers["X-INFRAHUB-KEY"] = api_token
+
         self.max_concurrent_execution = max_concurrent_execution
 
         if test_client:
