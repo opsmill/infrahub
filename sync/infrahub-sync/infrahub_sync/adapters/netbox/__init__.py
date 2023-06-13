@@ -25,7 +25,7 @@ def netbox_obj_to_diffsync(mapping: SchemaMappingModel, obj) -> dict:
 class NetboxAdapter(DiffSyncMixin, DiffSync):
     type = "Netbox"
 
-    def __init__(self, *args,  target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):
+    def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.target = target

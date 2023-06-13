@@ -1,14 +1,15 @@
-
 from infrahub_sync.adapters.infrahub import InfrahubAdapter
 
 from .models import (
-   Tag,
-   Location,
-   Role,
+    Rack,
+    Location,
+    Role,
+    Tag,
 )
 
 
 class InfrahubSync(InfrahubAdapter):
-  tag = Tag
-  location = Location
-  role = Role
+    rack = Rack
+    location = Location
+    role = Role
+    tag = Tag

@@ -22,10 +22,12 @@ class SyncAdapter(BaseModel):
     name: str
     settings: Optional[Dict[str, Any]]
 
+
 class SyncConfig(BaseModel):
     name: str
     source: SyncAdapter
     destination: SyncAdapter
+    order: List[str]
     schema_mapping: List[SchemaMappingModel]
 
 

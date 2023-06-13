@@ -1,14 +1,15 @@
-
 from infrahub_sync.adapters.netbox import NetboxAdapter
 
 from .models import (
-   Tag,
-   Location,
-   Role,
+    Rack,
+    Location,
+    Role,
+    Tag,
 )
 
 
 class NetboxSync(NetboxAdapter):
-  tag = Tag
-  location = Location
-  role = Role
+    rack = Rack
+    location = Location
+    role = Role
+    tag = Tag

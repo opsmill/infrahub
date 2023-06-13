@@ -7,19 +7,11 @@ from diffsync import DiffSync, DiffSyncModel
 
 
 from infrahub_sync import DiffSyncMixin, SyncAdapter, SyncConfig
-from infrahub_client import InfrahubClientSync, InfrahubNodeSync, NodeNotFound
+from infrahub_sync.jinja_filters import filter_has_field
+from infrahub_client import InfrahubClientSync, InfrahubNodeSync, NodeNotFound, NodeSchema
 
 
-def infrahub_node_to_diffsync(node: InfrahubNodeSync) -> dict:
-    data = {"local_id": str(node.id)}
-    for attr_name in node._schema.attribute_names:
-        attr = getattr(node, attr_name)
-        data[attr_name] = attr.value
-
-    return data
-
-
-def update_node(node, attrs):
+def update_node(node: NodeSchema, attrs: dict):
     for attr_name, attr_value in attrs.items():
         if attr_name in node._schema.attribute_names:
             attr = getattr(node, attr_name)
@@ -35,6 +27,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         super().__init__(*args, **kwargs)
 
         self.target = target
+        self.config = config
 
         if "url" not in adapter.settings:
             raise ValueError("url must be specified!")
@@ -53,20 +46,36 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
 
         for node in nodes:
-            data = infrahub_node_to_diffsync(node)
+            data = self.infrahub_node_to_diffsync(node)
+
             item = model(**data)
             self.add(item)
+
+    def infrahub_node_to_diffsync(self, node: InfrahubNodeSync) -> dict:
+        """Convert an InfrahubNode into a dict that will be used to create a DiffSyncModel."""
+        data = {"local_id": str(node.id)}
+
+        for attr_name in node._schema.attribute_names:
+            if filter_has_field(config=self.config, name=node._schema.name, field=attr_name):
+                attr = getattr(node, attr_name)
+                data[attr_name] = attr.value
+
+        return data
 
 
 class InfrahubModel(DiffSyncModel):
     @classmethod
     def create(cls, diffsync, ids: dict, attrs: dict):
-        cls.__name__
         data = copy.deepcopy(ids)
         data.update(attrs)
 
-        # schema = diffsync.client.schema.get(name=cls.__name__)
-        node = diffsync.client.create(kind=cls.__name__, data=data)
+        schema = diffsync.client.schema.get(kind=cls.__name__)
+        source = diffsync.account
+        create_data = diffsync.client.schema.generate_payload_create(
+            schema=schema, data=data, source=source.id, is_protected=True
+        )
+
+        node = diffsync.client.create(kind=cls.__name__, data=create_data)
         node.save()
         return super().create(diffsync, ids=ids, attrs=attrs)
 

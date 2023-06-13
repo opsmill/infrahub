@@ -11,6 +11,8 @@ destination:
   settings:
     url: "http://localhost:8000"
 
+order: ["tag", "location", "role"]
+
 schema_mapping:
   - name: tag
     mapping: extras.tags
@@ -30,6 +32,21 @@ schema_mapping:
         mapping: description
       - name: type
         static: "SITE"
+
+  - name: rack
+    mapping: dcim.racks
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: location
+        reference:
+          key: site.slug
+      - name: tags
+        reference:
+          key: tags
+
 
   - name: role
     mapping: dcim.device_roles
