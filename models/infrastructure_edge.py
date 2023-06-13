@@ -740,7 +740,15 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     for platform in PLATFORMS:
         obj = await client.create(
-            branch=branch, kind="Platform", data={"name": platform[0], "nornir_platform": platform[1], "napalm_driver": platform[2], "netmiko_device_type": platform[3], "ansible_network_os": platform[4]} 
+            branch=branch,
+            kind="Platform",
+            data={
+                "name": platform[0],
+                "nornir_platform": platform[1],
+                "napalm_driver": platform[2],
+                "netmiko_device_type": platform[3],
+                "ansible_network_os": platform[4],
+            },
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=platform[0], node=obj)
