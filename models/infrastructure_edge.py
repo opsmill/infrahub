@@ -290,7 +290,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         await ip.save()
 
         # set the IP address of the device to the management interface IP address
-        obj.ip_address = ip
+        obj.primary_address = ip
         await obj.save()
 
         # L3 Interfaces

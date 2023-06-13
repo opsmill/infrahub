@@ -133,9 +133,9 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-      - name: ip_address
+      - name: primary_address
         peer: IPAddress
-        label: IP Address
+        label: Primary IP Address
         optional: true
         cardinality: one
         kind: Attribute
