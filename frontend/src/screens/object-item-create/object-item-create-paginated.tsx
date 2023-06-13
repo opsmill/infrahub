@@ -143,7 +143,7 @@ export default function ObjectItemCreate(props: iProps) {
         <div className="flex-1">
           <EditFormHookComponent
             onSubmit={onSubmit}
-            onCancel={() => (onCancel ? onCancel() : null)}
+            onCancel={onCancel}
             fields={formStructure}
             isLoading={isLoading}
           />

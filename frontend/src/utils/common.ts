@@ -1,3 +1,5 @@
+import * as R from "ramda";
+
 export const classNames = (...classes: string[]) => {
   // Replcaa tabs and spaces to have multiline in code, but one ligne in output
   return classes
@@ -21,3 +23,13 @@ export const objectToString = (object: any) =>
       }
     })
     .join(",");
+
+export const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
+
+export const parseJwt = (token: string) => {
+  try {
+    return JSON.parse(atob(token.split(".")[1]));
+  } catch (e) {
+    return null;
+  }
+};

@@ -18,6 +18,7 @@ export type LoggingConfig = {
 export type MainConfig = {
   default_branch: string;
   internal_address: string;
+  allow_anonymous_access: boolean;
 };
 
 export type Config = {

@@ -1,6 +1,6 @@
-import { classNames } from "../utils/common";
 import { Input } from "../components/input";
 import { FormFieldError } from "../screens/edit-form-hook/form";
+import { classNames } from "../utils/common";
 
 type OpsInputProps = {
   label: string;
@@ -8,7 +8,7 @@ type OpsInputProps = {
   onChange: (value: string) => void;
   className?: string;
   error?: FormFieldError;
-  type: "number" | "text";
+  type: string;
 };
 
 export const OpsInput = (props: OpsInputProps) => {
