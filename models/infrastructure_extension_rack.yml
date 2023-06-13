@@ -16,6 +16,18 @@ nodes:
         optional: true
       - name: height
         kind: Text
+      - name: facility_id
+        label: Facility ID
+        kind: Text
+        optional: true
+      - name: serial_number
+        label: Serial Number
+        kind: Text
+        optional: true
+      - name: asset_tag
+        label: Asset Tag
+        kind: Text
+        optional: true
     relationships:
       - name: location
         peer: Location
@@ -24,12 +36,12 @@ nodes:
         kind: Attribute
       - name: status
         peer: Status
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: role
         peer: Role
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: tags
