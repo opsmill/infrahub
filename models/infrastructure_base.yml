@@ -133,6 +133,12 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
+      - name: ip_address
+        peer: IPAddress
+        label: IP Address
+        optional: true
+        cardinality: one
+        kind: Attribute
       - name: platform
         peer: Platform
         optional: true
