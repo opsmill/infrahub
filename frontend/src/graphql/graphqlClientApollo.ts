@@ -1,5 +1,13 @@
-import { ApolloClient, DefaultOptions, InMemoryCache } from "@apollo/client";
+import {
+  ApolloClient,
+  DefaultOptions,
+  InMemoryCache,
+  concat,
+  createHttpLink,
+} from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
 import { CONFIG } from "../config/config";
+import { ACCESS_TOKEN_KEY } from "../config/constants";
 
 const defaultOptions: DefaultOptions = {
   watchQuery: {
@@ -12,12 +20,34 @@ const defaultOptions: DefaultOptions = {
   },
 };
 
-const graphqlClient = new ApolloClient({
+const httpLink = createHttpLink({
   uri: (operation) => {
     const context = operation.getContext();
 
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
+});
+
+const authLink = setContext((_, { headers }) => {
+  // Get the token from the session storage
+  const accessToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+
+  if (!accessToken) {
+    return {
+      headers,
+    };
+  }
+
+  return {
+    headers: {
+      ...headers,
+      authorization: accessToken,
+    },
+  };
+});
+
+const graphqlClient = new ApolloClient({
+  link: concat(authLink, httpLink),
   cache: new InMemoryCache(),
   defaultOptions,
 });

@@ -16,7 +16,6 @@ export const AuthContext = createContext(null);
 // Add auth data in compo
 export const withAuth = (AppComponent: any) => (props: any) => {
   const [config] = useAtom(configState);
-  console.log("config: ", config);
 
   const [isLoadingToken, setIsLoadingToken] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,17 +81,17 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     );
   }
 
-  // if (config?.experimental_features?.ignore_authentication_requirements) {
-  //   return (
-  //     <AuthContext.Provider value={{ ignore_authentication_requirements: true }}>
-  //       <AppComponent {...props} />
-  //     </AuthContext.Provider>
-  //   );
-  // }
+  if (config?.experimental_features?.ignore_authentication_requirements) {
+    return (
+      <AuthContext.Provider value={null}>
+        <AppComponent {...props} />
+      </AuthContext.Provider>
+    );
+  }
 
   // if (config?.main?.allow_anonymous_access) {
   //   return (
-  //     <AuthContext.Provider value={{ allow_anonymous_access: true }}>
+  //     <AuthContext.Provider value={null}>
   //       <AppComponent {...props} />
   //     </AuthContext.Provider>
   //   );
