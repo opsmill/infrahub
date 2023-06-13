@@ -187,7 +187,9 @@ class InfrahubGraphQLApp:
 
         return cast(Response, response)
 
-    async def _get_context_value(self, session: AsyncSession, request: HTTPConnection, branch: Branch) -> Dict:
+    async def _get_context_value(
+        self, session: AsyncSession, request: HTTPConnection, branch: Branch, account_session: AccountSession
+    ) -> Dict:
         # info.context["infrahub_account"] = account
 
         context_value = {
@@ -198,6 +200,7 @@ class InfrahubGraphQLApp:
             "infrahub_database": request.app.state.db,
             "infrahub_rpc_client": request.app.state.rpc_client,
             "infrahub_session": session,
+            "account_session": account_session,
         }
 
         return context_value
@@ -219,7 +222,9 @@ class InfrahubGraphQLApp:
         operation_name = operation.get("operationName")
         self._validate_authentication(account_session=account_session, query=query)
 
-        context_value = await self._get_context_value(session=session, request=request, branch=branch)
+        context_value = await self._get_context_value(
+            session=session, request=request, branch=branch, account_session=account_session
+        )
 
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
         graphql_schema = await schema_branch.get_graphql_schema(session=session)

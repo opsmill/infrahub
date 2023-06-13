@@ -8,6 +8,10 @@ from graphene.types.mutation import MutationOptions
 from neo4j import AsyncSession
 
 import infrahub.config as config
+from infrahub.auth import (
+    validate_mutation_permissions,
+    validate_mutation_permissions_update_node,
+)
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
@@ -30,6 +34,7 @@ from .types import BranchType
 from .utils import extract_fields
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 
@@ -50,11 +55,12 @@ class InfrahubMutationMixin:
     async def mutate(cls, root, info, *args, **kwargs):
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
-        # account = info.context.get("infrahub_account", None)
+        account_session: AccountSession = info.context.get("account_session", None)
 
         obj = None
         mutation = None
         action = None
+        validate_mutation_permissions(operation=cls.__name__, account_session=account_session)
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(root, info, branch=branch, at=at, *args, **kwargs)
@@ -101,6 +107,7 @@ class InfrahubMutationMixin:
     @classmethod
     async def mutate_update(cls, root, info, data, branch=None, at=None):
         session: AsyncSession = info.context.get("infrahub_session")
+        account_session: AccountSession = info.context.get("account_session", None)
 
         if not (
             obj := await NodeManager.get_one(
@@ -122,6 +129,11 @@ class InfrahubMutationMixin:
                     raise ValidationError(
                         {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
                     )
+            node_id = data.pop("id")
+            fields = list(data.keys())
+            validate_mutation_permissions_update_node(
+                operation=cls.__name__, node_id=node_id, account_session=account_session, fields=fields
+            )
 
             await obj.save(session=session)
         except ValidationError as exc:
