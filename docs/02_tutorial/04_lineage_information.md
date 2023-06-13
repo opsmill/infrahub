@@ -25,7 +25,7 @@ If you navigate to the detailed page of any device you'll be able to see that:
 2. The **role** has been defined by the `pop-builder`, is owner by the `Engineering Team` and `is_protected` as well
 3. The **description** is neither protected nor does it has a source or a owner defined
 
-![](../media/tutorial_metadata_device.gif)
+![](../media/tutorial/tutorial_4_metadata.png)
 
 !!!warning
 The system is currently not enforcing the `is_protected` metadata, it will be implemented in a later release.
@@ -35,4 +35,4 @@ The system is currently not enforcing the `is_protected` metadata, it will be im
 
 It's possible to update the metadata from the `edit` form by selecting the arrow on the right side of each field.
 
-![](../media/tutorial_metadata_update.gif)
+![](../media/tutorial/tutorial_4_metadata_edit.png)
