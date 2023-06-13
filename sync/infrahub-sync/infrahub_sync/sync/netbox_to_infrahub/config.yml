@@ -4,14 +4,14 @@ source:
   name: netbox
   settings:
     url: "https://demo.netbox.dev"
-    token: "5e3f220e9ce2342f633119df1b824833218c2dfb"
+    token: "95c5b9131943fe3b59f483e1992a3b8d7ab266e9"
 
 destination:
   name: infrahub
   settings:
     url: "http://localhost:8000"
 
-order: ["tag", "location", "role"]
+order: ["tag", "location", "role", "rack"]
 
 schema_mapping:
   - name: tag
@@ -35,17 +35,19 @@ schema_mapping:
 
   - name: rack
     mapping: dcim.racks
+    identifiers: ["location", "name"]
     fields:
       - name: name
         mapping: name
       - name: description
         mapping: description
       - name: location
-        reference:
-          key: site.slug
-      - name: tags
-        reference:
-          key: tags
+        mapping: site.slug
+      - name: height
+        mapping: u_height
+      # - name: tags
+      #   reference:
+      #     key: tags
 
 
   - name: role

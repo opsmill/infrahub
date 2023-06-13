@@ -10,12 +10,20 @@ from diffsync import DiffSync, DiffSyncModel
 from infrahub_sync import DiffSyncMixin, SchemaMappingModel, SyncConfig, SyncAdapter
 
 
+def get_value(obj, name: str):
+
+    if "." not in name:
+        return getattr(obj, name)
+
+    first_name, remaining_part = name.split(".", maxsplit=1)
+    return get_value(obj=getattr(obj, first_name), name=remaining_part)
+
 def netbox_obj_to_diffsync(mapping: SchemaMappingModel, obj) -> dict:
     data = {"local_id": str(obj.id)}
 
     for field in mapping.fields:
         if field.mapping:
-            data[field.name] = getattr(obj, field.mapping)
+            data[field.name] = get_value(obj, field.mapping)
         elif field.static:
             data[field.name] = field.static
 

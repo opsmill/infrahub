@@ -2,23 +2,22 @@ from typing import Optional, Any, List
 
 from infrahub_sync.adapters.infrahub import InfrahubModel
 
-
 class Rack(InfrahubModel):
+
     _modelname = "rack"
-    _identifiers = ("name",)
-    _attributes = ("location", "description")
-    _children = {"tag": "tags"}
+    _identifiers = ("location", "name")
+    _attributes = ("description", "height")
 
     name: str
     description: Optional[str]
+    height: str
     location: str
-    tags: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]
 
-
 class Location(InfrahubModel):
+
     _modelname = "location"
     _identifiers = ("name",)
     _attributes = ("description", "type")
@@ -30,8 +29,8 @@ class Location(InfrahubModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-
 class Role(InfrahubModel):
+
     _modelname = "role"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -42,8 +41,8 @@ class Role(InfrahubModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-
 class Tag(InfrahubModel):
+
     _modelname = "tag"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -53,3 +52,4 @@ class Tag(InfrahubModel):
 
     local_id: Optional[str]
     local_data: Optional[Any]
+

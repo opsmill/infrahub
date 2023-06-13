@@ -15,6 +15,7 @@ class SchemaMappingField(BaseModel):
 class SchemaMappingModel(BaseModel):
     name: str
     mapping: str
+    identifiers: Optional[List[str]]
     fields: List[SchemaMappingField]
 
 
@@ -37,6 +38,7 @@ class SyncInstance(SyncConfig):
 
 class DiffSyncMixin:
     def load(self):
+        """Load all the models, one by one based on the order defined in top_level."""
         for item in self.top_level:
             try:
                 method = getattr(self, f"load_{item}")
@@ -44,7 +46,11 @@ class DiffSyncMixin:
             except AttributeError as exc:
                 pass
 
+    def model_loader(self, model_name: str, model):
+        raise NotImplementedError
+
     def __getattr__(self, item: str):
+        """Intercept all load_<modelname> method and redirect them to the default model_loader"""
         if not item.startswith("load_"):
             raise AttributeError
 

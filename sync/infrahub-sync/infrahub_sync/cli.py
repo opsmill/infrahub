@@ -22,7 +22,7 @@ from potenda import Potenda
 app = typer.Typer()
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 def import_adapter(adapter: SyncAdapter, directory: str):
@@ -149,44 +149,4 @@ def generate(
                 context={"schema": schema, "adapter": adapter, "config": sync_instance},
             )
 
-            #     template_path = os.path.join(template_dir_relative, item[0])
-            #     output_file = Path(os.path.join(output_dir_absolute, item[1]))
-
-            #     templateLoader = jinja2.FileSystemLoader(searchpath=".")
-            #     templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
-            #     templateEnv.filters["get_identifier"] = filter_get_identifier
-            #     templateEnv.filters["get_attributes"] = filter_get_attributes
-            #     templateEnv.filters["list_to_set"] = filter_list_to_set
-            #     templateEnv.filters["list_to_str"] = filter_list_to_str
-            #     templateEnv.filters["has_node"] = filter_has_node
-            #     templateEnv.filters["has_field"] = filter_has_field
-
-            #     template = templateEnv.get_template(str(template_path))
-
-            #     dict_schema = dict(client.schema.all())
-
-            #     node_list = []
-            #     for _, node in dict_schema.items():
-            #         has_unique = False
-            #         for attr in node.attributes:
-            #             if attr.kind in ["Text", "String", "TextArea", "DateTime", "HashedPassword"]:
-            #                 attr.kind = "str"
-            #             elif attr.kind in ["Number", "Integer"]:
-            #                 attr.kind = "int"
-            #             elif attr.kind in ["Boolean"]:
-            #                 attr.kind = "bool"
-
-            #             if attr.unique:
-            #                 has_unique = True
-
-            #         for attr in node.attributes:
-            #             if attr.optional or attr.default_value is not None:
-            #                 attr.kind = f"Optional[{attr.kind}]"
-
-            #         if has_unique:
-            #             node_list.append(node.kind)
-
-            #     rendered_tpl = template.render(adapter=adapter, config=sync_instance, schema=dict_schema, node_list=node_list)  # type: ignore[arg-type]
-
             console.print(f"Saved {item[0]} in {item[1]}")
-            # output_file.write_text(rendered_tpl)
