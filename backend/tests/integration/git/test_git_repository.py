@@ -17,15 +17,20 @@ class TestInfrahubClient:
         await first_time_initialization(session=session)
 
     @pytest.fixture(scope="class")
-    async def test_client(self, base_dataset):
+    async def test_client(
+        self,
+        base_dataset,
+    ):
         # pylint: disable=import-outside-toplevel
         from infrahub.api import main
 
         return TestClient(main.app)
 
     @pytest.fixture
-    async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client)
+    async def client(self, test_client, integration_helper):
+        admin_token = await integration_helper.create_token()
+
+        return await InfrahubClient.init(test_client=test_client, api_token=admin_token)
 
     @pytest.fixture(scope="class")
     async def query_99(self, session, test_client):
