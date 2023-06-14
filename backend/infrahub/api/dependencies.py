@@ -11,7 +11,6 @@ from infrahub.auth import (
     authentication_token,
     validate_jwt_refresh_token,
 )
-from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
