@@ -29,7 +29,7 @@ export const Pagination = (props: tPaginationType) => {
   const { offset, limit } = pagination;
 
   // Set the number of page to 1 if there is no other pages
-  const pagesCount = Math.floor(count / limit) || 1;
+  const pagesCount = Math.ceil(count / limit) || 1;
 
   // Set the current page to 0 as it is an index
   const currentPage = offset / limit ?? 0;
