@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.definitions import Brancher
-    from infrahub.core.manager import SchemaManager
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+    from infrahub.core.schema_manager import SchemaManager
     from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
     from infrahub.types import InfrahubDataType

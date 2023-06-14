@@ -187,7 +187,9 @@ class InfrahubGraphQLApp:
 
         return cast(Response, response)
 
-    async def _get_context_value(self, session: AsyncSession, request: HTTPConnection, branch: Branch) -> Dict:
+    async def _get_context_value(
+        self, session: AsyncSession, request: HTTPConnection, branch: Branch, account_session: AccountSession
+    ) -> Dict:
         # info.context["infrahub_account"] = account
 
         context_value = {
@@ -198,6 +200,7 @@ class InfrahubGraphQLApp:
             "infrahub_database": request.app.state.db,
             "infrahub_rpc_client": request.app.state.rpc_client,
             "infrahub_session": session,
+            "account_session": account_session,
         }
 
         return context_value
@@ -217,11 +220,11 @@ class InfrahubGraphQLApp:
         query = operation["query"]
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
-        query_type = query.split(" ")[0]
+        self._validate_authentication(account_session=account_session, query=query)
 
-        self._validate_authentication(account_session=account_session, query_type=query_type)
-
-        context_value = await self._get_context_value(session=session, request=request, branch=branch)
+        context_value = await self._get_context_value(
+            session=session, request=request, branch=branch, account_session=account_session
+        )
 
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
         graphql_schema = await schema_branch.get_graphql_schema(session=session)
@@ -435,10 +438,12 @@ class InfrahubGraphQLApp:
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
     @staticmethod
-    def _validate_authentication(account_session: AccountSession, query_type: str) -> None:
+    def _validate_authentication(account_session: AccountSession, query: str) -> None:
         if config.SETTINGS.experimental_features.ignore_authentication_requirements:
             # This feature will later be removed
             return
+        document = parse(query)
+        query_type = document.definitions[0].operation.value
 
         if account_session.authenticated:
             if not account_session.read_only:
