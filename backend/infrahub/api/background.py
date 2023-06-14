@@ -1,5 +1,6 @@
 import asyncio
 import random
+from typing import List
 
 from fastapi.logger import logger
 from neo4j import AsyncDriver, AsyncSession
@@ -36,7 +37,7 @@ class BackgroundRunner:
         async with lock_registry.get_branch_schema_update():
             # logger.debug(f"Runner: lock acquired")
 
-            branches = await Branch.get_list(session=session)
+            branches: List[Branch] = await Branch.get_list(session=session)
             active_branches = [branch.name for branch in branches]
             for new_branch in branches:
                 branch_already_present = new_branch.name in registry.branch

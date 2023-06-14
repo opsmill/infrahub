@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import time
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable, Dict
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
@@ -139,7 +139,7 @@ async def graphql_query(
     )
 
     if not gql_query:
-        gqlquery_schema = registry.get_schema(name="GraphQLQuery", branch=branch_params.branch)
+        gqlquery_schema = registry.get_node_schema(name="GraphQLQuery", branch=branch_params.branch)
         items = await NodeManager.query(
             session=session,
             schema=gqlquery_schema,
@@ -158,7 +158,7 @@ async def graphql_query(
 
     result = await graphql(
         gql_schema,
-        source=gql_query.query.value,
+        source=gql_query.query.value,  # type: ignore[attr-defined]
         context_value={
             "infrahub_branch": branch_params.branch,
             "infrahub_at": branch_params.at,
@@ -169,16 +169,17 @@ async def graphql_query(
         variable_values=params,
     )
 
-    response_payload = {"data": result.data}
+    response_payload: Dict[str, Any] = {"data": result.data}
 
     if result.errors:
         response_payload["errors"] = []
         for error in result.errors:
+            error_locations = error.locations or []
             response_payload["errors"].append(
                 {
                     "message": error.message,
                     "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error.locations],
+                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
                 }
             )
         response.status_code = 500

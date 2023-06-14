@@ -396,7 +396,6 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         display_label=display_labels.get(node_in_rel, ""),
                     )
 
-                diff_rel = None
                 if rel_schema.cardinality == "one":
                     diff_rel = extract_diff_relationship_one(
                         node_id=node_in_rel,
@@ -405,6 +404,10 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         rels=rels,
                         display_labels=display_labels,
                     )
+                    if diff_rel:
+                        node_diff.elements[diff_rel.name] = diff_rel
+                        node_diff.summary.inc(diff_rel.action.value)
+
                 elif rel_schema.cardinality == "many":
                     diff_rel = extract_diff_relationship_many(
                         node_id=node_in_rel,
@@ -413,10 +416,9 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         rels=rels,
                         display_labels=display_labels,
                     )
-
-                if diff_rel:
-                    node_diff.elements[diff_rel.name] = diff_rel
-                    node_diff.summary.inc(diff_rel.action.value)
+                    if diff_rel:
+                        node_diff.elements[diff_rel.name] = diff_rel
+                        node_diff.summary.inc(diff_rel.action.value)
 
             if node_diff:
                 response[branch_name].append(node_diff)
@@ -461,7 +463,7 @@ async def get_diff_files(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> Dict[str, Dict[str, BranchDiffRepository]]:
-    response = defaultdict(lambda: defaultdict(list))
+    response: Dict[str, Dict[str, BranchDiffRepository]] = defaultdict(dict)
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
     # Query the Diff for all files and repository from the database

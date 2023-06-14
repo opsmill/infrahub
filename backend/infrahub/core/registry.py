@@ -112,6 +112,9 @@ class Registry:
     ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
         return self.schema.get(name=name, branch=branch)
 
+    def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
+        return self.schema.get(name=name, branch=branch)
+
     def get_data_type(
         self,
         name: str,
