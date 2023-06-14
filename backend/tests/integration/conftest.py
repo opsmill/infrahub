@@ -1,13 +1,18 @@
 import asyncio
 import os
 from pathlib import Path
+from typing import Any, Dict, Optional
+from uuid import uuid4
 
 import pytest
 import yaml
+from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.initialization import first_time_initialization, initialization
+from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import get_db
@@ -71,3 +76,38 @@ async def init_db_base(session):
     await delete_all_nodes(session=session)
     await first_time_initialization(session=session)
     await initialization(session=session)
+
+
+class IntegrationHelper:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self._admin_headers = {}
+
+    async def admin_headers(self) -> Dict[str, Any]:
+        if not self._admin_headers:
+            self._admin_headers = {"X-INFRAHUB-KEY": await self.create_token()}
+        return self._admin_headers
+
+    async def create_token(self, account_name: Optional[str] = None) -> str:
+        token = str(uuid4())
+        account_name = account_name or "admin"
+        response = await NodeManager.query(
+            schema="Account",
+            session=self.session,
+            filters={"name__value": account_name},
+            limit=1,
+        )
+        account = response[0]
+        account_token = await Node.init(session=self.session, schema="AccountToken")
+        await account_token.new(
+            session=self.session,
+            token=token,
+            account=account,
+        )
+        await account_token.save(session=self.session)
+        return token
+
+
+@pytest.fixture(scope="class")
+def integration_helper(session) -> IntegrationHelper:
+    return IntegrationHelper(session=session)

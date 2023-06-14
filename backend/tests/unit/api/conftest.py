@@ -21,6 +21,11 @@ def client_headers():
 
 
 @pytest.fixture
+def admin_headers():
+    return {"X-INFRAHUB-KEY": "admin-security"}
+
+
+@pytest.fixture
 async def car_person_data(session, register_core_models_schema, car_person_schema, first_account):
     p1 = await Node.init(session=session, schema="Person")
     await p1.new(session=session, name="John", height=180)

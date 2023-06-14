@@ -6,7 +6,7 @@ from neo4j import AsyncDriver, AsyncSession
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
@@ -1258,9 +1258,7 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 
 @pytest.fixture
-async def register_core_schema_db(
-    session: AsyncSession, default_branch: Branch, register_core_models_schema
-) -> SchemaBranch:
+async def register_core_schema_db(session: AsyncSession, default_branch: Branch, register_core_models_schema) -> None:
     await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, session=session)
     updated_schema = await registry.schema.load_schema_from_db(session=session, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
@@ -1273,6 +1271,38 @@ async def register_account_schema(session) -> None:
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
     for schema in account_schemas:
         registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
+
+
+@pytest.fixture
+async def create_test_admin(session: AsyncSession, register_core_schema_db, data_schema) -> Node:
+    account = await Node.init(session=session, schema="Account")
+    await account.new(
+        session=session,
+        name="test-admin",
+        type="User",
+        password=config.SETTINGS.security.initial_admin_password,
+        role="admin",
+    )
+    await account.save(session=session)
+    token = await Node.init(session=session, schema="AccountToken")
+    await token.new(
+        session=session,
+        token="admin-security",
+        account=account,
+    )
+    await token.save(session=session)
+
+    return account
+
+
+@pytest.fixture
+async def authentication_base(
+    session: AsyncSession,
+    default_branch: Branch,
+    create_test_admin,
+    register_core_models_schema,
+):
+    pass
 
 
 @pytest.fixture
