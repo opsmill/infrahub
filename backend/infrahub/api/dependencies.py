@@ -51,7 +51,7 @@ async def get_branch_params(
     branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
     at: Optional[str] = Query(None, description="Time to use for the query, in absolute or relative format"),
     rebase: bool = Query(
-        False, description="Temporarily rebase the current branch with the main branch fo the duration of the query"
+        False, description="Temporarily rebase the current branch with the main branch for the duration of the query"
     ),
 ) -> BranchParams:
     branch = await get_branch(session=session, branch=branch_name)
