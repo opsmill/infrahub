@@ -1266,7 +1266,7 @@ async def register_core_schema_db(session: AsyncSession, default_branch: Branch,
 
 @pytest.fixture
 async def register_account_schema(session) -> None:
-    SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group"]
+    SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group", "RefreshToken"]
 
     account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
     for schema in account_schemas:

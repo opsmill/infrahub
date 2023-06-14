@@ -9,6 +9,7 @@ from infrahub import config
 from infrahub.auth import (
     AccountSession,
     authentication_token,
+    validate_jwt_access_token,
     validate_jwt_refresh_token,
 )
 from infrahub.core import get_branch
@@ -36,6 +37,14 @@ async def get_session(request: Request) -> AsyncSession:
         yield session
     finally:
         await session.close()
+
+
+async def get_access_token(
+    jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
+) -> AccountSession:
+    if not jwt_header:
+        raise AuthorizationError("A JWT access token is required to perform this operation.")
+    return await validate_jwt_access_token(token=jwt_header.credentials)
 
 
 async def get_refresh_token(

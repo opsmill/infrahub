@@ -14,6 +14,7 @@ from infrahub import config, models
 from infrahub.core import get_branch
 from infrahub.core.account import get_account, validate_token
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.exceptions import AuthorizationError, NodeNotFound
 
 if TYPE_CHECKING:
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
 class AccountSession(BaseModel):
     authenticated: bool = True
     account_id: str
+    session_id: Optional[str] = None
     role: str = "read-only"
 
     @property
@@ -57,17 +59,38 @@ async def authenticate_with_password(
     if not valid_credentials:
         raise AuthorizationError("Incorrect password")
 
-    session_id = uuid.uuid4()
+    now = datetime.now(tz=timezone.utc)
+
+    refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
+    session_id = await create_db_refresh_token(session=session, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, role=account.role.value, session_id=session_id)
-    refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id)
+    refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     return models.UserToken(access_token=access_token, refresh_token=refresh_token)
+
+
+async def create_db_refresh_token(session: AsyncSession, account_id: str, expiration: datetime) -> uuid.UUID:
+    obj = await Node.init(session=session, schema="RefreshToken")
+    await obj.new(
+        session=session,
+        account=account_id,
+        expiration=expiration.isoformat(),
+    )
+    await obj.save(session=session)
+    return uuid.UUID(obj.id)
 
 
 async def create_fresh_access_token(
     session: AsyncSession, refresh_data: models.RefreshTokenData
 ) -> models.AccessTokenResponse:
     selected_branch = await get_branch(session=session)
+
+    refresh_token = await NodeManager.get_one(
+        id=str(refresh_data.session_id),
+        session=session,
+    )
+    if not refresh_token:
+        raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
     account = await NodeManager.get_one(
         id=refresh_data.account_id,
@@ -106,15 +129,14 @@ def generate_access_token(account_id: str, role: str, session_id: uuid.UUID) -> 
     return access_token
 
 
-def generate_refresh_token(account_id: str, session_id: uuid.UUID) -> str:
+def generate_refresh_token(account_id: str, session_id: uuid.UUID, expiration: datetime) -> str:
     now = datetime.now(tz=timezone.utc)
 
-    refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     refresh_data = {
         "sub": account_id,
         "iat": now,
         "nbf": now,
-        "exp": refresh_expires,
+        "exp": expiration,
         "fresh": False,
         "type": "refresh",
         "session_id": str(session_id),
@@ -137,15 +159,16 @@ async def authentication_token(
 async def validate_jwt_access_token(token: str) -> AccountSession:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
-        user_id = payload["sub"]
+        account_id = payload["sub"]
         role = payload["user_claims"]["role"]
+        session_id = payload["session_id"]
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
     except Exception:
         raise AuthorizationError("Invalid token") from None
 
     if payload["type"] == "access":
-        return AccountSession(account_id=user_id, role=role)
+        return AccountSession(account_id=account_id, role=role, session_id=session_id)
 
     raise AuthorizationError("Invalid token, current token is not an access token")
 
@@ -219,6 +242,15 @@ def validate_mutation_permissions_update_node(
 
     if validator := validation_map.get(operation):
         validator(account_session, node_id, fields)
+
+
+async def invalidate_refresh_token(session: AsyncSession, token_id: str) -> None:
+    refresh_token = await NodeManager.get_one(
+        id=token_id,
+        session=session,
+    )
+    if refresh_token:
+        await refresh_token.delete(session)
 
 
 # Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
