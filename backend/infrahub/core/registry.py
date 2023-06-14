@@ -5,7 +5,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
 import infrahub.config as config
-from infrahub.exceptions import BranchNotFound, DataTypeNotFound, Error, InitializationError
+from infrahub.exceptions import (
+    BranchNotFound,
+    DataTypeNotFound,
+    Error,
+    InitializationError,
+)
 from infrahub.lock import registry as lock_registry
 
 if TYPE_CHECKING:
