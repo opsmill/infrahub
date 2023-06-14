@@ -11,7 +11,8 @@ from infrahub.auth import (
     authentication_token,
     validate_jwt_refresh_token,
 )
-from infrahub.core import get_branch as get_branch_core
+from infrahub.auth import AccountSession, authentication_token
+from infrahub.core import get_branch
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import AuthorizationError, PermissionDeniedError
@@ -54,18 +55,18 @@ async def get_branch_params(
         False, description="Temporarily rebase the current branch with the main branch fo the duration of the query"
     ),
 ) -> BranchParams:
-    branch = await get_branch_core(session=session, branch=branch_name)
+    branch = await get_branch(session=session, branch=branch_name)
     branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
     return BranchParams(branch=branch, at=at, rebase=rebase)
 
 
-async def get_branch(
+async def get_branch_dep(
     session: AsyncSession = Depends(get_session),
     branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
 ) -> Branch:
-    return await get_branch_core(session=session, branch=branch_name)
+    return await get_branch(session=session, branch=branch_name)
 
 
 async def get_current_user(

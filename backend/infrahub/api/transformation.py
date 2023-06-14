@@ -1,14 +1,18 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from graphql import graphql
 from neo4j import AsyncSession
 from starlette.responses import JSONResponse, PlainTextResponse
 
-from infrahub.api.dependencies import get_current_user, get_session
-from infrahub.core import get_branch, registry
+from infrahub.api.dependencies import (
+    BranchParams,
+    get_branch_params,
+    get_current_user,
+    get_session,
+)
+from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus.events import (
     InfrahubRPCResponse,
     InfrahubTransformRPC,
@@ -27,21 +31,18 @@ async def transform_python(
     request: Request,
     transform_url: str,
     session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
-    at: Optional[str] = None,
-    rebase: Optional[bool] = False,
+    branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ):
-    branch = await get_branch(session=session, branch=branch)
-
-    branch.ephemeral_rebase = rebase
-    at = Timestamp(at)
-
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    transform_schema = registry.schema.get(name="TransformPython", branch=branch)
+    transform_schema = registry.schema.get(name="TransformPython", branch=branch_params.branch)
     transforms = await NodeManager.query(
-        session=session, schema=transform_schema, filters={"url__value": transform_url}, branch=branch, at=at
+        session=session,
+        schema=transform_schema,
+        filters={"url__value": transform_url},
+        branch=branch_params.branch,
+        at=branch_params.at,
     )
 
     if not transforms:
@@ -52,15 +53,15 @@ async def transform_python(
     query = await transform.query.get_peer(session=session)
     repository = await transform.repository.get_peer(session=session)
 
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
     gql_schema = await schema.get_graphql_schema(session=session)
 
     result = await graphql(
         gql_schema,
         source=query.query.value,
         context_value={
-            "infrahub_branch": branch,
-            "infrahub_at": at,
+            "infrahub_branch": branch_params.branch,
+            "infrahub_at": branch_params.at,
             "infrahub_database": request.app.state.db,
             "infrahub_session": session,
         },
@@ -88,7 +89,7 @@ async def transform_python(
             action=TransformMessageAction.PYTHON,
             repository=repository,
             data=result.data,
-            branch_name=branch.name,
+            branch_name=branch_params.branch.name,
             transform_location=f"{transform.file_path.value}::{transform.class_name.value}",
         )
     )
@@ -102,26 +103,23 @@ async def transform_python(
 @router.get("/rfile/{rfile_id}", response_class=PlainTextResponse)
 async def generate_rfile(
     request: Request,
-    rfile_id: str,
+    rfile_id: str = Path(description="ID or Name of the RFile to render"),
     session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
-    at: Optional[str] = None,
-    rebase: Optional[bool] = False,
+    branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ):
-    branch = await get_branch(session=session, branch=branch)
-
-    branch.ephemeral_rebase = rebase
-    at = Timestamp(at)
-
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch, at=at)
+    rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch_params.branch, at=branch_params.at)
 
     if not rfile:
-        rfile_schema = registry.get_schema(name="RFile", branch=branch)
+        rfile_schema = registry.get_schema(name="RFile", branch=branch_params.branch)
         items = await NodeManager.query(
-            session=session, schema=rfile_schema, filters={rfile_schema.default_filter: rfile_id}, branch=branch, at=at
+            session=session,
+            schema=rfile_schema,
+            filters={rfile_schema.default_filter: rfile_id},
+            branch=branch_params.branch,
+            at=branch_params.at,
         )
         if items:
             rfile = items[0]
@@ -132,15 +130,15 @@ async def generate_rfile(
     query = await rfile.query.get_peer(session=session)
     repository = await rfile.template_repository.get_peer(session=session)
 
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
     gql_schema = await schema.get_graphql_schema(session=session)
 
     result = await graphql(
         gql_schema,
         source=query.query.value,
         context_value={
-            "infrahub_branch": branch,
-            "infrahub_at": at,
+            "infrahub_branch": branch_params.branch,
+            "infrahub_at": branch_params.at,
             "infrahub_database": request.app.state.db,
             "infrahub_session": session,
         },
@@ -168,7 +166,7 @@ async def generate_rfile(
             action=TransformMessageAction.JINJA2,
             repository=repository,
             data=result.data,
-            branch_name=branch.name,
+            branch_name=branch_params.branch.name,
             transform_location=rfile.template_path.value,
         )
     )

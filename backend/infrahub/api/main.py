@@ -2,11 +2,11 @@ import asyncio
 import logging
 import os
 import time
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Path, Request, Response
 from fastapi.logger import logger
 from fastapi.responses import JSONResponse
 from graphql import graphql
@@ -19,12 +19,16 @@ import infrahub.config as config
 from infrahub import __version__
 from infrahub.api import auth, diff, internal, schema, transformation
 from infrahub.api.background import BackgroundRunner
-from infrahub.api.dependencies import get_current_user, get_session
+from infrahub.api.dependencies import (
+    BranchParams,
+    get_branch_params,
+    get_current_user,
+    get_session,
+)
 from infrahub.auth import BaseTokenAuth
-from infrahub.core import get_branch, registry
+from infrahub.core import registry
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import get_db
 from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
@@ -123,30 +127,25 @@ async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> J
 async def graphql_query(
     request: Request,
     response: Response,
-    query_id: str,
+    query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
     session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
-    at: Optional[str] = None,
-    rebase: bool = False,
+    branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ):
-    branch = await get_branch(session=session, branch=branch)
-
-    branch.ephemeral_rebase = rebase
-    at = Timestamp(at)
-
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    gql_query = await NodeManager.get_one(session=session, id=query_id, branch=branch, at=at)
+    gql_query = await NodeManager.get_one(
+        session=session, id=query_id, branch=branch_params.branch, at=branch_params.at
+    )
 
     if not gql_query:
-        gqlquery_schema = registry.get_schema(name="GraphQLQuery", branch=branch)
+        gqlquery_schema = registry.get_schema(name="GraphQLQuery", branch=branch_params.branch)
         items = await NodeManager.query(
             session=session,
             schema=gqlquery_schema,
             filters={gqlquery_schema.default_filter: query_id},
-            branch=branch,
-            at=at,
+            branch=branch_params.branch,
+            at=branch_params.at,
         )
         if items:
             gql_query = items[0]
@@ -154,15 +153,15 @@ async def graphql_query(
     if not gql_query:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    schema_branch = registry.schema.get_schema_branch(name=branch_params.branch.name)
     gql_schema = await schema_branch.get_graphql_schema(session=session)
 
     result = await graphql(
         gql_schema,
         source=gql_query.query.value,
         context_value={
-            "infrahub_branch": branch,
-            "infrahub_at": at,
+            "infrahub_branch": branch_params.branch,
+            "infrahub_at": branch_params.at,
             "infrahub_database": request.app.state.db,
             "infrahub_session": session,
         },
