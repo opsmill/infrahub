@@ -64,7 +64,7 @@ import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
-from infrahub.utils import str_to_bool
+from infrahub_client.utils import str_to_bool
 
 if TYPE_CHECKING:
     import graphene

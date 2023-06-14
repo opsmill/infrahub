@@ -31,8 +31,8 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub.utils import compare_lists
 from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
+from infrahub_client.utils import compare_lists
 
 # pylint: disable=too-few-public-methods,too-many-lines
 
