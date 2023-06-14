@@ -187,6 +187,12 @@ async def test_schema_branch_load_schema_extension(session: AsyncSession, defaul
     assert len(org.relationships) == initial_nbr_relationships + 1
     assert schema_branch.get(name="Device")
 
+    # Load it a second time to check if it's idempotent
+    schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_w_extensions_01.json")))
+    org = schema_branch.get(name="Organization")
+    assert len(org.relationships) == initial_nbr_relationships + 1
+    assert schema_branch.get(name="Device")
+
 
 async def test_schema_branch_process_filters(
     session, reset_registry, default_branch: Branch, register_internal_models_schema
