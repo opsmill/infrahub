@@ -1,22 +1,15 @@
-import os
-import yaml
 import pynetbox
-from pathlib import Path
-
-from typing import List, Dict, Optional, Any
-from pydantic import BaseModel, Field
-
 from diffsync import DiffSync, DiffSyncModel
-from infrahub_sync import DiffSyncMixin, SchemaMappingModel, SyncConfig, SyncAdapter
+from infrahub_sync import DiffSyncMixin, SchemaMappingModel, SyncAdapter, SyncConfig
 
 
 def get_value(obj, name: str):
-
     if "." not in name:
         return getattr(obj, name)
 
     first_name, remaining_part = name.split(".", maxsplit=1)
     return get_value(obj=getattr(obj, first_name), name=remaining_part)
+
 
 def netbox_obj_to_diffsync(mapping: SchemaMappingModel, obj) -> dict:
     data = {"local_id": str(obj.id)}

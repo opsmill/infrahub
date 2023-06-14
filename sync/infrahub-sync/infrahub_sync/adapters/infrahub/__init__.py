@@ -1,15 +1,19 @@
 """DiffSync Adapter for Infrahub to manage regions."""
-import inspect
-import functools
 import copy
 
 from diffsync import DiffSync, DiffSyncModel
-
-
 from infrahub_sync import DiffSyncMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
-from infrahub_client import InfrahubClientSync, InfrahubNodeSync, NodeNotFound, NodeSchema, NodeStoreSync
+
+from infrahub_client import (
+    InfrahubClientSync,
+    InfrahubNodeSync,
+    NodeNotFound,
+    NodeSchema,
+    NodeStoreSync,
+)
 from infrahub_client.utils import compare_lists
+
 
 def update_node(node: NodeSchema, attrs: dict):
     for attr_name, attr_value in attrs.items():
@@ -25,8 +29,7 @@ def update_node(node: NodeSchema, attrs: dict):
                 attr = getattr(node, attr_name)
                 attr.peer_id = peer.id
             if attr_name == rel.name and rel.cardinality == "many":
-
-                new_peer_ids = [ node.client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
+                new_peer_ids = [node.client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
                 # data[key] = new_values
                 attr = getattr(node, attr_name)
                 existing_peer_ids = attr.peer_ids
@@ -60,7 +63,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         remote_account = "Netbox"
         try:
             self.account = self.client.get(kind="Account", name__value=remote_account)
-        except NodeNotFound as exc:
+        except NodeNotFound:
             self.account = self.client.create(kind="Account", name=remote_account, password="nopassword")
             self.account.save()
 
@@ -85,7 +88,6 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
             if not has_field(config=self.config, name=node._schema.name, field=rel_schema.name):
                 continue
             if rel_schema.cardinality == "one":
-
                 rel = getattr(node, rel_schema.name)
                 peer = self.client.store.get(key=rel.id, kind=rel_schema.peer)
 
@@ -99,28 +101,29 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
 
 def diffsync_to_infrahub(ids: dict, attrs: dict, store: NodeStoreSync, schema: NodeSchema):
+    data = copy.deepcopy(ids)
+    data.update(attrs)
 
-        data = copy.deepcopy(ids)
-        data.update(attrs)
+    for key in list(data.keys()):
+        for rel in schema.relationships:
+            if key == rel.name and rel.cardinality == "one":
+                peer = store.get(key=data[key], kind=rel.peer)
+                data[key] = peer.id
+            if key == rel.name and rel.cardinality == "many":
+                new_values = [store.get(key=value, kind=rel.peer).id for value in list(data[key])]
+                data[key] = new_values
 
-        for key in list(data.keys()):
-            for rel in schema.relationships:
-                if key == rel.name and rel.cardinality == "one":
-                    peer = store.get(key=data[key], kind=rel.peer)
-                    data[key] = peer.id
-                if key == rel.name and rel.cardinality == "many":
-                    new_values = [ store.get(key=value, kind=rel.peer).id for value in list(data[key])]
-                    data[key] = new_values
+    return data
 
-        return data
 
 class InfrahubModel(DiffSyncModel):
     @classmethod
     def create(cls, diffsync, ids: dict, attrs: dict):
-
         schema = diffsync.client.schema.get(kind=cls.__name__)
 
         data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=diffsync.client.store)
+
+        unique_id = cls(**ids, **attrs).get_unique_id()
 
         source = diffsync.account
         create_data = diffsync.client.schema.generate_payload_create(
@@ -129,6 +132,7 @@ class InfrahubModel(DiffSyncModel):
 
         node = diffsync.client.create(kind=cls.__name__, data=create_data)
         node.save()
+        diffsync.client.store.set(key=unique_id, node=node)
         return super().create(diffsync, ids=ids, attrs=attrs)
 
     def update(self, attrs):

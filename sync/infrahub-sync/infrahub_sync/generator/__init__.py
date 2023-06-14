@@ -1,25 +1,12 @@
-import logging
-from typing import List, Optional, Any, Union
-from asyncio import run as aiorun
 import os
-import typer
-import jinja2
-import glob
-import yaml
-
-import importlib
-
 from pathlib import Path
-from rich.console import Console
-from pydantic import BaseModel
+from typing import List, Union
 
-from infrahub_sync import SyncConfig, SyncInstance, SchemaMappingModel, SyncAdapter
-from infrahub_sync.generator.utils import (
-    list_to_set,
-    list_to_str,
-)
-from infrahub_client import InfrahubClientSync, NodeSchema, AttributeSchema, RelationshipSchema
+import jinja2
+from infrahub_sync import SyncConfig
+from infrahub_sync.generator.utils import list_to_set, list_to_str
 
+from infrahub_client import AttributeSchema, NodeSchema, RelationshipSchema
 
 ATTRIBUTE_KIND_MAP = {
     "Text": "str",
@@ -52,7 +39,9 @@ def has_field(config: SyncConfig, name: str, field: str) -> bool:
 def get_identifiers(node: NodeSchema, config: SyncConfig) -> List[str]:
     """Return the identifiers that should be used by DiffSync."""
 
-    config_identifiers = [ item.identifiers for item in config.schema_mapping if item.name == node.name and item.identifiers ]
+    config_identifiers = [
+        item.identifiers for item in config.schema_mapping if item.name == node.name and item.identifiers
+    ]
 
     if config_identifiers:
         return config_identifiers[0]
@@ -79,7 +68,7 @@ def get_attributes(node: NodeSchema, config: SyncConfig) -> List[str]:
     ]
 
     identifiers = get_identifiers(node=node, config=config)
-    attributes = [ item for item in rels_identifiers + attrs_attributes if item not in identifiers ]
+    attributes = [item for item in rels_identifiers + attrs_attributes if item not in identifiers]
 
     if not attributes:
         return None

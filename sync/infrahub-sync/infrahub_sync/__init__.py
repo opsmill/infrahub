@@ -1,7 +1,5 @@
-import copy
 import functools
-
-from typing import Optional, Any, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -43,7 +41,7 @@ class DiffSyncMixin:
             try:
                 method = getattr(self, f"load_{item}")
                 method()
-            except AttributeError as exc:
+            except AttributeError:
                 pass
 
     def model_loader(self, model_name: str, model):

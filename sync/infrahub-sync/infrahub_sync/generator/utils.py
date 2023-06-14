@@ -1,6 +1,4 @@
 from typing import List
-from infrahub_sync import SyncConfig, SchemaMappingModel
-from infrahub_client import NodeSchema
 
 
 def list_to_set(items: List[str]) -> str:

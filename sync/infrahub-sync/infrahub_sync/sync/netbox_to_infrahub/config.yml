@@ -4,7 +4,7 @@ source:
   name: netbox
   settings:
     url: "https://demo.netbox.dev"
-    token: "95c5b9131943fe3b59f483e1992a3b8d7ab266e9"
+    token: "922b451617b0985f5f3323ed7550f2697f520b71"
 
 destination:
   name: infrahub
@@ -45,10 +45,9 @@ schema_mapping:
         mapping: site.slug
       - name: height
         mapping: u_height
-      # - name: tags
-      #   reference:
-      #     key: tags
-
+      - name: tags
+        reference:
+          mapping: tags
 
   - name: role
     mapping: dcim.device_roles

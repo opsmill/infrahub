@@ -1,23 +1,18 @@
-import logging
-from typing import List, Optional, Any
-from asyncio import run as aiorun
-import os
-import typer
-import jinja2
 import glob
-import yaml
-
 import importlib
-
+import logging
+import os
 from pathlib import Path
-from rich.console import Console
-from pydantic import BaseModel
+from typing import List
 
-from infrahub_sync import SyncConfig, SyncInstance, SchemaMappingModel, SyncAdapter
+import typer
+import yaml
+from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
 from infrahub_sync.generator import render_template
-from infrahub_client import InfrahubClientSync
-
 from potenda import Potenda
+from rich.console import Console
+
+from infrahub_client import InfrahubClientSync
 
 app = typer.Typer()
 
@@ -39,7 +34,7 @@ def get_all_sync() -> List[SyncInstance]:
     for config_file in glob.glob(f"{here}/sync/**/config.yml", recursive=True):
         directory_name = os.path.dirname(config_file)
         config_data = yaml.safe_load(Path(config_file).read_text())
-        config = SyncConfig(**config_data)
+        SyncConfig(**config_data)
         results.append(SyncInstance(**config_data, directory=directory_name))
 
     return results
