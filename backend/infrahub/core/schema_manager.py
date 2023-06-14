@@ -179,7 +179,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_inheritance()
         self.process_filters()
-        # self.generate_weight()
+        self.generate_weight()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -244,6 +244,18 @@ class SchemaBranch:
                 rel.filters = self.generate_filters(schema=peer_schema, top_level=False, include_relationships=False)
 
             self.set(name=node_name, schema=new_node)
+
+    def generate_weight(self):
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+            new_node = node.duplicate()
+            current_weight = 0
+            for item in new_node.attributes + new_node.relationships:
+                current_weight += 1000
+                if not item.order_weight:
+                    item.order_weight = current_weight
+
+            self.set(name=name, schema=new_node)
 
     @staticmethod
     def generate_filters(

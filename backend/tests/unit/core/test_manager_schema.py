@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from deepdiff import DeepDiff
 from neo4j import AsyncSession
@@ -14,6 +16,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub_client.utils import compare_lists
 
 
 # -----------------------------------------------------------------
@@ -159,6 +162,52 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
 
     assert criticality.get_attribute(name="my_generic_name")
     assert criticality.get_attribute(name="my_generic_name").inherited
+
+
+async def test_schema_branch_generate_weight(schema_all_in_one):
+    def extract_weights(schema: SchemaBranch):
+        weights = []
+        for _, node in schema.get_all().items():
+            if not isinstance(node, (NodeSchema, GenericSchema)):
+                continue
+            for item in node.attributes + node.relationships:
+                weights.append(f"{node.name}__{item.name}__{item.order_weight}")
+                assert item.order_weight
+        return weights
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.generate_weight()
+
+    initial_weights = extract_weights(schema)
+
+    # Add a new item with a specific value
+    new_schema = copy.deepcopy(schema_all_in_one)
+    new_schema["nodes"][0]["attributes"].insert(1, {"name": "new_attr", "kind": "Number", "order_weight": 555})
+    new_attr_id = f"{new_schema['nodes'][0]['name']}__new_attr__555"
+    schema.load_schema(schema=SchemaRoot(**new_schema))
+    schema.generate_weight()
+
+    second_weights = extract_weights(schema)
+
+    in_both, in_first, in_second = compare_lists(initial_weights, second_weights)
+    assert in_first == []
+    assert sorted(in_both) == sorted(initial_weights)
+    assert in_second == [new_attr_id]
+
+    # Add another item without a value
+    new_schema2 = copy.deepcopy(schema_all_in_one)
+    new_schema2["nodes"][0]["attributes"].insert(3, {"name": "new_attr2", "kind": "Number"})
+    new_attr2_partial_id = f"{new_schema['nodes'][0]['name']}__new_attr2__"
+    schema.load_schema(schema=SchemaRoot(**new_schema2))
+    schema.generate_weight()
+
+    third_weights = extract_weights(schema)
+
+    in_both, in_first, in_second = compare_lists(second_weights, third_weights)
+    assert in_first == []
+    assert sorted(in_both) == sorted(second_weights)
+    assert len(in_second) == 1 and in_second[0].startswith(new_attr2_partial_id)
 
 
 async def test_schema_branch_generate_identifiers(schema_all_in_one):

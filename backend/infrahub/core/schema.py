@@ -515,34 +515,6 @@ class BaseNodeSchema(BaseSchemaModel):
 
         return value
 
-    @validator("attributes")
-    def set_attribute_order_weight(cls, attributes: List[AttributeSchema]) -> List[AttributeSchema]:
-        weights = [attribute.order_weight for attribute in attributes]
-        if None not in weights:
-            # If the weights are already set they are coming from the
-            # database and can be used as is.
-            return attributes
-        ordered = []
-        for index, attribute in enumerate(attributes):
-            attribute.order_weight = attribute.order_weight or index * 1000 + 1000
-            ordered.append(attribute)
-
-        return ordered
-
-    @validator("relationships")
-    def set_relationship_order_weight(cls, relationships: List[RelationshipSchema]) -> List[RelationshipSchema]:
-        weights = [relationship.order_weight for relationship in relationships]
-        if None not in weights:
-            # If the weights are already set they are coming from the
-            # database and can be used as is.
-            return relationships
-        ordered = []
-        for index, relationship in enumerate(relationships):
-            relationship.order_weight = relationship.order_weight or index * 1000 + 100000
-            ordered.append(relationship)
-
-        return ordered
-
 
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
