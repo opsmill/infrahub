@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 
 # pylint: disable=protected-access,too-many-locals,too-many-lines
 
+EXCLUDED_ATTRIBUTE_KINDS = ["HashedPassword"]
+
 
 class DeleteInput(graphene.InputObjectType):
     id = graphene.String(required=True)
@@ -491,10 +493,11 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
     }
 
     for attr in schema.local_attributes:
-        attr_type = registry.get_graphql_type(
-            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
-        )
-        main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+        if attr.kind not in EXCLUDED_ATTRIBUTE_KINDS:
+            attr_type = registry.get_graphql_type(
+                name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+            )
+            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     return type(schema.kind, (InfrahubObject,), main_attrs)
 
@@ -906,8 +909,9 @@ async def generate_filters(
         return filters
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].graphql_filter
-        filters[f"{attr.name}__value"] = attr_type()
+        if attr.kind not in EXCLUDED_ATTRIBUTE_KINDS:
+            attr_type = ATTRIBUTE_TYPES[attr.kind].graphql_filter
+            filters[f"{attr.name}__value"] = attr_type()
 
     if not top_level:
         return filters
