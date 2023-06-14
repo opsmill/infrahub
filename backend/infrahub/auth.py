@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Optional
 
@@ -51,24 +52,75 @@ async def authenticate_with_password(
             identifier=credentials.username,
             message="That login user doesn't exist in the system",
         )
-    user = response[0]
-    valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), user.password.value.encode("UTF-8"))
+    account = response[0]
+    valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), account.password.value.encode("UTF-8"))
     if not valid_credentials:
         raise AuthorizationError("Incorrect password")
-    now = datetime.now(tz=timezone.utc)
-    expires = now + timedelta(seconds=config.SETTINGS.security.access_token_lifetime)
 
+    session_id = uuid.uuid4()
+    access_token = generate_access_token(account_id=account.id, role=account.role.value, session_id=session_id)
+    refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id)
+
+    return models.UserToken(access_token=access_token, refresh_token=refresh_token)
+
+
+async def create_fresh_access_token(
+    session: AsyncSession, refresh_data: models.RefreshTokenData
+) -> models.AccessTokenResponse:
+    selected_branch = await get_branch(session=session)
+
+    account = await NodeManager.get_one(
+        id=refresh_data.account_id,
+        session=session,
+    )
+    if not account:
+        raise NodeNotFound(
+            branch_name=selected_branch.name,
+            node_type="Account",
+            identifier=refresh_data.account_id,
+            message="That login user doesn't exist in the system",
+        )
+
+    access_token = generate_access_token(
+        account_id=account.id, role=account.role.value, session_id=refresh_data.session_id
+    )
+
+    return models.AccessTokenResponse(access_token=access_token)
+
+
+def generate_access_token(account_id: str, role: str, session_id: uuid.UUID) -> str:
+    now = datetime.now(tz=timezone.utc)
+
+    access_expires = now + timedelta(seconds=config.SETTINGS.security.access_token_lifetime)
     access_data = {
-        "sub": user.id,
+        "sub": account_id,
         "iat": now,
         "nbf": now,
-        "exp": expires,
+        "exp": access_expires,
         "fresh": False,
         "type": "access",
-        "user_claims": {"role": user.role.value},
+        "session_id": str(session_id),
+        "user_claims": {"role": role},
     }
     access_token = jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
-    return models.UserToken(access_token=access_token)
+    return access_token
+
+
+def generate_refresh_token(account_id: str, session_id: uuid.UUID) -> str:
+    now = datetime.now(tz=timezone.utc)
+
+    refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
+    refresh_data = {
+        "sub": account_id,
+        "iat": now,
+        "nbf": now,
+        "exp": refresh_expires,
+        "fresh": False,
+        "type": "refresh",
+        "session_id": str(session_id),
+    }
+    refresh_token = jwt.encode(refresh_data, config.SETTINGS.security.secret_key, algorithm="HS256")
+    return refresh_token
 
 
 async def authentication_token(
@@ -96,6 +148,22 @@ async def validate_jwt_access_token(token: str) -> AccountSession:
         return AccountSession(account_id=user_id, role=role)
 
     raise AuthorizationError("Invalid token, current token is not an access token")
+
+
+def validate_jwt_refresh_token(token: str) -> models.RefreshTokenData:
+    try:
+        payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
+        account_id = payload["sub"]
+        session_id = payload["session_id"]
+    except jwt.ExpiredSignatureError:
+        raise AuthorizationError("Expired Signature") from None
+    except Exception:
+        raise AuthorizationError("Invalid token") from None
+
+    if payload["type"] == "refresh":
+        return models.RefreshTokenData(account_id=account_id, session_id=session_id)
+
+    raise AuthorizationError("Invalid token, current token is not a refresh token")
 
 
 async def validate_api_key(session: AsyncSession, token: str) -> AccountSession:
