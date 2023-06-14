@@ -249,13 +249,11 @@ class SchemaBranch:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
             new_node = node.duplicate()
-            last_weight = 1000
+            current_weight = 0
             for item in new_node.attributes + new_node.relationships:
-                if item.order_weight:
-                    last_weight = item.order_weight
-                else:
-                    last_weight += 1000
-                    item.order_weight = last_weight
+                current_weight += 1000
+                if not item.order_weight:
+                    item.order_weight = current_weight
 
             self.set(name=name, schema=new_node)
 
