@@ -38,7 +38,7 @@ async def initialization(session: AsyncSession):
     # Load all schema in the database into the registry
     #  ... Unless the schema has been initialized already
     # ---------------------------------------------------
-    if not registry.schema:
+    if not registry.schema_has_been_initialized():
         registry.schema = SchemaManager()
         schema = SchemaRoot(**internal_schema)
         registry.schema.register_schema(schema=schema)

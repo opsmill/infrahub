@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
 import infrahub.config as config
-from infrahub.exceptions import BranchNotFound, DataTypeNotFound, Error
+from infrahub.exceptions import BranchNotFound, DataTypeNotFound, Error, InitializationError
 from infrahub.lock import registry as lock_registry
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ class Registry:
     attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
     branch: dict = field(default_factory=dict)
     node: dict = field(default_factory=dict)
-    schema: Optional[SchemaManager] = None
+    _schema: Optional[SchemaManager] = None
     default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     data_type: Dict[str, InfrahubDataType] = field(default_factory=dict)
@@ -38,6 +38,22 @@ class Registry:
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
     branch_object: Optional[Brancher] = None
+
+    @property
+    def schema(self) -> SchemaManager:
+        if not self._schema:
+            raise InitializationError
+
+        return self._schema
+
+    @schema.setter
+    def schema(self, value: SchemaManager):
+        self._schema = value
+
+    def schema_has_been_initialized(self) -> bool:
+        if self._schema:
+            return True
+        return False
 
     def set_item(self, kind: str, name: str, item, branch: Optional[str] = None) -> bool:
         branch = branch or config.SETTINGS.main.default_branch
