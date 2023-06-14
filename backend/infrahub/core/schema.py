@@ -1094,7 +1094,6 @@ core_models = {
         {
             "name": "refresh_token",
             "kind": "RefreshToken",
-            "default_filter": "id",
             "display_labels": [],
             "branch": True,
             "attributes": [
