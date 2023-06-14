@@ -35,6 +35,43 @@ query GraphQLQuery {
 }
 `;
 
+export const graphqlQueriesMocksQueryWithLimit = `
+query GraphQLQuery {
+  graphql_query(offset: 0,limit: 50) {
+    count
+    edges {
+      node {
+        id
+        display_label
+
+          name {
+              value
+          }
+          description {
+              value
+          }
+          query {
+              value
+          }
+
+          repository {
+              node {
+                display_label
+              }
+          }
+          tags {
+              edges {
+                node {
+                  display_label
+                }
+              }
+          }
+      }
+    }
+  }
+}
+`;
+
 export const graphqlQueriesMocksData = {
   graphql_query: {
     count: 1000,
