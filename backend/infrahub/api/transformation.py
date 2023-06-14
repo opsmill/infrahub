@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from graphql import graphql
