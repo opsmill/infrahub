@@ -14,6 +14,10 @@ class Error(Exception):
         }
 
 
+class InitializationError(Error):
+    DESCRIPTION: str = "The application hasn't been initialized properly"
+
+
 class DatabaseError(Error):
     pass
 
