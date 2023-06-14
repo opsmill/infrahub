@@ -1,4 +1,5 @@
-"""Config Class."""
+from __future__ import annotations
+
 import os
 import os.path
 import sys
@@ -10,7 +11,7 @@ from pydantic import BaseSettings, Field, ValidationError
 
 from infrahub_client.utils import generate_uuid
 
-SETTINGS = None
+SETTINGS: Settings = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30

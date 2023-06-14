@@ -8,7 +8,7 @@ from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel, Field
 
-from infrahub.api.dependencies import get_current_user, get_session
+from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, Diff, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
@@ -396,7 +396,6 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         display_label=display_labels.get(node_in_rel, ""),
                     )
 
-                diff_rel = None
                 if rel_schema.cardinality == "one":
                     diff_rel = extract_diff_relationship_one(
                         node_id=node_in_rel,
@@ -405,6 +404,10 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         rels=rels,
                         display_labels=display_labels,
                     )
+                    if diff_rel:
+                        node_diff.elements[diff_rel.name] = diff_rel
+                        node_diff.summary.inc(diff_rel.action.value)
+
                 elif rel_schema.cardinality == "many":
                     diff_rel = extract_diff_relationship_many(
                         node_id=node_in_rel,
@@ -413,10 +416,9 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         rels=rels,
                         display_labels=display_labels,
                     )
-
-                if diff_rel:
-                    node_diff.elements[diff_rel.name] = diff_rel
-                    node_diff.summary.inc(diff_rel.action.value)
+                    if diff_rel:
+                        node_diff.elements[diff_rel.name] = diff_rel
+                        node_diff.summary.inc(diff_rel.action.value)
 
             if node_diff:
                 response[branch_name].append(node_diff)
@@ -427,14 +429,12 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
 @router.get("/data")
 async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statements
     session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
+    branch: Branch = Depends(get_branch_dep),
     time_from: Optional[str] = None,
     time_to: Optional[str] = None,
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> Dict[str, List[BranchDiffNode]]:
-    branch: Branch = await get_branch(session=session, branch=branch)
-
     diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     schema = registry.schema.get_full(branch=branch)
     return await generate_diff_payload(diff=diff, session=session, kinds_to_include=list(schema.keys()))
@@ -443,14 +443,12 @@ async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statement
 @router.get("/schema")
 async def get_diff_schema(  # pylint: disable=too-many-branches,too-many-statements
     session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
+    branch: Branch = Depends(get_branch_dep),
     time_from: Optional[str] = None,
     time_to: Optional[str] = None,
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> Dict[str, List[BranchDiffNode]]:
-    branch: Branch = await get_branch(session=session, branch=branch)
-
     diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     return await generate_diff_payload(diff=diff, session=session, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
 
@@ -459,15 +457,13 @@ async def get_diff_schema(  # pylint: disable=too-many-branches,too-many-stateme
 async def get_diff_files(
     request: Request,
     session: AsyncSession = Depends(get_session),
-    branch: Optional[str] = None,
+    branch: Branch = Depends(get_branch_dep),
     time_from: Optional[str] = None,
     time_to: Optional[str] = None,
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> Dict[str, Dict[str, BranchDiffRepository]]:
-    branch: Branch = await get_branch(session=session, branch=branch)
-
-    response = defaultdict(lambda: defaultdict(list))
+    response: Dict[str, Dict[str, BranchDiffRepository]] = defaultdict(dict)
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
     # Query the Diff for all files and repository from the database

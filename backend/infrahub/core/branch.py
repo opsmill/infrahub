@@ -503,8 +503,8 @@ class Branch(StandardNode):
     async def diff(
         self,
         branch_only: bool = False,
-        diff_from: Union[str, Timestamp] = None,
-        diff_to: Union[str, Timestamp] = None,
+        diff_from: Optional[Union[str, Timestamp]] = None,
+        diff_to: Optional[Union[str, Timestamp]] = None,
         session: Optional[AsyncSession] = None,
     ) -> Diff:
         return await Diff.init(
