@@ -3,8 +3,13 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from neo4j import AsyncSession
 
 from infrahub import config
-from infrahub.auth import AccountSession, authentication_token
+from infrahub.auth import (
+    AccountSession,
+    authentication_token,
+    validate_jwt_refresh_token,
+)
 from infrahub.exceptions import AuthorizationError, PermissionDeniedError
+from infrahub.models import RefreshTokenData
 
 jwt_scheme = HTTPBearer(auto_error=False)
 api_key_scheme = APIKeyHeader(name="X-INFRAHUB-KEY", auto_error=False)
@@ -16,6 +21,14 @@ async def get_session(request: Request) -> AsyncSession:
         yield session
     finally:
         await session.close()
+
+
+async def get_refresh_token(
+    jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
+) -> RefreshTokenData:
+    if not jwt_header:
+        raise AuthorizationError("A JWT refresh token is required to perform this operation.")
+    return validate_jwt_refresh_token(token=jwt_header.credentials)
 
 
 async def get_current_user(

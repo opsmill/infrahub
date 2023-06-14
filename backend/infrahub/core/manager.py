@@ -190,7 +190,7 @@ class NodeManager:
     @classmethod
     async def get_one(
         cls,
-        id: UUID,
+        id: str,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -221,7 +221,7 @@ class NodeManager:
     @classmethod
     async def get_many(  # pylint: disable=too-many-branches
         cls,
-        ids: List[UUID],
+        ids: List[str],
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,

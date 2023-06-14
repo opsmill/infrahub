@@ -13,6 +13,7 @@ from infrahub.utils import generate_uuid
 SETTINGS = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
+THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
 class MainSettings(BaseSettings):
@@ -128,6 +129,9 @@ class ExperimentalFeaturesSettings(BaseSettings):
 
 class SecuritySettings(BaseSettings):
     access_token_lifetime: int = Field(default=3600, description="Lifetime of access token in seconds")
+    refresh_token_lifetime: int = Field(
+        default=THIRTY_DAYS_IN_SECONDS, description="Lifetime of refresh token in seconds"
+    )
     secret_key: str = Field(
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
