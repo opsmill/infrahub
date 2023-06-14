@@ -111,7 +111,7 @@ async def generate_rfile(
     session: AsyncSession = Depends(get_session),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
-) -> Union[PlainTextResponse, JSONResponse]:
+) -> PlainTextResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch_params.branch, at=branch_params.at)
