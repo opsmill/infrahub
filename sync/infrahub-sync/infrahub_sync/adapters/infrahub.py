@@ -24,13 +24,10 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
         for rel in node._schema.relationships:
             if attr_name == rel.name and rel.cardinality == "one":
                 peer = node._client.store.get(key=attr_value, kind=rel.peer)
-                # data[key] = peer.id
+                setattr(node, attr_name, peer)
 
-                attr = getattr(node, attr_name)
-                attr.peer_id = peer.id
             if attr_name == rel.name and rel.cardinality == "many":
                 new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
-                # data[key] = new_values
                 attr = getattr(node, attr_name)
                 existing_peer_ids = attr.peer_ids
 
@@ -89,6 +86,8 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                 continue
             if rel_schema.cardinality == "one":
                 rel = getattr(node, rel_schema.name)
+                if not rel.id:
+                    continue
                 peer = self.client.store.get(key=rel.id, kind=rel_schema.peer)
 
                 peer_data = self.infrahub_node_to_diffsync(peer)
@@ -101,9 +100,8 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                 values = []
                 rel_manager = getattr(node, rel_schema.name)
                 for peer in rel_manager:
-                    peer = self.client.store.get(key=peer.id, kind=rel_schema.peer)
-
-                    peer_data = self.infrahub_node_to_diffsync(peer)
+                    peer_node = self.client.store.get(key=peer.id, kind=rel_schema.peer)
+                    peer_data = self.infrahub_node_to_diffsync(peer_node)
                     peer_model = getattr(self, rel_schema.peer.lower())
                     peer_item = peer_model(**peer_data)
 
@@ -121,9 +119,15 @@ def diffsync_to_infrahub(ids: Mapping[Any, Any], attrs: Mapping[Any, Any], store
     for key in list(data.keys()):
         for rel in schema.relationships:
             if key == rel.name and rel.cardinality == "one":
+                if data[key] is None:
+                    del data[key]
+                    continue
                 peer = store.get(key=data[key], kind=rel.peer)
                 data[key] = peer.id
             if key == rel.name and rel.cardinality == "many":
+                if data[key] is None:
+                    del data[key]
+                    continue
                 new_values = [store.get(key=value, kind=rel.peer).id for value in list(data[key])]
                 data[key] = new_values
 
