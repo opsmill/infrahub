@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import Enum
 from collections import defaultdict
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
@@ -49,6 +49,7 @@ class RelationshipKind(str, Enum):
     ATTRIBUTE = "Attribute"
     COMPONENT = "Component"
     PARENT = "Parent"
+
 
 class AttributeSchema(BaseModel):
     name: str

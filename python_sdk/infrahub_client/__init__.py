@@ -17,9 +17,9 @@ from infrahub_client.schema import (
     AttributeSchema,
     InfrahubSchema,
     NodeSchema,
-    RelationshipSchema,
     RelationshipCardinality,
-    RelationshipKind
+    RelationshipKind,
+    RelationshipSchema,
 )
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
