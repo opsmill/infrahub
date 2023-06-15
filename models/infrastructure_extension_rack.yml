@@ -10,7 +10,7 @@ nodes:
     attributes:
       - name: name
         kind: Text
-        unique: true
+        # unique: true
       - name: description
         kind: Text
         optional: true
