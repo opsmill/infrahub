@@ -28,6 +28,7 @@ export type SchemaAttributeType =
 // Different kind of form inputs
 export type ControlType =
   | "text"
+  | "password"
   | "textarea"
   | "select"
   | "select2step"

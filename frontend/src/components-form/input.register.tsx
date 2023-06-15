@@ -1,8 +1,9 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { OpsInput } from "./input";
 import { FormFieldError } from "../screens/edit-form-hook/form";
+import { OpsInput } from "./input";
 
 interface Props {
+  inputType: string;
   name: string;
   label: string;
   value: string;
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export const OpsInputRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, error } = props;
+  const { name, value, register, setValue, config, label, error, inputType } = props;
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -22,7 +23,7 @@ export const OpsInputRegister = (props: Props) => {
 
   return (
     <OpsInput
-      type={config && config.valueAsNumber ? "number" : "text"}
+      type={inputType}
       label={label}
       value={value}
       onChange={(value) => setValue(inputRegister.name, value)}

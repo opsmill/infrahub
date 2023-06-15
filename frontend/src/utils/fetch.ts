@@ -1,7 +1,22 @@
 import { QSP } from "../config/qsp";
 
 export const fetchUrl = async (url: string, payload?: any) => {
-  const rawResponse = await fetch(url, payload);
+  const newPayload = {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...payload?.headers,
+    },
+    method: payload?.method ?? "GET",
+    ...(payload?.method === "POST"
+      ? {
+          body: payload?.body ?? "",
+        }
+      : {}),
+  };
+
+  const rawResponse = await fetch(url, newPayload);
+
   return rawResponse?.json();
 };
 

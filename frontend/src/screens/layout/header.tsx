@@ -3,13 +3,14 @@ import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual } from "date-fns";
-import React, { Fragment, useEffect } from "react";
+import React, { Fragment, useContext, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Avatar } from "../../components/avatar";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/date-picker";
 import { QSP } from "../../config/qsp";
+import { AuthContext } from "../../decorators/withAuth";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { classNames } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
@@ -21,6 +22,7 @@ interface Props {
 export default function Header(props: Props) {
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const date = useReactiveVar(dateVar);
+  const auth = useContext(AuthContext);
 
   const { setSidebarOpen } = props;
 
@@ -131,6 +133,15 @@ export default function Header(props: Props) {
                     )}
                   </Menu.Item>
                 ))}
+
+                <Menu.Item>
+                  <Link
+                    to={"/"}
+                    className={"block px-4 py-2 text-sm text-gray-700"}
+                    onClick={() => auth?.signOut()}>
+                    Sign out
+                  </Link>
+                </Menu.Item>
               </Menu.Items>
             </Transition>
           </Menu>

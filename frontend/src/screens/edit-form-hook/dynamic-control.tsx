@@ -13,12 +13,12 @@ export const DynamicControl = (props: DynamicFieldData) => {
   const {
     type,
     name,
-    kind,
+    // kind,
     value,
     options = {
       values: [],
     },
-    config = {},
+    // config = {},
   } = props;
   const { register, setValue, getValues } = useFormContext();
 
@@ -26,10 +26,13 @@ export const DynamicControl = (props: DynamicFieldData) => {
     const existingValue = getValues(name);
 
     switch (inputType) {
+      case "password":
       case "text":
+      case "number":
         return (
           <OpsInputRegister
             {...props}
+            inputType={inputType}
             register={register}
             setValue={setValue}
             value={existingValue ?? value}
@@ -38,16 +41,6 @@ export const DynamicControl = (props: DynamicFieldData) => {
       case "textarea":
         return (
           <OpsTextareaRegister
-            {...props}
-            register={register}
-            setValue={setValue}
-            value={existingValue ?? value}
-          />
-        );
-      case "number":
-        config.valueAsNumber = true;
-        return (
-          <OpsInputRegister
             {...props}
             register={register}
             setValue={setValue}
@@ -73,9 +66,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
           />
         );
       case "select": {
-        if (kind && ["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
-          config.valueAsNumber = true;
-        }
+        // if (kind && ["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
+        //   config.valueAsNumber = true;
+        // }
         return (
           <OpsSelectRegister
             {...props}
