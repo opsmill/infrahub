@@ -6,7 +6,12 @@ import jinja2
 from infrahub_sync import SyncConfig
 from infrahub_sync.generator.utils import list_to_set, list_to_str
 
-from infrahub_client import AttributeSchema, NodeSchema, RelationshipSchema, RelationshipKind
+from infrahub_client import (
+    AttributeSchema,
+    NodeSchema,
+    RelationshipKind,
+    RelationshipSchema,
+)
 
 ATTRIBUTE_KIND_MAP = {
     "Text": "str",
@@ -84,7 +89,9 @@ def get_children(node: NodeSchema, config: SyncConfig) -> Optional[str]:
     children = {
         rel.peer.lower(): rel.name
         for rel in node.relationships
-        if rel.cardinality == "many" and rel.kind == RelationshipKind.COMPONENT and has_field(config, name=node.name, field=rel.name)
+        if rel.cardinality == "many"
+        and rel.kind == RelationshipKind.COMPONENT
+        and has_field(config, name=node.name, field=rel.name)
     }
 
     if not children:

@@ -1,34 +1,9 @@
-from typing import Optional, Any, List
+from typing import Any, List, Optional
 
 from infrahub_sync.adapters.infrahub import InfrahubModel
 
-class Role(InfrahubModel):
-
-    _modelname = "role"
-    _identifiers = ("name",)
-    _attributes = ("description",)
-
-    name: str
-    description: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-class Location(InfrahubModel):
-
-    _modelname = "location"
-    _identifiers = ("name",)
-    _attributes = ("description", "type")
-
-    name: str
-    description: Optional[str]
-    type: str
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
 
 class Tag(InfrahubModel):
-
     _modelname = "tag"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -39,8 +14,20 @@ class Tag(InfrahubModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class Rack(InfrahubModel):
 
+class Role(InfrahubModel):
+    _modelname = "role"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+
+    name: str
+    description: Optional[str]
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class Rack(InfrahubModel):
     _modelname = "rack"
     _identifiers = ("location", "name")
     _attributes = ("tags", "description", "height")
@@ -54,3 +41,15 @@ class Rack(InfrahubModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
+
+class Location(InfrahubModel):
+    _modelname = "location"
+    _identifiers = ("name",)
+    _attributes = ("description", "type")
+
+    name: str
+    description: Optional[str]
+    type: str
+
+    local_id: Optional[str]
+    local_data: Optional[Any]

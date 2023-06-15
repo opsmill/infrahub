@@ -1,4 +1,3 @@
-import functools
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
@@ -8,6 +7,7 @@ class SchemaMappingField(BaseModel):
     name: str
     mapping: Optional[str]
     static: Optional[Any]
+    reference: Optional[str]
 
 
 class SchemaMappingModel(BaseModel):
@@ -38,24 +38,23 @@ class DiffSyncMixin:
     def load(self):
         """Load all the models, one by one based on the order defined in top_level."""
         for item in self.top_level:
-            try:
-                method = getattr(self, f"load_{item}")
+            if method := hasattr(self, f"load_{item}"):
                 method()
-            except AttributeError:
-                pass
+            else:
+                self.model_loader(model_name=item, model=getattr(self, item))
 
     def model_loader(self, model_name: str, model):
         raise NotImplementedError
 
-    def __getattr__(self, item: str):
-        """Intercept all load_<modelname> method and redirect them to the default model_loader"""
-        if not item.startswith("load_"):
-            raise AttributeError
 
-        model_name = item.replace("load_", "")
+class DiffSyncModelMixin:
+    @classmethod
+    def is_list(cls, name):
+        field = cls.__fields__.get(name)
+        if not field:
+            raise ValueError(f"Unable to find the field {name} under {cls}")
 
-        if not hasattr(self, model_name):
-            raise AttributeError(f"Unable to find the model {model_name}")
+        if isinstance(field.default, list):
+            return True
 
-        model = getattr(self, model_name)
-        return functools.partial(self.model_loader, model_name=model_name, model=model)
+        return False

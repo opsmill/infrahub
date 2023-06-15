@@ -1,34 +1,9 @@
-from typing import Optional, Any, List
+from typing import Any, List, Optional
 
 from infrahub_sync.adapters.netbox import NetboxModel
 
-class Role(NetboxModel):
-
-    _modelname = "role"
-    _identifiers = ("name",)
-    _attributes = ("description",)
-
-    name: str
-    description: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-class Location(NetboxModel):
-
-    _modelname = "location"
-    _identifiers = ("name",)
-    _attributes = ("description", "type")
-
-    name: str
-    description: Optional[str]
-    type: str
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
 
 class Tag(NetboxModel):
-
     _modelname = "tag"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -39,8 +14,20 @@ class Tag(NetboxModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class Rack(NetboxModel):
 
+class Role(NetboxModel):
+    _modelname = "role"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+
+    name: str
+    description: Optional[str]
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class Rack(NetboxModel):
     _modelname = "rack"
     _identifiers = ("location", "name")
     _attributes = ("tags", "description", "height")
@@ -54,3 +41,15 @@ class Rack(NetboxModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
+
+class Location(NetboxModel):
+    _modelname = "location"
+    _identifiers = ("name",)
+    _attributes = ("description", "type")
+
+    name: str
+    description: Optional[str]
+    type: str
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
