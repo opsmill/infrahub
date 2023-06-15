@@ -70,12 +70,14 @@ class InfrahubInventory:
 
     Arguments:
         address: Infrahub url (defaults to ``http://localhost:8000``)
+        branch: Infrahub branch to use (defaults to ``main``)
         defaults_file: Path to defaults file (defaults to ``defaults.yaml``)
     """
 
     def __init__(
         self,
         address: str = "http://localhost:8000",
+        branch: str = "main",
         defaults_file: str = "defaults.yaml",
     ):
         self.address = address
@@ -144,5 +146,5 @@ class InfrahubInventory:
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
 
     def get_resources(self, kind: str) -> InfrahubNodeSync:
-        resources = self.client.all(kind=kind, populate_store=True)
+        resources = self.client.all(kind=kind, branch=self.branch, populate_store=True)
         return resources
