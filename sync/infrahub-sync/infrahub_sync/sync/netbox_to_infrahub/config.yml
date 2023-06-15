@@ -48,6 +48,8 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: tag
+      - name: serial_number
+        mapping: serial
       # - name: role
       #   mapping: role
       #   reference: role
