@@ -1,6 +1,7 @@
 from diffsync.enum import DiffSyncFlags
 from diffsync.logging import enable_console_logging
 
+
 class Potenda:
     def __init__(
         self,
@@ -31,7 +32,7 @@ class Potenda:
         self.destination.load()
 
     def diff(self):
-        return self.destination.diff_from(self.source, flags=self.flags )
+        return self.destination.diff_from(self.source, flags=self.flags)
 
     def sync(self, diff):
         return self.destination.sync_from(self.source, diff=diff, flags=self.flags)
