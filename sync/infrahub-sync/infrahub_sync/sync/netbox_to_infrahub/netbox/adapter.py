@@ -13,7 +13,7 @@ from .models import (
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 class NetboxSync(NetboxAdapter):
-  tag = Tag
-  role = Role
-  rack = Rack
-  location = Location
+    tag = Tag
+    role = Role
+    rack = Rack
+    location = Location

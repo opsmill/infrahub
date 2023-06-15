@@ -8,8 +8,8 @@ from infrahub_sync.adapters.infrahub import InfrahubModel
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 
-class Tag(InfrahubModel):
 
+class Tag(InfrahubModel):
     _modelname = "tag"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -20,8 +20,8 @@ class Tag(InfrahubModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class Role(InfrahubModel):
 
+class Role(InfrahubModel):
     _modelname = "role"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -32,8 +32,8 @@ class Role(InfrahubModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class Rack(InfrahubModel):
 
+class Rack(InfrahubModel):
     _modelname = "rack"
     _identifiers = ("location", "name")
     _attributes = ("tags", "description", "height", "serial_number")
@@ -48,8 +48,8 @@ class Rack(InfrahubModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class Location(InfrahubModel):
 
+class Location(InfrahubModel):
     _modelname = "location"
     _identifiers = ("name",)
     _attributes = ("description", "type")
