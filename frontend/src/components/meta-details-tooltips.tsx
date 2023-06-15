@@ -32,7 +32,7 @@ export default function MetaDetailsTooltip(props: Props) {
     navigate(constructPath(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`));
 
   return (
-    <Popover className="relative mt-1.5 ml-2">
+    <Popover className="relative flex">
       <Popover.Button>
         <div className="w-6 h-6">
           <InformationCircleIcon className="w-6 h-6 text-gray-500" />

@@ -12,7 +12,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Button } from "../../components/button";
+import { BUTTON_TYPES, Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
@@ -21,6 +21,7 @@ import { QSP } from "../../config/qsp";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
+import { configState } from "../../state/atoms/config.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
@@ -42,6 +43,7 @@ export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [config] = useAtom(configState);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const [schemaList] = useAtom(schemaState);
@@ -116,7 +118,10 @@ export default function ObjectItemDetails() {
       <Tabs
         tabs={tabs}
         rightItems={
-          <Button onClick={() => setShowEditDrawer(true)} className="mr-4">
+          <Button
+            disabled={config?.main?.allow_anonymous_access}
+            onClick={() => setShowEditDrawer(true)}
+            className="mr-4">
             Edit
             <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
           </Button>
@@ -172,65 +177,68 @@ export default function ObjectItemDetails() {
                     </dd>
 
                     {objectDetailsData[attribute.name] && (
-                      <MetaDetailsTooltip
-                        items={[
-                          {
-                            label: "Updated at",
-                            value: objectDetailsData[attribute.name].updated_at,
-                            type: "date",
-                          },
-                          {
-                            label: "Update time",
-                            value: `${new Date(
-                              objectDetailsData[attribute.name].updated_at
-                            ).toLocaleDateString()} ${new Date(
-                              objectDetailsData[attribute.name].updated_at
-                            ).toLocaleTimeString()}`,
-                            type: "text",
-                          },
-                          {
-                            label: "Source",
-                            value: objectDetailsData[attribute.name].source,
-                            type: "link",
-                          },
-                          {
-                            label: "Owner",
-                            value: objectDetailsData[attribute.name].owner,
-                            type: "link",
-                          },
-                          {
-                            label: "Is protected",
-                            value: objectDetailsData[attribute.name].is_protected
-                              ? "True"
-                              : "False",
-                            type: "text",
-                          },
-                          {
-                            label: "Is inherited",
-                            value: objectDetailsData[attribute.name].is_inherited
-                              ? "True"
-                              : "False",
-                            type: "text",
-                          },
-                        ]}
-                        header={
-                          <div className="flex justify-between w-full py-4">
-                            <div className="font-semibold">{attribute.label}</div>
-                            <div
-                              className="cursor-pointer"
-                              onClick={() => {
-                                setMetaEditFieldDetails({
-                                  type: "attribute",
-                                  attributeOrRelationshipName: attribute.name,
-                                  label: attribute.label || attribute.name,
-                                });
-                                setShowMetaEditModal(true);
-                              }}>
-                              <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                      <div className="p-2">
+                        <MetaDetailsTooltip
+                          items={[
+                            {
+                              label: "Updated at",
+                              value: objectDetailsData[attribute.name].updated_at,
+                              type: "date",
+                            },
+                            {
+                              label: "Update time",
+                              value: `${new Date(
+                                objectDetailsData[attribute.name].updated_at
+                              ).toLocaleDateString()} ${new Date(
+                                objectDetailsData[attribute.name].updated_at
+                              ).toLocaleTimeString()}`,
+                              type: "text",
+                            },
+                            {
+                              label: "Source",
+                              value: objectDetailsData[attribute.name].source,
+                              type: "link",
+                            },
+                            {
+                              label: "Owner",
+                              value: objectDetailsData[attribute.name].owner,
+                              type: "link",
+                            },
+                            {
+                              label: "Is protected",
+                              value: objectDetailsData[attribute.name].is_protected
+                                ? "True"
+                                : "False",
+                              type: "text",
+                            },
+                            {
+                              label: "Is inherited",
+                              value: objectDetailsData[attribute.name].is_inherited
+                                ? "True"
+                                : "False",
+                              type: "text",
+                            },
+                          ]}
+                          header={
+                            <div className="flex justify-between w-full py-4">
+                              <div className="font-semibold">{attribute.label}</div>
+                              <Button
+                                buttonType={BUTTON_TYPES.INVISIBLE}
+                                disabled={config?.main?.allow_anonymous_access}
+                                onClick={() => {
+                                  setMetaEditFieldDetails({
+                                    type: "attribute",
+                                    attributeOrRelationshipName: attribute.name,
+                                    label: attribute.label || attribute.name,
+                                  });
+                                  setShowMetaEditModal(true);
+                                }}>
+                                <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                              </Button>
                             </div>
-                          </div>
-                        }
-                      />
+                          }
+                        />
+                      </div>
                     )}
 
                     {objectDetailsData[attribute.name].is_protected && (

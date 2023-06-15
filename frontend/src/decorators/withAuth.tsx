@@ -61,6 +61,7 @@ export const getNewToken = async () => {
 // Add auth data in compo
 export const withAuth = (AppComponent: any) => (props: any) => {
   const [config] = useAtom(configState);
+  console.log("config: ", config);
 
   const [isLoadingToken, setIsLoadingToken] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,8 +76,14 @@ export const withAuth = (AppComponent: any) => (props: any) => {
       setAccessToken(localToken);
     }
 
-    setIsLoadingToken(false);
-  }, []);
+    if (config) {
+      // Turn off only when the config is loaded
+      setIsLoadingToken(false);
+    }
+  }, [
+    config?.experimental_features?.ignore_authentication_requirements,
+    config?.main?.allow_anonymous_access,
+  ]);
 
   const signOut = () => {
     removeTokens();
@@ -113,6 +120,17 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     );
   }
 
+  if (
+    config?.experimental_features?.ignore_authentication_requirements ||
+    config?.main?.allow_anonymous_access
+  ) {
+    return (
+      <AuthContext.Provider value={null}>
+        <AppComponent {...props} />
+      </AuthContext.Provider>
+    );
+  }
+
   if (accessToken) {
     const auth = {
       accessToken,
@@ -125,22 +143,6 @@ export const withAuth = (AppComponent: any) => (props: any) => {
       </AuthContext.Provider>
     );
   }
-
-  if (config?.experimental_features?.ignore_authentication_requirements) {
-    return (
-      <AuthContext.Provider value={null}>
-        <AppComponent {...props} />
-      </AuthContext.Provider>
-    );
-  }
-
-  // if (config?.main?.allow_anonymous_access) {
-  //   return (
-  //     <AuthContext.Provider value={null}>
-  //       <AppComponent {...props} />
-  //     </AuthContext.Provider>
-  //   );
-  // }
 
   return <SignIn isLoading={isLoading} onSubmit={signIn} />;
 };
