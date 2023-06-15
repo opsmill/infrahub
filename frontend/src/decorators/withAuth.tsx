@@ -3,15 +3,60 @@ import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../components/alert";
 import { CONFIG } from "../config/config";
-import { ACCESS_TOKEN_KEY } from "../config/constants";
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "../config/constants";
 import LoadingScreen from "../screens/loading-screen/loading-screen";
 import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
-import { parseJwt } from "../utils/common";
+// import { parseJwt } from "../utils/common";
 import { fetchUrl } from "../utils/fetch";
 
 // Export auth context
 export const AuthContext = createContext(null);
+
+export const setTokens = (result: any) => {
+  if (result?.access_token) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);
+  }
+
+  if (result?.refresh_token) {
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, result?.refresh_token);
+  }
+};
+
+export const removeTokens = () => {
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
+export const signOut = () => {
+  removeTokens();
+  window.location.reload();
+};
+
+export const getNewToken = async () => {
+  const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
+
+  if (!refreshToken) {
+    return;
+  }
+
+  const payload = {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${refreshToken}`,
+    },
+  };
+
+  const result = await fetchUrl(CONFIG.AUTH_REFRESH_TOKEN_URL, payload);
+
+  if (!result?.access_token) {
+    return signOut();
+  }
+
+  setTokens(result);
+
+  return result;
+};
 
 // Add auth data in compo
 export const withAuth = (AppComponent: any) => (props: any) => {
@@ -25,8 +70,7 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
 
     if (localToken) {
-      const data = parseJwt(localToken);
-      console.log("data: ", data);
+      // const data = parseJwt(localToken);
 
       setAccessToken(localToken);
     }
@@ -35,7 +79,7 @@ export const withAuth = (AppComponent: any) => (props: any) => {
   }, []);
 
   const signOut = () => {
-    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    removeTokens();
     setAccessToken("");
   };
 
@@ -48,6 +92,7 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     const result = await fetchUrl(CONFIG.AUTH_SIGN_IN_URL, payload);
 
     setIsLoading(false);
+
     if (!result?.access_token) {
       toast(<Alert type={ALERT_TYPES.ERROR} message="Invalid username and password" />);
 
@@ -55,7 +100,8 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     }
 
     setAccessToken(result?.access_token);
-    sessionStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);
+
+    setTokens(result);
   };
 
   if (isLoadingToken) {
@@ -73,7 +119,6 @@ export const withAuth = (AppComponent: any) => (props: any) => {
       signOut,
     };
 
-    console.log("auth: ", auth);
     return (
       <AuthContext.Provider value={auth}>
         <AppComponent {...props} />

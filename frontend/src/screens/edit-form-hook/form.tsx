@@ -38,11 +38,9 @@ export const Form = ({
   const { handleSubmit, formState } = formMethods;
 
   const { errors } = formState;
-  console.log("errors: ", errors);
 
   const FormField = (props: FormFieldProps) => {
     const { field, error } = props;
-    console.log("error: ", error);
 
     return (
       <>

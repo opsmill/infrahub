@@ -57,7 +57,11 @@ const Root = () => {
       const config: Config = await fetchConfig();
 
       setConfig(config);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.includes("Received status code 401")) {
+        return;
+      }
+
       toast(
         <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />
       );
@@ -79,7 +83,13 @@ const Root = () => {
       });
 
       return data.branch ?? [];
-    } catch (err) {
+    } catch (err: any) {
+      console.log("err.message: ", err.message);
+
+      if (err?.message?.includes("Received status code 401")) {
+        return [];
+      }
+
       toast(
         <Alert
           type={ALERT_TYPES.ERROR}

@@ -5,7 +5,7 @@ export const fetchUrl = async (url: string, payload?: any) => {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...payload?.header,
+      ...payload?.headers,
     },
     method: payload?.method ?? "GET",
     ...(payload?.method === "POST"
