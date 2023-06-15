@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict
+
 import pynetbox
 from diffsync import DiffSync, DiffSyncModel
 from infrahub_sync import (
@@ -7,7 +11,9 @@ from infrahub_sync import (
     SyncAdapter,
     SyncConfig,
 )
-from pynetbox.core.response import Record as NetboxRecord
+
+if TYPE_CHECKING:
+    from pynetbox.core.response import Record as NetboxRecord
 
 
 def get_value(obj, name: str):
@@ -49,8 +55,8 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
                 item = model(**data)
                 self.add(item)
 
-    def netbox_obj_to_diffsync(self, obj: NetboxRecord, mapping: SchemaMappingModel, model: DiffSyncModel) -> dict:
-        data = {"local_id": str(obj.id)}
+    def netbox_obj_to_diffsync(self, obj: NetboxRecord, mapping: SchemaMappingModel, model: NetboxModel) -> dict:
+        data: Dict[str, Any] = {"local_id": str(obj.id)}
 
         for field in mapping.fields:
             field_is_list = model.is_list(name=field.name)

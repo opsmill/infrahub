@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Mapping
+from typing import Any, Dict, Mapping
 
 from diffsync import DiffSync, DiffSyncModel
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
@@ -57,7 +57,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         if not isinstance(adapter.settings, dict) or "url" not in adapter.settings:
             raise ValueError("url must be specified!")
 
-        self.client = InfrahubClientSync(address=adapter.settings["url"])
+        self.client = InfrahubClientSync(address=adapter.settings["url"], default_timeout=60)
 
         # We need to identify with an account until we have some auth in place
         remote_account = "Netbox"
@@ -77,7 +77,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
     def infrahub_node_to_diffsync(self, node: InfrahubNodeSync) -> dict:
         """Convert an InfrahubNode into a dict that will be used to create a DiffSyncModel."""
-        data = {"local_id": str(node.id)}
+        data: Dict[str, Any] = {"local_id": str(node.id)}
 
         for attr_name in node._schema.attribute_names:
             if has_field(config=self.config, name=node._schema.name, field=attr_name):
@@ -98,7 +98,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                 data[rel_schema.name] = peer_item.get_unique_id()
 
             elif rel_schema.cardinality == "many":
-                data[rel_schema.name] = []
+                values = []
                 rel_manager = getattr(node, rel_schema.name)
                 for peer in rel_manager:
                     peer = self.client.store.get(key=peer.id, kind=rel_schema.peer)
@@ -107,7 +107,9 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                     peer_model = getattr(self, rel_schema.peer.lower())
                     peer_item = peer_model(**peer_data)
 
-                    data[rel_schema.name].append(peer_item.get_unique_id())
+                    values.append(peer_item.get_unique_id())
+
+                data[rel_schema.name] = values
 
         return data
 
