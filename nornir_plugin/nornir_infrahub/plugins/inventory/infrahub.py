@@ -1,10 +1,11 @@
 import logging
 
+from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Type
-from pathlib import Path
 
 from nornir.core.inventory import ConnectionOptions
 from nornir.core.inventory import Defaults
@@ -17,8 +18,11 @@ from nornir.core.inventory import Inventory
 from nornir.core.inventory import ParentGroups
 
 import ruamel.yaml
+from pydantic import BaseModel
 from infrahub_client import InfrahubClientSync
 from infrahub_client import InfrahubNodeSync
+from infrahub_client.node import Attribute
+from infrahub_client.node import RelatedNodeSync
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +67,36 @@ def _get_inventory_element(typ: Type[HostOrGroup], data: Dict[str, Any], name: s
         connection_options=_get_connection_options(data.get("connection_options", {})),
     )
 
+class GroupExtractorException(Exception):
+    pass
+
+class RelationGroupExtractor(BaseModel):
+    name: str
+    attribute: str
+    type: str
+
+    def extract(self, node):
+        try:
+            relation = getattr(node, self.name)
+            value = getattr(relation.peer, self.attribute).value
+        except AttributeError:
+            raise GroupExtractorException(f"Unable to resolve relation {self.name}")
+        return f"{self.name}__{value}"
+
+class AttributeGroupExtractor(BaseModel):
+    name: str
+    type: str
+
+    def extract(self, node):
+        try:
+            attribute = getattr(node, self.name)
+        except AttributeError:
+            raise GroupExtractorException(f"Unable to retrieve attribute {self.name}")
+
+        if not isinstance(attribute, Attribute):
+            raise GroupExtractorException(f"Unable to retrieve attribute {self.name}")
+        return f"{self.name}__{attribute.value}"
+
 
 class InfrahubInventory:
     """
@@ -71,18 +105,36 @@ class InfrahubInventory:
     Arguments:
         address: Infrahub url (defaults to ``http://localhost:8000``)
         branch: Infrahub branch to use (defaults to ``main``)
+        group_extractors: Definiton of relations and attributes to extract groups from
         defaults_file: Path to defaults file (defaults to ``defaults.yaml``)
+        group_file: Path to group file (defaults to ``group.yaml``)
     """
 
     def __init__(
         self,
         address: str = "http://localhost:8000",
         branch: str = "main",
+        group_extractors: Optional[List[Dict[str, str]]] = None,
         defaults_file: str = "defaults.yaml",
+        group_file: str = "group.yaml"
     ):
         self.address = address
+        self.branch = branch
         self.defaults_file = Path(defaults_file).expanduser()
+        self.group_file = Path(group_file).expanduser()
         self.client = InfrahubClientSync.init(address=self.address)
+
+        self.group_extractors = []
+
+        if group_extractors is None:
+            group_extractors = []
+
+        for extractor in group_extractors:
+            if extractor.get("type") == "relation":
+                self.group_extractors.append(RelationGroupExtractor(**extractor))
+            elif extractor.get("type") == "attribute":
+                self.group_extractors.append(AttributeGroupExtractor(**extractor))
+
 
     def load(self) -> Inventory:
         yml = ruamel.yaml.YAML(typ="safe")
@@ -142,8 +194,24 @@ class InfrahubInventory:
 
             hosts[name] = _get_inventory_element(Host, host, name, defaults)
 
+            extracted_groups = self.extract_node_groups(node)
+
+            for group in extracted_groups:
+                if group not in groups.keys():
+                    groups[group] = _get_inventory_element(Group, {}, group, defaults)
+
+            hosts[name].groups = ParentGroups([groups[g] for g in extracted_groups])
 
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
+
+    def extract_node_groups(self, node: InfrahubNodeSync) -> List[str]:
+        groups = []
+        for group_extractor in self.group_extractors:
+            try:
+                groups.append(group_extractor.extract(node))
+            except GroupExtractorException:
+                continue
+        return groups
 
     def get_resources(self, kind: str) -> InfrahubNodeSync:
         resources = self.client.all(kind=kind, branch=self.branch, populate_store=True)
