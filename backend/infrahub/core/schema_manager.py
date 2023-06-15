@@ -166,14 +166,9 @@ class SchemaBranch:
                 self.set(name=item.kind, schema=item)
 
         for node_extension in schema.extensions.nodes:
-            node = self.get(name=node_extension.kind)
-
-            for item in node_extension.attributes:
-                node.attributes.append(item)
-            for item in node_extension.relationships:
-                node.relationships.append(item)
-
-            self.set(name=node.kind, schema=node)
+            new_item = self.get(name=node_extension.kind)
+            new_item.update(node_extension)
+            self.set(name=node_extension.kind, schema=new_item)
 
     def process(self) -> None:
         self.generate_identifiers()
