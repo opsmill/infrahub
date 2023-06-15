@@ -297,6 +297,11 @@ async def generate_object_types(
 
     load_attribute_types_in_registry(branch=branch)
 
+    # Generate an Interface that we'll apply to all ObjectType
+    node_interface_schema = GenericSchema(name="node", kind="Node", description="Interface for all nodes in Infrahub")
+    interface = generate_interface_object(schema=node_interface_schema, branch=branch)
+    registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
+
     # Generate all GraphQL Interface  Object first and store them in the registry
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, GenericSchema):
@@ -472,16 +477,22 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
         "interfaces": set(),
     }
 
+    node_interface = registry.get_graphql_type(name="Node", branch=branch.name)
+    meta_attrs["interfaces"].add(node_interface)
+
     if schema.inherit_from:
         for generic in schema.inherit_from:
             generic = registry.get_graphql_type(name=generic, branch=branch.name)
             meta_attrs["interfaces"].add(generic)
+
+    generic_group = registry.get_graphql_type(name="Group", branch=branch.name)
 
     main_attrs = {
         "id": graphene.String(required=True),
         "_updated_at": graphene.DateTime(required=False),
         "display_label": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
+        "groups": graphene.Field(generic_group, required=False, resolver=many_relationship_resolver)
     }
 
     for attr in schema.local_attributes:
@@ -613,6 +624,13 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
     main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
+
+    if schema.kind == "Group" and schema.kind != "Node":
+        node_interface = registry.get_graphql_type(name="Node", branch=branch.name)
+        # TODO add group specific resolvers
+        # TODO add pagination for groups and groups members
+        main_attrs["members"] = graphene.Field(node_interface, required=False, description="Nodes members of the group")
+        main_attrs["subscribers"] = graphene.Field(node_interface, required=False, description="Nodes subscribed to the group")
 
     return type(schema.kind, (InfrahubInterface,), main_attrs)
 
