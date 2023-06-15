@@ -50,9 +50,8 @@ schema_mapping:
         reference: tag
       - name: serial_number
         mapping: serial
-      # - name: role
-      #   mapping: role
-      #   reference: role
+      - name: role
+        mapping: role.name
 
   - name: role
     mapping: dcim.device_roles

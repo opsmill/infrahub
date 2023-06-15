@@ -36,13 +36,14 @@ class Role(InfrahubModel):
 class Rack(InfrahubModel):
     _modelname = "rack"
     _identifiers = ("location", "name")
-    _attributes = ("tags", "description", "height", "serial_number")
+    _attributes = ("role", "tags", "description", "height", "serial_number")
 
     name: str
     description: Optional[str]
     height: str
     serial_number: Optional[str]
     location: str
+    role: Optional[str]
     tags: List[str] = []
 
     local_id: Optional[str]
