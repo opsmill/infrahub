@@ -50,6 +50,7 @@ def get_instance(name: str) -> Optional[SyncInstance]:
 
 @app.command()
 def list():
+    """List all available SYNC projects."""
     for item in get_all_sync():
         print(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
 
@@ -59,6 +60,7 @@ def diff(
     name: str = typer.Argument(..., help="Name of the sync to use"),
     branch: str = typer.Option("main", help="Branch to use for the sync."),
 ):
+    """Calculate and print the differences between the source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
         raise typer.Abort(f"Unable to find the sync {name}")
@@ -82,6 +84,7 @@ def sync(
     name: str = typer.Argument(..., help="Name of the sync to use"),
     branch: str = typer.Option("main", help="Branch to use for the sync."),
 ):
+    """Synchronize the data between source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
         raise typer.Abort(f"Unable to find the sync {name}")
