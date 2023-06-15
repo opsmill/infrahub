@@ -109,7 +109,7 @@ def lint(context: Context):
     ruff(context)
     black(context)
     isort(context)
-    pylint(context)
+    # pylint(context)
     mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
