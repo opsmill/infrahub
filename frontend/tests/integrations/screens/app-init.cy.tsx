@@ -5,12 +5,15 @@ import App from "../../../src/App";
 
 describe("Config fetch", () => {
   beforeEach(function () {
+    cy.fixture("login").as("login");
     cy.fixture("config").as("config");
     cy.fixture("schema").as("schema");
   });
 
-  it("should load the schema + config", function () {
+  it("should login and load the config", function () {
     cy.viewport(1920, 1080);
+
+    cy.intercept("POST", "/auth/login", this.login).as("login");
 
     cy.intercept("GET", "/config", this.config).as("getConfig");
 
@@ -18,8 +21,14 @@ describe("Config fetch", () => {
 
     cy.mount(<App />);
 
-    cy.wait("@getConfig").then(({ response }) => {
-      expect(response?.body?.experimental_features?.test).to.be.true;
+    cy.get(":nth-child(1) > .relative > .block").type("test");
+
+    cy.get(":nth-child(2) > .relative > .block").type("test");
+
+    cy.get(".mt-6 > .rounded-md").click();
+
+    cy.wait("@login").then(({ response }) => {
+      expect(response?.body?.access_token).to.exist;
     });
 
     cy.wait("@getSchema").then(({ response }) => {
