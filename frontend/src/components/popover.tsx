@@ -4,10 +4,10 @@ import { Popover, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { classNames } from "../utils/common";
 
-export const PopOver = ({ children, className, buttonComponent, title }: any) => {
+export const PopOver = ({ children, className, buttonComponent, title, disabled }: any) => {
   return (
     <Popover className="flex relative">
-      <Popover.Button as="div" className="flex">
+      <Popover.Button as="div" className="flex" disabled={disabled}>
         {buttonComponent}
       </Popover.Button>
 

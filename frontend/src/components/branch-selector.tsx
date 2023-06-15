@@ -18,6 +18,7 @@ import { createBranch } from "../graphql/mutations/branches/createBranch";
 import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
 import { branchesState } from "../state/atoms/branches.atom";
+import { configState } from "../state/atoms/config.atom";
 import { classNames, objectToString } from "../utils/common";
 import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
@@ -28,6 +29,7 @@ import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 
 export default function BranchSelector() {
+  const [config] = useAtom(configState);
   const [branches] = useAtom(branchesState);
   const [branchInQueryString, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useReactiveVar(branchVar);
@@ -70,6 +72,7 @@ export default function BranchSelector() {
 
   const PopOverButton = (
     <Button
+      disabled={config?.main?.allow_anonymous_access}
       buttonType={BUTTON_TYPES.MAIN}
       className="flex-1 rounded-r-md border border-blue-600"
       type="submit">
@@ -191,7 +194,11 @@ export default function BranchSelector() {
         options={branches}
         renderOption={renderOption}
       />
-      <PopOver buttonComponent={PopOverButton} className="right-0" title={"Create a new branch"}>
+      <PopOver
+        disabled={config?.main?.allow_anonymous_access}
+        buttonComponent={PopOverButton}
+        className="right-0"
+        title={"Create a new branch"}>
         {({ close }: any) => (
           <>
             <div className="flex flex-col">

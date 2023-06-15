@@ -65,12 +65,13 @@ describe("List screen", () => {
       }
     );
 
+    // The device ASN should be correctly named
     cy.get(":nth-child(8) > .py-4 > .mt-1 > .cursor-pointer").should(
       "have.text",
       deviceDetailsMocksASNName
     );
 
-    cy.get(":nth-child(8) > .py-4 > .mt-1 > .relative").click();
+    cy.get(":nth-child(8) > .py-4 > .mt-1 > .p-2").click();
 
     cy.get(":nth-child(5) > .underline").should("have.text", deviceDetailsMocksOwnerName);
 

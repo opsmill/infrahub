@@ -1,10 +1,9 @@
 import { useAtom } from "jotai";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../components/alert";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "../config/constants";
-import LoadingScreen from "../screens/loading-screen/loading-screen";
 import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
 // import { parseJwt } from "../utils/common";
@@ -62,21 +61,11 @@ export const getNewToken = async () => {
 export const withAuth = (AppComponent: any) => (props: any) => {
   const [config] = useAtom(configState);
 
-  const [isLoadingToken, setIsLoadingToken] = useState(true);
+  const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+
+  // const [isLoadingToken, setIsLoadingToken] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [accessToken, setAccessToken] = useState("");
-
-  useEffect(() => {
-    const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
-
-    if (localToken) {
-      // const data = parseJwt(localToken);
-
-      setAccessToken(localToken);
-    }
-
-    setIsLoadingToken(false);
-  }, []);
+  const [accessToken, setAccessToken] = useState(localToken);
 
   const signOut = () => {
     removeTokens();
@@ -104,12 +93,14 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     setTokens(result);
   };
 
-  if (isLoadingToken) {
-    // Loading screen while loadign the token from the lcoal storage
+  if (
+    config?.experimental_features?.ignore_authentication_requirements ||
+    config?.main?.allow_anonymous_access
+  ) {
     return (
-      <div className="w-screen h-screen flex ">
-        <LoadingScreen />;
-      </div>
+      <AuthContext.Provider value={null}>
+        <AppComponent {...props} />
+      </AuthContext.Provider>
     );
   }
 
@@ -126,38 +117,5 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     );
   }
 
-  if (config?.experimental_features?.ignore_authentication_requirements) {
-    return (
-      <AuthContext.Provider value={null}>
-        <AppComponent {...props} />
-      </AuthContext.Provider>
-    );
-  }
-
-  // if (config?.main?.allow_anonymous_access) {
-  //   return (
-  //     <AuthContext.Provider value={null}>
-  //       <AppComponent {...props} />
-  //     </AuthContext.Provider>
-  //   );
-  // }
-
   return <SignIn isLoading={isLoading} onSubmit={signIn} />;
-};
-
-// Get access for pages from rights
-export const getAccess = (page: any, rights: any = {}) => {
-  if (page.agent) {
-    return rights.isAdmin || rights.isAgent;
-  }
-
-  if (page.provider) {
-    return rights.isAdmin || rights.isProvider;
-  }
-
-  if (page.admin) {
-    return rights.isAdmin;
-  }
-
-  return !page.provider;
 };

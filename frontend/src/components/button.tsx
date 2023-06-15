@@ -18,6 +18,7 @@ export enum BUTTON_TYPES {
   WARNING,
   MAIN,
   ACTIVE,
+  INVISIBLE,
 }
 
 // Get default class name and avoid certain class if needed (ex: no rounded button for tabs-button)
@@ -66,6 +67,13 @@ const getClasseName = (type?: BUTTON_TYPES) => {
         bg-gray-500 text-white cursor-default
         hover:bg-gray-500
         disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
+      `;
+    }
+    case BUTTON_TYPES.INVISIBLE: {
+      return `
+        bg-transparent text-white border-transparent shadow-none
+        hover:bg-transparent
+        disabled:cursor-not-allowed disabled:bg-transparent
       `;
     }
     default: {

@@ -12,6 +12,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { configState } from "../../state/atoms/config.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
@@ -30,6 +31,7 @@ import ObjectItemCreate from "../object-item-create/object-item-create-paginated
 
 export default function ObjectItems() {
   const { objectname } = useParams();
+  const [config] = useAtom(configState);
   const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
   const [filters] = useFilters();
@@ -98,7 +100,9 @@ export default function ObjectItems() {
           </div>
         )}
 
-        <RoundedButton onClick={() => setShowCreateDrawer(true)}>
+        <RoundedButton
+          disabled={config?.main?.allow_anonymous_access}
+          onClick={() => setShowCreateDrawer(true)}>
           <PlusIcon className="h-5 w-5" aria-hidden="true" />
         </RoundedButton>
       </div>
