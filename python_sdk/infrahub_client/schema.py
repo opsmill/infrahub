@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
@@ -38,6 +39,17 @@ class FilterSchema(BaseModel):
     description: Optional[str]
 
 
+class RelationshipCardinality(str, Enum):
+    ONE = "one"
+    MANY = "many"
+
+
+class RelationshipKind(str, Enum):
+    GENERIC = "Generic"
+    ATTRIBUTE = "Attribute"
+    COMPONENT = "Component"
+    PARENT = "Parent"
+
 class AttributeSchema(BaseModel):
     name: str
     kind: str
@@ -53,11 +65,13 @@ class AttributeSchema(BaseModel):
 class RelationshipSchema(BaseModel):
     name: str
     peer: str
+    kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
     description: Optional[str]
     identifier: Optional[str]
     inherited: bool = False
     cardinality: str = "many"
+    # cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
