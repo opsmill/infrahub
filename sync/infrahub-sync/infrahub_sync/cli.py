@@ -3,7 +3,7 @@ import importlib
 import logging
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import typer
 import yaml
@@ -40,7 +40,7 @@ def get_all_sync() -> List[SyncInstance]:
     return results
 
 
-def get_instance(name: str) -> SyncInstance:
+def get_instance(name: str) -> Optional[SyncInstance]:
     for item in get_all_sync():
         if item.name == name:
             return item
@@ -61,7 +61,7 @@ def diff(
 ):
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Exit(f"Unable to find the sync {name}")
+        raise typer.Abort(f"Unable to find the sync {name}")
 
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
@@ -84,7 +84,7 @@ def sync(
 ):
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Exit(f"Unable to find the sync {name}")
+        raise typer.Abort(f"Unable to find the sync {name}")
 
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
@@ -112,7 +112,7 @@ def generate(
 
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Exit(f"Unable to find the sync {name}")
+        raise typer.Abort(f"Unable to find the sync {name}")
 
     files_to_render = (
         ("diffsync_models.j2", "models.py"),
