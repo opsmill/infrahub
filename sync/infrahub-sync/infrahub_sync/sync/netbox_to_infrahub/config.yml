@@ -46,8 +46,11 @@ schema_mapping:
       - name: height
         mapping: u_height
       - name: tags
-        reference:
-          mapping: tags
+        mapping: tags
+        reference: tag
+      # - name: role
+      #   mapping: role
+      #   reference: role
 
   - name: role
     mapping: dcim.device_roles

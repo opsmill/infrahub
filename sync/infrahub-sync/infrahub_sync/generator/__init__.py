@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import jinja2
 from infrahub_sync import SyncConfig
 from infrahub_sync.generator.utils import list_to_set, list_to_str
 
-from infrahub_client import AttributeSchema, NodeSchema, RelationshipSchema
+from infrahub_client import AttributeSchema, NodeSchema, RelationshipSchema, RelationshipKind
 
 ATTRIBUTE_KIND_MAP = {
     "Text": "str",
@@ -36,7 +36,7 @@ def has_field(config: SyncConfig, name: str, field: str) -> bool:
     return False
 
 
-def get_identifiers(node: NodeSchema, config: SyncConfig) -> List[str]:
+def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
     """Return the identifiers that should be used by DiffSync."""
 
     config_identifiers = [
@@ -56,7 +56,7 @@ def get_identifiers(node: NodeSchema, config: SyncConfig) -> List[str]:
     return identifiers
 
 
-def get_attributes(node: NodeSchema, config: SyncConfig) -> List[str]:
+def get_attributes(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
     """Return the attributes that should be used by DiffSync."""
     attrs_attributes = [
         attr.name for attr in node.attributes if not attr.unique and has_field(config, name=node.name, field=attr.name)
@@ -64,10 +64,13 @@ def get_attributes(node: NodeSchema, config: SyncConfig) -> List[str]:
     rels_identifiers = [
         rel.name
         for rel in node.relationships
-        if rel.cardinality == "one" and has_field(config, name=node.name, field=rel.name)
+        if rel.kind != RelationshipKind.COMPONENT and has_field(config, name=node.name, field=rel.name)
     ]
 
     identifiers = get_identifiers(node=node, config=config)
+    if not identifiers:
+        return None
+
     attributes = [item for item in rels_identifiers + attrs_attributes if item not in identifiers]
 
     if not attributes:
@@ -76,12 +79,12 @@ def get_attributes(node: NodeSchema, config: SyncConfig) -> List[str]:
     return attributes
 
 
-def get_children(node: NodeSchema, config: SyncConfig) -> str:
+def get_children(node: NodeSchema, config: SyncConfig) -> Optional[str]:
     # rel.peer.lower() might now work in all cases we should have a better function to convert that
     children = {
         rel.peer.lower(): rel.name
         for rel in node.relationships
-        if rel.cardinality == "many" and has_field(config, name=node.name, field=rel.name)
+        if rel.cardinality == "many" and rel.kind == RelationshipKind.COMPONENT and has_field(config, name=node.name, field=rel.name)
     }
 
     if not children:
@@ -116,7 +119,7 @@ def has_children(node: NodeSchema, config: SyncConfig) -> bool:
 
 def render_template(template_dir: str, template_file: str, output_dir: str, output_file: str, context):
     template_path = os.path.join(template_dir, template_file)
-    output_file = Path(os.path.join(output_dir, output_file))
+    output_filename = Path(os.path.join(output_dir, output_file))
 
     templateLoader = jinja2.FileSystemLoader(searchpath=".")
     templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
@@ -133,4 +136,4 @@ def render_template(template_dir: str, template_file: str, output_dir: str, outp
     template = templateEnv.get_template(str(template_path))
 
     rendered_tpl = template.render(**context)  # type: ignore[arg-type]
-    output_file.write_text(rendered_tpl)
+    output_filename.write_text(rendered_tpl)
