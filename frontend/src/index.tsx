@@ -1,7 +1,7 @@
 import { ApolloProvider } from "@apollo/client";
 import { useAtom } from "jotai";
 import queryString from "query-string";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
@@ -18,6 +18,7 @@ import reportWebVitals from "./reportWebVitals";
 import { branchesState } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 
+import LoadingScreen from "./screens/loading-screen/loading-screen";
 import "./styles/index.css";
 import { fetchUrl } from "./utils/fetch";
 
@@ -25,9 +26,10 @@ const root = ReactDOM.createRoot(
   (document.getElementById("root") || document.createElement("div")) as HTMLElement
 );
 
-const Root = () => {
+export const Root = () => {
   const [, setBranches] = useAtom(branchesState);
   const [config, setConfig] = useAtom(configState);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
   /**
    * Sentry configuration
@@ -54,10 +56,14 @@ const Root = () => {
    */
   const setConfigInState = useCallback(async () => {
     try {
+      setIsLoadingConfig(true);
       const config: Config = await fetchConfig();
 
       setConfig(config);
+      setIsLoadingConfig(false);
     } catch (error: any) {
+      setIsLoadingConfig(false);
+
       if (error?.message?.includes("Received status code 401")) {
         return;
       }
@@ -67,11 +73,11 @@ const Root = () => {
       );
       console.error("Error while fetching the config: ", error);
     }
-  }, [setConfig]);
+  }, []);
 
   useEffect(() => {
     setConfigInState();
-  }, [setConfigInState]);
+  }, []);
 
   /**
    * Fetch branches from the backend, sort, and return them
@@ -108,11 +114,20 @@ const Root = () => {
   const setBranchesInState = useCallback(async () => {
     const branches = await fetchBranches();
     setBranches(branches);
-  }, [setBranches]);
+  }, []);
 
   useEffect(() => {
     setBranchesInState();
-  }, [setBranchesInState]);
+  }, []);
+
+  if (isLoadingConfig) {
+    // Loading screen while loadign the token from the lcoal storage
+    return (
+      <div className="w-screen h-screen flex ">
+        <LoadingScreen />;
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter basename="/">
