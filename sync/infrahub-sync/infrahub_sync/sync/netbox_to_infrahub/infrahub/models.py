@@ -1,4 +1,4 @@
-from typing import Optional, Any, List
+from typing import Any, List, Optional
 
 from infrahub_sync.adapters.infrahub import InfrahubModel
 
@@ -60,4 +60,3 @@ class Location(InfrahubModel):
 
     local_id: Optional[str]
     local_data: Optional[Any]
-

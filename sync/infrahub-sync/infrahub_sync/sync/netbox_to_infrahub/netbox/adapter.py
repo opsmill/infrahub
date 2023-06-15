@@ -1,11 +1,7 @@
 from infrahub_sync.adapters.netbox import NetboxAdapter
 
-from .models import (
-   Tag,
-   Role,
-   Rack,
-   Location,
-)
+from .models import Location, Rack, Role, Tag
+
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
