@@ -1,14 +1,21 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, Square3Stack3DIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
+import { BUTTON_TYPES, Button } from "../../components/button";
+import ModalDelete from "../../components/modal-delete";
 import { Pagination } from "../../components/pagination";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
 import { branchVar } from "../../graphql/variables/branchVar";
+import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
@@ -23,6 +30,7 @@ import {
   getSchemaRelationshipColumns,
 } from "../../utils/getSchemaObjectColumns";
 import { getObjectUrl } from "../../utils/objects";
+import { stringifyWithoutQuotes } from "../../utils/string";
 import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -34,9 +42,13 @@ export default function ObjectItems() {
   const [config] = useAtom(configState);
   const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
   const [filters] = useFilters();
   const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<any>();
+  const [deleteModal, setDeleteModal] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
@@ -80,6 +92,42 @@ export default function ObjectItems() {
   const { count, edges } = result;
 
   const rows = edges?.map((edge: any) => edge.node);
+
+  const handleDeleteObject = async () => {
+    if (!rowToDelete?.id) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    const mutationString = deleteObject({
+      name: schema.name,
+      data: stringifyWithoutQuotes({
+        id: rowToDelete?.id,
+      }),
+    });
+
+    const mutation = gql`
+      ${mutationString}
+    `;
+
+    await graphqlClient.mutate({
+      mutation,
+      context: { branch: branch?.name, date },
+    });
+
+    refetch();
+
+    setDeleteModal(false);
+
+    setIsLoading(false);
+
+    setRowToDelete(undefined);
+
+    toast(
+      <Alert type={ALERT_TYPES.SUCCESS} message={`Object ${rowToDelete?.display_label} deleted`} />
+    );
+  };
 
   if (error) {
     console.log("Error while loading objects list: ", error);
@@ -127,6 +175,9 @@ export default function ObjectItems() {
                           {attribute.label}
                         </th>
                       ))}
+                      <th
+                        scope="col"
+                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">
@@ -147,6 +198,22 @@ export default function ObjectItems() {
                             {getObjectItemDisplayValue(row, attribute)}
                           </td>
                         ))}
+
+                        <td
+                          className={classNames(
+                            index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                            "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                          )}>
+                          <Button
+                            // disabled={config?.main?.allow_anonymous_access}
+                            buttonType={BUTTON_TYPES.INVISIBLE}
+                            onClick={() => {
+                              setRowToDelete(row);
+                              setDeleteModal(true);
+                            }}>
+                            <TrashIcon className="w-6 h-6 text-red-500" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -161,41 +228,53 @@ export default function ObjectItems() {
         </div>
       )}
 
-      {
-        <SlideOver
-          title={
-            <div className="space-y-2">
-              <div className="flex items-center w-full">
-                <span className="text-lg font-semibold mr-3">Create {objectname}</span>
-                <div className="flex-1"></div>
-                <div className="flex items-center">
-                  <Square3Stack3DIcon className="w-5 h-5" />
-                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                </div>
+      <SlideOver
+        title={
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">Create {objectname}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <Square3Stack3DIcon className="w-5 h-5" />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
-              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                <svg
-                  className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                  viewBox="0 0 6 6"
-                  aria-hidden="true">
-                  <circle cx={3} cy={3} r={3} />
-                </svg>
-                {schema?.kind}
-              </span>
             </div>
-          }
-          open={showCreateDrawer}
-          setOpen={setShowCreateDrawer}
-          // title={`Create ${objectname}`}
-        >
-          <ObjectItemCreate
-            onCreate={() => setShowCreateDrawer(false)}
-            onCancel={() => setShowCreateDrawer(false)}
-            objectname={objectname!}
-            refetch={refetch}
-          />
-        </SlideOver>
-      }
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {schema?.kind}
+            </span>
+          </div>
+        }
+        open={showCreateDrawer}
+        setOpen={setShowCreateDrawer}
+        // title={`Create ${objectname}`}
+      >
+        <ObjectItemCreate
+          onCreate={() => setShowCreateDrawer(false)}
+          onCancel={() => setShowCreateDrawer(false)}
+          objectname={objectname!}
+          refetch={refetch}
+        />
+      </SlideOver>
+
+      <ModalDelete
+        title="Delete"
+        description={
+          <>
+            Are you sure you want to remove the object <br /> <b>`{rowToDelete?.display_label}`</b>?
+          </>
+        }
+        onCancel={() => setDeleteModal(false)}
+        onDelete={handleDeleteObject}
+        open={!!deleteModal}
+        setOpen={() => setDeleteModal(false)}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

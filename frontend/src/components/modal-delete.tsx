@@ -5,6 +5,7 @@ import { BUTTON_TYPES, Button } from "./button";
 
 interface iProps {
   open: boolean;
+  isLoading?: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
   description: string | React.ReactNode;
@@ -13,7 +14,7 @@ interface iProps {
 }
 
 export default function ModalDelete(props: iProps) {
-  const { title, description, onCancel, onDelete, open, setOpen } = props;
+  const { title, description, onCancel, onDelete, open, setOpen, isLoading } = props;
   const cancelButtonRef = useRef(null);
 
   return (
@@ -62,7 +63,11 @@ export default function ModalDelete(props: iProps) {
                   </div>
                 </div>
                 <div className="bg-gray-50 px-4 py-3 flex flex-row-reverse">
-                  <Button onClick={onDelete} buttonType={BUTTON_TYPES.CANCEL} className="ml-2">
+                  <Button
+                    onClick={onDelete}
+                    buttonType={BUTTON_TYPES.CANCEL}
+                    className="ml-2"
+                    isLoading={isLoading}>
                     Delete
                   </Button>
                   <Button onClick={onCancel} ref={cancelButtonRef}>
