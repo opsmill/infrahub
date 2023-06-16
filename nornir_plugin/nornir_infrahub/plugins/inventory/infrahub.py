@@ -29,6 +29,19 @@ from infrahub_client.node import RelatedNodeSync
 logger = logging.getLogger(__name__)
 
 
+def resolve_node_mapping(node: InfrahubNodeSync, attrs: List[str]) -> Any:
+    for attr in attrs:
+        if attr in node._schema.relationship_names:
+            relation = getattr(node, attr)
+            if relation.schema.cardinality == "many":
+                raise RuntimeError("Relations with many cardinality are not supported!")
+            node = relation.peer
+        elif attr in node._schema.attribute_names:
+            node_attr = getattr(node, attr)
+            return node_attr.value
+    raise RuntimeError("Unable to resolve mapping")
+
+
 def _get_connection_options(data: Dict[str, Any]) -> Dict[str, ConnectionOptions]:
     cp = {}
     for cn, c in data.items():
@@ -166,38 +179,27 @@ class InfrahubInventory:
             # breakpoint()
             name = node.name.value
             extracted_groups = []
+
             for mapping in self.schema_mapping:
-                current_node = node
                 attrs = mapping.mapping.split(".")
 
-                for attr in attrs:
-                    if attr in current_node._schema.attribute_names:
-                        node_attr = getattr(current_node, attr)
-                        host[mapping.name] = node_attr.value
-                    elif attr in current_node._schema.relationship_names:
-                        relation = getattr(current_node, attr)
-                        if relation.schema.cardinality == "many":
-                            # TODO: what do we do in this case?
-                            raise RuntimeError("Relations with many cardinality are not supported!")
-                        current_node = relation.peer
-
-            for mapping in self.group_mapping:
-                current_node = node
-                attrs = mapping.split(".")
-
-                for attr in attrs:
-                    if attr in current_node._schema.attribute_names:
-                        node_attr = getattr(current_node, attr)
-                        extracted_groups.append(f"{attrs[0]}__{node_attr.value}")
-                    elif attr in current_node._schema.relationship_names:
-                        relation = getattr(current_node, attr)
-                        if relation.schema.cardinality == "many":
-                            # TODO: what do we do in this case?
-                            raise RuntimeError("Relations with many cardinality are not supported!")
-                        current_node = relation.peer
+                try:
+                    host[mapping.name] = resolve_node_mapping(node, attrs)
+                except RuntimeError as e:
+                    # TODO: what do we do in this case?
+                    continue
 
             host["data"] = {"InfrahubNode": node}
             hosts[name] = _get_inventory_element(Host, host, name, defaults)
+
+            for mapping in self.group_mapping:
+                attrs = mapping.split(".")
+
+                try:
+                    extracted_groups.append(f"{attrs[0]}__{slugify(resolve_node_mapping(node, attrs))}")
+                except RuntimeError as e:
+                    # TODO: what do we do in this case?
+                    continue
 
             for group in extracted_groups:
                 if group not in groups.keys():
