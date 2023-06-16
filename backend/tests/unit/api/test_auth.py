@@ -29,6 +29,33 @@ async def test_password_based_login(session, default_branch, client, first_accou
     assert first_account.id == decoded["sub"]
 
 
+async def test_refresh_with_invalidated_token(session, default_branch, client, first_account):
+    with client:
+        response = client.post("/auth/login", json={"username": "First Account", "password": "FirstPassword123"})
+
+    assert response.status_code == 200
+    access_token = response.json()["access_token"]
+    refresh_token = response.json()["refresh_token"]
+    decoded = jwt.decode(refresh_token, key=config.SETTINGS.security.secret_key, algorithms=["HS256"])
+    assert first_account.id == decoded["sub"]
+
+    with client:
+        logout_response = client.post("/auth/logout", headers={"Authorization": f"Bearer {access_token}"})
+
+    assert logout_response.status_code == 200
+
+    with client:
+        refresh_response = client.post("/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"})
+
+    assert refresh_response.status_code == 401
+    assert refresh_response.json() == {
+        "data": None,
+        "errors": [
+            {"message": "The provided refresh token has been invalidated in the database", "extensions": {"code": 401}}
+        ],
+    }
+
+
 async def test_refresh_access_token(session, default_branch, client, first_account):
     """Validate that it's possible to refresh an access token using a refresh token"""
     with client:

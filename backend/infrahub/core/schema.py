@@ -1064,6 +1064,18 @@ core_models = {
             ],
         },
         {
+            "name": "refresh_token",
+            "kind": "RefreshToken",
+            "display_labels": [],
+            "branch": True,
+            "attributes": [
+                {"name": "expiration", "kind": "DateTime", "optional": False},
+            ],
+            "relationships": [
+                {"name": "account", "peer": "Account", "optional": False, "cardinality": "one"},
+            ],
+        },
+        {
             "name": "group",
             "kind": "Group",
             "default_filter": "name__value",
