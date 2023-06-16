@@ -184,7 +184,6 @@ class InfrahubInventory:
         host_nodes = self.get_resources(kind=self.host_node)
 
         for node in host_nodes:
-            # breakpoint()
             name = node.name.value
             extracted_groups = []
 
@@ -217,6 +216,6 @@ class InfrahubInventory:
 
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
 
-    def get_resources(self, kind: str) -> InfrahubNodeSync:
+    def get_resources(self, kind: str) -> List[InfrahubNodeSync]:
         resources = self.client.all(kind=kind, branch=self.branch, populate_store=True)
         return resources
