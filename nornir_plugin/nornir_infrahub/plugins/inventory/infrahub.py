@@ -69,9 +69,11 @@ def _get_inventory_element(typ: Type[HostOrGroup], data: Dict[str, Any], name: s
         connection_options=_get_connection_options(data.get("connection_options", {})),
     )
 
+
 class SchemaMappingNode(BaseModel):
     name: str
     mapping: str
+
 
 def get_related_nodes(node_schema: NodeSchema, attrs: List[str]) -> List[str]:
     nodes = []
@@ -105,7 +107,7 @@ class InfrahubInventory:
         schema_mapping: Optional[Dict[str, str]] = None,
         group_mapping: Optional[List[str]] = None,
         defaults_file: str = "defaults.yaml",
-        group_file: str = "group.yaml"
+        group_file: str = "group.yaml",
     ):
         self.address = address
         self.branch = branch
@@ -114,18 +116,17 @@ class InfrahubInventory:
         self.group_file = Path(group_file).expanduser()
         self.client = InfrahubClientSync.init(address=self.address)
 
-        self.schema_mapping = [
-            SchemaMappingNode(**mapping)
-            for mapping in schema_mapping
-        ]
+        self.schema_mapping = [SchemaMappingNode(**mapping) for mapping in schema_mapping]
         self.group_mapping = group_mapping or []
 
         host_node_schema = self.client.schema.get(kind=host_node)
 
-        attrs = set(itertools.chain(
-            [mapping.mapping.split(".")[0] for mapping in self.schema_mapping],
-            [mapping.split(".")[0] for mapping in self.group_mapping]
-        ))
+        attrs = set(
+            itertools.chain(
+                [mapping.mapping.split(".")[0] for mapping in self.schema_mapping],
+                [mapping.split(".")[0] for mapping in self.group_mapping],
+            )
+        )
         self.extra_nodes = get_related_nodes(host_node_schema, attrs)
 
     def load(self) -> Inventory:
@@ -166,7 +167,6 @@ class InfrahubInventory:
             name = node.name.value
             extracted_groups = []
             for mapping in self.schema_mapping:
-
                 current_node = node
                 attrs = mapping.mapping.split(".")
 
@@ -182,7 +182,6 @@ class InfrahubInventory:
                         current_node = relation.peer
 
             for mapping in self.group_mapping:
-
                 current_node = node
                 attrs = mapping.split(".")
 
