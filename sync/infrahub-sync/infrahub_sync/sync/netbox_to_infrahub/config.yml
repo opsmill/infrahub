@@ -4,7 +4,7 @@ source:
   name: netbox
   settings:
     url: "https://demo.netbox.dev"
-    token: "4410c12b87cd6668cca20368b221d72b697c8c53"
+    token: "83f7a34ad21c8362839f41b94f04118653b47e73"
 
 destination:
   name: infrahub
@@ -52,6 +52,8 @@ schema_mapping:
         mapping: serial
       - name: role
         mapping: role.name
+      - name: facility_id
+        mapping: facility_id
 
   - name: role
     mapping: dcim.device_roles

@@ -9,13 +9,32 @@ from infrahub_sync.adapters.netbox import NetboxModel
 # -------------------------------------------------------
 
 
-class Tag(NetboxModel):
-    _modelname = "tag"
+class Location(NetboxModel):
+    _modelname = "location"
     _identifiers = ("name",)
-    _attributes = ("description",)
+    _attributes = ("description", "type")
 
     name: str
     description: Optional[str]
+    type: str
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class Rack(NetboxModel):
+    _modelname = "rack"
+    _identifiers = ("location", "name")
+    _attributes = ("role", "tags", "description", "height", "facility_id", "serial_number")
+
+    name: str
+    description: Optional[str]
+    height: str
+    facility_id: Optional[str]
+    serial_number: Optional[str]
+    location: str
+    role: Optional[str]
+    tags: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]
@@ -33,31 +52,13 @@ class Role(NetboxModel):
     local_data: Optional[Any]
 
 
-class Rack(NetboxModel):
-    _modelname = "rack"
-    _identifiers = ("location", "name")
-    _attributes = ("role", "tags", "description", "height", "serial_number")
-
-    name: str
-    description: Optional[str]
-    height: str
-    serial_number: Optional[str]
-    location: str
-    role: Optional[str]
-    tags: List[str] = []
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
-class Location(NetboxModel):
-    _modelname = "location"
+class Tag(NetboxModel):
+    _modelname = "tag"
     _identifiers = ("name",)
-    _attributes = ("description", "type")
+    _attributes = ("description",)
 
     name: str
     description: Optional[str]
-    type: str
 
     local_id: Optional[str]
     local_data: Optional[Any]
