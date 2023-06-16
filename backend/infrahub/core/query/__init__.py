@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Generator, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Generator, List, Optional, Union
 
 from neo4j.graph import Node, Relationship
 
@@ -16,10 +16,9 @@ from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-
-SelfQuery = TypeVar("SelfQuery", bound="Query")
 
 
 def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[QueryResult]:
@@ -260,7 +259,7 @@ class Query(ABC):
         offset: Optional[int] = None,
         *args,
         **kwargs,
-    ):
+    ) -> Self:
         query = cls(branch=branch, at=at, limit=limit, offset=offset, *args, **kwargs)
 
         await query.query_init(session=session, **kwargs)
@@ -340,7 +339,7 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
-    async def execute(self, session: AsyncSession) -> SelfQuery:
+    async def execute(self, session: AsyncSession) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 

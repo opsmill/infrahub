@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import pickle
-from typing import TYPE_CHECKING, Any, Generator, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generator, Optional
 
 from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
 from aio_pika.patterns.base import Base as PickleSerializer
@@ -14,6 +14,8 @@ from infrahub.utils import BaseEnum
 from . import get_broker
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from infrahub.core.node import Node
 
 # pylint: disable=arguments-differ
@@ -108,9 +110,6 @@ class RPCStatusCode(int, BaseEnum):
     NOT_IMPLEMENTED = 501
 
 
-SelfInfrahubMessage = TypeVar("SelfInfrahubMessage", bound="InfrahubMessage")
-
-
 class InfrahubMessage(PickleSerializer):
     """
     Generic Object to help send and receive message over the message Bus (RabbitMQ)
@@ -127,7 +126,7 @@ class InfrahubMessage(PickleSerializer):
         self.request_id = request_id
 
     @classmethod
-    def convert(cls, message: IncomingMessage) -> SelfInfrahubMessage:
+    def convert(cls, message: IncomingMessage) -> Self:
         """
         Convert an IncomingMessage into its proper InfrahubMessage class
         """
@@ -143,7 +142,7 @@ class InfrahubMessage(PickleSerializer):
         return message_class.init(message=message, **body)
 
     @classmethod
-    def init(cls, message: IncomingMessage, *args, **kwargs) -> SelfInfrahubMessage:
+    def init(cls, message: IncomingMessage, *args, **kwargs) -> Self:
         """Initialize an Message from an Incoming Message."""
 
         return cls(message=message, *args, **kwargs)
