@@ -1,3 +1,4 @@
+import itertools
 import logging
 
 from pathlib import Path
@@ -83,36 +84,6 @@ def get_related_nodes(node_schema: NodeSchema, attrs: List[str]) -> List[str]:
                 break
     return nodes
 
-class GroupExtractorException(Exception):
-    pass
-
-class RelationGroupExtractor(BaseModel):
-    name: str
-    attribute: str
-    type: str
-
-    def extract(self, node):
-        try:
-            relation = getattr(node, self.name)
-            value = getattr(relation.peer, self.attribute).value
-        except AttributeError:
-            raise GroupExtractorException(f"Unable to resolve relation {self.name}")
-        return f"{self.name}__{value}"
-
-class AttributeGroupExtractor(BaseModel):
-    name: str
-    type: str
-
-    def extract(self, node):
-        try:
-            attribute = getattr(node, self.name)
-        except AttributeError:
-            raise GroupExtractorException(f"Unable to retrieve attribute {self.name}")
-
-        if not isinstance(attribute, Attribute):
-            raise GroupExtractorException(f"Unable to retrieve attribute {self.name}")
-        return f"{self.name}__{attribute.value}"
-
 
 class InfrahubInventory:
     """
@@ -132,7 +103,7 @@ class InfrahubInventory:
         branch: str = "main",
         host_node: str = "Device",
         schema_mapping: Optional[Dict[str, str]] = None,
-        group_extractors: Optional[List[Dict[str, str]]] = None,
+        group_mapping: Optional[List[str]] = None,
         defaults_file: str = "defaults.yaml",
         group_file: str = "group.yaml"
     ):
@@ -147,21 +118,15 @@ class InfrahubInventory:
             SchemaMappingNode(**mapping)
             for mapping in schema_mapping
         ]
+        self.group_mapping = group_mapping or []
 
         host_node_schema = self.client.schema.get(kind=host_node)
 
-        attrs = [mapping.mapping.split(".")[0] for mapping in self.schema_mapping]
+        attrs = set(itertools.chain(
+            [mapping.mapping.split(".")[0] for mapping in self.schema_mapping],
+            [mapping.split(".")[0] for mapping in self.group_mapping]
+        ))
         self.extra_nodes = get_related_nodes(host_node_schema, attrs)
-
-        self.group_extractors = []
-        group_extractors = group_extractors or []
-
-        for extractor in group_extractors:
-            if extractor.get("type") == "relation":
-                self.group_extractors.append(RelationGroupExtractor(**extractor))
-            elif extractor.get("type") == "attribute":
-                self.group_extractors.append(AttributeGroupExtractor(**extractor))
-
 
     def load(self) -> Inventory:
         yml = ruamel.yaml.YAML(typ="safe")
@@ -199,7 +164,7 @@ class InfrahubInventory:
         for node in host_nodes:
             # breakpoint()
             name = node.name.value
-
+            extracted_groups = []
             for mapping in self.schema_mapping:
 
                 current_node = node
@@ -216,10 +181,24 @@ class InfrahubInventory:
                             raise RuntimeError("Relations with many cardinality are not supported!")
                         current_node = relation.peer
 
+            for mapping in self.group_mapping:
+
+                current_node = node
+                attrs = mapping.split(".")
+
+                for attr in attrs:
+                    if attr in current_node._schema.attribute_names:
+                        node_attr = getattr(current_node, attr)
+                        extracted_groups.append(f"{attrs[0]}__{node_attr.value}")
+                    elif attr in current_node._schema.relationship_names:
+                        relation = getattr(current_node, attr)
+                        if relation.schema.cardinality == "many":
+                            # TODO: what do we do in this case?
+                            raise RuntimeError("Relations with many cardinality are not supported!")
+                        current_node = relation.peer
+
             host["data"] = {"InfrahubNode": node}
             hosts[name] = _get_inventory_element(Host, host, name, defaults)
-
-            extracted_groups = self.extract_node_groups(node)
 
             for group in extracted_groups:
                 if group not in groups.keys():
@@ -228,15 +207,6 @@ class InfrahubInventory:
             hosts[name].groups = ParentGroups([groups[g] for g in extracted_groups])
 
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
-
-    def extract_node_groups(self, node: InfrahubNodeSync) -> List[str]:
-        groups = []
-        for group_extractor in self.group_extractors:
-            try:
-                groups.append(group_extractor.extract(node))
-            except GroupExtractorException:
-                continue
-        return groups
 
     def get_resources(self, kind: str) -> InfrahubNodeSync:
         resources = self.client.all(kind=kind, branch=self.branch, populate_store=True)
