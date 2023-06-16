@@ -21,6 +21,7 @@ import ruamel.yaml
 from pydantic import BaseModel
 from infrahub_client import InfrahubClientSync
 from infrahub_client import InfrahubNodeSync
+from infrahub_client import NodeSchema
 from infrahub_client.node import Attribute
 from infrahub_client.node import RelatedNodeSync
 
@@ -66,6 +67,21 @@ def _get_inventory_element(typ: Type[HostOrGroup], data: Dict[str, Any], name: s
         defaults=defaults,
         connection_options=_get_connection_options(data.get("connection_options", {})),
     )
+
+class SchemaMappingNode(BaseModel):
+    name: str
+    mapping: str
+
+def get_related_nodes(node_schema: NodeSchema, attrs: List[str]) -> List[str]:
+    nodes = []
+    for attr in attrs:
+        if attr in node_schema.attribute_names:
+            continue
+        for rel_schema in node_schema.relationships:
+            if rel_schema.name == attr:
+                nodes.append(rel_schema.peer)
+                break
+    return nodes
 
 class GroupExtractorException(Exception):
     pass
@@ -114,20 +130,31 @@ class InfrahubInventory:
         self,
         address: str = "http://localhost:8000",
         branch: str = "main",
+        host_node: str = "Device",
+        schema_mapping: Optional[Dict[str, str]] = None,
         group_extractors: Optional[List[Dict[str, str]]] = None,
         defaults_file: str = "defaults.yaml",
         group_file: str = "group.yaml"
     ):
         self.address = address
         self.branch = branch
+        self.host_node = host_node
         self.defaults_file = Path(defaults_file).expanduser()
         self.group_file = Path(group_file).expanduser()
         self.client = InfrahubClientSync.init(address=self.address)
 
-        self.group_extractors = []
+        self.schema_mapping = [
+            SchemaMappingNode(**mapping)
+            for mapping in schema_mapping
+        ]
 
-        if group_extractors is None:
-            group_extractors = []
+        host_node_schema = self.client.schema.get(kind=host_node)
+
+        attrs = [mapping.mapping.split(".")[0] for mapping in self.schema_mapping]
+        self.extra_nodes = get_related_nodes(host_node_schema, attrs)
+
+        self.group_extractors = []
+        group_extractors = group_extractors or []
 
         for extractor in group_extractors:
             if extractor.get("type") == "relation":
@@ -164,34 +191,32 @@ class InfrahubInventory:
 
         host: Dict[str, Any] = {}
 
-        host_node = "Device"
-        extra_nodes = ("Platform", "Location", "IPAddress")
-
-        infrahub_hosts = self.get_resources(kind=host_node)
-
-        for node in extra_nodes:
+        for node in self.extra_nodes:
             self.get_resources(kind=node)
 
-        for node in infrahub_hosts:
+        host_nodes = self.get_resources(kind=self.host_node)
+
+        for node in host_nodes:
+            # breakpoint()
             name = node.name.value
 
-            try:
-                hostname = node.primary_address.display_label.split("/")[0]
-            except AttributeError as e:
-                logger.warn(f"Device node <{name}> is not configured with a primary address")
-                hostname = None
+            for mapping in self.schema_mapping:
 
-            host["hostname"] = hostname
+                current_node = node
+                attrs = mapping.mapping.split(".")
 
-            try:
-                platform = node.platform.peer.nornir_platform.value
-            except AttributeError as e:
-                logger.warn(f"Device node <{name}> is not configured with a platform!")
-                platform = None
+                for attr in attrs:
+                    if attr in current_node._schema.attribute_names:
+                        node_attr = getattr(current_node, attr)
+                        host[mapping.name] = node_attr.value
+                    elif attr in current_node._schema.relationship_names:
+                        relation = getattr(current_node, attr)
+                        if relation.schema.cardinality == "many":
+                            # TODO: what do we do in this case?
+                            raise RuntimeError("Relations with many cardinality are not supported!")
+                        current_node = relation.peer
 
-            host["platform"] = platform
             host["data"] = {"InfrahubNode": node}
-
             hosts[name] = _get_inventory_element(Host, host, name, defaults)
 
             extracted_groups = self.extract_node_groups(node)
