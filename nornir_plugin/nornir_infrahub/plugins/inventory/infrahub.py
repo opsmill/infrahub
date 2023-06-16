@@ -1,5 +1,6 @@
 import itertools
 import logging
+import re
 
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,11 @@ from infrahub_client.node import Attribute
 from infrahub_client.node import RelatedNodeSync
 
 logger = logging.getLogger(__name__)
+
+
+def slugify(value: str) -> str:
+    value = re.sub(r"[^\w\s-]", "", value.lower())
+    return re.sub(r"[-\s]+", "-", value).strip("-_")
 
 
 def resolve_node_mapping(node: InfrahubNodeSync, attrs: List[str]) -> Any:
