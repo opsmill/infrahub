@@ -113,7 +113,9 @@ class InfrahubInventory:
     Arguments:
         address: Infrahub url (defaults to ``http://localhost:8000``)
         branch: Infrahub branch to use (defaults to ``main``)
-        group_extractors: Definiton of relations and attributes to extract groups from
+        host_node: Infrahub Node type that will map to a Nornir Host
+        schema_mapping:
+        group_mapping: Definiton of relations and attributes to extract groups from
         defaults_file: Path to defaults file (defaults to ``defaults.yaml``)
         group_file: Path to group file (defaults to ``group.yaml``)
     """
