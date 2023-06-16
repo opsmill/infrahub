@@ -1,8 +1,8 @@
 {
     "nodes": [
         {
-            "name": "graphql_query",
-            "kind": "GraphQLQuery",
+            "name": "GraphQLQuery",
+            "namespace": "Core",
             "description": null,
             "attributes": [
                 {
@@ -42,7 +42,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "Tag",
+                    "peer": "BuiltinTag",
                     "label": null,
                     "description": null,
                     "identifier": "graphqlquery__tag",
@@ -98,8 +98,8 @@
             ]
         },
         {
-            "name": "repository",
-            "kind": "Repository",
+            "name": "Repository",
+            "namespace": "Core",
             "description": null,
             "attributes": [
                 {
@@ -194,7 +194,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "Tag",
+                    "peer": "BuiltinTag",
                     "label": null,
                     "description": null,
                     "identifier": "repository__tag",
@@ -222,7 +222,7 @@
                 },
                 {
                     "name": "queries",
-                    "peer": "GraphQLQuery",
+                    "peer": "CoreGraphQLQuery",
                     "label": null,
                     "description": null,
                     "identifier": "graphqlquery__repository",
@@ -256,8 +256,8 @@
             ],
             "label": null,
             "inherit_from": [
-                "DataOwner",
-                "DataSource"
+                "LineageOwner",
+                "LineageSource"
             ],
             "groups": [],
             "branch": true,
@@ -311,8 +311,8 @@
             ]
         },
         {
-            "name": "tag",
-            "kind": "Tag",
+            "name": "Tag",
+            "namespace": "Builtin",
             "description": null,
             "attributes": [
                 {
@@ -363,8 +363,8 @@
             ]
         },
         {
-            "name": "location",
-            "kind": "Location",
+            "name": "Location",
+            "namespace": "Builtin",
             "default_filter": "name__value",
             "attributes": [
                 {"name": "name", "kind": "String", "unique": true},
@@ -372,8 +372,8 @@
                 {"name": "type", "kind": "String"}
             ],
             "relationships": [
-                {"name": "tags", "peer": "Tag", "optional": true, "cardinality": "many"},
-                {"name": "primary_tag", "peer": "Tag", "optional": true, "cardinality": "one"}
+                {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many"},
+                {"name": "primary_tag", "peer": "BuiltinTag", "optional": true, "cardinality": "one"}
             ]
         }
     ]

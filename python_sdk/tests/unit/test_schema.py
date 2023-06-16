@@ -37,8 +37,8 @@ async def test_fetch_schema(mock_schema_query_01, client_type):  # pylint: disab
         nodes = client.schema.fetch(branch="main")
 
     assert len(nodes) == 4
-    assert sorted(nodes.keys()) == ["GraphQLQuery", "Location", "Repository", "Tag"]
-    assert isinstance(nodes["Tag"], NodeSchema)
+    assert sorted(nodes.keys()) == ["BuiltinLocation", "BuiltinTag", "CoreGraphQLQuery", "CoreRepository"]
+    assert isinstance(nodes["BuiltinTag"], NodeSchema)
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -57,4 +57,4 @@ async def test_schema_data_validation(rfile_schema, client_type):
             schema=rfile_schema, data={"name": "some-name", "invalid_field": "yes"}
         )
 
-    assert "invalid_field is not a valid value for RFile" == excinfo.value.message
+    assert "invalid_field is not a valid value for CoreRFile" == excinfo.value.message

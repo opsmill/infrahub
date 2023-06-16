@@ -439,7 +439,7 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "edges": [
                     {
                         "node": {
@@ -455,7 +455,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     }
     response2 = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "edges": [
                     {
                         "node": {
@@ -575,7 +575,7 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "check_create": {
+            "CoreCheckCreate": {
                 "ok": True,
                 "object": {
                     "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",

@@ -32,7 +32,7 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
-NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
+NODE_NAME_REGEX = r""
 
 DEFAULT_NAME_MIN_LENGTH = 2
 DEFAULT_NAME_MAX_LENGTH = 32
@@ -233,9 +233,9 @@ class BaseSchemaModel(BaseModel):
 class FilterSchema(BaseSchemaModel):
     name: str
     kind: FilterSchemaKind
-    enum: Optional[List]
-    object_kind: Optional[str]
-    description: Optional[str]
+    enum: Optional[List] = None
+    object_kind: Optional[str] = None
+    description: Optional[str] = None
 
     _sort_by: List[str] = ["name"]
 
@@ -244,6 +244,7 @@ class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
     name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str  # AttributeKind
+    namespace: str = "Attribute"
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_value: Optional[Any]
@@ -389,7 +390,9 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 class BaseNodeSchema(BaseSchemaModel):
     id: Optional[str]
     name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    namespace: str = Field(
+        regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
+    )
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_filter: Optional[str]
     order_by: Optional[List[str]]
@@ -399,6 +402,12 @@ class BaseNodeSchema(BaseSchemaModel):
 
     _exclude_from_hash: List[str] = ["id", "attributes", "relationships"]
     _sort_by: List[str] = ["name"]
+
+    @property
+    def kind(self) -> str:
+        if self.namespace == "Attribute":
+            return self.name
+        return self.namespace + self.name
 
     def __hash__(self):
         """Extend the Hash Calculation to account for attributes and relationships."""
@@ -547,8 +556,8 @@ class NodeSchema(BaseNodeSchema):
         values,
     ):
         for rel in values.get("relationships", []):
-            if not rel.get("identifier", None) and values.get("kind") and rel.get("peer"):
-                identifier = "__".join(sorted([values.get("kind"), rel.get("peer")]))
+            if not rel.get("identifier", None) and values.get("namespace") and rel.get("peer"):
+                identifier = "__".join(sorted([f'{values.get("namespace")}{values.get("name")}', rel.get("peer")]))
                 rel["identifier"] = identifier.lower()
 
         return values
@@ -644,8 +653,8 @@ class SchemaRoot(BaseModel):
 internal_schema = {
     "nodes": [
         {
-            "name": "node_schema",
-            "kind": "NodeSchema",
+            "name": "Node",
+            "namespace": "Schema",
             "branch": True,
             "default_filter": "name__value",
             "display_labels": ["name__value"],
@@ -660,9 +669,8 @@ internal_schema = {
                     "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
                 {
-                    "name": "kind",
+                    "name": "namespace",
                     "kind": "Text",
-                    "description": "Node kind, must be unique and must be in CamelCase",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
@@ -721,7 +729,7 @@ internal_schema = {
             "relationships": [
                 {
                     "name": "attributes",
-                    "peer": "AttributeSchema",
+                    "peer": "SchemaAttribute",
                     "kind": "Component",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
@@ -730,7 +738,7 @@ internal_schema = {
                 },
                 {
                     "name": "relationships",
-                    "peer": "RelationshipSchema",
+                    "peer": "SchemaRelationship",
                     "kind": "Component",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
@@ -740,8 +748,8 @@ internal_schema = {
             ],
         },
         {
-            "name": "attribute_schema",
-            "kind": "AttributeSchema",
+            "name": "Attribute",
+            "namespace": "Schema",
             "branch": True,
             "default_filter": None,
             "display_labels": ["name__value"],
@@ -752,6 +760,14 @@ internal_schema = {
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
+                {
+                    "name": "namespace",
+                    "kind": "Text",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                    "optional": True,
                 },
                 {
                     "name": "kind",
@@ -780,7 +796,7 @@ internal_schema = {
             "relationships": [
                 {
                     "name": "node",
-                    "peer": "NodeSchema",
+                    "peer": "SchemaNode",
                     "kind": "Parent",
                     "identifier": "schema__node__attributes",
                     "cardinality": "one",
@@ -790,8 +806,8 @@ internal_schema = {
             ],
         },
         {
-            "name": "relationship_schema",
-            "kind": "RelationshipSchema",
+            "name": "Relationship",
+            "namespace": "Schema",
             "branch": True,
             "default_filter": None,
             "display_labels": ["name__value"],
@@ -838,7 +854,7 @@ internal_schema = {
             "relationships": [
                 {
                     "name": "node",
-                    "peer": "NodeSchema",
+                    "peer": "SchemaNode",
                     "kind": "Parent",
                     "identifier": "schema__node__relationships",
                     "cardinality": "one",
@@ -848,8 +864,8 @@ internal_schema = {
             ],
         },
         {
-            "name": "generic_schema",
-            "kind": "GenericSchema",
+            "name": "Generic",
+            "namespace": "Schema",
             "branch": True,
             "default_filter": "name__value",
             "display_labels": ["label__value"],
@@ -863,7 +879,7 @@ internal_schema = {
                     "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
                 {
-                    "name": "kind",
+                    "name": "namespace",
                     "kind": "Text",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
@@ -910,7 +926,7 @@ internal_schema = {
             "relationships": [
                 {
                     "name": "attributes",
-                    "peer": "AttributeSchema",
+                    "peer": "SchemaAttribute",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
                     "branch": True,
@@ -918,7 +934,7 @@ internal_schema = {
                 },
                 {
                     "name": "relationships",
-                    "peer": "RelationshipSchema",
+                    "peer": "SchemaRelationship",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
                     "branch": True,
@@ -927,8 +943,8 @@ internal_schema = {
             ],
         },
         {
-            "name": "group_schema",
-            "kind": "GroupSchema",
+            "name": "GroupSchema",
+            "namespace": "Internal",
             "branch": True,
             "default_filter": "name__value",
             "display_labels": ["name__value"],
@@ -958,12 +974,12 @@ core_models = {
     "groups": [],
     "generics": [
         {
-            "name": "node",
-            "kind": "Node",
+            "name": "Node",
+            "namespace": "Core",
         },
         {
-            "name": "data_owner",
-            "kind": "DataOwner",  # Account, Group, Script ?
+            "name": "Owner",
+            "namespace": "Lineage",
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -971,9 +987,9 @@ core_models = {
             ],
         },
         {
-            "name": "data_source",
+            "name": "Source",
             "description": "Any Entities that stores or produces data.",
-            "kind": "DataSource",  # Repository, Account ...
+            "namespace": "Lineage",
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -981,8 +997,8 @@ core_models = {
             ],
         },
         {
-            "name": "group",
-            "kind": "Group",
+            "name": "Group",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -995,14 +1011,14 @@ core_models = {
             "relationships": [
                 {
                     "name": "members",
-                    "peer": "Node",
+                    "peer": "CoreNode",
                     "optional": True,
                     "identifier": "group_member",
                     "cardinality": "many",
                 },
                 {
                     "name": "subscribers",
-                    "peer": "Node",
+                    "peer": "CoreNode",
                     "optional": True,
                     "identifier": "group_subscriber",
                     "cardinality": "many",
@@ -1012,17 +1028,17 @@ core_models = {
     ],
     "nodes": [
         {
-            "name": "standard_group",
-            "kind": "StandardGroup",
+            "name": "StandardGroup",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
-            "inherit_from": ["Group"],
+            "inherit_from": ["CoreGroup"],
         },
         {
-            "name": "criticality",
-            "kind": "Criticality",
+            "name": "Criticality",
+            "namespace": "Builtin",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1034,8 +1050,8 @@ core_models = {
             ],
         },
         {
-            "name": "tag",
-            "kind": "Tag",
+            "name": "Tag",
+            "namespace": "Builtin",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1046,8 +1062,8 @@ core_models = {
             ],
         },
         {
-            "name": "organization",
-            "kind": "Organization",
+            "name": "Organization",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1058,17 +1074,17 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
             ],
             "relationships": [
-                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
-            "name": "account",
-            "kind": "Account",
+            "name": "Account",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "branch": True,
-            "inherit_from": ["DataOwner", "DataSource"],
+            "inherit_from": ["LineageOwner", "LineageSource"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "password", "kind": "HashedPassword", "unique": False},
@@ -1088,12 +1104,12 @@ core_models = {
                 },
             ],
             "relationships": [
-                {"name": "tokens", "peer": "AccountToken", "optional": True, "cardinality": "many"},
+                {"name": "tokens", "peer": "InternalAccountToken", "optional": True, "cardinality": "many"},
             ],
         },
         {
-            "name": "account_token",
-            "kind": "AccountToken",
+            "name": "AccountToken",
+            "namespace": "Internal",
             "default_filter": "token__value",
             "display_labels": ["token__value"],
             "branch": True,
@@ -1102,24 +1118,24 @@ core_models = {
                 {"name": "expiration", "kind": "DateTime", "optional": True},
             ],
             "relationships": [
-                {"name": "account", "peer": "Account", "optional": False, "cardinality": "one"},
+                {"name": "account", "peer": "CoreAccount", "optional": False, "cardinality": "one"},
             ],
         },
         {
-            "name": "refresh_token",
-            "kind": "RefreshToken",
+            "name": "RefreshToken",
+            "namespace": "Internal",
             "display_labels": [],
             "branch": True,
             "attributes": [
                 {"name": "expiration", "kind": "DateTime", "optional": False},
             ],
             "relationships": [
-                {"name": "account", "peer": "Account", "optional": False, "cardinality": "one"},
+                {"name": "account", "peer": "CoreAccount", "optional": False, "cardinality": "one"},
             ],
         },
         {
-            "name": "status",
-            "kind": "Status",
+            "name": "Status",
+            "namespace": "Builtin",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1131,8 +1147,8 @@ core_models = {
             ],
         },
         {
-            "name": "role",
-            "kind": "Role",
+            "name": "Role",
+            "namespace": "Builtin",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1144,8 +1160,8 @@ core_models = {
             ],
         },
         {
-            "name": "location",
-            "kind": "Location",
+            "name": "Location",
+            "namespace": "Builtin",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1155,54 +1171,53 @@ core_models = {
                 {"name": "type", "kind": "Text"},
             ],
             "relationships": [
-                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
-            "name": "repository",
-            "kind": "Repository",
+            "name": "Repository",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": True,
-            "inherit_from": ["DataOwner", "DataSource"],
+            "inherit_from": ["LineageOwner", "LineageSource"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "location", "kind": "Text"},
-                # {"name": "type", "kind": "Text", "default_value": "LOCAL", "enum" },
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True},
                 {"name": "username", "kind": "Text", "optional": True},
                 {"name": "password", "kind": "Text", "optional": True},
             ],
             "relationships": [
-                {"name": "account", "peer": "Account", "kind": "Attribute", "optional": True, "cardinality": "one"},
-                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {"name": "account", "peer": "CoreAccount", "kind": "Attribute", "optional": True, "cardinality": "one"},
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
                 {
                     "name": "rfiles",
-                    "peer": "RFile",
+                    "peer": "CoreRFile",
                     "identifier": "repository__rfile",
                     "optional": True,
                     "cardinality": "many",
                 },
                 {
                     "name": "queries",
-                    "peer": "GraphQLQuery",
+                    "peer": "CoreGraphQLQuery",
                     "identifier": "graphql_query__repository",
                     "optional": True,
                     "cardinality": "many",
                 },
                 {
                     "name": "checks",
-                    "peer": "Check",
+                    "peer": "CoreCheck",
                     "identifier": "check__repository",
                     "optional": True,
                     "cardinality": "many",
                 },
                 {
                     "name": "transform_python",
-                    "peer": "TransformPython",
+                    "peer": "CoreTransformPython",
                     "identifier": "repository__transform_python",
                     "optional": True,
                     "cardinality": "many",
@@ -1210,8 +1225,8 @@ core_models = {
             ],
         },
         {
-            "name": "rfile",
-            "kind": "RFile",
+            "name": "RFile",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1224,7 +1239,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "template_repository",
-                    "peer": "Repository",
+                    "peer": "CoreRepository",
                     "kind": "Attribute",
                     "identifier": "repository__rfile",
                     "cardinality": "one",
@@ -1232,18 +1247,18 @@ core_models = {
                 },
                 {
                     "name": "query",
-                    "peer": "GraphQLQuery",
+                    "peer": "CoreGraphQLQuery",
                     "identifier": "graphql_query__rfile",
                     "kind": "Attribute",
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
-            "name": "check",
-            "kind": "Check",
+            "name": "Check",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1259,7 +1274,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "Repository",
+                    "peer": "CoreRepository",
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check__repository",
@@ -1267,18 +1282,18 @@ core_models = {
                 },
                 {
                     "name": "query",
-                    "peer": "GraphQLQuery",
+                    "peer": "CoreGraphQLQuery",
                     "kind": "Attribute",
                     "identifier": "check__graphql_query",
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
-            "name": "transform_python",
-            "kind": "TransformPython",
+            "name": "TransformPython",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1295,7 +1310,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "Repository",
+                    "peer": "CoreRepository",
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "repository__transform_python",
@@ -1303,18 +1318,18 @@ core_models = {
                 },
                 {
                     "name": "query",
-                    "peer": "GraphQLQuery",
+                    "peer": "CoreGraphQLQuery",
                     "kind": "Attribute",
                     "identifier": "graphql_query__transform_python",
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
-            "name": "graphql_query",
-            "kind": "GraphQLQuery",
+            "name": "GraphQLQuery",
+            "namespace": "Core",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1327,13 +1342,13 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "Repository",
+                    "peer": "CoreRepository",
                     "kind": "Attribute",
                     "identifier": "graphql_query__repository",
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "Tag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
     ],

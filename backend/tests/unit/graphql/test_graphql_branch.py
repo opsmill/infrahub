@@ -20,19 +20,19 @@ from infrahub.message_bus.events import (
 
 @pytest.fixture
 async def repos_and_checks_in_main(session, register_core_models_schema):
-    repo01 = await Node.init(session=session, schema="Repository")
+    repo01 = await Node.init(session=session, schema="CoreRepository")
     await repo01.new(session=session, name="repo01", location="git@github.com:user/repo01.git")
     await repo01.save(session=session)
 
-    repo02 = await Node.init(session=session, schema="Repository")
+    repo02 = await Node.init(session=session, schema="CoreRepository")
     await repo02.new(session=session, name="repo02", location="git@github.com:user/repo02.git")
     await repo02.save(session=session)
 
-    query01 = await Node.init(session=session, schema="GraphQLQuery")
+    query01 = await Node.init(session=session, schema="CoreGraphQLQuery")
     await query01.new(session=session, name="my_query", query="query { check { id } }")
     await query01.save(session=session)
 
-    check01 = await Node.init(session=session, schema="Check")
+    check01 = await Node.init(session=session, schema="CoreCheck")
     await check01.new(
         session=session,
         name="check01",
@@ -44,7 +44,7 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
     )
     await check01.save(session=session)
 
-    check02 = await Node.init(session=session, schema="Check")
+    check02 = await Node.init(session=session, schema="CoreCheck")
     await check02.new(
         session=session,
         name="check02",
@@ -474,7 +474,7 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
 async def test_branch_merge_with_repositories(db, session, rpc_client, base_dataset_02, repos_and_checks_in_main):
     branch2 = await create_branch(branch_name="branch2", session=session)
 
-    p1 = await Node.init(session=session, schema="Person", branch=branch2)
+    p1 = await Node.init(session=session, schema="TestPerson", branch=branch2)
     await p1.new(session=session, name="bob", height=155)
     await p1.save(session=session)
 

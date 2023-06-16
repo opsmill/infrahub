@@ -36,8 +36,8 @@ async def clients() -> BothClients:
 @pytest.fixture
 async def location_schema() -> NodeSchema:
     data = {
-        "name": "location",
-        "kind": "Location",
+        "name": "Location",
+        "namespace": "Builtin",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
@@ -45,8 +45,8 @@ async def location_schema() -> NodeSchema:
             {"name": "type", "kind": "String"},
         ],
         "relationships": [
-            {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
-            {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
+            {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
+            {"name": "primary_tag", "peer": "BuiltinTag", "optional": True, "cardinality": "one"},
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -157,7 +157,7 @@ async def location_data01():
                 "node": {
                     "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
                     "display_label": "red",
-                    "__typename": "RelatedTag",
+                    "__typename": "BuiltinTag",
                 },
             },
             "tags": {
@@ -173,7 +173,7 @@ async def location_data01():
                         "node": {
                             "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
                             "display_label": "blue",
-                            "__typename": "RelatedTag",
+                            "__typename": "BuiltinTag",
                         },
                     }
                 ],
@@ -227,7 +227,7 @@ async def location_data02():
                 "node": {
                     "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
                     "display_label": "red",
-                    "__typename": "Tag",
+                    "__typename": "BuiltinTag",
                 },
             },
             "tags": {
@@ -247,7 +247,7 @@ async def location_data02():
                         "node": {
                             "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
                             "display_label": "blue",
-                            "__typename": "Tag",
+                            "__typename": "BuiltinTag",
                         },
                     }
                 ],
@@ -261,8 +261,8 @@ async def location_data02():
 @pytest.fixture
 async def tag_schema() -> NodeSchema:
     data = {
-        "name": "tag",
-        "kind": "Tag",
+        "name": "Tag",
+        "namespace": "Builtin",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
@@ -395,8 +395,8 @@ async def tag_green_data():
 @pytest.fixture
 async def rfile_schema() -> NodeSchema:
     data = {
-        "name": "rfile",
-        "kind": "RFile",
+        "name": "RFile",
+        "namespace": "Core",
         "default_filter": "name__value",
         "display_label": ["label__value"],
         "branch": True,
@@ -408,14 +408,14 @@ async def rfile_schema() -> NodeSchema:
         "relationships": [
             {
                 "name": "template_repository",
-                "peer": "Repository",
+                "peer": "CoreRepository",
                 "kind": "Attribute",
                 "identifier": "rfile_template_repository",
                 "cardinality": "one",
                 "optional": False,
             },
-            {"name": "query", "peer": "GraphQLQuery", "kind": "Attribute", "cardinality": "one", "optional": False},
-            {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
+            {"name": "query", "peer": "CoreGraphQLQuery", "kind": "Attribute", "cardinality": "one", "optional": False},
+            {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -424,8 +424,8 @@ async def rfile_schema() -> NodeSchema:
 @pytest.fixture
 async def ipaddress_schema() -> NodeSchema:
     data = {
-        "name": "ipaddress",
-        "kind": "IPAddress",
+        "name": "IPAddress",
+        "namespace": "Infra",
         "default_filter": "address__value",
         "display_labels": ["address_value"],
         "order_by": ["address_value"],
@@ -433,7 +433,7 @@ async def ipaddress_schema() -> NodeSchema:
             {"name": "address", "kind": "IPHost"},
         ],
         "relationships": [
-            {"name": "interface", "peer": "InterfaceL3", "optional": True, "cardinality": "one", "kind": "Parent"}
+            {"name": "interface", "peer": "InfraInterfaceL3", "optional": True, "cardinality": "one", "kind": "Parent"}
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -442,8 +442,8 @@ async def ipaddress_schema() -> NodeSchema:
 @pytest.fixture
 async def ipnetwork_schema() -> NodeSchema:
     data = {
-        "name": "ipnetwork",
-        "kind": "IPNetwork",
+        "name": "IPNetwork",
+        "namespace": "Infra",
         "default_filter": "network__value",
         "display_labels": ["network_value"],
         "order_by": ["network_value"],
@@ -451,7 +451,7 @@ async def ipnetwork_schema() -> NodeSchema:
             {"name": "network", "kind": "IPNetwork"},
         ],
         "relationships": [
-            {"name": "site", "peer": "Location", "optional": True, "cardinality": "one", "kind": "Parent"}
+            {"name": "site", "peer": "BuiltinLocation", "optional": True, "cardinality": "one", "kind": "Parent"}
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -549,7 +549,7 @@ async def mock_query_repository_all_01_no_pagination(
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "count": 1,
                 "edges": [
                     {
@@ -566,7 +566,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     }
     response2 = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "count": 1,
                 "edges": [
                     {
@@ -593,7 +593,7 @@ async def mock_query_repository_page1_1(
 ) -> HTTPXMock:
     response = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "count": 2,
                 "edges": [
                     {
@@ -618,7 +618,7 @@ async def mock_query_repository_page1_1(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
     )
     return httpx_mock
 
@@ -627,10 +627,10 @@ async def mock_query_repository_page1_1(
 async def mock_query_repository_page1_empty(
     httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_01
 ) -> HTTPXMock:
-    response: dict = {"data": {"repository": {"edges": []}}}
+    response: dict = {"data": {"CoreRepository": {"edges": []}}}
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
     )
     return httpx_mock
 
@@ -641,7 +641,7 @@ async def mock_query_repository_page1_2(
 ) -> HTTPXMock:
     response = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "count": 5,
                 "edges": [
                     {
@@ -674,7 +674,7 @@ async def mock_query_repository_page1_2(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page1"}
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
     )
     return httpx_mock
 
@@ -685,7 +685,7 @@ async def mock_query_repository_page2_2(
 ) -> HTTPXMock:
     response = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "count": 5,
                 "edges": [
                     {
@@ -710,7 +710,7 @@ async def mock_query_repository_page2_2(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-page2"}
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page2"}
     )
     return httpx_mock
 

@@ -1,8 +1,8 @@
 {   "version": "1.0",
     "nodes": [
         {
-            "name": "device",
-            "kind": "Device",
+            "name": "Device",
+            "namespace": "Infra",
             "default_filter": "name__value",
             "branch": true,
             "attributes": [

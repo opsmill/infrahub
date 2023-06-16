@@ -80,10 +80,14 @@ class RelationshipSchema(BaseModel):
 
 class BaseNodeSchema(BaseModel):
     name: str
-    kind: str
+    namespace: str
     description: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+
+    @property
+    def kind(self) -> str:
+        return self.namespace + self.name
 
     def get_field(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, RelationshipSchema, None]:
         if attribute_field := self.get_attribute(name, raise_on_error=False):

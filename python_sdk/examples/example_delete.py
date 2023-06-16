@@ -5,7 +5,7 @@ from infrahub_client import InfrahubClient
 
 async def main():
     client = await InfrahubClient.init(address="http://localhost:8000")
-    obj = await client.get(kind="Account", name__value="johndoe")
+    obj = await client.get(kind="CoreAccount", name__value="johndoe")
     await obj.delete()
 
 

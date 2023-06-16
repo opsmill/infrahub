@@ -1,6 +1,6 @@
 QUERY_ALL_REPOSITORIES = """
 query {
-    repository {
+    CoreRepository {
         count
         edges {
             node {
@@ -93,7 +93,7 @@ QUERY_BRANCH_DIFF = """
 
 MUTATION_COMMIT_UPDATE = """
 mutation ($repository_id: String!, $commit: String!) {
-    repository_update(data: { id: $repository_id, commit: { value: $commit } }) {
+    CoreRepositoryUpdate(data: { id: $repository_id, commit: { value: $commit } }) {
         ok
         object {
             commit {

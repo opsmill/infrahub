@@ -54,8 +54,8 @@ async def test_node_init(session, default_branch: Branch, criticality_schema: No
 
 
 async def test_node_init_schema_name(session, default_branch: Branch, criticality_schema):
-    registry.set_schema(name="Criticality", schema=criticality_schema)
-    obj = await Node.init(session=session, schema="Criticality")
+    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+    obj = await Node.init(session=session, schema="TestCriticality")
     await obj.new(session=session, name="low", level=4)
 
     assert obj.name.value == "low"
@@ -98,8 +98,8 @@ async def test_node_init_invalid_value(session, default_branch: Branch, critical
 
 async def test_node_default_value(session, default_branch):
     SCHEMA = {
-        "name": "one_of_each_kind",
-        "kind": "OneOfEachKind",
+        "name": "OneOfEachKind",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
@@ -131,8 +131,8 @@ async def test_node_default_value(session, default_branch):
 
 
 async def test_node_init_with_single_relationship(session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -297,8 +297,8 @@ async def test_node_create_attribute_with_different_owner(
 
 
 async def test_node_create_with_single_relationship(session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -367,8 +367,8 @@ async def test_node_create_with_single_relationship(session, default_branch: Bra
 
 
 async def test_node_create_with_multiple_relationship(session, default_branch: Branch, fruit_tag_schema):
-    fruit = registry.get_schema(name="Fruit")
-    tag = registry.get_schema(name="Tag")
+    fruit = registry.get_schema(name="GardenFruit")
+    tag = registry.get_schema(name="BuiltinTag")
 
     t1 = await Node.init(session=session, schema=tag)
     await t1.new(session=session, name="tag1")
@@ -472,8 +472,8 @@ async def test_update_related_node(db, session, default_branch, data_schema):
     SCHEMA = {
         "nodes": [
             {
-                "name": "tag",
-                "kind": "Tag",
+                "name": "Tag",
+                "namespace": "Builtin",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
@@ -481,12 +481,12 @@ async def test_update_related_node(db, session, default_branch, data_schema):
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "person", "peer": "Person", "cardinality": "one"},
+                    {"name": "person", "peer": "TestPerson", "cardinality": "one"},
                 ],
             },
             {
-                "name": "person",
-                "kind": "Person",
+                "name": "Person",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
@@ -494,7 +494,7 @@ async def test_update_related_node(db, session, default_branch, data_schema):
                     {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "Tag", "cardinality": "many"},
+                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many"},
                 ],
             },
         ]
@@ -507,17 +507,17 @@ async def test_update_related_node(db, session, default_branch, data_schema):
     # ----------------------------------------------------------------
     # Create objects
     # ----------------------------------------------------------------
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, firstname="John", lastname="Doe")
     await p1.save(session=session)
 
-    t1 = await Node.init(session=session, schema="Tag")
+    t1 = await Node.init(session=session, schema="BuiltinTag")
     await t1.new(session=session, name="Blue", description="The Blue tag", person=p1)
     await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
+    t2 = await Node.init(session=session, schema="BuiltinTag")
     await t2.new(session=session, name="Red", description="The Red tag", person=p1)
     await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="Tag")
+    t3 = await Node.init(session=session, schema="BuiltinTag")
     await t3.new(session=session, name="Black", description="The Black tag", person=p1)
     await t3.save(session=session)
 
@@ -619,15 +619,15 @@ async def test_node_delete_local_attrs_in_branch(session, default_branch: Branch
 
 
 async def test_node_delete_with_relationship_bidir(session, default_branch: Branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
-    c1 = await Node.init(session=session, schema="Car")
+    c1 = await Node.init(session=session, schema="TestCar")
     await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
     await c1.save(session=session)
 
-    c2 = await Node.init(session=session, schema="Car")
+    c2 = await Node.init(session=session, schema="TestCar")
     await c2.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
     await c2.save(session=session)
 
@@ -635,9 +635,9 @@ async def test_node_delete_with_relationship_bidir(session, default_branch: Bran
 
     await c1.delete(session=session)
 
-    resp = await NodeManager.query(schema="Car", session=session)
+    resp = await NodeManager.query(schema="TestCar", session=session)
     assert len(resp) == 1
-    resp = await NodeManager.query(schema="Car", at=time1, session=session)
+    resp = await NodeManager.query(schema="TestCar", at=time1, session=session)
     assert len(resp) == 2
 
     p11 = await NodeManager.get_one(id=p1.id, session=session)
@@ -693,15 +693,15 @@ async def test_node_update_in_branch(session, default_branch: Branch, criticalit
 
 
 async def test_node_relationship_interface(session, default_branch: Branch, vehicule_person_schema):
-    d1 = await Node.init(session=session, schema="Car")
+    d1 = await Node.init(session=session, schema="TestCar")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
     await d1.save(session=session)
 
-    b1 = await Node.init(session=session, schema="Boat")
+    b1 = await Node.init(session=session, schema="TestBoat")
     await b1.new(session=session, name="Laser", has_sails=True)
     await b1.save(session=session)
 
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John Doe", vehicules=[d1, b1])
     await p1.save(session=session)
 
@@ -719,8 +719,8 @@ async def test_union(
     session, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
 ):
     SCHEMA = {
-        "name": "person",
-        "kind": "Person",
+        "name": "Person",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
@@ -734,19 +734,19 @@ async def test_union(
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
 
-    d1 = await Node.init(session=session, schema="Car")
+    d1 = await Node.init(session=session, schema="TestCar")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
     await d1.save(session=session)
 
-    t1 = await Node.init(session=session, schema="Truck")
+    t1 = await Node.init(session=session, schema="TestTruck")
     await t1.new(session=session, name="Silverado", nbr_axles=4)
     await t1.save(session=session)
 
-    m1 = await Node.init(session=session, schema="Motorcycle")
+    m1 = await Node.init(session=session, schema="TestMotorcycle")
     await m1.new(session=session, name="Monster", nbr_seats=1)
     await m1.save(session=session)
 
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John Doe", road_vehicules=[d1, t1, m1])
     await p1.save(session=session)
 
@@ -755,4 +755,4 @@ async def test_union(
     assert len(peers) == 3
 
     kinds = sorted([peer.get_kind() for peer in peers])
-    assert kinds == ["Car", "Motorcycle", "Truck"]
+    assert kinds == ["TestCar", "TestMotorcycle", "TestTruck"]

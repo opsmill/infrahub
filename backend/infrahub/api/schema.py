@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.logger import logger
 from neo4j import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
@@ -18,9 +18,35 @@ log = get_logger()
 router = APIRouter(prefix="/schema")
 
 
+class APINodeSchema(NodeSchema):
+    api_kind: Optional[str] = Field(default=None, alias="kind")
+
+    @root_validator(pre=True)
+    @classmethod
+    def set_kind(
+        cls,
+        values,
+    ):
+        values["kind"] = f'{values["namespace"]}{values["name"]}'
+        return values
+
+
+class APIGenericSchema(GenericSchema):
+    api_kind: Optional[str] = Field(default=None, alias="kind")
+
+    @root_validator(pre=True)
+    @classmethod
+    def set_kind(
+        cls,
+        values,
+    ):
+        values["kind"] = f'{values["namespace"]}{values["name"]}'
+        return values
+
+
 class SchemaReadAPI(BaseModel):
-    nodes: List[NodeSchema]
-    generics: List[GenericSchema]
+    nodes: List[APINodeSchema]
+    generics: List[APIGenericSchema]
 
 
 class SchemaLoadAPI(SchemaRoot):
@@ -36,8 +62,8 @@ async def get_schema(
     full_schema = registry.schema.get_full(branch=branch)
 
     return SchemaReadAPI(
-        nodes=[value for value in full_schema.values() if isinstance(value, NodeSchema)],
-        generics=[value for value in full_schema.values() if isinstance(value, GenericSchema)],
+        nodes=[value.dict() for value in full_schema.values() if isinstance(value, NodeSchema)],
+        generics=[value.dict() for value in full_schema.values() if isinstance(value, GenericSchema)],
     )
 
 

@@ -33,17 +33,17 @@ class TestInfrahubClientSync:
             }
         }
         """
-        obj1 = await Node.init(schema="GraphQLQuery", session=session)
+        obj1 = await Node.init(schema="CoreGraphQLQuery", session=session)
         await obj1.new(session=session, name="test_query2", description="test query", query=query_string)
         await obj1.save(session=session)
 
-        obj2 = await Node.init(schema="Repository", session=session)
+        obj2 = await Node.init(schema="CoreRepository", session=session)
         await obj2.new(
             session=session, name="repository1", description="test repository", location="git@github.com:mock/test.git"
         )
         await obj2.save(session=session)
 
-        obj3 = await Node.init(schema="RFile", session=session)
+        obj3 = await Node.init(schema="CoreRFile", session=session)
         await obj3.new(
             session=session,
             name="rfile1",
@@ -54,7 +54,7 @@ class TestInfrahubClientSync:
         )
         await obj3.save(session=session)
 
-        obj4 = await Node.init(schema="TransformPython", session=session)
+        obj4 = await Node.init(schema="CoreTransformPython", session=session)
         await obj4.new(
             session=session,
             name="transform01",
@@ -85,33 +85,33 @@ class TestInfrahubClientSync:
         assert async_branch not in post_delete.keys()
 
     async def test_get_all(self, client: InfrahubClientSync, session, init_db_base):
-        obj1 = await Node.init(schema="Location", session=session)
+        obj1 = await Node.init(schema="BuiltinLocation", session=session)
         await obj1.new(session=session, name="jfk1", description="new york", type="site")
         await obj1.save(session=session)
 
-        obj2 = await Node.init(schema="Location", session=session)
+        obj2 = await Node.init(schema="BuiltinLocation", session=session)
         await obj2.new(session=session, name="sfo1", description="san francisco", type="site")
         await obj2.save(session=session)
 
-        nodes = client.all(kind="Location")
+        nodes = client.all(kind="BuiltinLocation")
         assert len(nodes) == 2
         assert isinstance(nodes[0], InfrahubNodeSync)
         assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]  # type: ignore[attr-defined]
 
     async def test_get_one(self, client: InfrahubClientSync, session, init_db_base):
-        obj1 = await Node.init(schema="Location", session=session)
+        obj1 = await Node.init(schema="BuiltinLocation", session=session)
         await obj1.new(session=session, name="jfk2", description="new york", type="site")
         await obj1.save(session=session)
 
-        obj2 = await Node.init(schema="Location", session=session)
+        obj2 = await Node.init(schema="BuiltinLocation", session=session)
         await obj2.new(session=session, name="sfo2", description="san francisco", type="site")
         await obj2.save(session=session)
 
-        node1 = client.get(kind="Location", id=obj1.id)
+        node1 = client.get(kind="BuiltinLocation", id=obj1.id)
         assert isinstance(node1, InfrahubNodeSync)
         assert node1.name.value == "jfk2"  # type: ignore[attr-defined]
 
-        node2 = client.get(kind="Location", id="jfk2")
+        node2 = client.get(kind="BuiltinLocation", id="jfk2")
         assert isinstance(node2, InfrahubNodeSync)
         assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
 

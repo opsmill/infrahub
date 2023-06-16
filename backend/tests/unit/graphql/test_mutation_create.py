@@ -14,7 +14,7 @@ def load_graphql_requirements(group_graphql):
 async def test_create_simple_object(db, session, default_branch, car_person_schema):
     query = """
     mutation {
-        person_create(data: {name: { value: "John"}, height: {value: 182}}) {
+        TestPersonCreate(data: {name: { value: "John"}, height: {value: 182}}) {
             ok
             object {
                 id
@@ -31,18 +31,18 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     )
 
     assert result.errors is None
-    assert result.data["person_create"]["ok"] is True
-    assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["TestPersonCreate"]["ok"] is True
+    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
 
 async def test_create_check_unique(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
     query = """
     mutation {
-        person_create(data: {name: { value: "John"}, height: {value: 182}}) {
+        TestPersonCreate(data: {name: { value: "John"}, height: {value: 182}}) {
             ok
             object {
                 id
@@ -66,7 +66,7 @@ async def test_create_check_unique(db, session, default_branch, car_person_schem
 async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
     query = """
     mutation {
-        all_attribute_types_create(
+        TestAllAttributeTypesCreate(
             data: {
                 name: { value: "obj1" }
                 mystring: { value: "abc" }
@@ -92,10 +92,10 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
     )
 
     assert result.errors is None
-    assert result.data["all_attribute_types_create"]["ok"] is True
-    assert len(result.data["all_attribute_types_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["TestAllAttributeTypesCreate"]["ok"] is True
+    assert len(result.data["TestAllAttributeTypesCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
-    objs = await NodeManager.query(session=session, schema="AllAttributeTypes")
+    objs = await NodeManager.query(session=session, schema="TestAllAttributeTypes")
     obj1 = objs[0]
 
     assert obj1.mystring.value == "abc"
@@ -107,7 +107,7 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
 async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
     query = """
     mutation {
-        person_create(
+        TestPersonCreate(
             data: {
                 name: { value: "John", is_protected: true }
                 height: { value: 182, is_visible: false }
@@ -129,13 +129,13 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     )
 
     assert result.errors is None
-    assert result.data["person_create"]["ok"] is True
-    assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["TestPersonCreate"]["ok"] is True
+    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
     # Query the newly created Node to ensure everything is as expected
     query = """
         query {
-            person {
+            TestPerson {
                 edges {
                     node {
                         id
@@ -160,8 +160,8 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"][0]["node"]["name"]["is_protected"] is True
-    assert result1.data["person"]["edges"][0]["node"]["height"]["is_visible"] is False
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_protected"] is True
+    assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["is_visible"] is False
 
 
 async def test_create_object_with_node_property(
@@ -171,7 +171,7 @@ async def test_create_object_with_node_property(
 
     query = """
     mutation {
-        person_create(
+        TestPersonCreate(
             data: {
                 name: { value: "John", source: "%s" }
                 height: { value: 182, owner: "%s" }
@@ -197,13 +197,13 @@ async def test_create_object_with_node_property(
     )
 
     assert result.errors is None
-    assert result.data["person_create"]["ok"] is True
-    assert len(result.data["person_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["TestPersonCreate"]["ok"] is True
+    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
     # Query the newly created Node to ensure everything is as expected
     query = """
         query {
-            person {
+            TestPerson {
                 edges {
                     node {
                         id
@@ -237,18 +237,18 @@ async def test_create_object_with_node_property(
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"][0]["node"]["name"]["source"]["name"]["value"] == "First Account"
-    assert result1.data["person"]["edges"][0]["node"]["height"]["owner"]["name"]["value"] == "Second Account"
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["source"]["name"]["value"] == "First Account"
+    assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["owner"]["name"]["value"] == "Second Account"
 
 
 async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
     query = """
     mutation {
-        car_create(
+        TestCarCreate(
             data: {
                 name: { value: "Accord" }
                 nbr_seats: { value: 5 }
@@ -273,18 +273,18 @@ async def test_create_object_with_single_relationship(db, session, default_branc
     )
 
     assert result.errors is None
-    assert result.data["car_create"]["ok"] is True
-    assert len(result.data["car_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["TestCarCreate"]["ok"] is True
+    assert len(result.data["TestCarCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
 
 async def test_create_object_with_single_relationship_flag_property(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
     query = """
     mutation {
-        car_create(data: {
+        TestCarCreate(data: {
             name: { value: "Accord" },
             nbr_seats: { value: 5 },
             is_electric: { value: false },
@@ -307,10 +307,10 @@ async def test_create_object_with_single_relationship_flag_property(db, session,
     )
 
     assert result.errors is None
-    assert result.data["car_create"]["ok"] is True
-    assert len(result.data["car_create"]["object"]["id"]) == 36
+    assert result.data["TestCarCreate"]["ok"] is True
+    assert len(result.data["TestCarCreate"]["object"]["id"]) == 36
 
-    car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
+    car = await NodeManager.get_one(session=session, id=result.data["TestCarCreate"]["object"]["id"])
     rm = await car.owner.get(session=session)
     assert rm.is_protected is True
 
@@ -318,14 +318,14 @@ async def test_create_object_with_single_relationship_flag_property(db, session,
 async def test_create_object_with_single_relationship_node_property(
     db, session, default_branch, car_person_schema, first_account, second_account
 ):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
     query = (
         """
     mutation {
-        car_create(
+        TestCarCreate(
             data: {
                 name: { value: "Accord" }
                 nbr_seats: { value: 5 }
@@ -352,10 +352,10 @@ async def test_create_object_with_single_relationship_node_property(
     )
 
     assert result.errors is None
-    assert result.data["car_create"]["ok"] is True
-    assert len(result.data["car_create"]["object"]["id"]) == 36
+    assert result.data["TestCarCreate"]["ok"] is True
+    assert len(result.data["TestCarCreate"]["object"]["id"]) == 36
 
-    car = await NodeManager.get_one(session=session, id=result.data["car_create"]["object"]["id"])
+    car = await NodeManager.get_one(session=session, id=result.data["TestCarCreate"]["object"]["id"])
     rm = await car.owner.get(session=session)
     owner = await rm.get_owner(session=session)
     assert isinstance(owner, Node)
@@ -363,19 +363,19 @@ async def test_create_object_with_single_relationship_node_property(
 
 
 async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
-    t1 = await Node.init(session=session, schema="Tag")
+    t1 = await Node.init(session=session, schema="BuiltinTag")
     await t1.new(session=session, name="tag1")
     await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
+    t2 = await Node.init(session=session, schema="BuiltinTag")
     await t2.new(session=session, name="tag2")
     await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="Tag")
+    t3 = await Node.init(session=session, schema="BuiltinTag")
     await t3.new(session=session, name="tag3")
     await t3.save(session=session)
 
     query = """
     mutation {
-        fruit_create(
+        GardenFruitCreate(
             data: {
                 name: { value: "apple" }
                 tags: [{ id: "tag1" }, { id: "tag2" }, { id: "tag3" }]
@@ -398,29 +398,29 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
     )
 
     assert result.errors is None
-    assert result.data["fruit_create"]["ok"] is True
-    assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["GardenFruitCreate"]["ok"] is True
+    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
-    fruit = await NodeManager.get_one(session=session, id=result.data["fruit_create"]["object"]["id"])
+    fruit = await NodeManager.get_one(session=session, id=result.data["GardenFruitCreate"]["object"]["id"])
     assert len(await fruit.tags.get(session=session)) == 3
 
 
 async def test_create_object_with_multiple_relationships_with_node_property(
     db, session, default_branch, fruit_tag_schema, first_account, second_account
 ):
-    t1 = await Node.init(session=session, schema="Tag")
+    t1 = await Node.init(session=session, schema="BuiltinTag")
     await t1.new(session=session, name="tag1")
     await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
+    t2 = await Node.init(session=session, schema="BuiltinTag")
     await t2.new(session=session, name="tag2")
     await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="Tag")
+    t3 = await Node.init(session=session, schema="BuiltinTag")
     await t3.new(session=session, name="tag3")
     await t3.save(session=session)
 
     query = """
     mutation {
-        fruit_create(
+        GardenFruitCreate(
             data: {
                 name: { value: "apple" }
                 tags: [
@@ -452,11 +452,11 @@ async def test_create_object_with_multiple_relationships_with_node_property(
     )
 
     assert result.errors is None
-    assert result.data["fruit_create"]["ok"] is True
-    assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["GardenFruitCreate"]["ok"] is True
+    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
     fruit = await NodeManager.get_one(
-        session=session, id=result.data["fruit_create"]["object"]["id"], include_owner=True, include_source=True
+        session=session, id=result.data["GardenFruitCreate"]["object"]["id"], include_owner=True, include_source=True
     )
     tags = {tag.peer_id: tag for tag in await fruit.tags.get(session=session)}
     assert len(tags) == 3
@@ -481,19 +481,19 @@ async def test_create_object_with_multiple_relationships_with_node_property(
 
 
 async def test_create_object_with_multiple_relationships_flag_property(db, session, default_branch, fruit_tag_schema):
-    t1 = await Node.init(session=session, schema="Tag")
+    t1 = await Node.init(session=session, schema="BuiltinTag")
     await t1.new(session=session, name="tag1")
     await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
+    t2 = await Node.init(session=session, schema="BuiltinTag")
     await t2.new(session=session, name="tag2")
     await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="Tag")
+    t3 = await Node.init(session=session, schema="BuiltinTag")
     await t3.new(session=session, name="tag3")
     await t3.save(session=session)
 
     query = """
     mutation {
-        fruit_create(
+        GardenFruitCreate(
             data: {
                 name: { value: "apple" }
                 tags: [
@@ -520,10 +520,10 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
     )
 
     assert result.errors is None
-    assert result.data["fruit_create"]["ok"] is True
-    assert len(result.data["fruit_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["GardenFruitCreate"]["ok"] is True
+    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
-    fruit = await NodeManager.get_one(session=session, id=result.data["fruit_create"]["object"]["id"])
+    fruit = await NodeManager.get_one(session=session, id=result.data["GardenFruitCreate"]["object"]["id"])
     rels = await fruit.tags.get(session=session)
     assert len(rels) == 3
     assert rels[0].is_protected is True
@@ -534,7 +534,7 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
 async def test_create_person_not_valid(db, session, default_branch, car_person_schema):
     query = """
     mutation {
-        person_create(data: {
+        TestPersonCreate(data: {
             name: { value: "John"},
             height: {value: "182"}
         }) {
@@ -558,13 +558,13 @@ async def test_create_person_not_valid(db, session, default_branch, car_person_s
 
 
 async def test_create_with_attribute_not_valid(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
     query = """
     mutation {
-        car_create(data: {
+        TestCarCreate(data: {
             name: { value: "Accord" },
             nbr_seats: { value: 5 },
             color: { value: "#44444444" },

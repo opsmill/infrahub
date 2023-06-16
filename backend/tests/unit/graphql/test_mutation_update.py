@@ -17,7 +17,7 @@ async def test_update_simple_object(db, session: AsyncSession, person_john_main:
     query = (
         """
     mutation {
-        person_update(data: {id: "%s", name: { value: "Jim"}}) {
+        TestPersonUpdate(data: {id: "%s", name: { value: "Jim"}}) {
             ok
             object {
                 id
@@ -39,7 +39,7 @@ async def test_update_simple_object(db, session: AsyncSession, person_john_main:
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
+    assert result.data["TestPersonUpdate"]["ok"] is True
 
     obj1 = await NodeManager.get_one(session=session, id=person_john_main.id, branch=branch)
     assert obj1.name.value == "Jim"
@@ -52,7 +52,7 @@ async def test_update_check_unique(
     query = (
         """
     mutation {
-        person_update(data: {id: "%s", name: { value: "Jim"}}) {
+        TestPersonUpdate(data: {id: "%s", name: { value: "Jim"}}) {
             ok
             object {
                 id
@@ -82,7 +82,7 @@ async def test_update_object_with_flag_property(db, session: AsyncSession, perso
     query = (
         """
     mutation {
-        person_update(data: {id: "%s", name: { is_protected: true }, height: { is_visible: false}}) {
+        TestPersonUpdate(data: {id: "%s", name: { is_protected: true }, height: { is_visible: false}}) {
             ok
             object {
                 id
@@ -107,7 +107,7 @@ async def test_update_object_with_flag_property(db, session: AsyncSession, perso
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
+    assert result.data["TestPersonUpdate"]["ok"] is True
 
     obj1 = await NodeManager.get_one(session=session, id=person_john_main.id, branch=branch)
     assert obj1.name.is_protected is True
@@ -119,7 +119,7 @@ async def test_update_object_with_flag_property(db, session: AsyncSession, perso
 async def person_john_with_source_main(
     session: AsyncSession, default_branch: Branch, car_person_schema, first_account
 ) -> Node:
-    obj = await Node.init(session=session, schema="Person", branch=default_branch)
+    obj = await Node.init(session=session, schema="TestPerson", branch=default_branch)
     await obj.new(session=session, name={"value": "John", "source": first_account}, height=180)
     await obj.save(session=session)
 
@@ -136,7 +136,7 @@ async def test_update_object_with_node_property(
 ):
     query = """
     mutation {
-        person_update(data: {id: "%s", name: { source: "%s" }, height: { source: "%s" } }) {
+        TestPersonUpdate(data: {id: "%s", name: { source: "%s" }, height: { source: "%s" } }) {
             ok
             object {
                 id
@@ -157,7 +157,7 @@ async def test_update_object_with_node_property(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
+    assert result.data["TestPersonUpdate"]["ok"] is True
 
     obj1 = await NodeManager.get_one(
         session=session, id=person_john_with_source_main.id, include_source=True, branch=branch
@@ -171,7 +171,7 @@ async def test_update_invalid_object(
 ):
     query = """
     mutation {
-        person_update(data: {id: "XXXXXX", name: { value: "Jim"}}) {
+        TestPersonUpdate(data: {id: "XXXXXX", name: { value: "Jim"}}) {
             ok
             object {
                 id
@@ -192,14 +192,14 @@ async def test_update_invalid_object(
     )
 
     assert len(result.errors) == 1
-    assert "Unable to find the node XXXXXX / Person in the database." in result.errors[0].message
+    assert "Unable to find the node XXXXXX / TestPerson in the database." in result.errors[0].message
 
 
 async def test_update_invalid_input(db, session: AsyncSession, person_john_main: Node, branch: Branch):
     query = (
         """
     mutation {
-        person_update(data: {id: "%s", name: { value: False }}) {
+        TestPersonUpdate(data: {id: "%s", name: { value: False }}) {
             ok
             object {
                 id
@@ -229,7 +229,7 @@ async def test_update_single_relationship(
 ):
     query = """
     mutation {
-        car_update(data: {id: "%s", owner: { id: "%s" }}) {
+        TestCarUpdate(data: {id: "%s", owner: { id: "%s" }}) {
             ok
             object {
                 id
@@ -256,8 +256,8 @@ async def test_update_single_relationship(
     )
 
     assert result.errors is None
-    assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -269,7 +269,7 @@ async def test_update_new_single_relationship_flag_property(
 ):
     query = """
     mutation {
-        car_update(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
+        TestCarUpdate(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
             ok
             object {
                 id
@@ -296,8 +296,8 @@ async def test_update_new_single_relationship_flag_property(
     )
 
     assert result.errors is None
-    assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -311,7 +311,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
 ):
     query = """
     mutation {
-        car_update(data: {id: "%s", owner: { id: "%s" }}) {
+        TestCarUpdate(data: {id: "%s", owner: { id: "%s" }}) {
             ok
             object {
                 id
@@ -338,15 +338,15 @@ async def test_update_delete_optional_relationship_cardinality_one(
     )
 
     assert result.errors is None
-    assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
     assert car_peer.id == person_jim_main.id
     query = """
     mutation {
-        car_update(data: {id: "%s", owner: null}) {
+        TestCarUpdate(data: {id: "%s", owner: null}) {
             ok
             object {
                 id
@@ -372,8 +372,8 @@ async def test_update_delete_optional_relationship_cardinality_one(
     )
 
     assert result.errors is None
-    assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["node"] is None
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"] is None
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
     assert car_peer is None
@@ -384,7 +384,7 @@ async def test_update_existing_single_relationship_flag_property(
 ):
     query = """
     mutation {
-        car_update(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
+        TestCarUpdate(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
             ok
             object {
                 id
@@ -411,8 +411,8 @@ async def test_update_existing_single_relationship_flag_property(
     )
 
     assert result.errors is None
-    assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "John"
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
     car = await NodeManager.get_one(session=session, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -425,7 +425,7 @@ async def test_update_existing_single_relationship_flag_property(
 async def car_accord_with_source_main(
     session: AsyncSession, default_branch: Branch, car_person_schema, person_john_main: Node, first_account: Node
 ) -> Node:
-    obj = await Node.init(session=session, schema="Car", branch=default_branch)
+    obj = await Node.init(session=session, schema="TestCar", branch=default_branch)
     await obj.new(
         session=session,
         name="accord",
@@ -449,7 +449,7 @@ async def test_update_existing_single_relationship_node_property(
 ):
     query = """
     mutation {
-        car_update(data: {id: "%s", owner: { id: "%s", _relation__source: "%s" }}) {
+        TestCarUpdate(data: {id: "%s", owner: { id: "%s", _relation__source: "%s" }}) {
             ok
             object {
                 id
@@ -477,8 +477,8 @@ async def test_update_existing_single_relationship_node_property(
     )
 
     assert result.errors is None
-    assert result.data["car_update"]["ok"] is True
-    assert result.data["car_update"]["object"]["owner"]["node"]["name"]["value"] == "John"
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
     car = await NodeManager.get_one(session=session, id=car_accord_with_source_main.id, branch=branch)
     car_peer = await car.owner.get_peer(session=session)
@@ -500,7 +500,7 @@ async def test_update_relationship_many(
 ):
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" } ] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" } ] }) {
             ok
             object {
                 id
@@ -529,8 +529,8 @@ async def test_update_relationship_many(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 1
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(session=session))) == 1
@@ -538,7 +538,7 @@ async def test_update_relationship_many(
     # Replace the current value (t1) with t2 and t3
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
             ok
             object {
                 id
@@ -568,8 +568,8 @@ async def test_update_relationship_many(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 2
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(session=session)
@@ -579,7 +579,7 @@ async def test_update_relationship_many(
     # Replace the current value (t2, t3) with t1 and t3
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
             ok
             object {
                 id
@@ -609,8 +609,8 @@ async def test_update_relationship_many(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 2
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
     p13 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p13.tags.get(session=session)
@@ -629,7 +629,7 @@ async def test_update_relationship_many2(
 ):
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" } ] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" } ] }) {
             ok
             object {
                 id
@@ -658,8 +658,8 @@ async def test_update_relationship_many2(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 1
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(session=session))) == 1
@@ -667,7 +667,7 @@ async def test_update_relationship_many2(
     # Replace the current value (t1) with t2 and t3
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
             ok
             object {
                 id
@@ -697,8 +697,8 @@ async def test_update_relationship_many2(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]["edges"]) == 2
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(session=session)
@@ -718,7 +718,7 @@ async def test_update_relationship_previously_deleted(
 ):
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" } ] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" } ] }) {
             ok
             object {
                 id
@@ -743,8 +743,8 @@ async def test_update_relationship_previously_deleted(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 1
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 1
 
     p11 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(session=session))) == 1
@@ -752,7 +752,7 @@ async def test_update_relationship_previously_deleted(
     # Replace the current value (t1) with t2 and t3
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
             ok
             object {
                 id
@@ -778,8 +778,8 @@ async def test_update_relationship_previously_deleted(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 2
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 2
 
     p12 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(session=session)
@@ -788,7 +788,7 @@ async def test_update_relationship_previously_deleted(
     # Replace the current value (t2, t3) with t1 and t3
     query = """
     mutation {
-        person_update(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
+        TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" }, { id: "%s" }] }) {
             ok
             object {
                 id
@@ -814,8 +814,8 @@ async def test_update_relationship_previously_deleted(
     )
 
     assert result.errors is None
-    assert result.data["person_update"]["ok"] is True
-    assert len(result.data["person_update"]["object"]["tags"]) == 2
+    assert result.data["TestPersonUpdate"]["ok"] is True
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 2
 
     p13 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
     tags = await p13.tags.get(session=session)

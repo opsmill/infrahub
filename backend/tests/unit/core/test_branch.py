@@ -263,7 +263,7 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
         ("node", "c2", "color", "HAS_VALUE"),
         ("node", "c2", "color", "IS_PROTECTED"),
         ("node", "c2", "color", "IS_VISIBLE"),
-        ("relationships", "car__person", "r1", "IS_PROTECTED"),
+        ("relationships", "testcar__testperson", "r1", "IS_PROTECTED"),
     }
     expected_paths_branch1 = {
         ("node", "c1", "nbr_seats", "HAS_VALUE"),
@@ -280,9 +280,9 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
         ("node", "c3", "nbr_seats", "HAS_VALUE"),
         ("node", "c3", "nbr_seats", "IS_PROTECTED"),
         ("node", "c3", "nbr_seats", "IS_VISIBLE"),
-        ("relationships", "car__person", "r1", "IS_VISIBLE"),
-        ("relationships", "car__person", "r2", "IS_VISIBLE"),
-        ("relationships", "car__person", "r2", "IS_PROTECTED"),
+        ("relationships", "testcar__testperson", "r1", "IS_VISIBLE"),
+        ("relationships", "testcar__testperson", "r2", "IS_VISIBLE"),
+        ("relationships", "testcar__testperson", "r2", "IS_PROTECTED"),
     }
 
     diff = await Diff.init(branch=branch1, session=session)
@@ -349,7 +349,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
 
     branch2 = await create_branch(branch_name="branch2", session=session)
 
-    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
@@ -382,7 +382,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
     branch2 = await create_branch(branch_name="branch2", session=session)
 
-    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
@@ -415,7 +415,7 @@ async def test_diff_get_files(session, rpc_client: InfrahubRpcClientTesting, def
 
     branch2 = await create_branch(branch_name="branch2", session=session)
 
-    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
@@ -458,8 +458,8 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
 
     expected_response_branch2_repo01_time01 = {
         "branch": "branch2",
-        "labels": ["DataOwner", "DataSource", "Node", "Repository"],
-        "kind": "Repository",
+        "labels": ["CoreRepository", "LineageOwner", "LineageSource", "Node"],
+        "kind": "CoreRepository",
         "id": repo01b2.id,
         "action": "updated",
         "changed_at": None,
@@ -493,8 +493,8 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["DataOwner", "DataSource", "Node", "Repository"],
-        "kind": "Repository",
+        "labels": ["CoreRepository", "LineageOwner", "LineageSource", "Node"],
+        "kind": "CoreRepository",
         "id": repo01b2.id,
         "action": "updated",
         "changed_at": None,
@@ -587,8 +587,8 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
 
     expected_response_main_c1 = {
         "branch": "main",
-        "labels": ["Car", "Node"],
-        "kind": "Car",
+        "labels": ["Node", "TestCar"],
+        "kind": "TestCar",
         "id": "c1",
         "action": "updated",
         "changed_at": None,
@@ -614,8 +614,8 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
 
     expected_response_branch1_c1 = {
         "branch": "branch1",
-        "labels": ["Car", "Node"],
-        "kind": "Car",
+        "labels": ["Node", "TestCar"],
+        "kind": "TestCar",
         "id": "c1",
         "action": "updated",
         "changed_at": None,
@@ -654,7 +654,7 @@ async def test_diff_get_nodes_dataset_02(session, base_dataset_02):
     assert nodes["branch1"]["c3"].attributes["nbr_seats"].properties["HAS_VALUE"].action == DiffAction.ADDED
 
     # ADD a new node in Branch1 and validate that the diff is reporting it properly
-    p1 = await Node.init(schema="Person", branch=branch1, session=session)
+    p1 = await Node.init(schema="TestPerson", branch=branch1, session=session)
     await p1.new(name="Bill", height=175, session=session)
     await p1.save(session=session)
 
@@ -695,7 +695,7 @@ async def test_diff_get_relationships(session, base_dataset_02):
     rels = await diff.get_relationships(session=session)
 
     assert sorted(rels.keys()) == ["branch1", "main"]
-    assert sorted(rels["branch1"]["car__person"].keys()) == ["r1", "r2"]
+    assert sorted(rels["branch1"]["testcar__testperson"].keys()) == ["r1", "r2"]
 
     # ---------------------------------------------------
     # Branch1 / R1
@@ -703,11 +703,11 @@ async def test_diff_get_relationships(session, base_dataset_02):
     expected_result_branch1_r1 = {
         "branch": "branch1",
         "id": "r1",
-        "name": "car__person",
+        "name": "testcar__testperson",
         "action": DiffAction.UPDATED,
         "nodes": {
-            "c1": {"id": "c1", "labels": ["Car", "Node"], "kind": "Car"},
-            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+            "c1": {"id": "c1", "labels": ["TestCar", "Node"], "kind": "TestCar"},
+            "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
         "properties": {
             "IS_VISIBLE": {
@@ -724,7 +724,7 @@ async def test_diff_get_relationships(session, base_dataset_02):
     assert (
         DeepDiff(
             expected_result_branch1_r1,
-            rels["branch1"]["car__person"]["r1"].dict(),
+            rels["branch1"]["testcar__testperson"]["r1"].dict(),
             ignore_order=True,
         ).to_dict()
         == {}
@@ -735,11 +735,11 @@ async def test_diff_get_relationships(session, base_dataset_02):
     expected_result_branch1_r2 = {
         "branch": "branch1",
         "id": "r2",
-        "name": "car__person",
+        "name": "testcar__testperson",
         "action": DiffAction.ADDED,
         "nodes": {
-            "c2": {"id": "c2", "labels": ["Car", "Node"], "kind": "Car"},
-            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+            "c2": {"id": "c2", "labels": ["TestCar", "Node"], "kind": "TestCar"},
+            "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
         "properties": {
             "IS_VISIBLE": {
@@ -763,7 +763,7 @@ async def test_diff_get_relationships(session, base_dataset_02):
     assert (
         DeepDiff(
             expected_result_branch1_r2,
-            rels["branch1"]["car__person"]["r2"].dict(),
+            rels["branch1"]["testcar__testperson"]["r2"].dict(),
             ignore_order=True,
         ).to_dict()
         == {}
@@ -776,11 +776,11 @@ async def test_diff_get_relationships(session, base_dataset_02):
     expected_result_main_r1 = {
         "branch": "main",
         "id": "r1",
-        "name": "car__person",
+        "name": "testcar__testperson",
         "action": DiffAction.UPDATED,
         "nodes": {
-            "c1": {"id": "c1", "labels": ["Car", "Node"], "kind": "Car"},
-            "p1": {"id": "p1", "labels": ["Node", "Person"], "kind": "Person"},
+            "c1": {"id": "c1", "labels": ["TestCar", "Node"], "kind": "TestCar"},
+            "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
         "properties": {
             "IS_PROTECTED": {
@@ -796,7 +796,7 @@ async def test_diff_get_relationships(session, base_dataset_02):
     assert (
         DeepDiff(
             expected_result_main_r1,
-            rels["main"]["car__person"]["r1"].dict(),
+            rels["main"]["testcar__testperson"]["r1"].dict(),
             ignore_order=True,
         ).to_dict()
         == {}
@@ -834,7 +834,7 @@ async def test_merge_graph(session, base_dataset_02, register_core_models_schema
     await branch1.merge_graph(session=session)
 
     # Query all cars in MAIN, AFTER the merge
-    cars = sorted(await NodeManager.query(schema="Car", session=session), key=lambda c: c.id)
+    cars = sorted(await NodeManager.query(schema="TestCar", session=session), key=lambda c: c.id)
     assert len(cars) == 3
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 4
@@ -844,7 +844,7 @@ async def test_merge_graph(session, base_dataset_02, register_core_models_schema
 
     # Query All cars in MAIN, BEFORE the merge
     cars = sorted(
-        await NodeManager.query(schema="Car", at=base_dataset_02["time0"], session=session), key=lambda c: c.id
+        await NodeManager.query(schema="TestCar", at=base_dataset_02["time0"], session=session), key=lambda c: c.id
     )
     assert len(cars) == 2
     assert cars[0].id == "c1"
@@ -852,14 +852,14 @@ async def test_merge_graph(session, base_dataset_02, register_core_models_schema
     assert cars[0].nbr_seats.is_protected is False
 
     # Query all cars in BRANCH1, AFTER the merge
-    cars = sorted(await NodeManager.query(schema="Car", branch=branch1, session=session), key=lambda c: c.id)
+    cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, session=session), key=lambda c: c.id)
     assert len(cars) == 3
     assert cars[2].id == "c3"
     assert cars[2].name.value == "volt"
 
     # Query all cars in BRANCH1, BEFORE the merge
     cars = sorted(
-        await NodeManager.query(schema="Car", branch=branch1, at=base_dataset_02["time0"], session=session),
+        await NodeManager.query(schema="TestCar", branch=branch1, at=base_dataset_02["time0"], session=session),
         key=lambda c: c.id,
     )
     assert len(cars) == 3
@@ -873,7 +873,7 @@ async def test_merge_graph(session, base_dataset_02, register_core_models_schema
 async def test_merge_graph_delete(session, base_dataset_02, register_core_models_schema):
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
-    persons = sorted(await NodeManager.query(schema="Person", session=session), key=lambda p: p.id)
+    persons = sorted(await NodeManager.query(schema="TestPerson", session=session), key=lambda p: p.id)
     assert len(persons) == 3
 
     p3 = await NodeManager.get_one(id="p3", branch=branch1, session=session)
@@ -882,21 +882,21 @@ async def test_merge_graph_delete(session, base_dataset_02, register_core_models
     await branch1.merge_graph(session=session)
 
     # Query all cars in MAIN, AFTER the merge
-    persons = sorted(await NodeManager.query(schema="Person", session=session), key=lambda p: p.id)
+    persons = sorted(await NodeManager.query(schema="TestPerson", session=session), key=lambda p: p.id)
     assert len(persons) == 2
 
 
 async def test_rebase_flag(session, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
-    cars = sorted(await NodeManager.query(schema="Car", branch=branch1, session=session), key=lambda c: c.id)
+    cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, session=session), key=lambda c: c.id)
     assert len(cars) == 2
     assert cars[0].id == "c1"
     assert cars[0].name.value == "accord"
 
     branch1.ephemeral_rebase = True
 
-    cars = sorted(await NodeManager.query(schema="Car", branch=branch1, session=session), key=lambda c: c.id)
+    cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, session=session), key=lambda c: c.id)
     assert len(cars) == 3
     assert cars[0].id == "c1"
     assert cars[0].name.value == "volt"
@@ -943,7 +943,7 @@ async def test_delete_branch(
     branch = await create_branch(branch_name=branch_name, session=session)
     found = await Branch.get_by_name(name=branch_name, session=session)
 
-    p1 = await Node.init(schema="Person", branch=branch_name, session=session)
+    p1 = await Node.init(schema="TestPerson", branch=branch_name, session=session)
     await p1.new(name="Bobby", height=175, session=session)
     await p1.save(session=session)
 

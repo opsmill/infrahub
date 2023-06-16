@@ -38,7 +38,9 @@ def load_attribute_types_in_registry(branch: Branch):
 
 
 def load_node_interface(branch: Branch):
-    node_interface_schema = GenericSchema(name="node", kind="Node", description="Interface for all nodes in Infrahub")
+    node_interface_schema = GenericSchema(
+        name="Node", namespace="Schema", description="Interface for all nodes in Infrahub"
+    )
     interface = generate_interface_object(schema=node_interface_schema, branch=branch)
     edged_interface = generate_graphql_edged_object(schema=node_interface_schema, node=interface, branch=branch)
     paginated_interface = generate_graphql_paginated_object(schema=node_interface_schema, edge=edged_interface)
@@ -77,8 +79,8 @@ async def generate_object_types(
         )
 
     # Define DataOwner and DataOwner
-    data_source = registry.get_graphql_type(name="DataSource", branch=branch)
-    data_owner = registry.get_graphql_type(name="DataOwner", branch=branch)
+    data_source = registry.get_graphql_type(name="LineageSource", branch=branch)
+    data_owner = registry.get_graphql_type(name="LineageOwner", branch=branch)
     define_relationship_property(branch=branch, data_source=data_source, data_owner=data_owner)
     relationship_property = registry.get_graphql_type(name="RelationshipProperty", branch=branch)
     for data_type in ATTRIBUTE_TYPES.values():
@@ -156,6 +158,7 @@ async def generate_object_types(
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, (NodeSchema, GenericSchema)):
             continue
+
         node_type = registry.get_graphql_type(name=node_name, branch=branch.name)
 
         for rel in node_schema.relationships:
@@ -195,13 +198,13 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
         node_type = registry.get_graphql_type(name=f"Paginated{node_name}", branch=branch)
         node_filters = await generate_filters(session=session, schema=node_schema, top_level=True)
 
-        class_attrs[node_schema.name] = graphene.Field(
+        class_attrs[node_schema.kind] = graphene.Field(
             node_type,
             resolver=default_paginated_list_resolver,
             **node_filters,
         )
-        if node_name == "Account":
-            node_type = registry.get_graphql_type(name="Account", branch=branch)
+        if node_name == "CoreAccount":
+            node_type = registry.get_graphql_type(name="CoreAccount", branch=branch)
             class_attrs["account_profile"] = graphene.Field(
                 node_type,
                 resolver=account_resolver,
@@ -227,9 +230,9 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
         create, update, delete = generate_graphql_mutations(branch=branch, schema=node_schema, base_class=base_class)
 
-        class_attrs[f"{node_schema.name}_create"] = create.Field()
-        class_attrs[f"{node_schema.name}_update"] = update.Field()
-        class_attrs[f"{node_schema.name}_delete"] = delete.Field()
+        class_attrs[f"{node_schema.kind}Create"] = create.Field()
+        class_attrs[f"{node_schema.kind}Update"] = update.Field()
+        class_attrs[f"{node_schema.kind}Delete"] = delete.Field()
 
     return type("MutationMixin", (object,), class_attrs)
 
@@ -237,7 +240,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
-    node_interface = registry.get_graphql_type(name="Node", branch=branch.name)
+    node_interface = registry.get_graphql_type(name="SchemaNode", branch=branch.name)
 
     meta_attrs = {
         "schema": schema,

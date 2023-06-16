@@ -81,7 +81,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
     # tags_dict = {}
 
     for group in GROUPS:
-        obj = await Node.init(session=session, schema="Group")
+        obj = await Node.init(session=session, schema="CoreGroup")
         await obj.new(session=session, description=group[0], name=group[1])
         await obj.save(session=session)
         groups_dict[group[1]] = obj
@@ -94,13 +94,13 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
     roles_dict = {}
 
     LOGGER.info("Creating Site")
-    site_hq = await Node.init(session=session, schema="Location")
+    site_hq = await Node.init(session=session, schema="BuiltinLocation")
     await site_hq.new(session=session, name="HQ", type="Site")
     await site_hq.save(session=session)
 
     LOGGER.info("Creating Roles & Status")
     for role in ROLES:
-        obj = await Node.init(session=session, schema="Role")
+        obj = await Node.init(session=session, schema="BuiltinRole")
         await obj.new(session=session, description=role.title(), name=role)
         await obj.save(session=session)
         roles_dict[role] = obj
@@ -108,7 +108,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
 
     STATUSES = ["active", "provisionning", "maintenance"]
     for status in STATUSES:
-        obj = await Node.init(session=session, schema="Status")
+        obj = await Node.init(session=session, schema="BuiltinStatus")
         await obj.new(session=session, description=status.title(), name=status)
         await obj.save(session=session)
         statuses_dict[status] = obj
@@ -135,7 +135,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
         role_id = None
         if device[4]:
             role_id = roles_dict[device[4]].id
-        obj = await Node.init(session=session, schema="Device")
+        obj = await Node.init(session=session, schema="InfraDevice")
         await obj.new(session=session, name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
 
         await obj.save(session=session)
@@ -143,7 +143,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
 
         # Add a special interface for spine1
         if device[0] == "spine1":
-            intf = await Node.init(session=session, schema="InterfaceL3")
+            intf = await Node.init(session=session, schema="InfraInterfaceL3")
             await intf.new(
                 session=session,
                 device="spine1",
@@ -155,7 +155,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
             )
             await intf.save(session=session)
 
-            ip = await Node.init(session=session, schema="IPAddress")
+            ip = await Node.init(session=session, schema="InfraIPAddress")
             await ip.new(session=session, interface=intf, address=f"192.168.{idx}.10/24")
             await ip.save(session=session)
 
@@ -172,7 +172,7 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
             if intf_idx in [0, 1]:
                 enabled = False
 
-            intf = await Node.init(session=session, schema="InterfaceL3")
+            intf = await Node.init(session=session, schema="InfraInterfaceL3")
             await intf.new(
                 session=session,
                 device=obj,
@@ -185,6 +185,6 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
             await intf.save(session=session)
 
             if intf_idx == 1:
-                ip = await Node.init(session=session, schema="IPAddress")
+                ip = await Node.init(session=session, schema="InfraIPAddress")
                 await ip.new(session=session, interface=intf, address=f"192.168.{idx}.{intf_idx}/24")
                 await ip.save(session=session)

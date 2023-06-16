@@ -111,8 +111,8 @@ async def test_get_one_attribute_with_flag_property(
 
 
 async def test_get_one_relationship(session: AsyncSession, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -142,11 +142,11 @@ async def test_get_one_relationship(session: AsyncSession, default_branch: Branc
 async def test_get_one_relationship_with_flag_property(
     session: AsyncSession, default_branch: Branch, car_person_schema
 ):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
 
-    c1 = await Node.init(session=session, schema="Car")
+    c1 = await Node.init(session=session, schema="TestCar")
     await c1.new(
         session=session,
         name="volt",
@@ -156,7 +156,7 @@ async def test_get_one_relationship_with_flag_property(
     )
     await c1.save(session=session)
 
-    c2 = await Node.init(session=session, schema="Car")
+    c2 = await Node.init(session=session, schema="TestCar")
     await c2.new(
         session=session,
         name="accord",
@@ -265,7 +265,7 @@ async def test_query_with_filter_bool_rel(
     car_camry_main,
     branch: Branch,
 ):
-    car = registry.get_schema(name="Car")
+    car = registry.get_schema(name="TestCar")
 
     # Check filter with a boolean
     nodes = await NodeManager.query(session=session, schema=car, branch=branch, filters={"is_electric__value": False})
@@ -277,11 +277,11 @@ async def test_query_with_filter_bool_rel(
 
 
 async def test_query_non_default_class(session: AsyncSession, default_branch: Branch, criticality_schema):
-    class Criticality(Node):
+    class TestCriticality(Node):
         def always_true(self):
             return True
 
-    registry.node["Criticality"] = Criticality
+    registry.node["TestCriticality"] = TestCriticality
 
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)
@@ -293,7 +293,7 @@ async def test_query_non_default_class(session: AsyncSession, default_branch: Br
 
     nodes = await NodeManager.query(session=session, schema=criticality_schema)
     assert len(nodes) == 2
-    assert isinstance(nodes[0], Criticality)
+    assert isinstance(nodes[0], TestCriticality)
     assert nodes[0].always_true()
 
 
@@ -306,7 +306,7 @@ async def test_query_class_name(session: AsyncSession, default_branch: Branch, c
     await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
     await obj2.save(session=session)
 
-    nodes = await NodeManager.query(session=session, schema="Criticality")
+    nodes = await NodeManager.query(session=session, schema="TestCriticality")
     assert len(nodes) == 2
 
 
@@ -327,10 +327,10 @@ async def test_identify_node_class(session, car_schema, default_branch):
 
     assert identify_node_class(node=node) == Node
 
-    registry.node["Vehicule"] = Vehicule
+    registry.node["TestVehicule"] = Vehicule
     assert identify_node_class(node=node) == Vehicule
 
-    registry.node["Car"] = Car
+    registry.node["TestCar"] = Car
     assert identify_node_class(node=node) == Car
 
 

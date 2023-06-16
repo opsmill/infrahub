@@ -473,7 +473,7 @@ class Branch(StandardNode):
         tasks = []
 
         # For all repositories in this branch, run all checks
-        repos = await NodeManager.query(schema="Repository", branch=self, session=session)
+        repos = await NodeManager.query(schema="CoreRepository", branch=self, session=session)
 
         # Collecting all the checks from all the repopository
         for repo in repos:
@@ -688,11 +688,11 @@ class Branch(StandardNode):
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main_list = await NodeManager.query(schema="Repository", session=session)
+        repos_in_main_list = await NodeManager.query(schema="CoreRepository", session=session)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
         tasks = []
 
-        repos_in_branch_list = await NodeManager.query(schema="Repository", session=session, branch=self)
+        repos_in_branch_list = await NodeManager.query(schema="CoreRepository", session=session, branch=self)
 
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
@@ -1564,11 +1564,15 @@ class Diff:
 
         repos_to = {
             repo.id: repo
-            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_to)
+            for repo in await NodeManager.query(
+                schema="CoreRepository", session=session, branch=branch, at=self.diff_to
+            )
         }
         repos_from = {
             repo.id: repo
-            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_from)
+            for repo in await NodeManager.query(
+                schema="CoreRepository", session=session, branch=branch, at=self.diff_from
+            )
         }
 
         # For now we are ignoring the repos that are either not present at to time or at from time.

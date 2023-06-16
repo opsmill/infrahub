@@ -2,8 +2,8 @@
 ---
 version: '1.0'
 generics:
-  - name: interface
-    kind: Interface
+  - name: Interface
+    namespace: Infra
     display_labels:
       - name__value
     attributes:
@@ -23,38 +23,38 @@ generics:
         default_value: true
     relationships:
       - name: status
-        peer: Status
+        peer: BuiltinStatus
         optional: false
         cardinality: one
         kind: Attribute
       - name: role
-        peer: Role
+        peer: BuiltinRole
         optional: false
         cardinality: one
         kind: Attribute
       - name: device
-        peer: Device
+        peer: InfraDevice
         identifier: "device__interface"
         optional: false
         cardinality: one
         kind: Parent
       - name: tags
-        peer: Tag
+        peer: BuiltinTag
         optional: true
         cardinality: many
         kind: Attribute
-  - name: endpoint
-    kind: Endpoint
+  - name: Endpoint
+    namespace: Infra
     relationships:
       - name: connected_endpoint
-        peer: Endpoint
+        peer: InfraEndpoint
         optional: true
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
 nodes:
-  - name: platform
-    kind: Platform
+  - name: Platform
+    namespace: Infra
     default_filter: name__value
     order_by:
       - name__value
@@ -81,12 +81,12 @@ nodes:
         optional: true
     relationships:
       - name: devices
-        peer: Device
+        peer: InfraDevice
         optional: true
         cardinality: many
         kind: Attribute
-  - name: device
-    kind: Device
+  - name: Device
+    namespace: Infra
     default_filter: name__value
     order_by:
       - name__value
@@ -103,67 +103,67 @@ nodes:
         kind: Text
     relationships:
       - name: site
-        peer: Location
+        peer: BuiltinLocation
         optional: false
         cardinality: one
         kind: Attribute
       - name: status
-        peer: Status
+        peer: BuiltinStatus
         optional: false
         cardinality: one
         kind: Attribute
       - name: role
-        peer: Role
+        peer: BuiltinRole
         optional: false
         cardinality: one
         kind: Attribute
       - name: interfaces
-        peer: Interface
+        peer: InfraInterface
         identifier: "device__interface"
         optional: true
         cardinality: many
         kind: Component
       - name: asn
-        peer: AutonomousSystem
+        peer: InfraAutonomousSystem
         optional: true
         cardinality: one
         kind: Attribute
       - name: tags
-        peer: Tag
+        peer: BuiltinTag
         optional: true
         cardinality: many
         kind: Attribute
       - name: primary_address
-        peer: IPAddress
+        peer: InfraIPAddress
         label: Primary IP Address
         optional: true
         cardinality: one
         kind: Attribute
       - name: platform
-        peer: Platform
+        peer: InfraPlatform
         optional: true
         cardinality: one
         kind: Attribute
-  - name: interface_l3
-    kind: InterfaceL3
+  - name: InterfaceL3
+    namespace: Infra
     display_labels:
       - name__value
     order_by:
       - name__value
-    inherit_from: ["Interface", "Endpoint"]
+    inherit_from: ["InfraInterface", "InfraEndpoint"]
     relationships:
       - name: ip_addresses
-        peer: IPAddress
+        peer: InfraIPAddress
         optional: true
         cardinality: many
         kind: Component
-  - name: interface_l2
-    kind: InterfaceL2
+  - name: InterfaceL2
+    namespace: Infra
     display_labels:
       - name__value
     order_by:
       - name__value
-    inherit_from: ["Interface", "Endpoint"]
+    inherit_from: ["InfraInterface", "InfraEndpoint"]
     attributes:
       - name: l2_mode
         label: Layer2 Mode
@@ -172,20 +172,20 @@ nodes:
     relationships:
       - name: untagged_vlan
         label: Untagged VLAN
-        peer: VLAN
+        peer: InfraVLAN
         optional: true
         cardinality: one
         kind: Component
         identifier: interface_l2__untagged_vlan
       - name: tagged_vlan
         label: Tagged VLANs
-        peer: VLAN
+        peer: InfraVLAN
         optional: true
         cardinality: one
         kind: Component
         identifier: interface_l2__tagged_vlan
-  - name: ipaddress
-    kind: IPAddress
+  - name: IPAddress
+    namespace: Infra
     default_filter: address__value
     order_by:
       - "address__value"
@@ -199,12 +199,12 @@ nodes:
         optional: true
     relationships:
       - name: interface
-        peer: InterfaceL3
+        peer: InfraInterfaceL3
         optional: true
         cardinality: one
         kind: Parent
-  - name: vlan
-    kind: VLAN
+  - name: VLAN
+    namespace: Infra
     default_filter: name__value
     order_by:
       - name__value
@@ -220,28 +220,28 @@ nodes:
         kind: Number
     relationships:
       - name: site
-        peer: Location
+        peer: BuiltinLocation
         optional: true
         cardinality: one
         kind: Attribute
       - name: status
-        peer: Status
+        peer: BuiltinStatus
         optional: false
         cardinality: one
         kind: Attribute
       - name: role
-        peer: Role
+        peer: BuiltinRole
         optional: false
         cardinality: one
         kind: Attribute
       - name: gateway
         label: L3 Gateway
-        peer: InterfaceL3
+        peer: InfraInterfaceL3
         optional: true
         cardinality: one
         kind: Attribute
-  - name: circuit
-    kind: Circuit
+  - name: Circuit
+    namespace: Infra
     default_filter: circuit_id__value
     order_by:
       - circuit_id__value
@@ -259,45 +259,45 @@ nodes:
         optional: true
     relationships:
       - name: status
-        peer: Status
+        peer: BuiltinStatus
         optional: false
         cardinality: one
         kind: Attribute
       - name: role
-        peer: Role
+        peer: BuiltinRole
         optional: false
         cardinality: one
         kind: Attribute
       - name: provider
-        peer: Organization
+        peer: CoreOrganization
         optional: false
         cardinality: one
         kind: Attribute
       - name: endpoints
-        peer: CircuitEndpoint
+        peer: InfraCircuitEndpoint
         optional: true
         cardinality: many
         kind: Component
-  - name: circuit_endpoint
-    kind: CircuitEndpoint
+  - name: CircuitEndpoint
+    namespace: Infra
     attributes:
       - name: description
         kind: Text
         optional: true
-    inherit_from: [Endpoint]
+    inherit_from: [InfraEndpoint]
     relationships:
       - name: site
-        peer: Location
+        peer: BuiltinLocation
         optional: false
         cardinality: one
         kind: Attribute
       - name: circuit
-        peer: Circuit
+        peer: InfraCircuit
         optional: false
         cardinality: one
         kind: Parent
-  - name: autonomous_system
-    kind: AutonomousSystem
+  - name: AutonomousSystem
+    namespace: Infra
     default_filter: name__value
     order_by: ["asn__value"]
     display_labels:
@@ -315,12 +315,12 @@ nodes:
         optional: true
     relationships:
       - name: organization
-        peer: Organization
+        peer: CoreOrganization
         optional: false
         cardinality: one
         kind: Attribute
-  - name: bgp_peer_group
-    kind: BGPPeerGroup
+  - name: BGPPeerGroup
+    namespace: Infra
     default_filter: name__value
     order_by:
       - name__value
@@ -341,18 +341,18 @@ nodes:
     relationships:
       - name: local_as
         identifier: bgppeergroup__local_as
-        peer: AutonomousSystem
+        peer: InfraAutonomousSystem
         optional: true
         cardinality: one
         kind: Attribute
       - name: remote_as
         identifier: bgppeergroup__remote_as
-        peer: AutonomousSystem
+        peer: InfraAutonomousSystem
         optional: true
         cardinality: one
         kind: Attribute
-  - name: bgp_session
-    kind: BGPSession
+  - name: BGPSession
+    namespace: Infra
     order_by:
       - device__name__value
       - remote_as__asn__value
@@ -371,50 +371,50 @@ nodes:
         optional: true
     relationships:
       - name: status
-        peer: Status
+        peer: BuiltinStatus
         optional: false
         cardinality: one
         kind: Attribute
       - name: role
-        peer: Role
+        peer: BuiltinRole
         optional: false
         cardinality: one
         kind: Attribute
       - name: local_as
         identifier: bgpsession__local_as
-        peer: AutonomousSystem
+        peer: InfraAutonomousSystem
         optional: true
         cardinality: one
         kind: Attribute
       - name: remote_as
         identifier: bgpsession__remote_as
-        peer: AutonomousSystem
+        peer: InfraAutonomousSystem
         optional: true
         cardinality: one
         kind: Attribute
       - name: local_ip
         identifier: bgpsession__local_ip
-        peer: IPAddress
+        peer: InfraIPAddress
         optional: true
         cardinality: one
         kind: Attribute
       - name: remote_ip
         identifier: bgpsession__remote_ip
-        peer: IPAddress
+        peer: InfraIPAddress
         optional: true
         cardinality: one
         kind: Attribute
       - name: device
-        peer: Device
+        peer: InfraDevice
         optional: true
         cardinality: one
       - name: peer_group
-        peer: BGPPeerGroup
+        peer: InfraBGPPeerGroup
         optional: true
         cardinality: one
         kind: Attribute
       - name: peer_session
-        peer: BGPSession
+        peer: InfraBGPSession
         optional: true
         cardinality: one
         kind: Attribute

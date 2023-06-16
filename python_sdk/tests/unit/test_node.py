@@ -136,7 +136,7 @@ async def test_init_node_data_graphql(client, location_schema, location_data01, 
     assert isinstance(node.tags.peers[0], RelatedNodeBase)
     assert isinstance(node.primary_tag, RelatedNodeBase)
     assert node.primary_tag.id == "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"
-    assert node.primary_tag.typename == "Tag"
+    assert node.primary_tag.typename == "BuiltinTag"
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -147,7 +147,7 @@ async def test_query_data_no_filters(client, location_schema, client_type):
         node = InfrahubNodeSync(client=client, schema=location_schema)
 
     assert node.generate_query_data() == {
-        "location": {
+        "BuiltinLocation": {
             "@filters": {},
             "count": None,
             "edges": {
@@ -573,7 +573,7 @@ async def test_node_fetch_relationship(
 ):  # pylint: disable=unused-argument
     response1 = {
         "data": {
-            "tag": {
+            "BuiltinTag": {
                 "count": 1,
                 "edges": [
                     tag_red_data,
@@ -582,11 +582,13 @@ async def test_node_fetch_relationship(
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-tag-page1"})
+    httpx_mock.add_response(
+        method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-builtintag-page1"}
+    )
 
     response2 = {
         "data": {
-            "tag": {
+            "BuiltinTag": {
                 "count": 1,
                 "edges": [
                     tag_blue_data,
@@ -595,7 +597,9 @@ async def test_node_fetch_relationship(
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-tag-page1"})
+    httpx_mock.add_response(
+        method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-builtintag-page1"}
+    )
 
     if client_type == "standard":
         node = InfrahubNode(client=clients.standard, schema=location_schema, data=location_data01)

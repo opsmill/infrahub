@@ -16,9 +16,9 @@ from infrahub.graphql import generate_graphql_schema
 
 @pytest.fixture
 async def car_person_generics_data(session: AsyncSession, car_person_schema_generics) -> Dict[str, Node]:
-    ecar = registry.get_schema(name="ElectricCar")
-    gcar = registry.get_schema(name="GazCar")
-    person = registry.get_schema(name="Person")
+    ecar = registry.get_schema(name="TestElectricCar")
+    gcar = registry.get_schema(name="TestGazCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -63,7 +63,7 @@ async def test_simple_query(db, session, default_branch: Branch, criticality_sch
 
     query = """
     query {
-        criticality {
+        TestCriticality {
             count
             edges {
                 node {
@@ -86,8 +86,8 @@ async def test_simple_query(db, session, default_branch: Branch, criticality_sch
     )
 
     assert result.errors is None
-    assert result.data["criticality"]["count"] == 2
-    assert len(result.data["criticality"]["edges"]) == 2
+    assert result.data["TestCriticality"]["count"] == 2
+    assert len(result.data["TestCriticality"]["edges"]) == 2
 
 
 async def test_simple_query_with_offset_and_limit(db, session, default_branch: Branch, criticality_schema):
@@ -100,7 +100,7 @@ async def test_simple_query_with_offset_and_limit(db, session, default_branch: B
 
     query = """
     query {
-        criticality(offset: 0, limit:1) {
+        TestCriticality(offset: 0, limit:1) {
             count
             edges {
                 node {
@@ -123,14 +123,14 @@ async def test_simple_query_with_offset_and_limit(db, session, default_branch: B
     )
 
     assert result.errors is None
-    assert result.data["criticality"]["count"] == 2
-    assert len(result.data["criticality"]["edges"]) == 1
+    assert result.data["TestCriticality"]["count"] == 2
+    assert len(result.data["TestCriticality"]["edges"]) == 1
 
 
 async def test_display_label_one_item(db, session, default_branch: Branch, data_schema):
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "display_labels": ["label__value"],
         "branch": True,
         "attributes": [
@@ -148,7 +148,7 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
 
     query = """
     query {
-        criticality {
+        TestCriticality {
             edges {
                 node {
                     id
@@ -169,14 +169,14 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]["edges"]) == 1
-    assert result.data["criticality"]["edges"][0]["node"]["display_label"] == "Low"
+    assert len(result.data["TestCriticality"]["edges"]) == 1
+    assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == "Low"
 
 
 async def test_display_label_multiple_items(db, session, default_branch: Branch, data_schema):
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "display_labels": ["name__value", "level__value"],
         "branch": True,
         "attributes": [
@@ -197,7 +197,7 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
 
     query = """
     query {
-        criticality {
+        TestCriticality {
             edges {
                 node {
                     id
@@ -218,8 +218,8 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]["edges"]) == 2
-    assert sorted([node["node"]["display_label"] for node in result.data["criticality"]["edges"]]) == [
+    assert len(result.data["TestCriticality"]["edges"]) == 2
+    assert sorted([node["node"]["display_label"] for node in result.data["TestCriticality"]["edges"]]) == [
         "low 4",
         "medium 3",
     ]
@@ -227,8 +227,8 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
 
 async def test_display_label_default_value(db, session, default_branch: Branch, data_schema):
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
@@ -245,7 +245,7 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
 
     query = """
     query {
-        criticality {
+        TestCriticality {
             edges {
                 node {
                     id
@@ -266,22 +266,22 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]["edges"]) == 1
-    assert result.data["criticality"]["edges"][0]["node"]["display_label"] == f"Criticality(ID: {obj1.id})"
+    assert len(result.data["TestCriticality"]["edges"]) == 1
+    assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == f"TestCriticality(ID: {obj1.id})"
 
 
 async def test_all_attributes(db, session, default_branch: Branch, data_schema, all_attribute_types_schema):
-    obj1 = await Node.init(session=session, schema="AllAttributeTypes")
+    obj1 = await Node.init(session=session, schema="TestAllAttributeTypes")
     await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
     await obj1.save(session=session)
 
-    obj2 = await Node.init(session=session, schema="AllAttributeTypes")
+    obj2 = await Node.init(session=session, schema="TestAllAttributeTypes")
     await obj2.new(session=session, name="obj2")
     await obj2.save(session=session)
 
     query = """
     query {
-        all_attribute_types {
+        TestAllAttributeTypes {
             edges {
                 node {
                     name { value }
@@ -305,9 +305,9 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     )
 
     assert result.errors is None
-    assert len(result.data["all_attribute_types"]["edges"]) == 2
+    assert len(result.data["TestAllAttributeTypes"]["edges"]) == 2
 
-    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["all_attribute_types"]["edges"]}
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestAllAttributeTypes"]["edges"]}
 
     assert results["obj1"]["mystring"]["value"] == obj1.mystring.value
     assert results["obj1"]["mybool"]["value"] == obj1.mybool.value
@@ -321,8 +321,8 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
 
 
 async def test_nested_query(db, session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -343,7 +343,7 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     name {
@@ -375,15 +375,15 @@ async def test_nested_query(db, session, default_branch: Branch, car_person_sche
 
     assert result.errors is None
 
-    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["TestPerson"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]["edges"]) == 2
     assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
 
 
 async def test_double_nested_query(db, session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -404,7 +404,7 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     name {
@@ -444,7 +444,7 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
 
     assert result.errors is None
 
-    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["TestPerson"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]["edges"]) == 2
     assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
@@ -454,8 +454,8 @@ async def test_double_nested_query(db, session, default_branch: Branch, car_pers
 
 
 async def test_display_label_nested_query(db, session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -476,7 +476,7 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
 
     query = """
     query {
-        person(name__value: "John") {
+        TestPerson(name__value: "John") {
             edges {
                 node {
                     name {
@@ -545,12 +545,12 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
         "name": {"value": "John"},
     }
 
-    assert DeepDiff(result.data["person"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
+    assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
 
 
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -571,7 +571,7 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
 
     query = """
     query {
-        person {
+        TestPerson {
         __typename
             edges {
             __typename
@@ -624,14 +624,14 @@ async def test_query_typename(db, session, default_branch: Branch, car_person_sc
 
     assert result.errors is None
 
-    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["person"]["edges"]}
+    result_per_name = {result["node"]["name"]["value"]: result["node"] for result in result.data["TestPerson"]["edges"]}
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert result.data["person"]["__typename"] == "PaginatedPerson"
-    assert result.data["person"]["edges"][0]["__typename"] == "EdgedPerson"
-    assert result.data["person"]["edges"][0]["node"]["__typename"] == "Person"
-    assert result.data["person"]["edges"][0]["node"]["name"]["__typename"] == "TextAttribute"
-    assert result_per_name["John"]["cars"]["edges"][0]["node"]["__typename"] == "Car"
-    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["__typename"] == "NestedEdgedPerson"
+    assert result.data["TestPerson"]["__typename"] == "PaginatedTestPerson"
+    assert result.data["TestPerson"]["edges"][0]["__typename"] == "EdgedTestPerson"
+    assert result.data["TestPerson"]["edges"][0]["node"]["__typename"] == "TestPerson"
+    assert result.data["TestPerson"]["edges"][0]["node"]["name"]["__typename"] == "TextAttribute"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["__typename"] == "TestCar"
+    assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["__typename"] == "NestedEdgedTestPerson"
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["__typename"] == "TextAttribute"
     assert result_per_name["John"]["cars"]["edges"][0]["properties"]["__typename"] == "RelationshipProperty"
 
@@ -650,7 +650,7 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     query = (
         """
     query {
-        criticality(ids: ["%s"]) {
+        TestCriticality(ids: ["%s"]) {
             edges {
                 node {
                     name {
@@ -675,11 +675,11 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]["edges"]) == 1
+    assert len(result.data["TestCriticality"]["edges"]) == 1
 
     query = """
     query {
-        criticality(ids: ["%s", "%s"]) {
+        TestCriticality(ids: ["%s", "%s"]) {
             edges {
                 node {
                     name {
@@ -705,7 +705,7 @@ async def test_query_filter_ids(db, session, default_branch: Branch, criticality
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]["edges"]) == 2
+    assert len(result.data["TestCriticality"]["edges"]) == 2
 
 
 async def test_query_filter_local_attrs(db, session, default_branch: Branch, criticality_schema):
@@ -718,7 +718,7 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
 
     query = """
     query {
-        criticality(name__value: "low") {
+        TestCriticality(name__value: "low") {
             edges {
                 node {
                     name {
@@ -740,13 +740,13 @@ async def test_query_filter_local_attrs(db, session, default_branch: Branch, cri
     )
 
     assert result.errors is None
-    assert len(result.data["criticality"]["edges"]) == 1
+    assert len(result.data["TestCriticality"]["edges"]) == 1
 
 
 async def test_query_multiple_filters(db, session, default_branch: Branch, car_person_manufacturer_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
-    manufacturer = registry.get_schema(name="Manufacturer")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
+    manufacturer = registry.get_schema(name="TestManufacturer")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -774,7 +774,7 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
 
     query01 = """
     query {
-        car(owner__name__value: "John", nbr_seats__value: 4) {
+        TestCar(owner__name__value: "John", nbr_seats__value: 4) {
             edges {
                 node {
                     id
@@ -797,12 +797,12 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]["edges"]) == 1
-    assert result.data["car"]["edges"][0]["node"]["id"] == c1.id
+    assert len(result.data["TestCar"]["edges"]) == 1
+    assert result.data["TestCar"]["edges"][0]["node"]["id"] == c1.id
 
     query02 = """
     query {
-        car(is_electric__value: true, nbr_seats__value: 4) {
+        TestCar(is_electric__value: true, nbr_seats__value: 4) {
             edges {
                 node {
                     id
@@ -825,12 +825,12 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]["edges"]) == 1
-    assert result.data["car"]["edges"][0]["node"]["id"] == c3.id
+    assert len(result.data["TestCar"]["edges"]) == 1
+    assert result.data["TestCar"]["edges"][0]["node"]["id"] == c3.id
 
     query03 = """
     query {
-        car(owner__name__value: "John", manufacturer__name__value: "ford", ) {
+        TestCar(owner__name__value: "John", manufacturer__name__value: "ford", ) {
             edges {
                 node {
                     id
@@ -853,12 +853,12 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]["edges"]) == 1
-    assert result.data["car"]["edges"][0]["node"]["id"] == c2.id
+    assert len(result.data["TestCar"]["edges"]) == 1
+    assert result.data["TestCar"]["edges"][0]["node"]["id"] == c2.id
 
     query04 = """
     query {
-        car(owner__id: "%s", manufacturer__id: "%s", ) {
+        TestCar(owner__id: "%s", manufacturer__id: "%s", ) {
             edges {
                 node {
                     id
@@ -885,13 +885,13 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
     )
 
     assert result.errors is None
-    assert len(result.data["car"]["edges"]) == 1
-    assert result.data["car"]["edges"][0]["node"]["id"] == c2.id
+    assert len(result.data["TestCar"]["edges"]) == 1
+    assert result.data["TestCar"]["edges"][0]["node"]["id"] == c2.id
 
 
 async def test_query_filter_relationships(db, session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -912,7 +912,7 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
 
     query = """
     query {
-        person(name__value: "John") {
+        TestPerson(name__value: "John") {
             count
             edges {
                 node {
@@ -945,18 +945,18 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     )
 
     assert result.errors is None
-    assert len(result.data["person"]["edges"]) == 1
-    assert result.data["person"]["count"] == 1
-    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
-    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
-    assert result.data["person"]["edges"][0]["node"]["cars"]["count"] == 1
-    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["count"] == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["cars"]["count"] == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
 async def test_query_filter_relationships_with_generic(db, session, default_branch: Branch, car_person_generics_data):
     query = """
     query {
-        person(name__value: "John") {
+        TestPerson(name__value: "John") {
             edges {
                 node {
                     name {
@@ -988,15 +988,15 @@ async def test_query_filter_relationships_with_generic(db, session, default_bran
     )
 
     assert result.errors is None
-    assert len(result.data["person"]["edges"]) == 1
-    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
-    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
-    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
 async def test_query_filter_relationship_id(db, session, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -1018,7 +1018,7 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     query = (
         """
     query {
-        person(name__value: "John") {
+        TestPerson(name__value: "John") {
             edges {
                 node {
                     name {
@@ -1052,26 +1052,26 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     )
 
     assert result.errors is None
-    assert len(result.data["person"]["edges"]) == 1
-    assert result.data["person"]["edges"][0]["node"]["name"]["value"] == "John"
-    assert len(result.data["person"]["edges"][0]["node"]["cars"]["edges"]) == 1
-    assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
 async def test_query_oneway_relationship(db, session, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(session=session, schema="Tag")
+    t1 = await Node.init(session=session, schema="BuiltinTag")
     await t1.new(session=session, name="Blue", description="The Blue tag")
     await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
+    t2 = await Node.init(session=session, schema="BuiltinTag")
     await t2.new(session=session, name="Red")
     await t2.save(session=session)
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
     await p1.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     id
@@ -1100,14 +1100,14 @@ async def test_query_oneway_relationship(db, session, default_branch: Branch, pe
     )
 
     assert result.errors is None
-    assert len(result.data["person"]["edges"][0]["node"]["tags"]["edges"]) == 2
+    assert len(result.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"]) == 2
 
 
 async def test_query_at_specific_time(db, session, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(session=session, schema="Tag")
+    t1 = await Node.init(session=session, schema="BuiltinTag")
     await t1.new(session=session, name="Blue", description="The Blue tag")
     await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
+    t2 = await Node.init(session=session, schema="BuiltinTag")
     await t2.new(session=session, name="Red")
     await t2.save(session=session)
 
@@ -1118,7 +1118,7 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
 
     query = """
     query {
-        tag {
+        BuiltinTag {
             edges {
                 node {
                     name {
@@ -1140,14 +1140,14 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     )
 
     assert result.errors is None
-    assert len(result.data["tag"]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data["tag"]["edges"]])
+    assert len(result.data["BuiltinTag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["BuiltinTag"]["edges"]])
     assert names == ["Blue", "Green"]
 
     # Now query at a specific time
     query = """
     query {
-        tag {
+        BuiltinTag {
             edges {
                 node {
                     name {
@@ -1175,19 +1175,19 @@ async def test_query_at_specific_time(db, session, default_branch: Branch, perso
     )
 
     assert result.errors is None
-    assert len(result.data["tag"]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data["tag"]["edges"]])
+    assert len(result.data["BuiltinTag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["BuiltinTag"]["edges"]])
     assert names == ["Blue", "Red"]
 
 
 async def test_query_attribute_updated_at(db, session, default_branch: Branch, person_tag_schema):
-    p11 = await Node.init(session=session, schema="Person")
+    p11 = await Node.init(session=session, schema="TestPerson")
     await p11.new(session=session, firstname="John", lastname="Doe")
     await p11.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     id
@@ -1215,10 +1215,10 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["updated_at"]
     assert (
-        result1.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
-        == result1.data["person"]["edges"][0]["node"]["lastname"]["updated_at"]
+        result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["updated_at"]
+        == result1.data["TestPerson"]["edges"][0]["node"]["lastname"]["updated_at"]
     )
 
     p12 = await NodeManager.get_one(session=session, id=p11.id)
@@ -1236,21 +1236,21 @@ async def test_query_attribute_updated_at(db, session, default_branch: Branch, p
     )
 
     assert result2.errors is None
-    assert result2.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
+    assert result2.data["TestPerson"]["edges"][0]["node"]["firstname"]["updated_at"]
     assert (
-        result2.data["person"]["edges"][0]["node"]["firstname"]["updated_at"]
-        != result2.data["person"]["edges"][0]["node"]["lastname"]["updated_at"]
+        result2.data["TestPerson"]["edges"][0]["node"]["firstname"]["updated_at"]
+        != result2.data["TestPerson"]["edges"][0]["node"]["lastname"]["updated_at"]
     )
 
 
 async def test_query_node_updated_at(db, session, default_branch: Branch, person_tag_schema):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, firstname="John", lastname="Doe")
     await p1.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     _updated_at
@@ -1271,9 +1271,9 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"][0]["node"]["_updated_at"]
+    assert result1.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
 
-    p2 = await Node.init(session=session, schema="Person")
+    p2 = await Node.init(session=session, schema="TestPerson")
     await p2.new(session=session, firstname="Jane", lastname="Doe")
     await p2.save(session=session)
 
@@ -1288,29 +1288,29 @@ async def test_query_node_updated_at(db, session, default_branch: Branch, person
     )
 
     assert result2.errors is None
-    assert result2.data["person"]["edges"][0]["node"]["_updated_at"]
-    assert result2.data["person"]["edges"][1]["node"]["_updated_at"]
+    assert result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
+    assert result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
     assert (
-        result2.data["person"]["edges"][1]["node"]["_updated_at"]
-        == Timestamp(result2.data["person"]["edges"][1]["node"]["_updated_at"]).to_string()
+        result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
+        == Timestamp(result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]).to_string()
     )
     assert (
-        result2.data["person"]["edges"][0]["node"]["_updated_at"]
-        != result2.data["person"]["edges"][1]["node"]["_updated_at"]
+        result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
+        != result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
     )
 
 
 async def test_query_relationship_updated_at(db, session, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(session=session, schema="Tag")
+    t1 = await Node.init(session=session, schema="BuiltinTag")
     await t1.new(session=session, name="Blue", description="The Blue tag")
     await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="Tag")
+    t2 = await Node.init(session=session, schema="BuiltinTag")
     await t2.new(session=session, name="Red")
     await t2.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     id
@@ -1343,9 +1343,9 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"] == []
+    assert result1.data["TestPerson"]["edges"] == []
 
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, firstname="John", lastname="Doe", tags=[t1, t2])
     await p1.save(session=session)
 
@@ -1360,27 +1360,29 @@ async def test_query_relationship_updated_at(db, session, default_branch: Branch
     )
 
     assert result2.errors is None
-    assert len(result2.data["person"]["edges"][0]["node"]["tags"]["edges"]) == 2
+    assert len(result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"]) == 2
     assert (
-        result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
-        != result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]
+        result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        != result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]
     )
     assert (
-        result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
-        == Timestamp(result2.data["person"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]).to_string()
+        result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        == Timestamp(
+            result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        ).to_string()
     )
 
 
 async def test_query_attribute_node_property_source(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, firstname="John", lastname="Doe", _source=first_account)
     await p1.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     id
@@ -1408,22 +1410,23 @@ async def test_query_attribute_node_property_source(
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"][0]["node"]["firstname"]["source"]
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]
     assert (
-        result1.data["person"]["edges"][0]["node"]["firstname"]["source"]["name"]["value"] == first_account.name.value
+        result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]["name"]["value"]
+        == first_account.name.value
     )
 
 
 async def test_query_attribute_node_property_owner(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, firstname="John", lastname="Doe", _owner=first_account)
     await p1.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     id
@@ -1451,13 +1454,16 @@ async def test_query_attribute_node_property_owner(
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"][0]["node"]["firstname"]["owner"]
-    assert result1.data["person"]["edges"][0]["node"]["firstname"]["owner"]["name"]["value"] == first_account.name.value
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]
+    assert (
+        result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]["name"]["value"]
+        == first_account.name.value
+    )
 
 
 async def test_query_relationship_node_property(db, session, default_branch: Branch, car_person_schema, first_account):
-    car = registry.get_schema(name="Car")
-    person = registry.get_schema(name="Person")
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
 
     p1 = await Node.init(session=session, schema=person)
     await p1.new(session=session, name="John", height=180)
@@ -1487,7 +1493,7 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     id
@@ -1529,7 +1535,7 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
 
     assert result.errors is None
 
-    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["person"]["edges"]}
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestPerson"]["edges"]}
     assert sorted(list(results.keys())) == ["Jane", "John"]
     assert len(results["John"]["cars"]["edges"]) == 1
     assert len(results["Jane"]["cars"]["edges"]) == 1
@@ -1548,7 +1554,7 @@ async def test_query_relationship_node_property(db, session, default_branch: Bra
 async def test_query_attribute_flag_property(
     db, session, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
 ):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(
         session=session,
         firstname={"value": "John", "is_protected": True},
@@ -1559,7 +1565,7 @@ async def test_query_attribute_flag_property(
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     id
@@ -1587,8 +1593,8 @@ async def test_query_attribute_flag_property(
     )
 
     assert result1.errors is None
-    assert result1.data["person"]["edges"][0]["node"]["firstname"]["is_protected"] is True
-    assert result1.data["person"]["edges"][0]["node"]["lastname"]["is_visible"] is False
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_protected"] is True
+    assert result1.data["TestPerson"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
 
 async def test_query_branches(db, session, default_branch: Branch, register_core_models_schema):
@@ -1649,17 +1655,17 @@ async def test_query_multiple_branches(db, session, default_branch: Branch, regi
 
 
 async def test_multiple_queries(db, session, default_branch: Branch, person_tag_schema):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, firstname="John", lastname="Doe")
     await p1.save(session=session)
 
-    p2 = await Node.init(session=session, schema="Person")
+    p2 = await Node.init(session=session, schema="TestPerson")
     await p2.new(session=session, firstname="Jane", lastname="Doe")
     await p2.save(session=session)
 
     query = """
     query {
-        firstperson: person(firstname__value: "John") {
+        firstperson: TestPerson(firstname__value: "John") {
             edges {
                 node {
                     id
@@ -1669,7 +1675,7 @@ async def test_multiple_queries(db, session, default_branch: Branch, person_tag_
                 }
             }
         }
-        secondperson: person(firstname__value: "Jane") {
+        secondperson: TestPerson(firstname__value: "Jane") {
             edges {
                 node {
                     id
@@ -1698,17 +1704,17 @@ async def test_multiple_queries(db, session, default_branch: Branch, person_tag_
 
 
 async def test_model_node_interface(db, session, default_branch: Branch, car_schema):
-    d1 = await Node.init(session=session, schema="Car")
+    d1 = await Node.init(session=session, schema="TestCar")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
     await d1.save(session=session)
 
-    d2 = await Node.init(session=session, schema="Car")
+    d2 = await Node.init(session=session, schema="TestCar")
     await d2.new(session=session, name="Renaud Clio", nbr_doors=4)
     await d2.save(session=session)
 
     query = """
     query {
-        car {
+        TestCar {
             edges {
                 node {
                     name {
@@ -1736,29 +1742,29 @@ async def test_model_node_interface(db, session, default_branch: Branch, car_sch
     )
 
     assert result.errors is None
-    assert sorted([car["node"]["name"]["value"] for car in result.data["car"]["edges"]]) == [
+    assert sorted([car["node"]["name"]["value"] for car in result.data["TestCar"]["edges"]]) == [
         "Porsche 911",
         "Renaud Clio",
     ]
-    assert sorted([car["node"]["nbr_doors"]["value"] for car in result.data["car"]["edges"]]) == [2, 4]
+    assert sorted([car["node"]["nbr_doors"]["value"] for car in result.data["TestCar"]["edges"]]) == [2, 4]
 
 
 async def test_model_rel_interface(db, session, default_branch: Branch, vehicule_person_schema):
-    d1 = await Node.init(session=session, schema="Car")
+    d1 = await Node.init(session=session, schema="TestCar")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
     await d1.save(session=session)
 
-    b1 = await Node.init(session=session, schema="Boat")
+    b1 = await Node.init(session=session, schema="TestBoat")
     await b1.new(session=session, name="Laser", has_sails=True)
     await b1.save(session=session)
 
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John Doe", vehicules=[d1, b1])
     await p1.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     name {
@@ -1770,12 +1776,12 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
                                 name {
                                     value
                                 }
-                                ... on Car {
+                                ... on TestCar {
                                     nbr_doors {
                                         value
                                     }
                                 }
-                                ... on Boat {
+                                ... on TestBoat {
                                     has_sails {
                                         value
                                     }
@@ -1800,7 +1806,7 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
     )
 
     assert result.errors is None
-    assert len(result.data["person"]["edges"][0]["node"]["vehicules"]["edges"]) == 2
+    assert len(result.data["TestPerson"]["edges"][0]["node"]["vehicules"]["edges"]) == 2
     expected_results = {
         "name": {"value": "John Doe"},
         "vehicules": {
@@ -1810,25 +1816,25 @@ async def test_model_rel_interface(db, session, default_branch: Branch, vehicule
             ]
         },
     }
-    assert DeepDiff(result.data["person"]["edges"][0]["node"], expected_results, ignore_order=True).to_dict() == {}
+    assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_results, ignore_order=True).to_dict() == {}
 
 
 async def test_model_rel_interface_reverse(db, session, default_branch: Branch, vehicule_person_schema):
-    d1 = await Node.init(session=session, schema="Car")
+    d1 = await Node.init(session=session, schema="TestCar")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)
     await d1.save(session=session)
 
-    b1 = await Node.init(session=session, schema="Boat")
+    b1 = await Node.init(session=session, schema="TestBoat")
     await b1.new(session=session, name="Laser", has_sails=True)
     await b1.save(session=session)
 
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John Doe", vehicules=[d1, b1])
     await p1.save(session=session)
 
     query = """
     query {
-        boat {
+        TestBoat {
             edges {
                 node {
                     name {
@@ -1861,7 +1867,7 @@ async def test_model_rel_interface_reverse(db, session, default_branch: Branch, 
     )
 
     assert result.errors is None
-    assert len(result.data["boat"]["edges"][0]["node"]["owners"]["edges"]) == 1
+    assert len(result.data["TestBoat"]["edges"][0]["node"]["owners"]["edges"]) == 1
 
 
 @pytest.mark.skip(reason="pending convertion - review use of fragments")
@@ -1956,7 +1962,7 @@ async def test_union_relationship(
 async def test_generic_root_with_pagination(db, session, default_branch: Branch, car_person_generics_data):
     query = """
     query {
-        car(limit: 2) {
+        TestCar(limit: 2) {
             count
             edges {
                 node {
@@ -1979,7 +1985,7 @@ async def test_generic_root_with_pagination(db, session, default_branch: Branch,
         variable_values={},
     )
     expected_response = {
-        "car": {
+        "TestCar": {
             "count": 3,
             "edges": [
                 {"node": {"name": {"value": "bolt"}}},
@@ -1994,7 +2000,7 @@ async def test_generic_root_with_pagination(db, session, default_branch: Branch,
 async def test_generic_root_with_filters(db, session, default_branch: Branch, car_person_generics_data):
     query = """
     query {
-        car(owner__name__value: "John" ) {
+        TestCar(owner__name__value: "John" ) {
             count
             edges {
                 node {
@@ -2017,7 +2023,7 @@ async def test_generic_root_with_filters(db, session, default_branch: Branch, ca
         variable_values={},
     )
     expected_response = {
-        "car": {
+        "TestCar": {
             "count": 2,
             "edges": [
                 {"node": {"name": {"value": "bolt"}}},
@@ -2165,7 +2171,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "attributes": [{"action": "updated", "name": "name"}],
             "changed_at": None,
             "id": "c1",
-            "kind": "Car",
+            "kind": "TestCar",
         },
         {
             "action": "updated",
@@ -2173,7 +2179,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "attributes": [{"action": "updated", "name": "nbr_seats"}],
             "changed_at": None,
             "id": "c1",
-            "kind": "Car",
+            "kind": "TestCar",
         },
         {
             "action": "added",
@@ -2186,7 +2192,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             ],
             "changed_at": base_dataset_02["time_m20"],
             "id": "c2",
-            "kind": "Car",
+            "kind": "TestCar",
         },
         {
             "action": "added",
@@ -2199,7 +2205,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             ],
             "changed_at": base_dataset_02["time_m40"],
             "id": "c3",
-            "kind": "Car",
+            "kind": "TestCar",
         },
     ]
 
@@ -2209,7 +2215,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "branch": "main",
             "changed_at": None,
             "id": "r1",
-            "name": "car__person",
+            "name": "testcar__testperson",
             "properties": [
                 {
                     "action": "updated",
@@ -2224,7 +2230,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "branch": "branch1",
             "changed_at": None,
             "id": "r1",
-            "name": "car__person",
+            "name": "testcar__testperson",
             "properties": [
                 {
                     "action": "updated",
@@ -2239,7 +2245,7 @@ async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
             "branch": "branch1",
             "changed_at": base_dataset_02["time_m20"],
             "id": "r2",
-            "name": "car__person",
+            "name": "testcar__testperson",
             "properties": [
                 {
                     "action": "added",

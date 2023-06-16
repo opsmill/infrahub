@@ -44,7 +44,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
     db = info.context.get("infrahub_database")
     async with db.session(database=config.SETTINGS.database.database) as session:
         results = await NodeManager.query(
-            schema="Account", filters={"ids": [account_session.account_id]}, fields=fields, session=session
+            schema="CoreAccount", filters={"ids": [account_session.account_id]}, fields=fields, session=session
         )
         if results:
             account_profile = await results[0].to_graphql(session=session, fields=fields)

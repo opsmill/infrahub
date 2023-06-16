@@ -27,7 +27,7 @@ async def test_schema_read_endpoint_default_branch(
     assert len(schema["generics"]) == len(core_models.get("generics")) + 1
 
     generics = {item["kind"]: item for item in schema["generics"]}
-    assert generics["Car"]["used_by"]
+    assert generics["TestCar"]["used_by"]
 
 
 async def test_schema_read_endpoint_branch1(
@@ -82,7 +82,7 @@ async def test_schema_load_endpoint_valid_simple(
     assert creation.status_code == 202
     assert read.status_code == 200
     nodes = read.json()["nodes"]
-    device = [node for node in nodes if node["name"] == "device"]
+    device = [node for node in nodes if node["name"] == "Device"]
     assert device
     device = device[0]
     attributes = {attrib["name"]: attrib["order_weight"] for attrib in device["attributes"]}
@@ -113,7 +113,7 @@ async def test_schema_load_endpoint_idempotent_simple(
         assert creation.status_code == 202
         assert read.status_code == 200
         nodes = read.json()["nodes"]
-        device = [node for node in nodes if node["name"] == "device"]
+        device = [node for node in nodes if node["name"] == "Device"]
         assert device
         device = device[0]
         attributes = {attrib["name"]: attrib["order_weight"] for attrib in device["attributes"]}
@@ -197,7 +197,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
     authentication_base,
     helper,
 ):
-    org_schema = registry.schema.get(name="Organization", branch=default_branch.name)
+    org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
 
     # Must execute in a with block to execute the startup/shutdown events
@@ -208,7 +208,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
 
     assert response.status_code == 202
 
-    org_schema = registry.schema.get(name="Organization", branch=default_branch.name)
+    org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
     assert len(org_schema.relationships) == initial_nbr_relationships + 1
 
 

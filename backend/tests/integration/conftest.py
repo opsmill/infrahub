@@ -92,13 +92,13 @@ class IntegrationHelper:
         token = str(uuid4())
         account_name = account_name or "admin"
         response = await NodeManager.query(
-            schema="Account",
+            schema="CoreAccount",
             session=self.session,
             filters={"name__value": account_name},
             limit=1,
         )
         account = response[0]
-        account_token = await Node.init(session=self.session, schema="AccountToken")
+        account_token = await Node.init(session=self.session, schema="InternalAccountToken")
         await account_token.new(
             session=self.session,
             token=token,

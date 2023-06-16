@@ -13,7 +13,7 @@ from infrahub.core.timestamp import Timestamp
 async def test_relationship_init(
     session: AsyncSession, default_branch: Branch, tag_blue_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="Person")
+    person_schema = registry.get_schema(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
@@ -45,7 +45,7 @@ async def test_relationship_init_w_node_property(
     person_jack_main: Node,
     branch: Branch,
 ):
-    person_schema = registry.get_schema(name="Person")
+    person_schema = registry.get_schema(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(
@@ -63,7 +63,7 @@ async def test_relationship_init_w_node_property(
 
 @pytest.fixture
 async def car_smart_properties_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
-    car: Node = await Node.init(session=session, schema="Car", branch=default_branch)
+    car: Node = await Node.init(session=session, schema="TestCar", branch=default_branch)
     await car.new(
         session=session,
         name="smart",
@@ -79,7 +79,7 @@ async def car_smart_properties_main(session: AsyncSession, default_branch: Branc
 async def test_relationship_load_existing(
     session: AsyncSession, person_john_main: Node, car_smart_properties_main: Node, branch: Branch
 ):
-    car_schema = registry.get_schema(name="Car")
+    car_schema = registry.get_schema(name="TestCar")
     rel_schema = car_schema.get_relationship("owner")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=car_smart_properties_main)
@@ -107,7 +107,7 @@ async def test_relationship_load_existing(
 
 
 async def test_relationship_peer(session: AsyncSession, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="Person")
+    person_schema = registry.get_schema(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
@@ -123,7 +123,7 @@ async def test_relationship_peer(session: AsyncSession, tag_blue_main: Node, per
 
 
 async def test_relationship_save(session: AsyncSession, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="Person")
+    person_schema = registry.get_schema(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)

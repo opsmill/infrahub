@@ -12,20 +12,20 @@ def load_graphql_requirements(group_graphql):
 
 
 async def test_delete_object(db, session, default_branch, car_person_schema):
-    obj1 = await Node.init(session=session, schema="Person")
+    obj1 = await Node.init(session=session, schema="TestPerson")
     await obj1.new(session=session, name="John", height=180)
     await obj1.save(session=session)
-    obj2 = await Node.init(session=session, schema="Person")
+    obj2 = await Node.init(session=session, schema="TestPerson")
     await obj2.new(session=session, name="Jim", height=160)
     await obj2.save(session=session)
-    obj3 = await Node.init(session=session, schema="Person")
+    obj3 = await Node.init(session=session, schema="TestPerson")
     await obj3.new(session=session, name="Joe", height=170)
     await obj3.save(session=session)
 
     query = (
         """
     mutation {
-        person_delete(data: {id: "%s"}) {
+        TestPersonDelete(data: {id: "%s"}) {
             ok
         }
     }
@@ -41,6 +41,6 @@ async def test_delete_object(db, session, default_branch, car_person_schema):
     )
 
     assert result.errors is None
-    assert result.data["person_delete"]["ok"] is True
+    assert result.data["TestPersonDelete"]["ok"] is True
 
     assert not await NodeManager.get_one(session=session, id=obj1.id)

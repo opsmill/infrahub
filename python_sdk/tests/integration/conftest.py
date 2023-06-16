@@ -59,8 +59,8 @@ async def init_db_base(session: AsyncSession):
 @pytest.fixture
 async def location_schema() -> NodeSchema:
     data = {
-        "name": "location",
-        "kind": "Location",
+        "name": "Location",
+        "namespace": "Builtin",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
@@ -68,8 +68,8 @@ async def location_schema() -> NodeSchema:
             {"name": "type", "kind": "String"},
         ],
         "relationships": [
-            {"name": "tags", "peer": "Tag", "optional": True, "cardinality": "many"},
-            {"name": "primary_tag", "peer": "Tag", "optional": True, "cardinality": "one"},
+            {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
+            {"name": "primary_tag", "peer": "BultinTag", "optional": True, "cardinality": "one"},
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -77,7 +77,7 @@ async def location_schema() -> NodeSchema:
 
 @pytest.fixture
 async def tag_blue(session: AsyncSession) -> Node:
-    obj = await Node.init(schema="Tag", session=session)
+    obj = await Node.init(schema="BuiltinTag", session=session)
     await obj.new(session=session, name="Blue")
     await obj.save(session=session)
     return obj
@@ -85,7 +85,7 @@ async def tag_blue(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def tag_red(session: AsyncSession) -> Node:
-    obj = await Node.init(schema="Tag", session=session)
+    obj = await Node.init(schema="BuiltinTag", session=session)
     await obj.new(session=session, name="Red")
     await obj.save(session=session)
     return obj
@@ -93,7 +93,7 @@ async def tag_red(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def tag_green(session: AsyncSession) -> Node:
-    obj = await Node.init(schema="Tag", session=session)
+    obj = await Node.init(schema="BuiltinTag", session=session)
     await obj.new(session=session, name="Green")
     await obj.save(session=session)
     return obj
@@ -101,7 +101,7 @@ async def tag_green(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def first_account(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="Account")
+    obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="First Account", type="Git", password="TestPassword123")
     await obj.save(session=session)
     return obj
@@ -109,7 +109,7 @@ async def first_account(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def second_account(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="Account")
+    obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="Second Account", type="Git", password="TestPassword123")
     await obj.save(session=session)
     return obj
@@ -117,7 +117,7 @@ async def second_account(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def repo01(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="Repository")
+    obj = await Node.init(session=session, schema="CoreRepository")
     await obj.new(session=session, name="repo01", location="https://github.com/my/repo.git")
     await obj.save(session=session)
     return obj
@@ -125,7 +125,7 @@ async def repo01(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def repo99(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="Repository")
+    obj = await Node.init(session=session, schema="CoreRepository")
     await obj.new(session=session, name="repo99", location="https://github.com/my/repo99.git")
     await obj.save(session=session)
     return obj
@@ -133,7 +133,7 @@ async def repo99(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def gqlquery01(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="GraphQLQuery")
+    obj = await Node.init(session=session, schema="CoreGraphQLQuery")
     await obj.new(session=session, name="query01", query="query { device { name { value }}}")
     await obj.save(session=session)
     return obj
@@ -141,7 +141,7 @@ async def gqlquery01(session: AsyncSession) -> Node:
 
 @pytest.fixture
 async def gqlquery02(session: AsyncSession, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
-    obj = await Node.init(session=session, schema="GraphQLQuery")
+    obj = await Node.init(session=session, schema="CoreGraphQLQuery")
     await obj.new(
         session=session,
         name="query02",

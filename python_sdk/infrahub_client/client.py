@@ -191,7 +191,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
             nodes = [
                 InfrahubNode(client=self, schema=schema, branch=branch, data=item)
-                for item in response[schema.name]["edges"]
+                for item in response[schema.kind]["edges"]
             ]
         else:
             has_remaining_items = True
@@ -213,11 +213,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 nodes.extend(
                     [
                         InfrahubNode(client=self, schema=schema, branch=branch, data=item)
-                        for item in response[schema.name]["edges"]
+                        for item in response[schema.kind]["edges"]
                     ]
                 )
 
-                remaining_items = response[schema.name].get("count", 0) - (page_offset + self.pagination_size)
+                remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
                 if remaining_items < 0:
                     has_remaining_items = False
 
@@ -434,7 +434,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         repositories = {}
 
         for branch_name, response in zip(branch_names, responses):
-            repos = response["repository"]["edges"]
+            repos = response["CoreRepository"]["edges"]
             for repository in repos:
                 repo_name = repository["node"]["name"]["value"]
                 if repo_name not in repositories:
@@ -628,7 +628,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
             nodes = [
                 InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item)
-                for item in response[schema.name]["edges"]
+                for item in response[schema.kind]["edges"]
             ]
 
         else:
@@ -651,11 +651,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 nodes.extend(
                     [
                         InfrahubNodeSync(client=self, schema=schema, branch=branch, data=item)
-                        for item in response[schema.name]["edges"]
+                        for item in response[schema.kind]["edges"]
                     ]
                 )
 
-                remaining_items = response[schema.name].get("count", 0) - (page_offset + self.pagination_size)
+                remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
                 if remaining_items < 0:
                     has_remaining_items = False
 
