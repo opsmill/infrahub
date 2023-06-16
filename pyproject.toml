@@ -145,7 +145,6 @@ disable = """,
     fixme,
     consider-using-f-string,
     protected-access,
-    cyclic-import,
     import-self,
     wrong-import-order,
     """

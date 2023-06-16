@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Union
 from uuid import UUID
 
+from infrahub.core.registry import registry
+
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
@@ -114,12 +116,12 @@ class NodePropertyMixin:
 
     async def _retrieve_node_property(self, session: AsyncSession, name: str):
         """Query the node associated with this node_property from the database."""
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
 
-        node = await NodeManager.get_one(
+        node = await registry.node_manager.get_one(
             session=session, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at
         )
         setattr(self, f"_{name}", node)
+        if node:
+            setattr(self, f"{name}_id", node.id)
         if node:
             setattr(self, f"{name}_id", node.id)
