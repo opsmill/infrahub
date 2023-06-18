@@ -171,9 +171,6 @@ class InfrahubInterface(Interface, GetListMixin):
     def resolve_type(cls, instance, info):
         branch = info.context["infrahub_branch"]
 
-        if "Related" in cls.__name__ and "type" in instance:
-            return registry.get_graphql_type(name=f"Related{instance['type']}", branch=branch)
-
         if "type" in instance:
             return registry.get_graphql_type(name=instance["type"], branch=branch)
 
@@ -269,16 +266,6 @@ class RelatedNodeInput(InputObjectType):
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
     _relation__source = String(required=False)
-
-
-class RelatedNodeInterface(InfrahubInterface):
-    _relation__updated_at = DateTime(required=False)
-    _relation__is_visible = Boolean(required=False)
-    _relation__is_protected = Boolean(required=False)
-    # Since _relation__owner and _relation__source are using a Type that is generated dynamically
-    # these 2 fields will be dynamically inserted when we generate the GraphQL Schema
-    # _relation__owner = Field("DataOwner", required=False)
-    # _relation__source = Field("DataSource", required=False)
 
 
 class AttributeInterface(InfrahubInterface):
