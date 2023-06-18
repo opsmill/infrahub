@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
@@ -9,6 +9,7 @@ from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
+    NodeToProcess,
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
@@ -26,6 +27,24 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=redefined-builtin
+
+
+def identify_node_class(node: NodeToProcess) -> Type[Node]:
+    """Identify the proper class to use to create the NodeObject.
+
+    If there is a class in the registry matching the name Kind, use it
+    If there is a class in the registry matching one of the node Parent, use it
+    Otherwise use Node
+    """
+    if node.schema.kind in registry.node:
+        return registry.node[node.schema.kind]
+
+    if node.schema.inherit_from:
+        for parent in node.schema.inherit_from:
+            if parent in registry.node:
+                return registry.node[parent]
+
+    return Node
 
 
 class NodeManager:
@@ -239,7 +258,7 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(session=session, ids=ids, branch=branch, account=account, at=at)
         await query.execute(session=session)
-        nodes_info_by_id = {node.node_uuid: node async for node in query.get_nodes()}
+        nodes_info_by_id: Dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes()}
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
@@ -333,11 +352,7 @@ class NodeManager:
                         elif rel_schema.cardinality == "many":
                             attrs[rel_schema.name] = rel_peers
 
-            # Identify the proper Class to use for this Node
-            node_class = Node
-            if node.schema.kind in registry.node:
-                node_class = registry.node[node.schema.kind]
-
+            node_class = identify_node_class(node=node)
             item = await node_class.init(schema=node.schema, branch=branch, at=at, session=session)
             await item.load(**attrs, session=session)
 
