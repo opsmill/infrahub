@@ -9,6 +9,7 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.group import Group
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -732,6 +733,8 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
 
 @pytest.fixture
 async def group_graphql(session: AsyncSession, default_branch: Branch, group_schema) -> None:
+    registry.node["Group"] = Group
+
     load_node_interface(branch=default_branch)
     load_attribute_types_in_registry(branch=default_branch)
     schema = registry.schema.get(name="Group", branch=default_branch)
