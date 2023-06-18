@@ -15,6 +15,8 @@ from .mutations import (
     BranchValidate,
     GroupMemberAdd,
     GroupMemberRemove,
+    GroupSubscriberAdd,
+    GroupSubscriberRemove,
 )
 from .types import BranchDiffType, BranchType
 from .utils import extract_fields
@@ -97,3 +99,5 @@ class InfrahubBaseMutation(ObjectType):
 
     group_member_add = GroupMemberAdd.Field()
     group_member_remove = GroupMemberRemove.Field()
+    group_subscriber_add = GroupSubscriberAdd.Field()
+    group_subscriber_remove = GroupSubscriberRemove.Field()

@@ -1077,6 +1077,54 @@ async def person_jack_tags_main(
 
 
 @pytest.fixture
+async def group_group1_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+) -> Node:
+    obj = await Group.init(session=session, schema="Group", branch=default_branch)
+    await obj.new(session=session, name="group1")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def group_group1_members_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="Group", branch=default_branch)
+    await obj.new(session=session, name="group1")
+    await obj.save(session=session)
+
+    await obj.members.add(session=session, nodes=[person_john_main, person_jim_main])
+
+    return obj
+
+
+@pytest.fixture
+async def group_group1_subscribers_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="Group", branch=default_branch)
+    await obj.new(session=session, name="group1")
+    await obj.save(session=session)
+
+    await obj.subscribers.add(session=session, nodes=[person_john_main, person_jim_main, person_albert_main])
+
+    return obj
+
+
+@pytest.fixture
 async def all_attribute_types_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "all_attribute_types",

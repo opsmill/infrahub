@@ -146,3 +146,52 @@ class GroupHasAssociationQuery(GroupQuery):
         # pylint: disable=simplifiable-if-expression
         members = [result.get("mb.uuid") for result in self.get_results()]
         return {node_id: True if node_id in members else False for node_id in self.node_ids}
+
+
+class GroupRemoveAssociationQuery(GroupQuery):
+    name = "group_association_remove"
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        node_ids: List[str],
+        *args,
+        **kwargs,
+    ):
+        self.node_ids = node_ids
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["group_id"] = self.group.id
+        self.params["node_ids"] = self.node_ids
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (grp { uuid: $group_id })
+        MATCH (mb:Node) WHERE mb.uuid IN $node_ids
+        CALL {
+            WITH grp, mb
+            MATCH (grp)-[r:%s]-(mb:Node)
+            WHERE %s
+            RETURN DISTINCT mb as mb1, r as r1, grp as grp1
+            ORDER BY [r.branch_level, r.from] DESC
+        }
+        WITH mb1 as mb, r1 as r, grp1 as grp
+        WHERE r.status = "active"
+        CREATE (mb)-[:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(grp)
+        SET r.to = $at
+        """ % (
+            self.rel_name,
+            rels_filter,
+            self.rel_name,
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["mb", "r"]

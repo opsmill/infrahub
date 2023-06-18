@@ -9,6 +9,7 @@ from infrahub.exceptions import NodeNotFound
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
+
 # pylint: disable=unused-argument
 
 
@@ -17,18 +18,18 @@ class GroupMembersInput(InputObjectType):
     members = List(of_type=String)
 
 
-class GroupMemberAdd(Mutation):
-    class Arguments:
-        data = GroupMembersInput(required=True)
+class GroupSubscribersInput(InputObjectType):
+    id = String(required=True)
+    subscribers = List(of_type=String)
 
-    ok = Boolean()
 
+class GroupAssociationMixin:
     @classmethod
     async def mutate(
         cls,
         root: dict,
         info: GraphQLResolveInfo,
-        data: GroupMembersInput,
+        data,
     ):
         session: AsyncSession = info.context.get("infrahub_session")
         at = info.context.get("infrahub_at")
@@ -41,26 +42,39 @@ class GroupMemberAdd(Mutation):
         ):
             raise NodeNotFound(branch, "Group", data.get("id"))
 
-        await group.members.add(session=session, nodes=data["members"])
+        if cls.__name__ == "GroupMemberAdd":
+            await group.members.add(session=session, nodes=data["members"])
+        elif cls.__name__ == "GroupMemberRemove":
+            await group.members.remove(session=session, nodes=data["members"])
+        elif cls.__name__ == "GroupSubscriberAdd":
+            await group.subscribers.add(session=session, nodes=data["subscribers"])
+        elif cls.__name__ == "GroupSubscriberRemove":
+            await group.subscribers.remove(session=session, nodes=data["subscribers"])
 
 
-class GroupMemberRemove(Mutation):
+class GroupMemberAdd(GroupAssociationMixin, Mutation):
     class Arguments:
         data = GroupMembersInput(required=True)
 
     ok = Boolean()
 
-    @classmethod
-    async def mutate(
-        cls,
-        root: dict,
-        info: GraphQLResolveInfo,
-        data: GroupMembersInput,
-    ):
-        session: AsyncSession = info.context.get("infrahub_session")
-        at = info.context.get("infrahub_at")
-        branch = info.context.get("infrahub_branch")
 
-        group = await NodeManager.get_one(session=session, id=data["id"], branch=branch, at=at)
+class GroupMemberRemove(GroupAssociationMixin, Mutation):
+    class Arguments:
+        data = GroupMembersInput(required=True)
 
-        await group.members.remove(session=session, nodes=data["members"])
+    ok = Boolean()
+
+
+class GroupSubscriberAdd(GroupAssociationMixin, Mutation):
+    class Arguments:
+        data = GroupSubscribersInput(required=True)
+
+    ok = Boolean()
+
+
+class GroupSubscriberRemove(GroupAssociationMixin, Mutation):
+    class Arguments:
+        data = GroupSubscribersInput(required=True)
+
+    ok = Boolean()

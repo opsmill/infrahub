@@ -8,6 +8,7 @@ from infrahub.core.query.group import (
     GroupAddAssociationQuery,
     GroupGetAssociationQuery,
     GroupHasAssociationQuery,
+    GroupRemoveAssociationQuery,
 )
 
 if TYPE_CHECKING:
@@ -76,25 +77,21 @@ class GroupAssociation:
         await query.execute(session=session)
 
     async def remove(self, session: AsyncSession, nodes: Union[Node, List[Node]]):
-        pass
-        # node_ids = extract_node_ids(nodes=nodes)
-        # memberships = await self.has(session=session, nodes=node_ids)
+        node_ids = extract_node_ids(nodes=nodes)
 
-        # [node for node in node_ids if node in memberships and memberships[node] is True]
-
-        # query = await GroupGetAssociationQuery.init(
-        #     association_type=self.association_type,
-        #     group=self.group,
-        #     node_ids=node_ids_to_add,
-        #     branch=self.group._branch
-        # )
-        # await query.execute()
-        # return await query.get_members()
+        query = await GroupRemoveAssociationQuery.init(
+            session=session,
+            association_type=self.association_type,
+            group=self.group,
+            node_ids=node_ids,
+            branch=self.group._branch,
+        )
+        await query.execute(session=session)
 
 
 class Group(Node):
     def __init__(self, *args, **kwargs):
         self.members = GroupAssociation(group=self, association_type=GroupAssociationType.MEMBER)
-        self.subcribers = GroupAssociation(group=self, association_type=GroupAssociationType.SUBSCRIBER)
+        self.subscribers = GroupAssociation(group=self, association_type=GroupAssociationType.SUBSCRIBER)
 
         super().__init__(*args, **kwargs)

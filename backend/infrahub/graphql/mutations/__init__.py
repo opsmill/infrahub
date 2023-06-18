@@ -16,7 +16,12 @@ from .branch import (
     BranchRebase,
     BranchValidate,
 )
-from .group import GroupMemberAdd, GroupMemberRemove, GroupMembersInput
+from .group import (
+    GroupMemberAdd,
+    GroupMemberRemove,
+    GroupSubscriberAdd,
+    GroupSubscriberRemove,
+)
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .repository import InfrahubRepositoryMutation
 
@@ -33,7 +38,8 @@ __all__ = [
     "CheckboxAttributeInput",
     "GroupMemberAdd",
     "GroupMemberRemove",
-    "GroupMembersInput",
+    "GroupSubscriberAdd",
+    "GroupSubscriberRemove",
     "InfrahubRepositoryMutation",
     "InfrahubMutationOptions",
     "InfrahubMutation",
