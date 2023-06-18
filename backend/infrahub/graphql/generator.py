@@ -284,6 +284,12 @@ def load_attribute_types_in_registry(branch: Branch):
         )
 
 
+def load_node_interface(branch: Branch):
+    node_interface_schema = GenericSchema(name="node", kind="Node", description="Interface for all nodes in Infrahub")
+    interface = generate_interface_object(schema=node_interface_schema, branch=branch)
+    registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
+
+
 async def generate_object_types(
     session: AsyncSession, branch: Union[Branch, str]
 ):  # pylint: disable=too-many-branches,too-many-statements
@@ -296,11 +302,7 @@ async def generate_object_types(
     group_memberships = defaultdict(list)
 
     load_attribute_types_in_registry(branch=branch)
-
-    # Generate an Interface that we'll apply to all ObjectType
-    node_interface_schema = GenericSchema(name="node", kind="Node", description="Interface for all nodes in Infrahub")
-    interface = generate_interface_object(schema=node_interface_schema, branch=branch)
-    registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
+    load_node_interface(branch=branch)
 
     # Generate all GraphQL Interface  Object first and store them in the registry
     for node_name, node_schema in full_schema.items():

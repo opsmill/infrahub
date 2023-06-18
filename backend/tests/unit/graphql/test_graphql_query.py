@@ -11,6 +11,11 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import generate_graphql_schema
 
 
+@pytest.fixture(autouse=True)
+def load_graphql_requirements(group_graphql):
+    pass
+
+
 async def test_simple_query(db, session, default_branch: Branch, criticality_schema):
     obj1 = await Node.init(session=session, schema=criticality_schema)
     await obj1.new(session=session, name="low", level=4)

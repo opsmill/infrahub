@@ -1,8 +1,14 @@
+import pytest
 from graphql import graphql
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql import generate_graphql_schema
+
+
+@pytest.fixture(autouse=True)
+def load_graphql_requirements(group_graphql):
+    pass
 
 
 async def test_create_simple_object(db, session, default_branch, car_person_schema):

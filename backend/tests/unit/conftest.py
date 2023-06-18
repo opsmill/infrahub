@@ -28,6 +28,11 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
+from infrahub.graphql.generator import (
+    generate_interface_object,
+    load_attribute_types_in_registry,
+    load_node_interface,
+)
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
 
@@ -723,6 +728,16 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def group_graphql(session: AsyncSession, default_branch: Branch, group_schema) -> None:
+    load_node_interface(branch=default_branch)
+    load_attribute_types_in_registry(branch=default_branch)
+    schema = registry.schema.get(name="Group", branch=default_branch)
+    interface = generate_interface_object(schema=schema, branch=default_branch)
+    registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=default_branch.name)
+
 
 @pytest.fixture
 async def car_person_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:

@@ -12,6 +12,7 @@ from infrahub.graphql.generator import (
     generate_object_types,
     generate_union_object,
     load_attribute_types_in_registry,
+    load_node_interface,
 )
 from infrahub.graphql.types import InfrahubObject
 
@@ -22,6 +23,7 @@ async def test_input_type_registration():
 
 async def test_generate_interface_object(session, default_branch: Branch, generic_vehicule_schema):
     load_attribute_types_in_registry(branch=default_branch)
+    load_node_interface(branch=default_branch)
 
     result = generate_interface_object(schema=generic_vehicule_schema, branch=default_branch)
     assert inspect.isclass(result)
@@ -31,10 +33,14 @@ async def test_generate_interface_object(session, default_branch: Branch, generi
 
 
 async def test_generate_union_object(
-    session, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema, group_on_road_vehicule_schema
+    session,
+    default_branch: Branch,
+    data_schema,
+    group_graphql,
+    generic_vehicule_schema,
+    car_schema,
+    group_on_road_vehicule_schema,
 ):
-    load_attribute_types_in_registry(branch=default_branch)
-
     node_type = generate_interface_object(generic_vehicule_schema, branch=default_branch)
     registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
 
@@ -52,9 +58,7 @@ async def test_generate_union_object(
     assert result._meta.schema == group_on_road_vehicule_schema
 
 
-async def test_generate_graphql_object(session, default_branch: Branch, criticality_schema):
-    load_attribute_types_in_registry(branch=default_branch)
-
+async def test_generate_graphql_object(session, default_branch: Branch, group_graphql, criticality_schema):
     result = generate_graphql_object(schema=criticality_schema, branch=default_branch)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
@@ -64,6 +68,7 @@ async def test_generate_graphql_object(session, default_branch: Branch, critical
         "color",
         "description",
         "display_label",
+        "groups",
         "id",
         "is_false",
         "is_true",
@@ -75,10 +80,8 @@ async def test_generate_graphql_object(session, default_branch: Branch, critical
 
 
 async def test_generate_graphql_object_with_interface(
-    session, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema
+    session, default_branch: Branch, data_schema, group_graphql, generic_vehicule_schema, car_schema
 ):
-    load_attribute_types_in_registry(branch=default_branch)
-
     node_type = generate_interface_object(generic_vehicule_schema, branch=default_branch)
     registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
 
@@ -90,31 +93,26 @@ async def test_generate_graphql_object_with_interface(
         "_updated_at",
         "description",
         "display_label",
+        "groups",
         "id",
         "name",
         "nbr_doors",
     ]
 
 
-async def test_generate_graphql_mutation_create(session, default_branch: Branch, criticality_schema):
-    load_attribute_types_in_registry(branch=default_branch)
-
+async def test_generate_graphql_mutation_create(session, default_branch: Branch, group_graphql, criticality_schema):
     result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch)
     assert result._meta.name == "CriticalityCreate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
-async def test_generate_graphql_mutation_update(session, default_branch: Branch, criticality_schema):
-    load_attribute_types_in_registry(branch=default_branch)
-
+async def test_generate_graphql_mutation_update(session, default_branch: Branch, group_graphql, criticality_schema):
     result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch)
     assert result._meta.name == "CriticalityUpdate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
-async def test_generate_object_types(session, default_branch: Branch, data_schema, car_person_schema):
-    load_attribute_types_in_registry(branch=default_branch)
-
+async def test_generate_object_types(session, default_branch: Branch, data_schema, group_graphql, car_person_schema):
     await generate_object_types(session=session, branch=default_branch)
 
     car = registry.get_graphql_type(name="Car", branch=default_branch)
@@ -136,6 +134,7 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "_updated_at",
         "color",
         "display_label",
+        "groups",
         "id",
         "is_electric",
         "name",
@@ -149,7 +148,15 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
     assert str(nested_edged_car._meta.fields["node"].type) == "Car"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
-    assert sorted(list(person._meta.fields.keys())) == ["_updated_at", "cars", "display_label", "height", "id", "name"]
+    assert sorted(list(person._meta.fields.keys())) == [
+        "_updated_at",
+        "cars",
+        "display_label",
+        "groups",
+        "height",
+        "id",
+        "name",
+    ]
     assert sorted(list(edged_person._meta.fields.keys())) == ["node"]
     assert str(edged_person._meta.fields["node"].type) == "Person"
     assert sorted(list(nested_edged_person._meta.fields.keys())) == ["node", "properties"]
