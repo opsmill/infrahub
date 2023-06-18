@@ -666,7 +666,6 @@ def generate_nested_interface_object(
     }
 
     main_attrs = {
-        "display_label": graphene.String(required=False),
         "node": graphene.Field(base_interface, required=False),
         "_updated_at": graphene.DateTime(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
