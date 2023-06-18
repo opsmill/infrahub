@@ -691,6 +691,40 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
 
 @pytest.fixture
+async def group_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "group",
+                "kind": "Group",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "standard_group",
+                "kind": "StandardGroup",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": True,
+                "inherit_from": ["Group"],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+@pytest.fixture
 async def car_person_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
