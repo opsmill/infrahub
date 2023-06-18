@@ -143,5 +143,6 @@ class GroupHasAssociationQuery(GroupQuery):
         self.return_labels = ["mb.uuid"]
 
     async def get_memberships(self) -> Dict[str, bool]:
+        # pylint: disable=simplifiable-if-expression
         members = [result.get("mb.uuid") for result in self.get_results()]
         return {node_id: True if node_id in members else False for node_id in self.node_ids}

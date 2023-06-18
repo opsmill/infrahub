@@ -76,10 +76,11 @@ class GroupAssociation:
         await query.execute(session=session)
 
     async def remove(self, session: AsyncSession, nodes: Union[Node, List[Node]]):
-        node_ids = extract_node_ids(nodes=nodes)
-        memberships = await self.has(session=session, nodes=node_ids)
+        pass
+        # node_ids = extract_node_ids(nodes=nodes)
+        # memberships = await self.has(session=session, nodes=node_ids)
 
-        [node for node in node_ids if node in memberships and memberships[node] is True]
+        # [node for node in node_ids if node in memberships and memberships[node] is True]
 
         # query = await GroupGetAssociationQuery.init(
         #     association_type=self.association_type,
