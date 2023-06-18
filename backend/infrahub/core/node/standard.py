@@ -1,15 +1,14 @@
 import uuid
-from typing import List, Optional, TypeVar
+from typing import List, Optional
 from uuid import UUID
 
 from neo4j import AsyncSession
 from pydantic import BaseModel
+from typing_extensions import Self
 
 from infrahub.core.query import Query, QueryType
 from infrahub.database import execute_read_query_async, execute_write_query_async
 from infrahub.exceptions import QueryError
-
-SelfNode = TypeVar("SelfNode", bound="StandardNode")
 
 # pylint: disable=redefined-builtin
 
@@ -188,7 +187,7 @@ class StandardNode(BaseModel):
         return cls(**attrs)
 
     @classmethod
-    async def get_list(cls, session: AsyncSession, limit: int = 1000, **kwargs) -> List[SelfNode]:
+    async def get_list(cls, session: AsyncSession, limit: int = 1000, **kwargs) -> List[Self]:
         params = {"limit": limit}
 
         filters = []

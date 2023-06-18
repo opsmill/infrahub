@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub.core import registry
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
@@ -22,16 +22,13 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from neo4j import AsyncSession
+    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.schema import NodeSchema, RelationshipSchema
 
 # pylint: disable=redefined-builtin
-
-
-SelfRelationship = TypeVar("SelfRelationship", bound="Relationship")
-SelfRelationshipManager = TypeVar("SelfRelationshipManager", bound="RelationshipManager")
 
 
 PREFIX_PROPERTY = "_relation__"
@@ -106,7 +103,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         session: AsyncSession,
         data: Union[dict, RelationshipPeerData, Any] = None,
         **kwargs,
-    ) -> SelfRelationship:
+    ) -> Self:
         await self._process_data(data=data)
 
         return self
@@ -118,7 +115,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         db_id: Optional[int] = None,
         updated_at: Union[Timestamp, str] = None,
         data: Union[dict, RelationshipPeerData, Any] = None,
-    ) -> SelfRelationship:
+    ) -> Self:
         self.id = id
         self.db_id = db_id
 
@@ -319,7 +316,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         )
         await query.execute(session=session)
 
-    async def save(self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None) -> SelfRelationship:
+    async def save(self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None) -> Self:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
@@ -629,7 +626,7 @@ class RelationshipManager:
         )
         await query.execute(session=session)
 
-    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> SelfRelationshipManager:
+    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)

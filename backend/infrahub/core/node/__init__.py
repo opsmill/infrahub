@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 from uuid import UUID
 
 from infrahub.core import get_branch, registry
@@ -18,6 +18,7 @@ from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
 
@@ -31,8 +32,6 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------------
 
 # pylint: disable=redefined-builtin,too-many-branches
-
-SelfNode = TypeVar("SelfNode", bound="Node")
 
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
@@ -90,7 +89,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         schema: Union[NodeSchema, str],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> Node:
+    ) -> Self:
         attrs = {}
 
         branch = await get_branch(branch=branch, session=session)
@@ -239,7 +238,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
 
-    async def new(self, session: AsyncSession, **kwargs) -> SelfNode:
+    async def new(self, session: AsyncSession, **kwargs) -> Self:
         await self._process_fields(session=session, fields=kwargs)
         return self
 
@@ -250,7 +249,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         db_id: Optional[int] = None,
         updated_at: Union[Timestamp, str] = None,
         **kwargs,
-    ) -> SelfNode:
+    ) -> Self:
         self.id = id
         self.db_id = db_id
 
@@ -306,7 +305,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self,
         session: AsyncSession,
         at: Optional[Timestamp] = None,
-    ) -> SelfNode:
+    ) -> Self:
         """Create or Update the Node in the database."""
 
         save_at = Timestamp(at)
