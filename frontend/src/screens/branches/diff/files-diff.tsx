@@ -59,7 +59,7 @@ export const FilesDiff = () => {
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="bg-white p-4">
+          <div key={index} className="bg-white p-4 border border-blue-500 rounded-md m-2">
             {comment.message}
           </div>
         )),
@@ -88,8 +88,8 @@ export const FilesDiff = () => {
     const { oldPath, oldRevision, newRevision, type, hunks } = options;
 
     return (
-      <div className="p-4 m-4 bg-white">
-        <div className="">{oldPath}</div>
+      <div className="p-4 m-4 bg-gray-50">
+        <div className="font-semibold">{oldPath}</div>
 
         <Diff
           key={oldRevision + "-" + newRevision}
@@ -105,5 +105,5 @@ export const FilesDiff = () => {
     );
   };
 
-  return <div>{files.map(renderFile)}</div>;
+  return <div className="bg-white">{files.map(renderFile)}</div>;
 };
