@@ -26,7 +26,11 @@ export const objectToString = (object: any) =>
 
 export const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
 
-export const parseJwt = (token: string) => {
+export const parseJwt = (token: string | null) => {
+  if (!token) {
+    return;
+  }
+
   try {
     return JSON.parse(atob(token.split(".")[1]));
   } catch (e) {
