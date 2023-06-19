@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import AsyncIterator, Optional
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -31,7 +31,7 @@ class BranchParams(BaseModel):
         arbitrary_types_allowed = True
 
 
-async def get_session(request: Request) -> AsyncSession:
+async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
     session = request.app.state.db.session(database=config.SETTINGS.database.database)
     try:
         yield session
