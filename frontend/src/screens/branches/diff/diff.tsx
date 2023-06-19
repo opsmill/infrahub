@@ -5,6 +5,7 @@ import { Tabs } from "../../../components/tabs";
 import { QSP } from "../../../config/qsp";
 import { DynamicFieldData } from "../../edit-form-hook/dynamic-control-types";
 import { DataDiff } from "./data-diff";
+import { FilesDiff } from "./files-diff";
 import { SchemaDiff } from "./schema-diff";
 
 const DIFF_TABS = {
@@ -51,8 +52,7 @@ const tabs = [
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case DIFF_TABS.FILES:
-      // return <FilesDiff />;
-      return null;
+      return <FilesDiff />;
     case DIFF_TABS.SCHEMA:
       return <SchemaDiff />;
     default:

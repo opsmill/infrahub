@@ -1,66 +1,109 @@
-import { useParams } from "react-router-dom";
-import { useCallback, useEffect, useState } from "react";
-import { DataDiffNode } from "./data-diff-node";
-import { CONFIG } from "../../../config/config";
-import { fetchUrl } from "../../../utils/fetch";
-import { QSP } from "../../../config/qsp";
-import { StringParam, useQueryParam } from "use-query-params";
-import LoadingScreen from "../../loading-screen/loading-screen";
-import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
+import { PencilIcon } from "@heroicons/react/24/outline";
+import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
+import "react-diff-view/style/index.css";
+import { Button } from "../../../components/button";
+import { text as diffText } from "./test";
+
+const comments = [
+  {
+    oldLineNumber: 47,
+    message: "Very interesting comment here",
+  },
+  {
+    lineNumber: 48,
+    message: "An interesting comment here",
+  },
+  {
+    lineNumber: 48,
+    message: "Again another one",
+  },
+];
 
 export const FilesDiff = () => {
-  const { branchname } = useParams();
-  const [diff, setDiff] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const files = parseDiff(diffText);
 
-  const fetchDiffDetails = useCallback(async () => {
-    if (!branchname) return;
+  const getWidgets = (hunks: any) => {
+    const changes = hunks.reduce((result: any, { changes }: any) => [...result, ...changes], []);
 
-    setIsLoading(true);
+    const changesWithComments = changes
+      .map((change: any) => {
+        const relatedComments = comments.filter(
+          (comment: any) =>
+            (comment.newLineNumber &&
+              change.newLineNumber &&
+              comment.newLineNumber === change.newLineNumber) ||
+            (comment.oldLineNumber &&
+              change.oldLineNumber &&
+              comment.oldLineNumber === change.oldLineNumber) ||
+            (comment.lineNumber && change.lineNumber && comment.lineNumber === change.lineNumber)
+        );
 
-    const url = CONFIG.FILES_DIFF_URL(branchname);
+        if (relatedComments?.length) {
+          return {
+            ...change,
+            comments: relatedComments,
+          };
+        }
 
-    const options: string[][] = [
-      ["branch_only", branchOnly ?? ""],
-      ["time_from", timeFrom ?? ""],
-      ["time_to", timeTo ?? ""],
-    ].filter(([k, v]) => v !== undefined && v !== "");
+        return null;
+      })
+      .filter(Boolean);
 
-    const qsp = new URLSearchParams(options);
+    return changesWithComments.reduce((widgets: any, change: any) => {
+      const changeKey = getChangeKey(change);
 
-    const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+      if (!change.comments) {
+        return widgets;
+      }
 
-    try {
-      const diffDetails = await fetchUrl(urlWithQsp);
+      return {
+        ...widgets,
+        [changeKey]: change?.comments?.map((comment: any, index: number) => (
+          <div key={index} className="bg-white p-4">
+            {comment.message}
+          </div>
+        )),
+      };
+    }, {});
+  };
 
-      setDiff(diffDetails[branchname] ?? []);
-    } catch (err) {
-      console.error("err: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
-    }
+  const renderGutter = (options: any) => {
+    const { renderDefault, wrapInAnchor, inHoverState } = options;
 
-    setIsLoading(false);
-  }, [branchname, branchOnly, timeFrom, timeTo]);
+    return (
+      <>
+        {wrapInAnchor(renderDefault())}
 
-  useEffect(() => {
-    fetchDiffDetails();
-  }, [fetchDiffDetails]);
+        {inHoverState && (
+          <Button className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <PencilIcon className="w-3 h-3" />
+          </Button>
+        )}
+      </>
+    );
+  };
 
-  return (
-    <>
-      {isLoading && <LoadingScreen />}
+  const renderFile = (options: any) => {
+    console.log("options: ", options);
+    const { oldPath, oldRevision, newRevision, type, hunks } = options;
 
-      {!isLoading && (
-        <div>
-          {diff?.map((node: any, index: number) => (
-            <DataDiffNode key={index} node={node} />
-          ))}
-        </div>
-      )}
-    </>
-  );
+    return (
+      <div className="p-4 m-4 bg-white">
+        <div className="">{oldPath}</div>
+
+        <Diff
+          key={oldRevision + "-" + newRevision}
+          viewType="split"
+          diffType={type}
+          hunks={hunks}
+          renderGutter={renderGutter}
+          widgets={getWidgets(hunks)}
+          optimizeSelection>
+          {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
+        </Diff>
+      </div>
+    );
+  };
+
+  return <div>{files.map(renderFile)}</div>;
 };
