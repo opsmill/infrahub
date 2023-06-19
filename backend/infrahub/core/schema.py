@@ -1097,23 +1097,6 @@ core_models = {
             ],
         },
         {
-            "name": "group",
-            "kind": "Group",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "inherit_from": ["DataOwner"],
-            "display_labels": ["label__value"],
-            "branch": True,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "label", "kind": "Text", "optional": True},
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
-            "relationships": [
-                {"name": "members", "peer": "Account", "optional": True, "cardinality": "many"},
-            ],
-        },
-        {
             "name": "status",
             "kind": "Status",
             "default_filter": "name__value",
