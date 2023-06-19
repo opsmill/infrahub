@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
@@ -33,7 +34,23 @@ class Attribute:
         self._read_only = ["updated_at", "is_inherited"]
 
         self.id: Optional[str] = data.get("id", None)
-        self.value: Optional[Any] = data.get("value", None)
+
+        # print("Let's check this Attribute type")
+        # print(schema)
+        if schema.kind == "IPHost":
+            try:
+                self.value = ipaddress.ip_interface(data.get("value"))
+            except ValueError:
+                # not sure how to handle this
+                self.value = ""
+        elif schema.kind == "IPNetwork":
+            try:
+w               self.value = ipaddress.ip_network(data.get("value"))
+            except ValueError:
+                # not sure how to handle this
+                self.value = ""
+        else:
+            self.value: Optional[Any] = data.get("value", None)
 
         self.is_inherited: Optional[bool] = data.get("is_inherited", None)
         self.updated_at: Optional[str] = data.get("updated_at", None)
@@ -62,6 +79,13 @@ class Attribute:
                 var_name = f"value_{uuid.uuid4().hex}"
                 variables[var_name] = self.value
                 data["value"] = f"${var_name}"
+        elif (
+            isinstance(self.value, ipaddress.IPv4Interface)
+            or isinstance(self.value, ipaddress.IPv6Interface)
+            or isinstance(self.value, ipaddress.IPv4Network)
+            or isinstance(self.value, ipaddress.IPv6Network)
+        ):
+            data["value"] = self.value.with_prefixlen
         else:
             data["value"] = self.value
 
