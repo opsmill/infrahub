@@ -287,7 +287,36 @@ def load_attribute_types_in_registry(branch: Branch):
 def load_node_interface(branch: Branch):
     node_interface_schema = GenericSchema(name="node", kind="Node", description="Interface for all nodes in Infrahub")
     interface = generate_interface_object(schema=node_interface_schema, branch=branch)
+    edged_interface = generate_graphql_edged_object(schema=node_interface_schema, node=interface)
+    paginated_interface = generate_graphql_paginated_object(schema=node_interface_schema, edge=edged_interface)
+
     registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
+    registry.set_graphql_type(name=edged_interface._meta.name, graphql_type=edged_interface, branch=branch.name)
+    registry.set_graphql_type(name=paginated_interface._meta.name, graphql_type=paginated_interface, branch=branch.name)
+
+    # -------------------------------------------------------------
+    # Generate PaginatedGroupAssociation
+    # -------------------------------------------------------------
+    object_name = "PaginatedGroupAssociation"
+
+    meta_attrs = {
+        "schema": node_interface_schema,
+        "name": object_name,
+        "description": node_interface_schema.description,
+        "default_resolver": default_resolver,
+        "interfaces": set(),
+    }
+
+    main_attrs = {
+        "count": graphene.Int(required=False),
+        "edges": graphene.List(of_type=edged_interface),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    paginated_association_type = type(object_name, (InfrahubObject,), main_attrs)
+    registry.set_graphql_type(
+        name=paginated_association_type._meta.name, graphql_type=paginated_association_type, branch=branch.name
+    )
 
 
 async def generate_object_types(
@@ -309,7 +338,14 @@ async def generate_object_types(
         if not isinstance(node_schema, GenericSchema):
             continue
         interface = generate_interface_object(schema=node_schema, branch=branch)
+        edged_interface = generate_graphql_edged_object(schema=node_schema, node=interface)
+        paginated_interface = generate_graphql_paginated_object(schema=node_schema, edge=edged_interface)
+
         registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
+        registry.set_graphql_type(name=edged_interface._meta.name, graphql_type=edged_interface, branch=branch.name)
+        registry.set_graphql_type(
+            name=paginated_interface._meta.name, graphql_type=paginated_interface, branch=branch.name
+        )
 
     # Define DataOwner and DataOwner
     data_source = registry.get_graphql_type(name="DataSource", branch=branch)
@@ -415,6 +451,17 @@ async def generate_object_types(
                 )
 
 
+async def generate_query_group(
+    session: AsyncSession, branch: Optional[str] = None  # pylint: disable=unused-argument
+) -> Type[object]:
+    paginated_group_type = registry.get_graphql_type(name="PaginatedGroup", branch=branch)
+
+    return graphene.Field(
+        paginated_group_type,
+        resolver=default_paginated_list_resolver,
+    )
+
+
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
@@ -441,6 +488,8 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
                 node_type,
                 resolver=account_resolver,
             )
+
+    class_attrs["group"] = await generate_query_group(session=session, branch=branch)
 
     return type("QueryMixin", (object,), class_attrs)
 
@@ -472,29 +521,28 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
+    node_interface = registry.get_graphql_type(name="Node", branch=branch.name)
+
     meta_attrs = {
         "schema": schema,
         "name": schema.kind,
         "description": schema.description,
-        "interfaces": set(),
+        "interfaces": {node_interface},
     }
-
-    node_interface = registry.get_graphql_type(name="Node", branch=branch.name)
-    meta_attrs["interfaces"].add(node_interface)
 
     if schema.inherit_from:
         for generic in schema.inherit_from:
             generic = registry.get_graphql_type(name=generic, branch=branch.name)
             meta_attrs["interfaces"].add(generic)
 
-    generic_group = registry.get_graphql_type(name="Group", branch=branch.name)
+    # generic_group = registry.get_graphql_type(name="Group", branch=branch.name)
 
     main_attrs = {
         "id": graphene.String(required=True),
         "_updated_at": graphene.DateTime(required=False),
         "display_label": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
-        "groups": graphene.Field(generic_group, required=False, resolver=many_relationship_resolver),
+        # "groups": graphene.Field(generic_group, required=False, resolver=many_relationship_resolver),
     }
 
     for attr in schema.local_attributes:
@@ -533,7 +581,7 @@ def generate_graphql_edged_object(
     node: Type[InfrahubObject],
     relation_property: Optional[InfrahubObject] = None,
 ) -> Type[InfrahubObject]:
-    """Generate a ednged GraphQL object Type from a Infrahub NodeSchema for pagination."""
+    """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""
 
     object_name = f"Edged{schema.kind}"
     if relation_property:
@@ -628,12 +676,15 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
     main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
     if schema.kind == "Group" and schema.kind != "Node":
-        node_interface = registry.get_graphql_type(name="Node", branch=branch.name)
+        paginated_association_type = registry.get_graphql_type(name="PaginatedGroupAssociation", branch=branch)
+
         # TODO add group specific resolvers
         # TODO add pagination for groups and groups members
-        main_attrs["members"] = graphene.Field(node_interface, required=False, description="Nodes members of the group")
+        main_attrs["members"] = graphene.Field(
+            paginated_association_type, required=False, description="Nodes members of the group"
+        )
         main_attrs["subscribers"] = graphene.Field(
-            node_interface, required=False, description="Nodes subscribed to the group"
+            paginated_association_type, required=False, description="Nodes subscribed to the group"
         )
 
     return type(schema.kind, (InfrahubInterface,), main_attrs)
