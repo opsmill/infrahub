@@ -6,7 +6,7 @@ interface iColumn {
   name: string;
 }
 
-export const getSchemaRelationshipColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
+export const getSchemaRelationshipColumns = (schema?: iNodeSchema | iGenericSchema): iColumn[] => {
   if (!schema) {
     return [];
   }
