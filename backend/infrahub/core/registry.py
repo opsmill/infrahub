@@ -44,7 +44,7 @@ class Registry:
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
     branch_object: Optional[Brancher] = None
-    _node_manager: Optional[Type[NodeManager]] = None
+    _manager: Optional[Type[NodeManager]] = None
 
     @property
     def schema(self) -> SchemaManager:
@@ -58,15 +58,15 @@ class Registry:
         self._schema = value
 
     @property
-    def node_manager(self) -> Type[NodeManager]:
-        if not self._node_manager:
+    def manager(self) -> Type[NodeManager]:
+        if not self._manager:
             raise InitializationError
 
-        return self._node_manager
+        return self._manager
 
-    @node_manager.setter
-    def node_manager(self, value: Type[NodeManager]):
-        self._node_manager = value
+    @manager.setter
+    def manager(self, value: Type[NodeManager]):
+        self._manager = value
 
     def schema_has_been_initialized(self) -> bool:
         if self._schema:

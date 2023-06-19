@@ -138,7 +138,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return self._node
 
     async def _get_node(self, session: AsyncSession) -> bool:
-        self._node = await registry.node_manager.get_one(
+        self._node = await registry.manager.get_one(
             session=session, id=self.node_id, branch=self.branch, at=self.at, include_owner=True, include_source=True
         )
 
@@ -149,7 +149,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return False
 
         # if a default_filter is defined, try to query the node by its default filter
-        results = await registry.node_manager.query(
+        results = await registry.manager.query(
             session=session,
             schema=self.schema,
             filters={self.schema.default_filterr: self.node_id},
@@ -196,14 +196,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return self._peer if self._peer else None
 
     async def _get_peer(self, session: AsyncSession):
-        self._peer = await registry.node_manager.get_one(
+        self._peer = await registry.manager.get_one(
             session=session, id=self.peer_id, branch=self.branch, at=self.at, include_owner=True, include_source=True
         )
 
         peer_schema = await self.get_peer_schema()
         results = None
         if not self._peer and peer_schema.default_filter:
-            results = await registry.node_manager.query(
+            results = await registry.manager.query(
                 session=session,
                 schema=peer_schema,
                 filters={peer_schema.default_filter: self.peer_id},

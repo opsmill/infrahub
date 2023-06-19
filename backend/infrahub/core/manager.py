@@ -361,4 +361,4 @@ class NodeManager:
         return nodes
 
 
-registry.node_manager = NodeManager
+registry.manager = NodeManager
