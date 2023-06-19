@@ -72,7 +72,6 @@ class RelationshipSchema(BaseModel):
     identifier: Optional[str]
     inherited: bool = False
     cardinality: str = "many"
-    # cardinality: RelationshipCardinality = RelationshipCardinality.MANY
     branch: bool = True
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)

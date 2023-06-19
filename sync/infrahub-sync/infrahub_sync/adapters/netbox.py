@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any, Dict
 
 import pynetbox
@@ -36,10 +37,15 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
 
         self.target = target
 
-        if not isinstance(adapter.settings, dict) or "url" not in adapter.settings or "token" not in adapter.settings:
+        settings = adapter.settings or {}
+
+        url = os.environ.get("NETBOX_ADDRESS", settings.get("url", None))
+        token = os.environ.get("NETBOX_TOKEN", settings.get("token", None))
+
+        if not url or not token:
             raise ValueError("Both url and token must be specified!")
 
-        self.client = pynetbox.api(adapter.settings["url"], token=adapter.settings["token"])
+        self.client = pynetbox.api(url, token=token)
         self.config = config
 
     def model_loader(self, model_name, model):
