@@ -16,14 +16,13 @@ def load_graphql_requirements(group_graphql):
 async def test_group_member_add(
     db: AsyncDriver,
     session: AsyncSession,
+    group_group1_main: Group,
     person_john_main: Node,
     person_jim_main: Node,
     person_albert_main: Node,
     branch: Branch,
 ):
-    g1 = await Group.init(session=session, schema="StandardGroup", branch=branch)
-    await g1.new(session=session, name="group-of-person")
-    await g1.save(session=session)
+    g1 = group_group1_main
 
     query = """
     mutation {
@@ -92,16 +91,13 @@ async def test_group_member_add(
 async def test_group_member_remove(
     db: AsyncDriver,
     session: AsyncSession,
+    group_group1_members_main: Group,
     person_john_main: Node,
     person_jim_main: Node,
     person_albert_main: Node,
     branch: Branch,
 ):
-    g1 = await Group.init(session=session, schema="StandardGroup", branch=branch)
-    await g1.new(session=session, name="group-of-person")
-    await g1.save(session=session)
-
-    await g1.members.add(session=session, nodes=[person_john_main.id, person_jim_main.id])
+    g1 = group_group1_members_main
 
     query = """
     mutation {
@@ -169,14 +165,13 @@ async def test_group_member_remove(
 async def test_group_subscriber_add(
     db: AsyncDriver,
     session: AsyncSession,
+    group_group1_main: Group,
     person_john_main: Node,
     person_jim_main: Node,
     person_albert_main: Node,
     branch: Branch,
 ):
-    g1 = await Group.init(session=session, schema="StandardGroup", branch=branch)
-    await g1.new(session=session, name="group-of-person")
-    await g1.save(session=session)
+    g1 = group_group1_main
 
     query = """
     mutation {
@@ -245,16 +240,13 @@ async def test_group_subscriber_add(
 async def test_group_subscriber_remove(
     db: AsyncDriver,
     session: AsyncSession,
+    group_group1_subscribers_main: Group,
     person_john_main: Node,
     person_jim_main: Node,
     person_albert_main: Node,
     branch: Branch,
 ):
-    g1 = await Group.init(session=session, schema="StandardGroup", branch=branch)
-    await g1.new(session=session, name="group-of-person")
-    await g1.save(session=session)
-
-    await g1.subscribers.add(session=session, nodes=[person_john_main.id, person_jim_main.id])
+    g1 = group_group1_subscribers_main
 
     query = """
     mutation {
