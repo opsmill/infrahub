@@ -359,3 +359,6 @@ class NodeManager:
             nodes[node_id] = item
 
         return nodes
+
+
+registry.manager = NodeManager
