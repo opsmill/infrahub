@@ -169,18 +169,18 @@ class Bandwidth(InfrahubDataType):
 
 class IPHost(InfrahubDataType):
     label: str = "IPHost"
-    graphql = graphene.Int
-    graphql_query = "NumberAttributeType"
-    graphql_input = "NumberAttributeInput"
+    graphql = graphene.String
+    graphql_query = "TextAttributeType"
+    graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
     infrahub = "String"
 
 
 class IPNetwork(InfrahubDataType):
     label: str = "IPNetwork"
-    graphql = graphene.Int
-    graphql_query = "NumberAttributeType"
-    graphql_input = "NumberAttributeInput"
+    graphql = graphene.String
+    graphql_query = "TextAttributeType"
+    graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
     infrahub = "String"
 
