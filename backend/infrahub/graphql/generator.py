@@ -12,7 +12,7 @@ from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.types import ATTRIBUTE_TYPES
 
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
-from .schema import default_paginated_list_resolver
+from .schema import account_resolver, default_paginated_list_resolver
 from .types import (
     RELATIONS_PROPERTY_MAP,
     RELATIONS_PROPERTY_MAP_REVERSED,
@@ -428,6 +428,12 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
             resolver=default_paginated_list_resolver,
             **node_filters,
         )
+        if node_name == "Account":
+            node_type = registry.get_graphql_type(name="Account", branch=branch)
+            class_attrs["account_profile"] = graphene.Field(
+                node_type,
+                resolver=account_resolver,
+            )
 
     return type("QueryMixin", (object,), class_attrs)
 
