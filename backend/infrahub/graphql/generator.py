@@ -558,7 +558,6 @@ def generate_graphql_paginated_object(
 
     main_attrs = {
         "count": graphene.Int(required=False),
-        "has_next": graphene.Boolean(required=False),
         "edges": graphene.List(of_type=edge),
         "Meta": type("Meta", (object,), meta_attrs),
     }
@@ -648,7 +647,6 @@ def generate_paginated_interface_object(
 
     main_attrs = {
         "count": graphene.Int(required=False),
-        "has_next": graphene.Boolean(required=False),
         "edges": graphene.List(of_type=base_interface),
         "Meta": type("Meta", (object,), meta_attrs),
     }
