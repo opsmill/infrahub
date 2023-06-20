@@ -1,0 +1,79 @@
+---
+name: from-netbox
+source:
+  name: netbox
+  settings:
+    url: "https://demo.netbox.dev"
+
+destination:
+  name: infrahub
+  settings:
+    url: "http://localhost:8000"
+
+order: ["tag", "location", "role", "rack"]
+
+schema_mapping:
+  - name: tag
+    mapping: extras.tags
+    fields:
+      - name: name
+        mapping: name
+        identifier: true
+      - name: description
+        mapping: description
+
+  - name: location
+    mapping: dcim.sites
+    fields:
+      - name: name
+        mapping: slug
+      - name: description
+        mapping: description
+      - name: type
+        static: "SITE"
+
+  - name: rack
+    mapping: dcim.racks
+    identifiers: ["location", "name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: location
+        mapping: site.slug
+      - name: height
+        mapping: u_height
+      - name: tags
+        mapping: tags
+        reference: tag
+      - name: serial_number
+        mapping: serial
+      - name: role
+        mapping: role.name
+      - name: facility_id
+        mapping: facility_id
+
+  - name: role
+    mapping: dcim.device_roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+
+  - name: role
+    mapping: dcim.rack_roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+
+  - name: role
+    mapping: ipam.roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
