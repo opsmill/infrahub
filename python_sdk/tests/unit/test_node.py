@@ -1,4 +1,5 @@
 import inspect
+import ipaddress
 
 import pytest
 from pytest_httpx import HTTPXMock
@@ -379,6 +380,54 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 
 
 @pytest.mark.parametrize("client_type", client_types)
+async def test_create_input_data_with_IPHost_attribute(client, ipaddress_schema, client_type):
+    data = {
+        "id": "aaaaaaaaaaaaaa",
+        "address": {
+            "value": ipaddress.ip_interface("1.1.1.1/24"),
+            "is_protected": True,
+        },
+    }
+    if client_type == "standard":
+        ip_address = InfrahubNode(client=client, schema=ipaddress_schema, data=data)
+    else:
+        ip_address = InfrahubNodeSync(client=client, schema=ipaddress_schema, data=data)
+
+    assert ip_address._generate_input_data()["data"] == {
+        "data": {
+            "address": {
+                "value": "1.1.1.1/24",
+                "is_protected": True,
+            }
+        }
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_create_input_data_with_IPNetwork_attribute(client, ipnetwork_schema, client_type):
+    data = {
+        "id": "aaaaaaaaaaaaaa",
+        "network": {
+            "value": ipaddress.ip_network("1.1.1.0/24"),
+            "is_protected": True,
+        },
+    }
+    if client_type == "standard":
+        ip_network = InfrahubNode(client=client, schema=ipnetwork_schema, data=data)
+    else:
+        ip_network = InfrahubNodeSync(client=client, schema=ipnetwork_schema, data=data)
+
+    assert ip_network._generate_input_data()["data"] == {
+        "data": {
+            "network": {
+                "value": "1.1.1.0/24",
+                "is_protected": True,
+            }
+        }
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
 async def test_update_input_data__with_relationships_01(
     client, location_schema, location_data01, tag_schema, tag_blue_data, tag_green_data, client_type
 ):
@@ -559,3 +608,37 @@ async def test_node_fetch_relationship(
 
     assert isinstance(node.primary_tag.peer, InfrahubNodeBase)  # type: ignore[attr-defined]
     assert isinstance(node.tags[0].peer, InfrahubNodeBase)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_node_IPHost_deserialization(client, ipaddress_schema, client_type):
+    data = {
+        "id": "aaaaaaaaaaaaaa",
+        "address": {
+            "value": "1.1.1.1/24",
+            "is_protected": True,
+        },
+    }
+    if client_type == "standard":
+        ip_address = InfrahubNode(client=client, schema=ipaddress_schema, data=data)
+    else:
+        ip_address = InfrahubNodeSync(client=client, schema=ipaddress_schema, data=data)
+
+    assert ip_address.address.value == ipaddress.ip_interface("1.1.1.1/24")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_node_IPNetwork_deserialization(client, ipnetwork_schema, client_type):
+    data = {
+        "id": "aaaaaaaaaaaaaa",
+        "network": {
+            "value": "1.1.1.0/24",
+            "is_protected": True,
+        },
+    }
+    if client_type == "standard":
+        ip_network = InfrahubNode(client=client, schema=ipnetwork_schema, data=data)
+    else:
+        ip_network = InfrahubNodeSync(client=client, schema=ipnetwork_schema, data=data)
+
+    assert ip_network.network.value == ipaddress.ip_network("1.1.1.0/24")
