@@ -24,7 +24,7 @@ export default function TabProfile(props: any) {
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
-      <div className="px-4 py-5 sm:px-6 flex items-center">
+      <div className="flex items-center">
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
