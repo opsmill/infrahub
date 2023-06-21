@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import uuid
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, get_args
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
@@ -74,7 +74,7 @@ class Attribute:
                 var_name = f"value_{uuid.uuid4().hex}"
                 variables[var_name] = self.value
                 data["value"] = f"${var_name}"
-        elif isinstance(self.value, IP_TYPES):
+        elif isinstance(self.value, get_args(IP_TYPES)):
             data["value"] = self.value.with_prefixlen
         else:
             data["value"] = self.value
