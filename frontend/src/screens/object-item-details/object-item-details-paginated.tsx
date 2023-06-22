@@ -9,7 +9,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/button";
@@ -18,10 +18,10 @@ import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
+import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
-import { configState } from "../../state/atoms/config.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
@@ -43,7 +43,7 @@ export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [config] = useAtom(configState);
+  const auth = useContext(AuthContext);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const [schemaList] = useAtom(schemaState);
@@ -119,7 +119,7 @@ export default function ObjectItemDetails() {
         tabs={tabs}
         rightItems={
           <Button
-            disabled={config?.main?.allow_anonymous_access}
+            disabled={!auth?.permissions?.write}
             onClick={() => setShowEditDrawer(true)}
             className="mr-4">
             Edit
@@ -224,7 +224,7 @@ export default function ObjectItemDetails() {
                               <div className="font-semibold">{attribute.label}</div>
                               <Button
                                 buttonType={BUTTON_TYPES.INVISIBLE}
-                                disabled={config?.main?.allow_anonymous_access}
+                                disabled={!auth?.permissions?.write}
                                 onClick={() => {
                                   setMetaEditFieldDetails({
                                     type: "attribute",
