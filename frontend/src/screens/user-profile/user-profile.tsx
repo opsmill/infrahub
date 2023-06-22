@@ -1,5 +1,5 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { Cog6ToothIcon, PencilIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -35,18 +35,18 @@ const tabs = [
     label: "Profile",
     name: PROFILE_TABS.PROFILE,
   },
-  {
-    label: "Preferences",
-    name: PROFILE_TABS.PREFERENCES,
-  },
+  // {
+  //   label: "Preferences",
+  //   name: PROFILE_TABS.PREFERENCES,
+  // },
   {
     label: "API Tokens",
     name: PROFILE_TABS.TOKENS,
   },
-  {
-    label: "Account",
-    name: PROFILE_TABS.ACCOUNT,
-  },
+  // {
+  //   label: "Account",
+  //   name: PROFILE_TABS.ACCOUNT,
+  // },
 ];
 
 const renderContent = (tab: string | null | undefined, user?: any) => {
@@ -130,10 +130,6 @@ export default function UserProfile() {
                 </p>
               </div>
             </div>
-          </div>
-
-          <div className="ml-4 mt-4 flex flex-shrink-0">
-            <Cog6ToothIcon className="w-6 h-6 text-gray-600 cursor-pointer hover:scale-110" />
           </div>
         </div>
       </div>

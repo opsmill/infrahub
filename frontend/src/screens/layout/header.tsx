@@ -1,7 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
+import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual } from "date-fns";
 import { useAtom } from "jotai";
 import React, { Fragment, useContext, useEffect } from "react";
@@ -133,18 +133,12 @@ export default function Header(props: Props) {
           </div>
 
           <BranchSelector />
-          <button
-            type="button"
-            className="ml-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-30 cursor-not-allowed">
-            <span className="sr-only">View notifications</span>
-            <BellIcon className="h-6 w-6" aria-hidden="true" />
-          </button>
 
           {/* Profile dropdown */}
           {!auth?.accessToken && (
             <Link
               to={window.location.pathname}
-              className={"block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"}
+              className={"block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"}
               onClick={() => auth?.displaySignIn()}>
               Sign in
             </Link>
