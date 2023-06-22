@@ -39,8 +39,15 @@ import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details-paginated";
 import RelationshipsDetails from "./relationships-details-paginated";
 
-export default function ObjectItemDetails() {
-  const { objectname, objectid } = useParams();
+export default function ObjectItemDetails(props: any) {
+  const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
+
+  const { objectname: objectnameFromParams, objectid: objectidFromParams } = useParams();
+
+  const objectname = objectnameFromProps || objectnameFromParams;
+
+  const objectid = objectidFromProps || objectidFromParams;
+
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const auth = useContext(AuthContext);
@@ -102,31 +109,37 @@ export default function ObjectItemDetails() {
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
-      <div className="px-4 py-5 sm:px-6 flex items-center">
-        <div
-          onClick={() => navigate(constructPath(`/objects/${objectname}`))}
-          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-          {schema.kind}
-        </div>
-        <ChevronRightIcon
-          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
-          aria-hidden="true"
-        />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetailsData.display_label}</p>
-      </div>
+      {!hideHeaders && (
+        <>
+          <div className="px-4 py-5 sm:px-6 flex items-center">
+            <div
+              onClick={() => navigate(constructPath(`/objects/${objectname}`))}
+              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+              {schema.kind}
+            </div>
+            <ChevronRightIcon
+              className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+              aria-hidden="true"
+            />
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              {objectDetailsData.display_label}
+            </p>
+          </div>
 
-      <Tabs
-        tabs={tabs}
-        rightItems={
-          <Button
-            disabled={!auth?.permissions?.write}
-            onClick={() => setShowEditDrawer(true)}
-            className="mr-4">
-            Edit
-            <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-          </Button>
-        }
-      />
+          <Tabs
+            tabs={tabs}
+            rightItems={
+              <Button
+                disabled={!auth?.permissions?.write}
+                onClick={() => setShowEditDrawer(true)}
+                className="mr-4">
+                Edit
+                <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+              </Button>
+            }
+          />
+        </>
+      )}
 
       {!qspTab && (
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
@@ -312,6 +325,7 @@ export default function ObjectItemDetails() {
           objectname={objectname!}
         />
       </SlideOver>
+
       <SlideOver
         title={
           <div className="space-y-2">
