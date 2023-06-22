@@ -37,8 +37,16 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 
-export default function ObjectItems() {
-  const { objectname } = useParams();
+export default function ObjectItems(props: any) {
+  const { objectname: objectnameFromParams } = useParams();
+  console.log("objectnameFromParams: ", objectnameFromParams);
+
+  const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
+  console.log("objectnameFromProps: ", objectnameFromProps);
+
+  const objectname = objectnameFromProps || objectnameFromParams;
+  console.log("objectname: ", objectname);
+
   const auth = useContext(AuthContext);
 
   const [schemaList] = useAtom(schemaState);
@@ -63,7 +71,10 @@ export default function ObjectItems() {
       { name: "offset", value: pagination?.offset },
       { name: "limit", value: pagination?.limit },
     ].map((row: any) => `${row.name}: ${row.value}`),
+    ...filtersFromProps,
   ].join(",");
+
+  console.log("filtersString: ", filtersString);
 
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns(schema);
@@ -82,6 +93,7 @@ export default function ObjectItems() {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
+  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;

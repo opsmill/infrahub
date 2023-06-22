@@ -35,7 +35,7 @@ const tabs = [
   //   name: PROFILE_TABS.PREFERENCES,
   // },
   {
-    label: "API Tokens",
+    label: "Tokens",
     name: PROFILE_TABS.TOKENS,
   },
   // {
