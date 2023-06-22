@@ -93,7 +93,6 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
   const customClassName = getClasseName(buttonType);
 
   const handleClick = (event: any) => {
-    console.log("event: ", event);
     if (type !== "submit") {
       event.stopPropagation();
     }

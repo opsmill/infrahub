@@ -106,7 +106,6 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     setDisplaySignin(false);
   };
 
-  console.log("config: ", config);
   if (!displaySignIn && config?.experimental_features?.ignore_authentication_requirements) {
     const auth = {
       permissions: {
