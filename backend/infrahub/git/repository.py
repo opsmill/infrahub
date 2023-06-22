@@ -180,7 +180,7 @@ class RepoFileInformation(BaseModel):
 
 
 def extract_repo_file_information(
-    full_filename: str, repo_directory: str, worktree_directory: str = None
+    full_filename: str, repo_directory: str, worktree_directory: Optional[str] = None
 ) -> RepoFileInformation:
     """Extract all the relevant and required information from a filename.
 
@@ -227,7 +227,7 @@ class Worktree(BaseModel):
     identifier: str
     directory: str
     commit: str
-    branch: Optional[str]
+    branch: Optional[str] = None
 
     @classmethod
     def init(cls, text):
@@ -1453,11 +1453,22 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
         return queries
 
+    async def get_file(self, commit: str, location: str) -> str:
+        commit_worktree = self.get_commit_worktree(commit=commit)
+
+        self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
+
+        full_filename = os.path.join(commit_worktree.directory, location)
+
+        with open(full_filename, "r", encoding="UTF-8") as obj:
+            content = obj.read()
+
+        return content
+
     async def render_jinja2_template(self, commit: str, location: str, data: dict):
         commit_worktree = self.get_commit_worktree(commit=commit)
 
-        if not os.path.exists(os.path.join(commit_worktree.directory, location)):
-            raise FileNotFound(repository_name=self.name, commit=commit, location=location)
+        self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
         try:
             templateLoader = jinja2.FileSystemLoader(searchpath=commit_worktree.directory)
@@ -1475,9 +1486,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         commit_worktree = self.get_commit_worktree(commit=commit)
 
-        # Ensure the file is present in the repository
-        if not os.path.exists(os.path.join(commit_worktree.directory, location)):
-            raise FileNotFound(repository_name=self.name, commit=commit, location=location)
+        self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
         # Ensure the path for this repository is present in sys.path
         if self.directory_root not in sys.path:
@@ -1532,9 +1541,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         LOGGER.debug(f"Will run Python Transform from {class_name} at {location} ({commit})")
 
-        # Ensure the file is present in the repository
-        if not os.path.exists(os.path.join(commit_worktree.directory, file_path)):
-            raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)
+        self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=file_path)
 
         # Ensure the path for this repository is present in sys.path
         if self.directory_root not in sys.path:
@@ -1573,3 +1580,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
+
+    def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
+        if not os.path.exists(os.path.join(worktree_directory, file_path)):
+            raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)

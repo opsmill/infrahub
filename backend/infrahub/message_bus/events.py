@@ -8,7 +8,7 @@ from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
 from aio_pika.patterns.base import Base as PickleSerializer
 
 import infrahub.config as config
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import ProcessingError, ValidationError
 from infrahub.utils import BaseEnum
 
 from . import get_broker
@@ -81,6 +81,7 @@ class GitMessageAction(str, BaseEnum):
     DIFF = "diff"
     REPO_ADD = "repo-add"
     BRANCH_ADD = "branch-add"
+    GET_FILE = "get-file"
 
 
 class TransformMessageAction(str, BaseEnum):
@@ -293,6 +294,10 @@ class InfrahubRPCResponse(InfrahubMessage):
         body["response"] = self.response
         body["errors"] = self.errors
         return body
+
+    def raise_for_status(self) -> None:
+        if self.errors:
+            raise ProcessingError("\n".join(self.errors))
 
 
 class InfrahubGitRPC(InfrahubRPC):
