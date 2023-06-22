@@ -148,7 +148,9 @@ class BranchDiffFile(BaseModel):
 class BranchDiffRepository(BaseModel):
     branch: str
     id: str
-    display_name: Optional[str]
+    display_name: Optional[str] = None
+    commit_from: str
+    commit_to: str
     files: List[BranchDiffFile] = Field(default_factory=list)
 
 
@@ -473,7 +475,9 @@ async def get_diff_files(
     for branch_name, items in diff_files.items():
         for item in items:
             if item.repository not in response[branch_name]:
-                response[branch_name][item.repository] = BranchDiffRepository(id=item.repository, branch=branch_name)
+                response[branch_name][item.repository] = BranchDiffRepository(
+                    id=item.repository, commit_from=item.commit_from, commit_to=item.commit_to, branch=branch_name
+                )
 
             response[branch_name][item.repository].files.append(BranchDiffFile(**item.to_graphql()))
 

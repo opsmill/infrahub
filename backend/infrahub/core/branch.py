@@ -800,6 +800,8 @@ class FileDiffElement(BaseDiffElement):
     location: str
     repository: str
     action: DiffAction
+    commit_from: str
+    commit_to: str
 
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))
@@ -1526,26 +1528,24 @@ class Diff:
             )
         )
 
-        for filename in response.response.get("files_changed", []):
-            files.append(
-                FileDiffElement(
-                    branch=branch_name, location=filename, repository=repository.id, action=DiffAction.UPDATED
-                )
-            )
+        actions = {
+            "files_changed": DiffAction.UPDATED,
+            "files_added": DiffAction.ADDED,
+            "files_removed": DiffAction.REMOVED,
+        }
 
-        for filename in response.response.get("files_added", []):
-            files.append(
-                FileDiffElement(
-                    branch=branch_name, location=filename, repository=repository.id, action=DiffAction.ADDED
+        for action_name, diff_action in actions.items():
+            for filename in response.response.get(action_name, []):
+                files.append(
+                    FileDiffElement(
+                        branch=branch_name,
+                        location=filename,
+                        repository=repository.id,
+                        action=diff_action,
+                        commit_to=commit_to,
+                        commit_from=commit_from,
+                    )
                 )
-            )
-
-        for filename in response.response.get("files_removed", []):
-            files.append(
-                FileDiffElement(
-                    branch=branch_name, location=filename, repository=repository.id, action=DiffAction.REMOVED
-                )
-            )
 
         return files
 
