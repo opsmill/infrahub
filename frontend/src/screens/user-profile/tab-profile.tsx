@@ -1,11 +1,10 @@
 import { CheckIcon, LockClosedIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { ACCOUNT_OBJECT } from "../../config/constants";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import RelationshipDetails from "../object-item-details/relationship-details-paginated";
-
-const ACCOUNT_OBJECT = "account";
 
 export default function TabProfile(props: any) {
   const { user } = props;

@@ -2,8 +2,7 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
-import { useAtom } from "jotai";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -11,6 +10,7 @@ import { Badge } from "../../components/badge";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import ModalDelete from "../../components/modal-delete";
 import { Pill } from "../../components/pill";
+import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
 import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
@@ -19,7 +19,6 @@ import { validateBranch } from "../../graphql/mutations/branches/validateBranch"
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
-import { configState } from "../../state/atoms/config.atom";
 import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
@@ -27,8 +26,8 @@ import LoadingScreen from "../loading-screen/loading-screen";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
-  const [config] = useAtom(configState);
   const date = useReactiveVar(dateVar);
+  const auth = useContext(AuthContext);
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   const [displayModal, setDisplayModal] = useState(false);
@@ -159,7 +158,7 @@ export const BranchDetails = () => {
             <>
               <div className="flex flex-1 flex-col md:flex-row">
                 <Button
-                  disabled={config?.main?.allow_anonymous_access || branch.is_default}
+                  disabled={!auth?.permissions?.write || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
@@ -177,7 +176,7 @@ export const BranchDetails = () => {
                 </Button>
 
                 <Button
-                  disabled={config?.main?.allow_anonymous_access || branch.is_default}
+                  disabled={!auth?.permissions?.write || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
@@ -212,7 +211,7 @@ export const BranchDetails = () => {
                 </Button>
 
                 <Button
-                  disabled={config?.main?.allow_anonymous_access || branch.is_default}
+                  disabled={!auth?.permissions?.write || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() => setDisplayModal(true)}
                   buttonType={BUTTON_TYPES.CANCEL}>

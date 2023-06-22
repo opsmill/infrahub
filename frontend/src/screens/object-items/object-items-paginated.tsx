@@ -1,7 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -11,6 +11,7 @@ import { Pagination } from "../../components/pagination";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
@@ -19,7 +20,6 @@ import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
-import { configState } from "../../state/atoms/config.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
@@ -39,7 +39,8 @@ import ObjectItemCreate from "../object-item-create/object-item-create-paginated
 
 export default function ObjectItems() {
   const { objectname } = useParams();
-  const [config] = useAtom(configState);
+  const auth = useContext(AuthContext);
+
   const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
@@ -149,7 +150,7 @@ export default function ObjectItems() {
         )}
 
         <RoundedButton
-          disabled={config?.main?.allow_anonymous_access}
+          disabled={!auth?.permissions?.write}
           onClick={() => setShowCreateDrawer(true)}>
           <PlusIcon className="h-5 w-5" aria-hidden="true" />
         </RoundedButton>
@@ -205,7 +206,7 @@ export default function ObjectItems() {
                             "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
                           )}>
                           <Button
-                            // disabled={config?.main?.allow_anonymous_access}
+                            disabled={!auth?.permissions?.write}
                             buttonType={BUTTON_TYPES.INVISIBLE}
                             onClick={() => {
                               setRowToDelete(row);

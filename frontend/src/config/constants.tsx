@@ -7,6 +7,10 @@ import UserProfile from "../screens/user-profile/user-profile";
 
 export const MAIN_ROUTES = [
   {
+    path: "/profile",
+    element: <UserProfile />,
+  },
+  {
     path: "/objects/:objectname/:objectid",
     element: <ObjectItemDetailsPaginated />,
   },
@@ -25,10 +29,6 @@ export const MAIN_ROUTES = [
   {
     path: "/branches/:branchname",
     element: <BrancheItemDetails />,
-  },
-  {
-    path: "/profile",
-    element: <UserProfile />,
   },
 ];
 
@@ -51,3 +51,5 @@ export const DEFAULT_BRANCH_NAME = "main";
 export const ACCESS_TOKEN_KEY = "access_token";
 
 export const REFRESH_TOKEN_KEY = "refresh_token";
+
+export const ACCOUNT_OBJECT = "account";
