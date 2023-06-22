@@ -4,8 +4,11 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
+import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
+import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { configMocks } from "../../mocks/data/config";
 import {
   graphqlQueriesMocksData,
   graphqlQueriesMocksDataDeleted,
@@ -47,11 +50,17 @@ const mocks: any[] = [
   },
 ];
 
+const AuthenticatedObjectItems = withAuth(ObjectItems);
+
 // Provide the initial value for jotai
 const ObjectItemsProvider = () => {
   return (
-    <TestProvider initialValues={[[schemaState, schemaMocks]]}>
-      <ObjectItems />
+    <TestProvider
+      initialValues={[
+        [schemaState, schemaMocks],
+        [configState, configMocks],
+      ]}>
+      <AuthenticatedObjectItems />
     </TestProvider>
   );
 };

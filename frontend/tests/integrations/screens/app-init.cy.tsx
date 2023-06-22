@@ -1,5 +1,6 @@
 /// <reference types="cypress" />
 
+import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import App from "../../../src/App";
 
@@ -19,7 +20,11 @@ describe("Config fetch", () => {
 
     cy.intercept("GET", "/schema", this.schema).as("getSchema");
 
-    cy.mount(<App />);
+    cy.mount(
+      <MockedProvider addTypename={false}>
+        <App />
+      </MockedProvider>
+    );
 
     cy.get(":nth-child(1) > .relative > .block").type("test");
 
