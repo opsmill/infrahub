@@ -312,6 +312,7 @@ export default function ObjectItemDetails() {
           objectname={objectname!}
         />
       </SlideOver>
+
       <SlideOver
         title={
           <div className="space-y-2">
