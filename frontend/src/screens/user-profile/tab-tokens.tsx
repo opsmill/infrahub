@@ -1,4 +1,4 @@
-import { ACCESS_TOKEN_KEY } from "../../config/constants";
+import { ACCESS_TOKEN_KEY, ACCOUNT_TOKEN_OBJECT } from "../../config/constants";
 import { parseJwt } from "../../utils/common";
 import ObjectItems from "../object-items/object-items-paginated";
 
@@ -11,5 +11,5 @@ export default function TabProfile() {
 
   const filters = [`account__id: "${accountId}"`];
 
-  return <ObjectItems objectname={"account_token"} filters={filters} />;
+  return <ObjectItems objectname={ACCOUNT_TOKEN_OBJECT} filters={filters} />;
 }

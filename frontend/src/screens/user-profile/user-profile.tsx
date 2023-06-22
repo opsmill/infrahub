@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Avatar } from "../../components/avatar";
 import { Tabs } from "../../components/tabs";
@@ -44,7 +45,7 @@ const tabs = [
   // },
 ];
 
-const renderContent = (tab: string | null | undefined, refetch: Function, user?: any) => {
+const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case PROFILE_TABS.TOKENS:
       return <TabTokens />;
@@ -53,13 +54,14 @@ const renderContent = (tab: string | null | undefined, refetch: Function, user?:
     case PROFILE_TABS.PREFERENCES:
       return <TabPreferences />;
     default:
-      return <TabProfile user={user} refetch={refetch} />;
+      return <TabProfile />;
   }
 };
 
 export default function UserProfile() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const auth = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const [schemaList] = useAtom(schemaState);
 
@@ -88,14 +90,15 @@ export default function UserProfile() {
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, data, refetch } = useQuery(query, { skip: !schema || !accountId });
+  const { loading, data } = useQuery(query, { skip: !schema || !accountId });
 
   if (loading || !schema) {
     return <LoadingScreen />;
   }
 
   if (!auth?.permissions?.write) {
-    return <div>Anonymous access</div>;
+    navigate("/");
+    return;
   }
 
   const objectDetailsData = data[schema.name]?.edges[0]?.node;
@@ -131,7 +134,7 @@ export default function UserProfile() {
         <Tabs tabs={tabs} />
       </div>
 
-      {renderContent(qspTab, refetch, objectDetailsData)}
+      {renderContent(qspTab)}
     </div>
   );
 }

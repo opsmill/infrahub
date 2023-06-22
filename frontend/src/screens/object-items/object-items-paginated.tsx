@@ -39,13 +39,10 @@ import ObjectItemCreate from "../object-item-create/object-item-create-paginated
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
-  console.log("objectnameFromParams: ", objectnameFromParams);
 
   const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
-  console.log("objectnameFromProps: ", objectnameFromProps);
 
   const objectname = objectnameFromProps || objectnameFromParams;
-  console.log("objectname: ", objectname);
 
   const auth = useContext(AuthContext);
 
@@ -74,8 +71,6 @@ export default function ObjectItems(props: any) {
     ...filtersFromProps,
   ].join(",");
 
-  console.log("filtersString: ", filtersString);
-
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns(schema);
 
@@ -93,7 +88,6 @@ export default function ObjectItems(props: any) {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
