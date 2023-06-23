@@ -2,31 +2,24 @@ import ipaddress
 import itertools
 import logging
 import re
-
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Type
-
-from nornir.core.inventory import ConnectionOptions
-from nornir.core.inventory import Defaults
-from nornir.core.inventory import Group
-from nornir.core.inventory import Groups
-from nornir.core.inventory import Host
-from nornir.core.inventory import HostOrGroup
-from nornir.core.inventory import Hosts
-from nornir.core.inventory import Inventory
-from nornir.core.inventory import ParentGroups
+from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
 
 import ruamel.yaml
+from nornir.core.inventory import (
+    ConnectionOptions,
+    Defaults,
+    Group,
+    Groups,
+    Host,
+    HostOrGroup,
+    Hosts,
+    Inventory,
+    ParentGroups,
+)
 from pydantic import BaseModel
-from infrahub_client import InfrahubClientSync
-from infrahub_client import InfrahubNodeSync
-from infrahub_client import NodeSchema
-from infrahub_client.node import Attribute
-from infrahub_client.node import RelatedNodeSync
+
+from infrahub_client import InfrahubClientSync, InfrahubNodeSync, NodeSchema
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +96,7 @@ class SchemaMappingNode(BaseModel):
     mapping: str
 
 
-def get_related_nodes(node_schema: NodeSchema, attrs: List[str]) -> List[str]:
+def get_related_nodes(node_schema: NodeSchema, attrs: Set[str]) -> List[str]:
     nodes = []
     for attr in attrs:
         if attr in node_schema.attribute_names:
@@ -123,7 +116,7 @@ class InfrahubInventory:
         address: Infrahub url (defaults to ``http://localhost:8000``)
         branch: Infrahub branch to use (defaults to ``main``)
         host_node: Infrahub Node type that will map to a Nornir Host
-        schema_mapping:
+        schema_mappings:
         group_mapping: Definiton of relations and attributes to extract groups from
         defaults_file: Path to defaults file (defaults to ``defaults.yaml``)
         group_file: Path to group file (defaults to ``group.yaml``)
@@ -134,8 +127,8 @@ class InfrahubInventory:
         address: str = "http://localhost:8000",
         branch: str = "main",
         host_node: str = "Device",
-        schema_mapping: Optional[Dict[str, str]] = None,
-        group_mapping: Optional[List[str]] = None,
+        schema_mappings: Optional[List[Dict[str, str]]] = None,
+        group_mappings: Optional[List[str]] = None,
         defaults_file: str = "defaults.yaml",
         group_file: str = "group.yaml",
     ):
@@ -146,15 +139,18 @@ class InfrahubInventory:
         self.group_file = Path(group_file).expanduser()
         self.client = InfrahubClientSync.init(address=self.address)
 
-        self.schema_mapping = [SchemaMappingNode(**mapping) for mapping in schema_mapping]
-        self.group_mapping = group_mapping or []
+        schema_mappings = schema_mappings or []
+        self.schema_mappings = [SchemaMappingNode(**mapping) for mapping in schema_mappings]
+
+        group_mappings = group_mappings or []
+        self.group_mappings = group_mappings
 
         host_node_schema = self.client.schema.get(kind=host_node)
 
         attrs = set(
             itertools.chain(
-                [mapping.mapping.split(".")[0] for mapping in self.schema_mapping],
-                [mapping.split(".")[0] for mapping in self.group_mapping],
+                [schema_mapping.mapping.split(".")[0] for schema_mapping in self.schema_mappings],
+                [group_mapping.split(".")[0] for group_mapping in self.group_mappings],
             )
         )
         self.extra_nodes = get_related_nodes(host_node_schema, attrs)
@@ -170,13 +166,13 @@ class InfrahubInventory:
         groups_dict: Dict[str, Any] = {}
 
         if self.defaults_file.exists():
-            with self.defaults_file.open("r") as f:
+            with self.defaults_file.open("r", encoding="utf-8") as f:
                 defaults_dict = yml.load(f) or {}
 
         defaults = _get_defaults(defaults_dict)
 
         if self.group_file.exists():
-            with self.group_file.open("r") as f:
+            with self.group_file.open("r", encoding="utf-8") as f:
                 groups_dict = yml.load(f) or {}
 
         for n, g in groups_dict.items():
@@ -187,33 +183,33 @@ class InfrahubInventory:
 
         host: Dict[str, Any] = {}
 
-        for node in self.extra_nodes:
-            self.get_resources(kind=node)
+        for extra_node in self.extra_nodes:
+            self.get_resources(kind=extra_node)
 
         host_nodes = self.get_resources(kind=self.host_node)
 
-        for node in host_nodes:
-            name = node.name.value
+        for host_node in host_nodes:
+            name = host_node.name.value
             extracted_groups = []
 
-            for mapping in self.schema_mapping:
-                attrs = mapping.mapping.split(".")
+            for schema_mapping in self.schema_mappings:
+                attrs = schema_mapping.mapping.split(".")
 
                 try:
-                    host[mapping.name] = resolve_node_mapping(node, attrs)
-                except RuntimeError as e:
+                    host[schema_mapping.name] = resolve_node_mapping(host_node, attrs)
+                except RuntimeError:
                     # TODO: what do we do in this case?
                     continue
 
-            host["data"] = {"InfrahubNode": node}
+            host["data"] = {"InfrahubNode": host_node}
             hosts[name] = _get_inventory_element(Host, host, name, defaults)
 
-            for mapping in self.group_mapping:
-                attrs = mapping.split(".")
+            for group_mapping in self.group_mappings:
+                attrs = group_mapping.split(".")
 
                 try:
-                    extracted_groups.append(f"{attrs[0]}__{slugify(resolve_node_mapping(node, attrs))}")
-                except RuntimeError as e:
+                    extracted_groups.append(f"{attrs[0]}__{slugify(resolve_node_mapping(host_node, attrs))}")
+                except RuntimeError:
                     # TODO: what do we do in this case?
                     continue
 
