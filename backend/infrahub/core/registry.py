@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.definitions import Brancher
+    from infrahub.core.manager import NodeManager
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.graphql.mutations import BaseAttributeInput
@@ -43,6 +44,7 @@ class Registry:
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
     branch_object: Optional[Brancher] = None
+    _manager: Optional[Type[NodeManager]] = None
 
     @property
     def schema(self) -> SchemaManager:
@@ -54,6 +56,17 @@ class Registry:
     @schema.setter
     def schema(self, value: SchemaManager):
         self._schema = value
+
+    @property
+    def manager(self) -> Type[NodeManager]:
+        if not self._manager:
+            raise InitializationError
+
+        return self._manager
+
+    @manager.setter
+    def manager(self, value: Type[NodeManager]):
+        self._manager = value
 
     def schema_has_been_initialized(self) -> bool:
         if self._schema:

@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Union
 from uuid import UUID
 
+from infrahub.core.registry import registry
+
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
@@ -15,7 +17,7 @@ class FlagPropertyMixin:
     is_visible = True
     is_protected = False
 
-    def _init_flag_property_mixin(self, kwargs: dict = None):
+    def _init_flag_property_mixin(self, kwargs: dict = None) -> None:
         if not kwargs:
             return
 
@@ -27,7 +29,7 @@ class FlagPropertyMixin:
 class NodePropertyMixin:
     _node_properties: List[str] = ["source", "owner"]
 
-    def _init_node_property_mixin(self, kwargs: dict = None):
+    def _init_node_property_mixin(self, kwargs: dict = None) -> None:
         for node in self._node_properties:
             setattr(self, f"_{node}", None)
             setattr(self, f"{node}_id", None)
@@ -60,7 +62,7 @@ class NodePropertyMixin:
     async def get_source(self, session: AsyncSession):
         return await self._get_node_property(name="source", session=session)
 
-    def set_source(self, value):
+    def set_source(self, value) -> None:
         self._set_node_property(name="source", value=value)
 
     async def get_owner(self, session: AsyncSession):
@@ -91,7 +93,7 @@ class NodePropertyMixin:
 
         return getattr(self, f"_{name}", None)
 
-    def _set_node_property(self, name: str, value: Union[str, Node, UUID]):
+    def _set_node_property(self, name: str, value: Union[str, Node, UUID]) -> None:
         """Set the value of the node_property.
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
@@ -112,12 +114,10 @@ class NodePropertyMixin:
         else:
             raise ValueError("Unable to process the node property")
 
-    async def _retrieve_node_property(self, session: AsyncSession, name: str):
+    async def _retrieve_node_property(self, session: AsyncSession, name: str) -> None:
         """Query the node associated with this node_property from the database."""
-        # pylint: disable=import-outside-toplevel
-        from infrahub.core.manager import NodeManager
 
-        node = await NodeManager.get_one(
+        node = await registry.manager.get_one(
             session=session, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at
         )
         setattr(self, f"_{name}", node)

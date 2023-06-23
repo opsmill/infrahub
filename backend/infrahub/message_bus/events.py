@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import importlib
 import pickle
-from typing import TYPE_CHECKING, Any, Generator, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generator, Optional
 
 from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
 from aio_pika.patterns.base import Base as PickleSerializer
 
 import infrahub.config as config
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import ProcessingError, ValidationError
 from infrahub.utils import BaseEnum
 
 from . import get_broker
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from infrahub.core.node import Node
 
 # pylint: disable=arguments-differ
@@ -79,6 +81,7 @@ class GitMessageAction(str, BaseEnum):
     DIFF = "diff"
     REPO_ADD = "repo-add"
     BRANCH_ADD = "branch-add"
+    GET_FILE = "get-file"
 
 
 class TransformMessageAction(str, BaseEnum):
@@ -108,9 +111,6 @@ class RPCStatusCode(int, BaseEnum):
     NOT_IMPLEMENTED = 501
 
 
-SelfInfrahubMessage = TypeVar("SelfInfrahubMessage", bound="InfrahubMessage")
-
-
 class InfrahubMessage(PickleSerializer):
     """
     Generic Object to help send and receive message over the message Bus (RabbitMQ)
@@ -127,7 +127,7 @@ class InfrahubMessage(PickleSerializer):
         self.request_id = request_id
 
     @classmethod
-    def convert(cls, message: IncomingMessage) -> SelfInfrahubMessage:
+    def convert(cls, message: IncomingMessage) -> Self:
         """
         Convert an IncomingMessage into its proper InfrahubMessage class
         """
@@ -143,7 +143,7 @@ class InfrahubMessage(PickleSerializer):
         return message_class.init(message=message, **body)
 
     @classmethod
-    def init(cls, message: IncomingMessage, *args, **kwargs) -> SelfInfrahubMessage:
+    def init(cls, message: IncomingMessage, *args, **kwargs) -> Self:
         """Initialize an Message from an Incoming Message."""
 
         return cls(message=message, *args, **kwargs)
@@ -294,6 +294,10 @@ class InfrahubRPCResponse(InfrahubMessage):
         body["response"] = self.response
         body["errors"] = self.errors
         return body
+
+    def raise_for_status(self) -> None:
+        if self.errors:
+            raise ProcessingError("\n".join(self.errors))
 
 
 class InfrahubGitRPC(InfrahubRPC):

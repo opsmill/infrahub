@@ -1,10 +1,14 @@
+import uuid
+
 from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
-from infrahub.core.manager import NodeManager
+from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
+from infrahub.core.query.node import NodeToProcess
+from infrahub.core.timestamp import Timestamp
 
 
 async def test_get_one_attribute(session: AsyncSession, default_branch: Branch, criticality_schema):
@@ -304,6 +308,30 @@ async def test_query_class_name(session: AsyncSession, default_branch: Branch, c
 
     nodes = await NodeManager.query(session=session, schema="Criticality")
     assert len(nodes) == 2
+
+
+async def test_identify_node_class(session, car_schema, default_branch):
+    node = NodeToProcess(
+        schema=car_schema,
+        node_id=33,
+        node_uuid=str(uuid.uuid4()),
+        updated_at=Timestamp().to_string(),
+        branch=default_branch,
+    )
+
+    class Car(Node):
+        pass
+
+    class Vehicule(Node):
+        pass
+
+    assert identify_node_class(node=node) == Node
+
+    registry.node["Vehicule"] = Vehicule
+    assert identify_node_class(node=node) == Vehicule
+
+    registry.node["Car"] = Car
+    assert identify_node_class(node=node) == Car
 
 
 # ------------------------------------------------------------------------

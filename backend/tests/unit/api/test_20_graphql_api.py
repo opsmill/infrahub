@@ -115,3 +115,30 @@ async def test_graphql_options(session, client, client_headers, default_branch: 
         )
 
         assert response.status_code == 404
+
+
+async def test_read_profile(
+    session,
+    client,
+    admin_headers,
+    authentication_base,
+):
+    query = """
+    query {
+        account_profile {
+            name {
+                value
+            }
+        }
+    }
+    """
+
+    with client:
+        response = client.post(
+            "/graphql",
+            json={"query": query},
+            headers=admin_headers,
+        )
+
+    assert response.status_code
+    assert response.json() == {"data": {"account_profile": {"name": {"value": "test-admin"}}}}

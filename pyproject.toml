@@ -9,8 +9,8 @@ packages = [
     { include = "infrahub_ctl", from = "ctl" },
     { include = "infrahub_client", from = "python_sdk"},
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
-    { include = "diffsync", from = "sync/diffsync"},
     { include = "nornir_infrahub", from = "nornir_plugin"},
+    { include = "potenda", from = "sync/potenda"},
 ]
 
 [tool.poetry.dependencies]
@@ -74,6 +74,7 @@ dagit = "^1.1.19"
 structlog = "^22.3.0"
 pynetbox = "^7.0.1"
 pynautobot = "^1.4.0"
+diffsync = "^1.8.0"
 
 
 [tool.poetry.group.nornir.dependencies]
@@ -145,7 +146,6 @@ disable = """,
     fixme,
     consider-using-f-string,
     protected-access,
-    cyclic-import,
     import-self,
     wrong-import-order,
     """

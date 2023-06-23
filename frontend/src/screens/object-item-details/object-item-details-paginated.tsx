@@ -9,7 +9,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/button";
@@ -18,10 +18,10 @@ import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
+import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
-import { configState } from "../../state/atoms/config.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
@@ -39,11 +39,18 @@ import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details-paginated";
 import RelationshipsDetails from "./relationships-details-paginated";
 
-export default function ObjectItemDetails() {
-  const { objectname, objectid } = useParams();
+export default function ObjectItemDetails(props: any) {
+  const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
+
+  const { objectname: objectnameFromParams, objectid: objectidFromParams } = useParams();
+
+  const objectname = objectnameFromProps || objectnameFromParams;
+
+  const objectid = objectidFromProps || objectidFromParams;
+
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [config] = useAtom(configState);
+  const auth = useContext(AuthContext);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const [schemaList] = useAtom(schemaState);
@@ -102,31 +109,37 @@ export default function ObjectItemDetails() {
 
   return (
     <div className="bg-white flex-1 overflow-auto flex flex-col">
-      <div className="px-4 py-5 sm:px-6 flex items-center">
-        <div
-          onClick={() => navigate(constructPath(`/objects/${objectname}`))}
-          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-          {schema.kind}
-        </div>
-        <ChevronRightIcon
-          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
-          aria-hidden="true"
-        />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetailsData.display_label}</p>
-      </div>
+      {!hideHeaders && (
+        <>
+          <div className="px-4 py-5 sm:px-6 flex items-center">
+            <div
+              onClick={() => navigate(constructPath(`/objects/${objectname}`))}
+              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+              {schema.kind}
+            </div>
+            <ChevronRightIcon
+              className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+              aria-hidden="true"
+            />
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              {objectDetailsData.display_label}
+            </p>
+          </div>
 
-      <Tabs
-        tabs={tabs}
-        rightItems={
-          <Button
-            disabled={config?.main?.allow_anonymous_access}
-            onClick={() => setShowEditDrawer(true)}
-            className="mr-4">
-            Edit
-            <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-          </Button>
-        }
-      />
+          <Tabs
+            tabs={tabs}
+            rightItems={
+              <Button
+                disabled={!auth?.permissions?.write}
+                onClick={() => setShowEditDrawer(true)}
+                className="mr-4">
+                Edit
+                <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+              </Button>
+            }
+          />
+        </>
+      )}
 
       {!qspTab && (
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
@@ -224,7 +237,7 @@ export default function ObjectItemDetails() {
                               <div className="font-semibold">{attribute.label}</div>
                               <Button
                                 buttonType={BUTTON_TYPES.INVISIBLE}
-                                disabled={config?.main?.allow_anonymous_access}
+                                disabled={!auth?.permissions?.write}
                                 onClick={() => {
                                   setMetaEditFieldDetails({
                                     type: "attribute",
@@ -312,6 +325,7 @@ export default function ObjectItemDetails() {
           objectname={objectname!}
         />
       </SlideOver>
+
       <SlideOver
         title={
           <div className="space-y-2">

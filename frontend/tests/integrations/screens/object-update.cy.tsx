@@ -4,8 +4,11 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
+import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
+import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { configMocks } from "../../mocks/data/config";
 import {
   deviceDetailsMocksData,
   deviceDetailsMocksDataAfterUpdate,
@@ -49,11 +52,17 @@ const mocks: any[] = [
   },
 ];
 
+const AuthenticatedObjectItems = withAuth(ObjectDetails);
+
 // Provide the initial value for jotai
 const ObjectDetailsProvider = () => {
   return (
-    <TestProvider initialValues={[[schemaState, deviceDetailsMocksSchema]]}>
-      <ObjectDetails />
+    <TestProvider
+      initialValues={[
+        [schemaState, deviceDetailsMocksSchema],
+        [configState, configMocks],
+      ]}>
+      <AuthenticatedObjectItems />
     </TestProvider>
   );
 };

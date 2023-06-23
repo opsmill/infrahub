@@ -206,8 +206,6 @@ export const getFormStructureForMetaEditPaginated = (
   type: "attribute" | "relationship",
   schemaList: iNodeSchema[]
 ): DynamicFieldData[] => {
-  console.log("row: ", row);
-
   const sourceOwnerFields = ["owner", "source"];
 
   const booleanFields = ["is_visible", "is_protected"];

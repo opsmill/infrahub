@@ -30,7 +30,7 @@ class RepositoryError(Error):
 
 
 class CommitNotFoundError(Error):
-    def __init__(self, identifier, commit, message=None):
+    def __init__(self, identifier: str, commit: str, message=None):
         self.identifier = identifier
         self.commit = commit
         self.message = message or f"Commit {commit} not found with GitRepository '{identifier}'."
@@ -123,6 +123,14 @@ class AuthorizationError(Error):
 class PermissionDeniedError(Error):
     HTTP_CODE: int = 403
     message: str = "The requested operation was not authorized"
+
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or self.message
+        super().__init__(self.message)
+
+
+class ProcessingError(Error):
+    message: str = "Unable to process the request"
 
     def __init__(self, message: Optional[str] = None):
         self.message = message or self.message

@@ -6,11 +6,22 @@ import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "../config/constants";
 import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
-// import { parseJwt } from "../utils/common";
 import { fetchUrl } from "../utils/fetch";
 
+type tPermissions = {
+  write?: boolean;
+  read?: boolean;
+};
+
+type tAuthContext = {
+  accessToken?: string;
+  displaySignin?: Function;
+  signOut?: Function;
+  permissions?: tPermissions;
+};
+
 // Export auth context
-export const AuthContext = createContext(null);
+export const AuthContext = createContext({} as tAuthContext);
 
 export const setTokens = (result: any) => {
   if (result?.access_token) {
@@ -63,8 +74,8 @@ export const withAuth = (AppComponent: any) => (props: any) => {
 
   const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
 
-  // const [isLoadingToken, setIsLoadingToken] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [displaySignIn, setDisplaySignin] = useState(false);
   const [accessToken, setAccessToken] = useState(localToken);
 
   const signOut = () => {
@@ -91,24 +102,44 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     setAccessToken(result?.access_token);
 
     setTokens(result);
+
+    setDisplaySignin(false);
   };
 
-  if (
-    config?.experimental_features?.ignore_authentication_requirements ||
-    config?.main?.allow_anonymous_access
-  ) {
+  if (!displaySignIn && config?.experimental_features?.ignore_authentication_requirements) {
+    const auth = {
+      permissions: {
+        write: true,
+      },
+    } as tAuthContext;
+
     return (
-      <AuthContext.Provider value={null}>
+      <AuthContext.Provider value={auth}>
         <AppComponent {...props} />
       </AuthContext.Provider>
     );
   }
 
-  if (accessToken) {
+  if (!displaySignIn && accessToken) {
     const auth = {
       accessToken,
+      permissions: {
+        write: true,
+      },
       signOut,
-    };
+    } as tAuthContext;
+
+    return (
+      <AuthContext.Provider value={auth}>
+        <AppComponent {...props} />
+      </AuthContext.Provider>
+    );
+  }
+
+  if (!displaySignIn && config?.main?.allow_anonymous_access) {
+    const auth = {
+      displaySignIn: () => setDisplaySignin(true),
+    } as tAuthContext;
 
     return (
       <AuthContext.Provider value={auth}>

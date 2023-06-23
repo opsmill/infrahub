@@ -12,7 +12,7 @@ from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.types import ATTRIBUTE_TYPES
 
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
-from .schema import default_paginated_list_resolver
+from .schema import account_resolver, default_paginated_list_resolver
 from .types import (
     RELATIONS_PROPERTY_MAP,
     RELATIONS_PROPERTY_MAP_REVERSED,
@@ -20,7 +20,6 @@ from .types import (
     InfrahubObject,
     InfrahubUnion,
     RelatedNodeInput,
-    RelatedNodeInterface,
 )
 from .utils import extract_fields
 
@@ -298,7 +297,7 @@ async def generate_object_types(
 
     load_attribute_types_in_registry(branch=branch)
 
-    # Generate all GraphQL Interface & RelatedInterface Object first and store them in the registry
+    # Generate all GraphQL Interface  Object first and store them in the registry
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, GenericSchema):
             continue
@@ -315,14 +314,11 @@ async def generate_object_types(
         gql_type._meta.fields["source"] = graphene.Field(data_source)
         gql_type._meta.fields["owner"] = graphene.Field(data_owner)
 
-    # Generate all RelatedInterfaceType and store them in the registry
+    # Generate all Nested, Edged and NestedEdged Interfaces and store them in the registry
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, GenericSchema):
             continue
 
-        related_interface = generate_related_interface_object(
-            schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner, name_prefix="Related"
-        )
         node_interface = registry.get_graphql_type(name=node_name, branch=branch)
 
         nested_edged_interface = generate_nested_interface_object(
@@ -336,20 +332,15 @@ async def generate_object_types(
             base_interface=nested_edged_interface,
         )
 
-        registry.set_graphql_type(name=related_interface._meta.name, graphql_type=related_interface, branch=branch.name)
         registry.set_graphql_type(name=nested_interface._meta.name, graphql_type=nested_interface, branch=branch.name)
         registry.set_graphql_type(
             name=nested_edged_interface._meta.name, graphql_type=nested_edged_interface, branch=branch.name
         )
 
-    # Generate all GraphQL ObjectType & RelatedObjectType and store them in the registry
+    # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
     for node_name, node_schema in full_schema.items():
         if isinstance(node_schema, NodeSchema):
             node_type = generate_graphql_object(schema=node_schema, branch=branch)
-            related_node_type = generate_related_graphql_object(
-                schema=node_schema, branch=branch, data_source=data_source, data_owner=data_owner
-            )
-
             node_type_edged = generate_graphql_edged_object(schema=node_schema, node=node_type)
             nested_node_type_edged = generate_graphql_edged_object(
                 schema=node_schema, node=node_type, relation_property=relationship_property
@@ -361,9 +352,6 @@ async def generate_object_types(
             )
 
             registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=branch.name)
-            registry.set_graphql_type(
-                name=related_node_type._meta.name, graphql_type=related_node_type, branch=branch.name
-            )
             registry.set_graphql_type(name=node_type_edged._meta.name, graphql_type=node_type_edged, branch=branch.name)
             registry.set_graphql_type(
                 name=nested_node_type_edged._meta.name, graphql_type=nested_node_type_edged, branch=branch.name
@@ -377,9 +365,9 @@ async def generate_object_types(
             )
 
             # Register this model to all the groups it belongs to.
-            if node_schema.groups:
-                for group_name in node_schema.groups:
-                    group_memberships[group_name].append(f"Related{node_schema.kind}")
+            # if node_schema.groups:
+            #     for group_name in node_schema.groups:
+            #         group_memberships[group_name].append(f"Related{node_schema.kind}")
 
     # Generate all the Groups with associated ObjectType / RelatedObjectType
     for node_name, node_schema in full_schema.items():
@@ -440,6 +428,12 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
             resolver=default_paginated_list_resolver,
             **node_filters,
         )
+        if node_name == "Account":
+            node_type = registry.get_graphql_type(name="Account", branch=branch)
+            class_attrs["account_profile"] = graphene.Field(
+                node_type,
+                resolver=account_resolver,
+            )
 
     return type("QueryMixin", (object,), class_attrs)
 
@@ -570,7 +564,6 @@ def generate_graphql_paginated_object(
 
     main_attrs = {
         "count": graphene.Int(required=False),
-        "has_next": graphene.Boolean(required=False),
         "edges": graphene.List(of_type=edge),
         "Meta": type("Meta", (object,), meta_attrs),
     }
@@ -624,36 +617,6 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
     return type(schema.kind, (InfrahubInterface,), main_attrs)
 
 
-def generate_related_interface_object(
-    schema: GenericSchema, branch: Branch, data_source: InfrahubObject, data_owner: InfrahubObject, name_prefix: str
-) -> Type[graphene.Interface]:
-    meta_attrs = {
-        "name": f"{name_prefix}{schema.kind}",
-        "description": schema.description,
-    }
-
-    main_attrs = {
-        "display_label": graphene.String(required=False),
-        "_updated_at": graphene.DateTime(required=False),
-        "_relation__updated_at": graphene.DateTime(required=False),
-        "_relation__is_visible": graphene.Boolean(required=False),
-        "_relation__is_protected": graphene.Boolean(required=False),
-        "_relation__source": graphene.Field(data_source),
-        "_relation__owner": graphene.Field(data_owner),
-        "Meta": type("Meta", (object,), meta_attrs),
-    }
-
-    for attr in schema.attributes:
-        attr_type = registry.get_graphql_type(
-            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
-        )
-        main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
-
-    main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
-
-    return type(f"{name_prefix}{schema.kind}", (InfrahubInterface,), main_attrs)
-
-
 def generate_nested_interface_object(
     schema: GenericSchema,
     relation_property: graphene.ObjectType,
@@ -666,7 +629,6 @@ def generate_nested_interface_object(
     }
 
     main_attrs = {
-        "display_label": graphene.String(required=False),
         "node": graphene.Field(base_interface, required=False),
         "_updated_at": graphene.DateTime(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
@@ -690,50 +652,11 @@ def generate_paginated_interface_object(
 
     main_attrs = {
         "count": graphene.Int(required=False),
-        "has_next": graphene.Boolean(required=False),
         "edges": graphene.List(of_type=base_interface),
         "Meta": type("Meta", (object,), meta_attrs),
     }
 
     return type(f"NestedPaginated{schema.kind}", (InfrahubObject,), main_attrs)
-
-
-def generate_related_graphql_object(
-    schema: NodeSchema, branch: Branch, data_source: InfrahubObject, data_owner: InfrahubObject
-) -> Type[InfrahubObject]:
-    """Generate a GraphQL object Type from a Infrahub NodeSchema for a Related Node."""
-
-    meta_attrs = {
-        "schema": schema,
-        "name": f"Related{schema.kind}",
-        "description": schema.description,
-        "interfaces": {RelatedNodeInterface},
-    }
-
-    if schema.inherit_from:
-        for generic in schema.inherit_from:
-            try:
-                generic = registry.get_graphql_type(name=f"Related{generic}", branch=branch.name)
-                meta_attrs["interfaces"].add(generic)
-            except ValueError:
-                # If the object is not present it might be because the generic is a group, will need to carefully test that.
-                pass
-
-    main_attrs = {
-        "id": graphene.String(required=True),
-        "display_label": graphene.String(required=False),
-        "_updated_at": graphene.DateTime(required=False),
-        "_relation__source": graphene.Field(data_source),
-        "_relation__owner": graphene.Field(data_owner),
-        "Meta": type("Meta", (object,), meta_attrs),
-    }
-    for attr in schema.attributes:
-        attr_type = registry.get_graphql_type(
-            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
-        )
-        main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
-
-    return type(f"Related{schema.kind}", (InfrahubObject,), main_attrs)
 
 
 def generate_graphql_mutations(
@@ -746,7 +669,7 @@ def generate_graphql_mutations(
     return create, update, delete
 
 
-def generate_graphql_mutation_create_input(schema: NodeSchema) -> graphene.InputObjectType:
+def generate_graphql_mutation_create_input(schema: NodeSchema) -> Type[graphene.InputObjectType]:
     """Generate an InputObjectType Object from a Infrahub NodeSchema
 
     Example of Object Generated by this function:
@@ -756,7 +679,7 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> graphene.Input
             slug = InputField(StringAttributeInput, required=True)
             description = InputField(StringAttributeInput, required=False)
     """
-    attrs = {"id": graphene.String(required=False)}
+    attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
 
     for attr in schema.attributes:
         attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
@@ -779,7 +702,7 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> graphene.Input
     return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
 
 
-def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.InputObjectType:
+def generate_graphql_mutation_update_input(schema: NodeSchema) -> Type[graphene.InputObjectType]:
     """Generate an InputObjectType Object from a Infrahub NodeSchema
 
     Example of Object Generated by this function:
@@ -789,7 +712,7 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> graphene.Input
             slug = InputField(StringAttributeInput, required=False)
             description = InputField(StringAttributeInput, required=False)
     """
-    attrs = {"id": graphene.String(required=True)}
+    attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=True)}
 
     for attr in schema.attributes:
         attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
@@ -863,7 +786,7 @@ def generate_graphql_mutation_delete(
     """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Delete"
 
-    main_attrs = {"ok": graphene.Boolean()}
+    main_attrs: Dict[str, Any] = {"ok": graphene.Boolean()}
 
     meta_attrs = {"schema": schema, "name": name, "description": schema.description}
     main_attrs["Meta"] = type("Meta", (object,), meta_attrs)

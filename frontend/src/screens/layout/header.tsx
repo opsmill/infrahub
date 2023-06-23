@@ -1,18 +1,26 @@
-import { useReactiveVar } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import { Bars3BottomLeftIcon, BellIcon } from "@heroicons/react/24/outline";
+import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual } from "date-fns";
+import { useAtom } from "jotai";
 import React, { Fragment, useContext, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Avatar } from "../../components/avatar";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/date-picker";
+import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
+import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
 import { dateVar } from "../../graphql/variables/dateVar";
-import { classNames } from "../../utils/common";
+import useQuery from "../../hooks/useQuery";
+import { configState } from "../../state/atoms/config.atom";
+import { schemaState } from "../../state/atoms/schema.atom";
+import { classNames, parseJwt } from "../../utils/common";
+import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import LoadingScreen from "../loading-screen/loading-screen";
 import { userNavigation } from "./navigation-list";
 
 interface Props {
@@ -20,11 +28,40 @@ interface Props {
 }
 
 export default function Header(props: Props) {
+  const { setSidebarOpen } = props;
+
+  const [config] = useAtom(configState);
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
+  const [schemaList] = useAtom(schemaState);
 
-  const { setSidebarOpen } = props;
+  const schema = schemaList.find((s) => s.name === ACCOUNT_OBJECT);
+
+  const relationships = getSchemaRelationshipColumns(schema);
+
+  const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+
+  const tokenData = parseJwt(localToken);
+
+  const accountId = tokenData?.sub;
+
+  const queryString = schema
+    ? getProfileDetails({
+        ...schema,
+        relationships,
+        objectid: accountId,
+      })
+    : // Empty query to make the gql parsing work
+      // TODO: Find another solution for queries while loading schema
+      "query { ok }";
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  // TODO: Find a way to avoid querying object details if we are on a tab
+  const { loading, data } = useQuery(query, { skip: !schema || !accountId });
 
   useEffect(() => {
     if (qspDate) {
@@ -55,6 +92,12 @@ export default function Header(props: Props) {
     // Undefined is needed to remove a parameter from the QSP
     setQspDate(undefined);
   };
+
+  if (loading || !schema) {
+    return <LoadingScreen />;
+  }
+
+  const objectDetailsData = data && data[schema.name]?.edges[0]?.node;
 
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-white shadow">
@@ -92,59 +135,67 @@ export default function Header(props: Props) {
           </div>
 
           <BranchSelector />
-          <button
-            type="button"
-            className="ml-3 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-30 cursor-not-allowed">
-            <span className="sr-only">View notifications</span>
-            <BellIcon className="h-6 w-6" aria-hidden="true" />
-          </button>
 
           {/* Profile dropdown */}
-          <Menu as="div" className="relative ml-3">
-            <div>
-              <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                <span className="sr-only">Open user menu</span>
-                <Avatar
-                  image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
-                  name="Richard Martin"
-                />
-              </Menu.Button>
-            </div>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95">
-              <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                {userNavigation.map((item) => (
-                  <Menu.Item key={item.name}>
-                    {({ active }) => (
-                      <Link
-                        to={item.href}
-                        className={classNames(
-                          active ? "bg-gray-100" : "",
-                          "block px-4 py-2 text-sm text-gray-700"
-                        )}>
-                        {item.name}
-                      </Link>
-                    )}
-                  </Menu.Item>
-                ))}
+          {!auth?.accessToken &&
+            !config?.experimental_features?.ignore_authentication_requirements && (
+              <Link
+                to={window.location.pathname}
+                className={
+                  "block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"
+                }
+                onClick={() => auth?.displaySignIn()}>
+                Sign in
+              </Link>
+            )}
 
-                <Menu.Item>
-                  <Link
-                    to={"/"}
-                    className={"block px-4 py-2 text-sm text-gray-700"}
-                    onClick={() => auth?.signOut()}>
-                    Sign out
-                  </Link>
-                </Menu.Item>
-              </Menu.Items>
-            </Transition>
-          </Menu>
+          {auth?.accessToken && (
+            <Menu as="div" className="relative ml-3">
+              <div>
+                <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                  <span className="sr-only">Open user menu</span>
+                  <Avatar
+                    name={objectDetailsData?.name?.value}
+                    // image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
+                  />
+                </Menu.Button>
+              </div>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95">
+                <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  {userNavigation.map((item) => (
+                    <Menu.Item key={item.name}>
+                      {({ active }) => (
+                        <Link
+                          to={item.href}
+                          className={classNames(
+                            active ? "bg-gray-100" : "",
+                            "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
+                          )}>
+                          {item.name}
+                        </Link>
+                      )}
+                    </Menu.Item>
+                  ))}
+
+                  <Menu.Item>
+                    <Link
+                      to={"/"}
+                      className={"block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"}
+                      onClick={() => auth?.signOut()}>
+                      Sign out
+                    </Link>
+                  </Menu.Item>
+                </Menu.Items>
+              </Transition>
+            </Menu>
+          )}
         </div>
       </div>
     </div>

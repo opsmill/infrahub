@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
-from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession
+from neo4j import (
+    AsyncDriver,
+    AsyncGraphDatabase,
+    AsyncManagedTransaction,
+    AsyncSession,
+    Record,
+)
 
 # from contextlib import asynccontextmanager
 from neo4j.exceptions import ClientError
@@ -15,7 +21,7 @@ from .metrics import QUERY_EXECUTION_METRICS
 validated_database = {}
 
 
-async def create_database(driver: AsyncDriver, database_name: str):
+async def create_database(driver: AsyncDriver, database_name: str) -> None:
     default_db = driver.session()
     await default_db.run(f"CREATE DATABASE {database_name} WAIT")
 
@@ -51,7 +57,7 @@ async def validate_database(
     return True
 
 
-async def get_db(retry: int = 0):
+async def get_db(retry: int = 0) -> AsyncDriver:
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
     driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
 
@@ -66,12 +72,12 @@ async def get_db(retry: int = 0):
 async def execute_read_query_async(
     session: AsyncSession,
     query: str,
-    params: Optional[dict] = None,
+    params: Optional[Dict[str, Any]] = None,
     name: Optional[str] = "undefined",
-):
+) -> List[Record]:
     with QUERY_EXECUTION_METRICS.labels("read", name).time():
 
-        async def work(tx, params: dict):
+        async def work(tx: AsyncManagedTransaction, params: Optional[Dict[str, Any]] = None) -> List[Record]:
             response = await tx.run(query, params)
             return [item async for item in response]
 
@@ -79,12 +85,12 @@ async def execute_read_query_async(
 
 
 async def execute_write_query_async(
-    session: AsyncSession, query: str, params: Optional[dict] = None, name: Optional[str] = "undefined"
-):
+    session: AsyncSession, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
+) -> List[Record]:
     with QUERY_EXECUTION_METRICS.labels("write", name).time():
 
-        async def work(tx, params: dict):
-            response = await tx.run(query, params)
-            return await response.values()
+        async def work(tx: AsyncManagedTransaction, params: Optional[Dict[str, Any]] = None) -> List[Record]:
+            response = await tx.run(query, params or {})
+            return [item async for item in response]
 
         return await session.execute_write(work, params)

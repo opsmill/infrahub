@@ -17,7 +17,7 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub import __version__
-from infrahub.api import auth, diff, internal, schema, transformation
+from infrahub.api import auth, diff, file, internal, schema, transformation
 from infrahub.api.background import BackgroundRunner
 from infrahub.api.dependencies import (
     BranchParams,
@@ -53,6 +53,7 @@ gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
 app.include_router(auth.router)
+app.include_router(file.router)
 app.include_router(schema.router)
 app.include_router(transformation.router)
 app.include_router(internal.router)
