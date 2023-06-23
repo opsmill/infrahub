@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
@@ -440,6 +441,54 @@ class Integer(BaseAttribute):
 
 class Boolean(BaseAttribute):
     type = bool
+
+
+class IPNetwork(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+        """
+        if not isinstance(value, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
+            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+
+        try:
+            ipaddress.ip_network(value)
+        except ValueError as e:
+            raise ValidationError({name: f"{name} is not a valid {schema.kind}"}) from e
+
+
+class IPHost(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+        """
+        if not isinstance(value, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
+            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+
+        try:
+            ipaddress.ip_interface(value)
+        except ValueError as e:
+            raise ValidationError({name: f"{name} is not a valid {schema.kind}"}) from e
 
 
 class ListAttribute(BaseAttribute):

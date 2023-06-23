@@ -173,7 +173,7 @@ class IPHost(InfrahubDataType):
     graphql_query = "TextAttributeType"
     graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
-    infrahub = "String"
+    infrahub = "IPHost"
 
 
 class IPNetwork(InfrahubDataType):
@@ -182,7 +182,7 @@ class IPNetwork(InfrahubDataType):
     graphql_query = "TextAttributeType"
     graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
-    infrahub = "String"
+    infrahub = "IPNetwork"
 
 
 class Checkbox(InfrahubDataType):
