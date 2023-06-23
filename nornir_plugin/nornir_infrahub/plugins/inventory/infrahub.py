@@ -1,3 +1,4 @@
+import ipaddress
 import itertools
 import logging
 import re
@@ -35,6 +36,10 @@ def slugify(value: str) -> str:
     return re.sub(r"[-\s]+", "-", value).strip("-_")
 
 
+def ip_interface_to_ip_string(ip_interface: Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface]) -> str:
+    return str(ip_interface.ip)
+
+
 def resolve_node_mapping(node: InfrahubNodeSync, attrs: List[str]) -> Any:
     for attr in attrs:
         if attr in node._schema.relationship_names:
@@ -44,7 +49,11 @@ def resolve_node_mapping(node: InfrahubNodeSync, attrs: List[str]) -> Any:
             node = relation.peer
         elif attr in node._schema.attribute_names:
             node_attr = getattr(node, attr)
-            return node_attr.value
+            value_mapper: Dict[str, Callable] = {
+                "IPHost": ip_interface_to_ip_string,
+            }
+            mapper = value_mapper.get(node_attr._schema.kind, lambda value: value)
+            return mapper(node_attr.value)
     raise RuntimeError("Unable to resolve mapping")
 
 
