@@ -16,6 +16,7 @@ import { AuthContext } from "../../decorators/withAuth";
 import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
+import { configState } from "../../state/atoms/config.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames, parseJwt } from "../../utils/common";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
@@ -29,6 +30,7 @@ interface Props {
 export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
+  const [config] = useAtom(configState);
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
@@ -135,14 +137,17 @@ export default function Header(props: Props) {
           <BranchSelector />
 
           {/* Profile dropdown */}
-          {!auth?.accessToken && (
-            <Link
-              to={window.location.pathname}
-              className={"block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"}
-              onClick={() => auth?.displaySignIn()}>
-              Sign in
-            </Link>
-          )}
+          {!auth?.accessToken &&
+            !config?.experimental_features?.ignore_authentication_requirements && (
+              <Link
+                to={window.location.pathname}
+                className={
+                  "block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"
+                }
+                onClick={() => auth?.displaySignIn()}>
+                Sign in
+              </Link>
+            )}
 
           {auth?.accessToken && (
             <Menu as="div" className="relative ml-3">
