@@ -476,7 +476,11 @@ async def get_diff_files(
         for item in items:
             if item.repository not in response[branch_name]:
                 response[branch_name][item.repository] = BranchDiffRepository(
-                    id=item.repository, commit_from=item.commit_from, commit_to=item.commit_to, branch=branch_name
+                    id=item.repository,
+                    display_name=f"Repository ({item.repository})",
+                    commit_from=item.commit_from,
+                    commit_to=item.commit_to,
+                    branch=branch_name,
                 )
 
             response[branch_name][item.repository].files.append(BranchDiffFile(**item.to_graphql()))
