@@ -22,9 +22,8 @@ def callback():
     """
 
 
-async def _init(config_file: str):
+async def _init():
     """Erase the content of the database and initialize it with the core schema."""
-    config.load_and_exit(config_file_name=config_file)
 
     # log_level = "DEBUG" if debug else "INFO"
 
@@ -50,10 +49,8 @@ async def _init(config_file: str):
     await db.close()
 
 
-async def _load_test_data(config_file: str, dataset: str):
+async def _load_test_data(dataset: str):
     """Load test data into the database from the test_data directory."""
-
-    config.load_and_exit(config_file_name=config_file)
 
     db = await get_db(retry=1)
 
@@ -73,20 +70,24 @@ async def _load_test_data(config_file: str, dataset: str):
 
 
 @app.command()
-def init(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+def init(config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub")):
     """Erase the content of the database and initialize it with the core schema."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
 
-    aiorun(_init(config_file=config_file))
+    config.load_and_exit(config_file_name=config_file)
+
+    aiorun(_init())
 
 
 @app.command()
 def load_test_data(
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"), dataset: str = "dataset01"
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"), dataset: str = "dataset01"
 ):
     """Load test data into the database from the test_data directory."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
 
-    aiorun(_load_test_data(config_file=config_file, dataset=dataset))
+    config.load_and_exit(config_file_name=config_file)
+
+    aiorun(_load_test_data(dataset=dataset))
