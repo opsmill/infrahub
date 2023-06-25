@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import os.path
 import sys
+from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -15,6 +16,11 @@ SETTINGS: Settings = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
+
+
+class DatabaseType(str, Enum):
+    NEO4J = "neo4j"
+    MEMGRAPH = "memgraph"
 
 
 class MainSettings(BaseSettings):
@@ -33,6 +39,7 @@ class MainSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
+    db_type: DatabaseType = DatabaseType.MEMGRAPH
     protocol: str = "bolt"
     username: str = "infrahub"
     password: str = "infrahub"
