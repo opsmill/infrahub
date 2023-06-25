@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
+from infrahub import config
 from infrahub.core.query import QueryNode, QueryRel
 
 if TYPE_CHECKING:
@@ -51,13 +52,18 @@ async def build_subquery_filter(
     field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias})-" + "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
-    order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ]"
+
+    if config.SETTINGS.database.db_type == config.DatabaseType.NEO4J:
+        order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ] DESC"
+    else:
+        order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
+
     query = f"""
     WITH {node_alias}
     MATCH p = {filter_str}
     WHERE {where_str}
     RETURN {node_alias} as {prefix}
-    ORDER BY {order_str} DESC
+    ORDER BY {order_str}
     LIMIT 1
     """
 
@@ -110,14 +116,18 @@ async def build_subquery_order(
     field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias})-" + "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
-    order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ]"
+
+    if config.SETTINGS.database.db_type == config.DatabaseType.NEO4J:
+        order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ] DESC"
+    else:
+        order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
 
     query = f"""
     WITH {node_alias}
     MATCH p = {filter_str}
     WHERE {where_str}
     RETURN last.value as {prefix}
-    ORDER BY {order_str} DESC
+    ORDER BY {order_str}
     LIMIT 1
     """
 
