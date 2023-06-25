@@ -34,8 +34,8 @@ class MainSettings(BaseSettings):
 
 class DatabaseSettings(BaseSettings):
     protocol: str = "bolt"
-    username: str = "neo4j"
-    password: str = "admin"
+    username: str = "infrahub"
+    password: str = "infrahub"
     address: str = "localhost"
     port: int = 7687
     database: str = Field(

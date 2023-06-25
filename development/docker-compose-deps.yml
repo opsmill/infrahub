@@ -2,21 +2,17 @@
 version: "3.4"
 services:
   database:
-    image: "neo4j:5.6-enterprise"
-    environment:
-      - "NEO4J_AUTH=neo4j/admin"
-      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
-      - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
-      - "NEO4J_dbms_security_auth__minimum__password__length=4"
-      - "NEO4J_server_metrics_prometheus_enabled=true"
-      - "NEO4J_server_metrics_prometheus_endpoint=0.0.0.0:2004"
+    image: "memgraph/memgraph-platform:2.8.0-memgraph2.8.0-lab2.6.0"
     volumes:
-      - "./plugins:/plugins"
-      - "neo4j_data:/data"
-      - "neo4j_logs:/logs"
+      - database_data:/var/lib/memgraph
+      - database_logs:/var/log/memgraph
+    environment:
+      - MGCONSOLE="--username infrahub --password infrahub"
+      - MEMGRAPH="--bolt-server-name-for-init=Neo4j/"
+    entrypoint: ["/usr/bin/supervisord"]
     healthcheck:
-      test: wget http://localhost:7474 || exit 1
-      interval: 2s
+      test: ["CMD", "bash", "-c", 'mgconsole < <(echo "SHOW TRANSACTIONS;")']
+      interval: 5s
       timeout: 10s
       retries: 20
       start_period: 3s
@@ -31,5 +27,5 @@ services:
       timeout: 30s
       retries: 3
 volumes:
-  neo4j_data:
-  neo4j_logs:
+  database_data:
+  database_logs:

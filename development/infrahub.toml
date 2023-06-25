@@ -5,11 +5,11 @@ internal_address = "http://infrahub-server:8000"
 repositories_directory = "/opt/infrahub/git"
 
 [database]
-username = "neo4j"
-password = "admin"
+username = "infrahub"
+password = "infrahub"
 address = "database"
 port = 7687
-protocol = "neo4j"
+protocol = "bolt"
 database = "infrahub"
 
 [broker]
