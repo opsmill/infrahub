@@ -33,7 +33,7 @@ class MainSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    protocol: str = "neo4j"
+    protocol: str = "bolt"
     username: str = "neo4j"
     password: str = "admin"
     address: str = "localhost"
