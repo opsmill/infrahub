@@ -70,7 +70,11 @@ async def _load_test_data(dataset: str):
 
 
 @app.command()
-def init(config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub")):
+def init(
+    config_file: str = typer.Option(
+        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
+    )
+):
     """Erase the content of the database and initialize it with the core schema."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -82,7 +86,10 @@ def init(config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFI
 
 @app.command()
 def load_test_data(
-    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"), dataset: str = "dataset01"
+    config_file: str = typer.Option(
+        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
+    ),
+    dataset: str = "dataset01",
 ):
     """Load test data into the database from the test_data directory."""
 

@@ -1,5 +1,3 @@
-
-
 from typer.testing import CliRunner
 
 from infrahub.cli import app
@@ -12,10 +10,12 @@ def test_main_app():
     assert result.exit_code == 0
     assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
 
+
 def test_db_app():
     result = runner.invoke(app, ["db", "--help"])
     assert result.exit_code == 0
     assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
+
 
 def test_git_agent_app():
     result = runner.invoke(app, ["git-agent", "--help"])
