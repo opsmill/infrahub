@@ -277,7 +277,7 @@ class Query(ABC):
         Trailing and leading spaces per line will be removed."""
         self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
-    def get_query(self, var: bool = False) -> str:
+    def get_query(self, var: bool = False, inline: bool = False) -> str:
         # Make a local copy of the _query_lines
 
         tmp_query_lines = self.query_lines.copy()
@@ -296,8 +296,10 @@ class Query(ABC):
 
         query_str = "\n".join(tmp_query_lines)
 
-        if var:
+        if var and not inline:
             return "\n" + self.get_params_for_neo4j_shell() + "\n\n" + query_str
+        if var and inline:
+            return self.insert_variables_in_query(query=query_str, variables=self.params)
 
         return query_str
 
