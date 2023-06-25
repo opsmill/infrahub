@@ -26,7 +26,9 @@ class AccountTokenValidateQuery(Query):
         self.params.update(token_params)
 
         account_filter_perms, account_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r3", "r4", "r5", "r6", "r7", "r8"], at=self.at, include_outside_parentheses=True
+            rel_labels=["r31", "r32", "r41", "r42", "r5", "r6", "r7", "r8"],
+            at=self.at,
+            include_outside_parentheses=True,
         )
         self.params.update(account_params)
 
@@ -36,8 +38,8 @@ class AccountTokenValidateQuery(Query):
         MATCH (at:AccountToken)-[r1:HAS_ATTRIBUTE]-(a:Attribute {name: "token"})-[r2:HAS_VALUE]-(av:AttributeValue { value: $token_value })
         WHERE %s
         WITH at
-        MATCH (at)-[r3]-(:Relationship)-[r4]-(acc:Account)-[r5:HAS_ATTRIBUTE]-(an:Attribute {name: "name"})-[r6:HAS_VALUE]-(av:AttributeValue)
-        MATCH (at)-[r3]-(:Relationship)-[r4]-(acc:Account)-[r7:HAS_ATTRIBUTE]-(ar:Attribute {name: "role"})-[r8:HAS_VALUE]-(avr:AttributeValue)
+        MATCH (at)-[r31]-(:Relationship)-[r41]-(acc:Account)-[r5:HAS_ATTRIBUTE]-(an:Attribute {name: "name"})-[r6:HAS_VALUE]-(av:AttributeValue)
+        MATCH (at)-[r32]-(:Relationship)-[r42]-(acc:Account)-[r7:HAS_ATTRIBUTE]-(ar:Attribute {name: "role"})-[r8:HAS_VALUE]-(avr:AttributeValue)
         WHERE %s
         """ % (
             "\n AND ".join(token_filter_perms),
