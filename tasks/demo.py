@@ -26,7 +26,7 @@ AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database",
 ENV_VARS = f"IMAGE_NAME={IMAGE_NAME}, IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_VER}"
 ENV_VARS = f"IMAGE_NAME={IMAGE_NAME}, IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_VER} INFRAHUB_BUILD_NAME={BUILD_NAME}"
 
-VOLUME_NAMES = ["neo4j_data", "neo4j_logs", "git_data"]
+VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
 
 
 def build_compose_files_cmd() -> str:
