@@ -7,9 +7,12 @@ import graphene
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
+from infrahub.core.group import GroupAssociationType
 from infrahub.core.manager import NodeManager
+from infrahub.core.query.group import GroupGetAssociationQuery
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.types import ATTRIBUTE_TYPES
+from infrahub_client.utils import deep_merge_dict
 
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
 from .schema import account_resolver, default_paginated_list_resolver
@@ -277,6 +280,88 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
         return response
 
 
+async def default_paginated_group_association_resolver(
+    parent: dict, info: GraphQLResolveInfo, **kwargs
+) -> Dict[str, Any]:
+    """Resolver for Qroup Associations for Edged responses
+
+    This resolver is used for paginated responses and as such we redefined the requested
+    fields by only reusing information below the 'node' key.
+    """
+    # Extract the InfraHub schema by inspecting the GQL Schema
+    # node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch = info.context.get("infrahub_branch")
+    db = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+
+    # Extract the type of Group Association that we need to use
+    if info.field_name == "members":
+        association_type = GroupAssociationType.MEMBER
+    elif info.field_name == "subscribers":
+        association_type = GroupAssociationType.SUBSCRIBER
+    else:
+        raise ValueError("Only values supported for info.field_name are 'members' and 'subscribers'")
+
+    edges = fields.get("edges", {})
+    node_fields = edges.get("node", {})
+
+    # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    kwargs.pop("offset", None)
+    kwargs.pop("limit", None)
+
+    response: Dict[str, Any] = {"edges": [], "count": None}
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        query = await GroupGetAssociationQuery.init(
+            session=new_session,
+            association_type=association_type,
+            group_id=parent["id"],
+            at=at,
+            branch=branch,
+        )
+        if "count" in fields:
+            response["count"] = await query.count(session=new_session)
+
+        await query.execute(session=new_session)
+        results = await query.get_members()
+
+        # if display_label has been requested we need to ensure we are querying the right fields
+        if node_fields and "display_label" in node_fields:
+            for schema in set(results.values()):
+                if schema.display_labels:
+                    display_label_fields = schema.generate_fields_for_display_label()
+                    node_fields = deep_merge_dict(node_fields, display_label_fields)
+
+        objs = await NodeManager.get_many(
+            session=new_session,
+            ids=list(results.keys()),
+            # schema=node_rel,
+            # filters=filters,
+            fields=node_fields,
+            include_owner=True,
+            include_source=True,
+            # offset=offset,
+            # limit=limit,
+            at=at,
+            branch=branch,
+        )
+
+        if not objs:
+            return response
+        node_graph = [await obj.to_graphql(session=new_session, fields=node_fields) for obj in objs.values()]
+
+        entries = []
+        for node in node_graph:
+            entry = {"node": node}
+            entries.append(entry)
+        response["edges"] = entries
+        return response
+
+
 def load_attribute_types_in_registry(branch: Branch):
     for data_type in ATTRIBUTE_TYPES.values():
         registry.set_graphql_type(
@@ -535,14 +620,11 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
             generic = registry.get_graphql_type(name=generic, branch=branch.name)
             meta_attrs["interfaces"].add(generic)
 
-    # generic_group = registry.get_graphql_type(name="Group", branch=branch.name)
-
     main_attrs = {
         "id": graphene.String(required=True),
         "_updated_at": graphene.DateTime(required=False),
         "display_label": graphene.String(required=False),
         "Meta": type("Meta", (object,), meta_attrs),
-        # "groups": graphene.Field(generic_group, required=False, resolver=many_relationship_resolver),
     }
 
     for attr in schema.local_attributes:
@@ -681,10 +763,16 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
         # TODO add group specific resolvers
         # TODO add pagination for groups and groups members
         main_attrs["members"] = graphene.Field(
-            paginated_association_type, required=False, description="Nodes members of the group"
+            paginated_association_type,
+            required=False,
+            description="Nodes members of the group",
+            resolver=default_paginated_group_association_resolver,
         )
         main_attrs["subscribers"] = graphene.Field(
-            paginated_association_type, required=False, description="Nodes subscribed to the group"
+            paginated_association_type,
+            required=False,
+            description="Nodes subscribed to the group",
+            resolver=default_paginated_group_association_resolver,
         )
 
     return type(schema.kind, (InfrahubInterface,), main_attrs)

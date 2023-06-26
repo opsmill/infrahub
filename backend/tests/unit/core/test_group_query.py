@@ -74,7 +74,7 @@ async def test_query_GroupGetAssociationQuery(
         session=session, branch=branch, association_type=GroupAssociationType.MEMBER, group=group1
     )
     await query.execute(session=session)
-    assert len(await query.get_members()) == 1
+    assert await query.get_members() == {person_jim_main.id: person_jim_main._schema}
 
 
 async def test_query_GroupHasAssociationQuery(

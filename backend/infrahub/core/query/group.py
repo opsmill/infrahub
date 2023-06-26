@@ -1,26 +1,34 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.utils import find_node_schema
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.group import Group, GroupAssociationType
+    from infrahub.core.schema import NodeSchema
 
 
 class GroupQuery(Query):
     def __init__(
         self,
         association_type: GroupAssociationType,
-        group: Group,
+        group: Optional[Group] = None,
+        group_id: Optional[str] = None,
         *args,
         **kwargs,
     ):
         self.association_type = association_type
         self.rel_name = f"IS_{association_type.value}".upper()
+
+        if not group and not group_id:
+            raise ValueError("Either group or group_id must be defined, none provided")
+
         self.group = group
+        self.group_id = group_id or group.id
 
         super().__init__(*args, **kwargs)
 
@@ -41,7 +49,7 @@ class GroupAddAssociationQuery(GroupQuery):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["group_id"] = self.group.id
+        self.params["group_id"] = self.group_id
         self.params["node_ids"] = self.node_ids
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -63,10 +71,10 @@ class GroupAddAssociationQuery(GroupQuery):
 class GroupGetAssociationQuery(GroupQuery):
     name = "group_member_get"
 
-    type: QueryType = QueryType.WRITE
+    type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["group_id"] = self.group.id
+        self.params["group_id"] = self.group_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
@@ -104,10 +112,13 @@ class GroupGetAssociationQuery(GroupQuery):
         )
 
         self.add_to_query(query)
-        self.return_labels = ["mb.uuid"]
+        self.return_labels = ["mb"]
 
-    async def get_members(self):
-        return [result.get("mb.uuid") for result in self.get_results()]
+    async def get_members(self) -> Dict[str, NodeSchema]:
+        return {
+            result.get("mb").get("uuid"): find_node_schema(node=result.get("mb"), branch=self.branch)
+            for result in self.get_results()
+        }
 
 
 class GroupHasAssociationQuery(GroupQuery):
@@ -126,7 +137,7 @@ class GroupHasAssociationQuery(GroupQuery):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["group_id"] = self.group.id
+        self.params["group_id"] = self.group_id
         self.params["node_ids"] = self.node_ids
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -177,7 +188,7 @@ class GroupRemoveAssociationQuery(GroupQuery):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["group_id"] = self.group.id
+        self.params["group_id"] = self.group_id
         self.params["node_ids"] = self.node_ids
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level

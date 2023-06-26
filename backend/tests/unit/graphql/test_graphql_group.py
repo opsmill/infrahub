@@ -1,4 +1,5 @@
 import pytest
+from deepdiff import DeepDiff
 from graphql import graphql
 from neo4j import AsyncDriver, AsyncSession
 
@@ -316,7 +317,7 @@ async def test_group_subscriber_remove(
     assert subscribers == [person_albert_main.id]
 
 
-async def test_query_group_members(
+async def test_query_groups(
     db: AsyncDriver,
     session: AsyncSession,
     group_group1_members_main: Group,
@@ -354,3 +355,171 @@ async def test_query_group_members(
 
     assert result.errors is None
     assert result.data == expected_results
+
+
+async def test_query_group_members_same_type(
+    db: AsyncDriver,
+    session: AsyncSession,
+    group_group1_members_main: Group,
+    person_john_main: Node,
+    person_jim_main: Node,
+    branch: Branch,
+):
+    query = """
+    query {
+        group {
+            count
+            edges {
+                node {
+                    id
+                    members {
+                        count
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    expected_results = {
+        "group": {
+            "count": 1,
+            "edges": [
+                {
+                    "node": {
+                        "id": group_group1_members_main.id,
+                        "members": {
+                            "count": 2,
+                            "edges": [
+                                {
+                                    "node": {
+                                        "id": person_john_main.id,
+                                    },
+                                },
+                                {
+                                    "node": {
+                                        "id": person_jim_main.id,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                },
+            ],
+        },
+    }
+
+    assert result.errors is None
+    # assert result.data == expected_results
+    assert DeepDiff(expected_results, result.data, ignore_order=True).to_dict() == {}
+
+
+async def test_query_group_subscribers_different_type(
+    db: AsyncDriver,
+    session: AsyncSession,
+    group_group2_subscribers_main: Group,
+    person_john_main: Node,
+    person_jim_main: Node,
+    car_volt_main: Node,
+    car_accord_main: Node,
+    branch: Branch,
+):
+    query = """
+    query {
+        group {
+            count
+            edges {
+                node {
+                    id
+                    subscribers {
+                        count
+                        edges {
+                            node {
+                                display_label
+                                id
+                                __typename
+                                ...on Car {
+                                    is_electric {
+                                        value
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    expected_results = {
+        "group": {
+            "count": 1,
+            "edges": [
+                {
+                    "node": {
+                        "id": group_group2_subscribers_main.id,
+                        "subscribers": {
+                            "count": 4,
+                            "edges": [
+                                {
+                                    "node": {
+                                        "__typename": "Person",
+                                        "display_label": "John",
+                                        "id": person_john_main.id,
+                                    },
+                                },
+                                {
+                                    "node": {
+                                        "__typename": "Person",
+                                        "display_label": "Jim",
+                                        "id": person_jim_main.id,
+                                    },
+                                },
+                                {
+                                    "node": {
+                                        "__typename": "Car",
+                                        "display_label": "volt #444444",
+                                        "id": car_volt_main.id,
+                                        "is_electric": {"value": True},
+                                    },
+                                },
+                                {
+                                    "node": {
+                                        "__typename": "Car",
+                                        "display_label": "accord #444444",
+                                        "id": car_accord_main.id,
+                                        "is_electric": {"value": False},
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                },
+            ],
+        },
+    }
+
+    assert result.errors is None
+    assert DeepDiff(expected_results, result.data, ignore_order=True, ignore_private_variables=False).to_dict() == {}

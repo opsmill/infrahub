@@ -705,7 +705,7 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
                 "kind": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_labels": ["name__value"],
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1120,6 +1120,27 @@ async def group_group1_subscribers_main(
     await obj.save(session=session)
 
     await obj.subscribers.add(session=session, nodes=[person_john_main, person_jim_main, person_albert_main])
+
+    return obj
+
+
+@pytest.fixture
+async def group_group2_subscribers_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_jim_main: Node,
+    car_volt_main: Node,
+    car_accord_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group2")
+    await obj.save(session=session)
+
+    await obj.subscribers.add(
+        session=session, nodes=[person_john_main, person_jim_main, car_volt_main, car_accord_main]
+    )
 
     return obj
 
