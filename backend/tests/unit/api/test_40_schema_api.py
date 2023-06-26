@@ -23,7 +23,7 @@ async def test_schema_read_endpoint_default_branch(
     assert "nodes" in schema
     assert "generics" in schema
     assert len(schema["nodes"]) == 18
-    assert len(schema["generics"]) == 3
+    assert len(schema["generics"]) == 4
     assert schema["generics"][0]["used_by"]
 
 
@@ -149,7 +149,7 @@ async def test_schema_load_endpoint_valid_with_generics(
         assert response2.status_code == 200
 
     schema = response2.json()
-    assert len(schema["generics"]) == 3
+    assert len(schema["generics"]) == 4
 
 
 async def test_schema_load_endpoint_idempotent_with_generics(
@@ -171,7 +171,7 @@ async def test_schema_load_endpoint_idempotent_with_generics(
         assert response2.status_code == 200
 
         schema = response2.json()
-        assert len(schema["generics"]) == 3
+        assert len(schema["generics"]) == 4
 
         nbr_rels = await count_relationships(session=session)
 
