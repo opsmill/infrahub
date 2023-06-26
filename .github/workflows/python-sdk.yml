@@ -35,10 +35,6 @@ jobs:
           git config --global --add safe.directory '*'
           git config --global user.email "infrahub@example.com"
           git config --global user.name "Infrahub"
-      - name: "Setup Docker-Compose"
-        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      - name: "Start database"
-        run: "invoke demo.dev-start"
       - name: "Install project"
         run: "poetry install --only=main,dev,server"
       - name: "Black Tests"
@@ -58,6 +54,12 @@ jobs:
         with:
           flag-name: python-sdk-unit
           parallel: true
+      # - name: "Setup Docker-Compose"
+      #   run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      - name: "Start database"
+        run: "invoke demo.dev-start"
+      - name: "Check Services Status"
+        run: "invoke demo.status"
       - name: "Integration Tests"
         run: "poetry run pytest --cov=infrahub_client python_sdk/tests/integration"
       - name: "Coveralls : Integration Tests"
