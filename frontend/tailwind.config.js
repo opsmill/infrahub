@@ -18,7 +18,6 @@ module.exports = {
           800: "#076982",
           900: "#065a70",
         },
-
         "custom-blue-green": "#0B6581",
         "custom-blue-gray": "#0D3F54",
         "custom-gray": "#0B1829",
