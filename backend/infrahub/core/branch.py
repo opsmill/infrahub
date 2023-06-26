@@ -93,7 +93,7 @@ class DeleteBranchRelationshipsQuery(Query):
         WITH *
         UNWIND nodes(p) AS n
         MATCH (n)
-        WHERE NOT (n)--()
+        WHERE NOT exists((n)--())
         DELETE n
         """
         self.params["branch_name"] = self.branch_name
