@@ -19,6 +19,7 @@ async def dbs_for_test(db):
         await default_db.run(f"DROP DATABASE {database} IF EXISTS")
 
 
+@pytest.mark.neo4j
 async def test_validate_database(db, dbs_for_test):
     await validate_database(driver=db, database_name=config.SETTINGS.database.database, retry=2)
 

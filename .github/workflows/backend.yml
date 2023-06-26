@@ -49,7 +49,7 @@ jobs:
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
       - name: "Unit Tests"
-        run: "poetry run pytest --cov=infrahub backend/tests/unit"
+        run: "poetry run pytest --cov=infrahub backend/tests/unit -m 'not neo4j'"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
