@@ -8,15 +8,16 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, U
 from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
+from infrahub.core.schema import NodeSchema
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+    from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import NodeSchema
 
 # pylint: disable=consider-using-f-string,redefined-builtin
 
@@ -66,10 +67,12 @@ class AttrToProcess:
     is_visible: Optional[bool]
 
 
-def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
+def find_node_schema(node: Neo4jNode, branch: Union[Branch, str]) -> NodeSchema:
     for label in node.labels:
-        if registry.has_schema(name=label, branch=branch):
-            return registry.get_schema(name=label, branch=branch)
+        if registry.schema.has(name=label, branch=branch):
+            schema = registry.schema.get(name=label, branch=branch)
+            if isinstance(schema, NodeSchema):
+                return schema
 
     return None
 

@@ -314,3 +314,43 @@ async def test_group_subscriber_remove(
 
     subscribers = await g1.subscribers.get(session=session)
     assert subscribers == [person_albert_main.id]
+
+
+async def test_query_group_members(
+    db: AsyncDriver,
+    session: AsyncSession,
+    group_group1_members_main: Group,
+    branch: Branch,
+):
+    pass
+
+    query = """
+    query {
+        group {
+            count
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    expected_results = {
+        "group": {
+            "count": 1,
+            "edges": [{"node": {"id": group_group1_members_main.id}}],
+        },
+    }
+
+    assert result.errors is None
+    assert result.data == expected_results

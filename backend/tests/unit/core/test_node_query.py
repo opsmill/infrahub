@@ -12,8 +12,19 @@ from infrahub.core.query.node import (
     NodeListGetInfoQuery,
     NodeListGetLocalAttributeValueQuery,
     NodeListGetRelationshipsQuery,
+    find_node_schema,
 )
 from infrahub.core.timestamp import Timestamp
+
+
+async def test_find_node_schema(neo4j_factory, group_schema, branch):
+    n1 = neo4j_factory.hydrate_node(111, {"Node", "Group", "StandardGroup"}, {"uuid": "n1"}, "111")
+    schema = find_node_schema(node=n1, branch=branch)
+    assert schema.kind == "StandardGroup"
+
+    n2 = neo4j_factory.hydrate_node(122, {"Node", "Group"}, {"uuid": "n1"}, "122")
+    schema = find_node_schema(node=n2, branch=branch)
+    assert schema is None
 
 
 async def test_query_NodeCreateQuery_with_generic(session: AsyncSession, group_schema, branch: Branch):
@@ -146,7 +157,6 @@ async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
 
 
 async def test_query_NodeGetListQuery_with_generics(session: AsyncSession, group_group1_main, branch: Branch):
-
     schema = registry.schema.get(name="Group", branch=branch)
     query = await NodeGetListQuery.init(
         session=session,

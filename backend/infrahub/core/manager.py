@@ -13,7 +13,7 @@ from infrahub.core.query.node import (
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import NodeSchema, RelationshipSchema
+from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import SchemaNotFound
 from infrahub_client.utils import deep_merge_dict
@@ -83,7 +83,7 @@ class NodeManager:
 
         if isinstance(schema, str):
             schema = registry.get_schema(name=schema, branch=branch.name)
-        elif not isinstance(schema, NodeSchema):
+        elif not isinstance(schema, (NodeSchema, GenericSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
         # Query the list of nodes matching this Query
