@@ -53,10 +53,7 @@ async def build_subquery_filter(
     filter_str = f"({node_alias})-" + "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
 
-    if config.SETTINGS.database.db_type == config.DatabaseType.NEO4J:
-        order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ] DESC"
-    else:
-        order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
+    order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
 
     query = f"""
     WITH {node_alias}
@@ -117,10 +114,7 @@ async def build_subquery_order(
     filter_str = f"({node_alias})-" + "-".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
 
-    if config.SETTINGS.database.db_type == config.DatabaseType.NEO4J:
-        order_str = "[ " + ", ".join([f"{rel}.branch_level, {rel}.from" for rel in rel_names]) + " ] DESC"
-    else:
-        order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
+    order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
 
     query = f"""
     WITH {node_alias}
