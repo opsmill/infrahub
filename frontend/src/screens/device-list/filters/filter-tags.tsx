@@ -36,7 +36,7 @@ export default function FilterTags() {
               aria-hidden="true"
               className={classNames(
                 color.bgColor,
-                "h-6 w-6 border border-black border-opacity-10 rounded-full"
+                "h-6 w-6 border border-custom-black border-opacity-10 rounded-full"
               )}
             />
           </RadioGroup.Option>

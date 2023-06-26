@@ -36,7 +36,7 @@ export default function DeviceFilters() {
             leaveFrom="opacity-100 translate-y-0"
             leaveTo="opacity-0 translate-y-1">
             <Popover.Panel className="absolute right-0 z-20 mt-3 w-screen max-w-sm px-2 sm:px-0 bg-white">
-              <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 p-6 h-96">
+              <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-custom-black ring-opacity-5 p-6 h-96">
                 <FilterBranch />
                 <br />
                 <FilterTime />

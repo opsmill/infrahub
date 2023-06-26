@@ -34,7 +34,7 @@ export const SelectButton = (props: any) => {
               leave="transition ease-in duration-100"
               leaveFrom="opacity-100"
               leaveTo="opacity-0">
-              <Listbox.Options className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none rounded-md">
+              <Listbox.Options className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md">
                 {options.map((option: any) => (
                   <Listbox.Option
                     key={option.name}

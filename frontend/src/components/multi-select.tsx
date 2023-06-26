@@ -1,10 +1,10 @@
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { MultipleInput } from "./multiple-input";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export type SelectOption = {
   id: string;
@@ -49,7 +49,7 @@ export const MultiSelect = (props: SelectProps) => {
         </Combobox.Button>
 
         {options.length > 0 && (
-          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm">
             {options.map((option: any) => (
               <Combobox.Option
                 key={option.id}

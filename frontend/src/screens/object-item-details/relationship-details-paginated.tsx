@@ -321,7 +321,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
                 <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
                   <div className="inline-block min-w-full pt-2 align-middle">
-                    <div className="shadow-sm ring-1 ring-black ring-opacity-5">
+                    <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
                       <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                         <thead className="bg-gray-50">
                           <tr>
