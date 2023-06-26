@@ -1,11 +1,11 @@
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Diff } from "./diff/diff";
-import { BranchDetails } from "./branch-details";
 import { TabsButtons } from "../../components/tabs-buttons";
 import { QSP } from "../../config/qsp";
 import { constructPath } from "../../utils/fetch";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { BranchDetails } from "./branch-details";
+import { Diff } from "./diff/diff";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -43,7 +43,7 @@ export const BrancheItemDetails = () => {
 
   return (
     <>
-      <div className="bg-white py-4 px-4 pb-0 w-full">
+      <div className="bg-custom-white py-4 px-4 pb-0 w-full">
         <div className="flex items-center">
           <div
             onClick={() => navigate(branchesPath)}

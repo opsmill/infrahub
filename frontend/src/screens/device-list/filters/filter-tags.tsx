@@ -5,7 +5,7 @@ import { classNames } from "../../../utils/common";
 const colors = [
   { name: "Red", bgColor: "bg-red-500", selectedColor: "ring-red-500" },
   { name: "Green", bgColor: "bg-green-500", selectedColor: "ring-green-500" },
-  { name: "Blue", bgColor: "bg-blue-500", selectedColor: "ring-blue-500" },
+  { name: "Blue", bgColor: "bg-custom-blue-500", selectedColor: "ring-custom-blue-500" },
 ];
 
 export default function FilterTags() {
@@ -36,7 +36,7 @@ export default function FilterTags() {
               aria-hidden="true"
               className={classNames(
                 color.bgColor,
-                "h-6 w-6 border border-black border-opacity-10 rounded-full"
+                "h-6 w-6 border border-custom-black border-opacity-10 rounded-full"
               )}
             />
           </RadioGroup.Option>

@@ -15,7 +15,7 @@ export default function DeviceFilters() {
           <Popover.Button
             className={classNames(
               open ? "text-gray-900" : "text-gray-500",
-              "group inline-flex items-center rounded-md bg-white text-base font-medium hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              "group inline-flex items-center rounded-md bg-custom-white text-base font-medium hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             )}>
             <span>Filters</span>
             <ChevronDownIcon
@@ -35,8 +35,8 @@ export default function DeviceFilters() {
             leave="transition ease-in duration-150"
             leaveFrom="opacity-100 translate-y-0"
             leaveTo="opacity-0 translate-y-1">
-            <Popover.Panel className="absolute right-0 z-20 mt-3 w-screen max-w-sm px-2 sm:px-0 bg-white">
-              <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 p-6 h-96">
+            <Popover.Panel className="absolute right-0 z-20 mt-3 w-screen max-w-sm px-2 sm:px-0 bg-custom-white">
+              <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-custom-black ring-opacity-5 p-6 h-96">
                 <FilterBranch />
                 <br />
                 <FilterTime />

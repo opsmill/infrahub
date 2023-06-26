@@ -110,7 +110,9 @@ export const FileContentDiff = (props: any) => {
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="bg-white p-4 border border-blue-500 rounded-md m-2">
+          <div
+            key={index}
+            className="bg-custom-white p-4 border border-custom-blue-500 rounded-md m-2">
             {comment.message}
           </div>
         )),
@@ -147,7 +149,7 @@ export const FileContentDiff = (props: any) => {
   const [fileContent] = parseDiff(appendGitDiffHeaderIfNeeded(diff), { nearbySequences: "zip" });
 
   return (
-    <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
+    <div className={"rounded-lg shadow p-4 m-4 bg-custom-white"}>
       <Accordion title={file.location}>
         <div className="flex">
           <div className="flex-1">

@@ -180,7 +180,7 @@ export default function DeviceFilterBar(props: Props) {
   };
 
   return (
-    <div className="bg-white">
+    <div className="bg-custom-white">
       <div
         aria-labelledby="filter-heading"
         className="grid items-center border-t border-b border-gray-200">
@@ -190,7 +190,7 @@ export default function DeviceFilterBar(props: Props) {
         <div className="bg-gray-100">
           <div className="mx-auto py-3 sm:flex sm:items-center sm:px-6 lg:px-8">
             <div className="flex space-x-6 divide-x divide-gray-200 text-sm">
-              <div className="group flex items-center align-middle font-medium text-blue-500">
+              <div className="group flex items-center align-middle font-medium text-custom-blue-500">
                 {filters.length} Filters
               </div>
               <div className="pl-4">
@@ -247,7 +247,7 @@ export default function DeviceFilterBar(props: Props) {
                   leaveFrom="transform opacity-100 scale-100"
                   leaveTo="transform opacity-0 scale-95"
                 >
-                  <Menu.Items className="absolute right-0 z-20 mt-2 w-40 origin-top-right rounded-md bg-white shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <Menu.Items className="absolute right-0 z-20 mt-2 w-40 origin-top-right rounded-md bg-custom-white shadow-2xl ring-1 ring-custom-black ring-opacity-5 focus:outline-none">
                     <div className="py-1">
                       {
                         sortOptions

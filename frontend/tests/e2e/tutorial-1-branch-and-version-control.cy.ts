@@ -41,13 +41,16 @@ describe("Tutorial - Part 1", () => {
     cy.get("[href='/objects/account'] > .group").click();
 
     // Select the admin account
-    cy.get(".bg-white > :nth-child(5) > :nth-child(1)").should("have.text", ADMIN_ACCOUNT_NAME);
+    cy.get(".bg-custom-white > :nth-child(5) > :nth-child(1)").should(
+      "have.text",
+      ADMIN_ACCOUNT_NAME
+    );
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_accounts", screenshotConfig);
     }
 
-    cy.get(".bg-white > :nth-child(5) > :nth-child(1)").click();
+    cy.get(".bg-custom-white > :nth-child(5) > :nth-child(1)").click();
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",
       ADMIN_ACCOUNT_NAME
@@ -58,7 +61,7 @@ describe("Tutorial - Part 1", () => {
     }
 
     // Open the edit panel
-    cy.get(".md\\:pl-64 > .flex-col > .bg-white > :nth-child(2) > .rounded-md").click();
+    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > .rounded-md").click();
 
     // Verify that the field is pre-populated
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ADMIN_ACCOUNT_NAME);
@@ -73,7 +76,7 @@ describe("Tutorial - Part 1", () => {
     }
 
     // Submit the form
-    cy.get(".mt-6 > .bg-blue-500").click();
+    cy.get(".mt-6 > .bg-custom-blue-500").click();
 
     // The new label should be saved
     cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);

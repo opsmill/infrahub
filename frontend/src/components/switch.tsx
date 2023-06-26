@@ -16,16 +16,16 @@ export const Switch = (props: any) => {
         checked={checked}
         onChange={onChange}
         className={`${
-          checked ? "bg-blue-500" : "bg-gray-200"
+          checked ? "bg-custom-blue-500" : "bg-gray-200"
         } relative inline-flex h-6 w-11 items-center rounded-full`}>
         <span
           className={`${
             checked ? "translate-x-6" : "translate-x-1"
-          } inline-block h-4 w-4 transform rounded-full bg-white transition`}
+          } inline-block h-4 w-4 transform rounded-full bg-custom-white transition`}
         />
       </HSwitch>
       {error && error?.message && (
-        <div className="absolute text-sm text-red-500 bg-white -bottom-2 ml-2 px-2">
+        <div className="absolute text-sm text-red-500 bg-custom-white -bottom-2 ml-2 px-2">
           {error?.message}
         </div>
       )}

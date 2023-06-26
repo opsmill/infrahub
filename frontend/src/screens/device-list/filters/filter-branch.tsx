@@ -57,7 +57,7 @@ export default function FilterBranch() {
       <Combobox.Label className="block text-sm font-medium text-gray-700">Branch</Combobox.Label>
       <div className="relative mt-1">
         <Combobox.Input
-          className="w-full rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+          className="w-full rounded-md border border-gray-300 bg-custom-white py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
           onChange={(event) => setQuery(event.target.value)}
           displayValue={(branch: Branch) => {
             if (branch) {
@@ -71,7 +71,7 @@ export default function FilterBranch() {
         </Combobox.Button>
 
         {filteredBranches.length > 0 && (
-          <Combobox.Options className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Combobox.Options className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md bg-custom-white py-1 text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm">
             {filteredBranches.map((branch, index) => (
               <Combobox.Option
                 key={index}
@@ -82,7 +82,7 @@ export default function FilterBranch() {
                     active ? "bg-gray-200" : "text-gray-900"
                   )
                 }>
-                {({ active, selected }) => (
+                {({ selected }) => (
                   <>
                     <div className="flex items-center cursor-pointer ">
                       {!selected && <ShareIcon className="text-gray-600 w-4 h-4" />}

@@ -68,7 +68,7 @@ export const Pagination = (props: tPaginationType) => {
   };
 
   return (
-    <div className="sticky bottom-0 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+    <div className="sticky bottom-0 flex items-center justify-between border-t border-gray-200 bg-custom-white px-4 py-3 sm:px-6">
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div className="flex items-center">
           <div className="text-sm text-gray-700">
@@ -105,8 +105,8 @@ export const Pagination = (props: tPaginationType) => {
             breakClassName="cursor-pointer relative inline-flex items-center text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
             breakLinkClassName="cursor-pointer px-4 py-2"
             containerClassName="flex"
-            activeClassName="bg-blue-500 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 hover:bg-blue-500"
-            activeLinkClassName="cursor-pointer px-4 py-2"
+            activeClassName="bg-custom-blue-100 text-custom-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-custom-blue-100 hover:bg-custom-blue-100"
+            activeLinkClassName="cursor-pointer px-4 py-2 text-custom-white"
           />
         </div>
       </div>

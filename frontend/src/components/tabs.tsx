@@ -1,6 +1,6 @@
 import { StringParam, useQueryParam } from "use-query-params";
-import { classNames } from "../utils/common";
 import { QSP } from "../config/qsp";
+import { classNames } from "../utils/common";
 
 type Tab = {
   name?: string;
@@ -17,7 +17,7 @@ export const Tabs = (props: TabsProps) => {
   const [qspTab, setQspTab] = useQueryParam(props.qsp ?? QSP.TAB, StringParam);
 
   return (
-    <div className="bg-white flex items-center border-b border-gray-200">
+    <div className="bg-custom-white flex items-center border-b border-gray-200">
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">

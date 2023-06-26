@@ -298,7 +298,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 });
                                 setShowMetaEditModal(true);
                               }}>
-                              <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                              <PencilSquareIcon className="w-5 h-5 text-custom-blue-500" />
                             </div>
                           </div>
                         }
@@ -321,7 +321,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
                 <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
                   <div className="inline-block min-w-full pt-2 align-middle">
-                    <div className="shadow-sm ring-1 ring-black ring-opacity-5">
+                    <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
                       <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                         <thead className="bg-gray-50">
                           <tr>
@@ -340,7 +340,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white">
+                        <tbody className="bg-custom-white">
                           {relationshipsData?.map(({ node, properties }: any, index: number) => (
                             <tr
                               onClick={() =>
@@ -524,8 +524,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
-              className="p-3 ml-2 bg-blue-500 text-sm hover:bg-blue-600 focus:ring-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
-              <PlusIcon className="h-7 w-7 text-white" aria-hidden="true" />
+              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
+              <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>
           </div>
         )}

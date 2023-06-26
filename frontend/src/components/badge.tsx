@@ -36,7 +36,7 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
     }
     case BADGE_TYPES.LIGHT: {
       return `
-        bg-white text-gray-800
+        bg-custom-white text-gray-800
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }

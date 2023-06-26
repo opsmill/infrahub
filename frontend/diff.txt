@@ -185,7 +185,7 @@ index 25392af1..2788585a 100644
 +      return {
 +        ...widgets,
 +        [changeKey]: change?.comments?.map((comment: any, index: number) => (
-+          <div key={index} className="bg-white p-4">
++          <div key={index} className="bg-custom-white p-4">
 +            {comment.message}
 +          </div>
 +        )),

@@ -74,9 +74,9 @@ export default function BranchSelector() {
     <Button
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
-      className="flex-1 rounded-r-md border border-blue-600"
+      className="flex-1 rounded-r-md"
       type="submit">
-      <PlusIcon className="h-5 w-5 text-white" aria-hidden="true" />
+      <PlusIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
     </Button>
   );
 
@@ -108,7 +108,7 @@ export default function BranchSelector() {
       {option.is_data_only && (
         <div className="absolute bottom-0 right-0">
           <CircleStackIcon
-            className={classNames("h-4 w-4", active ? "text-white" : "text-gray-500")}
+            className={classNames("h-4 w-4", active ? "text-custom-white" : "text-gray-500")}
           />
         </div>
       )}
@@ -116,7 +116,7 @@ export default function BranchSelector() {
       {option.is_default && (
         <div className="absolute bottom-0 right-0">
           <ShieldCheckIcon
-            className={classNames("h-4 w-4", active ? "text-white" : "text-gray-500")}
+            className={classNames("h-4 w-4", active ? "text-custom-white" : "text-gray-500")}
           />
         </div>
       )}
@@ -124,13 +124,14 @@ export default function BranchSelector() {
       <div className="flex justify-between">
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
         {selected ? (
-          <span className={active ? "text-white" : "text-blue-500"}>
+          <span className={active ? "text-custom-white" : "text-gray-500"}>
             <CheckIcon className="h-5 w-5" aria-hidden="true" />
           </span>
         ) : null}
       </div>
+
       {option?.created_at && (
-        <p className={classNames(active ? "text-blue-200" : "text-gray-500", "mt-2")}>
+        <p className={classNames(active ? "text-custom-white" : "text-gray-500", "mt-2")}>
           {formatDistanceToNow(new Date(option?.created_at), {
             addSuffix: true,
           })}

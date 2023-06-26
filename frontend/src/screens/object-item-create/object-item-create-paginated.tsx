@@ -138,7 +138,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   return (
-    <div className="bg-white flex-1 overflow-auto flex">
+    <div className="bg-custom-white flex-1 overflow-auto flex">
       {schema && formStructure && (
         <div className="flex-1">
           <EditFormHookComponent
