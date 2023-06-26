@@ -57,15 +57,15 @@ const getClasseName = (type?: BUTTON_TYPES) => {
     }
     case BUTTON_TYPES.MAIN: {
       return `
-        bg-custom-blue text-custom-white
-        hover:bg-custom-blue
-        disabled:cursor-not-allowed disabled:bg-custom-blue disabled:text-custom-white disabled:border-slate-200 disabled:shadow-none
+        bg-custom-blue-500 text-custom-white
+        hover:bg-custom-blue-500
+        disabled:cursor-not-allowed disabled:bg-custom-blue-200 disabled:text-custom-white disabled:border-slate-200 disabled:shadow-none
       `;
     }
     case BUTTON_TYPES.ACTIVE: {
       return `
-        bg-gray-500 text-custom-white cursor-default
-        hover:bg-gray-500
+        bg-custom-blue-700 text-custom-white cursor-default
+        hover:bg-custom-blue-700
         disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-custom-white disabled:border-slate-200 disabled:shadow-none
       `;
     }

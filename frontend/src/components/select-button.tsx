@@ -17,11 +17,11 @@ export const SelectButton = (props: any) => {
           <div className="relative">
             <div className="inline-flex shadow-sm">
               <div className="inline-flex shadow-sm">
-                <div className="inline-flex items-center border border-transparent bg-custom-blue py-2 pl-3 pr-4 text-custom-white shadow-sm rounded-l-md">
+                <div className="inline-flex items-center border border-transparent bg-custom-blue-500 py-2 pl-3 pr-4 text-custom-white shadow-sm rounded-l-md">
                   {valueLabel}
                 </div>
                 <Listbox.Button
-                  className="rounded-none border-l border-custom-blue"
+                  className="rounded-none border-l border-custom-blue-500"
                   as={Button}
                   buttonType={BUTTON_TYPES.MAIN}>
                   <ChevronDownIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
@@ -40,7 +40,7 @@ export const SelectButton = (props: any) => {
                     key={option.name}
                     className={({ active }) =>
                       classNames(
-                        active ? "text-custom-white bg-custom-blue" : "text-gray-900",
+                        active ? "text-custom-white bg-custom-blue-500" : "text-gray-900",
                         "cursor-default select-none p-4 text-sm"
                       )
                     }

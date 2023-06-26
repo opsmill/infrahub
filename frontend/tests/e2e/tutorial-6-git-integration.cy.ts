@@ -64,6 +64,6 @@ describe("Tutorial - Part 6", () => {
     }
 
     // Submit
-    cy.get(".mt-6 > .bg-custom-blue").click();
+    cy.get(".mt-6 > .bg-custom-blue-500").click();
   });
 });

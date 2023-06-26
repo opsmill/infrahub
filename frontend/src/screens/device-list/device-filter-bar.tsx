@@ -190,7 +190,7 @@ export default function DeviceFilterBar(props: Props) {
         <div className="bg-gray-100">
           <div className="mx-auto py-3 sm:flex sm:items-center sm:px-6 lg:px-8">
             <div className="flex space-x-6 divide-x divide-gray-200 text-sm">
-              <div className="group flex items-center align-middle font-medium text-custom-blue">
+              <div className="group flex items-center align-middle font-medium text-custom-blue-500">
                 {filters.length} Filters
               </div>
               <div className="pl-4">

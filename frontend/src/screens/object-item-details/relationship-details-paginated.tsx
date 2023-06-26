@@ -298,7 +298,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 });
                                 setShowMetaEditModal(true);
                               }}>
-                              <PencilSquareIcon className="w-5 h-5 text-custom-blue" />
+                              <PencilSquareIcon className="w-5 h-5 text-custom-blue-500" />
                             </div>
                           </div>
                         }
@@ -524,7 +524,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
-              className="p-3 ml-2 bg-custom-blue text-sm hover:bg-custom-blue focus:ring-custom-blue focus:ring-offset-gray-50 focus:ring-offset-2">
+              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
               <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>
           </div>

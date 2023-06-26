@@ -21,7 +21,7 @@ export default function DropDownMenuHeader(props: Props) {
               "group w-full flex items-center pl-2 pr-1 py-2 text-left text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             )}>
             <Icon
-              className="mr-3 h-6 w-6 flex-shrink-0 text-custom-blue group-hover:text-gray-500"
+              className="mr-3 h-6 w-6 flex-shrink-0 text-custom-blue-500 group-hover:text-gray-500"
               aria-hidden="true"
             />
             <span className="flex-1">{title}</span>
