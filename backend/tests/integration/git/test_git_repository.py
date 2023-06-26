@@ -5,7 +5,7 @@ from infrahub.core.initialization import first_time_initialization
 from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.git import InfrahubRepository
-from infrahub_client import InfrahubClient, NodeNotFound
+from infrahub_client import Config, InfrahubClient, NodeNotFound
 
 # pylint: disable=unused-argument
 
@@ -29,8 +29,8 @@ class TestInfrahubClient:
     @pytest.fixture
     async def client(self, test_client, integration_helper):
         admin_token = await integration_helper.create_token()
-
-        return await InfrahubClient.init(test_client=test_client, api_token=admin_token)
+        config = Config(api_token=admin_token)
+        return await InfrahubClient.init(test_client=test_client, config=config)
 
     @pytest.fixture(scope="class")
     async def query_99(self, session, test_client):

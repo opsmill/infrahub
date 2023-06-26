@@ -158,6 +158,7 @@ async def first_time_initialization(session: AsyncSession):
     # ----
     group_schema = registry.get_schema(name="Group")
     account_schema = registry.get_schema(name="Account")
+    token_schema = registry.get_schema(name="AccountToken")
     admin_grp = await Node.init(session=session, schema=group_schema)
     await admin_grp.new(session=session, name="admin")
     await admin_grp.save(session=session)
@@ -174,6 +175,15 @@ async def first_time_initialization(session: AsyncSession):
     )
     await obj.save(session=session)
     LOGGER.info(f"Created Account: {obj.name.value}")
+
+    if config.SETTINGS.security.initial_admin_token:
+        token = await Node.init(session=session, schema=token_schema)
+        await token.new(
+            session=session,
+            token=config.SETTINGS.security.initial_admin_token,
+            account=obj,
+        )
+        await token.save(session=session)
 
     # # FIXME Remove these hardcoded Token Value
     # token = AccountToken.init(token=obj.name.value)

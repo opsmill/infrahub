@@ -110,14 +110,14 @@ class Branch(StandardNode):
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""
     origin_branch: str = "main"
-    branched_from: Optional[str]
+    branched_from: Optional[str] = None
     hierarchy_level: int = 2
-    created_at: Optional[str]
+    created_at: Optional[str] = None
     is_default: bool = False
     is_protected: bool = False
     is_data_only: bool = False
-    schema_changed_at: Optional[str]
-    schema_hash: Optional[int]
+    schema_changed_at: Optional[str] = None
+    schema_hash: Optional[int] = None
 
     ephemeral_rebase: bool = False
 

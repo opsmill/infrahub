@@ -11,6 +11,7 @@ import httpx
 
 from infrahub_client.batch import InfrahubBatch
 from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerSync
+from infrahub_client.config import Config
 from infrahub_client.data import BranchData, RepositoryData
 from infrahub_client.exceptions import (
     GraphQLError,
@@ -47,7 +48,7 @@ class BaseClient:
         insert_tracker: bool = False,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
-        api_token: Optional[str] = None,
+        config: Optional[Config] = None,
     ):
         self.address = address
         self.client = None
@@ -60,8 +61,9 @@ class BaseClient:
         self.insert_tracker = insert_tracker
         self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
-        if api_token:
-            self.headers["X-INFRAHUB-KEY"] = api_token
+        self.config = config or Config()
+        if self.config.api_token:
+            self.headers["X-INFRAHUB-KEY"] = self.config.api_token
 
         self.max_concurrent_execution = max_concurrent_execution
 
@@ -324,6 +326,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             ServerNotReacheableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
+        headers = headers or {}
+        base_headers = copy.copy(self.headers or {})
+        headers.update(base_headers)
         async with httpx.AsyncClient() as client:
             try:
                 return await client.post(
@@ -344,6 +349,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             ServerNotReacheableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
+        headers = headers or {}
+        base_headers = copy.copy(self.headers or {})
+        headers.update(base_headers)
         if not self.test_client:
             async with httpx.AsyncClient() as client:
                 try:
@@ -372,6 +380,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     ) -> Dict:
         url = f"{self.address}/query/{name}"
         url_params = copy.deepcopy(params or {})
+        headers = copy.copy(self.headers or {})
 
         if branch_name:
             url_params["branch"] = branch_name
@@ -387,6 +396,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     url=url,
+                    headers=headers,
                     timeout=timeout or self.default_timeout,
                 )
 
