@@ -59,7 +59,9 @@ jobs:
       - name: "Start database"
         run: "invoke demo.dev-start"
       - name: "Check Services Status"
-        run: "invoke demo.status"
+        run: |
+          sleep 30
+          invoke demo.status
       - name: "Integration Tests"
         run: "poetry run pytest --cov=infrahub_client python_sdk/tests/integration"
       - name: "Coveralls : Integration Tests"
