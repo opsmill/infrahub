@@ -447,7 +447,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
         commit id: "(m0)"
     """
 
-    query = """
+    query1 = """
     // Create all branches nodes
     MATCH (root:Root)
 
@@ -487,7 +487,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (green:AttributeValue { value: "green"})
 
     // TAG 1 - BLUE
-    CREATE (t1:Node:Tag { uuid: "p1", kind: "Tag" })
+    CREATE (t1:Node:Tag { uuid: "t1", kind: "Tag" })
     CREATE (t1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
     CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name"})
@@ -519,6 +519,50 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (t3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
     CREATE (t3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
+    RETURN t1, t2, t3
+    """
+
+    query_prefix = """
+    MATCH (root:Root)
+
+    MATCH (t1:Tag {uuid: "t1"})
+    MATCH (t2:Tag {uuid: "t2"})
+    MATCH (t3:Tag {uuid: "t3"})
+
+    // Create the Boolean nodes for the properties
+    MERGE (bool_true:Boolean { value: true })
+    MERGE (bool_false:Boolean { value: false })
+
+    // Create the Boolean nodes for the attribute value
+    MERGE (atvf:AttributeValue { value: false })
+    MERGE (atvt:AttributeValue { value: true })
+
+    // Create a bunch a Attribute Value that can be easily identify and remembered
+    MERGE (mon:AttributeValue { value: "monday"})
+    MERGE (tue:AttributeValue { value: "tuesday"})
+    MERGE (wed:AttributeValue { value: "wednesday"})
+    MERGE (thu:AttributeValue { value: "thursday"})
+    MERGE (fri:AttributeValue { value: "friday"})
+    MERGE (sat:AttributeValue { value: "saturday"})
+    MERGE (sun:AttributeValue { value: "sunday"})
+
+    MERGE (jan:AttributeValue { value: "january"})
+    MERGE (feb:AttributeValue { value: "february"})
+    MERGE (mar:AttributeValue { value: "march"})
+    MERGE (apr:AttributeValue { value: "april"})
+    MERGE (may:AttributeValue { value: "may"})
+    MERGE (june:AttributeValue { value: "june"})
+    MERGE (july:AttributeValue { value: "july"})
+    MERGE (aug:AttributeValue { value: "august"})
+    MERGE (sept:AttributeValue { value: "september"})
+    MERGE (oct:AttributeValue { value: "october"})
+    MERGE (nov:AttributeValue { value: "november"})
+    MERGE (dec:AttributeValue { value: "december"})
+
+
+    """
+
+    query2 = """
     // PERSON 1
     //  Created in the main branch at m120
     //    tags: Blue, Green
@@ -533,10 +577,10 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at1)
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at2)
 
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, from: $time_m100 }]->(mon)
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m100, from: $time_m80 }]->(tue)
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m80, from: $time_m60 }]->(wed)
-    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, from: $time_m40 }]->(thu)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m100 }]->(mon)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m100, to: $time_m80 }]->(tue)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m80, to: $time_m60 }]->(wed)
+    CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m40 }]->(thu)
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m40 }]->(fri)
     CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
     CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
@@ -568,7 +612,9 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     CREATE (relp1pri)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
     CREATE (relp1pri)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
+    """
 
+    query3 = """
     // PERSON 2
     //  Created in the main branch at m120
     //    tags: Green
@@ -603,7 +649,9 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     CREATE (relp2t3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
     CREATE (relp2t3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
+    """
 
+    query4 = """
     // PERSON 3
     //  Created in the main branch at m120
     //    tags: None
@@ -633,11 +681,12 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (relp3pri)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
     CREATE (relp3pri)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
-    RETURN t1, t2, t3, p1, p2, p3
+    RETURN t1, t2, t3
     """
-
-    await execute_write_query_async(session=session, query=query, params=params)
-
+    await execute_write_query_async(session=session, query=query1, params=params)
+    await execute_write_query_async(session=session, query=query_prefix + query2, params=params)
+    await execute_write_query_async(session=session, query=query_prefix + query3, params=params)
+    await execute_write_query_async(session=session, query=query_prefix + query4, params=params)
     return params
 
 
