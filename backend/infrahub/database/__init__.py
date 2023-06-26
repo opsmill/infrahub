@@ -58,7 +58,7 @@ async def validate_database(
 
 
 async def get_db(retry: int = 0) -> AsyncDriver:
-    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}"
+    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
     driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
 
     if config.SETTINGS.database.database not in validated_database:
