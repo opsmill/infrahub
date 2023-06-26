@@ -13,6 +13,15 @@ from infrahub import config
 TEST_DATABASE = "infrahub.testing"
 
 
+def pytest_addoption(parser):
+    parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
+
+
+def pytest_configure(config):
+    if not config.option.neo4j:
+        setattr(config.option, "markexpr", "not neo4j")
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Overrides pytest default function scoped event loop"""
