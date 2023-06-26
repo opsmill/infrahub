@@ -49,7 +49,7 @@ export const MultiSelect = (props: SelectProps) => {
         </Combobox.Button>
 
         {options.length > 0 && (
-          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-custom-white py-1 text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm">
             {options.map((option: any) => (
               <Combobox.Option
                 key={option.id}
@@ -57,7 +57,7 @@ export const MultiSelect = (props: SelectProps) => {
                 className={({ active }) =>
                   classNames(
                     "relative cursor-default select-none py-2 pl-3 pr-9",
-                    active ? "bg-indigo-600 text-white" : "text-gray-900"
+                    active ? "bg-indigo-600 text-custom-white" : "text-gray-900"
                   )
                 }>
                 {({ active, selected }) => (
@@ -70,7 +70,7 @@ export const MultiSelect = (props: SelectProps) => {
                       <span
                         className={classNames(
                           "absolute inset-y-0 right-0 flex items-center pr-4",
-                          active ? "text-white" : "text-indigo-600"
+                          active ? "text-custom-white" : "text-indigo-600"
                         )}>
                         <CheckIcon className="h-5 w-5" aria-hidden="true" />
                       </span>
@@ -82,7 +82,7 @@ export const MultiSelect = (props: SelectProps) => {
           </Combobox.Options>
         )}
         {error && error?.message && (
-          <div className="absolute text-sm text-red-500 bg-white -bottom-2 ml-2 px-2">
+          <div className="absolute text-sm text-red-500 bg-custom-white -bottom-2 ml-2 px-2">
             {error?.message}
           </div>
         )}

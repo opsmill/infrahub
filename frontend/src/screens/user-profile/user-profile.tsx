@@ -105,7 +105,7 @@ export default function UserProfile() {
 
   return (
     <div className="flex flex-col flex-1 overflow-auto">
-      <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
+      <div className="border-b border-gray-200 bg-custom-white px-4 py-5 sm:px-6">
         <div className="-ml-4 -mt-4 flex flex-wrap items-center justify-between sm:flex-nowrap">
           <div className="ml-4 mt-4">
             <div className="flex items-center">

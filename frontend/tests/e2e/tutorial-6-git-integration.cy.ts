@@ -52,7 +52,7 @@ describe("Tutorial - Part 6", () => {
     cy.contains(regex).click();
 
     // Open the edit button
-    cy.get(".md\\:pl-64 > .flex-col > .bg-white > :nth-child(2) > .rounded-md").click();
+    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > .rounded-md").click();
 
     // Update the description
     cy.get(":nth-child(2) > .relative > .block").clear();

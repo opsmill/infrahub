@@ -340,7 +340,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white">
+                        <tbody className="bg-custom-white">
                           {relationshipsData?.map(({ node, properties }: any, index: number) => (
                             <tr
                               onClick={() =>
@@ -525,7 +525,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
               className="p-3 ml-2 bg-blue-500 text-sm hover:bg-blue-600 focus:ring-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
-              <PlusIcon className="h-7 w-7 text-white" aria-hidden="true" />
+              <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>
           </div>
         )}

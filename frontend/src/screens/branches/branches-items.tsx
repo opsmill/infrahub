@@ -24,7 +24,7 @@ export const BranchesItems = () => {
     <ul className="grid gap-6 grid-cols-1 p-6">
       {branches.map((branch) => (
         <li
-          className="col-span-1 rounded-lg bg-white shadow cursor-pointer hover:bg-gray-50"
+          className="col-span-1 rounded-lg bg-custom-white shadow cursor-pointer hover:bg-gray-50"
           key={branch.name}
           onClick={() => navigate(constructPath(`/branches/${branch.name}`))}>
           <div className="flex w-full items-center justify-between space-x-6 p-6">

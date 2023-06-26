@@ -142,7 +142,7 @@ export default function ObjectItems(props: any) {
   }
 
   return (
-    <div className="bg-white flex-1 overflow-x-auto flex flex-col">
+    <div className="bg-custom-white flex-1 overflow-x-auto flex flex-col">
       <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
         {schema && (
           <div className="sm:flex-auto flex items-center">
@@ -187,7 +187,7 @@ export default function ObjectItems(props: any) {
                         className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8"></th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white">
+                  <tbody className="bg-custom-white">
                     {rows?.map((row: any, index: number) => (
                       <tr
                         onClick={() =>

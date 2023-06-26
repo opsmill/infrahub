@@ -27,7 +27,7 @@ export default function SignIn(props: any) {
   return (
     <>
       <div className="flex h-screen justify-center items-center bg-gray-200">
-        <div className="flex flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24 rounded-xl login-container shadow-lg bg-white">
+        <div className="flex flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24 rounded-xl login-container shadow-lg bg-custom-white">
           <div className="mx-auto w-full max-w-sm lg:w-96">
             <div>
               <img className="w-28 h-auto rounded-lg m-auto" src={logoImage} alt="Your Company" />

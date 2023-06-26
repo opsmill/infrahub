@@ -43,12 +43,12 @@ export default function DesktopMenu() {
 
   return (
     <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
-      <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-white pt-5">
+      <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-custom-white pt-5">
         <div className="flex flex-shrink-0 items-center px-4">
           <img className="h-10 w-auto" src={logo} alt="Your Company" />
         </div>
         <div className="mt-5 flex flex-grow flex-col flex-1 overflow-auto py-2">
-          <nav className="flex-1 space-y-2 bg-white px-2" aria-label="Sidebar">
+          <nav className="flex-1 space-y-2 bg-custom-white px-2" aria-label="Sidebar">
             <DropDownMenuHeader title={"Objects"} items={schemaItems} Icon={LinkIcon} />
             <DropDownMenuHeader title={"Admin"} items={adminItems} Icon={UserIcon} />
             <DropDownMenuHeader

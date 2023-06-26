@@ -30,7 +30,7 @@ export const Avatar = (props: Props) => {
           background: bgColor,
         }}
         className={
-          "h-12 w-12 rounded-full bg-gray-700 text-white flex justify-center items-center"
+          "h-12 w-12 rounded-full bg-gray-700 text-custom-white flex justify-center items-center"
         }>
         {initials}
       </div>

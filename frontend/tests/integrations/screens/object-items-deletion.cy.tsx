@@ -92,7 +92,7 @@ describe("List screen", () => {
       }
     );
 
-    cy.get(".min-w-full > .bg-white > :nth-child(1) > :nth-child(1)").should(
+    cy.get(".min-w-full > .bg-custom-white > :nth-child(1) > :nth-child(1)").should(
       "have.text",
       objectToDelete
     );
@@ -109,7 +109,7 @@ describe("List screen", () => {
     // Wait for the mutation to be done
     cy.wait("@delete");
 
-    cy.get(".min-w-full > .bg-white > :nth-child(1) > :nth-child(1)").should(
+    cy.get(".min-w-full > .bg-custom-white > :nth-child(1) > :nth-child(1)").should(
       "not.have.text",
       objectToDelete
     );

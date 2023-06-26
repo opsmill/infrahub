@@ -101,7 +101,7 @@ export const Diff = () => {
 
   return (
     <div>
-      <div className="bg-white p-6 flex">
+      <div className="bg-custom-white p-6 flex">
         <Filters fields={fields} onSubmit={handleSubmit} />
       </div>
 

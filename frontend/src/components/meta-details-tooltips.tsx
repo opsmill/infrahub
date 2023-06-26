@@ -48,7 +48,7 @@ export default function MetaDetailsTooltip(props: Props) {
         leaveTo="opacity-0 translate-y-1">
         <Popover.Panel
           className={classNames(
-            "absolute z-10 bg-white rounded-lg border shadow-xl",
+            "absolute z-10 bg-custom-white rounded-lg border shadow-xl",
             position === "LEFT" ? "right-0" : ""
           )}>
           <div className="w-80 text-sm divide-y px-4">

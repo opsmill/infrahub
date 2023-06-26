@@ -24,7 +24,7 @@ const fields: DynamicFieldData[] = [
 
 export default function TabAccount() {
   return (
-    <div className="flex-1 bg-white">
+    <div className="flex-1 bg-custom-white">
       <main>
         <div className="px-2">
           <div className="p-4">
@@ -50,7 +50,7 @@ export default function TabAccount() {
               className="flex items-start md:col-span-2 mt-4">
               <button
                 type="submit"
-                className="rounded-md bg-red-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-400">
+                className="rounded-md bg-red-500 px-3 py-2 text-sm font-semibold text-custom-white shadow-sm hover:bg-red-400">
                 Yes, delete my account
               </button>
             </form>

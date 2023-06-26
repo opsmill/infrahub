@@ -108,7 +108,7 @@ export default function ObjectItemDetails(props: any) {
   }
 
   return (
-    <div className="bg-white flex-1 overflow-auto flex flex-col">
+    <div className="bg-custom-white flex-1 overflow-auto flex flex-col">
       {!hideHeaders && (
         <>
           <div className="px-4 py-5 sm:px-6 flex items-center">

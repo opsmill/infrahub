@@ -79,7 +79,7 @@ export const BranchDetails = () => {
   const branch = data?.branch?.filter((branch: any) => branch.name === branchname)[0];
 
   return (
-    <div className="bg-white p-6">
+    <div className="bg-custom-white p-6">
       {loading && <LoadingScreen />}
 
       {error && <ErrorScreen />}

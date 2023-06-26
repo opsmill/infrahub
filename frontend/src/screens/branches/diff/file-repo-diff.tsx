@@ -8,7 +8,7 @@ export const FileRepoDiff = (props: any) => {
   const { files } = diff;
 
   return (
-    <div className={"rounded-lg shadow p-4 m-4 bg-white"}>
+    <div className={"rounded-lg shadow p-4 m-4 bg-custom-white"}>
       <Accordion title={diff.display_name}>
         {files.map((file: any, index: number) => (
           <FileContentDiff

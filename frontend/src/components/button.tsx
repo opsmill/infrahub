@@ -57,21 +57,21 @@ const getClasseName = (type?: BUTTON_TYPES) => {
     }
     case BUTTON_TYPES.MAIN: {
       return `
-        bg-blue-500 text-white
+        bg-blue-500 text-custom-white
         hover:bg-blue-600
-        disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
+        disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-custom-white disabled:border-slate-200 disabled:shadow-none
       `;
     }
     case BUTTON_TYPES.ACTIVE: {
       return `
-        bg-gray-500 text-white cursor-default
+        bg-gray-500 text-custom-white cursor-default
         hover:bg-gray-500
-        disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-white disabled:border-slate-200 disabled:shadow-none
+        disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-custom-white disabled:border-slate-200 disabled:shadow-none
       `;
     }
     case BUTTON_TYPES.INVISIBLE: {
       return `
-        bg-transparent text-white border-transparent shadow-none
+        bg-transparent text-custom-white border-transparent shadow-none
         hover:bg-transparent
         disabled:cursor-not-allowed disabled:bg-transparent
       `;
@@ -107,7 +107,9 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       {...propsToPass}
       onClick={handleClick}
       disabled={isLoading ? true : propsToPass.disabled}>
-      {isLoading && <LoadingScreen className="mx-4" size={24} hideText colorClass={"fill-white"} />}
+      {isLoading && (
+        <LoadingScreen className="mx-4" size={24} hideText colorClass={"fill-custom-white"} />
+      )}
 
       {!isLoading && children}
     </button>

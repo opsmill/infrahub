@@ -14,7 +14,7 @@ export default function FilterStatus() {
             onClick={() => setStatus("Active")}
             type="button"
             className={classNames(
-              "relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50",
+              "relative inline-flex items-center rounded-l-md border border-gray-300 bg-custom-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50",
               status === "Active"
                 ? "z-10 border-indigo-500 outline-none ring-1 ring-indigo-500"
                 : ""
@@ -25,7 +25,7 @@ export default function FilterStatus() {
             onClick={() => setStatus("Inactive")}
             type="button"
             className={classNames(
-              "relative -ml-px inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50",
+              "relative -ml-px inline-flex items-center border border-gray-300 bg-custom-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50",
               status === "Inactive"
                 ? "z-10 border-indigo-500 outline-none ring-1 ring-indigo-500"
                 : ""
@@ -36,7 +36,7 @@ export default function FilterStatus() {
             onClick={() => setStatus("Down")}
             type="button"
             className={classNames(
-              "relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50",
+              "relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 bg-custom-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50",
               status === "Down" ? "z-10 border-indigo-500 outline-none ring-1 ring-indigo-500" : ""
             )}>
             Down
