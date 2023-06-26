@@ -169,7 +169,7 @@ class QueryError(Error):
 
 class ValidationError(Error):
     def __init__(self, input_value):
-        self.message = None
+        self.message: Optional[str] = None
         self.location = None
         self.messages = {}
 
