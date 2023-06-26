@@ -76,7 +76,7 @@ describe("Tutorial - Part 1", () => {
     }
 
     // Submit the form
-    cy.get(".mt-6 > .bg-blue-500").click();
+    cy.get(".mt-6 > .bg-custom-blue").click();
 
     // The new label should be saved
     cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);

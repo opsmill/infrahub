@@ -74,7 +74,7 @@ export default function BranchSelector() {
     <Button
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
-      className="flex-1 rounded-r-md border border-blue-600"
+      className="flex-1 rounded-r-md border border-custom-blue"
       type="submit">
       <PlusIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
     </Button>
@@ -124,13 +124,13 @@ export default function BranchSelector() {
       <div className="flex justify-between">
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
         {selected ? (
-          <span className={active ? "text-custom-white" : "text-blue-500"}>
+          <span className={active ? "text-custom-white" : "text-custom-blue"}>
             <CheckIcon className="h-5 w-5" aria-hidden="true" />
           </span>
         ) : null}
       </div>
       {option?.created_at && (
-        <p className={classNames(active ? "text-blue-200" : "text-gray-500", "mt-2")}>
+        <p className={classNames(active ? "text-custom-blue" : "text-gray-500", "mt-2")}>
           {formatDistanceToNow(new Date(option?.created_at), {
             addSuffix: true,
           })}

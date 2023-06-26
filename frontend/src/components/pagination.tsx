@@ -105,7 +105,7 @@ export const Pagination = (props: tPaginationType) => {
             breakClassName="cursor-pointer relative inline-flex items-center text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
             breakLinkClassName="cursor-pointer px-4 py-2"
             containerClassName="flex"
-            activeClassName="bg-blue-500 text-custom-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 hover:bg-blue-500"
+            activeClassName="bg-custom-blue text-custom-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-custom-blue hover:bg-custom-blue"
             activeLinkClassName="cursor-pointer px-4 py-2"
           />
         </div>

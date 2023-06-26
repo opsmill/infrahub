@@ -246,7 +246,7 @@ export default function ObjectItemDetails(props: any) {
                                   });
                                   setShowMetaEditModal(true);
                                 }}>
-                                <PencilSquareIcon className="w-5 h-5 text-blue-500" />
+                                <PencilSquareIcon className="w-5 h-5 text-custom-blue" />
                               </Button>
                             </div>
                           }
@@ -308,8 +308,11 @@ export default function ObjectItemDetails(props: any) {
               </svg>
               {schema.kind}
             </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 ml-3">
-              <svg className="h-1.5 w-1.5 mr-1 fill-blue-500" viewBox="0 0 6 6" aria-hidden="true">
+            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue ring-1 ring-inset ring-custom-blue/10 ml-3">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-custom-blue"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
               ID: {objectDetailsData.id}

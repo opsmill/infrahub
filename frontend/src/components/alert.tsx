@@ -44,7 +44,7 @@ export const Alert = (props: AlertProps) => {
         return <CheckCircleIcon className="h-5 w-5 text-green-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.INFO: {
-        return <InformationCircleIcon className="h-5 w-5 text-blue-400" aria-hidden="true" />;
+        return <InformationCircleIcon className="h-5 w-5 text-custom-blue" aria-hidden="true" />;
       }
       case ALERT_TYPES.WARNING: {
         return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" aria-hidden="true" />;
@@ -71,11 +71,11 @@ export const Alert = (props: AlertProps) => {
       }
       case ALERT_TYPES.INFO: {
         return {
-          container: "bg-blue-50 text-blue-800",
+          container: "bg-blue-50 text-custom-blue",
           bg: "",
-          text: "text-blue-800",
+          text: "text-custom-blue",
           button:
-            "bg-blue-50 p-1.5 text-blue-500 hover:bg-blue-100 focus:ring-blue-600 focus:ring-offset-blue-50",
+            "bg-blue-50 p-1.5 text-custom-blue hover:bg-custom-blue focus:ring-custom-blue focus:ring-offset-blue-50",
         };
       }
       case ALERT_TYPES.WARNING: {

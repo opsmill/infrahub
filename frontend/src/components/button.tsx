@@ -57,9 +57,9 @@ const getClasseName = (type?: BUTTON_TYPES) => {
     }
     case BUTTON_TYPES.MAIN: {
       return `
-        bg-blue-500 text-custom-white
-        hover:bg-blue-600
-        disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-custom-white disabled:border-slate-200 disabled:shadow-none
+        bg-custom-blue text-custom-white
+        hover:bg-custom-blue
+        disabled:cursor-not-allowed disabled:bg-custom-blue disabled:text-custom-white disabled:border-slate-200 disabled:shadow-none
       `;
     }
     case BUTTON_TYPES.ACTIVE: {

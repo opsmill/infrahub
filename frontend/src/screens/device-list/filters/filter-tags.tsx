@@ -5,7 +5,7 @@ import { classNames } from "../../../utils/common";
 const colors = [
   { name: "Red", bgColor: "bg-red-500", selectedColor: "ring-red-500" },
   { name: "Green", bgColor: "bg-green-500", selectedColor: "ring-green-500" },
-  { name: "Blue", bgColor: "bg-blue-500", selectedColor: "ring-blue-500" },
+  { name: "Blue", bgColor: "bg-custom-blue", selectedColor: "ring-custom-blue" },
 ];
 
 export default function FilterTags() {

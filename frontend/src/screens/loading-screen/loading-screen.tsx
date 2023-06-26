@@ -11,7 +11,7 @@ interface Props {
 export default function LoadingScreen(props: Props) {
   const { hideText, size, className, colorClass } = props;
 
-  const color = colorClass ?? "!fill-blue-500";
+  const color = colorClass ?? "!fill-custom-blue";
 
   return (
     <div
