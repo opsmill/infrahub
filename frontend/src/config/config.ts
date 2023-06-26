@@ -19,4 +19,6 @@ export const CONFIG = {
   DATA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/diff/data?branch=${branch}`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/diff/files?branch=${branch}`,
   SCHEMA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/diff/schema?branch=${branch}`,
+  FILES_CONTENT_URL: (repositoryId: string, location: string) =>
+    `${INFRAHUB_API_SERVER_URL}/file/${repositoryId}/${encodeURIComponent(location)}`,
 };
