@@ -103,17 +103,13 @@ async def monitor_remote_activity(client: InfrahubClient, interval: int):
         await asyncio.sleep(interval)
 
 
-async def _start(debug: bool, interval: int, config_file: str, port: int):
+async def _start(debug: bool, interval: int, port: int):
     """Start Infrahub Git Agent."""
 
     log_level = "DEBUG" if debug else "INFO"
 
     FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-
-    log.debug(f"Config file : {config_file}")
-
-    config.load_and_exit(config_file)
 
     # Start the metrics endpoint
     start_http_server(port)
@@ -135,11 +131,14 @@ async def _start(debug: bool, interval: int, config_file: str, port: int):
 
 @app.command()
 def start(
-    interval: int = 10,
-    debug: bool = False,
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    interval: int = typer.Option(10, help="Interval in sec between remote repositories update."),
+    debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
+    config_file: str = typer.Option(
+        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
+    ),
     port: int = typer.Argument(8000, help="Port used to expose a metrics endpoint"),
 ):
+    """Start Infrahub Git Agent."""
     logging.getLogger("httpx").setLevel(logging.ERROR)
     logging.getLogger("httpcore").setLevel(logging.ERROR)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -147,4 +146,8 @@ def start(
     logging.getLogger("aiormq").setLevel(logging.ERROR)
     logging.getLogger("git").setLevel(logging.ERROR)
 
-    aiorun(_start(interval=interval, debug=debug, config_file=config_file, port=port))
+    log.debug(f"Config file : {config_file}")
+
+    config.load_and_exit(config_file_name=config_file)
+
+    aiorun(_start(interval=interval, debug=debug, port=port))
