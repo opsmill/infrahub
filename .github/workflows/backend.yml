@@ -70,5 +70,6 @@ jobs:
         run: |
           invoke demo.destroy
           invoke demo.dev-start --database=neo4j
+          sleep 45
       - name: "Unit Tests with Neo4j"
         run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
