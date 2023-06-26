@@ -463,8 +463,8 @@ class IPNetwork(BaseAttribute):
 
         try:
             ipaddress.ip_network(value)
-        except ValueError as e:
-            raise ValidationError({name: f"{name} is not a valid {schema.kind}"}) from e
+        except ValueError as exc:
+            raise ValidationError({name: f"{name} is not a valid {schema.kind}"}) from exc
 
 
 class IPHost(BaseAttribute):
@@ -487,8 +487,8 @@ class IPHost(BaseAttribute):
 
         try:
             ipaddress.ip_interface(value)
-        except ValueError as e:
-            raise ValidationError({name: f"{name} is not a valid {schema.kind}"}) from e
+        except ValueError as exc:
+            raise ValidationError({name: f"{name} is not a valid {schema.kind}"}) from exc
 
 
 class ListAttribute(BaseAttribute):
