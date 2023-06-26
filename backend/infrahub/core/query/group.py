@@ -74,18 +74,31 @@ class GroupGetAssociationQuery(GroupQuery):
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(rels_params)
 
+        # We need 2 subqueries to filter the node properly
+        #  The first one to identify all the potential nodes DISTINCT
+        #  The second one to run ORDER BY and LIMIT 1
         query = """
         MATCH (grp { uuid: $group_id })
         CALL {
             WITH grp
             MATCH (grp)-[r:%s]-(mb:Node)
             WHERE %s
-            RETURN DISTINCT mb as mb1, r as r1
+            RETURN DISTINCT mb as mb1
+        }
+        WITH grp, mb1 as mb
+        CALL {
+            WITH grp, mb
+            MATCH (grp)-[r:%s]-(mb:Node)
+            WHERE %s
+            RETURN mb as mb1, r as r1
             ORDER BY [r.branch_level, r.from] DESC
+            LIMIT 1
         }
         WITH mb1 as mb, r1 as r
         WHERE r.status = "active"
         """ % (
+            self.rel_name,
+            rels_filter,
             self.rel_name,
             rels_filter,
         )
@@ -186,6 +199,8 @@ class GroupRemoveAssociationQuery(GroupQuery):
         WITH mb1 as mb, r1 as r, grp1 as grp
         WHERE r.status = "active"
         CREATE (mb)-[:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(grp)
+        WITH *
+        WHERE r.branch = $branch
         SET r.to = $at
         """ % (
             self.rel_name,

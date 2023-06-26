@@ -1082,7 +1082,7 @@ async def group_group1_main(
     default_branch: Branch,
     group_schema,
 ) -> Node:
-    obj = await Group.init(session=session, schema="Group", branch=default_branch)
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1")
     await obj.save(session=session)
     return obj
@@ -1097,7 +1097,7 @@ async def group_group1_members_main(
     person_jim_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Group.init(session=session, schema="Group", branch=default_branch)
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1")
     await obj.save(session=session)
 
@@ -1115,7 +1115,7 @@ async def group_group1_subscribers_main(
     person_jim_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Group.init(session=session, schema="Group", branch=default_branch)
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1")
     await obj.save(session=session)
 

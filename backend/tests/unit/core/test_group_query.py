@@ -47,21 +47,12 @@ async def test_query_GroupAddAssociationQuery(
 
 async def test_query_GroupGetAssociationQuery(
     session: AsyncSession,
-    group_group1_main: Group,
+    group_group1_members_main: Group,
     person_john_main: Node,
     person_jim_main: Node,
     branch: Branch,
 ):
-    group1 = group_group1_main
-
-    query = await GroupAddAssociationQuery.init(
-        session=session,
-        branch=branch,
-        association_type=GroupAssociationType.MEMBER,
-        group=group1,
-        node_ids=[person_john_main.id, person_jim_main.id],
-    )
-    await query.execute(session=session)
+    group1 = group_group1_members_main
 
     query = await GroupGetAssociationQuery.init(
         session=session, branch=branch, association_type=GroupAssociationType.MEMBER, group=group1
@@ -69,6 +60,21 @@ async def test_query_GroupGetAssociationQuery(
     await query.execute(session=session)
 
     assert len(await query.get_members()) == 2
+
+    query = await GroupRemoveAssociationQuery.init(
+        session=session,
+        branch=branch,
+        association_type=GroupAssociationType.MEMBER,
+        group=group1,
+        node_ids=[person_john_main.id],
+    )
+    await query.execute(session=session)
+
+    query = await GroupGetAssociationQuery.init(
+        session=session, branch=branch, association_type=GroupAssociationType.MEMBER, group=group1
+    )
+    await query.execute(session=session)
+    assert len(await query.get_members()) == 1
 
 
 async def test_query_GroupHasAssociationQuery(
@@ -98,6 +104,7 @@ async def test_query_GroupHasAssociationQuery(
 
 async def test_query_GroupRemoveAssociationQuery(
     session: AsyncSession,
+    default_branch: Branch,
     group_group1_subscribers_main: Group,
     person_john_main: Node,
     person_jim_main: Node,
@@ -128,6 +135,11 @@ async def test_query_GroupRemoveAssociationQuery(
             session=session, source_id=group1.db_id, destination_id=member.db_id, max_length=1
         )
         assert len(paths) == 2
+        if branch != default_branch:
+            for rel in [path[0].relationships[0] for path in paths]:
+                if rel["branch"] == default_branch.name:
+                    assert rel["status"] == "active"
+                    assert rel["to"] is None
 
     paths = await get_paths_between_nodes(
         session=session, source_id=group1.db_id, destination_id=person_albert_main.db_id, max_length=1

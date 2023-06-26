@@ -4,6 +4,7 @@ from neo4j import AsyncDriver, AsyncSession
 
 from infrahub.core.branch import Branch
 from infrahub.core.group import Group
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql import generate_graphql_schema
 
@@ -48,6 +49,8 @@ async def test_group_member_add(
     )
 
     assert result.errors is None
+
+    g1: Group = await NodeManager.get_one(session=session, id=g1.id, branch=branch)
 
     members = await g1.members.get(session=session)
     assert sorted(members) == sorted(
@@ -122,6 +125,8 @@ async def test_group_member_remove(
     )
 
     assert result.errors is None
+
+    g1: Group = await NodeManager.get_one(session=session, id=g1.id, branch=branch)
 
     members = await g1.members.get(session=session)
     assert sorted(members) == sorted(
@@ -198,6 +203,8 @@ async def test_group_subscriber_add(
 
     assert result.errors is None
 
+    g1: Group = await NodeManager.get_one(session=session, id=g1.id, branch=branch)
+
     subscribers = await g1.subscribers.get(session=session)
     assert sorted(subscribers) == sorted(
         [
@@ -272,12 +279,10 @@ async def test_group_subscriber_remove(
 
     assert result.errors is None
 
+    g1: Group = await NodeManager.get_one(session=session, id=g1.id, branch=branch)
+
     subscribers = await g1.subscribers.get(session=session)
-    assert sorted(subscribers) == sorted(
-        [
-            person_jim_main.id,
-        ]
-    )
+    assert sorted(subscribers) == sorted([person_jim_main.id, person_albert_main.id])
 
     # --------------------------------------
     # Remove the second one with another on that is not part of the group
@@ -293,7 +298,7 @@ async def test_group_subscriber_remove(
     }
     """ % (
         g1.id,
-        person_albert_main.id,
+        person_john_main.id,
         person_jim_main.id,
     )
 
@@ -308,4 +313,4 @@ async def test_group_subscriber_remove(
     assert result.errors is None
 
     subscribers = await g1.subscribers.get(session=session)
-    assert subscribers == []
+    assert subscribers == [person_albert_main.id]
