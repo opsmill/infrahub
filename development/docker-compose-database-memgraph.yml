@@ -7,7 +7,7 @@ services:
       - database_data:/var/lib/memgraph
       - database_logs:/var/log/memgraph
     environment:
-      - MGCONSOLE="--username infrahub --password infrahub"
+      - MGCONSOLE="--username neo4j --password admin"
       - MEMGRAPH="--bolt-server-name-for-init=Neo4j/"
       - APP_CYPHER_QUERY_MAX_LEN=10000
     entrypoint: ["/usr/bin/supervisord"]

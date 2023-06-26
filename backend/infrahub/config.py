@@ -41,8 +41,8 @@ class MainSettings(BaseSettings):
 class DatabaseSettings(BaseSettings):
     db_type: DatabaseType = DatabaseType.MEMGRAPH
     protocol: str = "bolt"
-    username: str = "infrahub"
-    password: str = "infrahub"
+    username: str = "neo4j"
+    password: str = "admin"
     address: str = "localhost"
     port: int = 7687
     database: str = Field(
