@@ -20,7 +20,7 @@ env:
   NEO4J_PASSWORD: admin
   NEO4J_ADDRESS: localhost
   NEO4J_PORT: 7687
-  NEO4J_PROTOCOL: neo4j
+  NEO4J_PROTOCOL: bolt
 
 jobs:
   python-tests:
