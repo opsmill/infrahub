@@ -1,4 +1,3 @@
-from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
