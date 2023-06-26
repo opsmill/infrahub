@@ -155,13 +155,12 @@ async def first_time_initialization(session: AsyncSession):
         await obj.new(session=session, name=level[0], level=level[1])
         await obj.save(session=session)
 
-    # ----
     group_schema = registry.get_schema(name="Group")
     account_schema = registry.get_schema(name="Account")
+    token_schema = registry.get_schema(name="AccountToken")
     admin_grp = await Node.init(session=session, schema=group_schema)
     await admin_grp.new(session=session, name="admin")
     await admin_grp.save(session=session)
-    # default_grp = obj = Node(group_schema).new(name="default").save()
 
     obj = await Node.init(session=session, schema=account_schema)
     await obj.new(
@@ -175,19 +174,11 @@ async def first_time_initialization(session: AsyncSession):
     await obj.save(session=session)
     LOGGER.info(f"Created Account: {obj.name.value}")
 
-    # # FIXME Remove these hardcoded Token Value
-    # token = AccountToken.init(token=obj.name.value)
-    # token.save()
-    # obj.add_token(token)
-
-    # admin_grp.add_account(obj)
-
-    # obj = Account.init(name="default", type="USER")
-    # obj.save()
-    # LOGGER.debug(f"Created Account: {obj.name.value}")
-
-    # token = AccountToken.init(token=obj.name.value)
-    # token.save()
-    # obj.add_token(token)
-
-    # default_grp.add_account(obj)
+    if config.SETTINGS.security.initial_admin_token:
+        token = await Node.init(session=session, schema=token_schema)
+        await token.new(
+            session=session,
+            token=config.SETTINGS.security.initial_admin_token,
+            account=obj,
+        )
+        await token.save(session=session)

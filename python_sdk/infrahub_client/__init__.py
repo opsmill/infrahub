@@ -3,6 +3,7 @@ from __future__ import annotations
 from infrahub_client.batch import InfrahubBatch
 from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerSync
 from infrahub_client.client import InfrahubClient, InfrahubClientSync
+from infrahub_client.config import Config
 from infrahub_client.exceptions import (
     FilterNotFound,
     GraphQLError,
@@ -26,6 +27,7 @@ from infrahub_client.timestamp import Timestamp
 
 __all__ = [
     "AttributeSchema",
+    "Config",
     "InfrahubBatch",
     "InfrahubBranchManager",
     "InfrahubBranchManagerSync",

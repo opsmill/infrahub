@@ -14,8 +14,8 @@ from infrahub.exceptions import QueryError
 
 
 class StandardNode(BaseModel):
-    id: Optional[str]
-    uuid: Optional[UUID]
+    id: Optional[str] = None
+    uuid: Optional[UUID] = None
 
     # owner: Optional[str]
 
