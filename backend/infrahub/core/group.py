@@ -14,6 +14,8 @@ from infrahub.core.query.group import (
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
+    from infrahub.core.schema import NodeSchema
+
 
 class GroupAssociationType(str, enum.Enum):
     MEMBER = "member"
@@ -40,7 +42,7 @@ class GroupAssociation:
         self.association_type = association_type
         self.group = group
 
-    async def get(self, session: AsyncSession) -> List[str]:
+    async def get(self, session: AsyncSession) -> Dict[str, NodeSchema]:
         query = await GroupGetAssociationQuery.init(
             session=session, association_type=self.association_type, group=self.group, branch=self.group._branch
         )
@@ -95,3 +97,9 @@ class Group(Node):
         self.subscribers = GroupAssociation(group=self, association_type=GroupAssociationType.SUBSCRIBER)
 
         super().__init__(*args, **kwargs)
+
+    async def to_graphql(self, session: AsyncSession, fields: dict) -> dict:
+        """Exclude members and subscribers from graphql responses."""
+        fields_to_ignore = ["members", "subscribers"]
+        node_fields = {key: value for key, value in fields.items() if key not in fields_to_ignore}
+        return await super().to_graphql(session=session, fields=node_fields)
