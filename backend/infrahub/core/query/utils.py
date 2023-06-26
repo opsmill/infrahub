@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
-from infrahub import config
 from infrahub.core.query import QueryNode, QueryRel
 
 if TYPE_CHECKING:
