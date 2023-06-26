@@ -24,18 +24,18 @@ PWD = os.getcwd()
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
 COMPOSE_FILES_MEMGRAPH = [
-    "docker-compose-message-queue.yml",
-    "docker-compose-database-memgraph.yml",
+    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-database-memgraph.yml",
     "development/docker-compose.yml",
 ]
 COMPOSE_FILES_NEO4J = [
-    "docker-compose-message-queue.yml",
-    "docker-compose-database-neo4j.yml",
+    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-database-neo4j.yml",
     "development/docker-compose.yml",
 ]
 
-DEV_COMPOSE_FILES_MEMGRAPH = ["docker-compose-message-queue.yml", "docker-compose-database-memgraph.yml"]
-DEV_COMPOSE_FILES_NEO4J = ["docker-compose-message-queue.yml", "docker-compose-database-neo4j.yml"]
+DEV_COMPOSE_FILES_MEMGRAPH = ["development/docker-compose-message-queue.yml", "development/docker-compose-database-memgraph.yml"]
+DEV_COMPOSE_FILES_NEO4J = ["development/docker-compose-message-queue.yml", "development/docker-compose-database-neo4j.yml"]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 
 AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
