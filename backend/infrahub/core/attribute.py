@@ -458,8 +458,7 @@ class IPNetwork(BaseAttribute):
         Raises:
             ValidationError: Format of the attribute value is not valid
         """
-        if not isinstance(value, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
-            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+        super().validate_format(value=value, name=name, schema=schema)
 
         try:
             ipaddress.ip_network(value)
@@ -482,8 +481,7 @@ class IPHost(BaseAttribute):
         Raises:
             ValidationError: Format of the attribute value is not valid
         """
-        if not isinstance(value, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
-            raise ValidationError({name: f"{name} is not of type {schema.kind}"})
+        super().validate_format(value=value, name=name, schema=schema)
 
         try:
             ipaddress.ip_interface(value)
