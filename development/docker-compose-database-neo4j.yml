@@ -1,0 +1,25 @@
+---
+version: "3.4"
+services:
+  database:
+    image: "neo4j:5.6-enterprise"
+    environment:
+      - "NEO4J_AUTH=neo4j/admin"
+      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
+      - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
+      - "NEO4J_dbms_security_auth__minimum__password__length=4"
+      - "NEO4J_server_metrics_prometheus_enabled=true"
+      - "NEO4J_server_metrics_prometheus_endpoint=0.0.0.0:2004"
+    volumes:
+      - "./plugins:/plugins"
+      - "database_data:/data"
+      - "database_logs:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+volumes:
+  database_data:
+  database_logs:
