@@ -89,7 +89,7 @@ async def test_group_member_add(
     assert result.errors is None
 
     members = await g1.members.get(session=session)
-    assert sorted(members) == sorted([person_john_main.id, person_jim_main.id, person_albert_main.id])
+    assert sorted(members.keys()) == sorted([person_john_main.id, person_jim_main.id, person_albert_main.id])
 
 
 async def test_group_member_remove(
@@ -130,7 +130,7 @@ async def test_group_member_remove(
     g1: Group = await NodeManager.get_one(session=session, id=g1.id, branch=branch)
 
     members = await g1.members.get(session=session)
-    assert sorted(members) == sorted(
+    assert sorted(members.keys()) == sorted(
         [
             person_jim_main.id,
         ]
@@ -165,7 +165,7 @@ async def test_group_member_remove(
     assert result.errors is None
 
     members = await g1.members.get(session=session)
-    assert members == []
+    assert members == {}
 
 
 async def test_group_subscriber_add(
@@ -207,7 +207,7 @@ async def test_group_subscriber_add(
     g1: Group = await NodeManager.get_one(session=session, id=g1.id, branch=branch)
 
     subscribers = await g1.subscribers.get(session=session)
-    assert sorted(subscribers) == sorted(
+    assert sorted(subscribers.keys()) == sorted(
         [
             person_john_main.id,
             person_jim_main.id,
@@ -242,7 +242,7 @@ async def test_group_subscriber_add(
     assert result.errors is None
 
     subscribers = await g1.subscribers.get(session=session)
-    assert sorted(subscribers) == sorted([person_john_main.id, person_jim_main.id, person_albert_main.id])
+    assert sorted(subscribers.keys()) == sorted([person_john_main.id, person_jim_main.id, person_albert_main.id])
 
 
 async def test_group_subscriber_remove(
@@ -283,7 +283,7 @@ async def test_group_subscriber_remove(
     g1: Group = await NodeManager.get_one(session=session, id=g1.id, branch=branch)
 
     subscribers = await g1.subscribers.get(session=session)
-    assert sorted(subscribers) == sorted([person_jim_main.id, person_albert_main.id])
+    assert sorted(subscribers.keys()) == sorted([person_jim_main.id, person_albert_main.id])
 
     # --------------------------------------
     # Remove the second one with another on that is not part of the group
@@ -314,7 +314,7 @@ async def test_group_subscriber_remove(
     assert result.errors is None
 
     subscribers = await g1.subscribers.get(session=session)
-    assert subscribers == [person_albert_main.id]
+    assert list(subscribers.keys()) == [person_albert_main.id]
 
 
 async def test_query_groups(
@@ -361,6 +361,7 @@ async def test_query_group_members_same_type(
     db: AsyncDriver,
     session: AsyncSession,
     group_group1_members_main: Group,
+    group_group2_subscribers_main: Group,
     person_john_main: Node,
     person_jim_main: Node,
     branch: Branch,
@@ -396,7 +397,7 @@ async def test_query_group_members_same_type(
 
     expected_results = {
         "group": {
-            "count": 1,
+            "count": 2,
             "edges": [
                 {
                     "node": {
@@ -418,12 +419,17 @@ async def test_query_group_members_same_type(
                         },
                     },
                 },
+                {
+                    "node": {
+                        "id": group_group2_subscribers_main.id,
+                        "members": {"count": 0, "edges": []},
+                    },
+                },
             ],
         },
     }
 
     assert result.errors is None
-    # assert result.data == expected_results
     assert DeepDiff(expected_results, result.data, ignore_order=True).to_dict() == {}
 
 
