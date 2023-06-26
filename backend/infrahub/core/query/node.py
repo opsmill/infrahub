@@ -3,21 +3,20 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
-from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
-from infrahub.core.schema import NodeSchema
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
+from infrahub.core.query.utils import find_node_schema
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
-    from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.schema import NodeSchema
 
 # pylint: disable=consider-using-f-string,redefined-builtin
 
@@ -65,16 +64,6 @@ class AttrToProcess:
     is_inherited: Optional[bool]
     is_protected: Optional[bool]
     is_visible: Optional[bool]
-
-
-def find_node_schema(node: Neo4jNode, branch: Union[Branch, str]) -> NodeSchema:
-    for label in node.labels:
-        if registry.schema.has(name=label, branch=branch):
-            schema = registry.schema.get(name=label, branch=branch)
-            if isinstance(schema, NodeSchema):
-                return schema
-
-    return None
 
 
 class NodeQuery(Query):
