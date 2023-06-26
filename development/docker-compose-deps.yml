@@ -9,6 +9,7 @@ services:
     environment:
       - MGCONSOLE="--username infrahub --password infrahub"
       - MEMGRAPH="--bolt-server-name-for-init=Neo4j/"
+      - APP_CYPHER_QUERY_MAX_LEN=10000
     entrypoint: ["/usr/bin/supervisord"]
     healthcheck:
       test: ["CMD", "bash", "-c", 'mgconsole < <(echo "SHOW TRANSACTIONS;")']
