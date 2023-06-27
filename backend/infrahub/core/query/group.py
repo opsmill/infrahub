@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 from infrahub.core.query import Query, QueryType
@@ -221,3 +222,63 @@ class GroupRemoveAssociationQuery(GroupQuery):
 
         self.add_to_query(query)
         self.return_labels = ["mb", "r"]
+
+
+class NodeGetGroupListQuery(Query):
+    name: str = "node_get_group"
+
+    def __init__(self, ids: List[str], association_type: GroupAssociationType, *args, **kwargs):
+        self.association_type = association_type
+        self.group_rel_name = f"IS_{association_type.value}".upper()
+
+        self.ids = ids
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["ids"] = self.ids
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (n) WHERE n.uuid IN $ids
+        CALL {
+            WITH n
+            MATCH (n)-[r:%s]-(grp:Group)
+            WHERE %s
+            RETURN DISTINCT grp as grp1
+        }
+        WITH n, grp1 as grp
+        CALL {
+            WITH n, grp
+            MATCH (n)-[r:%s]-(grp:Group)
+            WHERE %s
+            RETURN grp as grp1, r as r1
+            ORDER BY [r.branch_level, r.from] DESC
+            LIMIT 1
+        }
+        WITH n, grp1 as grp, r1 as r
+        WHERE r.status = "active"
+        """ % (
+            self.group_rel_name,
+            rels_filter,
+            self.group_rel_name,
+            rels_filter,
+        )
+
+        self.add_to_query(query)
+
+        self.return_labels = ["n", "grp"]
+
+    async def get_groups_per_node(self) -> Dict[str, Dict[str, NodeSchema]]:
+        results = defaultdict(dict)
+
+        for result in self.get_results():
+            results[result.get("n").get("uuid")][result.get("grp").get("uuid")] = find_node_schema(
+                node=result.get("grp"), branch=self.branch
+            )
+
+        return results

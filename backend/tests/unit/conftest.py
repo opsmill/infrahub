@@ -1095,13 +1095,29 @@ async def group_group1_members_main(
     group_schema,
     person_john_main: Node,
     person_jim_main: Node,
-    person_albert_main: Node,
 ) -> Node:
     obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1")
     await obj.save(session=session)
 
     await obj.members.add(session=session, nodes=[person_john_main, person_jim_main])
+
+    return obj
+
+
+@pytest.fixture
+async def group_group2_members_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_albert_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group2")
+    await obj.save(session=session)
+
+    await obj.members.add(session=session, nodes=[person_john_main, person_albert_main])
 
     return obj
 

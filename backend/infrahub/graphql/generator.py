@@ -9,7 +9,7 @@ import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.group import GroupAssociationType
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.group import GroupGetAssociationQuery
+from infrahub.core.query.group import GroupGetAssociationQuery, NodeGetGroupListQuery
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client.utils import deep_merge_dict
@@ -280,17 +280,99 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
         return response
 
 
+async def node_groups_resolver(
+    parent: dict, info: GraphQLResolveInfo, **kwargs  # pylint: disable=unused-argument
+) -> Dict[str, Any]:
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+
+    response: Dict[str, Any] = {}
+
+    node_id = parent.get("node", {}).get("id", None)
+    if not node_id:
+        raise ValueError("Unable to extract the node_id")
+
+    if "member" in fields:
+        response["member"] = await query_node_groups(
+            node_id=node_id, fields=fields.get("member"), info=info, association_type=GroupAssociationType.MEMBER
+        )
+
+    elif "subscriber" in fields:
+        response["subscriber"] = await query_node_groups(
+            node_id=node_id,
+            fields=fields.get("subscriber"),
+            info=info,
+            association_type=GroupAssociationType.SUBSCRIBER,
+        )
+
+    return response
+
+
+async def query_node_groups(
+    node_id: str,
+    fields: dict,
+    info: GraphQLResolveInfo,
+    association_type: GroupAssociationType,
+    offset: Optional[int] = None,  # pylint: disable=unused-argument
+    limit: Optional[int] = None,  # pylint: disable=unused-argument
+) -> Dict[str, Any]:
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch = info.context.get("infrahub_branch")
+    db = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    edges = fields.get("edges", {})
+    node_fields = edges.get("node", {})
+
+    response: Dict[str, Any] = {"edges": [], "count": None}
+    async with db.session(database=config.SETTINGS.database.database) as new_session:
+        query = await NodeGetGroupListQuery.init(
+            session=new_session,
+            association_type=association_type,
+            ids=[node_id],
+            branch=branch,
+            at=at,
+        )
+
+        if "count" in fields:
+            response["count"] = await query.count(session=new_session)
+
+        await query.execute(session=new_session)
+        groups_per_node = await query.get_groups_per_node()
+        groups = groups_per_node.get(node_id, {})
+
+        # if display_label has been requested we need to ensure we are querying the right fields
+        if node_fields and "display_label" in node_fields:
+            for schema in set(groups.values()):
+                if schema.display_labels:
+                    display_label_fields = schema.generate_fields_for_display_label()
+                    node_fields = deep_merge_dict(node_fields, display_label_fields)
+
+        objs = await NodeManager.get_many(
+            session=new_session,
+            ids=list(groups.keys()),
+            fields=node_fields,
+            include_owner=True,
+            include_source=True,
+            at=at,
+            branch=branch,
+        )
+        if not objs:
+            return response
+        node_graph = [await obj.to_graphql(session=new_session, fields=node_fields) for obj in objs.values()]
+        response["edges"] = [{"node": node} for node in node_graph]
+
+        return response
+
+
 async def default_paginated_group_association_resolver(
     parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> Dict[str, Any]:
-    """Resolver for Qroup Associations for Edged responses
+    """Resolver for Group Associations for Edged responses
 
     This resolver is used for paginated responses and as such we redefined the requested
     fields by only reusing information below the 'node' key.
     """
-    # Extract the InfraHub schema by inspecting the GQL Schema
-    # node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
-
     # Extract the contextual information from the request context
     at = info.context.get("infrahub_at")
     branch = info.context.get("infrahub_branch")
@@ -339,13 +421,9 @@ async def default_paginated_group_association_resolver(
         objs = await NodeManager.get_many(
             session=new_session,
             ids=list(results.keys()),
-            # schema=node_rel,
-            # filters=filters,
             fields=node_fields,
             include_owner=True,
             include_source=True,
-            # offset=offset,
-            # limit=limit,
             at=at,
             branch=branch,
         )
@@ -354,11 +432,7 @@ async def default_paginated_group_association_resolver(
             return response
         node_graph = [await obj.to_graphql(session=new_session, fields=node_fields) for obj in objs.values()]
 
-        entries = []
-        for node in node_graph:
-            entry = {"node": node}
-            entries.append(entry)
-        response["edges"] = entries
+        response["edges"] = [{"node": node} for node in node_graph]
         return response
 
 
@@ -372,7 +446,7 @@ def load_attribute_types_in_registry(branch: Branch):
 def load_node_interface(branch: Branch):
     node_interface_schema = GenericSchema(name="node", kind="Node", description="Interface for all nodes in Infrahub")
     interface = generate_interface_object(schema=node_interface_schema, branch=branch)
-    edged_interface = generate_graphql_edged_object(schema=node_interface_schema, node=interface)
+    edged_interface = generate_graphql_edged_object(schema=node_interface_schema, node=interface, branch=branch)
     paginated_interface = generate_graphql_paginated_object(schema=node_interface_schema, edge=edged_interface)
 
     registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
@@ -423,7 +497,7 @@ async def generate_object_types(
         if not isinstance(node_schema, GenericSchema):
             continue
         interface = generate_interface_object(schema=node_schema, branch=branch)
-        edged_interface = generate_graphql_edged_object(schema=node_schema, node=interface)
+        edged_interface = generate_graphql_edged_object(schema=node_schema, node=interface, branch=branch)
         paginated_interface = generate_graphql_paginated_object(schema=node_schema, edge=edged_interface)
 
         registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
@@ -465,13 +539,33 @@ async def generate_object_types(
             name=nested_edged_interface._meta.name, graphql_type=nested_edged_interface, branch=branch.name
         )
 
+    # -------------------------------------------------------------
+    # Generate NodeGroups TODO Move into a dedicatd function
+    # -------------------------------------------------------------
+    object_name = "NodeGroups"
+    meta_attrs = {
+        "name": object_name,
+        "description": "Groups this node is part of, both as member and subscriber",
+        "interfaces": set(),
+    }
+
+    paginated_group_type = registry.get_graphql_type(name="PaginatedGroup", branch=branch)
+    main_attrs = {
+        "member": graphene.Field(paginated_group_type, required=False),  # , resolver=groups_resolver),
+        "subscriber": graphene.Field(paginated_group_type, required=False),  # , resolver=groups_resolver),
+        "Meta": type("Meta", (object,), meta_attrs),
+    }
+
+    node_groups = type(object_name, (graphene.ObjectType,), main_attrs)
+    registry.set_graphql_type(name=node_groups._meta.name, graphql_type=node_groups, branch=branch.name)
+
     # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
     for node_name, node_schema in full_schema.items():
         if isinstance(node_schema, NodeSchema):
             node_type = generate_graphql_object(schema=node_schema, branch=branch)
-            node_type_edged = generate_graphql_edged_object(schema=node_schema, node=node_type)
+            node_type_edged = generate_graphql_edged_object(schema=node_schema, node=node_type, branch=branch)
             nested_node_type_edged = generate_graphql_edged_object(
-                schema=node_schema, node=node_type, relation_property=relationship_property
+                schema=node_schema, node=node_type, relation_property=relationship_property, branch=branch
             )
 
             node_type_paginated = generate_graphql_paginated_object(schema=node_schema, edge=node_type_edged)
@@ -661,6 +755,7 @@ def define_relationship_property(branch: Branch, data_source: InfrahubObject, da
 def generate_graphql_edged_object(
     schema: NodeSchema,
     node: Type[InfrahubObject],
+    branch: Branch,
     relation_property: Optional[InfrahubObject] = None,
 ) -> Type[InfrahubObject]:
     """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""
@@ -673,7 +768,7 @@ def generate_graphql_edged_object(
         "schema": schema,
         "name": object_name,
         "description": schema.description,
-        "default_resolver": default_resolver,
+        # "default_resolver": default_resolver,
         "interfaces": set(),
     }
 
@@ -681,6 +776,10 @@ def generate_graphql_edged_object(
         "node": graphene.Field(node, required=False),
         "Meta": type("Meta", (object,), meta_attrs),
     }
+
+    if registry.has_graphql_type(name="NodeGroups", branch=branch):
+        node_groups = registry.get_graphql_type(name="NodeGroups", branch=branch)
+        main_attrs["groups"] = graphene.Field(node_groups, required=False, resolver=node_groups_resolver)
 
     if relation_property:
         main_attrs["properties"] = graphene.Field(relation_property)

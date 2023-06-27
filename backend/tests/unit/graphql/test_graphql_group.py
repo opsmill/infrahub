@@ -529,3 +529,114 @@ async def test_query_group_subscribers_different_type(
 
     assert result.errors is None
     assert DeepDiff(expected_results, result.data, ignore_order=True, ignore_private_variables=False).to_dict() == {}
+
+
+async def test_query_groups_per_node(
+    db: AsyncDriver,
+    session: AsyncSession,
+    group_group1_members_main: Group,
+    group_group2_members_main: Group,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    branch: Branch,
+):
+    pass
+
+    query = """
+    query {
+        person {
+            count
+            edges {
+                node {
+                    id
+                    display_label
+                }
+                groups {
+                    member {
+                        count
+                        edges {
+                            node {
+                                id
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    expected_results = {
+        "person": {
+            "count": 3,
+            "edges": [
+                {
+                    "groups": {
+                        "member": {
+                            "count": 2,
+                            "edges": [
+                                {
+                                    "node": {
+                                        "display_label": "group1",
+                                        "id": group_group1_members_main.id,
+                                    },
+                                },
+                                {
+                                    "node": {
+                                        "display_label": "group2",
+                                        "id": group_group2_members_main.id,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    "node": {"display_label": "John", "id": person_john_main.id},
+                },
+                {
+                    "groups": {
+                        "member": {
+                            "count": 1,
+                            "edges": [
+                                {
+                                    "node": {
+                                        "display_label": "group1",
+                                        "id": group_group1_members_main.id,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    "node": {"display_label": "Jim", "id": person_jim_main.id},
+                },
+                {
+                    "groups": {
+                        "member": {
+                            "count": 1,
+                            "edges": [
+                                {
+                                    "node": {
+                                        "display_label": "group2",
+                                        "id": group_group2_members_main.id,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    "node": {"display_label": "Albert", "id": person_albert_main.id},
+                },
+            ],
+        },
+    }
+
+    assert result.errors is None
+    assert DeepDiff(expected_results, result.data, ignore_order=True, ignore_private_variables=False).to_dict() == {}

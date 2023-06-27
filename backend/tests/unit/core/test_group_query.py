@@ -8,6 +8,7 @@ from infrahub.core.query.group import (
     GroupGetAssociationQuery,
     GroupHasAssociationQuery,
     GroupRemoveAssociationQuery,
+    NodeGetGroupListQuery,
 )
 from infrahub.core.utils import get_paths_between_nodes
 
@@ -145,3 +146,30 @@ async def test_query_GroupRemoveAssociationQuery(
         session=session, source_id=group1.db_id, destination_id=person_albert_main.db_id, max_length=1
     )
     assert len(paths) == 1
+
+
+async def test_query_NodeGetGroupListQuery(
+    session: AsyncSession,
+    group_group1_members_main: Group,
+    group_group2_members_main: Group,
+    person_john_main: Node,
+    person_jim_main: Node,
+    branch: Branch,
+):
+    query = await NodeGetGroupListQuery.init(
+        session=session,
+        association_type=GroupAssociationType.MEMBER,
+        ids=[person_john_main.id],
+        branch=branch,
+    )
+    await query.execute(session=session)
+
+    groups_per_node = await query.get_groups_per_node()
+
+    expected_response = {
+        person_john_main.id: {
+            group_group1_members_main.id: group_group1_members_main._schema,
+            group_group2_members_main.id: group_group2_members_main._schema,
+        }
+    }
+    assert groups_per_node == expected_response
