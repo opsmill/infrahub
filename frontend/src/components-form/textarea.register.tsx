@@ -10,10 +10,11 @@ interface Props {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
+  isProtected?: boolean;
 }
 
 export const OpsTextareaRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, error } = props;
+  const { name, value, register, setValue, config, label, error, isProtected } = props;
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -26,6 +27,7 @@ export const OpsTextareaRegister = (props: Props) => {
       value={value}
       onChange={(value) => setValue(inputRegister.name, value)}
       error={error}
+      isProtected={isProtected}
     />
   );
 };

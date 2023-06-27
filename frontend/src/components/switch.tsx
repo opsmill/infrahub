@@ -4,7 +4,7 @@ import { classNames } from "../utils/common";
 // type SwitchProps = {}
 
 export const Switch = (props: any) => {
-  const { checked, onChange, error } = props;
+  const { checked, onChange, error, disabled } = props;
 
   return (
     <div
@@ -13,6 +13,7 @@ export const Switch = (props: any) => {
         error ? "border-2 border-red-300 pb-3" : ""
       )}>
       <HSwitch
+        disabled={disabled}
         checked={checked}
         onChange={onChange}
         className={`${

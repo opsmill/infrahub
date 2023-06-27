@@ -1,8 +1,9 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
+import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getObjectDetailsAndPeers } from "../../graphql/queries/objects/getObjectDetailsAndPeers";
@@ -29,6 +30,9 @@ interface Props {
 
 export default function ObjectItemEditComponent(props: Props) {
   const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
+
+  const user = useContext(AuthContext);
+
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
   const [schemaKindNameMap] = useAtom(schemaKindNameState);
@@ -98,7 +102,8 @@ export default function ObjectItemEditComponent(props: Props) {
     genericsList,
     peerDropdownOptions,
     schemaKindNameMap,
-    objectDetailsData
+    objectDetailsData,
+    user
   );
 
   async function onSubmit(data: any) {

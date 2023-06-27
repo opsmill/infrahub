@@ -1,7 +1,7 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { OpsSelect } from "./select";
 import { SelectOption } from "../components/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
+import { OpsSelect } from "./select";
 
 type SelectRegisterProps = {
   name: string;
@@ -12,10 +12,11 @@ type SelectRegisterProps = {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
+  isProtected?: boolean;
 };
 
 export const OpsSelectRegister = (props: SelectRegisterProps) => {
-  const { name, value, register, setValue, config, options, label, error } = props;
+  const { name, value, register, setValue, config, options, label, error, isProtected } = props;
   const inputRegister = register(name, {
     value: value ?? "",
     ...config,
@@ -29,6 +30,7 @@ export const OpsSelectRegister = (props: SelectRegisterProps) => {
       options={options}
       onChange={(item: SelectOption) => setValue(inputRegister.name, item.id)}
       error={error}
+      isProtected={isProtected}
     />
   );
 };
