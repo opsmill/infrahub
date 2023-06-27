@@ -35,6 +35,14 @@ query {{kind.value}} {
                   display_label
                   __typename
                 }
+                properties {
+                  is_protected
+                  owner {
+                    id
+                    display_label
+                    __typename
+                  }
+                }
               {{#if this.paginated}}
                 }
               {{/if}}

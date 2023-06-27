@@ -9,13 +9,22 @@ import {
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 
+const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
+  // Field is available if there is no owner and if is_protected is not set to true
+  if (!isProtected || !owner) return false;
+
+  // Field is available only if is_protected is set to true and if the owner is the user
+  return owner?.id === user?.id;
+};
+
 const getFormStructureForCreateEdit = (
   schema: iNodeSchema,
   schemas: iNodeSchema[],
   generics: iGenericSchema[],
   dropdownOptions: iPeerDropdownOptions,
   schemaKindNameMap: iSchemaKindNameMap,
-  row?: any
+  row?: any,
+  user?: any
 ): DynamicFieldData[] => {
   if (!schema) {
     return [];
@@ -25,6 +34,7 @@ const getFormStructureForCreateEdit = (
 
   schema.attributes?.forEach((attribute) => {
     let options: SelectOption[] = [];
+
     if (attribute.enum) {
       options = attribute.enum?.map((row: any) => ({
         name: row,
@@ -46,6 +56,11 @@ const getFormStructureForCreateEdit = (
       config: {
         required: attribute.optional === false ? "Required" : "",
       },
+      isProtected: getIsDisabled(
+        row && row[attribute.name]?.owner,
+        user,
+        row && row[attribute.name] && row[attribute.name].is_protected
+      ),
     });
   });
 
@@ -117,6 +132,11 @@ const getFormStructureForCreateEdit = (
         config: {
           required: relationship.optional === false ? "Required" : "",
         },
+        isProtected: getIsDisabled(
+          row && row[relationship.name]?.properties?.owner,
+          user,
+          row && row[relationship.name] && row[relationship.name]?.properties?.is_protected
+        ),
       });
     });
 

@@ -89,4 +89,5 @@ export interface DynamicFieldData {
   };
   config?: RegisterOptions;
   error?: FormFieldError;
+  isProtected?: boolean;
 }

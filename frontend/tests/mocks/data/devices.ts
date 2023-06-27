@@ -878,6 +878,7 @@ export const deviceDetailsMocksData = {
             },
             properties: {
               updated_at: "2023-06-01T11:58:12.267670+00:00",
+              is_protected: true,
               source: {
                 id: "79058b7b-8f2f-4561-b455-044390273707",
                 display_label: "Pop-Builder",
@@ -896,6 +897,7 @@ export const deviceDetailsMocksData = {
             },
             properties: {
               updated_at: "2023-06-01T11:58:12.267670+00:00",
+              is_protected: false,
               source: null,
               owner: {
                 id: "9955e083-0be9-4cdb-98bb-d80b3e8bb4af",
@@ -914,6 +916,7 @@ export const deviceDetailsMocksData = {
             },
             properties: {
               updated_at: "2023-06-01T11:58:12.267670+00:00",
+              is_protected: true,
               source: {
                 id: "79058b7b-8f2f-4561-b455-044390273707",
                 display_label: "Pop-Builder",
@@ -936,6 +939,7 @@ export const deviceDetailsMocksData = {
             },
             properties: {
               updated_at: "2023-06-01T11:58:12.267670+00:00",
+              is_protected: true,
               source: {
                 id: "79058b7b-8f2f-4561-b455-044390273707",
                 display_label: "Pop-Builder",
@@ -960,6 +964,7 @@ export const deviceDetailsMocksData = {
                 },
                 properties: {
                   updated_at: "2023-06-01T11:58:12.267670+00:00",
+                  is_protected: false,
                   source: null,
                   owner: null,
                   __typename: "RelationshipProperty",
@@ -974,6 +979,7 @@ export const deviceDetailsMocksData = {
                 },
                 properties: {
                   updated_at: "2023-06-01T11:58:12.267670+00:00",
+                  is_protected: false,
                   source: null,
                   owner: null,
                   __typename: "RelationshipProperty",

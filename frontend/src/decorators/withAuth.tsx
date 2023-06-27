@@ -6,6 +6,7 @@ import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "../config/constants";
 import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
+import { parseJwt } from "../utils/common";
 import { fetchUrl } from "../utils/fetch";
 
 type tPermissions = {
@@ -121,8 +122,11 @@ export const withAuth = (AppComponent: any) => (props: any) => {
   }
 
   if (!displaySignIn && accessToken) {
+    const data = parseJwt(accessToken);
+
     const auth = {
       accessToken,
+      data,
       permissions: {
         write: true,
       },

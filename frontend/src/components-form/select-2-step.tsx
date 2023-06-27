@@ -20,10 +20,11 @@ interface Props {
   value: iTwoStepDropdownData;
   onChange: (value: iTwoStepDropdownData) => void;
   error?: FormFieldError;
+  isProtected?: boolean;
 }
 
 export const OpsSelect2Step = (props: Props) => {
-  const { label, options, value, error, onChange } = props;
+  const { label, options, value, error, onChange, isProtected } = props;
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
 
@@ -104,6 +105,7 @@ export const OpsSelect2Step = (props: Props) => {
           onChange={(value) => {
             setSelectedLeft(options.filter((option) => option.id === value.id)[0]);
           }}
+          isProtected={isProtected}
         />
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
@@ -122,6 +124,7 @@ export const OpsSelect2Step = (props: Props) => {
                 child: value.id,
               });
             }}
+            isProtected={isProtected}
           />
         )}
       </div>
