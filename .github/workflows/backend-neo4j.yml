@@ -1,0 +1,68 @@
+---
+# yamllint disable rule:truthy
+name: "Backend"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/backend.yml"
+      - "backend/**"
+      - "development/**"
+      - pyproject.toml
+      - poetry.lock
+      - "tasks/**"
+  push:
+    branches:
+      - develop
+      - stable
+
+env:
+  NEO4J_USERNAME: neo4j
+  NEO4J_PASSWORD: admin
+  NEO4J_ADDRESS: localhost
+  NEO4J_PORT: 7687
+  NEO4J_PROTOCOL: bolt
+
+jobs:
+  python-tests:
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.3.2 toml invoke"
+      - name: "Setup Git"
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
+      - name: "Setup Docker-Compose"
+        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      - name: "Start database"
+        run: "invoke demo.dev-start --database=neo4j"
+      - name: "Install project"
+        run: "poetry install --only=main,dev,server"
+      - name: "Unit Tests"
+        run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
+      # - name: "Coveralls : Unit Tests"
+      #   uses: coverallsapp/github-action@v2.0.0
+      #   env:
+      #     COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+      #   with:
+      #     flag-name: backend-unit
+      #     parallel: true
+      # - name: "Integration Tests"
+      #   run: "poetry run pytest --cov=infrahub backend/tests/integration"
+      # - name: "Coveralls : Integration Tests"
+      #   uses: coverallsapp/github-action@v2.0.0
+      #   env:
+      #     COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+      #   with:
+      #     flag-name: backend-integration
+      #     parallel: true
+      # - name: "Start Neo4j database"
+      #   run: |
+      #     invoke demo.destroy
+      #     invoke demo.dev-start --database=neo4j
+      #     sleep 45
+      # - name: "Unit Tests with Neo4j"
+      #   run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
