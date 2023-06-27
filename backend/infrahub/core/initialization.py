@@ -160,7 +160,6 @@ async def first_time_initialization(session: AsyncSession):
         await obj.new(session=session, name=level[0], level=level[1])
         await obj.save(session=session)
 
-    account_schema = registry.get_schema(name="Account")
     token_schema = registry.get_schema(name="AccountToken")
     # admin_grp = await Node.init(session=session, schema=group_schema)
     # await admin_grp.new(session=session, name="admin")
