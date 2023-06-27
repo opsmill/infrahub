@@ -101,6 +101,8 @@ export default function ObjectItemEditComponent(props: Props) {
     objectDetailsData
   );
 
+  console.log("formStructure: ", formStructure);
+
   async function onSubmit(data: any) {
     setIsLoading(true);
 

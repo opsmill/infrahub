@@ -1,6 +1,6 @@
 export default function NoDataFound() {
   return (
-    <div className="bg-custom-white p-12 flex flex-col flex-1 items-center justify-center">
+    <div className="p-12 flex flex-col flex-1 items-center justify-center">
       <img
         alt="No data"
         className="h-28 w-auto"

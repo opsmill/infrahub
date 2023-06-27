@@ -9,6 +9,7 @@ import { QSP } from "../../../config/qsp";
 import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { FileRepoDiff } from "./file-repo-diff";
+import NoDataFound from "../../no-data-found/no-data-found";
 
 export const FilesDiff = () => {
   const [filesDiff, setFilesDiff] = useState({});
@@ -38,7 +39,9 @@ export const FilesDiff = () => {
     try {
       const filesResult = await fetchUrl(urlWithQsp);
 
-      setFilesDiff(filesResult[branchname]);
+      if (filesResult[branchname]) {
+        setFilesDiff(filesResult[branchname]);
+      }
     } catch (err) {
       console.error("err: ", err);
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading filesDiff diff" />);
@@ -57,6 +60,10 @@ export const FilesDiff = () => {
 
   if (isLoading) {
     return <LoadingScreen />;
+  }
+
+  if (!Object.values(filesDiff).length) {
+    return <NoDataFound />;
   }
 
   return (
