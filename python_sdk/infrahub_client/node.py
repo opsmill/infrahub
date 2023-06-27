@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, get_args
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
@@ -16,6 +17,8 @@ if TYPE_CHECKING:
 PROPERTIES_FLAG = ["is_visible", "is_protected"]
 PROPERTIES_OBJECT = ["source", "owner"]
 SAFE_VALUE = re.compile(r"(^[\. /:a-zA-Z0-9_-]+$)|(^$)")
+
+IP_TYPES = Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface, ipaddress.IPv4Network, ipaddress.IPv6Network]
 
 
 class Attribute:
@@ -33,7 +36,16 @@ class Attribute:
         self._read_only = ["updated_at", "is_inherited"]
 
         self.id: Optional[str] = data.get("id", None)
+
         self.value: Optional[Any] = data.get("value", None)
+
+        if self.value:
+            value_mapper: Dict[str, Callable] = {
+                "IPHost": ipaddress.ip_interface,
+                "IPNetwork": ipaddress.ip_network,
+            }
+            mapper = value_mapper.get(schema.kind, lambda value: value)
+            self.value = mapper(data.get("value"))
 
         self.is_inherited: Optional[bool] = data.get("is_inherited", None)
         self.updated_at: Optional[str] = data.get("updated_at", None)
@@ -62,6 +74,8 @@ class Attribute:
                 var_name = f"value_{uuid.uuid4().hex}"
                 variables[var_name] = self.value
                 data["value"] = f"${var_name}"
+        elif isinstance(self.value, get_args(IP_TYPES)):
+            data["value"] = self.value.with_prefixlen
         else:
             data["value"] = self.value
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
@@ -440,6 +441,52 @@ class Integer(BaseAttribute):
 
 class Boolean(BaseAttribute):
     type = bool
+
+
+class IPNetwork(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+        """
+        super().validate_format(value=value, name=name, schema=schema)
+
+        try:
+            ipaddress.ip_network(value)
+        except ValueError as exc:
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
+
+
+class IPHost(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+        """
+        super().validate_format(value=value, name=name, schema=schema)
+
+        try:
+            ipaddress.ip_interface(value)
+        except ValueError as exc:
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
 
 class ListAttribute(BaseAttribute):

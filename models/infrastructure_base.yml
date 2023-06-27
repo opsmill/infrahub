@@ -193,7 +193,7 @@ nodes:
       - address__value
     attributes:
       - name: address
-        kind: Text
+        kind: IPHost
       - name: description
         kind: Text
         optional: true

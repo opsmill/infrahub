@@ -422,6 +422,42 @@ async def rfile_schema() -> NodeSchema:
 
 
 @pytest.fixture
+async def ipaddress_schema() -> NodeSchema:
+    data = {
+        "name": "ipaddress",
+        "kind": "IPAddress",
+        "default_filter": "address__value",
+        "display_labels": ["address_value"],
+        "order_by": ["address_value"],
+        "attributes": [
+            {"name": "address", "kind": "IPHost"},
+        ],
+        "relationships": [
+            {"name": "interface", "peer": "InterfaceL3", "optional": True, "cardinality": "one", "kind": "Parent"}
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def ipnetwork_schema() -> NodeSchema:
+    data = {
+        "name": "ipnetwork",
+        "kind": "IPNetwork",
+        "default_filter": "network__value",
+        "display_labels": ["network_value"],
+        "order_by": ["network_value"],
+        "attributes": [
+            {"name": "network", "kind": "IPNetwork"},
+        ],
+        "relationships": [
+            {"name": "site", "peer": "Location", "optional": True, "cardinality": "one", "kind": "Parent"}
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
