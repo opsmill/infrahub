@@ -17,6 +17,9 @@ LOGGER = logging.getLogger("infrahub")
 
 
 async def initialization(session: AsyncSession):
+    if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+        await session.run(query="STORAGE MODE IN_MEMORY_ANALYTICAL")
+
     # ---------------------------------------------------
     # Load the Root node
     # ---------------------------------------------------

@@ -78,7 +78,7 @@ async def load_data(
     nbr_repository: int = 10,
     nbr_query: int = 1000,
     batch_size: int = 5,
-    concurrent_execution: int = 3,
+    concurrent_execution: int = 2,
 ):
     """Generate a large number of GraphQLQuery associated with some Tags and some Repositories
     All the Tags and the repositories will be created at once but the GraphQLQuery will be created in batch.

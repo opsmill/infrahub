@@ -3,8 +3,9 @@ version: "3.4"
 services:
   database:
     ports:
-      - "7474:7474"
       - "7687:7687"
+      - "7474:3000"
+      - "7444:7444"
   message-queue:
     ports:
       - "5672:5672"

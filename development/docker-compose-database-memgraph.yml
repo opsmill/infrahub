@@ -1,0 +1,22 @@
+---
+version: "3.4"
+services:
+  database:
+    image: "memgraph/memgraph-platform:2.8.0-memgraph2.8.0-lab2.6.0"
+    volumes:
+      - database_data:/var/lib/memgraph
+      - database_logs:/var/log/memgraph
+      - ./memgraph.conf:/etc/memgraph/memgraph.conf
+    environment:
+      - MGCONSOLE="--username neo4j --password admin"
+      - APP_CYPHER_QUERY_MAX_LEN=10000
+    entrypoint: ["/usr/bin/supervisord"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", 'mgconsole < <(echo "SHOW TRANSACTIONS;")']
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+volumes:
+  database_data:
+  database_logs:

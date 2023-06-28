@@ -9,7 +9,7 @@ username = "neo4j"
 password = "admin"
 address = "database"
 port = 7687
-protocol = "neo4j"
+protocol = "bolt"
 database = "infrahub"
 
 [broker]

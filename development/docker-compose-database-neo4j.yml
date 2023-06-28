@@ -12,24 +12,14 @@ services:
       - "NEO4J_server_metrics_prometheus_endpoint=0.0.0.0:2004"
     volumes:
       - "./plugins:/plugins"
-      - "neo4j_data:/data"
-      - "neo4j_logs:/logs"
+      - "database_data:/data"
+      - "database_logs:/logs"
     healthcheck:
       test: wget http://localhost:7474 || exit 1
       interval: 2s
       timeout: 10s
       retries: 20
       start_period: 3s
-  message-queue:
-    image: "rabbitmq:3.11-management"
-    environment:
-      - "RABBITMQ_DEFAULT_USER=infrahub"
-      - "RABBITMQ_DEFAULT_PASS=infrahub"
-    healthcheck:
-      test: rabbitmq-diagnostics -q ping
-      interval: 5s
-      timeout: 30s
-      retries: 3
 volumes:
-  neo4j_data:
-  neo4j_logs:
+  database_data:
+  database_logs:
