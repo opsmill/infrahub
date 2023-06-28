@@ -1,12 +1,9 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { useAtom } from "jotai";
 import { useState } from "react";
 import { BADGE_TYPES, Badge } from "../../components/badge";
 import { Button } from "../../components/button";
 import { iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import useFilters from "../../hooks/useFilters";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import DeviceFilterBarContent from "./device-filter-bar-content";
 
 // const sortOptions = [
@@ -21,18 +18,7 @@ export default function DeviceFilterBar(props: any) {
   const { objectname } = props;
 
   const [showFilters, setShowFilters] = useState(false);
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const [filters, setFilters] = useFilters();
-  const [schemaList] = useAtom(schemaState);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
-
-  const peers: string[] = [];
-
-  (schema.filters || []).forEach((f) => {
-    if (f.kind === "Object" && f.object_kind && schemaKindName[f.object_kind]) {
-      peers.push(schemaKindName[f.object_kind]);
-    }
-  });
 
   const handleClickReset = () => {
     setFilters();
