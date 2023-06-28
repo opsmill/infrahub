@@ -331,7 +331,9 @@ async def test_query_groups(
             count
             edges {
                 node {
+                    display_label
                     id
+                    __typename
                 }
             }
         }
@@ -349,7 +351,9 @@ async def test_query_groups(
     expected_results = {
         "group": {
             "count": 1,
-            "edges": [{"node": {"id": group_group1_members_main.id}}],
+            "edges": [
+                {"node": {"__typename": "StandardGroup", "display_label": "group1", "id": group_group1_members_main.id}}
+            ],
         },
     }
 
