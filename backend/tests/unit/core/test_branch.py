@@ -458,7 +458,7 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
 
     expected_response_branch2_repo01_time01 = {
         "branch": "branch2",
-        "labels": ["Node", "Repository"],
+        "labels": ["DataOwner", "DataSource", "Node", "Repository"],
         "kind": "Repository",
         "id": repo01b2.id,
         "action": "updated",
@@ -493,7 +493,7 @@ async def test_diff_get_nodes_entire_branch(session, default_branch, repos_in_ma
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["Node", "Repository"],
+        "labels": ["DataOwner", "DataSource", "Node", "Repository"],
         "kind": "Repository",
         "id": repo01b2.id,
         "action": "updated",
@@ -549,7 +549,7 @@ async def test_diff_get_nodes_multiple_changes(session, default_branch, repos_in
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["Node", "Repository"],
+        "labels": ["DataOwner", "DataSource", "Node", "Repository"],
         "kind": "Repository",
         "id": repo01b2.id,
         "action": "updated",

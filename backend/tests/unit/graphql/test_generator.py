@@ -68,7 +68,6 @@ async def test_generate_graphql_object(session, default_branch: Branch, group_gr
         "color",
         "description",
         "display_label",
-        # "groups",
         "id",
         "is_false",
         "is_true",
@@ -93,7 +92,6 @@ async def test_generate_graphql_object_with_interface(
         "_updated_at",
         "description",
         "display_label",
-        # "groups",
         "id",
         "name",
         "nbr_doors",
@@ -134,7 +132,6 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "_updated_at",
         "color",
         "display_label",
-        # "groups",
         "id",
         "is_electric",
         "name",
@@ -142,9 +139,9 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "owner",
     ]
 
-    assert sorted(list(edged_car._meta.fields.keys())) == ["node"]
+    assert sorted(list(edged_car._meta.fields.keys())) == ["groups", "node"]
     assert str(edged_car._meta.fields["node"].type) == "Car"
-    assert sorted(list(nested_edged_car._meta.fields.keys())) == ["node", "properties"]
+    assert sorted(list(nested_edged_car._meta.fields.keys())) == ["groups", "node", "properties"]
     assert str(nested_edged_car._meta.fields["node"].type) == "Car"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
@@ -152,14 +149,13 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "_updated_at",
         "cars",
         "display_label",
-        # "groups",
         "height",
         "id",
         "name",
     ]
-    assert sorted(list(edged_person._meta.fields.keys())) == ["node"]
+    assert sorted(list(edged_person._meta.fields.keys())) == ["groups", "node"]
     assert str(edged_person._meta.fields["node"].type) == "Person"
-    assert sorted(list(nested_edged_person._meta.fields.keys())) == ["node", "properties"]
+    assert sorted(list(nested_edged_person._meta.fields.keys())) == ["groups", "node", "properties"]
     assert str(nested_edged_person._meta.fields["node"].type) == "Person"
     assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
     assert sorted(list(relationship_property._meta.fields.keys())) == [
