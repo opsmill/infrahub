@@ -17,7 +17,6 @@ from .branch import (
     BranchValidate,
 )
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
-
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
 

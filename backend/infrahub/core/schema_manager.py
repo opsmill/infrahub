@@ -17,6 +17,7 @@ from infrahub.core.schema import (
     GenericSchema,
     GroupSchema,
     NodeSchema,
+    RelationshipKind,
     RelationshipSchema,
     SchemaRoot,
     internal_schema,
@@ -142,6 +143,13 @@ class SchemaBranch:
             branch_name=self.name, identifier=name, message=f"Unable to find the schema '{name}' in the registry"
         )
 
+    def has(self, name: str) -> bool:
+        try:
+            self.get(name=name)
+            return True
+        except SchemaNotFound:
+            return False
+
     def get_all(self, include_internal: bool = False) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
         """Retrive everything in a single dictionary."""
 
@@ -173,6 +181,7 @@ class SchemaBranch:
     def process(self) -> None:
         self.generate_identifiers()
         self.process_inheritance()
+        self.add_groups()
         self.process_filters()
         self.generate_weight()
 
@@ -251,6 +260,35 @@ class SchemaBranch:
                     item.order_weight = current_weight
 
             self.set(name=name, schema=new_node)
+
+    def add_groups(self):
+        if not self.has(name="Group"):
+            return
+
+        for node_name in self.nodes:
+            node_schema: NodeSchema = self.get(name=node_name)
+
+            if "Group" in node_schema.inherit_from:
+                continue
+
+            if "member_of_groups" not in node_schema.relationship_names:
+                node_schema.relationships.append(
+                    RelationshipSchema(
+                        name="member_of_groups", identifier="group_member", peer="Group", kind=RelationshipKind.GROUP
+                    )
+                )
+
+            if "subscriber_of_groups" not in node_schema.relationship_names:
+                node_schema.relationships.append(
+                    RelationshipSchema(
+                        name="subscriber_of_groups",
+                        identifier="group_subscriber",
+                        peer="Group",
+                        kind=RelationshipKind.GROUP,
+                    )
+                )
+
+            self.set(name=node_name, schema=node_schema)
 
     @staticmethod
     def generate_filters(
