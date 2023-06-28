@@ -9,6 +9,7 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.group import Group
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -28,6 +29,11 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
+from infrahub.graphql.generator import (
+    generate_interface_object,
+    load_attribute_types_in_registry,
+    load_node_interface,
+)
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
 
@@ -691,6 +697,52 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
 
 @pytest.fixture
+async def group_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "group",
+                "kind": "Group",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "standard_group",
+                "kind": "StandardGroup",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": True,
+                "inherit_from": ["Group"],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def group_graphql(session: AsyncSession, default_branch: Branch, group_schema) -> None:
+    registry.node["Group"] = Group
+
+    load_node_interface(branch=default_branch)
+    load_attribute_types_in_registry(branch=default_branch)
+    schema = registry.schema.get(name="Group", branch=default_branch)
+    interface = generate_interface_object(schema=schema, branch=default_branch)
+    registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=default_branch.name)
+
+
+@pytest.fixture
 async def car_person_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
@@ -1021,6 +1073,91 @@ async def person_jack_tags_main(
     obj = await Node.init(session=session, schema="Person")
     await obj.new(session=session, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
     await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def group_group1_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+) -> Node:
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group1")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def group_group1_members_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_jim_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group1")
+    await obj.save(session=session)
+
+    await obj.members.add(session=session, nodes=[person_john_main, person_jim_main])
+
+    return obj
+
+
+@pytest.fixture
+async def group_group2_members_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_albert_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group2")
+    await obj.save(session=session)
+
+    await obj.members.add(session=session, nodes=[person_john_main, person_albert_main])
+
+    return obj
+
+
+@pytest.fixture
+async def group_group1_subscribers_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group1")
+    await obj.save(session=session)
+
+    await obj.subscribers.add(session=session, nodes=[person_john_main, person_jim_main, person_albert_main])
+
+    return obj
+
+
+@pytest.fixture
+async def group_group2_subscribers_main(
+    session: AsyncSession,
+    default_branch: Branch,
+    group_schema,
+    person_john_main: Node,
+    person_jim_main: Node,
+    car_volt_main: Node,
+    car_accord_main: Node,
+) -> Node:
+    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group2")
+    await obj.save(session=session)
+
+    await obj.subscribers.add(
+        session=session, nodes=[person_john_main, person_jim_main, car_volt_main, car_accord_main]
+    )
+
     return obj
 
 

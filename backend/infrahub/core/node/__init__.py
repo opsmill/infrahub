@@ -55,7 +55,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_labels(self) -> List[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""
-        return [self.get_kind()] + self._schema.inherit_from
+        if isinstance(self._schema, NodeSchema):
+            return [self.get_kind()] + self._schema.inherit_from
+
+        return [self.get_kind()]
 
     def __repr__(self):
         return f"{self.get_kind()}(ID: {str(self.id)})"

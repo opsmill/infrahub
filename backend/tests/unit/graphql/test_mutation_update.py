@@ -8,6 +8,11 @@ from infrahub.core.node import Node
 from infrahub.graphql import generate_graphql_schema
 
 
+@pytest.fixture(autouse=True)
+def load_graphql_requirements(group_graphql):
+    pass
+
+
 async def test_update_simple_object(db, session: AsyncSession, person_john_main: Node, branch: Branch):
     query = (
         """

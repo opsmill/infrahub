@@ -975,8 +975,30 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
             ],
         },
+        {
+            "name": "group",
+            "kind": "Group",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["label__value"],
+            "branch": True,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "label", "kind": "Text", "optional": True},
+                {"name": "description", "kind": "Text", "optional": True},
+            ],
+        },
     ],
     "nodes": [
+        {
+            "name": "standard_group",
+            "kind": "StandardGroup",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "branch": True,
+            "inherit_from": ["Group"],
+        },
         {
             "name": "criticality",
             "kind": "Criticality",
@@ -1046,7 +1068,6 @@ core_models = {
             ],
             "relationships": [
                 {"name": "tokens", "peer": "AccountToken", "optional": True, "cardinality": "many"},
-                {"name": "groups", "peer": "Group", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1073,23 +1094,6 @@ core_models = {
             ],
             "relationships": [
                 {"name": "account", "peer": "Account", "optional": False, "cardinality": "one"},
-            ],
-        },
-        {
-            "name": "group",
-            "kind": "Group",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "inherit_from": ["DataOwner"],
-            "display_labels": ["label__value"],
-            "branch": True,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "label", "kind": "Text", "optional": True},
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
-            "relationships": [
-                {"name": "members", "peer": "Account", "optional": True, "cardinality": "many"},
             ],
         },
         {

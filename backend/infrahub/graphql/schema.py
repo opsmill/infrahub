@@ -13,6 +13,10 @@ from .mutations import (
     BranchMerge,
     BranchRebase,
     BranchValidate,
+    GroupMemberAdd,
+    GroupMemberRemove,
+    GroupSubscriberAdd,
+    GroupSubscriberRemove,
 )
 from .types import BranchDiffType, BranchType
 from .utils import extract_fields
@@ -25,12 +29,12 @@ if TYPE_CHECKING:
 # pylint: disable=unused-argument
 
 
-async def default_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
+async def default_list_resolver(root: dict, info: GraphQLResolveInfo, **kwargs):
     fields = await extract_fields(info.field_nodes[0].selection_set)
     return await info.return_type.of_type.graphene_type.get_list(**kwargs, fields=fields, context=info.context)
 
 
-async def default_paginated_list_resolver(root, info: GraphQLResolveInfo, **kwargs):
+async def default_paginated_list_resolver(root: dict, info: GraphQLResolveInfo, **kwargs):
     fields = await extract_fields(info.field_nodes[0].selection_set)
     return await info.return_type.graphene_type.get_paginated_list(**kwargs, fields=fields, context=info.context)
 
@@ -61,14 +65,14 @@ class InfrahubBaseQuery(ObjectType):
     )
 
     @staticmethod
-    async def resolve_branch(root, info, **kwargs):
+    async def resolve_branch(root: dict, info: GraphQLResolveInfo, **kwargs):
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return await BranchType.get_list(fields=fields, context=info.context, **kwargs)
 
     @staticmethod
     async def resolve_diff(
-        root,
-        info,
+        root: dict,
+        info: GraphQLResolveInfo,
         branch: str,
         branch_only: bool,
         time_from: Optional[str] = None,
@@ -92,3 +96,8 @@ class InfrahubBaseMutation(ObjectType):
     branch_rebase = BranchRebase.Field()
     branch_merge = BranchMerge.Field()
     branch_validate = BranchValidate.Field()
+
+    group_member_add = GroupMemberAdd.Field()
+    group_member_remove = GroupMemberRemove.Field()
+    group_subscriber_add = GroupSubscriberAdd.Field()
+    group_subscriber_remove = GroupSubscriberRemove.Field()

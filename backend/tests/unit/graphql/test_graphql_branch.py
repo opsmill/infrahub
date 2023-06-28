@@ -288,7 +288,7 @@ async def test_branch_create_with_repositories(
     assert await Branch.get_by_name(session=session, name="branch2")
 
 
-async def test_branch_rebase(db, session, default_branch: Branch, car_person_schema):
+async def test_branch_rebase(db, session, default_branch: Branch, group_graphql, car_person_schema):
     branch2 = await create_branch(session=session, branch_name="branch2")
 
     query = """
@@ -317,7 +317,7 @@ async def test_branch_rebase(db, session, default_branch: Branch, car_person_sch
     assert new_branch2.branched_from != branch2.branched_from
 
 
-async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, car_person_schema):
+async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, group_graphql, car_person_schema):
     query = """
     mutation {
         branch_rebase(data: { name: "branch2" }) {

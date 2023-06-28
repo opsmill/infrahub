@@ -1,0 +1,284 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+from infrahub.core.query import Query, QueryType
+from infrahub.core.query.utils import find_node_schema
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
+
+    from infrahub.core.group import Group, GroupAssociationType
+    from infrahub.core.schema import NodeSchema
+
+
+class GroupQuery(Query):
+    def __init__(
+        self,
+        association_type: GroupAssociationType,
+        group: Optional[Group] = None,
+        group_id: Optional[str] = None,
+        *args,
+        **kwargs,
+    ):
+        self.association_type = association_type
+        self.rel_name = f"IS_{association_type.value}".upper()
+
+        if not group and not group_id:
+            raise ValueError("Either group or group_id must be defined, none provided")
+
+        self.group = group
+        self.group_id = group_id or group.id
+
+        super().__init__(*args, **kwargs)
+
+
+class GroupAddAssociationQuery(GroupQuery):
+    name = "group_association_add"
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        node_ids: List[str],
+        *args,
+        **kwargs,
+    ):
+        self.node_ids = node_ids
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["group_id"] = self.group_id
+        self.params["node_ids"] = self.node_ids
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+
+        query = (
+            """
+        MATCH (grp { uuid: $group_id })
+        MATCH (m:Node) WHERE m.uuid IN $node_ids
+        CREATE (m)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(grp)
+        """
+            % self.rel_name
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["grp"]
+
+
+class GroupGetAssociationQuery(GroupQuery):
+    name = "group_member_get"
+
+    type: QueryType = QueryType.READ
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["group_id"] = self.group_id
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        # We need 2 subqueries to filter the node properly
+        #  The first one to identify all the potential nodes DISTINCT
+        #  The second one to run ORDER BY and LIMIT 1
+        query = """
+        MATCH (grp { uuid: $group_id })
+        CALL {
+            WITH grp
+            MATCH (grp)-[r:%s]-(mbr:Node)
+            WHERE %s
+            RETURN DISTINCT mbr as mb1
+        }
+        WITH grp, mb1 as mbr
+        CALL {
+            WITH grp, mbr
+            MATCH (grp)-[r:%s]-(mbr)
+            WHERE %s
+            RETURN mbr as mb1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH mb1 as mbr, r1 as r
+        WHERE r.status = "active"
+        """ % (
+            self.rel_name,
+            rels_filter,
+            self.rel_name,
+            rels_filter,
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["mbr"]
+
+    async def get_members(self) -> Dict[str, NodeSchema]:
+        return {
+            result.get("mbr").get("uuid"): find_node_schema(node=result.get("mbr"), branch=self.branch)
+            for result in self.get_results()
+        }
+
+
+class GroupHasAssociationQuery(GroupQuery):
+    name = "group_member_has"
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        node_ids: List[str],
+        *args,
+        **kwargs,
+    ):
+        self.node_ids = node_ids
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["group_id"] = self.group_id
+        self.params["node_ids"] = self.node_ids
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (grp { uuid: $group_id })
+        MATCH (mbr:Node) WHERE mbr.uuid IN $node_ids
+        CALL {
+            WITH grp, mbr
+            MATCH (grp)-[r:%s]-(mbr)
+            WHERE %s
+            RETURN DISTINCT mbr as mb1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+        }
+        WITH mb1 as mbr, r1 as r
+        WHERE r.status = "active"
+        """ % (
+            self.rel_name,
+            rels_filter,
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["mbr.uuid"]
+
+    async def get_memberships(self) -> Dict[str, bool]:
+        # pylint: disable=simplifiable-if-expression
+        members = [result.get("mbr.uuid") for result in self.get_results()]
+        return {node_id: True if node_id in members else False for node_id in self.node_ids}
+
+
+class GroupRemoveAssociationQuery(GroupQuery):
+    name = "group_association_remove"
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        node_ids: List[str],
+        *args,
+        **kwargs,
+    ):
+        self.node_ids = node_ids
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["group_id"] = self.group_id
+        self.params["node_ids"] = self.node_ids
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (grp { uuid: $group_id })
+        MATCH (mbr:Node) WHERE mbr.uuid IN $node_ids
+        CALL {
+            WITH grp, mbr
+            MATCH (grp)-[r:%s]-(mbr)
+            WHERE %s
+            RETURN DISTINCT mbr as mb1, r as r1, grp as grp1
+            ORDER BY r.branch_level DESC, r.from DESC
+        }
+        WITH mb1 as mbr, r1 as r, grp1 as grp
+        WHERE r.status = "active"
+        CREATE (mbr)-[:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(grp)
+        WITH *
+        WHERE r.branch = $branch
+        SET r.to = $at
+        """ % (
+            self.rel_name,
+            rels_filter,
+            self.rel_name,
+        )
+
+        self.add_to_query(query)
+        self.return_labels = ["mbr", "r"]
+
+
+class NodeGetGroupListQuery(Query):
+    name: str = "node_get_group"
+
+    def __init__(self, ids: List[str], association_type: GroupAssociationType, *args, **kwargs):
+        self.association_type = association_type
+        self.group_rel_name = f"IS_{association_type.value}".upper()
+
+        self.ids = ids
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        self.params["ids"] = self.ids
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (n) WHERE n.uuid IN $ids
+        CALL {
+            WITH n
+            MATCH (n)-[r:%s]-(grp:Group)
+            WHERE %s
+            RETURN DISTINCT grp as grp1
+        }
+        WITH n, grp1 as grp
+        CALL {
+            WITH n, grp
+            MATCH (n)-[r:%s]-(grp:Group)
+            WHERE %s
+            RETURN grp as grp1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n, grp1 as grp, r1 as r
+        WHERE r.status = "active"
+        """ % (
+            self.group_rel_name,
+            rels_filter,
+            self.group_rel_name,
+            rels_filter,
+        )
+
+        self.add_to_query(query)
+
+        self.return_labels = ["n", "grp"]
+
+    async def get_groups_per_node(self) -> Dict[str, Dict[str, NodeSchema]]:
+        results = defaultdict(dict)
+
+        for result in self.get_results():
+            results[result.get("n").get("uuid")][result.get("grp").get("uuid")] = find_node_schema(
+                node=result.get("grp"), branch=self.branch
+            )
+
+        return results

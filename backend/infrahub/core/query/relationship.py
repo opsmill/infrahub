@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 from uuid import UUID, uuid4
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
 

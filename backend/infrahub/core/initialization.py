@@ -5,6 +5,7 @@ from neo4j import AsyncSession
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.group import Group
 from infrahub.core.models import NodeSchema as NodeSchemaModel
 from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
 from infrahub.core.node import Node
@@ -56,6 +57,7 @@ async def initialization(session: AsyncSession):
     registry.node["Node"] = Node
     registry.node["NodeSchema"] = NodeSchemaModel
     registry.node["RelationshipSchema"] = RelationshipSchemaModel
+    registry.node["Group"] = Group
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry
@@ -158,21 +160,26 @@ async def first_time_initialization(session: AsyncSession):
         await obj.new(session=session, name=level[0], level=level[1])
         await obj.save(session=session)
 
-    group_schema = registry.get_schema(name="Group")
-    account_schema = registry.get_schema(name="Account")
     token_schema = registry.get_schema(name="AccountToken")
-    admin_grp = await Node.init(session=session, schema=group_schema)
-    await admin_grp.new(session=session, name="admin")
-    await admin_grp.save(session=session)
+    # admin_grp = await Node.init(session=session, schema=group_schema)
+    # await admin_grp.new(session=session, name="admin")
+    # await admin_grp.save(session=session)
+    # ----
+    # group_schema = registry.get_schema(name="Group")
 
-    obj = await Node.init(session=session, schema=account_schema)
+    # admin_grp = await Node.init(session=session, schema=group_schema)
+    # await admin_grp.new(session=session, name="admin")
+    # await admin_grp.save(session=session)
+    # default_grp = obj = Node(group_schema).new(name="default").save()
+    # account_schema = registry.get_schema(name="Account")
+    obj = await Node.init(session=session, schema="Account")
     await obj.new(
         session=session,
         name="admin",
         type="User",
         role="admin",
         password=config.SETTINGS.security.initial_admin_password,
-        groups=[admin_grp],
+        # groups=[admin_grp],
     )
     await obj.save(session=session)
     LOGGER.info(f"Created Account: {obj.name.value}")

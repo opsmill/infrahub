@@ -1,6 +1,5 @@
 from .attribute import (
     AnyAttributeInput,
-    BaseAttributeInput,
     BoolAttributeInput,
     CheckboxAttributeInput,
     ListAttributeInput,
@@ -17,22 +16,18 @@ from .branch import (
     BranchRebase,
     BranchValidate,
 )
+from .group import (
+    GroupMemberAdd,
+    GroupMemberRemove,
+    GroupSubscriberAdd,
+    GroupSubscriberRemove,
+)
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .repository import InfrahubRepositoryMutation
 
 __all__ = [
-    "BaseAttributeInput",
-    "BoolAttributeInput",
-    "StringAttributeInput",
-    "NumberAttributeInput",
-    "TextAttributeInput",
-    "CheckboxAttributeInput",
     "AnyAttributeInput",
-    "ListAttributeInput",
-    "InfrahubRepositoryMutation",
-    "InfrahubMutationOptions",
-    "InfrahubMutation",
-    "InfrahubMutationMixin",
+    "BoolAttributeInput",
     "BranchCreate",
     "BranchCreateInput",
     "BranchRebase",
@@ -40,4 +35,17 @@ __all__ = [
     "BranchDelete",
     "BranchMerge",
     "BranchNameInput",
+    "CheckboxAttributeInput",
+    "GroupMemberAdd",
+    "GroupMemberRemove",
+    "GroupSubscriberAdd",
+    "GroupSubscriberRemove",
+    "InfrahubRepositoryMutation",
+    "InfrahubMutationOptions",
+    "InfrahubMutation",
+    "InfrahubMutationMixin",
+    "ListAttributeInput",
+    "NumberAttributeInput",
+    "StringAttributeInput",
+    "TextAttributeInput",
 ]

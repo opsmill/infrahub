@@ -19,10 +19,11 @@ PLATFORMS = (
     ("Cisco IOS", "ios", "ios", "cisco_ios", "ios"),
     ("Cisco NXOS SSH", "nxos_ssh", "nxos_ssh", "cisco_nxos", "nxos"),
     ("Juniper JunOS", "junos", "junos", "juniper_junos", "junos"),
+    ("Arista EOS", "eos", "eos", "arista_eos", "eos"),
 )
 
 DEVICES = (
-    ("edge1", "active", "7280R3", "profile1", "edge", ["red", "green"], "Juniper JunOS"),
+    ("edge1", "active", "7280R3", "profile1", "edge", ["red", "green"], "Arista EOS"),
     ("edge2", "active", "ASR1002-HX", "profile1", "edge", ["red", "blue", "green"], "Cisco IOS"),
 )
 
@@ -155,12 +156,17 @@ ACCOUNTS = (
     ("Jack Bauer", "User", "Password123"),
     ("Chloe O'Brian", "User", "Password123"),
     ("David Palmer", "User", "Password123"),
+    ("Operation Team", "User", "Password123"),
+    ("Engineering Team", "User", "Password123"),
+    ("Architecture Team", "User", "Password123"),
 )
 
-ACCOUNT_GROUPS = (
-    ("network_operation", "Operation Team"),
-    ("network_engineering", "Engineering Team"),
-    ("network_architecture", "Architecture Team"),
+
+GROUPS = (
+    ("edge_router", "Edge Router"),
+    ("cisco_devices", "Cisco Devices"),
+    ("arista_devices", "Arista Devices"),
+    ("transit_interfaces", "Transit Interface"),
 )
 
 BGP_PEER_GROUPS = (
@@ -179,14 +185,39 @@ VLANS = (
 store = NodeStore()
 
 
+async def group_add_member(client: InfrahubClient, group: InfrahubNode, members: List[InfrahubNode]):
+    members_str = [f'"{member.id}"' for member in members]
+    query = """
+    mutation {
+        group_member_add(
+            data: {
+                id: "%s"
+                members: [ %s ]
+            }
+        ) {
+            ok
+        }
+    }
+    """ % (
+        group.id,
+        ", ".join(members_str),
+    )
+
+    await client.execute_graphql(query=query)
+
+
 async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site_name: str):
-    group_eng = store.get("network_engineering")
-    group_ops = store.get("network_operation")
+    group_eng = store.get("Engineering Team")
+    group_ops = store.get("Operation Team")
     account_pop = store.get("pop-builder")
-    # store.get("Chloe O'Brian")
     account_crm = store.get("CRM Synchronization")
     active_status = store.get(kind="Status", key="active")
     internal_as = store.get(kind="AutonomousSystem", key="Duff")
+
+    group_edge_router = store.get(kind="StandardGroup", key="edge_router")
+    group_cisco_devices = store.get(kind="StandardGroup", key="cisco_devices")
+    group_arista_devices = store.get(kind="StandardGroup", key="arista_devices")
+    group_transit_interfaces = store.get(kind="StandardGroup", key="transit_interfaces")
 
     # --------------------------------------------------
     # Create the Site
@@ -247,6 +278,13 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         store.set(key=device_name, node=obj)
         log.info(f"- Created Device: {device_name}")
+
+        # Add device to groups
+        await group_add_member(client=client, group=group_edge_router, members=[obj])
+        if "Arista" in device[6]:
+            await group_add_member(client=client, group=group_arista_devices, members=[obj])
+        elif "Cisco" in device[6]:
+            await group_add_member(client=client, group=group_cisco_devices, members=[obj])
 
         # Loopback Interface
         intf = await client.create(
@@ -719,8 +757,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     batch = await client.create_batch()
 
-    for group in ACCOUNT_GROUPS:
-        obj = await client.create(branch=branch, kind="Group", data={"name": group[0], "label": group[1]})
+    for group in GROUPS:
+        obj = await client.create(branch=branch, kind="StandardGroup", data={"name": group[0], "label": group[1]})
         batch.add(task=obj.save, node=obj)
         store.set(key=group[0], node=obj)
 
@@ -757,11 +795,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     async for node, _ in batch.execute():
         log.info(f"{node._schema.kind} Created {node.name.value}")
 
-    store.get("network_engineering")
-    store.get("network_operation")
     account_pop = store.get("pop-builder")
     account_cloe = store.get("Chloe O'Brian")
-    store.get("CRM Synchronization")
 
     # ------------------------------------------
     # Create Autonommous Systems

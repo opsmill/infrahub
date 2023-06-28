@@ -2,9 +2,11 @@ from neo4j import AsyncSession
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.group import Group
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
+    NodeCreateQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
@@ -12,6 +14,16 @@ from infrahub.core.query.node import (
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.timestamp import Timestamp
+
+
+async def test_query_NodeCreateQuery_with_generic(session: AsyncSession, group_schema, branch: Branch):
+    obj = await Group.init(session=session, schema="StandardGroup", branch=branch)
+
+    query = await NodeCreateQuery.init(session=session, node=obj)
+    await query.execute(session=session)
+    node = query.get_result().get("n")
+
+    assert sorted(list(node.labels)) == sorted(["Group", "Node", "StandardGroup"])
 
 
 async def test_query_NodeGetListQuery(
@@ -131,6 +143,17 @@ async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
     )
     await query.execute(session=session)
     assert len(query.get_node_ids()) == 2
+
+
+async def test_query_NodeGetListQuery_with_generics(session: AsyncSession, group_group1_main, branch: Branch):
+    schema = registry.schema.get(name="Group", branch=branch)
+    query = await NodeGetListQuery.init(
+        session=session,
+        branch=branch,
+        schema=schema,
+    )
+    await query.execute(session=session)
+    assert query.get_node_ids() == [group_group1_main.id]
 
 
 async def test_query_NodeListGetInfoQuery(

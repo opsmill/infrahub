@@ -3,11 +3,11 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
-from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.utils import build_subquery_filter, build_subquery_order
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
+from infrahub.core.query.utils import find_node_schema
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
@@ -66,14 +66,6 @@ class AttrToProcess:
     is_visible: Optional[bool]
 
 
-def find_node_schema(node, branch: Union[Branch, str]) -> NodeSchema:
-    for label in node.labels:
-        if registry.has_schema(name=label, branch=branch):
-            return registry.get_schema(name=label, branch=branch)
-
-    return None
-
-
 class NodeQuery(Query):
     def __init__(
         self,
@@ -115,13 +107,12 @@ class NodeCreateQuery(NodeQuery):
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()
 
-        query = (
-            """
+        query = """
         MATCH (root:Root)
         CREATE (n:Node:%s { uuid: $uuid, kind: $kind })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(root)
-        """
-            % self.node.get_kind()
+        """ % ":".join(
+            self.node.get_labels()
         )
 
         at = self.at or self.node._at

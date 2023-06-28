@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Generator, List, Optional, Union
 
-from neo4j.graph import Node, Relationship
+from neo4j.graph import Node as Neo4jNode
+from neo4j.graph import Relationship as Neo4jRelationship
 
 import infrahub.config as config
 from infrahub.core.constants import PermissionLevel
@@ -122,7 +123,7 @@ def cleanup_return_labels(labels):
 
 
 class QueryResult:
-    def __init__(self, data: List[Union[Node, Relationship]], labels: List[str]):
+    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship]], labels: List[str]):
         self.data = data
         self.labels = cleanup_return_labels(labels)
         self.branch_score: int = 0
@@ -178,7 +179,7 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def get(self, label: str) -> Union[Node, Relationship]:
+    def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
@@ -186,17 +187,17 @@ class QueryResult:
 
         return self.data[return_id]
 
-    def get_rels(self) -> Generator[Relationship, None, None]:
+    def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
 
         for item in self.data:
-            if isinstance(item, Relationship):
+            if isinstance(item, Neo4jRelationship):
                 yield item
 
-    def get_nodes(self) -> Generator[Node, None, None]:
+    def get_nodes(self) -> Generator[Neo4jNode, None, None]:
         """Return all nodes."""
         for item in self.data:
-            if isinstance(item, Node):
+            if isinstance(item, Neo4jNode):
                 yield item
 
     def __iter__(self):
