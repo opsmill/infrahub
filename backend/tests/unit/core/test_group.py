@@ -13,7 +13,7 @@ async def test_group_add(
     person_jim_main: Node,
     branch: Branch,
 ):
-    g1 = await Group.init(session=session, schema="Group")
+    g1 = await Group.init(session=session, schema="StandardGroup")
     await g1.new(session=session, name="group-of-person")
     await g1.save(session=session)
 
@@ -35,7 +35,7 @@ async def test_group_get(
     person_jim_main: Node,
     branch: Branch,
 ):
-    g1 = await Group.init(session=session, schema="Group")
+    g1 = await Group.init(session=session, schema="StandardGroup")
     await g1.new(session=session, name="group-of-person")
     await g1.save(session=session)
 
