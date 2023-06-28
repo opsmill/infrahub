@@ -162,7 +162,7 @@ export default function ObjectItems(props: any) {
         </RoundedButton>
       </div>
 
-      {schema && <DeviceFilterBar schema={schema} />}
+      {schema && <DeviceFilterBar objectname={objectname} />}
 
       {loading && !rows && <LoadingScreen />}
 
