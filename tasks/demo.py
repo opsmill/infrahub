@@ -196,6 +196,11 @@ def load_infra_schema(context: Context):
             pty=True,
         )
 
+        context.run(
+            f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} restart infrahub-server",
+            pty=True,
+        )
+
 
 @task
 def load_infra_data(context: Context):
