@@ -4,8 +4,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import infrahub.config as config
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.group import GroupGetAssociationQuery, NodeGetGroupListQuery
-from infrahub_client.utils import deep_merge_dict
 
 from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 from .utils import extract_fields

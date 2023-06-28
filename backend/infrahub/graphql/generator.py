@@ -305,7 +305,7 @@ def define_relationship_property(branch: Branch, data_source: InfrahubObject, da
 def generate_graphql_edged_object(
     schema: NodeSchema,
     node: Type[InfrahubObject],
-    branch: Branch,
+    branch: Branch,  # pylint: disable=unused-argument
     relation_property: Optional[InfrahubObject] = None,
 ) -> Type[InfrahubObject]:
     """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""
