@@ -60,8 +60,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return [self.get_kind()]
 
-
-
     def __repr__(self):
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
