@@ -86,16 +86,23 @@ class DeleteBranchRelationshipsQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        query = """
-        MATCH p = (s)-[r]-(d)
-        WHERE r.branch = $branch_name
-        DELETE r
-        WITH *
-        UNWIND nodes(p) AS n
-        MATCH (n)
-        WHERE NOT exists((n)--())
-        DELETE n
-        """
+        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+            query = """
+            MATCH p = (s)-[r]-(d)
+            WHERE r.branch = $branch_name
+            DELETE r
+            """
+        else:
+            query = """
+            MATCH p = (s)-[r]-(d)
+            WHERE r.branch = $branch_name
+            DELETE r
+            WITH *
+            UNWIND nodes(p) AS n
+            MATCH (n)
+            WHERE NOT exists((n)--())
+            DELETE n
+            """
         self.params["branch_name"] = self.branch_name
         self.add_to_query(query)
 
