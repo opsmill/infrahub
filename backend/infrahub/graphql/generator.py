@@ -475,17 +475,6 @@ async def generate_object_types(
                 )
 
 
-async def generate_query_group(
-    session: AsyncSession, branch: Optional[str] = None  # pylint: disable=unused-argument
-) -> Type[object]:
-    paginated_group_type = registry.get_graphql_type(name="PaginatedGroup", branch=branch)
-
-    return graphene.Field(
-        paginated_group_type,
-        resolver=default_paginated_list_resolver,
-    )
-
-
 async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
