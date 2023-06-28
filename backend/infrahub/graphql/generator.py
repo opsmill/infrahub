@@ -495,7 +495,7 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
     await generate_object_types(session=session, branch=branch)
 
     for node_name, node_schema in full_schema.items():
-        if not isinstance(node_schema, NodeSchema):
+        if not isinstance(node_schema, (NodeSchema, GenericSchema)):
             continue
 
         node_type = registry.get_graphql_type(name=f"Paginated{node_name}", branch=branch)
@@ -512,8 +512,6 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
                 node_type,
                 resolver=account_resolver,
             )
-
-    class_attrs["group"] = await generate_query_group(session=session, branch=branch)
 
     return type("QueryMixin", (object,), class_attrs)
 
