@@ -613,7 +613,6 @@ def generate_graphql_edged_object(
         "schema": schema,
         "name": object_name,
         "description": schema.description,
-        # "default_resolver": default_resolver,
         "interfaces": set(),
     }
 
@@ -701,11 +700,10 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
 
     main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
+    # We'll have to refactor this if the number of objects that need special attributes keep growing
     if schema.kind == "Group" and schema.kind != "Node":
         paginated_association_type = registry.get_graphql_type(name="PaginatedGroupAssociation", branch=branch)
 
-        # TODO add group specific resolvers
-        # TODO add pagination for groups and groups members
         main_attrs["members"] = graphene.Field(
             paginated_association_type,
             required=False,
