@@ -90,20 +90,20 @@ class GroupGetAssociationQuery(GroupQuery):
         MATCH (grp { uuid: $group_id })
         CALL {
             WITH grp
-            MATCH (grp)-[r:%s]-(mb:Node)
+            MATCH (grp)-[r:%s]-(mbr:Node)
             WHERE %s
-            RETURN DISTINCT mb as mb1
+            RETURN DISTINCT mbr as mb1
         }
-        WITH grp, mb1 as mb
+        WITH grp, mb1 as mbr
         CALL {
-            WITH grp, mb
-            MATCH (grp)-[r:%s]-(mb:Node)
+            WITH grp, mbr
+            MATCH (grp)-[r:%s]-(mbr)
             WHERE %s
-            RETURN mb as mb1, r as r1
-            ORDER BY [r.branch_level, r.from] DESC
+            RETURN mbr as mb1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH mb1 as mb, r1 as r
+        WITH mb1 as mbr, r1 as r
         WHERE r.status = "active"
         """ % (
             self.rel_name,
@@ -113,11 +113,11 @@ class GroupGetAssociationQuery(GroupQuery):
         )
 
         self.add_to_query(query)
-        self.return_labels = ["mb"]
+        self.return_labels = ["mbr"]
 
     async def get_members(self) -> Dict[str, NodeSchema]:
         return {
-            result.get("mb").get("uuid"): find_node_schema(node=result.get("mb"), branch=self.branch)
+            result.get("mbr").get("uuid"): find_node_schema(node=result.get("mbr"), branch=self.branch)
             for result in self.get_results()
         }
 
@@ -149,15 +149,15 @@ class GroupHasAssociationQuery(GroupQuery):
 
         query = """
         MATCH (grp { uuid: $group_id })
-        MATCH (mb:Node) WHERE mb.uuid IN $node_ids
+        MATCH (mbr:Node) WHERE mbr.uuid IN $node_ids
         CALL {
-            WITH grp, mb
-            MATCH (grp)-[r:%s]-(mb:Node)
+            WITH grp, mbr
+            MATCH (grp)-[r:%s]-(mbr)
             WHERE %s
-            RETURN DISTINCT mb as mb1, r as r1
-            ORDER BY [r.branch_level, r.from] DESC
+            RETURN DISTINCT mbr as mb1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
         }
-        WITH mb1 as mb, r1 as r
+        WITH mb1 as mbr, r1 as r
         WHERE r.status = "active"
         """ % (
             self.rel_name,
@@ -165,11 +165,11 @@ class GroupHasAssociationQuery(GroupQuery):
         )
 
         self.add_to_query(query)
-        self.return_labels = ["mb.uuid"]
+        self.return_labels = ["mbr.uuid"]
 
     async def get_memberships(self) -> Dict[str, bool]:
         # pylint: disable=simplifiable-if-expression
-        members = [result.get("mb.uuid") for result in self.get_results()]
+        members = [result.get("mbr.uuid") for result in self.get_results()]
         return {node_id: True if node_id in members else False for node_id in self.node_ids}
 
 
@@ -200,17 +200,17 @@ class GroupRemoveAssociationQuery(GroupQuery):
 
         query = """
         MATCH (grp { uuid: $group_id })
-        MATCH (mb:Node) WHERE mb.uuid IN $node_ids
+        MATCH (mbr:Node) WHERE mbr.uuid IN $node_ids
         CALL {
-            WITH grp, mb
-            MATCH (grp)-[r:%s]-(mb:Node)
+            WITH grp, mbr
+            MATCH (grp)-[r:%s]-(mbr)
             WHERE %s
-            RETURN DISTINCT mb as mb1, r as r1, grp as grp1
-            ORDER BY [r.branch_level, r.from] DESC
+            RETURN DISTINCT mbr as mb1, r as r1, grp as grp1
+            ORDER BY r.branch_level DESC, r.from DESC
         }
-        WITH mb1 as mb, r1 as r, grp1 as grp
+        WITH mb1 as mbr, r1 as r, grp1 as grp
         WHERE r.status = "active"
-        CREATE (mb)-[:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(grp)
+        CREATE (mbr)-[:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(grp)
         WITH *
         WHERE r.branch = $branch
         SET r.to = $at
@@ -221,7 +221,7 @@ class GroupRemoveAssociationQuery(GroupQuery):
         )
 
         self.add_to_query(query)
-        self.return_labels = ["mb", "r"]
+        self.return_labels = ["mbr", "r"]
 
 
 class NodeGetGroupListQuery(Query):
@@ -257,7 +257,7 @@ class NodeGetGroupListQuery(Query):
             MATCH (n)-[r:%s]-(grp:Group)
             WHERE %s
             RETURN grp as grp1, r as r1
-            ORDER BY [r.branch_level, r.from] DESC
+            ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
         WITH n, grp1 as grp, r1 as r
