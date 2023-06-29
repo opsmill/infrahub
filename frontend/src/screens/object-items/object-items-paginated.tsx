@@ -18,10 +18,10 @@ import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObject
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
-import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -29,7 +29,7 @@ import {
   getSchemaObjectColumns,
   getSchemaRelationshipColumns,
 } from "../../utils/getSchemaObjectColumns";
-import { getObjectUrl } from "../../utils/objects";
+import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
@@ -43,20 +43,26 @@ export default function ObjectItems(props: any) {
   const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
 
   const objectname = objectnameFromProps || objectnameFromParams;
+  console.log("objectname: ", objectname);
 
   const auth = useContext(AuthContext);
 
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
+  const [genericList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [filters] = useFilters();
-  const [pagination] = usePagination();
+  // const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const generic = genericList.filter((s) => s.name === objectname)[0];
+
+  const schemaData = schema || generic;
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
@@ -64,37 +70,37 @@ export default function ObjectItems(props: any) {
     // Add object filters
     ...filters.map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`),
     // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
+    // ...[
+    //   { name: "offset", value: pagination?.offset },
+    //   { name: "limit", value: pagination?.limit },
+    // ].map((row: any) => `${row.name}: ${row.value}`),
     ...filtersFromProps,
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns(schema);
+  const columns = getSchemaObjectColumns(schemaData);
 
   const navigate = useNavigate();
 
-  const queryString = schema
+  const queryString = schemaData
     ? getObjectItemsPaginated({
-        kind: schema.kind,
-        name: schema.name,
-        attributes: schema.attributes,
-        relationships: getSchemaRelationshipColumns(schema),
+        kind: schemaData.kind,
+        name: schemaData.name,
+        attributes: schemaData.attributes,
+        relationships: getSchemaRelationshipColumns(schemaData),
         filters: filtersString,
       })
     : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
+      // TODO: Find another solution for queries while loading schemaData
       "query { ok }";
 
   const query = gql`
     ${queryString}
   `;
 
-  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schema });
+  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schema?.name] ?? {} : {};
+  const result = data ? data[schemaData?.name] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -108,7 +114,7 @@ export default function ObjectItems(props: any) {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      name: schema.name,
+      name: schemaData.name,
       data: stringifyWithoutQuotes({
         id: rowToDelete?.id,
       }),
@@ -144,13 +150,13 @@ export default function ObjectItems(props: any) {
   return (
     <div className="bg-custom-white flex-1 overflow-x-auto flex flex-col">
       <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
-        {schema && (
+        {schemaData && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              {schema.kind} ({count})
+              {schemaData.kind} ({count})
             </h1>
             <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schema.kind} in your infrastructure.
+              A list of all the {schemaData.kind} in your infrastructure.
             </p>
           </div>
         )}
@@ -162,7 +168,7 @@ export default function ObjectItems(props: any) {
         </RoundedButton>
       </div>
 
-      {schema && <DeviceFilterBar objectname={objectname} />}
+      {schemaData?.filters && <DeviceFilterBar objectname={objectname} />}
 
       {loading && !rows && <LoadingScreen />}
 
@@ -188,41 +194,48 @@ export default function ObjectItems(props: any) {
                     </tr>
                   </thead>
                   <tbody className="bg-custom-white">
-                    {rows?.map((row: any, index: number) => (
-                      <tr
-                        onClick={() =>
-                          navigate(constructPath(getObjectUrl({ kind: schema.name, id: row.id })))
-                        }
-                        key={index}
-                        className="hover:bg-gray-50 cursor-pointer">
-                        {columns?.map((attribute) => (
+                    {rows?.map((row: any, index: number) => {
+                      console.log("row: ", row);
+                      return (
+                        <tr
+                          onClick={() =>
+                            navigate(
+                              constructPath(
+                                getObjectDetailsUrl(row.id, row.__typename, schemaKindName)
+                              )
+                            )
+                          }
+                          key={index}
+                          className="hover:bg-gray-50 cursor-pointer">
+                          {columns?.map((attribute) => (
+                            <td
+                              key={row.id + "-" + attribute.name}
+                              className={classNames(
+                                index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                                "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                              )}>
+                              {getObjectItemDisplayValue(row, attribute)}
+                            </td>
+                          ))}
+
                           <td
-                            key={row.id + "-" + attribute.name}
                             className={classNames(
                               index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                              "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
                             )}>
-                            {getObjectItemDisplayValue(row, attribute)}
+                            <Button
+                              disabled={!auth?.permissions?.write}
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              onClick={() => {
+                                setRowToDelete(row);
+                                setDeleteModal(true);
+                              }}>
+                              <TrashIcon className="w-6 h-6 text-red-500" />
+                            </Button>
                           </td>
-                        ))}
-
-                        <td
-                          className={classNames(
-                            index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
-                          )}>
-                          <Button
-                            disabled={!auth?.permissions?.write}
-                            buttonType={BUTTON_TYPES.INVISIBLE}
-                            onClick={() => {
-                              setRowToDelete(row);
-                              setDeleteModal(true);
-                            }}>
-                            <TrashIcon className="w-6 h-6 text-red-500" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
@@ -253,7 +266,7 @@ export default function ObjectItems(props: any) {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schema?.kind}
+              {schemaData?.kind}
             </span>
           </div>
         }

@@ -241,9 +241,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       navigate(
                         constructPath(
                           getObjectDetailsUrl(
-                            relationshipsData.node,
-                            schemaKindName,
-                            relationshipsData.node.id
+                            relationshipsData.node.id,
+                            relationshipsData.node.__typename,
+                            schemaKindName
                           )
                         )
                       )
@@ -344,7 +344,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           {relationshipsData?.map(({ node, properties }: any, index: number) => (
                             <tr
                               onClick={() =>
-                                navigate(getObjectDetailsUrl(node, schemaKindName, node.id))
+                                navigate(
+                                  getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
+                                )
                               }
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer">
@@ -454,7 +456,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         <Link
                           onClick={() =>
                             navigate(
-                              constructPath(getObjectDetailsUrl(node, schemaKindName, node.id))
+                              constructPath(
+                                getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
+                              )
                             )
                           }>
                           {node.display_label}

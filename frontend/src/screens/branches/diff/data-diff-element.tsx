@@ -1,16 +1,16 @@
-import Accordion from "../../../components/accordion";
-import { DataDiffProperty } from "./data-diff-property";
-import { tDataDiffNodeElement, tDataDiffNodeProperty } from "./data-diff-node";
-import { Badge } from "../../../components/badge";
-import { DiffPill } from "./diff-pill";
-import { diffContent, diffPeerContent } from "../../../utils/diff";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useAtom } from "jotai";
+import { useNavigate } from "react-router-dom";
+import Accordion from "../../../components/accordion";
+import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
+import { diffContent, diffPeerContent } from "../../../utils/diff";
 import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl } from "../../../utils/objects";
-import { useAtom } from "jotai";
-import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
-import { useNavigate } from "react-router-dom";
+import { tDataDiffNodeElement, tDataDiffNodeProperty } from "./data-diff-node";
+import { DataDiffProperty } from "./data-diff-property";
+import { DiffPill } from "./diff-pill";
 
 export type tDataDiffNodeElementProps = {
   element: tDataDiffNodeElement;
@@ -30,7 +30,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
     }
 
     if (peer?.kind && peer?.id) {
-      const objectUrl = getObjectDetailsUrl({ __typename: peer.kind }, schemaKindName, peer.id);
+      const objectUrl = getObjectDetailsUrl(peer.id, peer.kind, schemaKindName);
 
       const url = branch
         ? constructPath(`${objectUrl}?branch=${branch}`)
