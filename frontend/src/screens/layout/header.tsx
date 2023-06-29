@@ -103,7 +103,7 @@ export default function Header(props: Props) {
     <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
       <button
         type="button"
-        className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 md:hidden"
+        className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-custom-blue-500 md:hidden"
         onClick={() => setSidebarOpen(true)}>
         <span className="sr-only">Open sidebar</span>
         <Bars3BottomLeftIcon className="h-6 w-6" aria-hidden="true" />
@@ -152,7 +152,7 @@ export default function Header(props: Props) {
           {auth?.accessToken && (
             <Menu as="div" className="relative ml-3">
               <div>
-                <Menu.Button className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                <Menu.Button className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2">
                   <span className="sr-only">Open user menu</span>
                   <Avatar
                     name={objectDetailsData?.name?.value}

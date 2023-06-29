@@ -57,7 +57,7 @@ export default function FilterBranch() {
       <Combobox.Label className="block text-sm font-medium text-gray-700">Branch</Combobox.Label>
       <div className="relative mt-1">
         <Combobox.Input
-          className="w-full rounded-md border border-gray-300 bg-custom-white py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+          className="w-full rounded-md border border-gray-300 bg-custom-white py-2 pl-3 pr-10 shadow-sm focus:border-custom-blue-500 focus:outline-none focus:ring-1 focus:ring-custom-blue-500 sm:text-sm"
           onChange={(event) => setQuery(event.target.value)}
           displayValue={(branch: Branch) => {
             if (branch) {
