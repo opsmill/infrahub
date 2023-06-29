@@ -109,10 +109,10 @@ describe("Object details", () => {
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", deviceDetailsNewName);
 
     // Verify that the button is not in a loading state
-    cy.get(".bg-custom-blue-500").should("have.text", "Save");
+    cy.get(".bg-custom-blue-700").should("have.text", "Save");
 
     // Submit the form
-    cy.get(".bg-custom-blue-500").click();
+    cy.get(".bg-custom-blue-700").click();
 
     // Wait for the mutation to be done
     cy.wait("@mutate");
