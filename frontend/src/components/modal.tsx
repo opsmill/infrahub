@@ -50,7 +50,7 @@ export default function Modal(props: Props) {
                 <div className="mt-5 sm:mt-12 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3 px-6">
                   <button
                     type="button"
-                    className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-custom-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
+                    className="inline-flex w-full justify-center rounded-md bg-custom-blue-600 px-3 py-2.5 text-sm font-semibold text-custom-white shadow-sm hover:bg-custom-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-custom-blue-600 sm:col-start-2"
                     onClick={() => setOpen(false)}>
                     Save
                   </button>

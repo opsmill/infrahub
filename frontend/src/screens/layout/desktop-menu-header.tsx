@@ -18,7 +18,7 @@ export default function DropDownMenuHeader(props: Props) {
           <Disclosure.Button
             className={classNames(
               "bg-gray-100 text-gray-900",
-              "group w-full flex items-center pl-2 pr-1 py-2 text-left text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              "group w-full flex items-center pl-2 pr-1 py-2 text-left text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-custom-blue-500"
             )}>
             <Icon
               className="mr-3 h-6 w-6 flex-shrink-0 text-custom-blue-500 group-hover:text-gray-500"

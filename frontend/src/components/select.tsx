@@ -86,7 +86,7 @@ export const Select = (props: SelectProps) => {
                 className={({ active }) =>
                   classNames(
                     "relative cursor-default select-none py-2 pl-3 pr-9",
-                    active ? "bg-indigo-600 text-custom-white" : "text-gray-900"
+                    active ? "bg-custom-blue-600 text-custom-white" : "text-gray-900"
                   )
                 }>
                 {({ active, selected }) => (
@@ -99,7 +99,7 @@ export const Select = (props: SelectProps) => {
                       <span
                         className={classNames(
                           "absolute inset-y-0 right-0 flex items-center pr-4",
-                          active ? "text-custom-white" : "text-indigo-600"
+                          active ? "text-custom-white" : "text-custom-blue-600"
                         )}>
                         <CheckIcon className="h-5 w-5" aria-hidden="true" />
                       </span>

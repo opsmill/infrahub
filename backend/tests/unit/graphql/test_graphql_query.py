@@ -1,6 +1,9 @@
+from typing import Dict
+
 import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
+from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -9,6 +12,40 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql import generate_graphql_schema
+
+
+@pytest.fixture
+async def car_person_generics_data(session: AsyncSession, car_person_schema_generics) -> Dict[str, Node]:
+    ecar = registry.get_schema(name="ElectricCar")
+    gcar = registry.get_schema(name="GazCar")
+    person = registry.get_schema(name="Person")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=ecar)
+    await c1.new(session=session, name="volt", nbr_seats=4, nbr_engine=4, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=ecar)
+    await c2.new(session=session, name="bolt", nbr_seats=4, nbr_engine=2, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=gcar)
+    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
+    await c3.save(session=session)
+
+    nodes = {
+        "p1": p1,
+        "p2": p2,
+        "c1": c1,
+        "c2": c2,
+        "c3": c3,
+    }
+
+    return nodes
 
 
 @pytest.fixture(autouse=True)
@@ -916,28 +953,7 @@ async def test_query_filter_relationships(db, session, default_branch: Branch, c
     assert result.data["person"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
-async def test_query_filter_relationships_with_generic(db, session, default_branch: Branch, car_person_schema_generics):
-    ecar = registry.get_schema(name="ElectricCar")
-    gcar = registry.get_schema(name="GazCar")
-    person = registry.get_schema(name="Person")
-
-    p1 = await Node.init(session=session, schema=person)
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
-    p2 = await Node.init(session=session, schema=person)
-    await p2.new(session=session, name="Jane", height=170)
-    await p2.save(session=session)
-
-    c1 = await Node.init(session=session, schema=ecar)
-    await c1.new(session=session, name="volt", nbr_seats=4, nbr_engine=4, owner=p1)
-    await c1.save(session=session)
-    c2 = await Node.init(session=session, schema=ecar)
-    await c2.new(session=session, name="bolt", nbr_seats=4, nbr_engine=2, owner=p1)
-    await c2.save(session=session)
-    c3 = await Node.init(session=session, schema=gcar)
-    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
-    await c3.save(session=session)
-
+async def test_query_filter_relationships_with_generic(db, session, default_branch: Branch, car_person_generics_data):
     query = """
     query {
         person(name__value: "John") {
@@ -1935,6 +1951,82 @@ async def test_union_relationship(
         ],
     }
     assert DeepDiff(result.data["person"][0], expected_result, ignore_order=True).to_dict() == {}
+
+
+async def test_generic_root_with_pagination(db, session, default_branch: Branch, car_person_generics_data):
+    query = """
+    query {
+        car(limit: 2) {
+            count
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(
+            session=session, branch=default_branch, include_mutation=False, include_subscription=False
+        ),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+    expected_response = {
+        "car": {
+            "count": 3,
+            "edges": [
+                {"node": {"name": {"value": "bolt"}}},
+                {"node": {"name": {"value": "nolt"}}},
+            ],
+        },
+    }
+    assert result.errors is None
+    assert DeepDiff(result.data, expected_response, ignore_order=True).to_dict() == {}
+
+
+async def test_generic_root_with_filters(db, session, default_branch: Branch, car_person_generics_data):
+    query = """
+    query {
+        car(owner__name__value: "John" ) {
+            count
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(
+            session=session, branch=default_branch, include_mutation=False, include_subscription=False
+        ),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+    expected_response = {
+        "car": {
+            "count": 2,
+            "edges": [
+                {"node": {"name": {"value": "bolt"}}},
+                {"node": {"name": {"value": "volt"}}},
+            ],
+        },
+    }
+    assert result.errors is None
+    assert DeepDiff(result.data, expected_response, ignore_order=True).to_dict() == {}
 
 
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")

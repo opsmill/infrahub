@@ -27,7 +27,7 @@ export const Tabs = (props: TabsProps) => {
                 onClick={() => setQspTab(index === 0 ? undefined : tab.name)}
                 className={classNames(
                   (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
-                    ? "border-indigo-500 text-indigo-600"
+                    ? "border-custom-blue-500 text-custom-blue-600"
                     : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
                   "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
                 )}>

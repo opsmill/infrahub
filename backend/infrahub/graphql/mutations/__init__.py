@@ -16,13 +16,8 @@ from .branch import (
     BranchRebase,
     BranchValidate,
 )
-from .group import (
-    GroupMemberAdd,
-    GroupMemberRemove,
-    GroupSubscriberAdd,
-    GroupSubscriberRemove,
-)
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
+from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
 
 __all__ = [
@@ -36,16 +31,14 @@ __all__ = [
     "BranchMerge",
     "BranchNameInput",
     "CheckboxAttributeInput",
-    "GroupMemberAdd",
-    "GroupMemberRemove",
-    "GroupSubscriberAdd",
-    "GroupSubscriberRemove",
     "InfrahubRepositoryMutation",
     "InfrahubMutationOptions",
     "InfrahubMutation",
     "InfrahubMutationMixin",
     "ListAttributeInput",
     "NumberAttributeInput",
+    "RelationshipAdd",
+    "RelationshipRemove",
     "StringAttributeInput",
     "TextAttributeInput",
 ]
