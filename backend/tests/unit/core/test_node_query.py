@@ -2,7 +2,6 @@ from neo4j import AsyncSession
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
-from infrahub.core.group import Group
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
@@ -17,7 +16,7 @@ from infrahub.core.timestamp import Timestamp
 
 
 async def test_query_NodeCreateQuery_with_generic(session: AsyncSession, group_schema, branch: Branch):
-    obj = await Group.init(session=session, schema="StandardGroup", branch=branch)
+    obj = await Node.init(session=session, schema="StandardGroup", branch=branch)
 
     query = await NodeCreateQuery.init(session=session, node=obj)
     await query.execute(session=session)

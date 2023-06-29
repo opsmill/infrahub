@@ -5,7 +5,6 @@ from neo4j import AsyncSession
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.group import Group
 from infrahub.core.models import NodeSchema as NodeSchemaModel
 from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
 from infrahub.core.node import Node
@@ -57,7 +56,6 @@ async def initialization(session: AsyncSession):
     registry.node["Node"] = Node
     registry.node["NodeSchema"] = NodeSchemaModel
     registry.node["RelationshipSchema"] = RelationshipSchemaModel
-    registry.node["Group"] = Group
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry
