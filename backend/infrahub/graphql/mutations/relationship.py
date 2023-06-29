@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-branches
 
 
 class RelationshipNodesInput(InputObjectType):
