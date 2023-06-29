@@ -2,7 +2,6 @@ from neo4j import AsyncSession
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
-from infrahub.core.group import Group
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
