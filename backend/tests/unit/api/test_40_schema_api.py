@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema import core_models
 from infrahub.core.utils import count_relationships
 
 
@@ -23,8 +24,10 @@ async def test_schema_read_endpoint_default_branch(
     assert "nodes" in schema
     assert "generics" in schema
     assert len(schema["nodes"]) == 18
-    assert len(schema["generics"]) == 4
-    assert schema["generics"][0]["used_by"]
+    assert len(schema["generics"]) == len(core_models.get("generics")) + 1
+
+    generics = {item["kind"]: item for item in schema["generics"]}
+    assert generics["Car"]["used_by"]
 
 
 async def test_schema_read_endpoint_branch1(
@@ -149,7 +152,7 @@ async def test_schema_load_endpoint_valid_with_generics(
         assert response2.status_code == 200
 
     schema = response2.json()
-    assert len(schema["generics"]) == 4
+    assert len(schema["generics"]) == len(core_models.get("generics")) + 1
 
 
 async def test_schema_load_endpoint_idempotent_with_generics(
@@ -171,7 +174,7 @@ async def test_schema_load_endpoint_idempotent_with_generics(
         assert response2.status_code == 200
 
         schema = response2.json()
-        assert len(schema["generics"]) == 4
+        assert len(schema["generics"]) == len(core_models.get("generics")) + 1
 
         nbr_rels = await count_relationships(session=session)
 

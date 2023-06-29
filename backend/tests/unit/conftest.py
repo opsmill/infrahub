@@ -9,7 +9,6 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.group import Group
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -30,7 +29,6 @@ from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
 from infrahub.graphql.generator import (
-    generate_interface_object,
     load_attribute_types_in_registry,
     load_node_interface,
 )
@@ -733,13 +731,8 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
 
 @pytest.fixture
 async def group_graphql(session: AsyncSession, default_branch: Branch, group_schema) -> None:
-    registry.node["Group"] = Group
-
     load_node_interface(branch=default_branch)
     load_attribute_types_in_registry(branch=default_branch)
-    schema = registry.schema.get(name="Group", branch=default_branch)
-    interface = generate_interface_object(schema=schema, branch=default_branch)
-    registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1083,7 +1076,7 @@ async def group_group1_main(
     default_branch: Branch,
     group_schema,
 ) -> Node:
-    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
+    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1")
     await obj.save(session=session)
     return obj
@@ -1097,11 +1090,9 @@ async def group_group1_members_main(
     person_john_main: Node,
     person_jim_main: Node,
 ) -> Node:
-    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group1")
+    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group1", members=[person_john_main, person_jim_main])
     await obj.save(session=session)
-
-    await obj.members.add(session=session, nodes=[person_john_main, person_jim_main])
 
     return obj
 
@@ -1114,11 +1105,9 @@ async def group_group2_members_main(
     person_john_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group2")
+    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group2", members=[person_john_main, person_albert_main])
     await obj.save(session=session)
-
-    await obj.members.add(session=session, nodes=[person_john_main, person_albert_main])
 
     return obj
 
@@ -1132,11 +1121,9 @@ async def group_group1_subscribers_main(
     person_jim_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group1")
+    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(session=session, name="group1", subscribers=[person_john_main, person_jim_main, person_albert_main])
     await obj.save(session=session)
-
-    await obj.subscribers.add(session=session, nodes=[person_john_main, person_jim_main, person_albert_main])
 
     return obj
 
@@ -1151,13 +1138,11 @@ async def group_group2_subscribers_main(
     car_volt_main: Node,
     car_accord_main: Node,
 ) -> Node:
-    obj = await Group.init(session=session, schema="StandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group2")
-    await obj.save(session=session)
-
-    await obj.subscribers.add(
-        session=session, nodes=[person_john_main, person_jim_main, car_volt_main, car_accord_main]
+    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    await obj.new(
+        session=session, name="group2", subscribers=[person_john_main, person_jim_main, car_volt_main, car_accord_main]
     )
+    await obj.save(session=session)
 
     return obj
 

@@ -62,6 +62,7 @@ class RelationshipKind(str, BaseEnum):
     ATTRIBUTE = "Attribute"
     COMPONENT = "Component"
     PARENT = "Parent"
+    GROUP = "Group"
 
 
 # Generate a list of String based on Enums
@@ -957,6 +958,10 @@ core_models = {
     "groups": [],
     "generics": [
         {
+            "name": "node",
+            "kind": "Node",
+        },
+        {
             "name": "data_owner",
             "kind": "DataOwner",  # Account, Group, Script ?
             "display_labels": ["name__value"],
@@ -986,6 +991,22 @@ core_models = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
                 {"name": "description", "kind": "Text", "optional": True},
+            ],
+            "relationships": [
+                {
+                    "name": "members",
+                    "peer": "Node",
+                    "optional": True,
+                    "identifier": "group_member",
+                    "cardinality": "many",
+                },
+                {
+                    "name": "subscribers",
+                    "peer": "Node",
+                    "optional": True,
+                    "identifier": "group_subscriber",
+                    "cardinality": "many",
+                },
             ],
         },
     ],
