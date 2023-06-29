@@ -74,7 +74,7 @@ export default function BranchSelector() {
     <Button
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
-      className="flex-1 rounded-r-md"
+      className="flex-1 rounded-r-md border border-transparent"
       type="submit">
       <PlusIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
     </Button>

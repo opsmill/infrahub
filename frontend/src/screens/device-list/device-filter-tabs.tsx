@@ -17,7 +17,7 @@ export default function DeviceFilterTabs() {
         <select
           id="tabs"
           name="tabs"
-          className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+          className="block w-full rounded-md border-gray-300 focus:border-custom-blue-500 focus:ring-custom-blue-500"
           defaultValue={tabs.find((tab) => tab.current)!.name}>
           {tabs.map((tab) => (
             <option key={tab.name}>{tab.name}</option>
@@ -34,14 +34,16 @@ export default function DeviceFilterTabs() {
                 href={tab.href}
                 className={classNames(
                   tab.current
-                    ? "border-indigo-500 text-indigo-600"
+                    ? "border-custom-blue-500 text-custom-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
                   "group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm"
                 )}
                 aria-current={tab.current ? "page" : undefined}>
                 <tab.icon
                   className={classNames(
-                    tab.current ? "text-indigo-500" : "text-gray-400 group-hover:text-gray-500",
+                    tab.current
+                      ? "text-custom-blue-500"
+                      : "text-gray-400 group-hover:text-gray-500",
                     "-ml-0.5 mr-2 h-5 w-5"
                   )}
                   aria-hidden="true"

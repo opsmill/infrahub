@@ -8,8 +8,8 @@ import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
 import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { FileRepoDiff } from "./file-repo-diff";
 import NoDataFound from "../../no-data-found/no-data-found";
+import { FileRepoDiff } from "./file-repo-diff";
 
 export const FilesDiff = () => {
   const [filesDiff, setFilesDiff] = useState({});
@@ -67,7 +67,7 @@ export const FilesDiff = () => {
   }
 
   return (
-    <div className="">
+    <div className="text-sm">
       {Object.values(filesDiff).map((diff, index) => (
         <FileRepoDiff key={index} diff={diff} />
       ))}
