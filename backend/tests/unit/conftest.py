@@ -845,6 +845,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "kind": "Car",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
+                "order_by": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "nbr_seats", "kind": "Number"},
