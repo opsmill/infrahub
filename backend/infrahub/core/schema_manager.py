@@ -271,6 +271,9 @@ class SchemaBranch:
             if "Group" in node_schema.inherit_from:
                 continue
 
+            if node_schema.kind in INTERNAL_SCHEMA_NODE_KINDS:
+                continue
+
             if "member_of_groups" not in node_schema.relationship_names:
                 node_schema.relationships.append(
                     RelationshipSchema(
