@@ -6,7 +6,9 @@ from graphql import GraphQLResolveInfo
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
-from infrahub.exceptions import NodeNotFound
+from infrahub.core.schema import RelationshipCardinality
+from infrahub.exceptions import NodeNotFound, ValidationError
+from infrahub_client.utils import compare_lists
 
 from ..types import RelatedNodeInput
 
@@ -44,11 +46,30 @@ class RelationshipMixin:
         ):
             raise NodeNotFound(branch, None, data.get("id"))
 
-        # Check if the name of the relationship provided exist for this node and is of type Many
+        # Check if the name of the relationship provided exist for this node and is of cardinality Many
         if data.get("name") not in source._schema.relationship_names:
-            raise ValueError(f"'{data.get('name')}' is not a valid relationship for '{source.get_kind()}'")
+            raise ValidationError(
+                {"name": f"'{data.get('name')}' is not a valid relationship for '{source.get_kind()}'"}
+            )
 
         rel_schema = source._schema.get_relationship(name=data.get("name"))
+        if rel_schema.cardinality != RelationshipCardinality.MANY:
+            raise ValidationError({"name": f"'{data.get('name')}' must be a relationship of cardinality Many"})
+
+        # Query the node in the database and validate that all of them exist and are if the correct kind
+        node_ids: List[str] = [node_data.get("id") for node_data in data.get("nodes")]
+        nodes = await NodeManager.get_many(
+            session=session, ids=node_ids, fields={"display_label": None}, branch=branch, at=at
+        )
+
+        _, _, in_list2 = compare_lists(list1=list(nodes.keys()), list2=node_ids)
+        if in_list2:
+            for node_id in in_list2:
+                raise ValidationError(f"{node_id!r}: Unable to find the node in the database.")
+
+        for node_id, node in nodes.items():
+            if rel_schema.peer not in node.get_labels():
+                raise ValidationError(f"{node_id!r} {node.get_kind()!r} is not a valid peer for '{rel_schema.peer}'")
 
         # The nodes that are already present in the db
         query = await RelationshipGetPeerQuery.init(
