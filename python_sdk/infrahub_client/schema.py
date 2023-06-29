@@ -49,6 +49,7 @@ class RelationshipKind(str, Enum):
     ATTRIBUTE = "Attribute"
     COMPONENT = "Component"
     PARENT = "Parent"
+    GROUP = "Group"
 
 
 class AttributeSchema(BaseModel):
