@@ -96,14 +96,14 @@ class SchemaMappingNode(BaseModel):
     mapping: str
 
 
-def get_related_nodes(node_schema: NodeSchema, attrs: Set[str]) -> List[str]:
-    nodes = []
+def get_related_nodes(node_schema: NodeSchema, attrs: Set[str]) -> Set[str]:
+    nodes = set()
     for attr in attrs:
         if attr in node_schema.attribute_names:
             continue
         for rel_schema in node_schema.relationships:
             if rel_schema.name == attr:
-                nodes.append(rel_schema.peer)
+                nodes.add(rel_schema.peer)
                 break
     return nodes
 
