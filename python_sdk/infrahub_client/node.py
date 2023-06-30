@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, ge
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
+from infrahub_client.schema import RelationshipCardinality, RelationshipKind
 from infrahub_client.timestamp import Timestamp
+from infrahub_client.utils import compare_lists
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
@@ -488,7 +490,12 @@ class InfrahubNodeBase:
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
     def generate_query_data(
-        self, filters: Optional[Dict[str, Any]] = None, offset: Optional[int] = None, limit: Optional[int] = None
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
     ) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {"count": None, "edges": {"node": {"id": None, "display_label": None}}}
 
@@ -500,14 +507,33 @@ class InfrahubNodeBase:
         if limit:
             data["@filters"]["limit"] = offset
 
+        if include and exclude:
+            in_both, _, _ = compare_lists(include, exclude)
+            if in_both:
+                raise ValueError(f"{in_both} are part of both include and exclude")
+
         for attr_name in self._attributes:
+            if exclude and attr_name in exclude:
+                continue
+
             attr: Attribute = getattr(self, attr_name)
             attr_data = attr._generate_query_data()
             if attr_data:
                 data["edges"]["node"][attr_name] = attr_data
 
         for rel_name in self._relationships:
+            if exclude and rel_name in exclude:
+                continue
+
             rel_schema = self._schema.get_relationship(name=rel_name)
+
+            if (
+                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
+                and rel_schema.kind in [RelationshipKind.GENERIC, RelationshipKind.COMPONENT]  # type: ignore[union-attr]
+                and not (include and rel_name in include)
+            ):
+                continue
+
             if rel_schema and rel_schema.cardinality == "one":
                 rel_data = RelatedNode._generate_query_data()
             elif rel_schema and rel_schema.cardinality == "many":
