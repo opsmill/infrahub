@@ -37,13 +37,10 @@ if TYPE_CHECKING:
 
 INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
 SUPPORTED_SCHEMA_NODE_TYPE = [
-    "CoreNodeSchema",
-    "SchemaGeneric",
     "InternalGroupSchema",
-    "InternalGenericSchema",
+    "SchemaGeneric",
     "SchemaNode",
 ]
-# SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 
 
