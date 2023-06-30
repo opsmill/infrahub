@@ -1,8 +1,10 @@
+from typing import Any
+
 import infrahub_ctl.config as config
 from infrahub_client import InfrahubClient, InfrahubClientSync
 
 
-async def initialize_client(**kwargs) -> InfrahubClient:
+async def initialize_client(**kwargs: Any) -> InfrahubClient:
     client_config = {}
 
     if config.SETTINGS.api_token:
@@ -15,7 +17,7 @@ async def initialize_client(**kwargs) -> InfrahubClient:
     return client
 
 
-def initialize_client_sync(**kwargs) -> InfrahubClientSync:
+def initialize_client_sync(**kwargs: Any) -> InfrahubClientSync:
     client_config = {}
 
     if config.SETTINGS.api_token:

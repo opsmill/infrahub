@@ -13,7 +13,7 @@ from rich.markup import escape
 from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
 
 
-def print_graphql_errors(console: Console, errors: List):
+def print_graphql_errors(console: Console, errors: List) -> None:
     if not isinstance(errors, list):
         console.print(f"[red]{escape(str(errors))}")
 
