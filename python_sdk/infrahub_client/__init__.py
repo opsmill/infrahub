@@ -5,6 +5,8 @@ from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerS
 from infrahub_client.client import InfrahubClient, InfrahubClientSync
 from infrahub_client.config import Config
 from infrahub_client.exceptions import (
+    AuthenticationError,
+    Error,
     FilterNotFound,
     GraphQLError,
     NodeNotFound,
@@ -27,7 +29,9 @@ from infrahub_client.timestamp import Timestamp
 
 __all__ = [
     "AttributeSchema",
+    "AuthenticationError",
     "Config",
+    "Error",
     "InfrahubBatch",
     "InfrahubBranchManager",
     "InfrahubBranchManagerSync",
