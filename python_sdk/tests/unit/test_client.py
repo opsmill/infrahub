@@ -291,6 +291,8 @@ async def test_method_get_invalid_filter(
             await clients.standard.get(kind="Repository", name__name="infrahub-demo-core")
         else:
             clients.sync.get(kind="Repository", name__name="infrahub-demo-core")
+    assert isinstance(excinfo.value.message, str)
+    assert isinstance(excinfo.value.filters, str)
     assert "'name__name' is not a valid filter for 'Repository'" in excinfo.value.message
     assert "default_branch__value" in excinfo.value.message
     assert "default_branch__value" in excinfo.value.filters
