@@ -63,10 +63,12 @@ class BaseClient:
         self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
 
-        if isinstance(config, dict):
+        if isinstance(config, Config):
+            self.config = config
+        elif isinstance(config, dict):
             self.config = Config(**config)
         else:
-            self.config = config or Config()
+            self.config = Config()
 
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token
