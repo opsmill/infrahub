@@ -6,7 +6,7 @@ query GraphQLQuery {
       node {
         id
         display_label
-
+        __typename
           name {
               value
           }
@@ -43,7 +43,7 @@ query GraphQLQuery {
       node {
         id
         display_label
-
+        __typename
           name {
               value
           }
