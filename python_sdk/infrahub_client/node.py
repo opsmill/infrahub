@@ -324,7 +324,7 @@ class RelationshipManager(RelationshipManagerBase):
         self.client = client
         self.node = node
 
-        self.initialized = True if data is not None else False
+        self.initialized = data is not None
 
         super().__init__(name=name, schema=schema, branch=branch)
 
@@ -393,7 +393,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
         self.client = client
         self.node = node
 
-        self.initialized = True if data is not None else False
+        self.initialized = data is not None
 
         super().__init__(name=name, schema=schema, branch=branch)
 

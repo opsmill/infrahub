@@ -120,6 +120,6 @@ class TestInfrahubClientSync:
         assert len(nodes) == 1
         repo = nodes[0]
 
-        assert repo.transform_python.peers == []
-        repo.transform_python.fetch()
-        assert len(repo.transform_python.peers) == 1
+        assert repo.transform_python.peers == []  # type: ignore[attr-defined]
+        repo.transform_python.fetch()  # type: ignore[attr-defined]
+        assert len(repo.transform_python.peers) == 1  # type: ignore[attr-defined]
