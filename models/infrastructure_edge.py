@@ -186,13 +186,14 @@ store = NodeStore()
 
 
 async def group_add_member(client: InfrahubClient, group: InfrahubNode, members: List[InfrahubNode]):
-    members_str = [f'"{member.id}"' for member in members]
+    members_str = ["{ id: " + f'"{member.id}"' + " }" for member in members]
     query = """
     mutation {
-        group_member_add(
+        relationship_add(
             data: {
-                id: "%s"
-                members: [ %s ]
+                id: "%s",
+                name: "members",
+                nodes: [ %s ]
             }
         ) {
             ok
