@@ -114,7 +114,7 @@ export default function ObjectItems(props: any) {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      name: schemaData.name,
+      name: schemaKindName[rowToDelete.__typename],
       data: stringifyWithoutQuotes({
         id: rowToDelete?.id,
       }),
