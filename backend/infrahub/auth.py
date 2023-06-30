@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Optional
 
 import bcrypt
@@ -25,11 +26,18 @@ if TYPE_CHECKING:
 # from ..exceptions import InvalidCredentials
 
 
+class AuthType(str, Enum):
+    NONE = "none"
+    JWT = "jwt"
+    API = "api"
+
+
 class AccountSession(BaseModel):
     authenticated: bool = True
     account_id: str
     session_id: Optional[str] = None
     role: str = "read-only"
+    auth_type: AuthType
 
     @property
     def read_only(self) -> bool:
@@ -153,7 +161,7 @@ async def authentication_token(
     if jwt_token:
         return await validate_jwt_access_token(token=jwt_token)
 
-    return AccountSession(authenticated=False, account_id="anonymous")
+    return AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE)
 
 
 async def validate_jwt_access_token(token: str) -> AccountSession:
@@ -168,7 +176,7 @@ async def validate_jwt_access_token(token: str) -> AccountSession:
         raise AuthorizationError("Invalid token") from None
 
     if payload["type"] == "access":
-        return AccountSession(account_id=account_id, role=role, session_id=session_id)
+        return AccountSession(account_id=account_id, role=role, session_id=session_id, auth_type=AuthType.JWT)
 
     raise AuthorizationError("Invalid token, current token is not an access token")
 
@@ -194,7 +202,7 @@ async def validate_api_key(session: AsyncSession, token: str) -> AccountSession:
     if not account_id:
         raise AuthorizationError("Invalid token")
 
-    return AccountSession(account_id=account_id, role=role)
+    return AccountSession(account_id=account_id, role=role, auth_type=AuthType.API)
 
 
 def _validate_is_admin(account_session: AccountSession) -> None:

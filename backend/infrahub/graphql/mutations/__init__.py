@@ -1,3 +1,4 @@
+from .account import CoreAccountTokenCreate
 from .attribute import (
     AnyAttributeInput,
     BoolAttributeInput,
@@ -31,6 +32,7 @@ __all__ = [
     "BranchMerge",
     "BranchNameInput",
     "CheckboxAttributeInput",
+    "CoreAccountTokenCreate",
     "InfrahubRepositoryMutation",
     "InfrahubMutationOptions",
     "InfrahubMutation",

@@ -126,7 +126,7 @@ async def test_read_profile(
 ):
     query = """
     query {
-        account_profile {
+        CoreAccountProfile {
             name {
                 value
             }
@@ -142,4 +142,4 @@ async def test_read_profile(
         )
 
     assert response.status_code
-    assert response.json() == {"data": {"account_profile": {"name": {"value": "test-admin"}}}}
+    assert response.json() == {"data": {"CoreAccountProfile": {"name": {"value": "test-admin"}}}}
