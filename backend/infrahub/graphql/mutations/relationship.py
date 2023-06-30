@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 # pylint: disable=unused-argument,too-many-branches
 
-RELATIONSHIP_PEERS_TO_IGNORE = ["Node"]
+RELATIONSHIP_PEERS_TO_IGNORE = ["CoreNode"]
 
 
 class RelationshipNodesInput(InputObjectType):

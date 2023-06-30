@@ -215,10 +215,10 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     active_status = store.get(kind="BuiltinStatus", key="active")
     internal_as = store.get(kind="InfraAutonomousSystem", key="Duff")
 
-    group_edge_router = store.get(kind="StandardGroup", key="edge_router")
-    group_cisco_devices = store.get(kind="StandardGroup", key="cisco_devices")
-    group_arista_devices = store.get(kind="StandardGroup", key="arista_devices")
-    group_transit_interfaces = store.get(kind="StandardGroup", key="transit_interfaces")
+    group_edge_router = store.get(kind="CoreStandardGroup", key="edge_router")
+    group_cisco_devices = store.get(kind="CoreStandardGroup", key="cisco_devices")
+    group_arista_devices = store.get(kind="CoreStandardGroup", key="arista_devices")
+    group_transit_interfaces = store.get(kind="CoreStandardGroup", key="transit_interfaces")
 
     # --------------------------------------------------
     # Create the Site
@@ -715,7 +715,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     # Delete circuits
     get_circuits_query = """
     query($site_name: String!) {
-        CircuitEndpoint(site__name__value: $site_name) {
+        InfraCircuitEndpoint(site__name__value: $site_name) {
             edges {
                 node {
                     id
@@ -744,7 +744,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     )
     colt_circuits = [
         circuit
-        for circuit in circuits["CircuitEndpoint"]["edges"]
+        for circuit in circuits["InfraCircuitEndpoint"]["edges"]
         if circuit["node"]["circuit"]["node"]["provider"]["node"]["name"]["value"] == "Colt"
     ]
 
@@ -773,7 +773,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     batch = await client.create_batch()
 
     for group in GROUPS:
-        obj = await client.create(branch=branch, kind="StandardGroup", data={"name": group[0], "label": group[1]})
+        obj = await client.create(branch=branch, kind="CoreStandardGroup", data={"name": group[0], "label": group[1]})
 
         batch.add(task=obj.save, node=obj)
         store.set(key=group[0], node=obj)
