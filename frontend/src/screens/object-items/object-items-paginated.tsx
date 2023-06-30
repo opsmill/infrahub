@@ -18,6 +18,7 @@ import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObject
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
+import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -53,7 +54,7 @@ export default function ObjectItems(props: any) {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [filters] = useFilters();
-  // const [pagination] = usePagination();
+  const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
@@ -70,10 +71,10 @@ export default function ObjectItems(props: any) {
     // Add object filters
     ...filters.map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`),
     // Add pagination filters
-    // ...[
-    //   { name: "offset", value: pagination?.offset },
-    //   { name: "limit", value: pagination?.limit },
-    // ].map((row: any) => `${row.name}: ${row.value}`),
+    ...[
+      { name: "offset", value: pagination?.offset },
+      { name: "limit", value: pagination?.limit },
+    ].map((row: any) => `${row.name}: ${row.value}`),
     ...filtersFromProps,
   ].join(",");
 
