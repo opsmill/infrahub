@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query {{kind.value}} {
-  {{name}} (ids: ["{{objectid}}"]) {
+  {{kind}} (ids: ["{{objectid}}"]) {
     edges {
       node {
         {{relationship}}{{#if filters}}({{{filters}}}){{/if}} {

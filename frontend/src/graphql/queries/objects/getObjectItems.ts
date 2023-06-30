@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 
 export const getObjectItemsPaginated = Handlebars.compile(`
 query {{kind}} {
-  {{name}}{{#if filters}}({{{filters}}}){{/if}} {
+  {{kind}}{{#if filters}}({{{filters}}}){{/if}} {
     count
     edges {
       node {

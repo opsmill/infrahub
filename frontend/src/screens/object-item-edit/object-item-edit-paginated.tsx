@@ -11,7 +11,6 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
@@ -35,7 +34,6 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
-  const [schemaKindNameMap] = useAtom(schemaKindNameState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +42,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const relationships = getSchemaRelationshipColumns(schema);
 
-  const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
+  const peers = (schema.relationships || []).map((r) => r.peer).filter(Boolean);
 
   const queryString = schema
     ? getObjectDetailsAndPeers({
@@ -80,11 +78,11 @@ export default function ObjectItemEditComponent(props: Props) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schema.name])) {
+  if (!data || (data && !data[schema.kind])) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data[schema.name]?.edges[0]?.node;
+  const objectDetailsData = data[schema.kind]?.edges[0]?.node;
 
   const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
     if (peers.includes(k)) {
@@ -101,7 +99,6 @@ export default function ObjectItemEditComponent(props: Props) {
     schemaList,
     genericsList,
     peerDropdownOptions,
-    schemaKindNameMap,
     objectDetailsData,
     user
   );
@@ -114,7 +111,7 @@ export default function ObjectItemEditComponent(props: Props) {
     if (Object.keys(updatedObject).length) {
       try {
         const mutationString = updateObjectWithId({
-          name: schema.name,
+          kind: schema.kind,
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
@@ -130,7 +127,7 @@ export default function ObjectItemEditComponent(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} updated`} />);
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.name} updated`} />);
 
         closeDrawer();
 

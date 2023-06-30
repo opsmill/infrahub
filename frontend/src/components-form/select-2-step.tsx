@@ -1,5 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { useCallback, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
@@ -25,12 +26,15 @@ interface Props {
 
 export const OpsSelect2Step = (props: Props) => {
   const { label, options, value, error, onChange, isProtected } = props;
+
+  const { objectid } = useParams();
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
 
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
+
   const [selectedLeft, setSelectedLeft] = useState<SelectOption | null | undefined>(
-    value.parent ? options.find((option: SelectOption) => option.name === value.parent) : null
+    value.parent ? options.find((option: SelectOption) => option.id === value.parent) : null
   );
 
   const [selectedRight, setSelectedRight] = useState<SelectOption | null | undefined>(
@@ -42,7 +46,7 @@ export const OpsSelect2Step = (props: Props) => {
   }, [value.child, optionsRight]);
 
   useEffect(() => {
-    setSelectedLeft(value.parent ? options.find((option) => option.name === value.parent) : null);
+    setSelectedLeft(value.parent ? options.find((option) => option.id === value.parent) : null);
   }, [value.parent]);
 
   useEffect(() => {
@@ -74,14 +78,21 @@ export const OpsSelect2Step = (props: Props) => {
       },
     });
 
-    const options = data[objectName]?.edges.map((edge: any) => edge.node);
+    const newRigthOptions = data[objectName]?.edges.map((edge: any) => edge.node);
 
     setOptionsRight(
-      options.map((option: any) => ({
-        name: option.display_label,
-        id: option.id,
-      }))
+      newRigthOptions
+        // Filter the options to not select the current object
+        .filter((option: any) => option.id !== objectid)
+        .map((option: any) => ({
+          name: option.display_label,
+          id: option.id,
+        }))
     );
+
+    if (value.child) {
+      setSelectedRight(newRigthOptions.find((option: any) => option.id === value.child));
+    }
   }, [selectedLeft?.id]);
 
   useEffect(() => {

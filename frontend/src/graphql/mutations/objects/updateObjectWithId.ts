@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 
 export const updateObjectWithId = Handlebars.compile(`
-mutation {{kind.value}}Update {
-  {{name}}_update (data: {{{data}}}) {
+mutation {{kind}}Update {
+  {{kind}}Update (data: {{{data}}}) {
       ok
   }
 }
