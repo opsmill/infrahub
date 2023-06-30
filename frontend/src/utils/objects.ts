@@ -1,31 +1,18 @@
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 
-type ObjectData = {
-  id: string;
-  kind: string;
-  branch?: string;
-};
-
-export const getObjectUrl = (data: ObjectData) => {
-  const { kind, id, branch } = data;
-
-  if (branch) {
-    return `/objects/${kind.toLocaleLowerCase()}/${id}?branch=${branch}`;
-  }
-
-  return `/objects/${kind}/${id}`;
-};
-
 const regex = /^Related/; // starts with Related
 
 export const getObjectDetailsUrl = (
-  relationshipsData: { __typename: string },
-  schemaKindName: iSchemaKindNameMap,
-  relatedNodeId: string
+  nodeId: string,
+  nodeType: string,
+  schemaKindName: iSchemaKindNameMap
 ): string => {
-  const peerKind: string = relationshipsData?.__typename?.replace(regex, "");
+  const peerKind: string = nodeType?.replace(regex, "");
+
   const peerName = schemaKindName[peerKind];
-  const url = `/objects/${peerName}/${relatedNodeId}`;
+
+  const url = `/objects/${peerName}/${nodeId}`;
+
   return url;
 };
 

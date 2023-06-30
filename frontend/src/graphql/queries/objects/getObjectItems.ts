@@ -8,6 +8,7 @@ query {{kind}} {
       node {
         id
         display_label
+        __typename
 
         {{#each attributes}}
           {{this.name}} {

@@ -6,7 +6,7 @@ import { Button } from "../../components/button";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import useFilters from "../../hooks/useFilters";
-import { schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { resolve } from "../../utils/objects";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
@@ -29,11 +29,15 @@ export default function DeviceFilterBarContent(props: any) {
   const [filters, setFilters] = useFilters();
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
+  const [genericList] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const generic = genericList.filter((s) => s.name === objectname)[0];
+
+  const schemaData = schema || generic;
 
   const peers: string[] = [];
 
-  (schema.filters || []).forEach((f) => {
+  (schemaData.filters || []).forEach((f) => {
     if (f.kind === "Object" && f.object_kind && schemaKindName[f.object_kind]) {
       peers.push(schemaKindName[f.object_kind]);
     }
@@ -58,13 +62,13 @@ export default function DeviceFilterBarContent(props: any) {
         }
       `;
 
-  const { loading, error, data = {} } = useQuery(query, { skip: !schema });
+  const { loading, error, data = {} } = useQuery(query, { skip: !schemaData });
 
   const peerDropdownOptions: any = data;
 
   const formFields: DynamicFieldData[] = [];
 
-  schema.filters?.forEach((filter) => {
+  schemaData.filters?.forEach((filter) => {
     const currentValue = filters?.find((f: iComboBoxFilter) => f.name === filter.name);
     if (filter.kind === "Text" && !filter.enum) {
       formFields.push({
@@ -153,7 +157,7 @@ export default function DeviceFilterBarContent(props: any) {
     return <ErrorScreen />;
   }
 
-  if (loading || !schema) {
+  if (loading || !schemaData) {
     return <LoadingScreen />;
   }
 

@@ -21,7 +21,8 @@ import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -29,7 +30,7 @@ import {
   getSchemaObjectColumns,
   getSchemaRelationshipColumns,
 } from "../../utils/getSchemaObjectColumns";
-import { getObjectUrl } from "../../utils/objects";
+import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
@@ -46,7 +47,9 @@ export default function ObjectItems(props: any) {
 
   const auth = useContext(AuthContext);
 
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
+  const [genericList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [filters] = useFilters();
@@ -57,6 +60,9 @@ export default function ObjectItems(props: any) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const generic = genericList.filter((s) => s.name === objectname)[0];
+
+  const schemaData = schema || generic;
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
@@ -72,29 +78,29 @@ export default function ObjectItems(props: any) {
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns(schema);
+  const columns = getSchemaObjectColumns(schemaData);
 
   const navigate = useNavigate();
 
-  const queryString = schema
+  const queryString = schemaData
     ? getObjectItemsPaginated({
-        kind: schema.kind,
-        name: schema.name,
-        attributes: schema.attributes,
-        relationships: getSchemaRelationshipColumns(schema),
+        kind: schemaData.kind,
+        name: schemaData.name,
+        attributes: schemaData.attributes,
+        relationships: getSchemaRelationshipColumns(schemaData),
         filters: filtersString,
       })
     : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
+      // TODO: Find another solution for queries while loading schemaData
       "query { ok }";
 
   const query = gql`
     ${queryString}
   `;
 
-  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schema });
+  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schema?.name] ?? {} : {};
+  const result = data ? data[schemaData?.name] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -108,7 +114,7 @@ export default function ObjectItems(props: any) {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      name: schema.name,
+      name: schemaKindName[rowToDelete.__typename],
       data: stringifyWithoutQuotes({
         id: rowToDelete?.id,
       }),
@@ -144,13 +150,13 @@ export default function ObjectItems(props: any) {
   return (
     <div className="bg-custom-white flex-1 overflow-x-auto flex flex-col">
       <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
-        {schema && (
+        {schemaData && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              {schema.kind} ({count})
+              {schemaData.kind} ({count})
             </h1>
             <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schema.kind} in your infrastructure.
+              A list of all the {schemaData.kind} in your infrastructure.
             </p>
           </div>
         )}
@@ -162,7 +168,7 @@ export default function ObjectItems(props: any) {
         </RoundedButton>
       </div>
 
-      {schema && <DeviceFilterBar objectname={objectname} />}
+      {schemaData?.filters && <DeviceFilterBar objectname={objectname} />}
 
       {loading && !rows && <LoadingScreen />}
 
@@ -191,7 +197,11 @@ export default function ObjectItems(props: any) {
                     {rows?.map((row: any, index: number) => (
                       <tr
                         onClick={() =>
-                          navigate(constructPath(getObjectUrl({ kind: schema.name, id: row.id })))
+                          navigate(
+                            constructPath(
+                              getObjectDetailsUrl(row.id, row.__typename, schemaKindName)
+                            )
+                          )
                         }
                         key={index}
                         className="hover:bg-gray-50 cursor-pointer">
@@ -253,7 +263,7 @@ export default function ObjectItems(props: any) {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schema?.kind}
+              {schemaData?.kind}
             </span>
           </div>
         }

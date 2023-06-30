@@ -23,7 +23,7 @@ import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObje
 import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
@@ -53,25 +53,29 @@ export default function ObjectItemDetails(props: any) {
   const auth = useContext(AuthContext);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
-  const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
+  const [schemaList] = useAtom(schemaState);
+  const [genericList] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const generic = genericList.filter((s) => s.name === objectname)[0];
 
-  const relationships = getSchemaRelationshipColumns(schema);
+  const schemaData = generic || schema;
 
-  const relationshipsTabs = getSchemaRelationshipsTabs(schema);
+  const relationships = getSchemaRelationshipColumns(schemaData);
+
+  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
 
   const tabs = [
     {
-      label: schema?.label,
-      name: schema?.label,
+      label: schemaData?.label,
+      name: schemaData?.label,
     },
     ...relationshipsTabs,
   ];
 
-  const queryString = schema
+  const queryString = schemaData
     ? getObjectDetailsPaginated({
-        ...schema,
+        ...schemaData,
         relationships,
         objectid,
       })
@@ -84,7 +88,7 @@ export default function ObjectItemDetails(props: any) {
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schema });
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   const navigate = useNavigate();
 
@@ -93,15 +97,15 @@ export default function ObjectItemDetails(props: any) {
     return <ErrorScreen />;
   }
 
-  if (loading || !schema) {
+  if (loading || !schemaData) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schema.name] && !data[schema.name]?.edges)) {
+  if (!data || (data && !data[schemaData.name] && !data[schemaData.name]?.edges)) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data[schema.name]?.edges[0]?.node;
+  const objectDetailsData = data[schemaData.name]?.edges[0]?.node;
 
   if (!objectDetailsData) {
     return null;
@@ -115,7 +119,7 @@ export default function ObjectItemDetails(props: any) {
             <div
               onClick={() => navigate(constructPath(`/objects/${objectname}`))}
               className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-              {schema.kind}
+              {schemaData.kind}
             </div>
             <ChevronRightIcon
               className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
@@ -150,7 +154,7 @@ export default function ObjectItemDetails(props: any) {
                 {objectDetailsData.id}
               </dd>
             </div>
-            {schema.attributes?.map((attribute) => {
+            {schemaData.attributes?.map((attribute) => {
               if (
                 !objectDetailsData[attribute.name] ||
                 !objectDetailsData[attribute.name].is_visible
@@ -263,7 +267,7 @@ export default function ObjectItemDetails(props: any) {
             })}
 
             {relationships?.map((relationship: any) => {
-              const relationshipSchema = schema?.relationships?.find(
+              const relationshipSchema = schemaData?.relationships?.find(
                 (relation) => relation?.name === relationship?.name
               );
 
@@ -275,7 +279,7 @@ export default function ObjectItemDetails(props: any) {
                 <RelationshipDetails
                   parentNode={objectDetailsData}
                   mode="DESCRIPTION-LIST"
-                  parentSchema={schema}
+                  parentSchema={schemaData}
                   key={relationship.name}
                   relationshipsData={relationshipData}
                   relationshipSchema={relationshipSchema}
@@ -286,7 +290,7 @@ export default function ObjectItemDetails(props: any) {
         </div>
       )}
 
-      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} parentSchema={schema} />}
+      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} parentSchema={schemaData} />}
 
       <SlideOver
         title={
@@ -306,7 +310,7 @@ export default function ObjectItemDetails(props: any) {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schema.kind}
+              {schemaData.kind}
             </span>
             <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
               <svg
@@ -352,7 +356,7 @@ export default function ObjectItemDetails(props: any) {
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
           schemaList={schemaList}
-          schema={schema}
+          schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}
           row={objectDetailsData}

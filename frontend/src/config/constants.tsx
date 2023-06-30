@@ -37,6 +37,10 @@ export const ADMIN_MENU_ITEMS = [
     path: "/schema",
     label: "Schema",
   },
+  {
+    path: "/objects/group",
+    label: "Groups",
+  },
 ];
 
 export const BRANCHES_MENU_ITEMS = [

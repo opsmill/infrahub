@@ -47,7 +47,7 @@ const errorLink = onError(({ graphQLErrors, operation, forward }) => {
     graphQLErrors.forEach(async ({ message, locations, path, extensions }) => {
       console.error(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
 
-      switch (extensions.code) {
+      switch (extensions?.code) {
         case 401: {
           // Modify the operation context with a new token
           const oldHeaders = operation.getContext().headers;
