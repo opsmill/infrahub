@@ -313,9 +313,18 @@ class RelationshipManagerBase:
 
 class RelationshipManager(RelationshipManagerBase):
     def __init__(
-        self, name: str, client: InfrahubClient, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
+        self,
+        name: str,
+        client: InfrahubClient,
+        node: InfrahubNode,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
     ):
         self.client = client
+        self.node = node
+
+        self.initialized = True if data is not None else False
 
         super().__init__(name=name, schema=schema, branch=branch)
 
@@ -341,6 +350,15 @@ class RelationshipManager(RelationshipManagerBase):
         return self.peers[item]  # type: ignore[return-value]
 
     async def fetch(self) -> None:
+        if not self.initialized:
+            exclude = self.node._schema.relationship_names + self.node._schema.attribute_names
+            exclude.remove(self.schema.name)
+            node = await self.client.get(
+                kind=self.node._schema.kind, id=self.node.id, include=[self.schema.name], exclude=exclude
+            )
+            rm = getattr(node, self.schema.name)
+            self.peers = rm.peers
+
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
 
@@ -364,9 +382,18 @@ class RelationshipManager(RelationshipManagerBase):
 
 class RelationshipManagerSync(RelationshipManagerBase):
     def __init__(
-        self, name: str, client: InfrahubClientSync, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
+        self,
+        name: str,
+        client: InfrahubClientSync,
+        node: InfrahubNodeSync,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
     ):
         self.client = client
+        self.node = node
+
+        self.initialized = True if data is not None else False
 
         super().__init__(name=name, schema=schema, branch=branch)
 
@@ -392,6 +419,15 @@ class RelationshipManagerSync(RelationshipManagerBase):
         return self.peers[item]  # type: ignore[return-value]
 
     def fetch(self) -> None:
+        if not self.initialized:
+            exclude = self.node._schema.relationship_names + self.node._schema.attribute_names
+            exclude.remove(self.schema.name)
+            node = self.client.get(
+                kind=self.node._schema.kind, id=self.node.id, include=[self.schema.name], exclude=exclude
+            )
+            rm = getattr(node, self.schema.name)
+            self.peers = rm.peers
+
         for peer in self.peers:
             peer.fetch()
 
@@ -589,7 +625,12 @@ class InfrahubNode(InfrahubNodeBase):
                     self,
                     rel_name,
                     RelationshipManager(
-                        name=rel_name, client=self._client, branch=self._branch, schema=rel_schema, data=rel_data
+                        name=rel_name,
+                        client=self._client,
+                        node=self,
+                        branch=self._branch,
+                        schema=rel_schema,
+                        data=rel_data,
                     ),
                 )
 
@@ -683,7 +724,12 @@ class InfrahubNodeSync(InfrahubNodeBase):
                     self,
                     rel_name,
                     RelationshipManagerSync(
-                        name=rel_name, client=self._client, branch=self._branch, schema=rel_schema, data=rel_data
+                        name=rel_name,
+                        client=self._client,
+                        node=self,
+                        branch=self._branch,
+                        schema=rel_schema,
+                        data=rel_data,
                     ),
                 )
 
