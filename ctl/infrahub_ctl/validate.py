@@ -10,8 +10,8 @@ from rich.console import Console
 from ujson import JSONDecodeError
 
 import infrahub_ctl.config as config
-from infrahub_client import InfrahubClient, InfrahubClientSync
 from infrahub_client.exceptions import GraphQLError
+from infrahub_ctl.client import initialize_client, initialize_client_sync
 from infrahub_ctl.exceptions import QueryNotFoundError
 from infrahub_ctl.utils import find_graphql_query, get_branch, parse_cli_vars
 
@@ -34,7 +34,7 @@ async def _schema(schema: Path) -> None:
         console.print("[red]Invalid JSON file")
         raise typer.Exit(2) from exc
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         client.schema.validate(schema_data)
@@ -53,7 +53,10 @@ def validate_schema(
     schema: Path, config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE)
 ) -> None:
     """Validate the format of a schema file either in JSON or YAML"""
-    config.load_and_exit(config_file=config_file)
+
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     aiorun(_schema(schema=schema))
 
 
@@ -69,7 +72,8 @@ def validate_graphql(
 ) -> None:
     """Validate the format of a GraphQL Query stored locally by executing it on a remote GraphQL endpoint"""
 
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
 
     console = Console()
 
@@ -85,7 +89,7 @@ def validate_graphql(
 
     variables_dict = parse_cli_vars(variables)
 
-    client = InfrahubClientSync.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = initialize_client_sync()
     try:
         response = client.execute_graphql(
             query=query_str, branch_name=branch, variables=variables_dict, raise_for_error=False

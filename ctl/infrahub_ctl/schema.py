@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 import infrahub_ctl.config as config
-from infrahub_client import InfrahubClient
+from infrahub_ctl.client import initialize_client
 
 app = typer.Typer()
 
@@ -30,7 +30,7 @@ async def _load(schema: Path, branch: str, log: logging.Logger) -> None:  # pyli
         console.print("[red]Invalid JSON file")
         raise typer.Exit(2) from exc
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         client.schema.validate(schema_data)
@@ -65,7 +65,8 @@ def load(
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
 ) -> None:
     """Load a schema file into Infrahub."""
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
     logging.getLogger("httpx").setLevel(logging.ERROR)

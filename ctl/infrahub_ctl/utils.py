@@ -7,8 +7,21 @@ import pendulum
 import yaml
 from git import Repo
 from pendulum.datetime import DateTime
+from rich.console import Console
+from rich.markup import escape
 
 from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
+
+
+def print_graphql_errors(console: Console, errors: List):
+    if not isinstance(errors, list):
+        console.print(f"[red]{escape(str(errors))}")
+
+    for error in errors:
+        if isinstance(error, dict) and "message" in error and "path" in error:
+            console.print(f"[red]{escape(str(error['path']))} {escape(str(error['message']))}")
+        else:
+            console.print(f"[red]{escape(str(error))}")
 
 
 def load_repository_config_file(repo_config_file: Path) -> dict:
