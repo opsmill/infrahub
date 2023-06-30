@@ -44,7 +44,6 @@ export default function ObjectItems(props: any) {
   const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
 
   const objectname = objectnameFromProps || objectnameFromParams;
-  console.log("objectname: ", objectname);
 
   const auth = useContext(AuthContext);
 
@@ -195,48 +194,45 @@ export default function ObjectItems(props: any) {
                     </tr>
                   </thead>
                   <tbody className="bg-custom-white">
-                    {rows?.map((row: any, index: number) => {
-                      console.log("row: ", row);
-                      return (
-                        <tr
-                          onClick={() =>
-                            navigate(
-                              constructPath(
-                                getObjectDetailsUrl(row.id, row.__typename, schemaKindName)
-                              )
+                    {rows?.map((row: any, index: number) => (
+                      <tr
+                        onClick={() =>
+                          navigate(
+                            constructPath(
+                              getObjectDetailsUrl(row.id, row.__typename, schemaKindName)
                             )
-                          }
-                          key={index}
-                          className="hover:bg-gray-50 cursor-pointer">
-                          {columns?.map((attribute) => (
-                            <td
-                              key={row.id + "-" + attribute.name}
-                              className={classNames(
-                                index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                                "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                              )}>
-                              {getObjectItemDisplayValue(row, attribute)}
-                            </td>
-                          ))}
-
+                          )
+                        }
+                        key={index}
+                        className="hover:bg-gray-50 cursor-pointer">
+                        {columns?.map((attribute) => (
                           <td
+                            key={row.id + "-" + attribute.name}
                             className={classNames(
                               index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                              "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                             )}>
-                            <Button
-                              disabled={!auth?.permissions?.write}
-                              buttonType={BUTTON_TYPES.INVISIBLE}
-                              onClick={() => {
-                                setRowToDelete(row);
-                                setDeleteModal(true);
-                              }}>
-                              <TrashIcon className="w-6 h-6 text-red-500" />
-                            </Button>
+                            {getObjectItemDisplayValue(row, attribute)}
                           </td>
-                        </tr>
-                      );
-                    })}
+                        ))}
+
+                        <td
+                          className={classNames(
+                            index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                            "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                          )}>
+                          <Button
+                            disabled={!auth?.permissions?.write}
+                            buttonType={BUTTON_TYPES.INVISIBLE}
+                            onClick={() => {
+                              setRowToDelete(row);
+                              setDeleteModal(true);
+                            }}>
+                            <TrashIcon className="w-6 h-6 text-red-500" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
 
