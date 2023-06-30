@@ -545,7 +545,7 @@ async def test_load_node_to_db_group_schema(session: AsyncSession, default_branc
     await registry.schema.load_node_to_db(node=node, session=session, branch=default_branch)
 
     results = await SchemaManager.query(
-        schema="InternalGroupSchema", filters={"kind__value": "GenericGroup"}, branch=default_branch, session=session
+        schema="SchemaGroup", filters={"kind__value": "GenericGroup"}, branch=default_branch, session=session
     )
     assert len(results) == 1
 

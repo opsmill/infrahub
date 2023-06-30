@@ -943,8 +943,8 @@ internal_schema = {
             ],
         },
         {
-            "name": "GroupSchema",
-            "namespace": "Internal",
+            "name": "Group",
+            "namespace": "Schema",
             "branch": True,
             "default_filter": "name__value",
             "display_labels": ["name__value"],

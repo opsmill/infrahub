@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
 SUPPORTED_SCHEMA_NODE_TYPE = [
-    "InternalGroupSchema",
+    "SchemaGroup",
     "SchemaGeneric",
     "SchemaNode",
 ]
@@ -467,7 +467,7 @@ class SchemaManager(NodeManager):
         """
         branch = await get_branch(branch=branch, session=session)
 
-        node_type = "InternalGroupSchema"
+        node_type = "SchemaGroup"
         if isinstance(node, GenericSchema):
             node_type = "SchemaGeneric"
         elif isinstance(node, NodeSchema):
@@ -631,7 +631,7 @@ class SchemaManager(NodeManager):
         branch = await get_branch(branch=branch, session=session)
         schema = SchemaBranch(cache=self._cache, name=branch.name)
 
-        group_schema = self.get(name="InternalGroupSchema", branch=branch)
+        group_schema = self.get(name="SchemaGroup", branch=branch)
         for schema_node in await self.query(
             schema=group_schema, branch=branch, prefetch_relationships=True, session=session
         ):
