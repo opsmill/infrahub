@@ -39,7 +39,7 @@ def load_attribute_types_in_registry(branch: Branch):
 
 def load_node_interface(branch: Branch):
     node_interface_schema = GenericSchema(
-        name="Node", namespace="Schema", description="Interface for all nodes in Infrahub"
+        name="Node", namespace="Core", description="Interface for all nodes in Infrahub"
     )
     interface = generate_interface_object(schema=node_interface_schema, branch=branch)
     edged_interface = generate_graphql_edged_object(schema=node_interface_schema, node=interface, branch=branch)
@@ -240,7 +240,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
-    node_interface = registry.get_graphql_type(name="SchemaNode", branch=branch.name)
+    node_interface = registry.get_graphql_type(name="CoreNode", branch=branch.name)
 
     meta_attrs = {
         "schema": schema,
