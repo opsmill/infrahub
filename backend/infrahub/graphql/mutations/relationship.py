@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 # pylint: disable=unused-argument,too-many-branches
 
+RELATIONSHIP_PEERS_TO_IGNORE = ["Node"]
+
 
 class RelationshipNodesInput(InputObjectType):
     id = InputField(String(required=True), description="ID of the node at the source of the relationship")
@@ -68,6 +70,8 @@ class RelationshipMixin:
                 raise ValidationError(f"{node_id!r}: Unable to find the node in the database.")
 
         for node_id, node in nodes.items():
+            if rel_schema.peer in RELATIONSHIP_PEERS_TO_IGNORE:
+                continue
             if rel_schema.peer not in node.get_labels():
                 raise ValidationError(f"{node_id!r} {node.get_kind()!r} is not a valid peer for '{rel_schema.peer}'")
 
