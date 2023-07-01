@@ -1,6 +1,6 @@
 export const graphqlQueriesMocksQuery = `
-query GraphQLQuery {
-  graphql_query(offset: 0,limit: 10) {
+query CoreGraphQLQuery {
+  CoreGraphQLQuery(offset: 0,limit: 10) {
     count
     edges {
       node {
@@ -36,8 +36,8 @@ query GraphQLQuery {
 `;
 
 export const graphqlQueriesMocksQueryWithLimit = `
-query GraphQLQuery {
-  graphql_query(offset: 0,limit: 50) {
+query CoreGraphQLQuery {
+  CoreGraphQLQuery(offset: 0,limit: 50) {
     count
     edges {
       node {
@@ -73,7 +73,7 @@ query GraphQLQuery {
 `;
 
 export const graphqlQueriesMocksData = {
-  graphql_query: {
+  CoreGraphQLQuery: {
     count: 1000,
     edges: [
       {
@@ -614,7 +614,7 @@ export const graphqlQueriesMocksData = {
 export const objectToDelete = "query-0001";
 
 export const graphqlQueriesMocksDataDeleted = {
-  graphql_query: {
+  CoreGraphQLQuery: {
     count: 999,
     edges: [
       {

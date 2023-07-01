@@ -10,7 +10,6 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -30,7 +29,6 @@ export default function ObjectItemCreate(props: iProps) {
   const { objectname, onCreate, onCancel, refetch } = props;
 
   const [schemaList] = useAtom(schemaState);
-  const [schemaKindNameMap] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
@@ -38,7 +36,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  const peers = (schema.relationships || []).map((r) => schemaKindNameMap[r.peer]).filter(Boolean);
+  const peers = (schema.relationships || []).map((r) => r.peer).filter(Boolean);
 
   const queryString = peers.length
     ? getDropdownOptionsForRelatedPeersPaginated({
@@ -66,7 +64,7 @@ export default function ObjectItemCreate(props: iProps) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data && data[schema.name];
+  const objectDetailsData = data && data[schema.kind];
 
   const peerDropdownOptions =
     data &&
@@ -83,7 +81,6 @@ export default function ObjectItemCreate(props: iProps) {
     schemaList,
     genericsList,
     peerDropdownOptions,
-    schemaKindNameMap,
     objectDetailsData
   );
 

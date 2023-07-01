@@ -7,7 +7,6 @@ import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/querie
 import { iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import useFilters from "../../hooks/useFilters";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { resolve } from "../../utils/objects";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
@@ -27,7 +26,6 @@ export default function DeviceFilterBarContent(props: any) {
   const { objectname } = props;
 
   const [filters, setFilters] = useFilters();
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
@@ -38,8 +36,8 @@ export default function DeviceFilterBarContent(props: any) {
   const peers: string[] = [];
 
   (schemaData.filters || []).forEach((f) => {
-    if (f.kind === "Object" && f.object_kind && schemaKindName[f.object_kind]) {
-      peers.push(schemaKindName[f.object_kind]);
+    if (f.kind === "Object" && f.object_kind) {
+      peers.push(f.object_kind);
     }
   });
 
@@ -91,12 +89,8 @@ export default function DeviceFilterBarContent(props: any) {
         },
       });
     } else if (filter.kind === "Object") {
-      if (
-        filter.object_kind &&
-        peerDropdownOptions &&
-        peerDropdownOptions[schemaKindName[filter.object_kind]]
-      ) {
-        const { edges } = peerDropdownOptions[schemaKindName[filter.object_kind]];
+      if (filter.object_kind && peerDropdownOptions && peerDropdownOptions[filter.object_kind]) {
+        const { edges } = peerDropdownOptions[filter.object_kind];
 
         const options = edges.map((row: any) => ({
           name: row.node.display_label,
