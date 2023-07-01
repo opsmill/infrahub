@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, ge
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
+from infrahub_client.schema import RelationshipCardinality, RelationshipKind
 from infrahub_client.timestamp import Timestamp
+from infrahub_client.utils import compare_lists
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
@@ -311,9 +313,18 @@ class RelationshipManagerBase:
 
 class RelationshipManager(RelationshipManagerBase):
     def __init__(
-        self, name: str, client: InfrahubClient, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
+        self,
+        name: str,
+        client: InfrahubClient,
+        node: InfrahubNode,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
     ):
         self.client = client
+        self.node = node
+
+        self.initialized = data is not None
 
         super().__init__(name=name, schema=schema, branch=branch)
 
@@ -339,6 +350,15 @@ class RelationshipManager(RelationshipManagerBase):
         return self.peers[item]  # type: ignore[return-value]
 
     async def fetch(self) -> None:
+        if not self.initialized:
+            exclude = self.node._schema.relationship_names + self.node._schema.attribute_names
+            exclude.remove(self.schema.name)
+            node = await self.client.get(
+                kind=self.node._schema.kind, id=self.node.id, include=[self.schema.name], exclude=exclude
+            )
+            rm = getattr(node, self.schema.name)
+            self.peers = rm.peers
+
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
 
@@ -362,9 +382,18 @@ class RelationshipManager(RelationshipManagerBase):
 
 class RelationshipManagerSync(RelationshipManagerBase):
     def __init__(
-        self, name: str, client: InfrahubClientSync, branch: str, schema: RelationshipSchema, data: Union[Any, dict]
+        self,
+        name: str,
+        client: InfrahubClientSync,
+        node: InfrahubNodeSync,
+        branch: str,
+        schema: RelationshipSchema,
+        data: Union[Any, dict],
     ):
         self.client = client
+        self.node = node
+
+        self.initialized = data is not None
 
         super().__init__(name=name, schema=schema, branch=branch)
 
@@ -390,6 +419,15 @@ class RelationshipManagerSync(RelationshipManagerBase):
         return self.peers[item]  # type: ignore[return-value]
 
     def fetch(self) -> None:
+        if not self.initialized:
+            exclude = self.node._schema.relationship_names + self.node._schema.attribute_names
+            exclude.remove(self.schema.name)
+            node = self.client.get(
+                kind=self.node._schema.kind, id=self.node.id, include=[self.schema.name], exclude=exclude
+            )
+            rm = getattr(node, self.schema.name)
+            self.peers = rm.peers
+
         for peer in self.peers:
             peer.fetch()
 
@@ -488,7 +526,12 @@ class InfrahubNodeBase:
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
     def generate_query_data(
-        self, filters: Optional[Dict[str, Any]] = None, offset: Optional[int] = None, limit: Optional[int] = None
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
     ) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {"count": None, "edges": {"node": {"id": None, "display_label": None}}}
 
@@ -500,14 +543,33 @@ class InfrahubNodeBase:
         if limit:
             data["@filters"]["limit"] = offset
 
+        if include and exclude:
+            in_both, _, _ = compare_lists(include, exclude)
+            if in_both:
+                raise ValueError(f"{in_both} are part of both include and exclude")
+
         for attr_name in self._attributes:
+            if exclude and attr_name in exclude:
+                continue
+
             attr: Attribute = getattr(self, attr_name)
             attr_data = attr._generate_query_data()
             if attr_data:
                 data["edges"]["node"][attr_name] = attr_data
 
         for rel_name in self._relationships:
+            if exclude and rel_name in exclude:
+                continue
+
             rel_schema = self._schema.get_relationship(name=rel_name)
+
+            if (
+                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
+                and rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.PARENT]  # type: ignore[union-attr]
+                and not (include and rel_name in include)
+            ):
+                continue
+
             if rel_schema and rel_schema.cardinality == "one":
                 rel_data = RelatedNode._generate_query_data()
             elif rel_schema and rel_schema.cardinality == "many":
@@ -563,7 +625,12 @@ class InfrahubNode(InfrahubNodeBase):
                     self,
                     rel_name,
                     RelationshipManager(
-                        name=rel_name, client=self._client, branch=self._branch, schema=rel_schema, data=rel_data
+                        name=rel_name,
+                        client=self._client,
+                        node=self,
+                        branch=self._branch,
+                        schema=rel_schema,
+                        data=rel_data,
                     ),
                 )
 
@@ -657,7 +724,12 @@ class InfrahubNodeSync(InfrahubNodeBase):
                     self,
                     rel_name,
                     RelationshipManagerSync(
-                        name=rel_name, client=self._client, branch=self._branch, schema=rel_schema, data=rel_data
+                        name=rel_name,
+                        client=self._client,
+                        node=self,
+                        branch=self._branch,
+                        schema=rel_schema,
+                        data=rel_data,
                     ),
                 )
 

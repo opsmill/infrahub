@@ -17,11 +17,11 @@ from rich.traceback import Frame, Traceback
 
 # pylint: disable=import-outside-toplevel
 import infrahub_ctl.config as config
-from infrahub_client import InfrahubClient, InfrahubClientSync
 from infrahub_client.exceptions import GraphQLError
 from infrahub_client.schema import InfrahubRepositoryConfig
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
+from infrahub_ctl.client import initialize_client, initialize_client_sync
 from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
 from infrahub_ctl.schema import app as schema
 from infrahub_ctl.utils import (
@@ -56,12 +56,8 @@ async def _run(script: Path, method: str, log: logging.Logger, branch: str, conc
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await InfrahubClient.init(
-        address=config.SETTINGS.server_address,
-        insert_tracker=True,
-        max_concurrent_execution=concurrent,
-        default_timeout=timeout,
-    )
+    client = await initialize_client(max_concurrent_execution=concurrent, default_timeout=timeout)
+
     func = getattr(module, method)
     await func(client=client, log=log, branch=branch)
 
@@ -105,7 +101,8 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
 ) -> None:
     """Render a local Jinja Template (RFile) for debugging purpose."""
 
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
 
     branch = get_branch(branch)
 
@@ -150,7 +147,7 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
 
     variables_dict = parse_cli_vars(variables)
 
-    client = InfrahubClientSync.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = initialize_client_sync()
     try:
         response = client.execute_graphql(
             query=query_str, branch_name=branch, variables=variables_dict, raise_for_error=False
@@ -218,7 +215,9 @@ def run(
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
 ) -> None:
     """Execute a script."""
-    config.load_and_exit(config_file=config_file)
+
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
     logging.getLogger("httpx").setLevel(logging.ERROR)

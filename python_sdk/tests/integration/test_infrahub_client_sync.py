@@ -115,8 +115,11 @@ class TestInfrahubClientSync:
         assert isinstance(node2, InfrahubNodeSync)
         assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
 
+    async def test_get_related_nodes(self, client: InfrahubClientSync, session, init_db_base):
+        nodes = client.all(kind="Repository")
+        assert len(nodes) == 1
+        repo = nodes[0]
 
-# @pytest.mark.skip(reason="Only working if run in standalone")
-# class TestNoPaginationInfrahubClientSync(TestInfrahubClientSync):
-
-#     pagination: bool = False
+        assert repo.transform_python.peers == []  # type: ignore[attr-defined]
+        repo.transform_python.fetch()  # type: ignore[attr-defined]
+        assert len(repo.transform_python.peers) == 1  # type: ignore[attr-defined]

@@ -196,6 +196,69 @@ async def test_query_data_no_filters(client, location_schema, client_type):
                             "__typename": None,
                         },
                     },
+                },
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_query_data_include(client, location_schema, client_type):
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema)
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema)
+
+    assert node.generate_query_data(include=["tags"]) == {
+        "location": {
+            "@filters": {},
+            "count": None,
+            "edges": {
+                "node": {
+                    "id": None,
+                    "display_label": None,
+                    "name": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {"__typename": None, "display_label": None, "id": None},
+                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "value": None,
+                    },
+                    "description": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {"__typename": None, "display_label": None, "id": None},
+                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "value": None,
+                    },
+                    "type": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {"__typename": None, "display_label": None, "id": None},
+                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "value": None,
+                    },
+                    "primary_tag": {
+                        "properties": {
+                            "is_protected": None,
+                            "is_visible": None,
+                            "owner": {
+                                "__typename": None,
+                                "display_label": None,
+                                "id": None,
+                            },
+                            "source": {
+                                "__typename": None,
+                                "display_label": None,
+                                "id": None,
+                            },
+                        },
+                        "node": {
+                            "id": None,
+                            "display_label": None,
+                            "__typename": None,
+                        },
+                    },
                     "tags": {
                         "count": None,
                         "edges": {
@@ -219,6 +282,41 @@ async def test_query_data_no_filters(client, location_schema, client_type):
                                 "__typename": None,
                             },
                         },
+                    },
+                },
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_query_data_exclude(client, location_schema, client_type):
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema)
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema)
+
+    assert node.generate_query_data(exclude=["description", "primary_tag"]) == {
+        "location": {
+            "@filters": {},
+            "count": None,
+            "edges": {
+                "node": {
+                    "id": None,
+                    "display_label": None,
+                    "name": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {"__typename": None, "display_label": None, "id": None},
+                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "value": None,
+                    },
+                    "type": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {"__typename": None, "display_label": None, "id": None},
+                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "value": None,
                     },
                 },
             },

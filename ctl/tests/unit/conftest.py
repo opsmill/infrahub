@@ -32,6 +32,35 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
+async def authentication_error_payload():
+    response = {
+        "data": None,
+        "errors": [{"message": "Authentication is required to perform this operation", "extensions": {"code": 401}}],
+    }
+
+    return response
+
+
+@pytest.fixture
+async def mock_branch_create_error(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {
+        "data": {"branch_create": None},
+        "errors": [
+            {
+                "message": 'invalid field name: string does not match regex "^[a-z][a-z0-9\\-]+$"',
+                "locations": [{"line": 2, "column": 3}],
+                "path": ["branch_create"],
+            }
+        ],
+    }
+
+    httpx_mock.add_response(
+        status_code=200, method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-branch-create"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {

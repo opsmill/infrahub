@@ -4,7 +4,9 @@ from typing import Dict, List, Optional
 
 
 class Error(Exception):
-    pass
+    def __init__(self, message: Optional[str] = None):
+        self.message = message
+        super().__init__(self.message)
 
 
 class ServerNotReacheableError(Error):
@@ -79,4 +81,10 @@ class ValidationError(Error):
     def __init__(self, identifier: str, message: str):
         self.identifier = identifier
         self.message = message
+        super().__init__(self.message)
+
+
+class AuthenticationError(Error):
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or "Authentication Error, unable to execute the query."
         super().__init__(self.message)
