@@ -114,6 +114,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
         populate_store: bool = False,
         **kwargs: Any,
     ) -> InfrahubNode:
@@ -132,7 +134,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         else:
             raise ValueError("At least one filter must be provided to get()")
 
-        results = await self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)  # type: ignore[arg-type]
+        results = await self.filters(
+            kind=kind, at=at, branch=branch, populate_store=populate_store, include=include, exclude=exclude, **filters
+        )  # type: ignore[arg-type]
 
         if len(results) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
@@ -149,6 +153,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
     ) -> List[InfrahubNode]:
         """Retrieve all nodes of a given kind
 
@@ -161,7 +167,14 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             List[InfrahubNode]: List of Nodes
         """
         return await self.filters(
-            kind=kind, at=at, branch=branch, populate_store=populate_store, offset=offset, limit=limit
+            kind=kind,
+            at=at,
+            branch=branch,
+            populate_store=populate_store,
+            offset=offset,
+            limit=limit,
+            include=include,
+            exclude=exclude,
         )
 
     async def filters(
@@ -172,6 +185,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[InfrahubNode]:
         schema = await self.schema.get(kind=kind)
@@ -190,7 +205,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
             query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset, limit=limit, filters=filters
+                offset=offset, limit=limit, filters=filters, include=include, exclude=exclude
             )
             query = Query(query=query_data)
             response = await self.execute_graphql(
@@ -208,7 +223,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 page_offset = (page_number - 1) * self.pagination_size
 
                 query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
-                    offset=page_offset, limit=self.pagination_size, filters=filters
+                    offset=page_offset, limit=self.pagination_size, filters=filters, include=include, exclude=exclude
                 )
                 query = Query(query=query_data)
                 response = await self.execute_graphql(
@@ -599,6 +614,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
     ) -> List[InfrahubNodeSync]:
         """Retrieve all nodes of a given kind
 
@@ -611,7 +628,16 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             List[InfrahubNodeSync]: List of Nodes
         """
 
-        return self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, offset=offset, limit=limit)
+        return self.filters(
+            kind=kind,
+            at=at,
+            branch=branch,
+            populate_store=populate_store,
+            offset=offset,
+            limit=limit,
+            include=include,
+            exclude=exclude,
+        )
 
     def filters(
         self,
@@ -621,6 +647,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         populate_store: bool = False,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[InfrahubNodeSync]:
         schema = self.schema.get(kind=kind)
@@ -639,7 +667,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
             query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset, limit=limit, filters=filters
+                offset=offset, limit=limit, filters=filters, include=include, exclude=exclude
             )
             query = Query(query=query_data)
             response = self.execute_graphql(
@@ -658,7 +686,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 page_offset = (page_number - 1) * self.pagination_size
 
                 query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
-                    offset=page_offset, limit=self.pagination_size, filters=filters
+                    offset=page_offset, limit=self.pagination_size, filters=filters, include=include, exclude=exclude
                 )
                 query = Query(query=query_data)
                 response = self.execute_graphql(
@@ -694,6 +722,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
         id: Optional[str] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
         populate_store: bool = False,
         **kwargs: Any,
     ) -> InfrahubNodeSync:
@@ -712,7 +742,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         else:
             raise ValueError("At least one filter must be provided to get()")
 
-        results = self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, **filters)  # type: ignore[arg-type]
+        results = self.filters(kind=kind, at=at, branch=branch, populate_store=populate_store, include=include, exclude=exclude, **filters)  # type: ignore[arg-type]
 
         if len(results) == 0:
             raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)

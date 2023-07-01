@@ -116,3 +116,12 @@ class TestInfrahubClient:
         node2 = await client.get(kind="Location", id="jfk2")
         assert isinstance(node2, InfrahubNode)
         assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
+
+    async def test_get_related_nodes(self, client: InfrahubClient, session, init_db_base):
+        nodes = await client.all(kind="Repository")
+        assert len(nodes) == 1
+        repo = nodes[0]
+
+        assert repo.transform_python.peers == []  # type: ignore[attr-defined]
+        await repo.transform_python.fetch()  # type: ignore[attr-defined]
+        assert len(repo.transform_python.peers) == 1  # type: ignore[attr-defined]
