@@ -1,5 +1,5 @@
 export const accountDetailsMocksQuery = `query  {
-      account (ids: ["1234"]) {
+      Account (ids: ["1234"]) {
           edges {
             node {
               id

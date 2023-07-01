@@ -17,18 +17,20 @@ import {
   deviceDetailsMocksSchema,
   deviceDetailsName,
   deviceDetailsNewName,
+  deviceDetailsUpdateMocksData,
+  deviceDetailsUpdateMocksQuery,
 } from "../../mocks/data/devices";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const graphqlQueryItemsUrl = `/objects/device/${deviceDetailsMocksId}`;
+const mockedUrl = `/objects/Device/${deviceDetailsMocksId}`;
 
 // Path that will match the route to display the component
-const graphqlQueryItemsPath = "/objects/:objectname/:objectid";
+const mockedPath = "/objects/:objectname/:objectid";
 
 // Mock the apollo query and data
 const mocks: any[] = [
-  // Initial render
+  // Details query
   {
     request: {
       query: gql`
@@ -39,7 +41,50 @@ const mocks: any[] = [
       data: deviceDetailsMocksData,
     },
   },
+  // Update query
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsUpdateMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsUpdateMocksData,
+    },
+  },
+  // Details query
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsMocksData,
+    },
+  },
+  // Update query
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsUpdateMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsUpdateMocksData,
+    },
+  },
   // After mutation
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsMocksDataAfterUpdate,
+    },
+  },
   {
     request: {
       query: gql`
@@ -81,13 +126,13 @@ describe("Object details", () => {
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectDetailsProvider />} path={graphqlQueryItemsPath} />
+          <Route element={<ObjectDetailsProvider />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
         // Add iniital route for the app router, to display the current items view
         routerProps: {
-          initialEntries: [graphqlQueryItemsUrl],
+          initialEntries: [mockedUrl],
         },
       }
     );
