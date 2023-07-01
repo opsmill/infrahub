@@ -14,6 +14,7 @@ from infrahub_client.branch import InfrahubBranchManager, InfrahubBranchManagerS
 from infrahub_client.config import Config
 from infrahub_client.data import BranchData, RepositoryData
 from infrahub_client.exceptions import (
+    AuthenticationError,
     GraphQLError,
     NodeNotFound,
     ServerNotReacheableError,
@@ -61,7 +62,14 @@ class BaseClient:
         self.insert_tracker = insert_tracker
         self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
-        self.config = config or Config()
+
+        if isinstance(config, Config):
+            self.config = config
+        elif isinstance(config, dict):
+            self.config = Config(**config)
+        else:
+            self.config = Config()
+
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token
 
@@ -303,6 +311,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     else:
                         self.log.error(f"Unable to connect to {self.address} .. ")
                         raise
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code in [401, 403]:
+                        response = exc.response.json()
+                        errors = response.get("errors")
+                        messages = [error.get("message") for error in errors]
+                        raise AuthenticationError(" | ".join(messages)) from exc
 
         else:
             with self.test_client as client:
@@ -557,6 +571,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     else:
                         self.log.error(f"Unable to connect to {self.address} .. ")
                         raise
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code in [401, 403]:
+                        response = exc.response.json()
+                        errors = response.get("errors")
+                        messages = [error.get("message") for error in errors]
+                        raise AuthenticationError(" | ".join(messages)) from exc
 
         else:
             with self.test_client as client:

@@ -12,8 +12,13 @@ from rich.panel import Panel
 from rich.table import Table
 
 import infrahub_ctl.config as config
-from infrahub_client import GraphQLError, InfrahubClient, ServerNotReacheableError
-from infrahub_ctl.utils import calculate_time_diff, render_action_rich
+from infrahub_client import Error, GraphQLError
+from infrahub_ctl.client import initialize_client
+from infrahub_ctl.utils import (
+    calculate_time_diff,
+    print_graphql_errors,
+    render_action_rich,
+)
 
 app = typer.Typer()
 
@@ -32,18 +37,17 @@ def callback() -> None:
 
 
 async def _list() -> None:
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     console = Console()
 
     try:
         branches = await client.branch.all()
-    except ServerNotReacheableError as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
     except GraphQLError as exc:
-        for error in exc.errors:
-            console.print(f"[red]{error}")
+        print_graphql_errors(console, exc.errors)
+        sys.exit(1)
+    except Error as exc:
+        console.print(f"[red]{exc.message}")
         sys.exit(1)
 
     table = Table(title="List of all branches")
@@ -90,23 +94,24 @@ def list_branch(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     aiorun(_list())
 
 
 async def _create(branch_name: str, description: str, data_only: bool) -> None:
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         branch = await client.branch.create(branch_name=branch_name, description=description, data_only=data_only)
-    except ServerNotReacheableError as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
     except GraphQLError as exc:
-        for error in exc.errors:
-            console.print(f"[red]{error['message']}")
+        print_graphql_errors(console, exc.errors)
+        sys.exit(1)
+    except Error as exc:
+        console.print(f"[red]{exc.message}")
         sys.exit(1)
 
     console.print(f"Branch '{branch_name}' created successfully ({branch.id}).")
@@ -123,23 +128,24 @@ def create(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     aiorun(_create(branch_name=branch_name, description=description, data_only=data_only))
 
 
 async def _delete(branch_name: str) -> None:
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         await client.branch.delete(branch_name=branch_name)
-    except ServerNotReacheableError as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
     except GraphQLError as exc:
-        for error in exc.errors:
-            console.print(f"[red]{error['message']}")
+        print_graphql_errors(console, exc.errors)
+        sys.exit(1)
+    except Error as exc:
+        console.print(f"[red]{exc.message}")
         sys.exit(1)
 
     console.print(f"Branch '{branch_name}' deleted successfully.")
@@ -154,23 +160,24 @@ def delete(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     aiorun(_delete(branch_name=branch_name))
 
 
 async def _rebase(branch_name: str) -> None:
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         await client.branch.rebase(branch_name=branch_name)
-    except ServerNotReacheableError as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
     except GraphQLError as exc:
-        for error in exc.errors:
-            console.print(f"[red]{error['message']}")
+        print_graphql_errors(console, exc.errors)
+        sys.exit(1)
+    except Error as exc:
+        console.print(f"[red]{exc.message}")
         sys.exit(1)
 
     console.print(f"Branch '{branch_name}' rebased successfully.")
@@ -185,23 +192,24 @@ def rebase(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     aiorun(_rebase(branch_name=branch_name))
 
 
 async def _merge(branch_name: str) -> None:
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         await client.branch.merge(branch_name=branch_name)
-    except ServerNotReacheableError as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
     except GraphQLError as exc:
-        for error in exc.errors:
-            console.print(f"[red]{error['message']}")
+        print_graphql_errors(console, exc.errors)
+        sys.exit(1)
+    except Error as exc:
+        console.print(f"[red]{exc.message}")
         sys.exit(1)
 
     console.print(f"Branch '{branch_name}' merged successfully.")
@@ -216,23 +224,24 @@ def merge(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     aiorun(_merge(branch_name=branch_name))
 
 
 async def _validate(branch_name: str) -> None:
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         await client.branch.validate(branch_name=branch_name)
-    except ServerNotReacheableError as exc:
-        console.print(f"[red]{exc.message}")
-        sys.exit(1)
     except GraphQLError as exc:
-        for error in exc.errors:
-            console.print(f"[red]{error['message']}")
+        print_graphql_errors(console, exc.errors)
+        sys.exit(1)
+    except Error as exc:
+        console.print(f"[red]{exc.message}")
         sys.exit(1)
 
     console.print(f"Branch '{branch_name}' is valid.")
@@ -244,7 +253,10 @@ def validate(
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ) -> None:
     """Validate if a branch has some conflict and is passing all the tests (NOT IMPLEMENTED YET)."""
-    config.load_and_exit(config_file=config_file)
+
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     aiorun(_validate(branch_name=branch_name))
 
 
@@ -311,13 +323,13 @@ async def _diff(
 ) -> None:
     console = Console()
 
-    client = await InfrahubClient.init(address=config.SETTINGS.server_address, insert_tracker=True)
+    client = await initialize_client()
 
     try:
         response = await client.branch.diff_data(
             branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
         )
-    except ServerNotReacheableError as exc:
+    except Error as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
 
@@ -336,7 +348,8 @@ def diff(
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ) -> None:
     """Show the differences between a Branch and main."""
-    config.load_and_exit(config_file=config_file)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 

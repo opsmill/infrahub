@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     server_address: str = "http://localhost:8000"
-    api_key: Optional[str] = None
+    api_token: Optional[str] = None
     default_branch: str = "main"
 
     class Config:
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
         fields = {
             "server_address": {"env": "INFRAHUB_ADDRESS"},
-            "api_key": {"env": "INFRAHUB_API_KEY"},
+            "api_token": {"env": "INFRAHUB_API_TOKEN"},
             "default_branch": {"env": "INFRAHUB_DEFAULT_BRANCH"},
         }
 
