@@ -249,7 +249,7 @@ jobs:
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "sdk-tests"]
-    if: always() 
+    if: always()
     runs-on: ubuntu-latest
     steps:
       # # NOTE: The ref value should be different when triggered by pull_request event.
