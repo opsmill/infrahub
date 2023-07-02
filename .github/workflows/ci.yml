@@ -27,6 +27,9 @@ env:
   NEO4J_PORT: 7687
   NEO4J_PROTOCOL: bolt
   INFRAHUB_LOG_LEVEL: CRITICAL
+  INFRAHUB_IMAGE_NAME_FRONTEND: "opsmill/infrahub-frontend"
+  INFRAHUB_IMAGE_NAME_BACKEND: "opsmill/infrahub-backend"
+  INFRAHUB_IMAGE_VER: "testing"
 
 jobs:
   yaml-lint:
@@ -77,7 +80,7 @@ jobs:
         with:
           file: "development/Dockerfile-backend"
           push: false
-          tags: opsmill/infrahub-backend:testing
+          tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -93,7 +96,7 @@ jobs:
         with:
           file: "development/Dockerfile-frontend"
           push: false
-          tags: opsmill/infrahub-frontend:testing
+          tags: "${{env.INFRAHUB_IMAGE_NAME_FRONTEND}}:${{env.INFRAHUB_IMAGE_VER}}"
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -105,6 +108,10 @@ jobs:
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install poetry==1.3.2 toml invoke"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
@@ -155,6 +162,10 @@ jobs:
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install poetry==1.3.2 toml invoke"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
@@ -199,6 +210,10 @@ jobs:
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install poetry==1.3.2 toml invoke"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
@@ -221,6 +236,10 @@ jobs:
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install poetry==1.3.2 toml invoke"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
       - name: "Setup Git"
         run: |
           git config --global --add safe.directory '*'
