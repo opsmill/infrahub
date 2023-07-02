@@ -65,7 +65,7 @@ jobs:
       - name: "Install ruff"
         uses: "chartboost/ruff-action@v1"
 
-  build-docker-images:
+  build-docker-backend:
     runs-on: ubuntu-latest
     steps:
       - name: Set up QEMU
@@ -75,23 +75,23 @@ jobs:
       - name: Build Backend Image
         uses: docker/build-push-action@v4
         with:
-          file: development/Dockerfile-backend
-          context: .
+          file: "development/Dockerfile-backend"
+          # context: .
           push: true
           tags: opsmill/infrahub-backend:testing
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Build Frontend Image
-        uses: docker/build-push-action@v4
-        with:
-          file: development/Dockerfile-frontend
-          context: .
-          tags: opsmill/infrahub-frontend:testing
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # - name: Build Frontend Image
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     file: "development/Dockerfile-frontend"
+      #     # context: .
+      #     tags: opsmill/infrahub-frontend:testing
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
 
   sdk-tests:
-    needs: ["yaml-lint", "python-lint"]
+    needs: ["yaml-lint", "python-lint", "build-docker-backend"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -141,7 +141,7 @@ jobs:
           parallel: true
 
   backend-tests-default:
-    needs: ["yaml-lint", "python-lint"]
+    needs: ["yaml-lint", "python-lint", "build-docker-backend"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -185,7 +185,7 @@ jobs:
           parallel: true
 
   backend-tests-neo4j:
-    needs: ["yaml-lint", "python-lint"]
+    needs: ["yaml-lint", "python-lint", "build-docker-backend"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -207,7 +207,7 @@ jobs:
         run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
 
   ctl-tests:
-    needs: ["yaml-lint", "python-lint"]
+    needs: ["yaml-lint", "python-lint", "build-docker-backend"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
