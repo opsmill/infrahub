@@ -16,6 +16,7 @@ ns.add_collection(main)
 ns.add_collection(sync)
 ns.add_collection(test)
 
+
 @task
 def yamllint(context: Context):
     """This will run yamllint to validate formatting of all yaml files."""

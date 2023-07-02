@@ -14,6 +14,7 @@ def build(context: Context):
 
         return context.run(exec_cmd, pty=True)
 
+
 @task
 def destroy(context: Context):
     """Start a local instance of Infrahub in debug mode."""

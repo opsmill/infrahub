@@ -1,6 +1,6 @@
 from invoke import Context, task
 
-from .shared import BUILD_NAME, ENV_VARS, build_test_compose_files_cmd, NBR_WORKERS
+from .shared import BUILD_NAME, ENV_VARS, NBR_WORKERS, build_test_compose_files_cmd
 from .utils import REPO_BASE
 
 MAIN_DIRECTORY = "python_sdk"
@@ -114,7 +114,6 @@ def lint(context: Context):
     mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
-
 
 
 @task(optional=["database"])
