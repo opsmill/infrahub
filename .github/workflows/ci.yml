@@ -10,6 +10,7 @@ on:
   #     - "**.tsx"
   #     - "frontend/package.json"
   #     - "frontend/package-lock.json"
+  pull_request:
   push:
     branches:
       - develop
