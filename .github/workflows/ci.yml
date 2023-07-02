@@ -65,8 +65,33 @@ jobs:
       - name: "Install ruff"
         uses: "chartboost/ruff-action@v1"
 
+  build-docker-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build Backend Image
+        uses: docker/build-push-action@v4
+        with:
+          file: development/Dockerfile-backend
+          context: .
+          push: true
+          tags: opsmill/infrahub-backend:testing
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build Frontend Image
+        uses: docker/build-push-action@v4
+        with:
+          file: development/Dockerfile-frontend
+          context: .
+          tags: opsmill/infrahub-frontend:testing
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   sdk-tests:
-    needs: ["python-lint"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -116,7 +141,7 @@ jobs:
           parallel: true
 
   backend-tests-default:
-    needs: ["python-lint"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -160,7 +185,7 @@ jobs:
           parallel: true
 
   backend-tests-neo4j:
-    needs: ["python-lint"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -182,7 +207,7 @@ jobs:
         run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
 
   ctl-tests:
-    needs: ["python-lint"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -215,7 +240,7 @@ jobs:
           parallel: true
 
   frontend-tests:
-    needs: ["javascript-lint"]
+    needs: ["yaml-lint", "javascript-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
