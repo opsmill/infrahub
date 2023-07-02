@@ -3,7 +3,7 @@ import os
 
 from invoke import Collection, Context, Exit, task
 
-from . import backend, ctl, demo, main, nornir, performance, sdk, sync
+from . import backend, ctl, demo, main, nornir, performance, sdk, sync, test
 
 ns = Collection()
 ns.add_collection(sdk)
@@ -14,7 +14,7 @@ ns.add_collection(backend)
 ns.add_collection(demo)
 ns.add_collection(main)
 ns.add_collection(sync)
-
+ns.add_collection(test)
 
 @task
 def yamllint(context: Context):

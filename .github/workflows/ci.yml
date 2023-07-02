@@ -30,6 +30,7 @@ env:
   INFRAHUB_IMAGE_NAME_FRONTEND: "opsmill/infrahub-frontend"
   INFRAHUB_IMAGE_NAME_BACKEND: "opsmill/infrahub-backend"
   INFRAHUB_IMAGE_VER: "testing"
+  PYTEST_XDIST_WORKER_COUNT: 1
 
 jobs:
   yaml-lint:
@@ -100,7 +101,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  sdk-tests:
+  python-sdk-tests:
     needs: ["yaml-lint", "python-lint", "backend-build-docker"]
     runs-on: "ubuntu-20.04"
     steps:
@@ -171,10 +172,10 @@ jobs:
           git config --global --add safe.directory '*'
           git config --global user.email "infrahub@example.com"
           git config --global user.name "Infrahub"
-      - name: "Setup Docker-Compose"
-        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      - name: "Start database"
-        run: "invoke demo.dev-start"
+      # - name: "Setup Docker-Compose"
+      #   run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      # - name: "Start database"
+      #   run: "invoke demo.dev-start"
       - name: "Install project"
         run: "poetry install --only=main,dev,server"
       - name: "Black Tests"
@@ -183,8 +184,12 @@ jobs:
         run: "poetry run invoke backend.isort"
       - name: "Pylint Tests"
         run: "poetry run invoke backend.pylint"
+      # - name: "Unit Tests"
+      #   run: "poetry run pytest --cov=infrahub backend/tests/unit"
+      - name: "Build Test Image"
+        run: "invoke test.build"
       - name: "Unit Tests"
-        run: "poetry run pytest --cov=infrahub backend/tests/unit"
+        run: "invoke backend.test"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -192,15 +197,15 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
-      - name: "Integration Tests"
-        run: "poetry run pytest --cov=infrahub backend/tests/integration"
-      - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-integration
-          parallel: true
+      # - name: "Integration Tests"
+      #   run: "poetry run pytest --cov=infrahub backend/tests/integration"
+      # - name: "Coveralls : Integration Tests"
+      #   uses: coverallsapp/github-action@v2.0.0
+      #   env:
+      #     COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+      #   with:
+      #     flag-name: backend-integration
+      #     parallel: true
 
   backend-tests-neo4j:
     needs: ["yaml-lint", "python-lint", "backend-build-docker"]

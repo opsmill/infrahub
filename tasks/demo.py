@@ -1,56 +1,26 @@
 """Replacement for Makefile."""
 import os
-from enum import Enum
 from time import sleep
 
 from invoke import Context, task
 
-from .utils import REPO_BASE, project_ver
-
-
-class DatabaseType(str, Enum):
-    NEO4J = "neo4j"
-    MEMGRAPH = "memgraph"
-
-
-here = os.path.abspath(os.path.dirname(__file__))
-TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
-BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", TOP_DIRECTORY_NAME)
-PYTHON_VER = os.getenv("PYTHON_VER", "3.11")
-IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
-IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
-PWD = os.getcwd()
-
-OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
-DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
-COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-message-queue.yml",
-    "development/docker-compose-database-memgraph.yml",
-    "development/docker-compose.yml",
-]
-COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-message-queue.yml",
-    "development/docker-compose-database-neo4j.yml",
-    "development/docker-compose.yml",
-]
-
-DEV_COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-message-queue.yml",
-    "development/docker-compose-database-memgraph.yml",
-]
-DEV_COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-message-queue.yml",
-    "development/docker-compose-database-neo4j.yml",
-]
-DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
-
-AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
-SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
-
-ENV_VARS = f"IMAGE_NAME={IMAGE_NAME}, IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_VER}"
-ENV_VARS = f"IMAGE_NAME={IMAGE_NAME}, IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_VER} INFRAHUB_BUILD_NAME={BUILD_NAME}"
-
-VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
+from .shared import (
+    AVAILABLE_SERVICES,
+    BUILD_NAME,
+    COMPOSE_FILES_MEMGRAPH,
+    COMPOSE_FILES_NEO4J,
+    DEFAULT_FILE_NAME,
+    DEV_COMPOSE_FILES_MEMGRAPH,
+    DEV_COMPOSE_FILES_NEO4J,
+    DEV_OVERRIDE_FILE_NAME,
+    ENV_VARS,
+    OVERRIDE_FILE_NAME,
+    PYTHON_VER,
+    SUPPORTED_DATABASES,
+    VOLUME_NAMES,
+    DatabaseType,
+)
+from .utils import REPO_BASE
 
 
 def build_compose_files_cmd(database: str) -> str:

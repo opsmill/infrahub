@@ -66,6 +66,7 @@ types-pyyaml = "*"
 typer-cli = "*"
 pytest-cov = "^4.0.0"
 ruff = "0.0.265"
+pytest-xdist = "^3.3.1"
 
 
 [tool.poetry.group.sync.dependencies]

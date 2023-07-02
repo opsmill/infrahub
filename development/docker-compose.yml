@@ -7,7 +7,7 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-backend
-    image: "opsmill/${INFRAHUB_BUILD_NAME}-py${PYTHON_VER}:${IMAGE_VER}"
+    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.api.main:app
     depends_on:
@@ -31,7 +31,7 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-backend
-    image: "opsmill/${INFRAHUB_BUILD_NAME}-py${PYTHON_VER}:${IMAGE_VER}"
+    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:
@@ -50,7 +50,7 @@ services:
     build:
       context: ../
       dockerfile: development/Dockerfile-frontend
-    image: "opsmill/${INFRAHUB_BUILD_NAME}-frontend:${IMAGE_VER}"
+    image: "${IMAGE_NAME_FRONTEND}:${IMAGE_VER}"
     command: >
       bash -c "npm i --omit=dev && npm run build-serve"
     depends_on:

@@ -1,5 +1,6 @@
 from invoke import Context, task
 
+from .shared import BUILD_NAME, ENV_VARS, build_test_compose_files_cmd, NBR_WORKERS
 from .utils import REPO_BASE
 
 MAIN_DIRECTORY = "backend"
@@ -133,6 +134,24 @@ def lint(context: Context):
     # mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
+
+
+@task(optional=["database"])
+def test_unit(context: Context, database: str = "memgraph"):
+    with context.cd(REPO_BASE):
+        compose_files_cmd = build_test_compose_files_cmd(database=database)
+        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+
+        return context.run(exec_cmd, pty=True)
+
+
+@task(optional=["database"])
+def test_integration(context: Context, database: str = "memgraph"):
+    with context.cd(REPO_BASE):
+        compose_files_cmd = build_test_compose_files_cmd(database=database)
+        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+
+        return context.run(exec_cmd, pty=True)
 
 
 @task(default=True)
