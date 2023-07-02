@@ -1,0 +1,281 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: "CI"
+on:
+  # pull_request:
+  #   paths:
+  #     - ".github/workflows/javascript-lint.yml"
+  #     - "**.js"
+  #     - "**.ts"
+  #     - "**.tsx"
+  #     - "frontend/package.json"
+  #     - "frontend/package-lock.json"
+  push:
+    branches:
+      - develop
+      - stable
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEO4J_USERNAME: neo4j
+  NEO4J_PASSWORD: admin
+  NEO4J_ADDRESS: localhost
+  NEO4J_PORT: 7687
+  NEO4J_PROTOCOL: bolt
+  INFRAHUB_LOG_LEVEL: CRITICAL
+
+jobs:
+  yaml-lint:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup environment"
+        run: "pip install yamllint==1.29.0"
+      - name: "Linting: yamllint"
+        run: "yamllint ."
+  javascript-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: Install NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run eslint
+  python-lint:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup environment"
+        run: "pip install black==23.1.0"
+      - name: "Linting: BLACK"
+        run: "black --check ."
+      - name: "Install ruff"
+        uses: "chartboost/ruff-action@v1"
+
+  sdk-tests:
+    needs: ["python-lint"]
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.3.2 toml invoke"
+      - name: "Setup Git"
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
+      - name: "Install project"
+        run: "poetry install --only=main,dev,server"
+      - name: "Black Tests"
+        run: "poetry run invoke sdk.black"
+      - name: "Isort Tests"
+        run: "poetry run invoke sdk.isort"
+      - name: "Pylint Tests"
+        run: "poetry run invoke sdk.pylint"
+      - name: "Mypy Tests"
+        run: "poetry run invoke sdk.mypy"
+      - name: "Unit Tests"
+        run: "poetry run pytest --cov=infrahub_client python_sdk/tests/unit"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: python-sdk-unit
+          parallel: true
+      # - name: "Setup Docker-Compose"
+      #   run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      - name: "Start database"
+        run: "invoke demo.dev-start"
+      - name: "Check Services Status"
+        run: |
+          sleep 30
+          invoke demo.status
+      - name: "Integration Tests"
+        run: "poetry run pytest --cov=infrahub_client python_sdk/tests/integration"
+      - name: "Coveralls : Integration Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: python-sdk-integration
+          parallel: true
+
+  backend-tests-default:
+    needs: ["python-lint"]
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.3.2 toml invoke"
+      - name: "Setup Git"
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
+      - name: "Setup Docker-Compose"
+        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      - name: "Start database"
+        run: "invoke demo.dev-start"
+      - name: "Install project"
+        run: "poetry install --only=main,dev,server"
+      - name: "Black Tests"
+        run: "poetry run invoke backend.black"
+      - name: "Isort Tests"
+        run: "poetry run invoke backend.isort"
+      - name: "Pylint Tests"
+        run: "poetry run invoke backend.pylint"
+      - name: "Unit Tests"
+        run: "poetry run pytest --cov=infrahub backend/tests/unit"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-unit
+          parallel: true
+      - name: "Integration Tests"
+        run: "poetry run pytest --cov=infrahub backend/tests/integration"
+      - name: "Coveralls : Integration Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-integration
+          parallel: true
+
+  backend-tests-neo4j:
+    needs: ["python-lint"]
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.3.2 toml invoke"
+      - name: "Setup Git"
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
+      - name: "Setup Docker-Compose"
+        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+      - name: "Start database"
+        run: "invoke demo.dev-start --database=neo4j"
+      - name: "Install project"
+        run: "poetry install --only=main,dev,server"
+      - name: "Unit Tests"
+        run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
+
+  ctl-tests:
+    needs: ["python-lint"]
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.3.2 toml invoke"
+      - name: "Setup Git"
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global user.email "infrahub@example.com"
+          git config --global user.name "Infrahub"
+      - name: "Install project"
+        run: "poetry install --only=main,dev"
+      - name: "Black Tests"
+        run: "poetry run invoke ctl.black"
+      - name: "Isort Tests"
+        run: "poetry run invoke ctl.isort"
+      - name: "Pylint Tests"
+        run: "poetry run invoke ctl.pylint"
+      - name: "Mypy Tests"
+        run: "poetry run invoke ctl.mypy"
+      - name: "Unit Tests"
+        run: "poetry run pytest --cov=infrahub_ctl ctl/tests/unit"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: infrahubctl-unit
+          parallel: true
+
+  frontend-tests:
+    needs: ["javascript-lint"]
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup Python environment"
+        run: "pip install poetry==1.3.2 toml invoke==2.0.0"
+      - name: "Install frontend"
+        working-directory: ./frontend
+        run: npm install
+      - name: "Run integration tests"
+        working-directory: ./frontend
+        run: "npm run cypress:run"
+      - name: "Run unit tests"
+        working-directory: ./frontend
+        run: "npm run test:coverage"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: frontend-unit
+          parallel: true
+          file: frontend/coverage/lcov.info
+          # - name: "Start backend"
+          #   run: |
+          #     cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+          #     invoke demo.dev-start demo.build demo.init demo.start
+          # - name: "Run integration tests"
+          #   working-directory: ./frontend
+          #   run: "npm run cypress:run"
+
+  coverall-report:
+    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "sdk-tests"]
+    if: always() 
+    runs-on: ubuntu-latest
+    steps:
+      # # NOTE: The ref value should be different when triggered by pull_request event.
+      # #       See: https://github.com/lewagon/wait-on-check-action/issues/25.
+      # - name: Wait on tests (PR)
+      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
+      #   if: github.event_name == 'pull_request'
+      #   with:
+      #     ref: ${{ github.event.pull_request.head.sha }}
+      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+      #     wait-interval: 10
+      #     running-workflow-name: report
+      #     allowed-conclusions: success,skipped,cancelled,failure
+
+      # - name: Wait on tests (push)
+      #   if: github.event_name != 'pull_request'
+      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
+      #   with:
+      #     ref: ${{ github.sha }}
+      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+      #     wait-interval: 10
+      #     running-workflow-name: report
+      #     allowed-conclusions: success,skipped,cancelled,failure
+
+      - uses: coverallsapp/github-action@v2
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
+          parallel-finished: true
