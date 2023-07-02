@@ -7,7 +7,7 @@ from infrahub.core.initialization import create_branch
 async def test_graphql_endpoint(session, client, client_headers, default_branch: Branch, car_person_data):
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     name {
@@ -41,7 +41,8 @@ async def test_graphql_endpoint(session, client, client_headers, default_branch:
     assert response.json()["data"] is not None
     result = response.json()["data"]
 
-    result_per_name = {result["node"]["name"]["value"]: result for result in result["person"]["edges"]}
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
     assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
@@ -53,7 +54,7 @@ async def test_graphql_endpoint_generics(
 ):
     query = """
     query {
-        person {
+        TestPerson {
             name {
                 value
             }
@@ -79,7 +80,7 @@ async def test_graphql_endpoint_generics(
     assert response.json()["data"] is not None
     result = response.json()["data"]
 
-    result_per_name = {result["name"]["value"]: result for result in result["person"]}
+    result_per_name = {result["name"]["value"]: result for result in result["TestPerson"]}
 
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]) == 2

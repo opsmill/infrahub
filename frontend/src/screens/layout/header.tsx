@@ -97,7 +97,7 @@ export default function Header(props: Props) {
     return <LoadingScreen />;
   }
 
-  const objectDetailsData = data && data[schema.name]?.edges[0]?.node;
+  const objectDetailsData = data && data[schema.kind]?.edges[0]?.node;
 
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">

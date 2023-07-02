@@ -965,12 +965,12 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def import_objects_rfiles(self, branch_name: str, commit: str, data: dict):
         LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ({commit}) ")
 
-        schema = await self.client.schema.get(kind="RFile", branch=branch_name)
+        schema = await self.client.schema.get(kind="CoreRFile", branch=branch_name)
 
         rfiles_in_graph = {
             rfile.name.value: rfile
             for rfile in await self.client.filters(
-                kind="RFile", branch=branch_name, template_repository__id=str(self.id)
+                kind="CoreRFile", branch=branch_name, template_repository__id=str(self.id)
             )
         }
 
@@ -995,7 +995,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
-                kind="GraphQLQuery", branch=branch_name, id=str(item.query), populate_store=True
+                kind="CoreGraphQLQuery", branch=branch_name, id=str(item.query), populate_store=True
             )
             item.query = graphql_query.id
 
@@ -1025,11 +1025,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             await rfiles_in_graph[rfile_name].delete()
 
     async def create_rfile(self, branch_name: str, data: RFileInformation) -> InfrahubNode:
-        schema = await self.client.schema.get(kind="RFile", branch=branch_name)
+        schema = await self.client.schema.get(kind="CoreRFile", branch=branch_name)
         create_payload = self.client.schema.generate_payload_create(
             schema=schema, data=data.dict(), source=self.id, is_protected=True
         )
-        obj = await self.client.create(kind="RFile", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind="CoreRFile", branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
@@ -1069,7 +1069,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         queries_in_graph = {
             query.name.value: query
-            for query in await self.client.filters(kind="GraphQLQuery", branch=branch_name, repository__id=str(self.id))
+            for query in await self.client.filters(
+                kind="CoreGraphQLQuery", branch=branch_name, repository__id=str(self.id)
+            )
         }
 
         present_in_both, only_graph, only_local = compare_lists(
@@ -1101,14 +1103,14 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def create_graphql_query(self, branch_name: str, name: str, query_string: str) -> InfrahubNode:
         data = {"name": name, "query": query_string, "repository": self.id}
 
-        schema = await self.client.schema.get(kind="GraphQLQuery", branch=branch_name)
+        schema = await self.client.schema.get(kind="CoreGraphQLQuery", branch=branch_name)
         create_payload = self.client.schema.generate_payload_create(
             schema=schema,
             data=data,
             source=self.id,
             is_protected=True,
         )
-        obj = await self.client.create(kind="GraphQLQuery", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind="CoreGraphQLQuery", branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
@@ -1120,13 +1122,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         checks_in_graph = {
             check.name.value: check
-            for check in await self.client.filters(kind="Check", branch=branch_name, repository__id=str(self.id))
+            for check in await self.client.filters(kind="CoreCheck", branch=branch_name, repository__id=str(self.id))
         }
 
         local_checks = {}
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
             graphql_query = await self.client.get(
-                kind="GraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
+                kind="CoreGraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
             )
             try:
                 item = CheckInformation(
@@ -1184,7 +1186,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             "timeout": check.timeout,
         }
 
-        schema = await self.client.schema.get(kind="Check", branch=branch_name)
+        schema = await self.client.schema.get(kind="CoreCheck", branch=branch_name)
 
         create_payload = self.client.schema.generate_payload_create(
             schema=schema,
@@ -1192,7 +1194,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             source=self.id,
             is_protected=True,
         )
-        obj = await self.client.create(kind="Check", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind="CoreCheck", branch=branch_name, **create_payload)
         await obj.save()
 
         return obj
@@ -1240,7 +1242,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         transforms_in_graph = {
             transform.name.value: transform
             for transform in await self.client.filters(
-                kind="TransformPython", branch=branch_name, repository__id=str(self.id)
+                kind="CoreTransformPython", branch=branch_name, repository__id=str(self.id)
             )
         }
 
@@ -1251,7 +1253,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
-                kind="GraphQLQuery", branch=branch_name, id=str(transform.query), populate_store=True
+                kind="CoreGraphQLQuery", branch=branch_name, id=str(transform.query), populate_store=True
             )
 
             item = TransformPythonInformation(
@@ -1296,7 +1298,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             await transforms_in_graph[transform_name].delete()
 
     async def create_python_transform(self, branch_name: str, transform: TransformPythonInformation) -> InfrahubNode:
-        schema = await self.client.schema.get(kind="TransformPython", branch=branch_name)
+        schema = await self.client.schema.get(kind="CoreTransformPython", branch=branch_name)
         data = {
             "name": transform.name,
             "repository": transform.repository,
@@ -1313,7 +1315,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             source=self.id,
             is_protected=True,
         )
-        obj = await self.client.create(kind="TransformPython", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind="CoreTransformPython", branch=branch_name, **create_payload)
         await obj.save()
         return obj
 

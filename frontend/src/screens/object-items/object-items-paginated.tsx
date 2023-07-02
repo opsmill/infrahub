@@ -85,7 +85,6 @@ export default function ObjectItems(props: any) {
   const queryString = schemaData
     ? getObjectItemsPaginated({
         kind: schemaData.kind,
-        name: schemaData.name,
         attributes: schemaData.attributes,
         relationships: getSchemaRelationshipColumns(schemaData),
         filters: filtersString,
@@ -100,7 +99,7 @@ export default function ObjectItems(props: any) {
 
   const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schemaData?.name] ?? {} : {};
+  const result = data ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -153,7 +152,7 @@ export default function ObjectItems(props: any) {
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              {schemaData.kind} ({count})
+              {schemaData.name} ({count})
             </h1>
             <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
               A list of all the {schemaData.kind} in your infrastructure.

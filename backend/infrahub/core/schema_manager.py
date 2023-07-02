@@ -35,8 +35,12 @@ if TYPE_CHECKING:
 
 # pylint: disable=redefined-builtin
 
-INTERNAL_SCHEMA_NODE_KINDS = [node["kind"] for node in internal_schema["nodes"]]
-SUPPORTED_SCHEMA_NODE_TYPE = ["NodeSchema", "GenericSchema", "GroupSchema"]
+INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
+SUPPORTED_SCHEMA_NODE_TYPE = [
+    "SchemaGroup",
+    "SchemaGeneric",
+    "SchemaNode",
+]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 
 
@@ -439,6 +443,7 @@ class SchemaManager(NodeManager):
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
         branch = await get_branch(branch=branch, session=session)
+
         for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()) + list(schema.groups.keys()):
             if limit and item_kind not in limit:
                 continue
@@ -462,14 +467,18 @@ class SchemaManager(NodeManager):
         """
         branch = await get_branch(branch=branch, session=session)
 
-        node_type = node.__class__.__name__
+        node_type = "SchemaGroup"
+        if isinstance(node, GenericSchema):
+            node_type = "SchemaGeneric"
+        elif isinstance(node, NodeSchema):
+            node_type = "SchemaNode"
 
         if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported")
+            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
 
         node_schema = self.get(name=node_type, branch=branch)
-        attribute_schema = self.get(name="AttributeSchema", branch=branch)
-        relationship_schema = self.get(name="RelationshipSchema", branch=branch)
+        attribute_schema = self.get(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get(name="SchemaRelationship", branch=branch)
 
         # Duplicate the node in order to store the IDs after inserting them in the database
         new_node = node.duplicate()
@@ -511,10 +520,13 @@ class SchemaManager(NodeManager):
         """Update a Node with its attributes and its relationships in the database."""
         branch = await get_branch(branch=branch, session=session)
 
-        node_type = node.__class__.__name__
+        if isinstance(node, GenericSchema):
+            node_type = "SchemaGeneric"
+        elif isinstance(node, NodeSchema):
+            node_type = "SchemaNode"
 
         if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported")
+            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
 
         # Update the node First
         schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
@@ -527,8 +539,8 @@ class SchemaManager(NodeManager):
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
             )
 
-        attribute_schema = self.get(name="AttributeSchema", branch=branch)
-        relationship_schema = self.get(name="RelationshipSchema", branch=branch)
+        attribute_schema = self.get(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get(name="SchemaRelationship", branch=branch)
 
         # Update all direct attributes attributes
         for key, value in schema_dict.items():
@@ -619,7 +631,7 @@ class SchemaManager(NodeManager):
         branch = await get_branch(branch=branch, session=session)
         schema = SchemaBranch(cache=self._cache, name=branch.name)
 
-        group_schema = self.get(name="GroupSchema", branch=branch)
+        group_schema = self.get(name="SchemaGroup", branch=branch)
         for schema_node in await self.query(
             schema=group_schema, branch=branch, prefetch_relationships=True, session=session
         ):
@@ -627,21 +639,24 @@ class SchemaManager(NodeManager):
                 name=schema_node.kind.value, schema=await self.convert_group_schema_to_schema(schema_node=schema_node)
             )
 
-        generic_schema = self.get(name="GenericSchema", branch=branch)
+        generic_schema = self.get(name="SchemaGeneric", branch=branch)
         for schema_node in await self.query(
             schema=generic_schema, branch=branch, prefetch_relationships=True, session=session
         ):
             schema.set(
-                name=schema_node.kind.value,
+                name=f"{schema_node.namespace.value}{schema_node.name.value}",
                 schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, session=session),
             )
 
-        node_schema = self.get(name="NodeSchema", branch=branch)
+        node_schema = self.get(name="SchemaNode", branch=branch)
         for schema_node in await self.query(
             schema=node_schema, branch=branch, prefetch_relationships=True, session=session
         ):
+            kind = f"{schema_node.namespace.value}{schema_node.name.value}"
+            # if schema_node.namespace.value == "Internal":
+            #    kind = schema_node.name.value
             schema.set(
-                name=schema_node.kind.value,
+                name=kind,
                 schema=await self.convert_node_schema_to_schema(schema_node=schema_node, session=session),
             )
 

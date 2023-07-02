@@ -63,7 +63,7 @@ async def test_build_subquery_filter_attribute_int(
 
 
 async def test_build_subquery_filter_relationship(session, default_branch: Branch, car_person_schema):
-    car_schema = registry.schema.get(name="Car")
+    car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_filter(
@@ -89,14 +89,14 @@ async def test_build_subquery_filter_relationship(session, default_branch: Branc
     assert query == expected_query
     assert params == {
         "filter1_name": "name",
-        "filter1_rel_name": "car__person",
+        "filter1_rel_name": "testcar__testperson",
         "filter1_value": "john",
     }
     assert result_name == "filter1"
 
 
 async def test_build_subquery_order_relationship(session, default_branch: Branch, car_person_schema):
-    car_schema = registry.schema.get(name="Car")
+    car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_order(
@@ -118,5 +118,5 @@ async def test_build_subquery_order_relationship(session, default_branch: Branch
     LIMIT 1
     """
     assert query == expected_query
-    assert params == {"order1_name": "name", "order1_rel_name": "car__person"}
+    assert params == {"order1_name": "name", "order1_rel_name": "testcar__testperson"}
     assert result_name == "order1"

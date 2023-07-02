@@ -26,10 +26,10 @@ async def test_transform_endpoint(
 
     client = TestClient(app)
 
-    repositories = await NodeManager.query(session=session, schema="Repository")
-    queries = await NodeManager.query(session=session, schema="GraphQLQuery")
+    repositories = await NodeManager.query(session=session, schema="CoreRepository")
+    queries = await NodeManager.query(session=session, schema="CoreGraphQLQuery")
 
-    t1 = await Node.init(session=session, schema="TransformPython")
+    t1 = await Node.init(session=session, schema="CoreTransformPython")
     await t1.new(
         session=session,
         name="transform01",
@@ -68,10 +68,10 @@ async def test_transform_endpoint_path(session, client_headers, patch_rpc_client
 
     client = TestClient(app)
 
-    repositories = await NodeManager.query(session=session, schema="Repository")
-    queries = await NodeManager.query(session=session, schema="GraphQLQuery")
+    repositories = await NodeManager.query(session=session, schema="CoreRepository")
+    queries = await NodeManager.query(session=session, schema="CoreGraphQLQuery")
 
-    t1 = await Node.init(session=session, schema="TransformPython")
+    t1 = await Node.init(session=session, schema="CoreTransformPython")
     await t1.new(
         session=session,
         name="transform01",

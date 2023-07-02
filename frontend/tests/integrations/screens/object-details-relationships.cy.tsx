@@ -21,7 +21,7 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const graphqlQueryItemsUrl = `/objects/device/${deviceDetailsMocksId}`;
+const graphqlQueryItemsUrl = `/objects/Device/${deviceDetailsMocksId}`;
 
 // Path that will match the route to display the component
 const graphqlQueryItemsPath = "/objects/:objectname/:objectid";
@@ -79,6 +79,8 @@ const ObjectDetailsProvider = () => {
 describe("List screen", () => {
   it("should fetch items and render list", () => {
     cy.viewport(1920, 1080);
+
+    cy.log("deviceDetailsMocksSchema: ", deviceDetailsMocksSchema);
 
     // Mount the view with the default route and the mocked data
     cy.mount(

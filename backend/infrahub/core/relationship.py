@@ -173,7 +173,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 peer_schema = registry.get_schema(name=value.get_kind(), branch=self.branch)
 
                 if self.schema.peer not in peer_schema.groups:
-                    if not (value.get_kind() == "GenericSchema" and self.schema.peer == "NodeSchema"):
+                    if not (value.get_kind() == "SchemaGeneric" and self.schema.peer == "SchemaNode"):
                         raise ValidationError(
                             {self.name: f"Got an object of type {value.get_kind()} instead of {self.schema.peer}"}
                         )

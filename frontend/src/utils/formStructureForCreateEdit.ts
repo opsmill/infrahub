@@ -7,7 +7,6 @@ import {
   SchemaAttributeType,
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
-import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 
 const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
   // Field is available if there is no owner and if is_protected is not set to true
@@ -22,7 +21,6 @@ const getFormStructureForCreateEdit = (
   schemas: iNodeSchema[],
   generics: iGenericSchema[],
   dropdownOptions: iPeerDropdownOptions,
-  schemaKindNameMap: iSchemaKindNameMap,
   row?: any,
   user?: any
 ): DynamicFieldData[] => {
@@ -77,8 +75,8 @@ const getFormStructureForCreateEdit = (
 
       const isInherited = generics.find((g) => g.kind === relationship.peer);
 
-      if (!isInherited && dropdownOptions[schemaKindNameMap[relationship.peer]]) {
-        options = dropdownOptions[schemaKindNameMap[relationship.peer]].map((row: any) => ({
+      if (!isInherited && dropdownOptions[relationship.peer]) {
+        options = dropdownOptions[relationship.peer].map((row: any) => ({
           name: row.display_label,
           id: row.id,
         }));
@@ -89,8 +87,8 @@ const getFormStructureForCreateEdit = (
             const relatedSchema = schemas.find((s) => s.kind === name);
             if (relatedSchema) {
               options.push({
-                id: relatedSchema.name,
-                name: name,
+                id: name,
+                name: relatedSchema.name,
               });
             }
           });

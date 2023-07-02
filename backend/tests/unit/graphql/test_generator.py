@@ -28,7 +28,7 @@ async def test_generate_interface_object(session, default_branch: Branch, generi
     result = generate_interface_object(schema=generic_vehicule_schema, branch=default_branch)
     assert inspect.isclass(result)
     assert issubclass(result, graphene.Interface)
-    assert result._meta.name == "Vehicule"
+    assert result._meta.name == "TestVehicule"
     assert sorted(list(result._meta.fields.keys())) == ["description", "display_label", "id", "name"]
 
 
@@ -62,7 +62,7 @@ async def test_generate_graphql_object(session, default_branch: Branch, group_gr
     result = generate_graphql_object(schema=criticality_schema, branch=default_branch)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
-    assert result._meta.name == "Criticality"
+    assert result._meta.name == "TestCriticality"
     assert sorted(list(result._meta.fields.keys())) == [
         "_updated_at",
         "color",
@@ -87,7 +87,7 @@ async def test_generate_graphql_object_with_interface(
     result = generate_graphql_object(schema=car_schema, branch=default_branch)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
-    assert result._meta.name == "Car"
+    assert result._meta.name == "TestCar"
     assert sorted(list(result._meta.fields.keys())) == [
         "_updated_at",
         "description",
@@ -100,25 +100,25 @@ async def test_generate_graphql_object_with_interface(
 
 async def test_generate_graphql_mutation_create(session, default_branch: Branch, group_graphql, criticality_schema):
     result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch)
-    assert result._meta.name == "CriticalityCreate"
+    assert result._meta.name == "TestCriticalityCreate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
 async def test_generate_graphql_mutation_update(session, default_branch: Branch, group_graphql, criticality_schema):
     result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch)
-    assert result._meta.name == "CriticalityUpdate"
+    assert result._meta.name == "TestCriticalityUpdate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
 async def test_generate_object_types(session, default_branch: Branch, data_schema, group_graphql, car_person_schema):
     await generate_object_types(session=session, branch=default_branch)
 
-    car = registry.get_graphql_type(name="Car", branch=default_branch)
-    edged_car = registry.get_graphql_type(name="EdgedCar", branch=default_branch)
-    nested_edged_car = registry.get_graphql_type(name="NestedEdgedCar", branch=default_branch)
-    person = registry.get_graphql_type(name="Person", branch=default_branch)
-    edged_person = registry.get_graphql_type(name="EdgedPerson", branch=default_branch)
-    nested_edged_person = registry.get_graphql_type(name="NestedEdgedPerson", branch=default_branch)
+    car = registry.get_graphql_type(name="TestCar", branch=default_branch)
+    edged_car = registry.get_graphql_type(name="EdgedTestCar", branch=default_branch)
+    nested_edged_car = registry.get_graphql_type(name="NestedEdgedTestCar", branch=default_branch)
+    person = registry.get_graphql_type(name="TestPerson", branch=default_branch)
+    edged_person = registry.get_graphql_type(name="EdgedTestPerson", branch=default_branch)
+    nested_edged_person = registry.get_graphql_type(name="NestedEdgedTestPerson", branch=default_branch)
     relationship_property = registry.get_graphql_type(name="RelationshipProperty", branch=default_branch)
 
     assert issubclass(car, InfrahubObject)
@@ -140,9 +140,9 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
     ]
 
     assert sorted(list(edged_car._meta.fields.keys())) == ["node"]
-    assert str(edged_car._meta.fields["node"].type) == "Car"
+    assert str(edged_car._meta.fields["node"].type) == "TestCar"
     assert sorted(list(nested_edged_car._meta.fields.keys())) == ["node", "properties"]
-    assert str(nested_edged_car._meta.fields["node"].type) == "Car"
+    assert str(nested_edged_car._meta.fields["node"].type) == "TestCar"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
     assert sorted(list(person._meta.fields.keys())) == [
@@ -154,9 +154,9 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "name",
     ]
     assert sorted(list(edged_person._meta.fields.keys())) == ["node"]
-    assert str(edged_person._meta.fields["node"].type) == "Person"
+    assert str(edged_person._meta.fields["node"].type) == "TestPerson"
     assert sorted(list(nested_edged_person._meta.fields.keys())) == ["node", "properties"]
-    assert str(nested_edged_person._meta.fields["node"].type) == "Person"
+    assert str(nested_edged_person._meta.fields["node"].type) == "TestPerson"
     assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
     assert sorted(list(relationship_property._meta.fields.keys())) == [
         "is_protected",

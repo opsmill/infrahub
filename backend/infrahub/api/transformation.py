@@ -36,7 +36,7 @@ async def transform_python(
 ) -> JSONResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    transform_schema = registry.get_node_schema(name="TransformPython", branch=branch_params.branch)
+    transform_schema = registry.get_node_schema(name="CoreTransformPython", branch=branch_params.branch)
     transforms = await NodeManager.query(
         session=session,
         schema=transform_schema,

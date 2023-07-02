@@ -101,8 +101,8 @@ def test_schema_root_no_generic():
     FULL_SCHEMA = {
         "nodes": [
             {
-                "name": "criticality",
-                "kind": "Criticality",
+                "name": "Criticality",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
@@ -117,8 +117,8 @@ def test_schema_root_no_generic():
 
 def test_node_schema_unique_names():
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
@@ -133,8 +133,8 @@ def test_node_schema_unique_names():
     assert "Names of attributes and relationships must be unique" in str(exc.value)
 
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
@@ -154,8 +154,8 @@ def test_node_schema_unique_names():
 
 def test_node_schema_property_unique_attributes():
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
@@ -171,16 +171,16 @@ def test_node_schema_property_unique_attributes():
 
 def test_node_schema_unique_identifiers():
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
-            {"name": "first", "peer": "Criticality", "cardinality": "one"},
-            {"name": "second", "peer": "Criticality", "cardinality": "one"},
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one"},
         ],
     }
 
@@ -190,35 +190,35 @@ def test_node_schema_unique_identifiers():
     assert "Identifier of relationships must be unique" in str(exc.value)
 
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
-            {"name": "first", "peer": "Criticality", "cardinality": "one"},
-            {"name": "second", "identifier": "something_unique", "peer": "Criticality", "cardinality": "one"},
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
+            {"name": "second", "identifier": "something_unique", "peer": "TestCriticality", "cardinality": "one"},
         ],
     }
     schema = NodeSchema(**SCHEMA)
-    assert schema.relationships[0].identifier == "criticality__criticality"
+    assert schema.relationships[0].identifier == "testcriticality__testcriticality"
     assert schema.relationships[1].identifier == "something_unique"
 
 
 async def test_node_schema_hashable():
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
-            {"name": "first", "peer": "Criticality", "cardinality": "one"},
-            {"name": "second", "identifier": "something_unique", "peer": "Criticality", "cardinality": "one"},
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
+            {"name": "second", "identifier": "something_unique", "peer": "TestCriticality", "cardinality": "one"},
         ],
     }
     schema = NodeSchema(**SCHEMA)
@@ -247,8 +247,8 @@ async def test_relationship_schema_hashable():
 
 async def test_node_schema_generate_fields_for_display_label():
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "display_labels": ["name__value", "level__value"],
         "branch": True,
@@ -257,7 +257,7 @@ async def test_node_schema_generate_fields_for_display_label():
             {"name": "level", "kind": "Number"},
         ],
         "relationships": [
-            {"name": "first", "peer": "Criticality", "cardinality": "one"},
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
         ],
     }
 
@@ -271,7 +271,7 @@ async def test_node_schema_generate_fields_for_display_label():
 
 
 async def test_rel_schema_query_filter(session, default_branch, car_person_schema):
-    person = registry.get_schema(name="Person")
+    person = registry.get_schema(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
@@ -290,7 +290,7 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
         "(av:AttributeValue { value: $attr_name_value })",
     ]
     assert [str(item) for item in filters] == expected_response
-    assert params == {"attr_name_name": "name", "attr_name_value": "alice", "rel_cars_rel_name": "car__person"}
+    assert params == {"attr_name_name": "name", "attr_name_value": "alice", "rel_cars_rel_name": "testcar__testperson"}
     assert matchs == []
 
     # Filter relationship by ID
@@ -305,12 +305,12 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
         "(peer:Node { uuid: $rel_cars_peer_id })",
     ]
     assert [str(item) for item in filters] == expected_response
-    assert params == {"rel_cars_peer_id": "XXXX-YYYY", "rel_cars_rel_name": "car__person"}
+    assert params == {"rel_cars_peer_id": "XXXX-YYYY", "rel_cars_rel_name": "testcar__testperson"}
     assert matchs == []
 
 
 async def test_rel_schema_query_filter_no_value(session, default_branch, car_person_schema):
-    person = registry.get_schema(name="Person")
+    person = registry.get_schema(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
@@ -327,7 +327,7 @@ async def test_rel_schema_query_filter_no_value(session, default_branch, car_per
         "(av:AttributeValue)",
     ]
     assert [str(item) for item in filters] == expected_response
-    assert params == {"attr_name_name": "name", "rel_cars_rel_name": "car__person"}
+    assert params == {"attr_name_name": "name", "rel_cars_rel_name": "testcar__testperson"}
     assert matchs == []
 
     # Filter relationship by ID
@@ -340,7 +340,7 @@ async def test_rel_schema_query_filter_no_value(session, default_branch, car_per
         "(peer:Node)",
     ]
     assert [str(item) for item in filters] == expected_response
-    assert params == {"rel_cars_rel_name": "car__person"}
+    assert params == {"rel_cars_rel_name": "testcar__testperson"}
     assert matchs == []
 
 

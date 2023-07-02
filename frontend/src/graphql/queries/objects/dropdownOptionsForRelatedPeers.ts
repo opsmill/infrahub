@@ -18,6 +18,7 @@ export const getDropdownOptionsForRelatedPeersPaginated =
       node {
         id
         display_label
+        __typename
       }
     }
   }

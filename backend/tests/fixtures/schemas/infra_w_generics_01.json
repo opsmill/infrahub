@@ -2,8 +2,8 @@
     "version": "1.0",
     "generics": [
         {
-            "name": "interface",
-            "kind": "Interface",
+            "name": "Interface",
+            "namespace": "Infra",
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text"},
@@ -12,17 +12,17 @@
                 {"name": "enabled", "kind": "Boolean", "default_value": true}
             ],
             "relationships": [
-                {"name": "status", "peer": "Status", "optional": false, "cardinality": "one", "kind": "Attribute"},
-                {"name": "role", "peer": "Role", "optional": false, "cardinality": "one", "kind": "Attribute"},
-                {"name": "device", "peer": "Device", "optional": false, "cardinality": "one", "kind": "Parent"},
-                {"name": "tags", "peer": "Tag", "optional": true, "cardinality": "many", "kind": "Attribute"}
+                {"name": "status", "peer": "BuiltinStatus", "optional": false, "cardinality": "one", "kind": "Attribute"},
+                {"name": "role", "peer": "BuiltinRole", "optional": false, "cardinality": "one", "kind": "Attribute"},
+                {"name": "device", "peer": "InfraDevice", "optional": false, "cardinality": "one", "kind": "Parent"},
+                {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many", "kind": "Attribute"}
             ]
         }
     ],
     "nodes": [
         {
-            "name": "device",
-            "kind": "Device",
+            "name": "Device",
+            "namespace": "Infra",
             "default_filter": "name__value",
             "display_labels": ["name__value"],
             "attributes": [
@@ -33,23 +33,23 @@
             "relationships": [
                 {
                     "name": "interfaces",
-                    "peer": "Interface",
+                    "peer": "InfraInterface",
                     "optional": true,
                     "cardinality": "many",
                     "kind": "Component"
                 },
-                {"name": "tags", "peer": "Tag", "optional": true, "cardinality": "many", "kind": "Attribute"}
+                {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many", "kind": "Attribute"}
             ]
         },
         {
-            "name": "interface_l3",
-            "kind": "InterfaceL3",
+            "name": "InterfaceL3",
+            "namespace": "Infra",
             "display_labels": ["name__value"],
-            "inherit_from": ["Interface"],
+            "inherit_from": ["InfraInterface"],
             "relationships": [
                 {
                     "name": "ip_addresses",
-                    "peer": "IPAddress",
+                    "peer": "InfraIPAddress",
                     "optional": true,
                     "cardinality": "many",
                     "kind": "Component"
@@ -57,8 +57,8 @@
             ]
         },
         {
-            "name": "ipaddress",
-            "kind": "IPAddress",
+            "name": "IPAddress",
+            "namespace": "Infra",
             "default_filter": "address__value",
             "display_labels": ["address__value"],
             "attributes": [
@@ -66,7 +66,7 @@
                 {"name": "description", "kind": "Text", "optional": true}
             ],
             "relationships": [
-                {"name": "interface", "peer": "Interface", "optional": true, "cardinality": "one", "kind": "Parent"}
+                {"name": "interface", "peer": "InfraInterface", "optional": true, "cardinality": "one", "kind": "Parent"}
             ]
         }
     ]

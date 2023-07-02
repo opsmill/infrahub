@@ -15,10 +15,10 @@ import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const graphqlQueryItemsUrl = "/objects/graphql_query";
+const mockedUrl = "/objects/GraphQLQuery";
 
 // Path that will match the route to display the component
-const graphqlQueryItemsPath = "/objects/:objectname";
+const mockedPath = "/objects/:objectname";
 
 // Mock the apollo query and data
 const mocks: any[] = [
@@ -63,13 +63,13 @@ describe("List screen", () => {
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={graphqlQueryItemsPath} />
+          <Route element={<ObjectItemsProvider />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
         // Add iniital route for the app router, to display the current items view
         routerProps: {
-          initialEntries: [graphqlQueryItemsUrl],
+          initialEntries: [mockedUrl],
         },
       }
     );
@@ -93,7 +93,7 @@ describe("List screen", () => {
     // The last page should be the number 20
     cy.get(":nth-child(7) > .cursor-pointer").should(
       "have.text",
-      Math.ceil(graphqlQueriesMocksData.graphql_query.count / 50)
+      Math.ceil(graphqlQueriesMocksData.CoreGraphQLQuery.count / 50)
     );
   });
 });

@@ -1,8 +1,8 @@
 {
     "nodes": [
         {
-            "name": "graphql_query",
-            "kind": "GraphQLQuery",
+            "name": "GraphQLQuery",
+            "namespace": "Core",
             "description": null,
             "attributes": [
                 {
@@ -42,7 +42,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "Tag",
+                    "peer": "BuiltinTag",
                     "label": null,
                     "description": null,
                     "identifier": "graphqlquery__tag",
@@ -98,8 +98,8 @@
             ]
         },
         {
-            "name": "repository",
-            "kind": "Repository",
+            "name": "Repository",
+            "namespace": "Core",
             "description": null,
             "attributes": [
                 {
@@ -194,7 +194,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "Tag",
+                    "peer": "BuiltinTag",
                     "label": null,
                     "description": null,
                     "identifier": "repository__tag",
@@ -222,7 +222,7 @@
                 },
                 {
                     "name": "queries",
-                    "peer": "GraphQLQuery",
+                    "peer": "CoreGraphQLQuery",
                     "label": null,
                     "description": null,
                     "identifier": "graphqlquery__repository",
@@ -311,8 +311,8 @@
             ]
         },
         {
-            "name": "tag",
-            "kind": "Tag",
+            "name": "Tag",
+            "namespace": "Builtin",
             "description": null,
             "attributes": [
                 {
@@ -363,8 +363,8 @@
             ]
         },
         {
-            "name": "location",
-            "kind": "Location",
+            "name": "Location",
+            "namespace": "Builtin",
             "default_filter": "name__value",
             "attributes": [
                 {
@@ -385,21 +385,21 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "Tag",
+                    "peer": "BuiltinTag",
                     "optional": true,
                     "cardinality": "many"
                 },
                 {
                     "name": "primary_tag",
-                    "peer": "Tag",
+                    "peer": "BuiltinTag",
                     "optional": true,
                     "cardinality": "one"
                 }
             ]
         },
         {
-            "name": "check",
-            "kind": "Check",
+            "name": "Check",
+            "namespace": "Core",
             "default_filter": "name__value",
             "attributes": [
                 {
@@ -434,7 +434,7 @@
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "Repository",
+                    "peer": "CoreRepository",
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check__repository",
@@ -442,7 +442,7 @@
                 },
                 {
                     "name": "query",
-                    "peer": "GraphQLQuery",
+                    "peer": "CoreGraphQLQuery",
                     "kind": "Attribute",
                     "identifier": "check__graphql_query",
                     "cardinality": "one",
@@ -450,7 +450,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "Tag",
+                    "peer": "BuiltinTag",
                     "kind": "Attribute",
                     "optional": true,
                     "cardinality": "many"

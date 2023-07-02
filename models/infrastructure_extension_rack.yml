@@ -2,8 +2,8 @@
 ---
 version: '1.0'
 nodes:
-  - name: rack
-    kind: Rack
+  - name: Rack
+    namespace: Infra
     default_filter: name__value
     display_labels:
       - name__value
@@ -30,31 +30,31 @@ nodes:
         optional: true
     relationships:
       - name: location
-        peer: Location
+        peer: BuiltinLocation
         optional: false
         cardinality: one
         kind: Attribute
       - name: status
-        peer: Status
+        peer: BuiltinStatus
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: Role
+        peer: BuiltinRole
         optional: true
         cardinality: one
         kind: Attribute
       - name: tags
-        peer: Tag
+        peer: BuiltinTag
         optional: true
         cardinality: many
         kind: Attribute
 extensions:
   nodes:
-    - kind: Location
+    - kind: BuiltinLocation
       relationships:
         - name: racks
-          peer: Rack
+          peer: InfraRack
           optional: true
           cardinality: many
           kind: Generic

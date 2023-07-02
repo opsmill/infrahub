@@ -27,25 +27,25 @@ def admin_headers():
 
 @pytest.fixture
 async def car_person_data(session, register_core_models_schema, car_person_schema, first_account):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
-    p2 = await Node.init(session=session, schema="Person")
+    p2 = await Node.init(session=session, schema="TestPerson")
     await p2.new(session=session, name="Jane", height=170)
     await p2.save(session=session)
-    c1 = await Node.init(session=session, schema="Car")
+    c1 = await Node.init(session=session, schema="TestCar")
     await c1.new(session=session, name="volt", nbr_seats=3, is_electric=True, owner=p1)
     await c1.save(session=session)
-    c2 = await Node.init(session=session, schema="Car")
+    c2 = await Node.init(session=session, schema="TestCar")
     await c2.new(session=session, name="bolt", nbr_seats=2, is_electric=True, owner=p1)
     await c2.save(session=session)
-    c3 = await Node.init(session=session, schema="Car")
+    c3 = await Node.init(session=session, schema="TestCar")
     await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
     await c3.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             edges {
                 node {
                     name {
@@ -66,11 +66,11 @@ async def car_person_data(session, register_core_models_schema, car_person_schem
     }
     """
 
-    q1 = await Node.init(session=session, schema="GraphQLQuery")
+    q1 = await Node.init(session=session, schema="CoreGraphQLQuery")
     await q1.new(session=session, name="query01", query=query)
     await q1.save(session=session)
 
-    r1 = await Node.init(session=session, schema="Repository")
+    r1 = await Node.init(session=session, schema="CoreRepository")
     await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git")
     await r1.save(session=session)
 
@@ -135,28 +135,28 @@ async def car_person_data_diff(session, default_branch, car_person_data, first_a
 
 @pytest.fixture
 async def car_person_data_generic(session, register_core_models_schema, car_person_schema_generics):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
-    p2 = await Node.init(session=session, schema="Person")
+    p2 = await Node.init(session=session, schema="TestPerson")
     await p2.new(session=session, name="Jane", height=170)
     await p2.save(session=session)
-    c1 = await Node.init(session=session, schema="ElectricCar")
+    c1 = await Node.init(session=session, schema="TestElectricCar")
     await c1.new(session=session, name="volt", nbr_seats=3, nbr_engine=4, owner=p1)
     await c1.save(session=session)
-    c2 = await Node.init(session=session, schema="ElectricCar")
+    c2 = await Node.init(session=session, schema="TestElectricCar")
     await c2.new(session=session, name="bolt", nbr_seats=2, nbr_engine=2, owner=p1)
     await c2.save(session=session)
-    c3 = await Node.init(session=session, schema="GazCar")
+    c3 = await Node.init(session=session, schema="TestGazCar")
     await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
     await c3.save(session=session)
-    c4 = await Node.init(session=session, schema="GazCar")
+    c4 = await Node.init(session=session, schema="TestGazCar")
     await c4.new(session=session, name="focus", nbr_seats=5, mpg=30, owner=p2)
     await c4.save(session=session)
 
     query = """
     query {
-        person {
+        TestPerson {
             name {
                 value
             }
@@ -169,11 +169,11 @@ async def car_person_data_generic(session, register_core_models_schema, car_pers
     }
     """
 
-    q1 = await Node.init(session=session, schema="GraphQLQuery")
+    q1 = await Node.init(session=session, schema="CoreGraphQLQuery")
     await q1.new(session=session, name="query01", query=query)
     await q1.save(session=session)
 
-    r1 = await Node.init(session=session, schema="Repository")
+    r1 = await Node.init(session=session, schema="CoreRepository")
     await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
     await r1.save(session=session)
 
@@ -185,21 +185,21 @@ async def car_person_data_generic_diff(session, default_branch, car_person_data_
     # Time After Creation of branch2
     time0 = pendulum.now(tz="UTC")
 
-    persons_list = await NodeManager.query(session=session, schema="Person", branch=branch2)
+    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
     persons = {item.name.value: item for item in persons_list}
 
-    repos_list = await NodeManager.query(session=session, schema="Repository", branch=branch2)
+    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
     repos = {item.name.value: item for item in repos_list}
 
-    ecars_list = await NodeManager.query(session=session, schema="ElectricCar", branch=branch2)
+    ecars_list = await NodeManager.query(session=session, schema="TestElectricCar", branch=branch2)
     ecars = {item.name.value: item for item in ecars_list}
 
-    gcars_list = await NodeManager.query(session=session, schema="GazCar", branch=branch2)
+    gcars_list = await NodeManager.query(session=session, schema="TestGazCar", branch=branch2)
     gcars = {item.name.value: item for item in gcars_list}
 
     # Add a new Person P3 in Branch2 and assign him as the owner of C1
     time10 = pendulum.now(tz="UTC")
-    p3 = await Node.init(session=session, schema="Person", branch=branch2)
+    p3 = await Node.init(session=session, schema="TestPerson", branch=branch2)
     await p3.new(session=session, name="Bill", height=160)
     await p3.save(session=session, at=time10)
     persons["Bill"] = p3
@@ -233,7 +233,7 @@ async def car_person_data_generic_diff(session, default_branch, car_person_data_
     await gcars["focus"].delete(session=session)
 
     # Update C2 main
-    ecars_list_main = await NodeManager.query(session=session, schema="ElectricCar", branch=default_branch)
+    ecars_list_main = await NodeManager.query(session=session, schema="TestElectricCar", branch=default_branch)
     ecars_main = {item.name.value: item for item in ecars_list_main}
 
     ecars_main["bolt"].nbr_seats.value = 4

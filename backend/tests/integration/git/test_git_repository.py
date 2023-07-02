@@ -34,7 +34,7 @@ class TestInfrahubClient:
 
     @pytest.fixture(scope="class")
     async def query_99(self, session, test_client):
-        obj = await Node.init(schema="GraphQLQuery", session=session)
+        obj = await Node.init(schema="CoreGraphQLQuery", session=session)
         await obj.new(
             session=session,
             name="query99",
@@ -46,7 +46,7 @@ class TestInfrahubClient:
     @pytest.fixture
     async def repo(self, test_client, client, session, git_upstream_repo_10, git_repos_dir):
         # Create the repository in the Graph
-        obj = await Node.init(schema="Repository", session=session)
+        obj = await Node.init(schema="CoreRepository", session=session)
         await obj.new(
             session=session,
             name=git_upstream_repo_10["name"],
@@ -70,7 +70,7 @@ class TestInfrahubClient:
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_graphql_query(branch_name="main", commit=commit)
 
-        queries = await client.all(kind="GraphQLQuery")
+        queries = await client.all(kind="CoreGraphQLQuery")
         assert len(queries) == 5
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -84,7 +84,7 @@ class TestInfrahubClient:
         queries[0].query.value = "query myquery { location { edges { id }}}"
         await queries[0].save()
 
-        obj = await Node.init(schema="GraphQLQuery", session=session)
+        obj = await Node.init(schema="CoreGraphQLQuery", session=session)
         await obj.new(
             session=session,
             name="soontobedeletedquery",
@@ -95,20 +95,20 @@ class TestInfrahubClient:
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit)
 
-        modified_query = await client.get(kind="GraphQLQuery", id=queries[0].id)
+        modified_query = await client.get(kind="CoreGraphQLQuery", id=queries[0].id)
         assert modified_query.query.value == value_before_change
 
         with pytest.raises(NodeNotFound):
-            await client.get(kind="GraphQLQuery", id=obj.id)
+            await client.get(kind="CoreGraphQLQuery", id=obj.id)
 
     async def test_import_all_python_files(self, session, client: InfrahubClient, repo: InfrahubRepository, query_99):
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_python_files(branch_name="main", commit=commit)
 
-        checks = await client.all(kind="Check")
+        checks = await client.all(kind="CoreCheck")
         assert len(checks) >= 1
 
-        transforms = await client.all(kind="TransformPython")
+        transforms = await client.all(kind="CoreTransformPython")
         assert len(transforms) >= 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -133,7 +133,7 @@ class TestInfrahubClient:
         await transforms[1].save()
 
         # Create Object that will be deleted
-        obj1 = await Node.init(schema="Check", session=session)
+        obj1 = await Node.init(schema="CoreCheck", session=session)
         await obj1.new(
             session=session,
             name="soontobedeletedcheck",
@@ -144,7 +144,7 @@ class TestInfrahubClient:
         )
         await obj1.save(session=session)
 
-        obj2 = await Node.init(schema="TransformPython", session=session)
+        obj2 = await Node.init(schema="CoreTransformPython", session=session)
         await obj2.new(
             session=session,
             name="soontobedeletedtransform",
@@ -158,28 +158,28 @@ class TestInfrahubClient:
 
         await repo.import_all_python_files(branch_name="main", commit=commit)
 
-        modified_check0 = await client.get(kind="Check", id=checks[0].id)
+        modified_check0 = await client.get(kind="CoreCheck", id=checks[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change
         assert modified_check0.query.id == check_query_value_before_change
 
-        modified_transform0 = await client.get(kind="TransformPython", id=transforms[0].id)
-        modified_transform1 = await client.get(kind="TransformPython", id=transforms[1].id)
+        modified_transform0 = await client.get(kind="CoreTransformPython", id=transforms[0].id)
+        modified_transform1 = await client.get(kind="CoreTransformPython", id=transforms[1].id)
 
         assert modified_transform0.timeout.value == transform_timeout_value_before_change
         assert modified_transform1.query.id == transform_query_value_before_change
 
         # FIXME not implemented yet
         with pytest.raises(NodeNotFound):
-            await client.get(kind="Check", id=obj1.id)
+            await client.get(kind="CoreCheck", id=obj1.id)
 
         with pytest.raises(NodeNotFound):
-            await client.get(kind="TransformPython", id=obj2.id)
+            await client.get(kind="CoreTransformPython", id=obj2.id)
 
     async def test_import_all_yaml_files(self, session, client: InfrahubClient, repo: InfrahubRepository, query_99):
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_yaml_files(branch_name="main", commit=commit)
 
-        rfiles = await client.all(kind="RFile")
+        rfiles = await client.all(kind="CoreRFile")
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -195,7 +195,7 @@ class TestInfrahubClient:
         rfiles[0].query = query_99.id
         await rfiles[0].save()
 
-        obj = await Node.init(schema="RFile", session=session)
+        obj = await Node.init(schema="CoreRFile", session=session)
         await obj.new(
             session=session,
             name="soontobedeletedrfile",
@@ -207,10 +207,10 @@ class TestInfrahubClient:
 
         await repo.import_all_yaml_files(branch_name="main", commit=commit)
 
-        modified_rfile = await client.get(kind="RFile", id=rfiles[0].id)
+        modified_rfile = await client.get(kind="CoreRFile", id=rfiles[0].id)
         assert modified_rfile.template_path.value == rfile_template_path_value_before_change
         assert modified_rfile.query.id == rfile_query_value_before_change
 
         # FIXME not implemented yet
         with pytest.raises(NodeNotFound):
-            await client.get(kind="RFile", id=obj.id)
+            await client.get(kind="CoreRFile", id=obj.id)

@@ -212,7 +212,7 @@ async def test_relationship_wrong_name(
     )
 
     assert result.errors
-    assert result.errors[0].message == "'notvalid' is not a valid relationship for 'Person'"
+    assert result.errors[0].message == "'notvalid' is not a valid relationship for 'TestPerson'"
 
     # Relationship existing relationship with the wrong cardinality
     query = """
@@ -304,4 +304,4 @@ async def test_relationship_wrong_node(
     )
 
     assert result.errors
-    assert result.errors[0].message == f"'{person_jack_main.id}' 'Person' is not a valid peer for 'Tag'"
+    assert result.errors[0].message == f"'{person_jack_main.id}' 'TestPerson' is not a valid peer for 'BuiltinTag'"

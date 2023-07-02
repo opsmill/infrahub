@@ -8,7 +8,7 @@ from pytest_httpx import HTTPXMock
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "repository": {
+            "CoreRepository": {
                 "count": 1,
                 "edges": [
                     {

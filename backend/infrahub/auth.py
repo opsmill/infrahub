@@ -41,7 +41,7 @@ async def authenticate_with_password(
 ) -> models.UserToken:
     selected_branch = await get_branch(session=session, branch=branch)
     response = await NodeManager.query(
-        schema="Account",
+        schema="CoreAccount",
         session=session,
         branch=selected_branch,
         filters={"name__value": credentials.username},
@@ -50,7 +50,7 @@ async def authenticate_with_password(
     if not response:
         raise NodeNotFound(
             branch_name=selected_branch.name,
-            node_type="Account",
+            node_type="CoreAccount",
             identifier=credentials.username,
             message="That login user doesn't exist in the system",
         )
@@ -70,7 +70,7 @@ async def authenticate_with_password(
 
 
 async def create_db_refresh_token(session: AsyncSession, account_id: str, expiration: datetime) -> uuid.UUID:
-    obj = await Node.init(session=session, schema="RefreshToken")
+    obj = await Node.init(session=session, schema="InternalRefreshToken")
     await obj.new(
         session=session,
         account=account_id,

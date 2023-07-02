@@ -190,7 +190,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     query = """
     MATCH (root:Root)
 
-    CREATE (c1:Node:Car { uuid: "c1", kind: "Car" })
+    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar" })
     CREATE (c1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active" }]->(root)
 
     CREATE (bool_true:Boolean { value: true })
@@ -233,7 +233,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c2:Node:Car { uuid: "c2", kind: "Car" })
+    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
     CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
@@ -264,7 +264,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
     CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c3:Node:Car { uuid: "c3", kind: "Car" })
+    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
     CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
@@ -295,7 +295,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
     CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
+    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
@@ -304,7 +304,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
+    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson" })
     CREATE (p2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
@@ -313,7 +313,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
+    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson" })
     CREATE (p3)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
@@ -322,7 +322,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (r1:Relationship { uuid: "r1", name: "car__person"})
+    CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
@@ -330,7 +330,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
-    CREATE (r2:Relationship { uuid: "r2", name: "car__person"})
+    CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson"})
     CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
@@ -699,8 +699,8 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
     SCHEMA = {
         "generics": [
             {
-                "name": "group",
-                "kind": "Group",
+                "name": "Group",
+                "namespace": "Core",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
@@ -714,13 +714,13 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
         ],
         "nodes": [
             {
-                "name": "standard_group",
-                "kind": "StandardGroup",
+                "name": "StandardGroup",
+                "namespace": "Core",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
                 "branch": True,
-                "inherit_from": ["Group"],
+                "inherit_from": ["CoreGroup"],
             },
         ],
     }
@@ -740,8 +740,8 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
     SCHEMA = {
         "nodes": [
             {
-                "name": "car",
-                "kind": "Car",
+                "name": "Car",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
                 "branch": True,
@@ -752,12 +752,12 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
                 "relationships": [
-                    {"name": "owner", "peer": "Person", "optional": False, "cardinality": "one"},
+                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
                 ],
             },
             {
-                "name": "person",
-                "kind": "Person",
+                "name": "Person",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
                 "branch": True,
@@ -765,7 +765,7 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "Car", "cardinality": "many"}],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
         ]
     }
@@ -781,8 +781,8 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
     SCHEMA = {
         "nodes": [
             {
-                "name": "car",
-                "kind": "Car",
+                "name": "Car",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
                 "branch": True,
@@ -793,13 +793,13 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
                 "relationships": [
-                    {"name": "owner", "peer": "Person", "optional": False, "cardinality": "one"},
-                    {"name": "manufacturer", "peer": "Manufacturer", "optional": False, "cardinality": "one"},
+                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
+                    {"name": "manufacturer", "peer": "TestManufacturer", "optional": False, "cardinality": "one"},
                 ],
             },
             {
-                "name": "person",
-                "kind": "Person",
+                "name": "Person",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
                 "branch": True,
@@ -807,11 +807,11 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "Car", "cardinality": "many"}],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
             {
-                "name": "manufacturer",
-                "kind": "Manufacturer",
+                "name": "Manufacturer",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
                 "branch": True,
@@ -819,7 +819,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "Car", "cardinality": "many"}],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
         ]
     }
@@ -834,8 +834,8 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
     SCHEMA = {
         "generics": [
             {
-                "name": "car",
-                "kind": "Car",
+                "name": "Car",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
                 "order_by": ["name__value"],
@@ -847,7 +847,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "relationships": [
                     {
                         "name": "owner",
-                        "peer": "Person",
+                        "peer": "TestPerson",
                         "identifier": "person__car",
                         "optional": False,
                         "cardinality": "one",
@@ -857,24 +857,24 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
         ],
         "nodes": [
             {
-                "name": "electric_car",
-                "kind": "ElectricCar",
-                "inherit_from": ["Car"],
+                "name": "ElectricCar",
+                "namespace": "Test",
+                "inherit_from": ["TestCar"],
                 "attributes": [
                     {"name": "nbr_engine", "kind": "Number"},
                 ],
             },
             {
-                "name": "gaz_car",
-                "kind": "GazCar",
-                "inherit_from": ["Car"],
+                "name": "GazCar",
+                "namespace": "Test",
+                "inherit_from": ["TestCar"],
                 "attributes": [
                     {"name": "mpg", "kind": "Number"},
                 ],
             },
             {
-                "name": "person",
-                "kind": "Person",
+                "name": "Person",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
                 "branch": True,
@@ -882,7 +882,9 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "Car", "identifier": "person__car", "cardinality": "many"}],
+                "relationships": [
+                    {"name": "cars", "peer": "TestCar", "identifier": "person__car", "cardinality": "many"}
+                ],
             },
         ],
     }
@@ -896,8 +898,8 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
     SCHEMA = {
         "nodes": [
             {
-                "name": "tag",
-                "kind": "Tag",
+                "name": "Tag",
+                "namespace": "Builtin",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
@@ -906,8 +908,8 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
                 ],
             },
             {
-                "name": "person",
-                "kind": "Person",
+                "name": "Person",
+                "namespace": "Test",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
@@ -915,8 +917,13 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
                     {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "Tag", "cardinality": "many"},
-                    {"name": "primary_tag", "peer": "Tag", "identifier": "person_primary_tag", "cardinality": "one"},
+                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many"},
+                    {
+                        "name": "primary_tag",
+                        "peer": "BuiltinTag",
+                        "identifier": "person_primary_tag",
+                        "cardinality": "one",
+                    },
                 ],
             },
         ]
@@ -928,7 +935,7 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
 
 @pytest.fixture
 async def person_john_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
     await person.new(session=session, name="John", height=180)
     await person.save(session=session)
 
@@ -937,7 +944,7 @@ async def person_john_main(session: AsyncSession, default_branch: Branch, car_pe
 
 @pytest.fixture
 async def person_jane_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
     await person.new(session=session, name="Jane", height=180)
     await person.save(session=session)
 
@@ -946,7 +953,7 @@ async def person_jane_main(session: AsyncSession, default_branch: Branch, car_pe
 
 @pytest.fixture
 async def person_jim_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
     await person.new(session=session, name="Jim", height=170)
     await person.save(session=session)
 
@@ -955,7 +962,7 @@ async def person_jim_main(session: AsyncSession, default_branch: Branch, car_per
 
 @pytest.fixture
 async def person_albert_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
     await person.new(session=session, name="Albert", height=160)
     await person.save(session=session)
 
@@ -964,7 +971,7 @@ async def person_albert_main(session: AsyncSession, default_branch: Branch, car_
 
 @pytest.fixture
 async def person_alfred_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="Person", branch=default_branch)
+    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
     await person.new(session=session, name="Alfred", height=160)
     await person.save(session=session)
 
@@ -973,7 +980,7 @@ async def person_alfred_main(session: AsyncSession, default_branch: Branch, car_
 
 @pytest.fixture
 async def car_accord_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
-    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
     await car.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
     await car.save(session=session)
 
@@ -982,7 +989,7 @@ async def car_accord_main(session: AsyncSession, default_branch: Branch, person_
 
 @pytest.fixture
 async def car_volt_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
-    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
     await car.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=person_john_main.id)
     await car.save(session=session)
 
@@ -991,7 +998,7 @@ async def car_volt_main(session: AsyncSession, default_branch: Branch, person_jo
 
 @pytest.fixture
 async def car_prius_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
-    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
     await car.new(session=session, name="pruis", nbr_seats=5, is_electric=True, owner=person_john_main.id)
     await car.save(session=session)
 
@@ -1000,7 +1007,7 @@ async def car_prius_main(session: AsyncSession, default_branch: Branch, person_j
 
 @pytest.fixture
 async def car_camry_main(session: AsyncSession, default_branch: Branch, person_jane_main: Node) -> Node:
-    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
     await car.new(session=session, name="camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
     await car.save(session=session)
 
@@ -1009,7 +1016,7 @@ async def car_camry_main(session: AsyncSession, default_branch: Branch, person_j
 
 @pytest.fixture
 async def car_yaris_main(session: AsyncSession, default_branch: Branch, person_jane_main: Node) -> Node:
-    car = await Node.init(session=session, schema="Car", branch=default_branch)
+    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
     await car.new(session=session, name="yaris", nbr_seats=4, is_electric=False, owner=person_jane_main.id)
     await car.save(session=session)
 
@@ -1018,7 +1025,7 @@ async def car_yaris_main(session: AsyncSession, default_branch: Branch, person_j
 
 @pytest.fixture
 async def tag_blue_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(session=session, schema="Tag", branch=default_branch)
+    tag = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
     await tag.new(session=session, name="Blue", description="The Blue tag")
     await tag.save(session=session)
 
@@ -1027,7 +1034,7 @@ async def tag_blue_main(session: AsyncSession, default_branch: Branch, person_ta
 
 @pytest.fixture
 async def tag_red_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(session=session, schema="Tag", branch=default_branch)
+    tag = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
     await tag.new(session=session, name="Red", description="The Red tag")
     await tag.save(session=session)
 
@@ -1036,7 +1043,7 @@ async def tag_red_main(session: AsyncSession, default_branch: Branch, person_tag
 
 @pytest.fixture
 async def tag_black_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(session=session, schema="Tag", branch=default_branch)
+    tag = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
     await tag.new(session=session, name="Black", description="The Black tag")
     await tag.save(session=session)
 
@@ -1045,7 +1052,7 @@ async def tag_black_main(session: AsyncSession, default_branch: Branch, person_t
 
 @pytest.fixture
 async def person_jack_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    obj = await Node.init(session=session, schema="Person", branch=default_branch)
+    obj = await Node.init(session=session, schema="TestPerson", branch=default_branch)
     await obj.new(session=session, firstname="Jack", lastname="Russell")
     await obj.save(session=session)
 
@@ -1054,7 +1061,7 @@ async def person_jack_main(session: AsyncSession, default_branch: Branch, person
 
 @pytest.fixture
 async def person_jack_primary_tag_main(session: AsyncSession, person_tag_schema, tag_blue_main: Node) -> Node:
-    obj = await Node.init(session=session, schema="Person")
+    obj = await Node.init(session=session, schema="TestPerson")
     await obj.new(session=session, firstname="Jake", lastname="Russell", primary_tag=tag_blue_main)
     await obj.save(session=session)
     return obj
@@ -1064,7 +1071,7 @@ async def person_jack_primary_tag_main(session: AsyncSession, person_tag_schema,
 async def person_jack_tags_main(
     session: AsyncSession, default_branch: Branch, person_tag_schema, tag_blue_main: Node, tag_red_main: Node
 ) -> Node:
-    obj = await Node.init(session=session, schema="Person")
+    obj = await Node.init(session=session, schema="TestPerson")
     await obj.new(session=session, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
     await obj.save(session=session)
     return obj
@@ -1076,7 +1083,7 @@ async def group_group1_main(
     default_branch: Branch,
     group_schema,
 ) -> Node:
-    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1")
     await obj.save(session=session)
     return obj
@@ -1090,7 +1097,7 @@ async def group_group1_members_main(
     person_john_main: Node,
     person_jim_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1", members=[person_john_main, person_jim_main])
     await obj.save(session=session)
 
@@ -1105,7 +1112,7 @@ async def group_group2_members_main(
     person_john_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
     await obj.new(session=session, name="group2", members=[person_john_main, person_albert_main])
     await obj.save(session=session)
 
@@ -1121,7 +1128,7 @@ async def group_group1_subscribers_main(
     person_jim_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
     await obj.new(session=session, name="group1", subscribers=[person_john_main, person_jim_main, person_albert_main])
     await obj.save(session=session)
 
@@ -1138,7 +1145,7 @@ async def group_group2_subscribers_main(
     car_volt_main: Node,
     car_accord_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="StandardGroup", branch=default_branch)
+    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
     await obj.new(
         session=session, name="group2", subscribers=[person_john_main, person_jim_main, car_volt_main, car_accord_main]
     )
@@ -1150,8 +1157,8 @@ async def group_group2_subscribers_main(
 @pytest.fixture
 async def all_attribute_types_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
     SCHEMA = {
-        "name": "all_attribute_types",
-        "kind": "AllAttributeTypes",
+        "name": "AllAttributeTypes",
+        "namespace": "Test",
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "optional": True},
@@ -1171,8 +1178,8 @@ async def all_attribute_types_schema(session: AsyncSession, default_branch: Bran
 @pytest.fixture
 async def criticality_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
     SCHEMA = {
-        "name": "criticality",
-        "kind": "Criticality",
+        "name": "Criticality",
+        "namespace": "Test",
         "default_filter": "name__value",
         "display_labels": ["label__value"],
         "branch": True,
@@ -1197,8 +1204,8 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, data
 @pytest.fixture
 async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GenericSchema:
     SCHEMA = {
-        "name": "vehicule",
-        "kind": "Vehicule",
+        "name": "Vehicule",
+        "namespace": "Test",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "description", "kind": "Text", "optional": True},
@@ -1229,9 +1236,9 @@ async def car_schema(
     session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
 ) -> NodeSchema:
     SCHEMA = {
-        "name": "car",
-        "kind": "Car",
-        "inherit_from": ["Vehicule"],
+        "name": "Car",
+        "namespace": "Test",
+        "inherit_from": ["TestVehicule"],
         "attributes": [
             {"name": "nbr_doors", "kind": "Number"},
         ],
@@ -1250,8 +1257,8 @@ async def motorcycle_schema(
     session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema
 ) -> NodeSchema:
     SCHEMA = {
-        "name": "motorcycle",
-        "kind": "Motorcycle",
+        "name": "Motorcycle",
+        "namespace": "Test",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "description", "kind": "Text", "optional": True},
@@ -1269,8 +1276,8 @@ async def motorcycle_schema(
 @pytest.fixture
 async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema) -> NodeSchema:
     SCHEMA = {
-        "name": "truck",
-        "kind": "Truck",
+        "name": "Truck",
+        "namespace": "Test",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "description", "kind": "Text", "optional": True},
@@ -1288,14 +1295,14 @@ async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_
 @pytest.fixture
 async def boat_schema(session: AsyncSession, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
-        "name": "boat",
-        "kind": "Boat",
-        "inherit_from": ["Vehicule"],
+        "name": "Boat",
+        "namespace": "Test",
+        "inherit_from": ["TestVehicule"],
         "attributes": [
             {"name": "has_sails", "kind": "Boolean"},
         ],
         "relationships": [
-            {"name": "owners", "peer": "Person", "cardinality": "many", "identifier": "person__vehicule"}
+            {"name": "owners", "peer": "TestPerson", "cardinality": "many", "identifier": "person__vehicule"}
         ],
     }
 
@@ -1311,15 +1318,15 @@ async def vehicule_person_schema(
     session: AsyncSession, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema
 ) -> NodeSchema:
     SCHEMA = {
-        "name": "person",
-        "kind": "Person",
+        "name": "Person",
+        "namespace": "Test",
         "default_filter": "name__value",
         "branch": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
         "relationships": [
-            {"name": "vehicules", "peer": "Vehicule", "cardinality": "many", "identifier": "person__vehicule"}
+            {"name": "vehicules", "peer": "TestVehicule", "cardinality": "many", "identifier": "person__vehicule"}
         ],
     }
 
@@ -1334,8 +1341,8 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
             {
-                "name": "tag",
-                "kind": "Tag",
+                "name": "Tag",
+                "namespace": "Builtin",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
@@ -1345,15 +1352,15 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
                 ],
             },
             {
-                "name": "fruit",
-                "kind": "Fruit",
+                "name": "Fruit",
+                "namespace": "Garden",
                 "default_filter": "name__value",
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
-                "relationships": [{"name": "tags", "peer": "Tag", "cardinality": "many", "optional": False}],
+                "relationships": [{"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": False}],
             },
         ]
     }
@@ -1370,17 +1377,17 @@ async def data_schema(session, default_branch: Branch) -> None:
     SCHEMA = {
         "generics": [
             {
-                "name": "data_owner",
-                "kind": "DataOwner",
+                "name": "Owner",
+                "namespace": "Lineage",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
             },
             {
-                "name": "data_source",
+                "name": "Source",
                 "description": "Any Entities that stores or produces data.",
-                "kind": "DataSource",
+                "namespace": "Lineage",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -1438,16 +1445,18 @@ async def register_core_schema_db(session: AsyncSession, default_branch: Branch,
 
 @pytest.fixture
 async def register_account_schema(session) -> None:
-    SCHEMAS_TO_REGISTER = ["Account", "AccountToken", "Group", "RefreshToken"]
+    SCHEMAS_TO_REGISTER = ["CoreAccount", "InternalAccountToken", "CoreGroup", "InternalRefreshToken"]
 
-    account_schemas = [node for node in core_models["nodes"] if node["kind"] in SCHEMAS_TO_REGISTER]
+    account_schemas = [
+        node for node in core_models["nodes"] if f'{node["namespace"]}{node["name"]}' in SCHEMAS_TO_REGISTER
+    ]
     for schema in account_schemas:
-        registry.set_schema(name=schema["kind"], schema=NodeSchema(**schema))
+        registry.set_schema(name=f'{schema["namespace"]}{schema["name"]}', schema=NodeSchema(**schema))
 
 
 @pytest.fixture
 async def create_test_admin(session: AsyncSession, register_core_schema_db, data_schema) -> Node:
-    account = await Node.init(session=session, schema="Account")
+    account = await Node.init(session=session, schema="CoreAccount")
     await account.new(
         session=session,
         name="test-admin",
@@ -1456,7 +1465,7 @@ async def create_test_admin(session: AsyncSession, register_core_schema_db, data
         role="admin",
     )
     await account.save(session=session)
-    token = await Node.init(session=session, schema="AccountToken")
+    token = await Node.init(session=session, schema="InternalAccountToken")
     await token.new(
         session=session,
         token="admin-security",
@@ -1479,7 +1488,7 @@ async def authentication_base(
 
 @pytest.fixture
 async def first_account(session: AsyncSession, register_account_schema) -> Node:
-    obj = await Node.init(session=session, schema="Account")
+    obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123")
     await obj.save(session=session)
     return obj
@@ -1487,7 +1496,7 @@ async def first_account(session: AsyncSession, register_account_schema) -> Node:
 
 @pytest.fixture
 async def second_account(session: AsyncSession, register_account_schema) -> Node:
-    obj = await Node.init(session=session, schema="Account")
+    obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="Second Account", type="Git", password="SecondPassword123")
     await obj.save(session=session)
     return obj
@@ -1495,11 +1504,11 @@ async def second_account(session: AsyncSession, register_account_schema) -> Node
 
 @pytest.fixture
 async def repos_in_main(session, register_core_models_schema):
-    repo01 = await Node.init(session=session, schema="Repository")
+    repo01 = await Node.init(session=session, schema="CoreRepository")
     await repo01.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaaaa")
     await repo01.save(session=session)
 
-    repo02 = await Node.init(session=session, schema="Repository")
+    repo02 = await Node.init(session=session, schema="CoreRepository")
     await repo02.new(session=session, name="repo02", location="git@github.com:user/repo02.git", commit="bbbbbbbbbbb")
     await repo02.save(session=session)
 

@@ -140,7 +140,7 @@ async def graphql_query(
     )
 
     if not gql_query:
-        gqlquery_schema = registry.get_node_schema(name="GraphQLQuery", branch=branch_params.branch)
+        gqlquery_schema = registry.get_node_schema(name="CoreGraphQLQuery", branch=branch_params.branch)
         items = await NodeManager.query(
             session=session,
             schema=gqlquery_schema,

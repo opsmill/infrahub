@@ -20,6 +20,10 @@ const getMutationDetailsFromFormData = (
       if (mode === "update" && updatedValue === existingValue) {
         delete updatedObject[attribute.name];
       }
+
+      if (mode === "update" && !updatedValue && !existingValue) {
+        delete updatedObject[attribute.name];
+      }
     }
 
     if (mode === "create" && !updatedValue) {
@@ -27,80 +31,78 @@ const getMutationDetailsFromFormData = (
     }
   });
 
-  schema.relationships
-    ?.filter((relationship) => relationship.kind === "Attribute")
-    .forEach((relationship) => {
-      const isOneToOne = relationship.kind === "Attribute" && relationship.cardinality === "one";
+  schema?.relationships?.forEach((relationship) => {
+    const isOneToOne = relationship.cardinality === "one";
 
-      const isOneToMany = relationship.kind === "Attribute" && relationship.cardinality === "many";
+    const isOneToMany = relationship.cardinality === "many";
 
-      if (mode === "update" && existingObject) {
-        if (isOneToOne) {
-          const existingValue = existingObject[relationship.name]?.id;
+    if (mode === "update" && existingObject) {
+      if (isOneToOne) {
+        const existingValue = existingObject[relationship.name]?.id;
 
-          const updatedValue = updatedObject[relationship.name]?.id;
+        const updatedValue = updatedObject[relationship.name]?.id;
 
-          if (updatedValue === existingValue) {
-            delete updatedObject[relationship.name];
-          }
-        } else {
-          const existingValue = existingObject[relationship.name]?.edges
-            .map((r: any) => r.node?.id)
-            .sort();
+        if (updatedValue === existingValue) {
+          delete updatedObject[relationship.name];
+        }
 
-          const updatedIds = updatedObject[relationship.name]?.list
-            ?.map((value: any) => value.id)
-            .sort();
+        if (!updatedValue && !existingValue) {
+          delete updatedObject[relationship.name];
+        }
+      } else {
+        const existingValue = existingObject[relationship.name]?.edges
+          .map((r: any) => r.node?.id)
+          .sort();
 
-          if (
-            existingValue &&
-            updatedIds &&
-            JSON.stringify(updatedIds) === JSON.stringify(existingValue)
-          ) {
-            delete updatedObject[relationship.name];
-          }
+        const updatedIds = updatedObject[relationship.name]?.list
+          ?.map((value: any) => value.id)
+          .sort();
+
+        if (
+          existingValue &&
+          updatedIds &&
+          JSON.stringify(updatedIds) === JSON.stringify(existingValue)
+        ) {
+          delete updatedObject[relationship.name];
+        }
+      }
+    }
+
+    if (mode === "create") {
+      if (isOneToOne) {
+        if (!updatedObject[relationship.name]) {
+          delete updatedObject[relationship.name];
         }
       }
 
-      if (mode === "create") {
-        if (isOneToOne) {
-          if (!updatedObject[relationship.name]) {
-            delete updatedObject[relationship.name];
-          }
-        }
-
-        if (isOneToMany) {
-          if (!updatedObject[relationship.name].length) {
-            delete updatedObject[relationship.name];
-          }
+      if (isOneToMany) {
+        if (!updatedObject[relationship.name].length) {
+          delete updatedObject[relationship.name];
         }
       }
+    }
 
-      if (isOneToOne && updatedObject[relationship.name] && !updatedObject[relationship.name].id) {
-        delete updatedObject[relationship.name];
-      }
+    if (isOneToOne && updatedObject[relationship.name] && !updatedObject[relationship.name].id) {
+      delete updatedObject[relationship.name];
+    }
 
-      if (
-        isOneToMany &&
-        updatedObject[relationship.name] &&
-        updatedObject[relationship.name].list
-      ) {
-        const fieldKeys = Object.keys(updatedObject[relationship.name]).filter(
-          (key) => key !== "list"
-        );
+    if (isOneToMany && updatedObject[relationship.name] && updatedObject[relationship.name].list) {
+      const fieldKeys = Object.keys(updatedObject[relationship.name]).filter(
+        (key) => key !== "list"
+      );
 
-        updatedObject[relationship.name] = updatedObject[relationship.name].list.map((row: any) => {
-          const objWithMetaFields: any = {
-            id: row.id,
-          };
+      updatedObject[relationship.name] = updatedObject[relationship.name].list.map((row: any) => {
+        const objWithMetaFields: any = {
+          id: row.id,
+        };
 
-          fieldKeys.forEach((key) => {
-            objWithMetaFields[key] = updatedObject[relationship.name][key];
-          });
-          return objWithMetaFields;
+        fieldKeys.forEach((key) => {
+          objWithMetaFields[key] = updatedObject[relationship.name][key];
         });
-      }
-    });
+        return objWithMetaFields;
+      });
+    }
+  });
 
   return updatedObject;
 };

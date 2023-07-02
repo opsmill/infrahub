@@ -16,19 +16,19 @@ from infrahub.core.timestamp import Timestamp
 
 
 async def test_query_NodeCreateQuery_with_generic(session: AsyncSession, group_schema, branch: Branch):
-    obj = await Node.init(session=session, schema="StandardGroup", branch=branch)
+    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=branch)
 
     query = await NodeCreateQuery.init(session=session, node=obj)
     await query.execute(session=session)
     node = query.get_result().get("n")
 
-    assert sorted(list(node.labels)) == sorted(["Group", "Node", "StandardGroup"])
+    assert sorted(list(node.labels)) == sorted(["CoreGroup", "Node", "CoreStandardGroup"])
 
 
 async def test_query_NodeGetListQuery(
     session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    person_schema = registry.schema.get(name="Person", branch=branch)
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
     ids = [person_john_main.id, person_jim_main.id, person_albert_main.id, person_alfred_main.id]
     query = await NodeGetListQuery.init(session=session, branch=branch, schema=person_schema)
     await query.execute(session=session)
@@ -38,7 +38,7 @@ async def test_query_NodeGetListQuery(
 async def test_query_NodeGetListQuery_filter_id(
     session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    person_schema = registry.schema.get(name="Person", branch=branch)
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
     query = await NodeGetListQuery.init(
         session=session, branch=branch, schema=person_schema, filters={"id": person_john_main.id}
     )
@@ -49,7 +49,7 @@ async def test_query_NodeGetListQuery_filter_id(
 async def test_query_NodeGetListQuery_filter_ids(
     session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    person_schema = registry.schema.get(name="Person", branch=branch)
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
     person_schema.order_by = ["height__value"]
     query = await NodeGetListQuery.init(
         session=session,
@@ -64,7 +64,7 @@ async def test_query_NodeGetListQuery_filter_ids(
 async def test_query_NodeGetListQuery_filter_height(
     session: AsyncSession, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    schema = registry.schema.get(name="Person", branch=branch)
+    schema = registry.schema.get(name="TestPerson", branch=branch)
     query = await NodeGetListQuery.init(session=session, branch=branch, schema=schema, filters={"height__value": 160})
     await query.execute(session=session)
     assert len(query.get_node_ids()) == 2
@@ -73,7 +73,7 @@ async def test_query_NodeGetListQuery_filter_height(
 async def test_query_NodeGetListQuery_filter_boolean(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
-    schema = registry.schema.get(name="Car", branch=branch)
+    schema = registry.schema.get(name="TestCar", branch=branch)
     query = await NodeGetListQuery.init(
         session=session, branch=branch, schema=schema, filters={"is_electric__value": False}
     )
@@ -87,7 +87,7 @@ async def test_query_NodeGetListQuery_deleted_node(
     node_to_delete = await NodeManager.get_one(id=car_camry_main.id, session=session, branch=branch)
     await node_to_delete.delete(session=session)
 
-    schema = registry.schema.get(name="Car", branch=branch)
+    schema = registry.schema.get(name="TestCar", branch=branch)
     schema.order_by = ["owner__name__value"]
 
     query = await NodeGetListQuery.init(
@@ -100,7 +100,7 @@ async def test_query_NodeGetListQuery_deleted_node(
 async def test_query_NodeGetListQuery_filter_relationship(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
-    schema = registry.schema.get(name="Car", branch=branch)
+    schema = registry.schema.get(name="TestCar", branch=branch)
     query = await NodeGetListQuery.init(
         session=session, branch=branch, schema=schema, filters={"owner__name__value": "John"}
     )
@@ -111,7 +111,7 @@ async def test_query_NodeGetListQuery_filter_relationship(
 async def test_query_NodeGetListQuery_filter_and_sort(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
-    schema = registry.schema.get(name="Car", branch=branch)
+    schema = registry.schema.get(name="TestCar", branch=branch)
     schema.order_by = ["owner__name__value", "is_electric__value"]
 
     query = await NodeGetListQuery.init(
@@ -131,7 +131,7 @@ async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
     node.is_electric.value = False
     await node.save(session=session)
 
-    schema = registry.schema.get(name="Car", branch=branch)
+    schema = registry.schema.get(name="TestCar", branch=branch)
     schema.order_by = ["owner__name__value", "is_electric__value"]
 
     query = await NodeGetListQuery.init(
@@ -145,7 +145,7 @@ async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
 
 
 async def test_query_NodeGetListQuery_with_generics(session: AsyncSession, group_group1_main, branch: Branch):
-    schema = registry.schema.get(name="Group", branch=branch)
+    schema = registry.schema.get(name="CoreGroup", branch=branch)
     query = await NodeGetListQuery.init(
         session=session,
         branch=branch,
@@ -167,13 +167,13 @@ async def test_query_NodeListGetInfoQuery(
 async def test_query_NodeListGetLocalAttributeValueQuery(
     session: AsyncSession, default_branch: Branch, car_person_schema
 ):
-    p1 = await Node.init(session=session, schema="Person")
+    p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
-    car1 = await Node.init(session=session, schema="Car")
+    car1 = await Node.init(session=session, schema="TestCar")
     await car1.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1)
     await car1.save(session=session)
-    car2 = await Node.init(session=session, schema="Car")
+    car2 = await Node.init(session=session, schema="TestCar")
     await car2.new(session=session, name="model3", nbr_seats=5, is_electric=True, owner=p1)
     await car2.save(session=session)
 
@@ -297,5 +297,5 @@ async def test_query_NodeListGetRelationshipsQuery(
     await query.execute(session=session)
     result = query.get_peers_group_by_node()
     assert person_jack_tags_main.id in result
-    assert "person__tag" in result[person_jack_tags_main.id]
-    assert len(result[person_jack_tags_main.id]["person__tag"]) == 2
+    assert "builtintag__testperson" in result[person_jack_tags_main.id]
+    assert len(result[person_jack_tags_main.id]["builtintag__testperson"]) == 2

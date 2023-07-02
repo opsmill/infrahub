@@ -81,7 +81,7 @@ class BranchCreate(Mutation):
 
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
-            repositories = await NodeManager.query(session=session, schema="Repository")
+            repositories = await NodeManager.query(session=session, schema="CoreRepository")
 
             tasks = []
             log_data = get_log_data()

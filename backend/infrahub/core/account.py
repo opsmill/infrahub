@@ -35,11 +35,11 @@ class AccountTokenValidateQuery(Query):
         self.params["token_value"] = self.token
 
         query = """
-        MATCH (at:AccountToken)-[r1:HAS_ATTRIBUTE]-(a:Attribute {name: "token"})-[r2:HAS_VALUE]-(av:AttributeValue { value: $token_value })
+        MATCH (at:InternalAccountToken)-[r1:HAS_ATTRIBUTE]-(a:Attribute {name: "token"})-[r2:HAS_VALUE]-(av:AttributeValue { value: $token_value })
         WHERE %s
         WITH at
-        MATCH (at)-[r31]-(:Relationship)-[r41]-(acc:Account)-[r5:HAS_ATTRIBUTE]-(an:Attribute {name: "name"})-[r6:HAS_VALUE]-(av:AttributeValue)
-        MATCH (at)-[r32]-(:Relationship)-[r42]-(acc:Account)-[r7:HAS_ATTRIBUTE]-(ar:Attribute {name: "role"})-[r8:HAS_VALUE]-(avr:AttributeValue)
+        MATCH (at)-[r31]-(:Relationship)-[r41]-(acc:CoreAccount)-[r5:HAS_ATTRIBUTE]-(an:Attribute {name: "name"})-[r6:HAS_VALUE]-(av:AttributeValue)
+        MATCH (at)-[r32]-(:Relationship)-[r42]-(acc:CoreAccount)-[r7:HAS_ATTRIBUTE]-(ar:Attribute {name: "role"})-[r8:HAS_VALUE]-(avr:AttributeValue)
         WHERE %s
         """ % (
             "\n AND ".join(token_filter_perms),
@@ -91,7 +91,7 @@ async def get_account(
     if not account:
         return None
 
-    if hasattr(account, "schema") and account.schema.kind == "Account":
+    if hasattr(account, "schema") and account.schema.kind == "CoreAccount":
         return account
 
     # Try to get it from the registry
@@ -100,7 +100,7 @@ async def get_account(
     if account in registry.account:
         return registry.account[account]
 
-    account_schema = registry.get_schema(name="Account")
+    account_schema = registry.get_schema(name="CoreAccount")
 
     obj = await NodeManager.query(
         account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, session=session

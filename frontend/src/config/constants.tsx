@@ -56,6 +56,6 @@ export const ACCESS_TOKEN_KEY = "access_token";
 
 export const REFRESH_TOKEN_KEY = "refresh_token";
 
-export const ACCOUNT_OBJECT = "account";
+export const ACCOUNT_OBJECT = "Account";
 
 export const ACCOUNT_TOKEN_OBJECT = "account_token";

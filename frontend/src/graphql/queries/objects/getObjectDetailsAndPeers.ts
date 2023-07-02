@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 
 export const getObjectDetailsAndPeers = Handlebars.compile(`
-query {{kind.value}} {
-  {{name}} (ids: ["{{objectid}}"]) {
+query {{kind}} {
+  {{kind}} (ids: ["{{objectid}}"]) {
     edges {
       node {
         id

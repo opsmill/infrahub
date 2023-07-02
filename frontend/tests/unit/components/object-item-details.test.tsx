@@ -4,12 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import ObjectItemDetails from "../../../src/components/tests/object-item-details";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { cleanTabsAndNewLines } from "../../../src/utils/string";
-import { accountDetailsMocksQuery } from "../../../tests/mocks/data/account";
+import { accountDetailsMocksQuery, accountId } from "../../../tests/mocks/data/account";
 import { schemaMocks } from "../../../tests/mocks/data/schema";
 import { TestProvider } from "../../../tests/mocks/jotai/atom";
 
 vi.mock("react-router-dom", () => ({
-  useParams: (): Readonly<Params<string>> => ({ objectname: "account", objectid: "1234" }),
+  useParams: (): Readonly<Params<string>> => ({ objectname: "Account", objectid: accountId }),
 }));
 
 const ObjectItemDetailsProvider = () => {

@@ -101,11 +101,11 @@ export default function ObjectItemDetails(props: any) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schemaData.name] && !data[schemaData.name]?.edges)) {
+  if (!data || (data && !data[schemaData.kind] && !data[schemaData.kind]?.edges)) {
     return <NoDataFound />;
   }
 
-  const objectDetailsData = data[schemaData.name]?.edges[0]?.node;
+  const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
   if (!objectDetailsData) {
     return null;
@@ -119,7 +119,7 @@ export default function ObjectItemDetails(props: any) {
             <div
               onClick={() => navigate(constructPath(`/objects/${objectname}`))}
               className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-              {schemaData.kind}
+              {schemaData.name}
             </div>
             <ChevronRightIcon
               className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"

@@ -15,7 +15,7 @@ def test_node_store_set(client_type, clients, location_schema):
 
     store.set(key="mykey", node=node)
 
-    assert store._store["Location"]["mykey"]
+    assert store._store["BuiltinLocation"]["mykey"]
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -32,8 +32,8 @@ def test_node_store_get(client_type, clients, location_schema):
     store = NodeStore()
 
     store.set(key="mykey", node=node)
-    assert store.get(kind="Location", key="mykey").id == node.id
+    assert store.get(kind="BuiltinLocation", key="mykey").id == node.id
     assert store.get(key="mykey").id == node.id
 
-    assert store.get(kind="Location", key="anotherkey", raise_when_missing=False) is None
+    assert store.get(kind="BuiltinLocation", key="anotherkey", raise_when_missing=False) is None
     assert store.get(key="anotherkey", raise_when_missing=False) is None

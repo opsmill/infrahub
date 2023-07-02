@@ -152,13 +152,13 @@ async def first_time_initialization(session: AsyncSession):
         # ("very critical", 7),
     )
 
-    criticality_schema = registry.get_schema(name="Criticality")
+    criticality_schema = registry.get_schema(name="BuiltinCriticality")
     for level in CRITICALITY_LEVELS:
         obj = await Node.init(session=session, schema=criticality_schema)
         await obj.new(session=session, name=level[0], level=level[1])
         await obj.save(session=session)
 
-    token_schema = registry.get_schema(name="AccountToken")
+    token_schema = registry.get_schema(name="InternalAccountToken")
     # admin_grp = await Node.init(session=session, schema=group_schema)
     # await admin_grp.new(session=session, name="admin")
     # await admin_grp.save(session=session)
@@ -170,7 +170,7 @@ async def first_time_initialization(session: AsyncSession):
     # await admin_grp.save(session=session)
     # default_grp = obj = Node(group_schema).new(name="default").save()
     # account_schema = registry.get_schema(name="Account")
-    obj = await Node.init(session=session, schema="Account")
+    obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(
         session=session,
         name="admin",

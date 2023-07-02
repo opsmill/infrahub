@@ -76,7 +76,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     return null;
   }
 
-  const result = data[schema.name]?.edges;
+  const result = data[schema.kind]?.edges;
 
   const relationships = result?.length ? result[0]?.node[relationshipTab]?.edges : null;
 

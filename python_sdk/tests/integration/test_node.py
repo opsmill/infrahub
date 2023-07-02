@@ -49,15 +49,15 @@ class TestInfrahubNode:
         assert not nodedb_post_delete
 
     async def test_node_delete_node(self, session, client: InfrahubClient, init_db_base, location_schema):
-        obj = await Node.init(session=session, schema="Account")
+        obj = await Node.init(session=session, schema="CoreAccount")
         await obj.new(session=session, name="delete-my-account", type="Git", password="delete-my-password")
         await obj.save(session=session)
-        node_pre_delete = await client.get(kind="Account", name__value="delete-my-account")
+        node_pre_delete = await client.get(kind="CoreAccount", name__value="delete-my-account")
         assert node_pre_delete
         assert node_pre_delete.id
         await node_pre_delete.delete()
         with pytest.raises(NodeNotFound):
-            await client.get(kind="Account", name__value="delete-my-account")
+            await client.get(kind="CoreAccount", name__value="delete-my-account")
 
     async def test_node_create_with_relationships(
         self,
@@ -77,7 +77,7 @@ class TestInfrahubNode:
             "tags": [{"id": tag_blue.id}, tag_red.id],
         }
 
-        node = await client.create(kind="RFile", data=data)
+        node = await client.create(kind="CoreRFile", data=data)
         await node.save()
 
         assert node.id is not None
@@ -103,15 +103,15 @@ class TestInfrahubNode:
             "query": gqlquery01.id,
             "template_repository": repo01.id,
         }
-        schema = await client.schema.get(kind="RFile", branch="main")
+        schema = await client.schema.get(kind="CoreRFile", branch="main")
         create_payload = client.schema.generate_payload_create(
             schema=schema, data=data, source=repo01.id, is_protected=True
         )
-        obj = await client.create(kind="RFile", branch="main", **create_payload)
+        obj = await client.create(kind="CoreRFile", branch="main", **create_payload)
         await obj.save()
 
         assert obj.id is not None
-        nodedb = await client.get(kind="RFile", id=str(obj.id))
+        nodedb = await client.get(kind="CoreRFile", id=str(obj.id))
 
         input_data = nodedb._generate_input_data()["data"]["data"]
         assert input_data["name"]["value"] == "rfile10"
@@ -137,7 +137,7 @@ class TestInfrahubNode:
             "tags": [{"id": tag_blue.id}, tag_red.id],
         }
 
-        node = await client.create(kind="RFile", data=data)
+        node = await client.create(kind="CoreRFile", data=data)
         await node.save()
 
         assert node.id is not None
@@ -149,7 +149,7 @@ class TestInfrahubNode:
     async def test_node_update(
         self, session, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo99: Node
     ):
-        node = await client.get(kind="Repository", name__value="repo99")
+        node = await client.get(kind="CoreRepository", name__value="repo99")
         assert node.id is not None
 
         node.name.value = "repo95"  # type: ignore[attr-defined]
@@ -173,7 +173,7 @@ class TestInfrahubNode:
         gqlquery02: Node,
         repo99: Node,
     ):
-        node = await client.get(kind="GraphQLQuery", name__value="query02")
+        node = await client.get(kind="CoreGraphQLQuery", name__value="query02")
         assert node.id is not None
 
         node.name.value = "query021"  # type: ignore[attr-defined]
