@@ -47,7 +47,7 @@ class AccountMixin:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
         results = await NodeManager.query(
-            schema="Account", filters={"ids": [account_session.account_id]}, session=session
+            schema="CoreAccount", filters={"ids": [account_session.account_id]}, session=session
         )
         if not results:
             raise NodeNotFound(branch_name="main", node_type="CoreAccount", identifier=account_session.account_id)
@@ -59,7 +59,7 @@ class AccountMixin:
 
     @classmethod
     async def create_token(cls, session: AsyncSession, account: Node, data: Dict, info: GraphQLResolveInfo):
-        obj = await Node.init(session=session, schema="AccountToken")
+        obj = await Node.init(session=session, schema="InternalAccountToken")
         token = str(uuid4())
         await obj.new(
             session=session,
