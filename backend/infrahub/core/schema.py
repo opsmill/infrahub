@@ -1114,6 +1114,7 @@ core_models = {
             "display_labels": ["token__value"],
             "branch": True,
             "attributes": [
+                {"name": "name", "kind": "Text", "optional": True},
                 {"name": "token", "kind": "Text", "unique": True},
                 {"name": "expiration", "kind": "DateTime", "optional": True},
             ],

@@ -1489,7 +1489,7 @@ async def authentication_base(
 @pytest.fixture
 async def first_account(session: AsyncSession, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
-    await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123")
+    await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123", role="read-write")
     await obj.save(session=session)
     return obj
 

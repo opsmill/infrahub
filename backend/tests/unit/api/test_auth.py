@@ -148,3 +148,52 @@ async def test_access_resource_using_refresh_token(session, default_branch, clie
 
     assert response.status_code == 401
     assert response.json() == {"data": None, "errors": [{"message": "Invalid token", "extensions": {"code": 401}}]}
+
+
+async def test_generate_api_token(session, default_branch, client, create_test_admin):
+    """It should not be possible to generate an API token using a JWT token"""
+    with client:
+        login_response = client.post(
+            "/auth/login",
+            json={
+                "username": "test-admin",
+                "password": config.SETTINGS.security.initial_admin_password,
+            },
+        )
+
+    assert login_response.status_code == 200
+    access_token = login_response.json()["access_token"]
+
+    token_mutation = """
+    mutation CoreAccountTokenCreate {
+        CoreAccountTokenCreate(data: { name: "my-first-token" }) {
+            ok
+            object {
+            token {
+                value
+            }
+            }
+        }
+    }
+    """
+    with client:
+        jwt_response = client.post(
+            "/graphql",
+            json={"query": token_mutation},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    assert jwt_response.status_code == 200
+    api_token = jwt_response.json()["data"]["CoreAccountTokenCreate"]["object"]["token"]["value"]
+
+    # Validate that the generated API token can't be used to generate another API token
+    with client:
+        api_response = client.post(
+            "/graphql",
+            json={"query": token_mutation},
+            headers={"X-INFRAHUB-KEY": api_token},
+        )
+
+    assert api_response.status_code == 200
+    assert not api_response.json()["data"]["CoreAccountTokenCreate"]
+    assert api_response.json()["errors"][0]["message"] == api_response.json()["errors"][0]["message"]
