@@ -210,7 +210,7 @@ async def test_query_data_include(client, location_schema, client_type):
         node = InfrahubNodeSync(client=client, schema=location_schema)
 
     assert node.generate_query_data(include=["tags"]) == {
-        "location": {
+        "BuiltinLocation": {
             "@filters": {},
             "count": None,
             "edges": {
@@ -297,7 +297,7 @@ async def test_query_data_exclude(client, location_schema, client_type):
         node = InfrahubNodeSync(client=client, schema=location_schema)
 
     assert node.generate_query_data(exclude=["description", "primary_tag"]) == {
-        "location": {
+        "BuiltinLocation": {
             "@filters": {},
             "count": None,
             "edges": {
