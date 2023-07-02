@@ -53,7 +53,7 @@ If other branches are present, it's recommanded to delete them for now.
 Currently the easiest way to add a repository is to use the GraphQL interface.
 
 !!!info
-Before moving to the next step, you'll need your personal access tokken previously generated in Github.
+Before moving to the next step, you'll need your personal access token previously generated in Github.
 !!!
 
 [!ref Open the GraphQL Interface](http://127.0.0.1:8000/graphql/main)
