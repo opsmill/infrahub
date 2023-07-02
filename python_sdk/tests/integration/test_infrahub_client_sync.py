@@ -116,7 +116,7 @@ class TestInfrahubClientSync:
         assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
 
     async def test_get_related_nodes(self, client: InfrahubClientSync, session, init_db_base):
-        nodes = client.all(kind="Repository")
+        nodes = client.all(kind="CoreRepository")
         assert len(nodes) == 1
         repo = nodes[0]
 
