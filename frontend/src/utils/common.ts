@@ -37,3 +37,8 @@ export const parseJwt = (token: string | null) => {
     return null;
   }
 };
+
+export const encodeJwt = (data: any): string => {
+  // Add "." to be decoded by parseJwt
+  return `.${btoa(JSON.stringify(data))}`;
+};
