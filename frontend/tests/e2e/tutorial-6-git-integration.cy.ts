@@ -4,7 +4,7 @@ import { SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 const NEW_BRANCH = "update-ethernet1";
 const DEVICE = "atl1-edge1";
-const INTERFACE = "Ethernet1";
+const INTERFACE = "Ethernet12";
 const NEW_INTERFACE_DESCRIPTION = "New description in the branch";
 
 describe("Tutorial - Part 6", () => {
@@ -47,7 +47,7 @@ describe("Tutorial - Part 6", () => {
     // Access the interfaces
     cy.get(".-mb-px > .border-transparent").click();
 
-    // Acess the interface
+    // Access the interface
     const regex = new RegExp(`^${INTERFACE}$`); // Regex for exact match
     cy.contains(regex).click();
 
