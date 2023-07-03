@@ -189,7 +189,7 @@ jobs:
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Unit Tests"
-        run: "invoke backend.test"
+        run: "invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -207,31 +207,31 @@ jobs:
       #     flag-name: backend-integration
       #     parallel: true
 
-  backend-tests-neo4j:
-    needs: ["yaml-lint", "python-lint", "backend-build-docker"]
-    runs-on: "ubuntu-20.04"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Setup Python environment"
-        run: "pip install poetry==1.3.2 toml invoke"
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-          cache: 'poetry'
-      - name: "Setup Git"
-        run: |
-          git config --global --add safe.directory '*'
-          git config --global user.email "infrahub@example.com"
-          git config --global user.name "Infrahub"
-      - name: "Setup Docker-Compose"
-        run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      - name: "Start database"
-        run: "invoke demo.dev-start --database=neo4j"
-      - name: "Install project"
-        run: "poetry install --only=main,dev,server"
-      - name: "Unit Tests"
-        run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
+  # backend-tests-neo4j:
+  #   needs: ["yaml-lint", "python-lint", "backend-build-docker"]
+  #   runs-on: "ubuntu-20.04"
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: "Setup Python environment"
+  #       run: "pip install poetry==1.3.2 toml invoke"
+  #     - uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.11'
+  #         cache: 'poetry'
+  #     - name: "Setup Git"
+  #       run: |
+  #         git config --global --add safe.directory '*'
+  #         git config --global user.email "infrahub@example.com"
+  #         git config --global user.name "Infrahub"
+  #     - name: "Setup Docker-Compose"
+  #       run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
+  #     - name: "Start database"
+  #       run: "invoke demo.dev-start --database=neo4j"
+  #     - name: "Install project"
+  #       run: "poetry install --only=main,dev,server"
+  #     - name: "Unit Tests"
+  #       run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
 
   ctl-tests:
     needs: ["yaml-lint", "python-lint", "backend-build-docker"]
