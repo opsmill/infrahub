@@ -2,6 +2,10 @@
 ci_config: &ci_config
   - ".github/workflows/ci.yml"
 
+development_files: &development_files
+  - "development/**"
+  - "tasks/**"
+
 backend_files: &backend_files
   - "backend/**"
   - "pyproject.toml"
@@ -33,26 +37,33 @@ yaml_all: &yaml_all
   - "**/*.{yml,yaml}"
 
 backend_all:
+  - *sdk_files
   - *backend_files
-  # - *ci_config
+  - *ci_config
+  - *development_files
 
 sdk_all:
   - *sdk_files
   - *backend_files
-  # - *ci_config
+  - *ci_config
+  - *development_files
 
 ctl_all:
   - *sdk_files
   - *backend_files
   - *ctl_files
-  # - *ci_config
+  - *ci_config
+  - *development_files
 
 frontend_all:
   - *frontend_files
-  # - *ci_config
+  - *ci_config
+  - *development_files
 
 e2e_all:
   - *sdk_files
   - *backend_files
   - *frontend_files
   - *demo_files
+  - *ci_config
+  - *development_files
