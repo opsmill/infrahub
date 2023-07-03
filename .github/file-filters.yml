@@ -24,14 +24,13 @@ demo_files: &demo_files
   - "models/**"
 
 python_all: &python_all
- - "**/*.py"
+  - "**/*.py"
 
 javascript_all: &javascript_all
   - "**/*.[tj]{s,sx}"
 
 yaml_all: &yaml_all
   - "**/*.{yml,yaml}"
-
 
 backend_all:
   - *backend_files
@@ -57,4 +56,3 @@ e2e_all:
   - *backend_files
   - *frontend_files
   - *demo_files
-
