@@ -21,3 +21,9 @@ services:
       timeout: 10s
       retries: 20
       start_period: 10s
+  infrahub-test:
+    depends_on:
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy

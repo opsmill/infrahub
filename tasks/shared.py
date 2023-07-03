@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from typing import Union
 
 from .utils import project_ver
 
@@ -22,16 +23,16 @@ NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
 AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
-
+TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
     "development/docker-compose-message-queue.yml",
     "development/docker-compose-test-database-memgraph.yml",
-    "development/docker-compose-test.yml",
+    TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
     "development/docker-compose-message-queue.yml",
     "development/docker-compose-test-database-neo4j.yml",
-    "development/docker-compose-test.yml",
+    TEST_COMPOSE_FILE,
 ]
 
 
@@ -112,7 +113,12 @@ def build_dev_compose_files_cmd(database: str) -> str:
     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
 
 
-def build_test_compose_files_cmd(database: str = DatabaseType.MEMGRAPH.value) -> str:
+def build_test_compose_files_cmd(
+    database: Union[bool, str] = DatabaseType.MEMGRAPH.value,
+) -> str:
+    if database == False:
+        return f"-f {TEST_COMPOSE_FILE}"
+
     if database not in SUPPORTED_DATABASES:
         exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 

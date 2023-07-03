@@ -8,11 +8,6 @@ services:
       context: ../
       dockerfile: development/Dockerfile-backend
     image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
-    depends_on:
-      database:
-        condition: service_healthy
-      message-queue:
-        condition: service_healthy
     environment:
       - "INFRAHUB_BUILD_NAME=${INFRAHUB_BUILD_NAME}"
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
