@@ -1,6 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import React, { Fragment } from "react";
+import logo from "../../images/Infrahub-SVG-hori.svg";
 import { classNames } from "../../utils/common";
 import { navigation } from "./navigation-list";
 
@@ -54,11 +55,7 @@ export default function MobileMenu(props: Props) {
                 </div>
               </Transition.Child>
               <div className="flex flex-shrink-0 items-center px-4">
-                <img
-                  className="h-8 w-auto"
-                  src="https://dandelionmarketing.com/wp-content/uploads/2019/08/dandelion_clr_logo_charcoal.png"
-                  alt="Your Company"
-                />
+                <img src={logo} />
               </div>
               <div className="mt-5 h-0 flex-1 overflow-y-auto">
                 <nav className="space-y-1 px-2">

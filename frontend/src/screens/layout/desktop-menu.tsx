@@ -1,5 +1,6 @@
 import { LinkIcon, Square3Stack3DIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useNavigate } from "react-router-dom";
 import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS } from "../../config/constants";
 import useFilters from "../../hooks/useFilters";
 import logo from "../../images/Infrahub-SVG-hori.svg";
@@ -11,14 +12,15 @@ import { DropDownMenuItem } from "./desktop-menu-item";
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
   const [, setFilters] = useFilters();
-  const onClinkMenuItem = () => setFilters();
+  const onClickMenuItem = () => setFilters();
+  const navigate = useNavigate();
 
   const schemaItems = schema.map((item, index) => (
     <DropDownMenuItem
       key={index}
       path={constructPath(`/objects/${item.name}`)}
       label={item.label}
-      onClick={onClinkMenuItem}
+      onClick={onClickMenuItem}
     />
   ));
 
@@ -27,7 +29,7 @@ export default function DesktopMenu() {
       key={index}
       path={constructPath(item.path)}
       label={item.label}
-      onClick={onClinkMenuItem}
+      onClick={onClickMenuItem}
     />
   ));
 
@@ -36,14 +38,16 @@ export default function DesktopMenu() {
       key={index}
       path={constructPath(item.path)}
       label={item.label}
-      onClick={onClinkMenuItem}
+      onClick={onClickMenuItem}
     />
   ));
 
   return (
     <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
       <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-custom-white pt-5">
-        <div className="flex flex-shrink-0 items-center px-4">
+        <div
+          className="flex flex-shrink-0 items-center px-4 cursor-pointer"
+          onClick={() => navigate("/")}>
           <img src={logo} />
         </div>
         <div className="mt-5 flex flex-grow flex-col flex-1 overflow-auto py-2">
