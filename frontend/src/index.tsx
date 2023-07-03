@@ -138,15 +138,15 @@ export const Root = () => {
           objectToSearchString: queryString.stringify,
         }}>
         <ApolloProvider client={graphqlClient}>
-          <App />
           <ToastContainer
             hideProgressBar={true}
             transition={Slide}
-            autoClose={5000}
+            autoClose={false}
             closeOnClick={false}
             newestOnTop
             position="bottom-right"
           />
+          <App />
         </ApolloProvider>
       </QueryParamProvider>
     </BrowserRouter>
