@@ -70,77 +70,52 @@ jobs:
       - name: "Install ruff"
         uses: "chartboost/ruff-action@v1"
 
-  backend-build-docker:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build Backend Image
-        uses: docker/build-push-action@v4
-        with:
-          file: "development/Dockerfile-backend"
-          push: false
-          tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  # backend-build-docker:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Set up QEMU
+  #       uses: docker/setup-qemu-action@v2
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v2
+  #     - name: Build Backend Image
+  #       uses: docker/build-push-action@v4
+  #       with:
+  #         file: "development/Dockerfile-backend"
+  #         push: false
+  #         tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
 
-  frontend-build-docker:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build Frontend Image
-        uses: docker/build-push-action@v4
-        with:
-          file: "development/Dockerfile-frontend"
-          push: false
-          tags: "${{env.INFRAHUB_IMAGE_NAME_FRONTEND}}:${{env.INFRAHUB_IMAGE_VER}}"
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  # frontend-build-docker:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Set up QEMU
+  #       uses: docker/setup-qemu-action@v2
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v2
+  #     - name: Build Frontend Image
+  #       uses: docker/build-push-action@v4
+  #       with:
+  #         file: "development/Dockerfile-frontend"
+  #         push: false
+  #         tags: "${{env.INFRAHUB_IMAGE_NAME_FRONTEND}}:${{env.INFRAHUB_IMAGE_VER}}"
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
 
   python-sdk-tests:
-    needs: ["yaml-lint", "python-lint", "backend-build-docker"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Install Invoke"
         run: "pip install toml invoke"
-
-      # Build docker image from cache
-      # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v2
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v2
-      # - name: Build Backend Image
-      #   uses: docker/build-push-action@v4
-      #   with:
-      #     file: "development/Dockerfile-backend"
-      #     push: false
-      #     tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
-      #     cache-from: type=gha
-      #     cache-to: type=gha,mode=max
-
       - name: Cache Docker images
         uses: ScribeMD/docker-cache@0.3.3
         with:
-          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
-
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: '3.11'
-      #     cache: 'poetry'
-      # - name: "Setup Git"
-      #   run: |
-      #     git config --global --add safe.directory '*'
-      #     git config --global user.email "infrahub@example.com"
-      #     git config --global user.name "Infrahub"
-      # - name: "Install project"
-      #   run: "poetry install --only=main,dev,server"
+          key: "docker-${{ runner.os }}-backend-memgraph-${{ hashFiles('development/**') }}"
+      - name: "Build Test Image"
+        run: "invoke test.build"
       - name: "Black Tests"
         run: "invoke sdk.black --docker"
       - name: "Isort Tests"
@@ -149,9 +124,6 @@ jobs:
         run: "invoke sdk.pylint --docker"
       - name: "Mypy Tests"
         run: "invoke sdk.mypy --docker"
-
-      # - name: "Build Test Image"
-      #   run: "invoke test.build"
       - name: "Unit Tests"
         run: "invoke sdk.test-unit"
       - name: "Coveralls : Unit Tests"
@@ -161,14 +133,6 @@ jobs:
         with:
           flag-name: python-sdk-unit
           parallel: true
-      # - name: "Setup Docker-Compose"
-      #   run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      # - name: "Start database"
-      #   run: "invoke demo.dev-start"
-      # - name: "Check Services Status"
-      #   run: |
-      #     sleep 30
-      #     invoke demo.status
 
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
@@ -181,44 +145,25 @@ jobs:
           parallel: true
 
   backend-tests-default:
-    needs: ["yaml-lint", "python-lint", "backend-build-docker"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
-
       - name: Cache Docker images
         uses: ScribeMD/docker-cache@0.3.3
         with:
-          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
-
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: '3.11'
-      #     cache: 'poetry'
-      # - name: "Setup Git"
-      #   run: |
-      #     git config --global --add safe.directory '*'
-      #     git config --global user.email "infrahub@example.com"
-      #     git config --global user.name "Infrahub"
-      # - name: "Setup Docker-Compose"
-      #   run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      # - name: "Start database"
-      #   run: "invoke demo.dev-start"
-      # - name: "Install project"
-      #   run: "poetry install --only=main,dev,server"
+          key: "docker-${{ runner.os }}-backend-memgraph-${{ hashFiles('development/**') }}"
+      - name: "Build Test Image"
+        run: "invoke test.build"
       - name: "Black Tests"
         run: "invoke backend.black --docker"
       - name: "Isort Tests"
         run: "invoke backend.isort --docker"
       - name: "Pylint Tests"
         run: "invoke backend.pylint --docker"
-      # - name: "Unit Tests"
-      #   run: "poetry run pytest --cov=infrahub backend/tests/unit"
-      # - name: "Build Test Image"
-      #   run: "invoke test.build"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
@@ -239,63 +184,36 @@ jobs:
           parallel: true
 
   backend-tests-neo4j:
-    needs: ["yaml-lint", "python-lint", "backend-build-docker"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: '3.11'
-      #     cache: 'poetry'
       - name: Cache Docker images.
         uses: ScribeMD/docker-cache@0.3.3
         with:
-          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
-      # - name: "Build Test Image"
-      #   run: "invoke test.build"
+          key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
+      - name: "Build Test Image"
+        run: "invoke test.build"
       - name: "Unit Tests"
         run: "invoke backend.test-core --database=neo4j"
 
   ctl-tests:
-    needs: ["yaml-lint", "python-lint", "backend-build-docker"]
+    needs: ["yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Install Invoke"
         run: "pip install toml invoke"
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: '3.11'
-      #     cache: 'poetry'
-      # - name: "Setup Git"
-      #   run: |
-      #     git config --global --add safe.directory '*'
-      #     git config --global user.email "infrahub@example.com"
-      #     git config --global user.name "Infrahub"
-      # Build docker image from cache
-      # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v2
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v2
-      # - name: Build Backend Image
-      #   uses: docker/build-push-action@v4
-      #   with:
-      #     file: "development/Dockerfile-backend"
-      #     push: false
-      #     tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
-      #     cache-from: type=gha
-      #     cache-to: type=gha,mode=max
       - name: Cache Docker images
         uses: ScribeMD/docker-cache@0.3.3
         with:
-          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
-
-      # - name: "Install project"
-      #   run: "poetry install --only=main,dev"
+          key: "docker-${{ runner.os }}-backend-nodb-${{ hashFiles('development/**') }}"
+      - name: "Build Test Image"
+        run: "invoke test.build"
       - name: "Black Tests"
         run: "invoke ctl.black --docker"
       - name: "Isort Tests"
@@ -304,8 +222,6 @@ jobs:
         run: "invoke ctl.pylint --docker"
       - name: "Mypy Tests"
         run: "invoke ctl.mypy --docker"
-      # - name: "Build Test Image"
-      #   run: "invoke test.build"
       - name: "Unit Tests"
         run: "invoke ctl.test-unit"
       - name: "Coveralls : Unit Tests"
@@ -317,7 +233,7 @@ jobs:
           parallel: true
 
   frontend-tests:
-    needs: ["yaml-lint", "javascript-lint", "frontend-build-docker"]
+    needs: ["yaml-lint", "javascript-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -341,13 +257,7 @@ jobs:
           flag-name: frontend-unit
           parallel: true
           file: frontend/coverage/lcov.info
-          # - name: "Start backend"
-          #   run: |
-          #     cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-          #     invoke demo.dev-start demo.build demo.init demo.start
-          # - name: "Run integration tests"
-          #   working-directory: ./frontend
-          #   run: "npm run cypress:run"
+
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
