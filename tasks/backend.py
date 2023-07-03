@@ -135,6 +135,7 @@ def lint(context: Context):
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
+
 @task
 def test_unit(context: Context):
     with context.cd(REPO_BASE):
