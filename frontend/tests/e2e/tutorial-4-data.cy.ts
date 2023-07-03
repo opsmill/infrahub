@@ -24,7 +24,9 @@ describe("Tutorial - Part 4", () => {
     }
 
     // Click to open the edit panel
-    cy.get(".border-b > :nth-child(2) > .rounded-md").click();
+    cy.get(".w-80 > :nth-child(1) > .rounded-md").click();
+
+    cy.get(":nth-child(1) > .grid > .sm\\:col-span-6 > .block").should("exist");
 
     if (this.screenshots) {
       cy.screenshot("tutorial_4_metadata_edit", screenshotConfig);
