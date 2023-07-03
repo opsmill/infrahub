@@ -98,7 +98,7 @@ export default function UserProfile() {
 
   if (!auth?.permissions?.write) {
     navigate("/");
-    return;
+    return null;
   }
 
   const objectDetailsData = data[schema.name]?.edges[0]?.node;

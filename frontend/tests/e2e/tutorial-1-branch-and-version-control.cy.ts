@@ -12,6 +12,7 @@ import { SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 describe("Tutorial - Part 1", () => {
   beforeEach(function () {
     cy.visit("/");
+
     this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 
@@ -20,7 +21,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
 
     // Click to open the branch creation form
-    cy.get("#headlessui-popover-button-\\:r9\\: > .py-1\\.5").click();
+    cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").click();
 
     // Fill the new branch name
     cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME);
@@ -37,20 +38,19 @@ describe("Tutorial - Part 1", () => {
   });
 
   it("should update the Admin Account", function () {
+    cy.visit(`/?branch=${NEW_BRANCH_NAME}`);
+
     // Select the Admin object in the menu
-    cy.get("[href='/objects/account'] > .group").click();
+    cy.get(`[href='/objects/Account?branch=${NEW_BRANCH_NAME}'] > .group`).click();
 
     // Select the admin account
-    cy.get(".bg-custom-white > :nth-child(5) > :nth-child(1)").should(
-      "have.text",
-      ADMIN_ACCOUNT_NAME
-    );
+    cy.contains(ADMIN_ACCOUNT_NAME).should("exist");
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_accounts", screenshotConfig);
     }
 
-    cy.get(".bg-custom-white > :nth-child(5) > :nth-child(1)").click();
+    cy.contains(ADMIN_ACCOUNT_NAME).click();
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",
       ADMIN_ACCOUNT_NAME
@@ -76,7 +76,7 @@ describe("Tutorial - Part 1", () => {
     }
 
     // Submit the form
-    cy.get(".mt-6 > .bg-custom-blue-500").click();
+    cy.contains("Save").click();
 
     // The new label should be saved
     cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);
@@ -101,7 +101,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(".divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
 
     // Access to the branch diff
-    cy.get(".isolate > .bg-gray-100").click();
+    cy.contains("Diff").click();
 
     // Open the tab to check the diff
     cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();

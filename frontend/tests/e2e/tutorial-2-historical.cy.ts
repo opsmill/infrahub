@@ -11,10 +11,11 @@ describe("Tutorial - Part 2", () => {
 
   it("should check the historical data", function () {
     // Access the accounts list
-    cy.get("[href='/objects/account'] > .group").click();
+    cy.get("[href='/objects/Account'] > .group").click();
 
     // Access admin account
-    cy.get(".bg-custom-white > :nth-child(5) > :nth-child(1)").click();
+    cy.contains(NEW_ADMIN_ACCOUNT_LABEL).should("exist");
+    cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();
 
     // The label should be the new one
     cy.get(":nth-child(4) > div.flex > .mt-1").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);

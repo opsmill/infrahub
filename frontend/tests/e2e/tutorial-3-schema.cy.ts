@@ -10,7 +10,7 @@ describe("Tutorial - Part 3", () => {
 
   it("should access the schema list", function () {
     // Click on the schema link
-    cy.get("#headlessui-disclosure-panel-\\:r3\\: > a > .group").click();
+    cy.get("[href='/schema'] > .group").click();
 
     if (this.screenshots) {
       cy.screenshot("tutorial_3_schema", screenshotConfig);
