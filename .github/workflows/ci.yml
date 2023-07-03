@@ -321,10 +321,19 @@ jobs:
   E2E-testing:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
     if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
-    runs-on: ubuntu-latest
+    runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
+      - name: Install NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
       - name: "Install Invoke"
         run: "pip install toml invoke"
       # - name: Cache Docker images
@@ -339,15 +348,6 @@ jobs:
         run: "invoke demo.status"
       - name: Load Data
         run: "invoke demo.load-infra-data"
-      - name: Install NodeJS
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm install
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
