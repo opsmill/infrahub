@@ -340,6 +340,8 @@ jobs:
       #   uses: ScribeMD/docker-cache@0.3.3
       #   with:
       #     key: "docker-${{ runner.os }}-e2e-${{ hashFiles('development/**') }}"
+      - name: Prepare Demo Environment
+        run: cp development/docker-compose.override.e2e.yml development/docker-compose.override.yml
       - name: Build Demo
         run: "invoke demo.build"
       - name: Initialize Demo
