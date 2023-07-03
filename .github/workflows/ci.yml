@@ -30,7 +30,7 @@ env:
   INFRAHUB_IMAGE_NAME_FRONTEND: "opsmill/infrahub-frontend"
   INFRAHUB_IMAGE_NAME_BACKEND: "opsmill/infrahub-backend"
   INFRAHUB_IMAGE_VER: "testing"
-  PYTEST_XDIST_WORKER_COUNT: 1
+  PYTEST_XDIST_WORKER_COUNT: 2
   INFRAHUB_TEST_IN_DOCKER: 1
 
 jobs:
