@@ -116,7 +116,7 @@ def build_dev_compose_files_cmd(database: str) -> str:
 def build_test_compose_files_cmd(
     database: Union[bool, str] = DatabaseType.MEMGRAPH.value,
 ) -> str:
-    if database == False:
+    if database is False:
         return f"-f {TEST_COMPOSE_FILE}"
 
     if database not in SUPPORTED_DATABASES:
