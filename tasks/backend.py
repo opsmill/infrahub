@@ -75,27 +75,37 @@ def format_all(context: Context):
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def black(context: Context):
+def black(context: Context, docker: bool = False):
     """Run black to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with black")
     exec_cmd = f"black --check --diff {MAIN_DIRECTORY}"
+
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
 
 
 @task
-def isort(context: Context):
+def isort(context: Context, docker: bool = False):
     """Run isort to check that Python files adherence to import standards."""
 
     print(f" - [{NAMESPACE}] Check code with isort")
     exec_cmd = f"isort --check --diff {MAIN_DIRECTORY}"
+
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
 
 
 @task
-def mypy(context: Context):
+def mypy(context: Context, docker: bool = False):
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
@@ -105,32 +115,42 @@ def mypy(context: Context):
 
 
 @task
-def pylint(context: Context):
+def pylint(context: Context, docker: bool = False):
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
     exec_cmd = f"pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
+
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
 
 
 @task
-def ruff(context: Context):
+def ruff(context: Context, docker: bool = False):
     """This will run ruff."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"ruff check {MAIN_DIRECTORY}"
+
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
 
 
 @task
-def lint(context: Context):
+def lint(context: Context, docker: bool = False):
     """This will run all linter."""
-    ruff(context)
-    black(context)
-    isort(context)
-    pylint(context)
+    ruff(context, docker=docker)
+    black(context, docker=docker)
+    isort(context, docker=docker)
+    pylint(context, docker=docker)
     # mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")

@@ -150,13 +150,13 @@ def ruff(context: Context, docker: bool = False):
 
 
 @task
-def lint(context: Context):
+def lint(context: Context, docker: bool = False):
     """This will run all linter."""
-    ruff(context)
-    black(context)
-    isort(context)
-    pylint(context)
-    mypy(context)
+    ruff(context, docker=docker)
+    black(context, docker=docker)
+    isort(context, docker=docker)
+    pylint(context, docker=docker)
+    mypy(context, docker=docker)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
