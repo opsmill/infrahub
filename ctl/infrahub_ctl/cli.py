@@ -182,9 +182,9 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
     template = templateEnv.get_template(str(template_path))
 
     try:
-        rendered_tpl = template.render(**variables, data=response)  # type: ignore[arg-type]
+        rendered_tpl = template.render(**variables_dict, data=response)  # type: ignore[arg-type]
     except jinja2.TemplateSyntaxError as exc:
-        console.print("[red]Syntax Erro detected on the template")
+        console.print("[red]Syntax Error detected on the template")
         console.print(f"[yellow]  {exc}")
         raise typer.Exit(1) from exc
 
