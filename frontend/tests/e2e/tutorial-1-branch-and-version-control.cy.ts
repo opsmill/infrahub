@@ -86,6 +86,8 @@ describe("Tutorial - Part 1", () => {
     // List the branches
     cy.get("#headlessui-disclosure-panel-\\:r5\\: > a > .group").click();
 
+    cy.contains("Just a moment").should("not.exist");
+
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_list", screenshotConfig);
     }
