@@ -58,11 +58,17 @@ export default function ObjectItems(props: any) {
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const generic = genericList.filter((s) => s.name === objectname)[0];
 
   const schemaData = schema || generic;
+
+  if (!schemaData) {
+    // If there is no schema nor generics, go to home page
+    navigate("/");
+  }
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
@@ -79,8 +85,6 @@ export default function ObjectItems(props: any) {
 
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns(schemaData);
-
-  const navigate = useNavigate();
 
   const queryString = schemaData
     ? getObjectItemsPaginated({
