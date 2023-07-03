@@ -60,7 +60,15 @@ DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
-ENV_VARS = f"IMAGE_NAME_FRONTEND={IMAGE_NAME_FRONTEND} IMAGE_NAME_BACKEND={IMAGE_NAME_BACKEND} IMAGE_VER={IMAGE_VER} PYTHON_VER={PYTHON_VER} INFRAHUB_BUILD_NAME={BUILD_NAME} NBR_WORKERS={NBR_WORKERS}"
+ENV_VARS_DICT = {
+    "IMAGE_NAME_FRONTEND": IMAGE_NAME_FRONTEND,
+    "IMAGE_NAME_BACKEND": IMAGE_NAME_BACKEND,
+    "IMAGE_VER": IMAGE_VER,
+    "PYTHON_VER": PYTHON_VER,
+    "INFRAHUB_BUILD_NAME": BUILD_NAME,
+    "NBR_WORKERS": NBR_WORKERS,
+}
+ENV_VARS = " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
 
