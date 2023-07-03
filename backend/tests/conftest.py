@@ -36,7 +36,12 @@ def event_loop():
 def execute_before_any_test(worker_id):
     config.load_and_exit()
     config.SETTINGS.database.database = TEST_DATABASE
-    db_id = int(worker_id[2]) + 1
+
+    try:
+        db_id = int(worker_id[2]) + 1
+    except (ValueError, IndexError):
+        db_id = 1
+
     config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
     config.SETTINGS.broker.enable = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
