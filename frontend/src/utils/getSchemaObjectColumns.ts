@@ -13,7 +13,12 @@ export const getSchemaRelationshipColumns = (schema?: iNodeSchema | iGenericSche
 
   // Relationship kind to show in LIST VIEW - Attribute, Parent
   const relationships = (schema.relationships || [])
-    .filter((relationship) => relationship.kind === "Attribute" || relationship.kind === "Parent")
+    .filter(
+      (relationship) =>
+        relationship.kind === "Attribute" ||
+        relationship.kind === "Parent" ||
+        (relationship.kind === "Component" && relationship.cardinality === "one")
+    )
     .map((relationship) => ({
       label: relationship.label ?? "",
       name: relationship.name,

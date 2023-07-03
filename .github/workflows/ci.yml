@@ -49,9 +49,11 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: Install NodeJS
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: 16
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm install
@@ -238,17 +240,21 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
-      - name: "Setup Python environment"
-        run: "pip install poetry==1.3.2 toml invoke==2.0.0"
+      - name: Install NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: "Install frontend"
         working-directory: ./frontend
         run: npm install
-      - name: "Run integration tests"
-        working-directory: ./frontend
-        run: "npm run cypress:run"
       - name: "Run unit tests"
         working-directory: ./frontend
         run: "npm run test:coverage"
+      - name: "Run integration tests"
+        working-directory: ./frontend
+        run: "npm run cypress:run"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -279,7 +285,6 @@ jobs:
         run: "invoke demo.load-infra-data"
       # - name: Run E2E tests
       #   run: "invoke demo.load-infra-data"
-
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]

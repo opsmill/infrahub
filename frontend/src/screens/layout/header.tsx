@@ -108,6 +108,7 @@ export default function Header(props: Props) {
         <span className="sr-only">Open sidebar</span>
         <Bars3BottomLeftIcon className="h-6 w-6" aria-hidden="true" />
       </button>
+
       <div className="flex flex-1 justify-between px-4">
         <div className="flex flex-1 opacity-30">
           <form className="flex w-full md:ml-0" action="#" method="GET">

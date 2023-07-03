@@ -38,7 +38,7 @@ export const ADMIN_MENU_ITEMS = [
     label: "Schema",
   },
   {
-    path: "/objects/group",
+    path: "/objects/Group",
     label: "Groups",
   },
 ];
