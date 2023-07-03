@@ -2,14 +2,6 @@
 # yamllint disable rule:truthy rule:truthy rule:line-length
 name: "CI"
 on:
-  # pull_request:
-  #   paths:
-  #     - ".github/workflows/javascript-lint.yml"
-  #     - "**.js"
-  #     - "**.ts"
-  #     - "**.tsx"
-  #     - "frontend/package.json"
-  #     - "frontend/package-lock.json"
   pull_request:
   push:
     branches:
@@ -347,8 +339,18 @@ jobs:
         run: "invoke demo.status"
       - name: Load Data
         run: "invoke demo.load-infra-data"
-      # - name: Run E2E tests
-      #   run: "invoke demo.load-infra-data"
+      - name: Install NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+      - name: Run End to End Tests
+        working-directory: ./frontend
+        run: npm run cypress:run:e2e
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
