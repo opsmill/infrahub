@@ -10,13 +10,13 @@ describe("Tutorial - Part 4", () => {
 
   it("should verify the metadata from the demo dataset", function () {
     // Access to the devices
-    cy.get("[href='/objects/device'] > .group").click();
+    cy.get("[href='/objects/Device'] > .group").click();
 
     // Click on a device
     cy.contains("atl1-edge1").click();
 
     // Click to open the metadata for the name
-    cy.get(".sm\\:p-0 > :nth-child(1) > :nth-child(2) > div.items-center > .relative").click();
+    cy.get(":nth-child(2) > div.items-center > .p-2").click();
     cy.get(":nth-child(4) > .underline").should("have.text", "Pop-Builder");
 
     if (this.screenshots) {
@@ -24,7 +24,7 @@ describe("Tutorial - Part 4", () => {
     }
 
     // Click to open the edit panel
-    cy.get(".cursor-pointer > .w-5").click();
+    cy.get(".border-b > :nth-child(2) > .rounded-md").click();
 
     if (this.screenshots) {
       cy.screenshot("tutorial_4_metadata_edit", screenshotConfig);
@@ -33,13 +33,13 @@ describe("Tutorial - Part 4", () => {
     cy.get(".bg-gray-500").click(); // Close the popin
 
     // Click to open the metadata for the role
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .relative").click();
+    cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
     cy.get(":nth-child(5) > .underline").should("have.text", "Engineering Team");
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .relative").click(); // Close the popin
+    cy.get(".px-4.sm\\:px-6").click(); // Close the popin
 
     // Click to open the metadata for a tag
-    cy.get(".sm\\:col-span-2 > :nth-child(1) > .relative").click();
+    cy.get(":nth-child(1) > .p-2").click();
     cy.get(":nth-child(5) > :nth-child(2)").should("have.text", "False");
-    cy.get(".sm\\:col-span-2 > :nth-child(1) > .relative").click(); // Close the popin
+    cy.get(".px-4.sm\\:px-6").click(); // Close the popin
   });
 });

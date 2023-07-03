@@ -15,7 +15,7 @@ describe("Tutorial - Part 6", () => {
 
   it("should create a new branch with a git integration", function () {
     // Open the branch creation form
-    cy.get("#headlessui-popover-button-\\:r9\\: > .py-1\\.5").click();
+    cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").click();
 
     // Add the new branch name
     cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH);
@@ -39,7 +39,7 @@ describe("Tutorial - Part 6", () => {
 
   it("should update the device and an interface", function () {
     // Access the devices
-    cy.get("[href^='/objects/device'] > .group", { timeout: 10000 }).click();
+    cy.get("[href^='/objects/Device'] > .group", { timeout: 10000 }).click();
 
     // Access the device
     cy.contains(DEVICE).click();
@@ -64,6 +64,6 @@ describe("Tutorial - Part 6", () => {
     }
 
     // Submit
-    cy.get(".mt-6 > .bg-custom-blue-500").click();
+    cy.contains("Save").click();
   });
 });
