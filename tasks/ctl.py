@@ -84,6 +84,7 @@ def black(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -99,6 +100,7 @@ def isort(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -114,6 +116,7 @@ def mypy(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -129,6 +132,7 @@ def pylint(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -144,6 +148,7 @@ def ruff(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)

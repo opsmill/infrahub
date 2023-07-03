@@ -112,18 +112,23 @@ jobs:
         run: "pip install toml invoke"
 
       # Build docker image from cache
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build Backend Image
-        uses: docker/build-push-action@v4
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v2
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v2
+      # - name: Build Backend Image
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     file: "development/Dockerfile-backend"
+      #     push: false
+      #     tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
+
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.3.3
         with:
-          file: "development/Dockerfile-backend"
-          push: false
-          tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
 
       # - uses: actions/setup-python@v4
       #   with:
@@ -164,10 +169,7 @@ jobs:
       #   run: |
       #     sleep 30
       #     invoke demo.status
-      - name: Cache Docker images
-        uses: ScribeMD/docker-cache@0.3.3
-        with:
-          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
+
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
       - name: "Coveralls : Integration Tests"
@@ -185,32 +187,38 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
-        run: "pip install poetry==1.3.2 toml invoke"
-      - uses: actions/setup-python@v4
+        run: "pip install toml invoke"
+
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.3.3
         with:
-          python-version: '3.11'
-          cache: 'poetry'
-      - name: "Setup Git"
-        run: |
-          git config --global --add safe.directory '*'
-          git config --global user.email "infrahub@example.com"
-          git config --global user.name "Infrahub"
+          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
+
+      # - uses: actions/setup-python@v4
+      #   with:
+      #     python-version: '3.11'
+      #     cache: 'poetry'
+      # - name: "Setup Git"
+      #   run: |
+      #     git config --global --add safe.directory '*'
+      #     git config --global user.email "infrahub@example.com"
+      #     git config --global user.name "Infrahub"
       # - name: "Setup Docker-Compose"
       #   run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
       # - name: "Start database"
       #   run: "invoke demo.dev-start"
-      - name: "Install project"
-        run: "poetry install --only=main,dev,server"
+      # - name: "Install project"
+      #   run: "poetry install --only=main,dev,server"
       - name: "Black Tests"
-        run: "poetry run invoke backend.black"
+        run: "invoke backend.black --docker"
       - name: "Isort Tests"
-        run: "poetry run invoke backend.isort"
+        run: "invoke backend.isort --docker"
       - name: "Pylint Tests"
-        run: "poetry run invoke backend.pylint"
+        run: "invoke backend.pylint --docker"
       # - name: "Unit Tests"
       #   run: "poetry run pytest --cov=infrahub backend/tests/unit"
-      - name: "Build Test Image"
-        run: "invoke test.build"
+      # - name: "Build Test Image"
+      #   run: "invoke test.build"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
@@ -220,15 +228,15 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
-      # - name: "Integration Tests"
-      #   run: "poetry run pytest --cov=infrahub backend/tests/integration"
-      # - name: "Coveralls : Integration Tests"
-      #   uses: coverallsapp/github-action@v2.0.0
-      #   env:
-      #     COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-      #   with:
-      #     flag-name: backend-integration
-      #     parallel: true
+      - name: "Integration Tests"
+        run: "invoke backend.test-integration"
+      - name: "Coveralls : Integration Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-integration
+          parallel: true
 
   backend-tests-neo4j:
     needs: ["yaml-lint", "python-lint", "backend-build-docker"]
@@ -246,8 +254,8 @@ jobs:
         uses: ScribeMD/docker-cache@0.3.3
         with:
           key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
-      - name: "Build Test Image"
-        run: "invoke test.build"
+      # - name: "Build Test Image"
+      #   run: "invoke test.build"
       - name: "Unit Tests"
         run: "invoke backend.test-core --database=neo4j"
 
@@ -269,18 +277,22 @@ jobs:
       #     git config --global user.email "infrahub@example.com"
       #     git config --global user.name "Infrahub"
       # Build docker image from cache
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build Backend Image
-        uses: docker/build-push-action@v4
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v2
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v2
+      # - name: Build Backend Image
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     file: "development/Dockerfile-backend"
+      #     push: false
+      #     tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.3.3
         with:
-          file: "development/Dockerfile-backend"
-          push: false
-          tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          key: "docker-${{ runner.os }}-${{ hashFiles('development') }}"
 
       # - name: "Install project"
       #   run: "poetry install --only=main,dev"

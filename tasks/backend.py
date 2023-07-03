@@ -84,6 +84,7 @@ def black(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -99,6 +100,7 @@ def isort(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -110,6 +112,12 @@ def mypy(context: Context, docker: bool = False):
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"mypy --show-error-codes {MAIN_DIRECTORY}"
+
+    if docker:
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
+
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
 
@@ -124,6 +132,7 @@ def pylint(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -139,6 +148,7 @@ def ruff(context: Context, docker: bool = False):
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        print(exec_cmd)
 
     with context.cd(REPO_BASE):
         context.run(exec_cmd, pty=True)
@@ -162,6 +172,7 @@ def test_unit(context: Context):
         compose_files_cmd = build_test_compose_files_cmd()
         base_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        print(exec_cmd)
 
         return context.run(f"{base_cmd} {exec_cmd}", pty=True)
 
@@ -174,6 +185,8 @@ def test_core(context: Context, database: str = "memgraph"):
         exec_cmd = f"pytest -n {NBR_WORKERS} -v {MAIN_DIRECTORY}/tests/unit/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
+
+        print(exec_cmd)
 
         return context.run(f"{base_cmd} {exec_cmd}", pty=True)
 
