@@ -12,6 +12,8 @@ describe("Tutorial - Part 3", () => {
     // Click on the schema link
     cy.get("[href='/schema'] > .group").click();
 
+    cy.contains("Account").should("exist");
+
     if (this.screenshots) {
       cy.screenshot("tutorial_3_schema", screenshotConfig);
     }
