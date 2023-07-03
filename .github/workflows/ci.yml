@@ -258,6 +258,28 @@ jobs:
           parallel: true
           file: frontend/coverage/lcov.info
 
+  E2E-testing:
+    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Install Invoke"
+        run: "pip install toml invoke"
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.3.3
+        with:
+          key: "docker-${{ runner.os }}-e2e-${{ hashFiles('development/**') }}"
+      - name: Build Demo
+        run: "invoke demo.build"
+      - name: Initialize Demo
+        run: "invoke demo.init demo.start demo.load-infra-schema"
+      - name: Load Data
+        run: "invoke demo.load-infra-data"
+      # - name: Run E2E tests
+      #   run: "invoke demo.load-infra-data"
+
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
