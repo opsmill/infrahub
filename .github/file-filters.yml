@@ -1,29 +1,37 @@
-# This is used by the action https://github.com/dorny/paths-filter (which we have forked to https://github.com/getsentry/paths-filter)
-
-
-ci_config:
+---
+ci_config: &ci_config
   - ".github/workflows/ci.yml"
 
-backend_files:
+backend_files: &backend_files
   - "backend/**"
   - "pyproject.toml"
   - "poetry.lock"
 
-sdk_files:
+sdk_files: &sdk_files
   - "python_client/**"
   - "pyproject.toml"
   - "poetry.lock"
 
-ctl_files:
+ctl_files: &ctl_files
   - "ctl/**"
   - "pyproject.toml"
   - "poetry.lock"
 
-frontend_files:
+frontend_files: &frontend_files
   - "frontend/**"
 
-demo_files:
+demo_files: &demo_files
   - "models/**"
+
+python_all: &python_all
+ - "**/*.py"
+
+javascript_all: &javascript_all
+  - "**/*.[tj]{s,sx}"
+
+yaml_all: &yaml_all
+  - "**/*.{yml,yaml}"
+
 
 backend_all:
   - *backend_files
@@ -50,11 +58,3 @@ e2e_all:
   - *frontend_files
   - *demo_files
 
-python_all:
- - "**/*.py"
-
-javascript_all:
-  - "**/*.[tj]{s,sx}"
-
-yaml_all:
-  - "**/*.{yml,yaml}"
