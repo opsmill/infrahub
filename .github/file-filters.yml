@@ -1,0 +1,70 @@
+---
+ci_config: &ci_config
+  - ".github/workflows/ci.yml"
+  - ".github/file-filters.yml"
+
+development_files: &development_files
+  - "development/**"
+  - "tasks/**"
+
+backend_files: &backend_files
+  - "backend/**"
+  - "pyproject.toml"
+  - "poetry.lock"
+
+sdk_files: &sdk_files
+  - "python_client/**"
+  - "pyproject.toml"
+  - "poetry.lock"
+
+ctl_files: &ctl_files
+  - "ctl/**"
+  - "pyproject.toml"
+  - "poetry.lock"
+
+frontend_files: &frontend_files
+  - "frontend/**"
+
+demo_files: &demo_files
+  - "models/**"
+
+python_all: &python_all
+  - "**/*.py"
+
+javascript_all: &javascript_all
+  - "**/*.[tj]{s,sx}"
+
+yaml_all: &yaml_all
+  - "**/*.{yml,yaml}"
+
+backend_all:
+  - *sdk_files
+  - *backend_files
+  - *ci_config
+  - *development_files
+
+sdk_all:
+  - *sdk_files
+  - *backend_files
+  - *ci_config
+  - *development_files
+
+ctl_all:
+  - *sdk_files
+  - *backend_files
+  - *ctl_files
+  - *ci_config
+  - *development_files
+
+frontend_all:
+  - *frontend_files
+  - *ci_config
+  - *development_files
+
+e2e_all:
+  - *sdk_files
+  - *backend_files
+  - *frontend_files
+  - *demo_files
+  - *ci_config
+  - *development_files
