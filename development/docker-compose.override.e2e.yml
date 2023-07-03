@@ -9,18 +9,3 @@ services:
   frontend:
     ports:
       - "3000:3000"
-
-  # --------------------------------------------------------------------------------
-  # Uncomment to expose the database and/or the message bus outside of Docker Compose
-  # --------------------------------------------------------------------------------
-  # database:
-  #   ports:
-  #     - "7474:7474"
-  #     - "7687:7687"
-  # message-queue:
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"
-
-volumes:
-  prometheus_data:
