@@ -27,6 +27,12 @@ services:
     volumes:
       - ../:/source
     tty: true
+    healthcheck:
+      test: wget -O /dev/null http://localhost:8000/schema || exit 1
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 3s
   infrahub-git:
     build:
       context: ../
@@ -54,7 +60,8 @@ services:
     command: >
       bash -c "npm i --omit=dev && npm run build-serve"
     depends_on:
-      - infrahub-server
+      infrahub-server:
+        condition: service_healthy
     volumes:
       - ../frontend/:/source
       - /source/node_modules/
