@@ -135,7 +135,7 @@ def lint(context: Context):
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
-
+@task
 def test_unit(context: Context):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_test_compose_files_cmd()
