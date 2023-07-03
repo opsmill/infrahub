@@ -4,6 +4,8 @@ version: '1.0'
 generics:
   - name: Interface
     namespace: Infra
+    description: "Generic Network Interface."
+    label: "Interface"
     display_labels:
       - name__value
     attributes:
@@ -45,6 +47,8 @@ generics:
         kind: Attribute
   - name: Endpoint
     namespace: Infra
+    description: "Generic Endpoint to connect two objects together."
+    label: "Endpoint"
     relationships:
       - name: connected_endpoint
         peer: InfraEndpoint
@@ -55,6 +59,8 @@ generics:
 nodes:
   - name: Platform
     namespace: Infra
+    description: "A Platform represent the type of software running on a device."
+    label: "Platform"
     default_filter: name__value
     order_by:
       - name__value
@@ -87,6 +93,8 @@ nodes:
         kind: Attribute
   - name: Device
     namespace: Infra
+    description: "Generic Device object."
+    label: "Device"
     default_filter: name__value
     order_by:
       - name__value
@@ -146,6 +154,8 @@ nodes:
         kind: Attribute
   - name: InterfaceL3
     namespace: Infra
+    description: "Network Layer 3 Interface"
+    label: "Interface L3"
     display_labels:
       - name__value
     order_by:
@@ -159,6 +169,8 @@ nodes:
         kind: Component
   - name: InterfaceL2
     namespace: Infra
+    description: "Network Layer 2 Interface"
+    label: "Interface L2"
     display_labels:
       - name__value
     order_by:
@@ -186,6 +198,8 @@ nodes:
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra
+    description: "IP Address"
+    label: "IP Address"
     default_filter: address__value
     order_by:
       - "address__value"
@@ -205,6 +219,8 @@ nodes:
         kind: Parent
   - name: VLAN
     namespace: Infra
+    description: "A VLAN is isolated layer two domain"
+    label: "VLAN"
     default_filter: name__value
     order_by:
       - name__value
@@ -242,6 +258,8 @@ nodes:
         kind: Attribute
   - name: Circuit
     namespace: Infra
+    description: "A Circuit represent a single physical link between two location"
+    label: "Circuit"
     default_filter: circuit_id__value
     order_by:
       - circuit_id__value
@@ -280,6 +298,8 @@ nodes:
         kind: Component
   - name: CircuitEndpoint
     namespace: Infra
+    description: "A Circuit endpoint is attached to each end of a circuit"
+    label: "Circuit Endpoint"
     attributes:
       - name: description
         kind: Text
@@ -298,6 +318,8 @@ nodes:
         kind: Parent
   - name: AutonomousSystem
     namespace: Infra
+    description: "An Autonomous System (AS) is a set of Internet routable IP prefixes belonging to a network"
+    label: "Autonomous System"
     default_filter: name__value
     order_by: ["asn__value"]
     display_labels:
@@ -321,6 +343,8 @@ nodes:
         kind: Attribute
   - name: BGPPeerGroup
     namespace: Infra
+    description: "A BGP Peer Group is used to regroup parameters that are shared across multiple peers"
+    label: "BGP Peer Group"
     default_filter: name__value
     order_by:
       - name__value
@@ -353,6 +377,8 @@ nodes:
         kind: Attribute
   - name: BGPSession
     namespace: Infra
+    description: "A BGP Session represent a point to point connection between two routers"
+    label: "BGP Session"
     order_by:
       - device__name__value
       - remote_as__asn__value

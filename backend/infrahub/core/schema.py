@@ -976,10 +976,14 @@ core_models = {
         {
             "name": "Node",
             "namespace": "Core",
+            "description": "Base Node in Infrahub.",
+            "label": "Node",
         },
         {
             "name": "Owner",
             "namespace": "Lineage",
+            "description": "Any Entities that is responsible for some data.",
+            "label": "Owner",
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -988,8 +992,9 @@ core_models = {
         },
         {
             "name": "Source",
-            "description": "Any Entities that stores or produces data.",
             "namespace": "Lineage",
+            "description": "Any Entities that stores or produces data.",
+            "label": "Source",
             "display_labels": ["name__value"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -999,6 +1004,8 @@ core_models = {
         {
             "name": "Group",
             "namespace": "Core",
+            "description": "Generic Group Object.",
+            "label": "Group",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1030,6 +1037,8 @@ core_models = {
         {
             "name": "StandardGroup",
             "namespace": "Core",
+            "description": "Group of nodes of any kind.",
+            "label": "StandardGroup",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1039,6 +1048,8 @@ core_models = {
         {
             "name": "Criticality",
             "namespace": "Builtin",
+            "description": "Level of criticality expressed from 1 to 10.",
+            "label": "Criticality",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1052,6 +1063,8 @@ core_models = {
         {
             "name": "Tag",
             "namespace": "Builtin",
+            "description": "Standard Tag object to attached to other objects to provide some context.",
+            "label": "Tag",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1064,6 +1077,8 @@ core_models = {
         {
             "name": "Organization",
             "namespace": "Core",
+            "description": "An organization represent a legal entity, a company.",
+            "label": "Organization",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1080,6 +1095,8 @@ core_models = {
         {
             "name": "Account",
             "namespace": "Core",
+            "description": "User Account for Infrahub",
+            "label": "Account",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1110,6 +1127,8 @@ core_models = {
         {
             "name": "AccountToken",
             "namespace": "Internal",
+            "description": "Token for User Account",
+            "label": "Account Token",
             "default_filter": "token__value",
             "display_labels": ["token__value"],
             "branch": True,
@@ -1124,6 +1143,8 @@ core_models = {
         {
             "name": "RefreshToken",
             "namespace": "Internal",
+            "description": "Refresh Token",
+            "label": "Refresh Token",
             "display_labels": [],
             "branch": True,
             "attributes": [
@@ -1136,6 +1157,8 @@ core_models = {
         {
             "name": "Status",
             "namespace": "Builtin",
+            "description": "Represent the status of an object: active, maintenance",
+            "label": "Status",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1149,6 +1172,8 @@ core_models = {
         {
             "name": "Role",
             "namespace": "Builtin",
+            "description": "Represent the role of an object",
+            "label": "Role",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
@@ -1162,6 +1187,8 @@ core_models = {
         {
             "name": "Location",
             "namespace": "Builtin",
+            "description": "A location represent a physical element: a building, a site, a city",
+            "label": "Location",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1177,6 +1204,8 @@ core_models = {
         {
             "name": "Repository",
             "namespace": "Core",
+            "description": "A Git Repository integrated with Infrahub",
+            "label": "Repository",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1227,6 +1256,8 @@ core_models = {
         {
             "name": "RFile",
             "namespace": "Core",
+            "description": "A file rendered from a Jinja2 template",
+            "label": "RFile",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1259,6 +1290,7 @@ core_models = {
         {
             "name": "Check",
             "namespace": "Core",
+            "label": "Check",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1294,6 +1326,8 @@ core_models = {
         {
             "name": "TransformPython",
             "namespace": "Core",
+            "description": "A transform function written in Python",
+            "label": "Transform Python",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -1330,6 +1364,8 @@ core_models = {
         {
             "name": "GraphQLQuery",
             "namespace": "Core",
+            "description": "A pre-defined GraphQL Query",
+            "label": "GraphQL Query",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],

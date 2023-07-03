@@ -1,9 +1,11 @@
-# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+# yaml-language-server: $schema=https://schema.infrahub.app/versions/0.6.0/infrahub_schema.schema.json
 ---
 version: '1.0'
 nodes:
   - name: Rack
     namespace: Infra
+    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
+    label: "Rack"
     default_filter: name__value
     display_labels:
       - name__value
