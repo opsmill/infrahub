@@ -2,7 +2,9 @@
 version: "3.4"
 services:
   database:
-    scale: "${NBR_WORKERS}"
+    deploy:
+      mode: replicated
+      replicas: "${NBR_WORKERS}"
     image: "memgraph/memgraph-platform:2.8.0-memgraph2.8.0-lab2.6.0"
     volumes:
       - ./memgraph.conf:/etc/memgraph/memgraph.conf

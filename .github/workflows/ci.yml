@@ -31,6 +31,7 @@ env:
   INFRAHUB_IMAGE_NAME_BACKEND: "opsmill/infrahub-backend"
   INFRAHUB_IMAGE_VER: "testing"
   PYTEST_XDIST_WORKER_COUNT: 1
+  INFRAHUB_TEST_IN_DOCKER: 1
 
 jobs:
   yaml-lint:
@@ -113,11 +114,11 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'poetry'
-      - name: "Setup Git"
-        run: |
-          git config --global --add safe.directory '*'
-          git config --global user.email "infrahub@example.com"
-          git config --global user.name "Infrahub"
+      # - name: "Setup Git"
+      #   run: |
+      #     git config --global --add safe.directory '*'
+      #     git config --global user.email "infrahub@example.com"
+      #     git config --global user.name "Infrahub"
       - name: "Install project"
         run: "poetry install --only=main,dev,server"
       - name: "Black Tests"
@@ -128,8 +129,10 @@ jobs:
         run: "poetry run invoke sdk.pylint"
       - name: "Mypy Tests"
         run: "poetry run invoke sdk.mypy"
+      - name: "Build Test Image"
+        run: "invoke test.build"
       - name: "Unit Tests"
-        run: "poetry run pytest --cov=infrahub_client python_sdk/tests/unit"
+        run: "invoke sdk.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -139,14 +142,14 @@ jobs:
           parallel: true
       # - name: "Setup Docker-Compose"
       #   run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      - name: "Start database"
-        run: "invoke demo.dev-start"
-      - name: "Check Services Status"
-        run: |
-          sleep 30
-          invoke demo.status
+      # - name: "Start database"
+      #   run: "invoke demo.dev-start"
+      # - name: "Check Services Status"
+      #   run: |
+      #     sleep 30
+      #     invoke demo.status
       - name: "Integration Tests"
-        run: "poetry run pytest --cov=infrahub_client python_sdk/tests/integration"
+        run: "invoke sdk.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -207,31 +210,22 @@ jobs:
       #     flag-name: backend-integration
       #     parallel: true
 
-  # backend-tests-neo4j:
-  #   needs: ["yaml-lint", "python-lint", "backend-build-docker"]
-  #   runs-on: "ubuntu-20.04"
-  #   steps:
-  #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v3"
-  #     - name: "Setup Python environment"
-  #       run: "pip install poetry==1.3.2 toml invoke"
-  #     - uses: actions/setup-python@v4
-  #       with:
-  #         python-version: '3.11'
-  #         cache: 'poetry'
-  #     - name: "Setup Git"
-  #       run: |
-  #         git config --global --add safe.directory '*'
-  #         git config --global user.email "infrahub@example.com"
-  #         git config --global user.name "Infrahub"
-  #     - name: "Setup Docker-Compose"
-  #       run: cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-  #     - name: "Start database"
-  #       run: "invoke demo.dev-start --database=neo4j"
-  #     - name: "Install project"
-  #       run: "poetry install --only=main,dev,server"
-  #     - name: "Unit Tests"
-  #       run: "poetry run pytest --cov=infrahub backend/tests/unit/core --neo4j"
+  backend-tests-neo4j:
+    needs: ["yaml-lint", "python-lint", "backend-build-docker"]
+    runs-on: "ubuntu-20.04"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup Python environment"
+        run: "pip install toml invoke"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Unit Tests"
+        run: "invoke backend.test-core --database=neo4j"
 
   ctl-tests:
     needs: ["yaml-lint", "python-lint", "backend-build-docker"]
@@ -245,11 +239,11 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'poetry'
-      - name: "Setup Git"
-        run: |
-          git config --global --add safe.directory '*'
-          git config --global user.email "infrahub@example.com"
-          git config --global user.name "Infrahub"
+      # - name: "Setup Git"
+      #   run: |
+      #     git config --global --add safe.directory '*'
+      #     git config --global user.email "infrahub@example.com"
+      #     git config --global user.name "Infrahub"
       - name: "Install project"
         run: "poetry install --only=main,dev"
       - name: "Black Tests"
@@ -260,8 +254,10 @@ jobs:
         run: "poetry run invoke ctl.pylint"
       - name: "Mypy Tests"
         run: "poetry run invoke ctl.mypy"
+      - name: "Build Test Image"
+        run: "invoke test.build"
       - name: "Unit Tests"
-        run: "poetry run pytest --cov=infrahub_ctl ctl/tests/unit"
+        run: "invoke ctl.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:

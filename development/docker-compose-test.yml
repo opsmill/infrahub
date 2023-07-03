@@ -19,6 +19,7 @@ services:
       - "INFRAHUB_PRODUCTION=false"
       - "INFRAHUB_LOG_LEVEL=CRITICAL"
       - "PROMETHEUS_MULTIPROC_DIR=/prom_shared"
+      - "INFRAHUB_TEST_IN_DOCKER=1"
     volumes:
       - ../:/source
     tty: true

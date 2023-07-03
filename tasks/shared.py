@@ -28,6 +28,11 @@ TEST_COMPOSE_FILES_MEMGRAPH = [
     "development/docker-compose-test-database-memgraph.yml",
     "development/docker-compose-test.yml",
 ]
+TEST_COMPOSE_FILES_NEO4J = [
+    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-test-database-neo4j.yml",
+    "development/docker-compose-test.yml",
+]
 
 
 IMAGE_NAME_FRONTEND = os.getenv("INFRAHUB_IMAGE_NAME_FRONTEND", f"opsmill/{BUILD_NAME}-backend-py{PYTHON_VER}")
@@ -111,10 +116,10 @@ def build_test_compose_files_cmd(database: str = DatabaseType.MEMGRAPH.value) ->
     if database not in SUPPORTED_DATABASES:
         exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
-    # if database == DatabaseType.MEMGRAPH.value:
-    DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
-    # elif database == DatabaseType.NEO4J.value:
-    #     DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J
+    if database == DatabaseType.MEMGRAPH.value:
+        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
+    elif database == DatabaseType.NEO4J.value:
+        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J
 
     # if os.path.exists(DEV_OVERRIDE_FILE_NAME):
     #     print("!! Found a dev override file for docker-compose !!")

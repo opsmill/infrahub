@@ -136,12 +136,23 @@ def lint(context: Context):
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
+def test_unit(context: Context):
+    with context.cd(REPO_BASE):
+        compose_files_cmd = build_test_compose_files_cmd()
+        base_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
+        exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+
+        return context.run(f"{base_cmd} {exec_cmd}", pty=True)
+
+
 @task(optional=["database"])
-def test_unit(context: Context, database: str = "memgraph"):
+def test_core(context: Context, database: str = "memgraph"):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
-        exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v {MAIN_DIRECTORY}/tests/unit/core"
+        if database == "neo4j":
+            exec_cmd += " --neo4j"
 
         return context.run(f"{base_cmd} {exec_cmd}", pty=True)
 
@@ -152,6 +163,8 @@ def test_integration(context: Context, database: str = "memgraph"):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
         exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        if database == "neo4j":
+            exec_cmd += " --neo4j"
 
         return context.run(f"{base_cmd} {exec_cmd}", pty=True)
 

@@ -170,7 +170,7 @@ filterwarnings = [
     "ignore:the imp module is deprecated",
     "ignore:Deprecated call to",
 ]
-addopts = "-vs --cov-report term-missing --cov-report xml"
+addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
 
 
 [tool.mypy]
