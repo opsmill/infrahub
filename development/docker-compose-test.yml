@@ -1,0 +1,20 @@
+---
+# yamllint disable rule:line-length
+
+version: "3.4"
+services:
+  infrahub-test:
+    build:
+      context: ../
+      dockerfile: development/Dockerfile-backend
+    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
+    environment:
+      - "INFRAHUB_BUILD_NAME=${INFRAHUB_BUILD_NAME}"
+      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+      - "INFRAHUB_PRODUCTION=false"
+      - "INFRAHUB_LOG_LEVEL=CRITICAL"
+      - "PROMETHEUS_MULTIPROC_DIR=/prom_shared"
+      - "INFRAHUB_TEST_IN_DOCKER=1"
+    volumes:
+      - ../:/source
+    tty: true

@@ -23,6 +23,7 @@ RUN poetry config virtualenvs.create false
 # --------------------------------------------
 RUN git config --global user.name "Infrahub"
 RUN git config --global user.email "infrahub@opsmill.com"
+RUN git config --global --add safe.directory '*'
 RUN git config --global credential.usehttppath true
 RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
