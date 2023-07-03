@@ -34,16 +34,51 @@ env:
   INFRAHUB_TEST_IN_DOCKER: 1
 
 jobs:
+  files-changed:
+    name: Detect which file has changed
+    runs-on: ubuntu-20.04
+    outputs:
+      backend: ${{ steps.changes.outputs.backend_all }}
+      frontend: ${{ steps.changes.outputs.frontend_all }}
+      sdk: ${{ steps.changes.outputs.sdk_all }}
+      ctl: ${{ steps.changes.outputs.ctl_all }}
+      e2e: ${{ steps.changes.outputs.e2e_all }}
+      python: ${{ steps.changes.outputs.python_all }}
+      javascript: ${{ steps.changes.outputs.javascript_all }}
+      yaml: ${{ steps.changes.outputs.yaml_all }}
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: Check for backend file changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-filters.yml
+
   yaml-lint:
+    if: needs.files-changed.outputs.yaml == 'true'
+    needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
+      - name: "Identify which files have changed"
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            src:
+              - '**.yml'
+              - '**.yaml'
+              - 'development/workflows/ci.yml'
       - name: "Setup environment"
         run: "pip install yamllint==1.29.0"
       - name: "Linting: yamllint"
         run: "yamllint ."
   javascript-lint:
+    if: needs.files-changed.outputs.javascript == 'true'
+    needs: ["files-changed"]
     runs-on: ubuntu-latest
     steps:
       - name: "Check out repository code"
@@ -61,6 +96,8 @@ jobs:
         working-directory: ./frontend
         run: npm run eslint
   python-lint:
+    if: needs.files-changed.outputs.python == 'true'
+    needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
@@ -105,7 +142,12 @@ jobs:
   #         cache-to: type=gha,mode=max
 
   python-sdk-tests:
-    needs: ["yaml-lint", "python-lint"]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.sdk == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -147,7 +189,12 @@ jobs:
           parallel: true
 
   backend-tests-default:
-    needs: ["yaml-lint", "python-lint"]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -186,7 +233,12 @@ jobs:
           parallel: true
 
   backend-tests-neo4j:
-    needs: ["yaml-lint", "python-lint"]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -203,7 +255,12 @@ jobs:
         run: "invoke backend.test-core --database=neo4j"
 
   ctl-tests:
-    needs: ["yaml-lint", "python-lint"]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.ctl == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
@@ -235,7 +292,12 @@ jobs:
           parallel: true
 
   frontend-tests:
-    needs: ["yaml-lint", "javascript-lint"]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.frontend == 'true'
+    needs: ["files-changed", "yaml-lint", "javascript-lint"]
     runs-on: "ubuntu-20.04"
     steps:
       - name: "Check out repository code"
