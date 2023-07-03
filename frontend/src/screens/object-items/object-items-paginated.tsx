@@ -65,7 +65,7 @@ export default function ObjectItems(props: any) {
 
   const schemaData = schema || generic;
 
-  if (!schemaData) {
+  if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
     navigate("/");
   }

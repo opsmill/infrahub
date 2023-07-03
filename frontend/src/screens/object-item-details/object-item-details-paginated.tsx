@@ -58,8 +58,14 @@ export default function ObjectItemDetails(props: any) {
   const [genericList] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const generic = genericList.filter((s) => s.name === objectname)[0];
+  const navigate = useNavigate();
 
   const schemaData = generic || schema;
+
+  if ((schemaList?.length || genericList?.length) && !schemaData) {
+    // If there is no schema nor generics, go to home page
+    navigate("/");
+  }
 
   const relationships = getSchemaRelationshipColumns(schemaData);
 
@@ -90,8 +96,6 @@ export default function ObjectItemDetails(props: any) {
   // TODO: Find a way to avoid querying object details if we are on a tab
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
-  const navigate = useNavigate();
-
   if (error) {
     console.error("Error while loading the object details: ", error);
     return <ErrorScreen />;
@@ -101,7 +105,7 @@ export default function ObjectItemDetails(props: any) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schemaData.kind] && !data[schemaData.kind]?.edges)) {
+  if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
     return <NoDataFound />;
   }
 
