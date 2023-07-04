@@ -151,14 +151,14 @@ ORGANIZATIONS = (
 INTERFACE_OBJS: Dict[str, List[InfrahubNode]] = defaultdict(list)
 
 ACCOUNTS = (
-    ("pop-builder", "Script", "Password123"),
-    ("CRM Synchronization", "Script", "Password123"),
-    ("Jack Bauer", "User", "Password123"),
-    ("Chloe O'Brian", "User", "Password123"),
-    ("David Palmer", "User", "Password123"),
-    ("Operation Team", "User", "Password123"),
-    ("Engineering Team", "User", "Password123"),
-    ("Architecture Team", "User", "Password123"),
+    ("pop-builder", "Script", "Password123", "read-write"),
+    ("CRM Synchronization", "Script", "Password123", "read-write"),
+    ("Jack Bauer", "User", "Password123", "read-only"),
+    ("Chloe O'Brian", "User", "Password123", "read-write"),
+    ("David Palmer", "User", "Password123", "read-only"),
+    ("Operation Team", "User", "Password123", "read-only"),
+    ("Engineering Team", "User", "Password123", "read-only"),
+    ("Architecture Team", "User", "Password123", "read-only"),
 )
 
 
@@ -780,7 +780,9 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     for account in ACCOUNTS:
         obj = await client.create(
-            branch=branch, kind="CoreAccount", data={"name": account[0], "password": account[2], "type": account[1]}
+            branch=branch,
+            kind="CoreAccount",
+            data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=account[0], node=obj)
