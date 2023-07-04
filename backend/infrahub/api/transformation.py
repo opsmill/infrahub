@@ -117,7 +117,7 @@ async def generate_rfile(
     rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch_params.branch, at=branch_params.at)
 
     if not rfile:
-        rfile_schema = registry.get_node_schema(name="RFile", branch=branch_params.branch)
+        rfile_schema = registry.get_node_schema(name="CoreRFile", branch=branch_params.branch)
         items = await NodeManager.query(
             session=session,
             schema=rfile_schema,
