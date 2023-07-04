@@ -128,7 +128,7 @@ export const withAuth = (AppComponent: any) => (props: any) => {
       accessToken,
       data,
       permissions: {
-        write: true,
+        write: data?.user_claims?.role === "read-write",
       },
       signOut,
     } as tAuthContext;
