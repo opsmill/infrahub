@@ -22,14 +22,14 @@ export enum BUTTON_TYPES {
 }
 
 // Get default class name and avoid certain class if needed (ex: no rounded button for tabs-button)
-const DEFAULT_CLASS = (className?: string) => `
+const DEFAULT_CLASS = (className?: string, type?: BUTTON_TYPES) => `
   ${className?.includes("rounded") ? "" : "rounded-md"}
   ${className?.includes("border") ? "" : "border border-gray-300"}
+  ${className?.includes("shadow") || type === BUTTON_TYPES.INVISIBLE ? "" : "shadow-sm"}
   py-1.5 px-2.5
   inline-flex items-center gap-x-1.5
   text-sm font-semibold
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-  shadow-sm
 `;
 
 const getClasseName = (type?: BUTTON_TYPES) => {
@@ -71,7 +71,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
     }
     case BUTTON_TYPES.INVISIBLE: {
       return `
-        bg-transparent text-custom-white border-transparent shadow-none
+        bg-transparent text-custom-white border-transparent
         hover:bg-transparent
         disabled:cursor-not-allowed disabled:bg-transparent
       `;
@@ -103,7 +103,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
   return (
     <button
       type={type ?? "button"}
-      className={classNames(DEFAULT_CLASS(className), customClassName, className)}
+      className={classNames(DEFAULT_CLASS(className, buttonType), customClassName, className)}
       {...propsToPass}
       onClick={handleClick}
       disabled={isLoading ? true : propsToPass.disabled}>
