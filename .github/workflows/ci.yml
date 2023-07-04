@@ -340,22 +340,24 @@ jobs:
       #   uses: ScribeMD/docker-cache@0.3.3
       #   with:
       #     key: "docker-${{ runner.os }}-e2e-${{ hashFiles('development/**') }}"
-      - name: Prepare Demo Environment
-        run: cp development/docker-compose.override.e2e.yml development/docker-compose.override.yml
+      # - name: Prepare Demo Environment
+      #   run: cp development/docker-compose.override.e2e.yml development/docker-compose.override.yml
       - name: Build Demo
         run: "invoke demo.build"
       - name: Initialize Demo
+        id: init-demo
         run: "invoke demo.init demo.start demo.load-infra-schema"
         continue-on-error: True
+      - name: Display debug log on failure
+        if: steps.init-demo.conclusion == 'failure'
+        run: "docker logs infrahub-infrahub-server-1"
       - name: Check Demo Status
         run: "invoke demo.status"
       - name: Load Data
         run: "invoke demo.load-infra-data"
-        continue-on-error: True
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
-        continue-on-error: True
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
