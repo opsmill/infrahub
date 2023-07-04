@@ -49,12 +49,13 @@ type iRelationDetailsProps = {
   relationshipSchema: any;
   mode: "TABLE" | "DESCRIPTION-LIST";
   refetch?: Function;
+  onDeleteRelationship?: Function;
 };
 
 const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
-  const { relationshipsData, relationshipSchema, refetch } = props;
+  const { relationshipsData, relationshipSchema, refetch, onDeleteRelationship } = props;
 
   const { objectname, objectid } = useParams();
   const auth = useContext(AuthContext);
@@ -132,6 +133,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   const handleDeleteRelationship = async (id: string) => {
+    if (onDeleteRelationship) {
+      await onDeleteRelationship(id);
+
+      setShowAddDrawer(false);
+
+      setRelatedRowToDelete(undefined);
+
+      return;
+    }
+
     const newList = relationshipsData
       .map((item: any) => ({ id: item.id }))
       .filter((item: any) => item.id !== id);
