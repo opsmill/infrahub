@@ -9,3 +9,8 @@ export const screenshotConfig: ScreenshotConfig = {
 };
 
 export const SCREENSHOT_ENV_VARIABLE = "SCREENSHOTS";
+
+export const ADMIN_CREDENTIALS = {
+  username: "Chloe O'Brian",
+  password: "Password123",
+};
