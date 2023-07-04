@@ -7,10 +7,12 @@ import {
   NEW_ADMIN_ACCOUNT_LABEL,
   NEW_BRANCH_NAME,
 } from "../mocks/e2e/accounts";
-import { SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Tutorial - Part 1", () => {
   beforeEach(function () {
+    cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
+
     cy.visit("/");
 
     this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
