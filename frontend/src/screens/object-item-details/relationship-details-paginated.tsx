@@ -215,6 +215,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     }
   };
 
+  // TODO: Refactor reltionships components to compute the correct columns
+  const defaultColumns = [{ label: "Name", name: "display_label" }];
+
+  const newColumns = columns?.length ? columns : defaultColumns;
+
   return (
     <>
       <div key={relationshipSchema?.name}>
@@ -325,7 +330,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                         <thead className="bg-gray-50">
                           <tr>
-                            {columns?.map((column) => (
+                            {newColumns?.map((column) => (
                               <th
                                 key={column.name}
                                 scope="col"
@@ -350,7 +355,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               }
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer">
-                              {columns?.map((column) => (
+                              {newColumns?.map((column) => (
                                 <td
                                   key={node.id + "-" + column.name}
                                   className={classNames(
