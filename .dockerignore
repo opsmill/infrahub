@@ -8,6 +8,8 @@ node_modules
 .pytest_cache
 *.env
 
+frontend/node_modules
+
 # Direnv files (https://direnv.net/)
 .direnv/
 .envrc

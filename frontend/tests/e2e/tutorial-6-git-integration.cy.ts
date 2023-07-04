@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 const NEW_BRANCH = "update-ethernet1";
 const DEVICE = "atl1-edge1";
@@ -9,7 +9,10 @@ const NEW_INTERFACE_DESCRIPTION = "New description in the branch";
 
 describe("Tutorial - Part 6", () => {
   beforeEach(function () {
+    cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
+
     cy.visit("/");
+
     this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 

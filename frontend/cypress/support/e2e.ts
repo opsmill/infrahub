@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 // ***********************************************************
 // This example support/e2e.ts is processed and
 // loaded automatically before your test files.
@@ -18,3 +20,13 @@ import "./commands";
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
+
+Cypress.Commands.add("login", (username: string, password: string) => {
+  cy.visit("/signin");
+
+  cy.get(":nth-child(1) > .relative > .block").type(username);
+
+  cy.get(":nth-child(2) > .relative > .block").type(password);
+
+  cy.get(".mt-6 > .rounded-md").click();
+});

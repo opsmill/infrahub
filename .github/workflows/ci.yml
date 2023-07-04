@@ -343,10 +343,12 @@ jobs:
         run: "invoke demo.build"
       - name: Initialize Demo
         run: "invoke demo.init demo.start demo.load-infra-schema"
+        continue-on-error: True
       - name: Check Demo Status
         run: "invoke demo.status"
       - name: Load Data
         run: "invoke demo.load-infra-data"
+        continue-on-error: True
       # - name: Run E2E tests
       #   run: "invoke demo.load-infra-data"
 

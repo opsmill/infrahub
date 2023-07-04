@@ -1,10 +1,10 @@
-import React from "react";
-import { mount } from "cypress/react18";
 import { MountOptions, MountReturn } from "cypress/react";
+import { mount } from "cypress/react18";
+import queryString from "query-string";
+import React from "react";
 import { MemoryRouter, MemoryRouterProps } from "react-router-dom";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
-import queryString from "query-string";
 
 // ***********************************************************
 // This example support/component.ts is processed and

@@ -1,5 +1,6 @@
 import { useAtom } from "jotai";
 import { createContext, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../components/alert";
 import { CONFIG } from "../config/config";
@@ -75,13 +76,17 @@ export const withAuth = (AppComponent: any) => (props: any) => {
 
   const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
 
+  const isSigning = window.location.pathname === "/signin";
+
   const [isLoading, setIsLoading] = useState(false);
-  const [displaySignIn, setDisplaySignin] = useState(false);
+  const [displaySignIn, setDisplaySignin] = useState(isSigning);
   const [accessToken, setAccessToken] = useState(localToken);
+  const navigate = useNavigate();
 
   const signOut = () => {
     removeTokens();
     setAccessToken("");
+    // setDisplaySignin(true);
   };
 
   const signIn = async (data: any) => {
@@ -105,6 +110,10 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     setTokens(result);
 
     setDisplaySignin(false);
+
+    if (isSigning) {
+      navigate("/");
+    }
   };
 
   if (!displaySignIn && config?.experimental_features?.ignore_authentication_requirements) {
