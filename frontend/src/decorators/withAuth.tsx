@@ -3,7 +3,7 @@ import { createContext, useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../components/alert";
 import { CONFIG } from "../config/config";
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "../config/constants";
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, WRITE_ROLES } from "../config/constants";
 import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
 import { parseJwt } from "../utils/common";
@@ -128,7 +128,7 @@ export const withAuth = (AppComponent: any) => (props: any) => {
       accessToken,
       data,
       permissions: {
-        write: data?.user_claims?.role === "read-write",
+        write: WRITE_ROLES.includes(data?.user_claims?.role),
       },
       signOut,
     } as tAuthContext;
