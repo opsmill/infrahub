@@ -55,7 +55,7 @@ type iRelationDetailsProps = {
 const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
-  const { relationshipsData, relationshipSchema, refetch, onDeleteRelationship } = props;
+  const { mode, relationshipsData, relationshipSchema, refetch, onDeleteRelationship } = props;
 
   const { objectname, objectid } = useParams();
   const auth = useContext(AuthContext);
@@ -227,7 +227,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   };
 
   // TODO: Refactor reltionships components to compute the correct columns
-  const defaultColumns = [{ label: "Name", name: "display_label" }];
+  const defaultColumns = [
+    { label: "Type", name: "__typename" },
+    { label: "Name", name: "display_label" },
+  ];
 
   const newColumns = columns?.length ? columns : defaultColumns;
 
@@ -333,7 +336,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               </div>
             )}
 
-            {relationshipSchema?.cardinality === "many" && props.mode === "TABLE" && (
+            {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
               <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
                 <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
                   <div className="inline-block min-w-full pt-2 align-middle">
@@ -457,7 +460,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               </div>
             )}
 
-            {relationshipSchema?.cardinality === "many" && props.mode === "DESCRIPTION-LIST" && (
+            {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
@@ -539,7 +542,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )}
           </>
         )}
-        {props.mode === "TABLE" && (
+
+        {mode === "TABLE" && (
           <div className="absolute bottom-4 right-4">
             <RoundedButton
               disabled={!auth?.permissions?.write}
@@ -549,6 +553,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             </RoundedButton>
           </div>
         )}
+
         <SlideOver
           title={
             <div className="space-y-2">
