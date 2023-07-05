@@ -1,0 +1,11 @@
+---
+version: "3.4"
+services:
+  infrahub-server:
+    ports:
+      - "8000:8000"
+  frontend:
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_INFRAHUB_API_SERVER_URL=${VITE_INFRAHUB_API_SERVER_URL}

@@ -74,6 +74,10 @@ ENV_VARS_DICT = {
     "INFRAHUB_BUILD_NAME": BUILD_NAME,
     "NBR_WORKERS": NBR_WORKERS,
 }
+
+if os.getenv("VITE_INFRAHUB_API_SERVER_URL", ""):
+    ENV_VARS_DICT["VITE_INFRAHUB_API_SERVER_URL"] = os.getenv("VITE_INFRAHUB_API_SERVER_URL")
+
 ENV_VARS = " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
