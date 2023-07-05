@@ -42,7 +42,10 @@ describe("Authentication", () => {
     // Click on the profile button
     cy.get("#headlessui-menu-item-\\:rc\\:").click();
 
-    // The name should be the one from the user auth
+    // The name in the header should be the one from the user auth
+    cy.get(".text-base").should("have.text", "Admin");
+
+    // The name in the details should be the one from the user auth
     cy.get(":nth-child(2) > div.items-center > .mt-1").should(
       "have.text",
       ADMIN_CREDENTIALS.username
