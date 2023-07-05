@@ -14,16 +14,16 @@ Below is the list of all available options to define a node in the schema
 | **Name** | name |
 | **Kind** | `Text` |
 | **Description** | Node name, must be unique and must be all lowercase. |
-| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 2, max 2 |
+| **Constraints** | <br> Length: min 2, max 2 |
 
 
-## kind
+## namespace
 
 | -- | -- | { class="compact" }
 | ---- | --------------- |
-| **Name** | kind |
+| **Name** | namespace |
 | **Kind** | `Text` |
-| **Description** | Node kind, must be unique and must be in CamelCase |
+| **Description** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 3 |
 
 
