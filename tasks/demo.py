@@ -224,6 +224,7 @@ def load_infra_data(context: Context, database: str = "memgraph"):
             pty=True,
         )
 
+
 @task(optional=["database"])
 def load_infra_git(context: Context, database: str = "memgraph"):
     """Load some demo data."""
@@ -244,6 +245,7 @@ def load_infra_git(context: Context, database: str = "memgraph"):
             f"{base_cmd} exec --workdir /remote infrahub-git tar -xvzf infrahub-demo-edge-develop.tar.gz",
             pty=True,
         )
+
 
 # ----------------------------------------------------------------------------
 # Dev Environment tasks
