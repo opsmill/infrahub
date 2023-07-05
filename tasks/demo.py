@@ -224,6 +224,26 @@ def load_infra_data(context: Context, database: str = "memgraph"):
             pty=True,
         )
 
+@task(optional=["database"])
+def load_infra_git(context: Context, database: str = "memgraph"):
+    """Load some demo data."""
+
+    PACKAGE_NAME = "infrahub-demo-edge-develop-8d18455.tar.gz"
+    with context.cd(REPO_BASE):
+        compose_files_cmd = build_compose_files_cmd(database=database)
+        base_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        context.run(
+            f"{base_cmd} exec infrahub-git mkdir -p /remote",
+            pty=True,
+        )
+        context.run(
+            f"{base_cmd} cp backend/tests/fixtures/{PACKAGE_NAME} infrahub-git:/remote/infrahub-demo-edge-develop.tar.gz",
+            pty=True,
+        )
+        context.run(
+            f"{base_cmd} exec --workdir /remote infrahub-git tar -xvzf infrahub-demo-edge-develop.tar.gz",
+            pty=True,
+        )
 
 # ----------------------------------------------------------------------------
 # Dev Environment tasks

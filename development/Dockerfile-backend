@@ -4,6 +4,7 @@ FROM python:${PYTHON_VER}
 ENV PYTHONUNBUFFERED 1
 
 RUN mkdir /prom_shared
+RUN mkdir /remote
 
 RUN apt-get update && \
     apt-get upgrade -y && \
