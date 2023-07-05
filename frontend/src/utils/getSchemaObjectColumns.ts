@@ -75,6 +75,20 @@ export const getSchemaObjectColumns = (schema: iNodeSchema | iGenericSchema): iC
   return columns;
 };
 
+export const getGroupColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
+  if (!schema) {
+    return [];
+  }
+
+  const defaultColumns = [{ label: "Type", name: "__typename" }];
+  const attributes = getSchemaAttributeColumns(schema);
+  const relationships = getSchemaRelationshipColumns(schema);
+
+  const columns = R.concat(attributes, relationships);
+
+  return [...defaultColumns, ...columns];
+};
+
 export const getAttributeColumnsFromNodeOrGenericSchema = (
   schemaList: iNodeSchema[],
   generics: iGenericSchema[],

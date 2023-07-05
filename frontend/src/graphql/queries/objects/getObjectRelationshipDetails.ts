@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 
-export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query {{kind.value}} {
+export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query {{kind}} {
   {{kind}} (ids: ["{{objectid}}"]) {
     edges {
       node {
