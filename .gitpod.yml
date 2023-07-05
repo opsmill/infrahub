@@ -2,7 +2,11 @@
 # yamllint disable rule:line-length
 tasks:
   - name: CLI
-    before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
+    before: |
+      printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
+      URL_8000=`gp url 8000`
+      export VITE_INFRAHUB_API_SERVER_URL=$URL_8000
+      cp development/docker-compose.gitpod-override.yml development/docker-compose.override.yml
     init: |
       pyenv install 3.10 --skip-existing
       pyenv local 3.10
