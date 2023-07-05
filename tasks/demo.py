@@ -20,8 +20,12 @@ from .shared import (
     VOLUME_NAMES,
     DatabaseType,
     get_env_vars,
+    build_compose_files_cmd,
+    build_dev_compose_files_cmd
 )
 from .utils import REPO_BASE, get_group_id, get_user_id
+
+TEST_IN_DOCKER = int(os.environ.get("INFRAHUB_TEST_IN_DOCKER", 0))
 
 ADD_REPO_QUERY = """
 mutation($name: String!, $location: String!){
@@ -37,38 +41,38 @@ mutation($name: String!, $location: String!){
 """
 
 
-def build_compose_files_cmd(database: str) -> str:
-    if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+# def build_compose_files_cmd(database: str) -> str:
+#     if database not in SUPPORTED_DATABASES:
+#         exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
-    if database == DatabaseType.MEMGRAPH.value:
-        COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH
-    elif database == DatabaseType.NEO4J.value:
-        COMPOSE_FILES = COMPOSE_FILES_NEO4J
+#     if database == DatabaseType.MEMGRAPH.value:
+#         COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH
+#     elif database == DatabaseType.NEO4J.value:
+#         COMPOSE_FILES = COMPOSE_FILES_NEO4J
 
-    if os.path.exists(OVERRIDE_FILE_NAME):
-        print("!! Found an override file for docker-compose !!")
-        COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
-    else:
-        COMPOSE_FILES.append(DEFAULT_FILE_NAME)
+#     if os.path.exists(OVERRIDE_FILE_NAME):
+#         print("!! Found an override file for docker-compose !!")
+#         COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
+#     else:
+#         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 
-    return f"-f {' -f '.join(COMPOSE_FILES)}"
+#     return f"-f {' -f '.join(COMPOSE_FILES)}"
 
 
-def build_dev_compose_files_cmd(database: str) -> str:
-    if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+# def build_dev_compose_files_cmd(database: str) -> str:
+#     if database not in SUPPORTED_DATABASES:
+#         exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
-    if database == DatabaseType.MEMGRAPH.value:
-        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH
-    elif database == DatabaseType.NEO4J.value:
-        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J
+#     if database == DatabaseType.MEMGRAPH.value:
+#         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH
+#     elif database == DatabaseType.NEO4J.value:
+#         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J
 
-    if os.path.exists(DEV_OVERRIDE_FILE_NAME):
-        print("!! Found a dev override file for docker-compose !!")
-        DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
+#     if os.path.exists(DEV_OVERRIDE_FILE_NAME):
+#         print("!! Found a dev override file for docker-compose !!")
+#         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
 
-    return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
+#     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
 
 
 @task(optional=["database"])
@@ -88,21 +92,23 @@ def build(
         exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
 
     with context.cd(REPO_BASE):
-        get_user_id(context)
-        get_group_id(context)
 
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-
-        # --build-arg USER_ID {user_id} --build-arg GROUP_ID {group_id}
-        exec_cmd = f"build --build-arg PYTHON_VER={python_ver}"
+        if not TEST_IN_DOCKER:
+            exec_cmd = f"build --build-arg PYTHON_VER={python_ver}"
+        else:
+            user_id = get_user_id(context)
+            group_id = get_group_id(context)
+            exec_cmd = f"build --build-arg USER_ID {user_id} --build-arg GROUP_ID {group_id} --build-arg PYTHON_VER={python_ver}"
         if nocache:
             exec_cmd += " --no-cache"
 
         if service:
             exec_cmd += f" {service}"
 
-        context.run(base_cmd + " " + exec_cmd, pty=True)
+        print(f"{base_cmd} {exec_cmd}")
+        context.run(f"{base_cmd} {exec_cmd}", pty=True)
 
 
 # ----------------------------------------------------------------------------
