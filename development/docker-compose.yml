@@ -4,6 +4,7 @@
 version: "3.4"
 services:
   infrahub-server:
+    user: "user:user"
     build:
       context: ../
       dockerfile: development/Dockerfile-backend
@@ -34,6 +35,7 @@ services:
       retries: 20
       start_period: 10s
   infrahub-git:
+    user: "user:user"
     build:
       context: ../
       dockerfile: development/Dockerfile-backend

@@ -2,6 +2,8 @@ import os
 from enum import Enum
 from typing import Union
 
+from invoke import Context
+
 from .utils import project_ver
 
 
@@ -75,12 +77,27 @@ ENV_VARS_DICT = {
     "NBR_WORKERS": NBR_WORKERS,
 }
 
+
 if os.getenv("VITE_INFRAHUB_API_SERVER_URL", ""):
     ENV_VARS_DICT["VITE_INFRAHUB_API_SERVER_URL"] = os.getenv("VITE_INFRAHUB_API_SERVER_URL")
 
-ENV_VARS = " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
+
+
+def get_env_vars(context: Context) -> str:
+    # user_id = None
+    # group_id = None
+    # try:
+    #     user_id = get_user_id(context=context)
+    #     group_id = get_group_id(context=context)
+    # except ValueError:
+    #     pass
+
+    # ENV_VARS_DICT["USER_ID"] = user_id or 1000
+    # ENV_VARS_DICT["GROUP_ID"] = group_id or 1000
+
+    return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
 def build_compose_files_cmd(database: str) -> str:
