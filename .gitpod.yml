@@ -37,13 +37,13 @@ ports:
     visibility: public
   - port: 7474
     onOpen: ignore
-    name: neo4j-ui
-    description: Graphical interface for Neo4j
+    name: database-ui
+    description: Graphical interface for the database
     visibility: private
   - port: 7687
     onOpen: ignore
-    name: neo4j-api
-    description: API for Neo4j
+    name: database-api
+    description: API for the database
     visibility: private
   - port: 15672
     onOpen: ignore
