@@ -10,10 +10,10 @@ import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
 const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
   // Field is available if there is no owner and if is_protected is not set to true
-  if (!isProtected || !owner) return false;
+  if (!isProtected || !owner || user?.permissions?.isAdmin) return false;
 
   // Field is available only if is_protected is set to true and if the owner is the user
-  return owner?.id === user?.id;
+  return owner?.id !== user?.data?.sub;
 };
 
 const getFormStructureForCreateEdit = (

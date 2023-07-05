@@ -61,3 +61,5 @@ export const ACCOUNT_OBJECT = "Account";
 export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 
 export const WRITE_ROLES = ["admin", "read-write"];
+
+export const ADMIN_ROLES = ["admin"];

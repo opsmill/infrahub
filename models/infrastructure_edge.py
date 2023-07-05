@@ -157,7 +157,7 @@ ACCOUNTS = (
     ("Chloe O'Brian", "User", "Password123", "read-write"),
     ("David Palmer", "User", "Password123", "read-only"),
     ("Operation Team", "User", "Password123", "read-only"),
-    ("Engineering Team", "User", "Password123", "read-only"),
+    ("Engineering Team", "User", "Password123", "read-write"),
     ("Architecture Team", "User", "Password123", "read-only"),
 )
 
