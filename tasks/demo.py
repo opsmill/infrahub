@@ -8,20 +8,11 @@ from invoke import Context, task
 from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
-    COMPOSE_FILES_MEMGRAPH,
-    COMPOSE_FILES_NEO4J,
-    DEFAULT_FILE_NAME,
-    DEV_COMPOSE_FILES_MEMGRAPH,
-    DEV_COMPOSE_FILES_NEO4J,
-    DEV_OVERRIDE_FILE_NAME,
-    OVERRIDE_FILE_NAME,
     PYTHON_VER,
-    SUPPORTED_DATABASES,
     VOLUME_NAMES,
-    DatabaseType,
-    get_env_vars,
     build_compose_files_cmd,
-    build_dev_compose_files_cmd
+    build_dev_compose_files_cmd,
+    get_env_vars,
 )
 from .utils import REPO_BASE, get_group_id, get_user_id
 
@@ -92,7 +83,6 @@ def build(
         exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
 
     with context.cd(REPO_BASE):
-
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         if not TEST_IN_DOCKER:
