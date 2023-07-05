@@ -1,14 +1,6 @@
 ---
 # yamllint disable rule:line-length
 tasks:
-  - name: Frontend
-    before: cd frontend
-    init: npm install
-    command: |
-      gp ports await 8000
-      URL_8000=`gp url 8000`
-      export VITE_INFRAHUB_API_SERVER_URL=$URL_8000
-      npm start
   - name: CLI
     before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
     init: |
@@ -17,28 +9,9 @@ tasks:
       pip install toml invoke==2.0.0
       curl -sSL https://install.python-poetry.org | python3 -
       poetry config virtualenvs.create false
-      poetry install
-      cp development/docker-compose.override.yml.tmp development/docker-compose.override.yml
-      poetry run invoke demo.dev-start
-      gp ports await 5672
-      sleep 45
-      poetry run infrahub db init
+      poetry run invoke demo.build demo.init demo.start
     command: |
-      poetry run invoke demo.dev-start
-      gp sync-done python-setup
-  - name: Backend API
-    before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
-    command: |
-      gp ports await 5672
-      gp sync-await python-setup
-      poetry run gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-  - name: Git Agent
-    before: printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
-    command: |
-      gp ports await 8000
-      mkdir -p /workspace/.infrahub/repositories
-      export INFRAHUB_CONFIG=/workspace/infrahub/development/gitpod.infrahub.toml
-      poetry run infrahub git-agent start --debug
+      poetry run invoke demo.start demo.load-infra-schema  demo.load-infra-data
 
 # Ports to expose on workspace startup
 ports:
