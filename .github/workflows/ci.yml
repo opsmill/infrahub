@@ -107,7 +107,7 @@ jobs:
       - name: "Linting: BLACK"
         run: "black --check ."
       - name: "Linting: ruff"
-        uses: "ruff check ."
+        run: "ruff check ."
 
   # backend-build-docker:
   #   runs-on: ubuntu-latest
