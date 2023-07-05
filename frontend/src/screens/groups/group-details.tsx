@@ -56,7 +56,7 @@ export default function GroupItemDetails() {
     // If there is no schema nor generics, go to home page
     navigate("/");
 
-    return;
+    return null;
   }
 
   const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
