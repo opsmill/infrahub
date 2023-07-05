@@ -1,13 +1,10 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useContext } from "react";
-import { useNavigate } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Avatar } from "../../components/avatar";
 import { Tabs } from "../../components/tabs";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
 import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -31,18 +28,10 @@ const tabs = [
     label: "Profile",
     name: PROFILE_TABS.PROFILE,
   },
-  // {
-  //   label: "Preferences",
-  //   name: PROFILE_TABS.PREFERENCES,
-  // },
   {
     label: "Tokens",
     name: PROFILE_TABS.TOKENS,
   },
-  // {
-  //   label: "Account",
-  //   name: PROFILE_TABS.ACCOUNT,
-  // },
 ];
 
 const renderContent = (tab: string | null | undefined) => {
@@ -60,8 +49,6 @@ const renderContent = (tab: string | null | undefined) => {
 
 export default function UserProfile() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const auth = useContext(AuthContext);
-  const navigate = useNavigate();
 
   const [schemaList] = useAtom(schemaState);
 
@@ -96,11 +83,6 @@ export default function UserProfile() {
     return <LoadingScreen />;
   }
 
-  if (!auth?.permissions?.write) {
-    navigate("/");
-    return null;
-  }
-
   const objectDetailsData = data[schema.kind]?.edges[0]?.node;
 
   return (
@@ -110,10 +92,7 @@ export default function UserProfile() {
           <div className="ml-4 mt-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Avatar
-                  name={objectDetailsData?.name?.value}
-                  // image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
-                />
+                <Avatar name={objectDetailsData?.name?.value} />
               </div>
 
               <div className="ml-4">
