@@ -7,16 +7,18 @@ tasks:
       URL_8000=`gp url 8000`
       export VITE_INFRAHUB_API_SERVER_URL=$URL_8000
     init: |
+      cd /workspace/infrahub
       cp development/docker-compose.gitpod-override.yml development/docker-compose.override.yml
-      pyenv install 3.10 --skip-existing
-      pyenv local 3.10
-      pip install toml invoke==2.0.0
+      pyenv install 3.11 --skip-existing
+      pyenv local 3.11
+      pip install toml invoke
       curl -sSL https://install.python-poetry.org | python3 -
       source $HOME/.bashrc
       poetry config virtualenvs.create false
       poetry install
       poetry run invoke demo.build demo.init demo.start
     command: |
+      cd /workspace/infrahub
       source $HOME/.bashrc
       poetry run invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 
@@ -67,7 +69,7 @@ github:
     # add a "Review in Gitpod" button to the pull request's description (defaults to false)
     addBadge: false
 
-workspaceLocation: "."
+workspaceLocation: "infrahub/development/gitpod.code-workspace"
 additionalRepositories:
   - url: https://github.com/opsmill/infrahub-demo-edge-develop
     # checkoutLocation is relative to /workspaces

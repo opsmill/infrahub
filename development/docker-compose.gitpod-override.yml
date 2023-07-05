@@ -4,6 +4,9 @@ services:
   infrahub-server:
     ports:
       - "8000:8000"
+  infrahub-git:
+    volumes:
+      - "/workspace/infrahub-edge-demo:/remote/infrahub-edge-demo"
   frontend:
     ports:
       - "3000:3000"
