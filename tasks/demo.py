@@ -121,6 +121,9 @@ def restart(context: Context, database: str = "memgraph"):
             f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} restart infrahub-git",
             pty=True,
         )
+        context.run(
+            f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} restart frontend",
+        )
 
 
 @task(optional=["database"])
