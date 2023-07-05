@@ -52,6 +52,7 @@ class SchemaReadAPI(BaseModel):
 class SchemaLoadAPI(SchemaRoot):
     version: str
 
+
 @router.get("")
 @router.get("/")
 async def get_schema(

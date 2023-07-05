@@ -12,9 +12,12 @@ tasks:
       pyenv local 3.10
       pip install toml invoke==2.0.0
       curl -sSL https://install.python-poetry.org | python3 -
+      source $HOME/.bashrc
       poetry config virtualenvs.create false
+      poetry install
       poetry run invoke demo.build demo.init demo.start
     command: |
+      source $HOME/.bashrc
       poetry run invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 
 # Ports to expose on workspace startup
