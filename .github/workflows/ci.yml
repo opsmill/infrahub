@@ -103,11 +103,11 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup environment"
-        run: "pip install black==23.1.0"
+        run: "pip install black==23.1.0 ruff==0.0.265"
       - name: "Linting: BLACK"
         run: "black --check ."
-      - name: "Install ruff"
-        uses: "chartboost/ruff-action@v1"
+      - name: "Linting: ruff"
+        uses: "ruff check ."
 
   # backend-build-docker:
   #   runs-on: ubuntu-latest
