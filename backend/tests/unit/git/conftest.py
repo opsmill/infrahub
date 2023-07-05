@@ -94,7 +94,7 @@ def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
 
     name = "infrahub-demo-edge-develop"
     fixtures_dir = helper.get_fixtures_dir()
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-develop-5bf438e.tar.gz")
+    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-develop-8d18455.tar.gz")
 
     # Extract the fixture package in the source directory
     file = tarfile.open(fixture_repo)
