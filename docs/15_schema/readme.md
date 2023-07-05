@@ -176,7 +176,7 @@ The recommended way to manage and load a schema is to create a schema file in Ya
 - Define new nodes
 - Extend nodes, by adding attributes or relationships to the existing nodes
 
-At a high level the format of the schema file looks like that.
+At a high level, the format of the schema file looks like that.
 ```yaml
 ---
 version: '1.0'
