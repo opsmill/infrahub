@@ -348,8 +348,7 @@ jobs:
         id: init-demo
         run: "invoke demo.init demo.start demo.load-infra-schema"
         continue-on-error: True
-      - name: Display debug log on failure
-        if: steps.init-demo.conclusion == 'failure'
+      - name: Display infrahub-server log
         run: "docker logs infrahub-infrahub-server-1"
       - name: Check Demo Status
         run: "invoke demo.status"
