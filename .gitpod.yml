@@ -6,8 +6,8 @@ tasks:
       printf 'export PATH="%s:$PATH"\n' "/home/gitpod/.local/bin" >> $HOME/.bashrc
       URL_8000=`gp url 8000`
       export VITE_INFRAHUB_API_SERVER_URL=$URL_8000
-      cp development/docker-compose.gitpod-override.yml development/docker-compose.override.yml
     init: |
+      cp development/docker-compose.gitpod-override.yml development/docker-compose.override.yml
       pyenv install 3.10 --skip-existing
       pyenv local 3.10
       pip install toml invoke==2.0.0
@@ -15,7 +15,7 @@ tasks:
       poetry config virtualenvs.create false
       poetry run invoke demo.build demo.init demo.start
     command: |
-      poetry run invoke demo.start demo.load-infra-schema  demo.load-infra-data
+      poetry run invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 
 # Ports to expose on workspace startup
 ports:
