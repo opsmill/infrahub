@@ -61,7 +61,7 @@ Before moving to the next step, you'll need your personal access token previousl
 ```graphqls
 # Endpoint : http://127.0.0.1:8000/graphql/main
 mutation {
-  repository_create(
+  CoreRepositoryCreate(
     data: {
       name: { value: "infrahub-demo-edge" }
       location: { value: "https://github.com/<YOUR GITHUB USERNAME>/infrahub-demo-edge.git" }
@@ -79,9 +79,9 @@ mutation {
 
 !!!success Validate that everything is correct
 In the UI, new objects that have been imported from the Git Repository should now be available:
-- The repository should be visible under [Objects / Repository](http://localhost:3000/objects/repository/). If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
-- 2 Rfile under [Objects / RFile](http://localhost:3000/objects/rfile/)
-- 5 GraphQL Queries under [Objects / Graphql Query](http://localhost:3000/objects/graphql_query/)
+- The repository should be visible under [Objects / Repository](http://localhost:3000/objects/Repository/). If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
+- 2 Rfile under [Objects / RFile](http://localhost:3000/objects/RFile/)
+- 5 GraphQL Queries under [Objects / Graphql Query](http://localhost:3000/objects/GraphQLQuery/)
 !!!
 
 !!!secondary Troubleshooting

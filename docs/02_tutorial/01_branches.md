@@ -47,11 +47,14 @@ mutation {
   }
 }
 ```
+
+> You'll need to provide a header to execute this operation > `{"X-INFRAHUB-KEY":"06438eb2-8019-4776-878c-0941b1f1d1ec"}`
 ==-
 
 ### Modify the Admin Account via the UI
 
 > The name of the active branch in the top right corner should now be `cr1234`
+
 1. Select Account under Object in the left menu (near the top)
 2. Select the `admin` account
 3. Select the `edit` button on the top right corner
@@ -115,6 +118,7 @@ mutation {
   }
 }
 ```
+> You'll need to provide a header to execute this operation > `{"X-INFRAHUB-KEY":"06438eb2-8019-4776-878c-0941b1f1d1ec"}`
 ==-
 
 !!!success Validate that everything is correct
