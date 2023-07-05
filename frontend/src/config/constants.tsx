@@ -58,7 +58,7 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 
 export const ACCOUNT_OBJECT = "Account";
 
-export const ACCOUNT_TOKEN_OBJECT = "account_token";
+export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 
 export const WRITE_ROLES = ["admin", "read-write"];
 
