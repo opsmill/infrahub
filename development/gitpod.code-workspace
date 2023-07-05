@@ -3,10 +3,10 @@
     // The additional repos are cloned inside /workspace dir
     "folders": [
       {
-        "path": "." // main repository
+        "path": ".." // main repository
       },
       {
-        "path": "../infrahub-demo-edge" // Additional repo
+        "path": "../../infrahub-demo-edge" // Additional repo
       },
     ]
   }

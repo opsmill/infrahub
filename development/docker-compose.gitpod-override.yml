@@ -6,7 +6,7 @@ services:
       - "8000:8000"
   infrahub-git:
     volumes:
-      - "/workspace/infrahub-edge-demo:/remote/infrahub-edge-demo"
+      - "/workspace/infrahub-demo-edge:/remote/infrahub-demo-edge"
   frontend:
     ports:
       - "3000:3000"
