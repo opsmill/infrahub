@@ -36,8 +36,8 @@ TEST_COMPOSE_FILES_NEO4J = [
 ]
 
 
-IMAGE_NAME_FRONTEND = os.getenv("INFRAHUB_IMAGE_NAME_FRONTEND", f"opsmill/{BUILD_NAME}-backend-py{PYTHON_VER}")
-IMAGE_NAME_BACKEND = os.getenv("INFRAHUB_IMAGE_NAME_BACKEND", f"opsmill/{BUILD_NAME}-frontend")
+IMAGE_NAME_FRONTEND = os.getenv("INFRAHUB_IMAGE_NAME_FRONTEND", f"opsmill/{BUILD_NAME}-frontend")
+IMAGE_NAME_BACKEND = os.getenv("INFRAHUB_IMAGE_NAME_BACKEND", f"opsmill/{BUILD_NAME}-backend-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", project_ver())
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
