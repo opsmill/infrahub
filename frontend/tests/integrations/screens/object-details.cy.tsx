@@ -47,7 +47,7 @@ const ObjectDetailsProvider = () => {
 };
 
 describe("List screen", () => {
-  it("should fetch items and render list", () => {
+  it("should fetch object details and render a list of details", () => {
     cy.viewport(1920, 1080);
 
     // Mount the view with the default route and the mocked data

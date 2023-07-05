@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../components/alert";
 import { CONFIG } from "../config/config";
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, WRITE_ROLES } from "../config/constants";
+import { ACCESS_TOKEN_KEY, ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "../config/constants";
 import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
 import { parseJwt } from "../utils/common";
@@ -138,6 +138,7 @@ export const withAuth = (AppComponent: any) => (props: any) => {
       data,
       permissions: {
         write: WRITE_ROLES.includes(data?.user_claims?.role),
+        isAdmin: ADMIN_ROLES.includes(data?.user_claims?.role),
       },
       signOut,
     } as tAuthContext;
