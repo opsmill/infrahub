@@ -101,7 +101,7 @@ export default function UserProfile() {
     return null;
   }
 
-  const objectDetailsData = data[schema.name]?.edges[0]?.node;
+  const objectDetailsData = data[schema.kind]?.edges[0]?.node;
 
   return (
     <div className="flex flex-col flex-1 overflow-auto">
