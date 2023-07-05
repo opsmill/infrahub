@@ -22,11 +22,21 @@ import "./commands";
 // require('./commands')
 
 Cypress.Commands.add("login", (username: string, password: string) => {
-  cy.visit("/signin");
+  cy.session(
+    [username, password],
+    () => {
+      cy.visit("/signin");
 
-  cy.get(":nth-child(1) > .relative > .block").type(username);
+      cy.get(":nth-child(1) > .relative > .block").type(username);
 
-  cy.get(":nth-child(2) > .relative > .block").type(password);
+      cy.get(":nth-child(2) > .relative > .block").type(password);
 
-  cy.get(".mt-6 > .rounded-md").click();
+      cy.get(".mt-6 > .rounded-md").click();
+    },
+    {
+      validate() {
+        cy.window().its("sessionStorage").invoke("getItem", "access_token").should("exist");
+      },
+    }
+  );
 });
