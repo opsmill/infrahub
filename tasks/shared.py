@@ -36,8 +36,8 @@ TEST_COMPOSE_FILES_NEO4J = [
 ]
 
 
-IMAGE_NAME_FRONTEND = os.getenv("INFRAHUB_IMAGE_NAME_FRONTEND", f"opsmill/{BUILD_NAME}-backend-py{PYTHON_VER}")
-IMAGE_NAME_BACKEND = os.getenv("INFRAHUB_IMAGE_NAME_BACKEND", f"opsmill/{BUILD_NAME}-frontend")
+IMAGE_NAME_FRONTEND = os.getenv("INFRAHUB_IMAGE_NAME_FRONTEND", f"opsmill/{BUILD_NAME}-frontend")
+IMAGE_NAME_BACKEND = os.getenv("INFRAHUB_IMAGE_NAME_BACKEND", f"opsmill/{BUILD_NAME}-backend-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", project_ver())
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
@@ -74,6 +74,10 @@ ENV_VARS_DICT = {
     "INFRAHUB_BUILD_NAME": BUILD_NAME,
     "NBR_WORKERS": NBR_WORKERS,
 }
+
+if os.getenv("VITE_INFRAHUB_API_SERVER_URL", ""):
+    ENV_VARS_DICT["VITE_INFRAHUB_API_SERVER_URL"] = os.getenv("VITE_INFRAHUB_API_SERVER_URL")
+
 ENV_VARS = " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
