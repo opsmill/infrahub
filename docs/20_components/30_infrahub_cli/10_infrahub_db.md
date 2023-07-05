@@ -26,15 +26,12 @@ Erase the content of the database and initialize it with the core schema.
 **Usage**:
 
 ```console
-$ infrahub db init [OPTIONS] [CONFIG_FILE]
+$ infrahub db init [OPTIONS]
 ```
-
-**Arguments**:
-
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
 
 **Options**:
 
+* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahub db load-test-data`
@@ -44,14 +41,11 @@ Load test data into the database from the test_data directory.
 **Usage**:
 
 ```console
-$ infrahub db load-test-data [OPTIONS] [CONFIG_FILE]
+$ infrahub db load-test-data [OPTIONS]
 ```
-
-**Arguments**:
-
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
 
 **Options**:
 
+* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--dataset TEXT`: [default: dataset01]
 * `--help`: Show this message and exit.

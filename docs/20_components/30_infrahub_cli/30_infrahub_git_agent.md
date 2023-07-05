@@ -16,23 +16,25 @@ $ infrahub git-agent [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `start`
+* `start`: Start Infrahub Git Agent.
 
 ## `infrahub git-agent start`
+
+Start Infrahub Git Agent.
 
 **Usage**:
 
 ```console
-$ infrahub git-agent start [OPTIONS] [CONFIG_FILE] [PORT]
+$ infrahub git-agent start [OPTIONS] [PORT]
 ```
 
 **Arguments**:
 
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
 * `[PORT]`: Port used to expose a metrics endpoint  [default: 8000]
 
 **Options**:
 
-* `--interval INTEGER`: [default: 10]
-* `--debug / --no-debug`: [default: no-debug]
+* `--interval INTEGER`: Interval in sec between remote repositories update.  [default: 10]
+* `--debug / --no-debug`: Enable advanced logging and troubleshooting  [default: no-debug]
+* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--help`: Show this message and exit.
