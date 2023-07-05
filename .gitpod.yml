@@ -67,6 +67,11 @@ github:
     # add a "Review in Gitpod" button to the pull request's description (defaults to false)
     addBadge: false
 
+additionalRepositories:
+  - url: https://github.com/opsmill/infrahub-demo-edge-develop
+    # checkoutLocation is relative to /workspaces
+    checkoutLocation: infrahub-demo-edge
+
 vscode:
   extensions:
     - pomdtr.excalidraw-editor
