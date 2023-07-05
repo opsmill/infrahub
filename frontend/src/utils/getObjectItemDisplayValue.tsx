@@ -33,6 +33,7 @@ export const getObjectItemDisplayValue = (row: any, attribute: any) => {
     row[attribute?.name]?.node?.value ??
     row[attribute?.name]?.display_label ??
     row[attribute?.name]?.node?.display_label ??
+    (typeof row[attribute?.name] === "string" ? row[attribute?.name] : "") ??
     "-"
   );
 };

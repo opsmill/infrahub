@@ -49,12 +49,13 @@ type iRelationDetailsProps = {
   relationshipSchema: any;
   mode: "TABLE" | "DESCRIPTION-LIST";
   refetch?: Function;
+  onDeleteRelationship?: Function;
 };
 
 const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
-  const { relationshipsData, relationshipSchema, refetch } = props;
+  const { mode, relationshipsData, relationshipSchema, refetch, onDeleteRelationship } = props;
 
   const { objectname, objectid } = useParams();
   const auth = useContext(AuthContext);
@@ -132,6 +133,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   const handleDeleteRelationship = async (id: string) => {
+    if (onDeleteRelationship) {
+      await onDeleteRelationship(id);
+
+      setShowAddDrawer(false);
+
+      setRelatedRowToDelete(undefined);
+
+      return;
+    }
+
     const newList = relationshipsData
       .map((item: any) => ({ id: item.id }))
       .filter((item: any) => item.id !== id);
@@ -214,6 +225,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       refetch && refetch();
     }
   };
+
+  // TODO: Refactor reltionships components to compute the correct columns
+  const defaultColumns = [
+    { label: "Type", name: "__typename" },
+    { label: "Name", name: "display_label" },
+  ];
+
+  const newColumns = columns?.length ? columns : defaultColumns;
 
   return (
     <>
@@ -317,7 +336,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               </div>
             )}
 
-            {relationshipSchema?.cardinality === "many" && props.mode === "TABLE" && (
+            {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
               <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
                 <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
                   <div className="inline-block min-w-full pt-2 align-middle">
@@ -325,7 +344,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                         <thead className="bg-gray-50">
                           <tr>
-                            {columns?.map((column) => (
+                            {newColumns?.map((column) => (
                               <th
                                 key={column.name}
                                 scope="col"
@@ -350,7 +369,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               }
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer">
-                              {columns?.map((column) => (
+                              {newColumns?.map((column) => (
                                 <td
                                   key={node.id + "-" + column.name}
                                   className={classNames(
@@ -441,7 +460,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               </div>
             )}
 
-            {relationshipSchema?.cardinality === "many" && props.mode === "DESCRIPTION-LIST" && (
+            {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
@@ -523,7 +542,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )}
           </>
         )}
-        {props.mode === "TABLE" && (
+
+        {mode === "TABLE" && (
           <div className="absolute bottom-4 right-4">
             <RoundedButton
               disabled={!auth?.permissions?.write}
@@ -533,6 +553,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             </RoundedButton>
           </div>
         )}
+
         <SlideOver
           title={
             <div className="space-y-2">
