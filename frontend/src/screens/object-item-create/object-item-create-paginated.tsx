@@ -95,7 +95,7 @@ export default function ObjectItemCreate(props: iProps) {
 
     try {
       const mutationString = createObject({
-        name: schema.name,
+        kind: schema.kind,
         data: stringifyWithoutQuotes(newObject),
       });
 
