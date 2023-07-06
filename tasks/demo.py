@@ -61,7 +61,7 @@ def build(
         if service:
             exec_cmd += f" {service}"
 
-        execute_command(context=context, command=f"{base_cmd} {exec_cmd}", print=True)
+        execute_command(context=context, command=f"{base_cmd} {exec_cmd}", print_cmd=True)
 
 
 # ----------------------------------------------------------------------------
@@ -224,7 +224,7 @@ def infra_git_create(
         name,
         location,
     )
-    execute_command(context=context, command=exec_cmd, print=True)
+    execute_command(context=context, command=exec_cmd, print_cmd=True)
 
 
 # ----------------------------- -----------------------------------------------

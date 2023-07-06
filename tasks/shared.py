@@ -110,13 +110,13 @@ def check_environment(context: Context) -> dict:
     return params
 
 
-def execute_command(context: Context, command: str, print: bool = False) -> Any:
+def execute_command(context: Context, command: str, print_cmd: bool = False) -> Any:
     params = check_environment(context=context)
 
     if params["sudo"]:
         command = f"sudo {command}"
 
-    if print:
+    if print_cmd:
         print(command)
 
     return context.run(command)
