@@ -134,9 +134,11 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "display_label",
         "id",
         "is_electric",
+        "member_of_groups",
         "name",
         "nbr_seats",
         "owner",
+        "subscriber_of_groups",
     ]
 
     assert sorted(list(edged_car._meta.fields.keys())) == ["node"]
@@ -151,7 +153,9 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "display_label",
         "height",
         "id",
+        "member_of_groups",
         "name",
+        "subscriber_of_groups",
     ]
     assert sorted(list(edged_person._meta.fields.keys())) == ["node"]
     assert str(edged_person._meta.fields["node"].type) == "TestPerson"

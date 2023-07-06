@@ -768,13 +768,50 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
                 ],
                 "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
-        ]
+        ],
+        "generics": [
+            {
+                "name": "Node",
+                "namespace": "Core",
+                "description": "Base Node in Infrahub.",
+                "label": "Node",
+            },
+            {
+                "name": "Group",
+                "namespace": "Core",
+                "description": "Generic Group Object.",
+                "label": "Group",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "members",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_member",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "subscribers",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_subscriber",
+                        "cardinality": "many",
+                    },
+                ],
+            },
+        ],
     }
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    for node in schema.nodes:
-        registry.set_schema(name=node.kind, schema=node)
 
 
 @pytest.fixture
@@ -1442,13 +1479,50 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
                 ],
                 "relationships": [{"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": False}],
             },
-        ]
+        ],
+        "generics": [
+            {
+                "name": "Node",
+                "namespace": "Core",
+                "description": "Base Node in Infrahub.",
+                "label": "Node",
+            },
+            {
+                "name": "Group",
+                "namespace": "Core",
+                "description": "Generic Group Object.",
+                "label": "Group",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "members",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_member",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "subscribers",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_subscriber",
+                        "cardinality": "many",
+                    },
+                ],
+            },
+        ],
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.nodes:
-        registry.set_schema(name=node.kind, schema=node)
-
+    registry.schema.register_schema(schema=schema)
     return schema
 
 
@@ -1505,7 +1579,7 @@ async def default_branch(reset_registry, empty_database, session) -> Branch:
 
 
 @pytest.fixture
-async def register_internal_models_schema(default_branch) -> SchemaBranch:
+async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
     return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
@@ -1513,7 +1587,8 @@ async def register_internal_models_schema(default_branch) -> SchemaBranch:
 @pytest.fixture
 async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema_branch
 
 
 @pytest.fixture
@@ -1526,12 +1601,9 @@ async def register_core_schema_db(session: AsyncSession, default_branch: Branch,
 @pytest.fixture
 async def register_account_schema(session) -> None:
     SCHEMAS_TO_REGISTER = ["CoreAccount", "InternalAccountToken", "CoreGroup", "InternalRefreshToken"]
-
-    account_schemas = [
-        node for node in core_models["nodes"] if f'{node["namespace"]}{node["name"]}' in SCHEMAS_TO_REGISTER
-    ]
-    for schema in account_schemas:
-        registry.set_schema(name=f'{schema["namespace"]}{schema["name"]}', schema=NodeSchema(**schema))
+    nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
+    generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
+    registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
 
 
 @pytest.fixture
@@ -1567,7 +1639,7 @@ async def authentication_base(
 
 
 @pytest.fixture
-async def first_account(session: AsyncSession, register_account_schema) -> Node:
+async def first_account(session: AsyncSession, data_schema, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123", role="read-write")
     await obj.save(session=session)
