@@ -4,6 +4,8 @@ import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 interface iColumn {
   label: string;
   name: string;
+  kind?: string;
+  paginated?: boolean;
 }
 
 export const getSchemaRelationshipColumns = (schema?: iNodeSchema | iGenericSchema): iColumn[] => {
@@ -12,7 +14,7 @@ export const getSchemaRelationshipColumns = (schema?: iNodeSchema | iGenericSche
   }
 
   // Relationship kind to show in LIST VIEW - Attribute, Parent
-  const relationships = (schema.relationships || [])
+  const relationships: iColumn[] = (schema.relationships || [])
     .filter(
       (relationship) =>
         relationship.kind === "Attribute" ||
@@ -24,6 +26,7 @@ export const getSchemaRelationshipColumns = (schema?: iNodeSchema | iGenericSche
       name: relationship.name,
       paginated: relationship.cardinality === "many",
     }));
+
   return relationships;
 };
 
@@ -56,10 +59,14 @@ export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema):
     return [];
   }
 
-  const attributes = (schema.attributes || []).map((row) => ({
-    label: row.label ?? "",
-    name: row.name,
-  }));
+  const attributes: iColumn[] = (schema.attributes || [])
+    .filter((row) => row.kind !== "HashedPassword")
+    .map((row) => ({
+      label: row.label ?? "",
+      name: row.name,
+      kind: row.kind,
+    }));
+
   return attributes;
 };
 
