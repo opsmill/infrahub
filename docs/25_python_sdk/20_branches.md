@@ -1,7 +1,7 @@
 ---
 label: Branches Management
 layout: default
-order: 100
+order: 500
 ---
 # Branches management with the Python SDK
 
