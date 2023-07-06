@@ -31,7 +31,7 @@ def git_repos_dir(tmp_path) -> str:
 def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
     """Git Repository used as part of the  demo-edge tutorial."""
 
-    name = "infrahub-demo-edge-develop"
+    name = "infrahub-demo-edge"
     fixtures_dir = helper.get_fixtures_dir()
     fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-8d18455.tar.gz")
 
