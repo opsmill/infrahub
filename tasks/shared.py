@@ -100,7 +100,7 @@ def check_environment(context: Context) -> dict:
             output = context.run("docker ps", hide=True)
         except UnexpectedExit as exc:
             if exc.result.stderr and "denied" in exc.result.stderr:
-                output_with_sudo = context.run("docker ps", hide=True)
+                output_with_sudo = context.run("sudo docker ps", hide=True)
                 if "CONTAINER" in output_with_sudo.stdout:
                     params["sudo"] = True
 
