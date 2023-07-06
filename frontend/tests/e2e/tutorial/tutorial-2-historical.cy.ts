@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
-import { NEW_ADMIN_ACCOUNT_LABEL } from "../mocks/e2e/accounts";
-import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
+import { NEW_ADMIN_ACCOUNT_LABEL } from "../../mocks/e2e/accounts";
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../utils";
 
 describe("Tutorial - Part 2", () => {
   beforeEach(function () {

@@ -39,22 +39,12 @@ invoke demo.load-infra-schema
 ```
 ▶ invoke demo.load-infra-schema
 !! Found an override file for docker compose !!
-[+] Running 3/0
- ⠿ Container infrahub-dev-message-queue-1    Running                                                                                   0.0s
- ⠿ Container infrahub-dev-database-1         Running                                                                                   0.0s
- ⠿ Container infrahub-dev-infrahub-server-1  Running                                                                                   0.0s
 [+] Running 2/2
- ⠿ Container infrahub-dev-database-1       Healthy                                                                                     0.5s
- ⠿ Container infrahub-dev-message-queue-1  Healthy                                                                                     0.5s
-[21:44:29] INFO     Loading schema for : Device                                                                                 schema.py:46
-[21:44:30] INFO     Loading schema for : Interface                                                                              schema.py:46
-[21:44:31] INFO     Loading schema for : IPAddress                                                                              schema.py:46
-[21:44:32] INFO     Loading schema for : Circuit                                                                                schema.py:46
-           INFO     Loading schema for : CircuitEndpoint                                                                        schema.py:46
-           INFO     Loading schema for : AutonomousSystem                                                                       schema.py:46
-[21:44:33] INFO     Loading schema for : BGPPeerGroup                                                                           schema.py:46
-           INFO     Loading schema for : BGPSession                                                                             schema.py:46
-[+] Running 1/1
+ ✔ Container infrahub-anaconda-database-1       Healthy                                                                                                        0.5s
+ ✔ Container infrahub-anaconda-message-queue-1  Healthy                                                                                                        0.5s
+[+] Building 0.0s (0/0)
+Schema loaded successfully!
+[+] Restarting 1/1
  ⠿ Container infrahub-dev-infrahub-server-1  Started                                                                                   1.0s
  ```
 ==-
@@ -234,5 +224,5 @@ invoke demo.load-infra-data
 ==-
 
 !!!success Validate that everything is correct
-You should now be able to see 10 devices when you visit the list of devices at [http://localhost:3000/objects/device](http://localhost:3000/objects/device)
+You should now be able to see 10 devices when you visit the list of devices at [http://localhost:3000/objects/Device](http://localhost:3000/objects/Device)
 !!!

@@ -19,9 +19,6 @@ One of the main concepts behind GraphQL is the presence of a Schema that defines
 
 Unlike a REST API, the format of the response is not fixed in GraphQL, it depends on the query and you get back only that you asked for.
 
-!!!secondary
-TODO add more resources to learn GraphQL
-!!!
 
 ### First Query
 
@@ -30,7 +27,7 @@ The following query will return the name of the all the devices in the database.
 ```graphql # First Query
 # Endpoint : http://localhost:8000/graphql/main
 query {
-  device {
+  InfraDevice {
     edges {
       node {
         name {
@@ -49,7 +46,7 @@ Query all interfaces and IP addresses for `ord1-edge`
 ```graphql # GraphQL query with a top level filter
 # Endpoint : http://127.0.0.1:8000/graphql/main
 query {
-  device(name__value: "ord1-edge1") {
+  InfraDevice(name__value: "ord1-edge1") {
     edges {
       node {
         name {

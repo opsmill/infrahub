@@ -240,19 +240,21 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[InfrahubObject]:
     """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
-    node_interface = registry.get_graphql_type(name="CoreNode", branch=branch.name)
-
     meta_attrs = {
         "schema": schema,
         "name": schema.kind,
         "description": schema.description,
-        "interfaces": {node_interface},
+        "interfaces": set(),
     }
 
     if schema.inherit_from:
         for generic in schema.inherit_from:
             generic = registry.get_graphql_type(name=generic, branch=branch.name)
             meta_attrs["interfaces"].add(generic)
+
+    node_interface = registry.get_graphql_type(name="CoreNode", branch=branch.name)
+    if not schema.inherit_from or "CoreGroup" not in schema.inherit_from:
+        meta_attrs["interfaces"].add(node_interface)
 
     main_attrs = {
         "id": graphene.String(required=True),

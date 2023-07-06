@@ -6,8 +6,8 @@ import {
   MAIN_BRANCH_NAME,
   NEW_ADMIN_ACCOUNT_LABEL,
   NEW_BRANCH_NAME,
-} from "../mocks/e2e/accounts";
-import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
+} from "../../mocks/e2e/accounts";
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../utils";
 
 describe("Tutorial - Part 1", () => {
   beforeEach(function () {

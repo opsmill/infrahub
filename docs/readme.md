@@ -1,11 +1,11 @@
-# InfraHub
+![](./media/Infrahub-horizontal.svg)
 
 Infrahub is taking a new approach to Infrastructure Automation by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
 
 At its heart, Infrahub is built on 3 fundamental pillars
-- Powerful Schema, easily extensible
-- Unified Version Control for Data and Files
-- Data Synchronization with Traceability and Ownership
+- **Powerful Schema**, easily extensible
+- **Unified Version Control** for Data and Files
+- **Data Synchronization** with Traceability and Ownership
 
 # Getting Started
 
@@ -34,6 +34,5 @@ Missing features we are actively working on.
 - Object Profile and Inheritance
 - Pull requests
 - Branches support for the schema and schema migration
-- User management and permissions
 
 

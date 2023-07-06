@@ -27,12 +27,15 @@ If you navigate to the detailed page of any device you'll be able to see that:
 
 ![](../media/tutorial/tutorial_4_metadata.png)
 
-!!!warning
-The system is currently not enforcing the `is_protected` metadata, it will be implemented in a later release.
-!!!
+## Protected Field
+
+When a field is marked as protected, all users that aren't listed as the owner won't be able to modify this specific attribute when trying to edit the object but they will still be able to modify the other one.
+
+![](../media/tutorial/tutorial_4_metadata_edit_protected.png)
+
 
 ## Update the metadata for any given data point
 
-It's possible to update the metadata from the `edit` form by selecting the arrow on the right side of each field.
+It's possible to update the metadata by selecting the pencil on the top right corner of each metadata panel 
 
 ![](../media/tutorial/tutorial_4_metadata_edit.png)

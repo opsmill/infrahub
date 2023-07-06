@@ -5,18 +5,24 @@
 
 Infrahub is composed of multiple components, the backend is mostly written in Python and the frontend in React.
 
-The main dependencies are:
-- Neo4j 5.x
-- RabbitMQ
-- `Poetry` to install the python packages
-- `npm` to install the Javascript packages
+The main components are:
+- **A Frontend** written in react
+- An **API Server** written in Python with FastAPI
+- A **Git agent** to manage the interaction with external Git repositories
+- A **Graph Database** based on `Neo4j` 5.x or `memgraph`
+- A **Message Bus** based on `RabbitMQ`
 
 ## Docker Compose
 
 Currently, the recommended way to run Infrahub is to use the docker-compose project included with the project combined with the helper commands defined in `invoke`
 
+The pre-requisites for this type of deployment are to have:
+- Docker Desktop (or just docker if you are on Linux)
+- python invoke
+
+Once docker desktop and invoke are properly installed you can build start Infrahub with the following command
 ```
-invoke demo.build demo.init demo.start
+invoke demo.build demo.init demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
 [!ref Check the documentation of the demo environment for more information](../20_knowledge_base/80_local_demo_environment.md)
@@ -29,7 +35,13 @@ The project is also pre-configured to run in GitPod
 GitPod provides a Cloud Development Environment that makes it very easy to run any project right within your browser.
 !!!
 
-GitPod has a generous free tier of 50/hours per month for free.  
+GitPod has a generous free tier of 50/hours per month for free.
 > For our early testers, we also provide access to our GitPod organization which includes some credits and some pre-built environments to speedup the deployment time.
 
 [!ref Check Infrahub in GitPod](https://gitpod.io/#/github.com/opsmill/infrahub)
+
+## K8s with Helm Chart
+
+The support for K8s is not yet available but we are actively tracking this effort in our short/mid-term roadmap
+https://github.com/opsmill/infrahub/issues/506
+Please reach out and let us know you are interested in this feature, it's always helpful to prioritize what the team needs to focus on.

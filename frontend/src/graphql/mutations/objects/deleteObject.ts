@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 
 export const deleteObject = Handlebars.compile(`
-mutation {{kind.value}}Update {
-  {{name}}_delete (data: {{{data}}}) {
+mutation {{kind}}Update {
+  {{kind}}Delete (data: {{{data}}}) {
       ok
   }
 }

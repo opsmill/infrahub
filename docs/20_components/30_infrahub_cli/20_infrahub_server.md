@@ -30,7 +30,7 @@ $ infrahub server start [OPTIONS]
 
 **Options**:
 
-* `--listen TEXT`: [default: 127.0.0.1]
-* `--port INTEGER`: [default: 8000]
-* `--debug / --no-debug`: [default: no-debug]
+* `--listen TEXT`: Address used to listen for new request.  [default: 127.0.0.1]
+* `--port INTEGER`: Port used to listen for new request.  [default: 8000]
+* `--debug / --no-debug`: Enable advanced logging and troubleshooting  [default: no-debug]
 * `--help`: Show this message and exit.

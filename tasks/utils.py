@@ -26,3 +26,15 @@ def git_info(context: Context) -> Tuple[str, str]:
     branch_name = context.run("git rev-parse --abbrev-ref HEAD", hide=True, pty=False)
     hash_value = context.run("git rev-parse --short HEAD", hide=True, pty=False)
     return branch_name.stdout.strip(), hash_value.stdout.strip()
+
+
+def get_user_id(context: Context) -> int:
+    user_id = context.run("id -u", hide=True, pty=False)
+    clean_user_id = user_id.stdout.strip()
+    return int(clean_user_id)
+
+
+def get_group_id(context: Context) -> int:
+    group_id = context.run("id -g", hide=True, pty=False)
+    clean_user_id = group_id.stdout.strip()
+    return int(clean_user_id)
