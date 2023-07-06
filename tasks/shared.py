@@ -1,15 +1,19 @@
 import os
 from enum import Enum
-from typing import Union
+from typing import Union, Any
 
 from invoke import Context
 
-from .utils import project_ver
+from .utils import project_ver, str_to_bool
 
 
 class DatabaseType(str, Enum):
     NEO4J = "neo4j"
     MEMGRAPH = "memgraph"
+
+
+INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
+INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -83,6 +87,39 @@ if os.getenv("VITE_INFRAHUB_API_SERVER_URL", ""):
 
 
 VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
+
+
+def check_environment(context: Context) -> dict:
+    params = {
+        "sudo": False,
+        "pty": True,
+    }
+
+    if INVOKE_SUDO is None:
+        output = context.run("docker ps", hide=True, pty=False)
+        if "denied" in output.stdout:
+            output_with_sudo = context.run("docker ps", hide=True, pty=False, sudo=True)
+            if "CONTAINER" in output_with_sudo.stdout:
+                params["sudo"] = True
+    else:
+        params["sudo"] = str_to_bool(INVOKE_SUDO)
+
+    if INVOKE_PTY is not None:
+        params["pty"] = str_to_bool(INVOKE_PTY)
+
+    return params
+
+
+def execute_command(context: Context, command: str, print: bool = False) -> Any:
+    params = check_environment(context=context)
+
+    if params["sudo"]:
+        command = f"sudo {command}"
+
+    if print:
+        print(command)
+
+    return context.run(command)
 
 
 def get_env_vars(context: Context) -> str:

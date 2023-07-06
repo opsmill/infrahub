@@ -12,6 +12,7 @@ from .shared import (
     build_compose_files_cmd,
     build_dev_compose_files_cmd,
     get_env_vars,
+    execute_command,
 )
 from .utils import REPO_BASE
 
@@ -60,8 +61,7 @@ def build(
         if service:
             exec_cmd += f" {service}"
 
-        print(f"{base_cmd} {exec_cmd}")
-        context.run(f"{base_cmd} {exec_cmd}", pty=True)
+        execute_command(context=context, command=f"{base_cmd} {exec_cmd}", print=True)
 
 
 # ----------------------------------------------------------------------------
@@ -72,8 +72,8 @@ def debug(context: Context, database: str = "memgraph"):
     """Start a local instance of Infrahub in debug mode."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} up"
-        return context.run(exec_cmd, pty=True)
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} up"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -81,8 +81,8 @@ def start(context: Context, database: str = "memgraph"):
     """Start a local instance of Infrahub within docker compose."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d"
-        return context.run(exec_cmd, pty=True)
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -90,17 +90,11 @@ def restart(context: Context, database: str = "memgraph"):
     """Restart Infrahub API Server and Git Agent within docker compose."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} restart infrahub-server",
-            pty=True,
-        )
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} restart infrahub-git",
-            pty=True,
-        )
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} restart frontend",
-        )
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+
+        execute_command(context=context, command=f"{base_cmd} restart infrahub-server")
+        execute_command(context=context, command=f"{base_cmd} restart infrahub-git")
+        execute_command(context=context, command=f"{base_cmd} restart frontend")
 
 
 @task(optional=["database"])
@@ -108,8 +102,8 @@ def stop(context: Context, database: str = "memgraph"):
     """Stop the running instance of Infrahub."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        exec_cmd = f"{get_env_vars(context)} docker compose  {compose_files_cmd} -p {BUILD_NAME} down"
-        return context.run(exec_cmd, pty=True)
+        command = f"{get_env_vars(context)} docker compose  {compose_files_cmd} -p {BUILD_NAME} down"
+        execute_command(context=context, command=command)
 
 
 @task
@@ -117,13 +111,13 @@ def destroy(context: Context, database: str = "memgraph"):
     """Destroy all containers and volumes."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans",
-            pty=True,
-        )
+
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans"
+        execute_command(context=context, command=command)
 
         for volume in VOLUME_NAMES:
-            context.run(f"{get_env_vars(context)} docker volume rm -f {BUILD_NAME}_{volume}", pty=True)
+            command = f"{get_env_vars(context)} docker volume rm -f {BUILD_NAME}_{volume}"
+            execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -131,10 +125,8 @@ def cli_server(context: Context, database: str = "memgraph"):
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-server bash",
-            pty=True,
-        )
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-server bash"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -142,10 +134,8 @@ def cli_git(context: Context, database: str = "memgraph"):
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-git bash",
-            pty=True,
-        )
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-git bash"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -153,10 +143,8 @@ def cli_frontend(context: Context, database: str = "memgraph"):
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run frontend bash",
-            pty=True,
-        )
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run frontend bash"
+        execute_command(context=context, command=command)
 
 
 @task
@@ -164,10 +152,8 @@ def init(context: Context, database: str = "memgraph"):
     """Initialize Infrahub database before using it the first time."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-server infrahub db init",
-            pty=True,
-        )
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-server infrahub db init"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -175,10 +161,8 @@ def status(context: Context, database: str = "memgraph"):
     """Display the status of all containers."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} ps",
-            pty=True,
-        )
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} ps"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -186,15 +170,12 @@ def load_infra_schema(context: Context, database: str = "memgraph"):
     """Load the base schema for infrastructure."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-git infrahubctl schema load models/infrastructure_base.yml",
-            pty=True,
-        )
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        command = f"{base_cmd} run infrahub-git infrahubctl schema load models/infrastructure_base.yml"
+        execute_command(context=context, command=command)
 
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} restart infrahub-server",
-            pty=True,
-        )
+        command = f"{base_cmd} restart infrahub-server"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -202,27 +183,25 @@ def load_infra_data(context: Context, database: str = "memgraph"):
     """Load some demo data."""
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        context.run(
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-git infrahubctl run models/infrastructure_edge.py",
-            pty=True,
-        )
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
 def infra_git_import(context: Context, database: str = "memgraph"):
     """Load some demo data."""
-
     PACKAGE_NAME = "infrahub-demo-edge-f249905.tar.gz"
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-        context.run(
-            f"{base_cmd} cp backend/tests/fixtures/{PACKAGE_NAME} infrahub-git:/remote/infrahub-demo-edge-develop.tar.gz",
-            pty=True,
+        execute_command(
+            context=context,
+            command=f"{base_cmd} cp backend/tests/fixtures/{PACKAGE_NAME} infrahub-git:/remote/infrahub-demo-edge-develop.tar.gz",
         )
-        context.run(
-            f"{base_cmd} exec --workdir /remote infrahub-git tar -xvzf infrahub-demo-edge-develop.tar.gz",
-            pty=True,
+        execute_command(
+            context=context,
+            command=f"{base_cmd} exec --workdir /remote infrahub-git tar -xvzf infrahub-demo-edge-develop.tar.gz",
         )
 
 
@@ -231,7 +210,6 @@ def infra_git_create(
     context: Context, database: str = "memgraph", name="demo-edge", location="/remote/infrahub-demo-edge"
 ):
     """Load some demo data."""
-
     clean_query = re.sub(r"\n\s*", "", ADD_REPO_QUERY)
 
     exec_cmd = """
@@ -246,8 +224,7 @@ def infra_git_create(
         name,
         location,
     )
-    print(exec_cmd)
-    context.run(exec_cmd, pty=True)
+    execute_command(context=context, command=exec_cmd, print=True)
 
 
 # ----------------------------- -----------------------------------------------
@@ -258,8 +235,8 @@ def dev_start(context: Context, database: str = "memgraph"):
     """Start a local instance of NEO4J & RabbitMQ."""
     with context.cd(REPO_BASE):
         dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)
-        exec_cmd = f"{get_env_vars(context)} docker compose {dev_compose_files_cmd} -p {BUILD_NAME} up -d"
-        return context.run(exec_cmd, pty=True)
+        command = f"{get_env_vars(context)} docker compose {dev_compose_files_cmd} -p {BUILD_NAME} up -d"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
@@ -267,8 +244,8 @@ def dev_stop(context: Context, database: str = "memgraph"):
     """Start a local instance of NEO4J & RabbitMQ."""
     with context.cd(REPO_BASE):
         dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)
-        exec_cmd = f"{get_env_vars(context)} docker compose  {dev_compose_files_cmd} -p {BUILD_NAME} down"
-        return context.run(exec_cmd, pty=True)
+        command = f"{get_env_vars(context)} docker compose  {dev_compose_files_cmd} -p {BUILD_NAME} down"
+        execute_command(context=context, command=command)
 
 
 @task(optional=["expected"])
