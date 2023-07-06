@@ -2,9 +2,12 @@
 
 import { expect } from "chai";
 import { NEW_ACCOUNT } from "../mocks/e2e/accounts";
+import { ADMIN_CREDENTIALS } from "../utils";
 
 describe("Object creation and deletion", () => {
   beforeEach(function () {
+    cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
+
     cy.visit("/");
   });
 
