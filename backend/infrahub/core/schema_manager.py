@@ -266,36 +266,39 @@ class SchemaBranch:
             self.set(name=name, schema=new_node)
 
     def add_groups(self):
-        if not self.has(name="Group"):
+        if not self.has(name="CoreGroup"):
             return
 
-        for node_name in self.nodes:
-            node_schema: NodeSchema = self.get(name=node_name)
+        for node_name in list(self.nodes.keys()) + list(self.generics.keys()):
+            schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name)
 
-            if "Group" in node_schema.inherit_from:
+            if isinstance(schema, NodeSchema) and "CoreGroup" in schema.inherit_from:
                 continue
 
-            if node_schema.kind in INTERNAL_SCHEMA_NODE_KINDS:
+            if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == "CoreGroup":
                 continue
 
-            if "member_of_groups" not in node_schema.relationship_names:
-                node_schema.relationships.append(
+            if "member_of_groups" not in schema.relationship_names:
+                schema.relationships.append(
                     RelationshipSchema(
-                        name="member_of_groups", identifier="group_member", peer="Group", kind=RelationshipKind.GROUP
-                    )
-                )
-
-            if "subscriber_of_groups" not in node_schema.relationship_names:
-                node_schema.relationships.append(
-                    RelationshipSchema(
-                        name="subscriber_of_groups",
-                        identifier="group_subscriber",
-                        peer="Group",
+                        name="member_of_groups",
+                        identifier="group_member",
+                        peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
                     )
                 )
 
-            self.set(name=node_name, schema=node_schema)
+            if "subscriber_of_groups" not in schema.relationship_names:
+                schema.relationships.append(
+                    RelationshipSchema(
+                        name="subscriber_of_groups",
+                        identifier="group_subscriber",
+                        peer="CoreGroup",
+                        kind=RelationshipKind.GROUP,
+                    )
+                )
+
+            self.set(name=node_name, schema=schema)
 
     @staticmethod
     def generate_filters(
