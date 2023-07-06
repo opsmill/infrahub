@@ -2,7 +2,7 @@ import os
 from enum import Enum
 from typing import Union, Any
 
-from invoke import Context
+from invoke import Context, UnexpectedExit
 
 from .utils import project_ver, str_to_bool
 
@@ -96,11 +96,14 @@ def check_environment(context: Context) -> dict:
     }
 
     if INVOKE_SUDO is None:
-        output = context.run("docker ps", hide=True, pty=False)
-        if "denied" in output.stdout:
-            output_with_sudo = context.run("docker ps", hide=True, pty=False, sudo=True)
-            if "CONTAINER" in output_with_sudo.stdout:
-                params["sudo"] = True
+        try:
+            output = context.run("docker ps", hide=True)
+        except UnexpectedExit as exc:
+            if exc.result.stderr and "denied" in exc.result.stderr:
+                output_with_sudo = context.run("docker ps", hide=True)
+                if "CONTAINER" in output_with_sudo.stdout:
+                    params["sudo"] = True
+
     else:
         params["sudo"] = str_to_bool(INVOKE_SUDO)
 
