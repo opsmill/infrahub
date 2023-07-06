@@ -4,6 +4,6 @@ export const ADMIN_ACCOUNT_NAME = "admin";
 export const ADMIN_ACCOUNT_LABEL = "Admin";
 export const NEW_ADMIN_ACCOUNT_LABEL = "Administrator";
 export const NEW_ACCOUNT = {
-  name: "New account",
+  name: "New Account",
   password: "test",
 };
