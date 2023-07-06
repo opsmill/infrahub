@@ -26,5 +26,19 @@ invoke demo.init
 invoke demo.start
 ```
 
+### User Accounts available for the tutorial
+
+Multiple user accounts with different levels of permissions are available.
+To follow the tutorial you should use the `admin` account but you can try the other accounts too to see how the interface behaves with different permission levels.
+
+| name          | username        | password      | role       |
+|---------------|-----------------|---------------|------------|
+| Administrator | `admin`         | `infrahub`    | admin      |
+| Chloe O'Brian | `Chloe O'Brian` | `Password123` | read-write |
+| David Palmer  | `David Palmer`  | `Password123` | read-only  |
+
+> The default token for the Admin account is `06438eb2-8019-4776-878c-0941b1f1d1ec`  
+> While using the API the Authentication Token must be provided in a header named `X-INFRAHUB-KEY`
+
 [!ref Access the Web interface](http://localhost:3000)
 [!ref Access the GraphQL interface](http://localhost:8000/graphql)

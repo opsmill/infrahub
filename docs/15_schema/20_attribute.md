@@ -16,7 +16,17 @@ Below is the list of all available options to define an Attribute in the schema
 | **Name** | name |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 3 |
+| **Constraints** | <br> Length: min 3, max 3 |
+
+
+## namespace
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | namespace |
+| **Kind** | `Text` |
+| **Description** |  |
+| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 3 |
 
 
 ## kind
