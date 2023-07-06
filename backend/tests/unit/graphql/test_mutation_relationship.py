@@ -305,3 +305,69 @@ async def test_relationship_wrong_node(
 
     assert result.errors
     assert result.errors[0].message == f"'{person_jack_main.id}' 'TestPerson' is not a valid peer for 'BuiltinTag'"
+
+
+async def test_relationship_groups(
+    db: AsyncDriver, session: AsyncSession, default_branch: Branch, car_person_generics_data
+):
+    c1 = car_person_generics_data["c1"]
+    c2 = car_person_generics_data["c2"]
+    c3 = car_person_generics_data["c3"]
+
+    g1 = await Node.init(session=session, schema="CoreStandardGroup")
+    await g1.new(session=session, name="group1", members=[c1])
+    await g1.save(session=session)
+    g2 = await Node.init(session=session, schema="CoreStandardGroup")
+    await g2.new(session=session, name="group2", members=[c2, c3])
+    await g2.save(session=session)
+
+    query = """
+    mutation {
+        relationship_add(data: {
+            id: "%s",
+            name: "members",
+            nodes: [{id: "%s"}],
+        }) {
+            ok
+        }
+    }
+    """ % (
+        g1.id,
+        c2.id,
+    )
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    query = """
+    mutation {
+        relationship_add(data: {
+            id: "%s",
+            name: "member_of_groups",
+            nodes: [{id: "%s"}, {id: "%s"}],
+        }) {
+            ok
+        }
+    }
+    """ % (
+        c3.id,
+        g1.id,
+        g2.id,
+    )
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None

@@ -92,8 +92,41 @@ def schema_all_in_one():
                 ],
             },
             {
+                "name": "Node",
+                "namespace": "Core",
+                "description": "Base Node in Infrahub.",
+                "label": "Node",
+            },
+            {
                 "name": "Group",
                 "namespace": "Core",
+                "description": "Generic Group Object.",
+                "label": "Group",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "members",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_member",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "subscribers",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_subscriber",
+                        "cardinality": "many",
+                    },
+                ],
             },
         ],
         "groups": [

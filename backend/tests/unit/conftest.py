@@ -1,4 +1,5 @@
 import asyncio
+from typing import Dict
 
 import pendulum
 import pytest
@@ -853,9 +854,54 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                         "cardinality": "one",
                     },
                 ],
-            }
+            },
+            {
+                "name": "Group",
+                "namespace": "Core",
+                "description": "Generic Group Object.",
+                "label": "Group",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "members",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_member",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "subscribers",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_subscriber",
+                        "cardinality": "many",
+                    },
+                ],
+            },
+            {
+                "name": "Node",
+                "namespace": "Core",
+                "description": "Base Node in Infrahub.",
+                "label": "Node",
+            },
         ],
         "nodes": [
+            {
+                "name": "StandardGroup",
+                "namespace": "Core",
+                "inherit_from": ["CoreGroup"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
             {
                 "name": "ElectricCar",
                 "namespace": "Test",
@@ -891,6 +937,40 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def car_person_generics_data(session: AsyncSession, car_person_schema_generics) -> Dict[str, Node]:
+    ecar = registry.get_schema(name="TestElectricCar")
+    gcar = registry.get_schema(name="TestGazCar")
+    person = registry.get_schema(name="TestPerson")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+    p2 = await Node.init(session=session, schema=person)
+    await p2.new(session=session, name="Jane", height=170)
+    await p2.save(session=session)
+
+    c1 = await Node.init(session=session, schema=ecar)
+    await c1.new(session=session, name="volt", nbr_seats=4, nbr_engine=4, owner=p1)
+    await c1.save(session=session)
+    c2 = await Node.init(session=session, schema=ecar)
+    await c2.new(session=session, name="bolt", nbr_seats=4, nbr_engine=2, owner=p1)
+    await c2.save(session=session)
+    c3 = await Node.init(session=session, schema=gcar)
+    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
+    await c3.save(session=session)
+
+    nodes = {
+        "p1": p1,
+        "p2": p2,
+        "c1": c1,
+        "c2": c2,
+        "c3": c3,
+    }
+
+    return nodes
 
 
 @pytest.fixture
