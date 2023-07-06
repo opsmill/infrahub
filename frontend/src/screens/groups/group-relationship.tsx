@@ -14,7 +14,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { AuthContext } from "../../decorators/withAuth";
-import { removeRelationship } from "../../graphql/mutations/objects/removeRelationship";
+import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";

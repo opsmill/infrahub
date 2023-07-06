@@ -55,7 +55,6 @@ export default function GroupItems() {
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  console.log("schemaData: ", schemaData);
   const columns = getGroupColumns(schemaData);
 
   const queryString = schemaData

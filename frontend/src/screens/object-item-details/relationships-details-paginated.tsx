@@ -7,7 +7,7 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Pagination } from "../../components/pagination";
 import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";
-import { removeRelationship } from "../../graphql/mutations/objects/removeRelationship";
+import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";

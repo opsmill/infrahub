@@ -5,6 +5,7 @@ import {
   LockClosedIcon,
   PencilIcon,
   PencilSquareIcon,
+  PlusCircleIcon,
   Square3Stack3DIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -32,6 +33,7 @@ import {
   getSchemaRelationshipsTabs,
 } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
+import AddObjectToGroup from "../groups/add-object-to-group";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
@@ -50,6 +52,7 @@ export default function ObjectItemDetails(props: any) {
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [showAddToGroupDrawer, setShowAddToGroupDrawer] = useState(false);
   const auth = useContext(AuthContext);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
@@ -88,6 +91,7 @@ export default function ObjectItemDetails(props: any) {
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
+  console.log("queryString: ", queryString);
 
   const query = gql`
     ${queryString}
@@ -137,13 +141,23 @@ export default function ObjectItemDetails(props: any) {
           <Tabs
             tabs={tabs}
             rightItems={
-              <Button
-                disabled={!auth?.permissions?.write}
-                onClick={() => setShowEditDrawer(true)}
-                className="mr-4">
-                Edit
-                <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-              </Button>
+              <>
+                <Button
+                  disabled={!auth?.permissions?.write}
+                  onClick={() => setShowEditDrawer(true)}
+                  className="mr-4">
+                  Edit
+                  <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                </Button>
+
+                <Button
+                  disabled={!auth?.permissions?.write}
+                  onClick={() => setShowAddToGroupDrawer(true)}
+                  className="mr-4">
+                  Add to a group
+                  <PlusCircleIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                </Button>
+              </>
             }
           />
         </>
@@ -334,6 +348,45 @@ export default function ObjectItemDetails(props: any) {
           onUpdateComplete={() => refetch()}
           objectid={objectid!}
           objectname={objectname!}
+        />
+      </SlideOver>
+
+      <SlideOver
+        title={
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <Square3Stack3DIcon className="w-5 h-5" />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {schemaData.kind}
+            </span>
+            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              ID: {objectDetailsData.id}
+            </div>
+          </div>
+        }
+        open={showAddToGroupDrawer}
+        setOpen={setShowAddToGroupDrawer}>
+        <AddObjectToGroup
+          closeDrawer={() => setShowMetaEditModal(false)}
+          onUpdateComplete={() => refetch()}
         />
       </SlideOver>
 
