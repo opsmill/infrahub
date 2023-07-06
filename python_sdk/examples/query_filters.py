@@ -7,7 +7,7 @@ from infrahub_client import InfrahubClient
 
 async def main():
     client = await InfrahubClient.init(address="http://localhost:8000")
-    accounts = await client.all(kind="Account")
+    accounts = await client.filters(kind="CoreAccount")
     rprint(accounts)
 
 if __name__ == "__main__":
