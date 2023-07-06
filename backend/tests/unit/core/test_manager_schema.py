@@ -58,6 +58,14 @@ def schema_all_in_one():
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
             },
+            {
+                "name": "StandardGroup",
+                "namespace": "Core",
+                "inherit_from": ["CoreGroup"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
         ],
         "generics": [
             {
@@ -82,6 +90,10 @@ def schema_all_in_one():
                         "cardinality": "one",
                     },
                 ],
+            },
+            {
+                "name": "Group",
+                "namespace": "Core",
             },
         ],
         "groups": [
@@ -162,6 +174,22 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
 
     assert criticality.get_attribute(name="my_generic_name")
     assert criticality.get_attribute(name="my_generic_name").inherited
+
+
+async def test_schema_branch_add_groups(schema_all_in_one):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.process_inheritance()
+    schema.add_groups()
+
+    criticality = schema.get(name="BuiltinCriticality")
+    assert criticality.get_relationship(name="member_of_groups")
+    assert criticality.get_relationship(name="subscriber_of_groups")
+
+    std_group = schema.get(name="CoreStandardGroup")
+    assert std_group.get_relationship(name="member_of_groups", raise_on_error=False) is None
+    assert std_group.get_relationship(name="subscriber_of_groups", raise_on_error=False) is None
 
 
 async def test_schema_branch_generate_weight(schema_all_in_one):

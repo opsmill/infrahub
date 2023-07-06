@@ -266,13 +266,13 @@ class SchemaBranch:
             self.set(name=name, schema=new_node)
 
     def add_groups(self):
-        if not self.has(name="Group"):
+        if not self.has(name="CoreGroup"):
             return
 
         for node_name in self.nodes:
             node_schema: NodeSchema = self.get(name=node_name)
 
-            if "Group" in node_schema.inherit_from:
+            if "CoreGroup" in node_schema.inherit_from:
                 continue
 
             if node_schema.kind in INTERNAL_SCHEMA_NODE_KINDS:
@@ -281,7 +281,10 @@ class SchemaBranch:
             if "member_of_groups" not in node_schema.relationship_names:
                 node_schema.relationships.append(
                     RelationshipSchema(
-                        name="member_of_groups", identifier="group_member", peer="Group", kind=RelationshipKind.GROUP
+                        name="member_of_groups",
+                        identifier="group_member",
+                        peer="CoreGroup",
+                        kind=RelationshipKind.GROUP,
                     )
                 )
 
@@ -290,7 +293,7 @@ class SchemaBranch:
                     RelationshipSchema(
                         name="subscriber_of_groups",
                         identifier="group_subscriber",
-                        peer="Group",
+                        peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
                     )
                 )
