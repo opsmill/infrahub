@@ -1,6 +1,6 @@
 from invoke import Context, task
 
-from .shared import BUILD_NAME, ENV_VARS, NBR_WORKERS, build_test_compose_files_cmd
+from .shared import BUILD_NAME, NBR_WORKERS, build_test_compose_files_cmd, get_env_vars
 from .utils import REPO_BASE
 
 MAIN_DIRECTORY = "python_sdk"
@@ -63,7 +63,9 @@ def black(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        )
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
@@ -79,7 +81,9 @@ def isort(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        )
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
@@ -95,7 +99,9 @@ def mypy(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        )
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
@@ -111,7 +117,9 @@ def pylint(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        )
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
@@ -127,7 +135,9 @@ def ruff(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
+        )
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
@@ -150,7 +160,7 @@ def lint(context: Context, docker: bool = False):
 def test_unit(context: Context):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        base_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/unit"
 
         return context.run(f"{base_cmd} {exec_cmd}", pty=True)
@@ -160,7 +170,7 @@ def test_unit(context: Context):
 def test_integration(context: Context, database: str = "memgraph"):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
         exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/integration"
 
         return context.run(f"{base_cmd} {exec_cmd}", pty=True)

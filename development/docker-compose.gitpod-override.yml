@@ -2,8 +2,19 @@
 version: "3.4"
 services:
   infrahub-server:
+    user: "33333:33333"
+    build:
+      context: ../
+      dockerfile: development/Dockerfile-backend-gitpod
     ports:
       - "8000:8000"
+  infrahub-git:
+    user: "33333:33333"
+    build:
+      context: ../
+      dockerfile: development/Dockerfile-backend-gitpod
+    volumes:
+      - "/workspace/infrahub-demo-edge:/remote/infrahub-demo-edge"
   frontend:
     ports:
       - "3000:3000"
