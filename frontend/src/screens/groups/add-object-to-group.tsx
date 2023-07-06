@@ -7,12 +7,13 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { GROUP_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
+import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
-import { genericsState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { getFormStructureForAddObjectToGroup } from "../../utils/formStructureForAddObjectToGroup";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -28,8 +29,9 @@ interface Props {
 export default function AddObjectToGroup(props: Props) {
   const { closeDrawer, onUpdateComplete } = props;
 
-  const { objectid } = useParams();
+  const { objectname, objectid } = useParams();
 
+  const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
@@ -37,6 +39,10 @@ export default function AddObjectToGroup(props: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   const schemaData = genericsList.filter((s) => s.name === GROUP_OBJECT)[0];
+
+  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const generic = genericsList.filter((s) => s.name === objectname)[0];
+  const objectSchemaData = schema || generic;
 
   const filtersString = [
     // Add pagination filters
@@ -50,12 +56,13 @@ export default function AddObjectToGroup(props: Props) {
     ? getGroups({
         attributes: schemaData.attributes,
         filters: filtersString,
+        kind: objectSchemaData.kind,
+        objectid,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
       "query { ok }";
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
@@ -84,33 +91,60 @@ export default function AddObjectToGroup(props: Props) {
   }
 
   const groups = data[schemaData.kind]?.edges.map((edge: any) => edge.node);
-  console.log("groups: ", groups);
 
-  const formStructure = getFormStructureForAddObjectToGroup(groups);
-  console.log("formStructure: ", formStructure);
+  const objectGroups = data[objectSchemaData.kind]?.edges[0]?.node?.member_of_groups?.edges?.map(
+    (edge: any) => edge.node
+  );
+
+  const formStructure = getFormStructureForAddObjectToGroup(groups, objectGroups);
 
   async function onSubmit(data: any) {
     const { groupids } = data;
 
+    const previousIds = objectGroups.map((group: any) => group.id);
+    const newIds = groupids.map((group: any) => group.id);
+
+    const newGroups = newIds.filter((id: string) => !previousIds.includes(id));
+    const removedGroups = previousIds.filter((id: string) => !newIds.includes(id));
+
     try {
-      const mutationString = addRelationship({
-        data: stringifyWithoutQuotes({
-          id: objectid,
-          name: "member_of_groups",
-          nodes: groupids.map((option: any) => ({ id: option.id })),
-        }),
-      });
+      if (newGroups.length) {
+        const mutationString = addRelationship({
+          data: stringifyWithoutQuotes({
+            id: objectid,
+            name: "member_of_groups",
+            nodes: newGroups.map((id: string) => ({ id })),
+          }),
+        });
 
-      console.log("mutationString: ", mutationString);
+        const mutation = gql`
+          ${mutationString}
+        `;
 
-      const mutation = gql`
-        ${mutationString}
-      `;
+        await graphqlClient.mutate({
+          mutation,
+          context: { branch: branch?.name, date },
+        });
+      }
 
-      await graphqlClient.mutate({
-        mutation,
-        context: { branch: branch?.name, date },
-      });
+      if (removedGroups.length) {
+        const mutationString = removeRelationship({
+          data: stringifyWithoutQuotes({
+            id: objectid,
+            name: "member_of_groups",
+            nodes: removedGroups.map((id: string) => ({ id })),
+          }),
+        });
+
+        const mutation = gql`
+          ${mutationString}
+        `;
+
+        await graphqlClient.mutate({
+          mutation,
+          context: { branch: branch?.name, date },
+        });
+      }
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schemaData.name} updated`} />);
 

@@ -91,7 +91,6 @@ export default function ObjectItemDetails(props: any) {
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
-  console.log("queryString: ", queryString);
 
   const query = gql`
     ${queryString}
@@ -385,7 +384,7 @@ export default function ObjectItemDetails(props: any) {
         open={showAddToGroupDrawer}
         setOpen={setShowAddToGroupDrawer}>
         <AddObjectToGroup
-          closeDrawer={() => setShowMetaEditModal(false)}
+          closeDrawer={() => setShowAddToGroupDrawer(false)}
           onUpdateComplete={() => refetch()}
         />
       </SlideOver>
