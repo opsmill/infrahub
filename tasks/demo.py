@@ -99,7 +99,7 @@ def restart(context: Context, database: str = "memgraph"):
             pty=True,
         )
         context.run(
-            f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} restart frontend",
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} restart frontend",
         )
 
 

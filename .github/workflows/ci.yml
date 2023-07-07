@@ -106,8 +106,8 @@ jobs:
         run: "pip install black==23.1.0 ruff==0.0.265"
       - name: "Linting: BLACK"
         run: "black --check ."
-      # - name: "Linting: ruff"
-      #   run: "ruff check ."
+      - name: "Linting: ruff"
+        run: "ruff check ."
 
   # backend-build-docker:
   #   runs-on: ubuntu-latest
