@@ -35,6 +35,9 @@ describe("Tutorial - Part 1", () => {
     // Submit the form
     cy.get(".justify-center > .rounded-md").click();
 
+    // The popin should be closed
+    cy.get("Create a new branch").should("not.exist");
+
     // Verify if the new branch is selected
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", NEW_BRANCH_NAME);
   });
