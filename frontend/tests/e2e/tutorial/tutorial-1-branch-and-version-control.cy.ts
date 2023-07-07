@@ -96,7 +96,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(".mt-6 > .bg-custom-blue-700").should("not.exist");
 
     // The new label should be saved
-    cy.get(":nth-child(4) > div.items-center > .mt-1").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+    cy.get(":nth-child(3) > div.items-center > .mt-1").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
   });
 
   it("should access the Admin Account diff", function () {

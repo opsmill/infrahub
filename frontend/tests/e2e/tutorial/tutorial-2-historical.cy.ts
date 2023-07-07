@@ -21,7 +21,7 @@ describe("Tutorial - Part 2", () => {
     cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();
 
     // The label should be the new one
-    cy.get(":nth-child(4) > div.flex > .mt-1").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+    cy.get(":nth-child(3) > div.items-center > .mt-1").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
 
     cy.get(".react-datepicker__input-container > .relative > .block").click();
 
