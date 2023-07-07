@@ -55,8 +55,10 @@ describe("Tutorial - Part 1", () => {
       cy.screenshot("tutorial_1_accounts", screenshotConfig);
     }
 
+    // Select the admin account
     cy.contains(ADMIN_ACCOUNT_NAME).click();
 
+    // Verify that the view is correctly filled
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",
       ADMIN_ACCOUNT_NAME
@@ -91,7 +93,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(".mt-6 > .bg-custom-blue-700").should("not.exist");
 
     // The new label should be saved
-    cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);
+    cy.get(":nth-child(4) > div.items-center > .mt-1").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
   });
 
   it("should access the Admin Account diff", function () {
