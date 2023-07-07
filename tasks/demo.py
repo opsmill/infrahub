@@ -11,8 +11,8 @@ from .shared import (
     VOLUME_NAMES,
     build_compose_files_cmd,
     build_dev_compose_files_cmd,
-    get_env_vars,
     execute_command,
+    get_env_vars,
 )
 from .utils import REPO_BASE
 

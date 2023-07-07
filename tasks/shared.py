@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Union, Any
+from typing import Any, Union
 
 from invoke import Context, UnexpectedExit
 
