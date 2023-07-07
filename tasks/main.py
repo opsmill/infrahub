@@ -16,7 +16,7 @@ def format_black(context: Context):
     print(f" - [{NAMESPACE}] Format code with black")
     with context.cd(REPO_BASE):
         exec_cmd = f"black {MAIN_DIRECTORY}/ models/"
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -26,7 +26,7 @@ def format_autoflake(context: Context):
     print(f" - [{NAMESPACE}] Format code with autoflake")
     with context.cd(REPO_BASE):
         exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY} models"
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -36,7 +36,7 @@ def format_isort(context: Context):
     print(f" - [{NAMESPACE}] Format code with isort")
     with context.cd(REPO_BASE):
         exec_cmd = f"isort {MAIN_DIRECTORY} models"
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task(name="format", default=True)

@@ -17,7 +17,7 @@ def format_black(context: Context):
     print(f" - [{NAMESPACE}] Format code with black")
     exec_cmd = f"black {MAIN_DIRECTORY}/"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -27,7 +27,7 @@ def format_autoflake(context: Context):
     print(f" - [{NAMESPACE}] Format code with autoflake")
     exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -37,7 +37,7 @@ def format_isort(context: Context):
     print(f" - [{NAMESPACE}] Format code with isort")
     exec_cmd = f"isort {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task(name="format")
@@ -69,7 +69,7 @@ def black(context: Context, docker: bool = False):
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -87,7 +87,7 @@ def isort(context: Context, docker: bool = False):
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -105,7 +105,7 @@ def mypy(context: Context, docker: bool = False):
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -123,7 +123,7 @@ def pylint(context: Context, docker: bool = False):
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -141,7 +141,7 @@ def ruff(context: Context, docker: bool = False):
         print(exec_cmd)
 
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -163,7 +163,7 @@ def test_unit(context: Context):
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/unit"
 
-        return context.run(f"{base_cmd} {exec_cmd}", pty=True)
+        return context.run(f"{base_cmd} {exec_cmd}")
 
 
 @task(optional=["database"])
@@ -173,7 +173,7 @@ def test_integration(context: Context, database: str = "memgraph"):
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
         exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/integration"
 
-        return context.run(f"{base_cmd} {exec_cmd}", pty=True)
+        return context.run(f"{base_cmd} {exec_cmd}")
 
 
 @task(default=True)

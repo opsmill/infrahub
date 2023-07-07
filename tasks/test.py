@@ -12,7 +12,7 @@ def build(context: Context):
         exec_cmd = f"{get_env_vars(context=context)} docker compose {compose_files_cmd} -p {BUILD_NAME} build"
         # exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test bash"
 
-        return context.run(exec_cmd, pty=True)
+        return context.run(exec_cmd)
 
 
 @task
@@ -23,4 +23,4 @@ def destroy(context: Context):
         exec_cmd = (
             f"{get_env_vars(context=context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans"
         )
-        return context.run(exec_cmd, pty=True)
+        return context.run(exec_cmd)
