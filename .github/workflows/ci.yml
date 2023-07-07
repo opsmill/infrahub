@@ -341,9 +341,6 @@ jobs:
       - name: Initialize Demo
         id: init-demo
         run: "invoke demo.init demo.start demo.load-infra-schema"
-        continue-on-error: True
-      - name: Display infrahub-server log
-        run: "docker logs infrahub-infrahub-server-1"
       - name: Check Demo Status
         run: "invoke demo.status"
       - name: Load Data
