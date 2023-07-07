@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -6,38 +6,37 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Pagination } from "../../components/pagination";
 import { QSP } from "../../config/qsp";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
-import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
-import RelationshipDetails from "./relationship-details-paginated";
+import GroupRelationship from "./group-relationship";
 
 interface RelationshipsDetailsProps {
   parentNode: any;
   parentSchema: iNodeSchema;
 }
 
-export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
+export default function GroupRelationships(props: RelationshipsDetailsProps) {
   const { parentNode, parentSchema } = props;
 
-  const { objectname, objectid } = useParams();
+  const { groupname, groupid } = useParams();
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
   const [pagination] = usePagination();
   const [schemaList] = useAtom(schemaState);
+  const [genericList] = useAtom(genericsState);
   const [generics] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.filter((s) => s.name === groupname)[0];
+  const generic = genericList.filter((s) => s.name === groupname)[0];
+
   const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);
+
+  const schemaData = generic || schema;
+
   const columns = getAttributeColumnsFromNodeOrGenericSchema(
     schemaList,
     generics,
@@ -52,20 +51,18 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     .join(",");
 
   const queryString = getObjectRelationshipsDetailsPaginated({
-    ...schema,
+    ...schemaData,
     relationship: relationshipTab,
-    objectid,
+    objectid: groupid,
     columns,
     filters: filtersString,
   });
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
-  console.log("data: ", JSON.stringify(data));
 
   if (loading) {
     return <LoadingScreen />;
@@ -89,43 +86,14 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
 
   const relationships = result?.length ? result[0]?.node[relationshipTab]?.edges : null;
 
-  const handleDeleteRelationship = async (id: string) => {
-    const mutationString = removeRelationship({
-      data: stringifyWithoutQuotes({
-        id: objectid,
-        name: "members",
-        nodes: [
-          {
-            id,
-          },
-        ],
-      }),
-    });
-
-    const mutation = gql`
-      ${mutationString}
-    `;
-
-    await graphqlClient.mutate({
-      mutation,
-      context: { branch: branch?.name, date },
-    });
-
-    refetch();
-
-    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Item removed from the group"} />);
-  };
-
   return (
     <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">
-      <RelationshipDetails
+      <GroupRelationship
         parentNode={parentNode}
-        mode="TABLE"
         parentSchema={parentSchema}
         relationshipsData={relationships}
         relationshipSchema={relationshipSchema}
         refetch={refetch}
-        onDeleteRelationship={handleDeleteRelationship}
       />
 
       <Pagination count={result[0]?.node[relationshipTab]?.count} />

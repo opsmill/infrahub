@@ -1,7 +1,7 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Badge } from "../components/badge";
 
-export const getObjectItemDisplayValue = (row: any, attribute: any) => {
+export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindName?: any) => {
   if (!row) {
     return;
   }
@@ -26,6 +26,11 @@ export const getObjectItemDisplayValue = (row: any, attribute: any) => {
         ))}
       </div>
     );
+  }
+
+  if (schemaKindName && attribute?.name === "__typename" && row[attribute?.name]) {
+    // Use the schema kind name and the value of the __typename to display the type
+    return schemaKindName[row[attribute?.name]] ?? "-";
   }
 
   return (

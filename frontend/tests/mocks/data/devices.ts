@@ -3705,7 +3705,7 @@ export const deviceDetailsUpdateMocksData = {
 };
 
 export const deviceDetailsInterfacesMocksQuery = `
-query  {
+query InfraDevice {
   InfraDevice (ids: ["${deviceDetailsMocksId}"]) {
     edges {
       node {

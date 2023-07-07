@@ -137,11 +137,8 @@ describe("Object details", () => {
       }
     );
 
-    // Check the initial name
-    cy.get(".rounded-md").should("have.text", "Edit");
-
     // Click on the edit button
-    cy.get(".rounded-md").click();
+    cy.get(".flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
 
     // Check if the field has the correct initial value
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", deviceDetailsName);

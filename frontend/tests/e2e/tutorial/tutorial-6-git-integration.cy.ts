@@ -18,7 +18,7 @@ describe("Tutorial - Part 6", () => {
 
   it("should create a new branch with a git integration", function () {
     // Open the branch creation form
-    cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").click();
+    cy.get("#headlessui-popover-button-\\:r8\\: > .shadow-sm").click();
 
     // Add the new branch name
     cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH);
@@ -55,7 +55,7 @@ describe("Tutorial - Part 6", () => {
     cy.contains(regex).click();
 
     // Open the edit button
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > .rounded-md").click();
+    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
 
     // Update the description
     cy.get(":nth-child(2) > .relative > .block").clear();
