@@ -403,9 +403,9 @@ export const C_deviceSchema: any = {
 };
 
 export const C_deviceAttributeColumns = [
-  { label: "Name", name: "name" },
-  { label: "Description", name: "description" },
-  { label: "Type", name: "type" },
+  { label: "Name", name: "name", kind: "Text" },
+  { label: "Description", name: "description", kind: "Text" },
+  { label: "Type", name: "type", kind: "Text" },
 ];
 
 export const C_deviceRelationshipColumns = [
@@ -416,9 +416,9 @@ export const C_deviceRelationshipColumns = [
   { label: "Tags", name: "tags", paginated: true },
 ];
 export const C_deviceObjectColumns = [
-  { label: "Name", name: "name" },
-  { label: "Description", name: "description" },
-  { label: "Type", name: "type" },
+  { label: "Name", name: "name", kind: "Text" },
+  { label: "Description", name: "description", kind: "Text" },
+  { label: "Type", name: "type", kind: "Text" },
   { label: "Site", name: "site", paginated: false },
   { label: "Status", name: "status", paginated: false },
   { label: "Role", name: "role", paginated: false },
