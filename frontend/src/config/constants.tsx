@@ -1,5 +1,7 @@
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
+import GroupItemDetails from "../screens/groups/group-details";
+import GroupItems from "../screens/groups/group-items";
 import ObjectItemDetailsPaginated from "../screens/object-item-details/object-item-details-paginated";
 import ObjectItemsPaginated from "../screens/object-items/object-items-paginated";
 import OpsObjects from "../screens/ops-objects/ops-objects";
@@ -30,6 +32,14 @@ export const MAIN_ROUTES = [
     path: "/branches/:branchname",
     element: <BrancheItemDetails />,
   },
+  {
+    path: "/groups",
+    element: <GroupItems />,
+  },
+  {
+    path: "/groups/:groupname/:groupid",
+    element: <GroupItemDetails />,
+  },
 ];
 
 export const ADMIN_MENU_ITEMS = [
@@ -38,7 +48,7 @@ export const ADMIN_MENU_ITEMS = [
     label: "Schema",
   },
   {
-    path: "/objects/Group",
+    path: "/groups",
     label: "Groups",
   },
 ];
@@ -59,6 +69,8 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 export const ACCOUNT_OBJECT = "Account";
 
 export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
+
+export const GROUP_OBJECT = "Group";
 
 export const WRITE_ROLES = ["admin", "read-write"];
 
