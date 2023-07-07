@@ -187,7 +187,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: "runner-ubuntu-4-16"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -231,7 +231,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: "runner-ubuntu-4-16"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
