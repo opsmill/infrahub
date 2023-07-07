@@ -59,11 +59,13 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     filters: filtersString,
   });
 
+  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
+  console.log("data: ", JSON.stringify(data));
 
   if (loading) {
     return <LoadingScreen />;
