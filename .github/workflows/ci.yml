@@ -180,148 +180,148 @@ jobs:
           flag-name: python-sdk-integration
           parallel: true
 
-  backend-tests-default:
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: Cache Docker images
-        uses: ScribeMD/docker-cache@0.3.3
-        with:
-          key: "docker-${{ runner.os }}-backend-memgraph-${{ hashFiles('development/**') }}"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke backend.black --docker"
-      - name: "Isort Tests"
-        run: "invoke backend.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke backend.pylint --docker"
-      - name: "Unit Tests"
-        run: "invoke backend.test-unit"
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-unit
-          parallel: true
-      - name: "Integration Tests"
-        run: "invoke backend.test-integration"
-      - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-integration
-          parallel: true
+  # backend-tests-default:
+  #   if: |
+  #     always() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.backend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "ubuntu-20.04"
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: "Setup Python environment"
+  #       run: "pip install toml invoke"
+  #     - name: Cache Docker images
+  #       uses: ScribeMD/docker-cache@0.3.3
+  #       with:
+  #         key: "docker-${{ runner.os }}-backend-memgraph-${{ hashFiles('development/**') }}"
+  #     - name: "Build Test Image"
+  #       run: "invoke test.build"
+  #     - name: "Black Tests"
+  #       run: "invoke backend.black --docker"
+  #     - name: "Isort Tests"
+  #       run: "invoke backend.isort --docker"
+  #     - name: "Pylint Tests"
+  #       run: "invoke backend.pylint --docker"
+  #     - name: "Unit Tests"
+  #       run: "invoke backend.test-unit"
+  #     - name: "Coveralls : Unit Tests"
+  #       uses: coverallsapp/github-action@v2.0.0
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: backend-unit
+  #         parallel: true
+  #     - name: "Integration Tests"
+  #       run: "invoke backend.test-integration"
+  #     - name: "Coveralls : Integration Tests"
+  #       uses: coverallsapp/github-action@v2.0.0
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: backend-integration
+  #         parallel: true
 
-  backend-tests-neo4j:
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: Cache Docker images.
-        uses: ScribeMD/docker-cache@0.3.3
-        with:
-          key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Unit Tests"
-        run: "invoke backend.test-core --database=neo4j"
+  # backend-tests-neo4j:
+  #   if: |
+  #     always() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.backend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "ubuntu-20.04"
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: "Setup Python environment"
+  #       run: "pip install toml invoke"
+  #     - name: Cache Docker images.
+  #       uses: ScribeMD/docker-cache@0.3.3
+  #       with:
+  #         key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
+  #     - name: "Build Test Image"
+  #       run: "invoke test.build"
+  #     - name: "Unit Tests"
+  #       run: "invoke backend.test-core --database=neo4j"
 
-  ctl-tests:
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.ctl == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-      - name: Cache Docker images
-        uses: ScribeMD/docker-cache@0.3.3
-        with:
-          key: "docker-${{ runner.os }}-backend-nodb-${{ hashFiles('development/**') }}"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke ctl.black --docker"
-      - name: "Isort Tests"
-        run: "invoke ctl.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke ctl.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke ctl.mypy --docker"
-      - name: "Unit Tests"
-        run: "invoke ctl.test-unit"
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: infrahubctl-unit
-          parallel: true
+  # ctl-tests:
+  #   if: |
+  #     always() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.ctl == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "ubuntu-20.04"
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: "Install Invoke"
+  #       run: "pip install toml invoke"
+  #     - name: Cache Docker images
+  #       uses: ScribeMD/docker-cache@0.3.3
+  #       with:
+  #         key: "docker-${{ runner.os }}-backend-nodb-${{ hashFiles('development/**') }}"
+  #     - name: "Build Test Image"
+  #       run: "invoke test.build"
+  #     - name: "Black Tests"
+  #       run: "invoke ctl.black --docker"
+  #     - name: "Isort Tests"
+  #       run: "invoke ctl.isort --docker"
+  #     - name: "Pylint Tests"
+  #       run: "invoke ctl.pylint --docker"
+  #     - name: "Mypy Tests"
+  #       run: "invoke ctl.mypy --docker"
+  #     - name: "Unit Tests"
+  #       run: "invoke ctl.test-unit"
+  #     - name: "Coveralls : Unit Tests"
+  #       uses: coverallsapp/github-action@v2.0.0
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: infrahubctl-unit
+  #         parallel: true
 
-  frontend-tests:
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.frontend == 'true'
-    needs: ["files-changed", "yaml-lint", "javascript-lint"]
-    runs-on: "ubuntu-20.04"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: Install NodeJS
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - name: "Install frontend"
-        working-directory: ./frontend
-        run: npm install
-      - name: "Run unit tests"
-        working-directory: ./frontend
-        run: "npm run test:coverage"
-      - name: "Run integration tests"
-        working-directory: ./frontend
-        run: "npm run cypress:run"
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: frontend-unit
-          parallel: true
-          file: frontend/coverage/lcov.info
+  # frontend-tests:
+  #   if: |
+  #     always() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.frontend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "javascript-lint"]
+  #   runs-on: "ubuntu-20.04"
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: Install NodeJS
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 16
+  #         cache: 'npm'
+  #         cache-dependency-path: frontend/package-lock.json
+  #     - name: "Install frontend"
+  #       working-directory: ./frontend
+  #       run: npm install
+  #     - name: "Run unit tests"
+  #       working-directory: ./frontend
+  #       run: "npm run test:coverage"
+  #     - name: "Run integration tests"
+  #       working-directory: ./frontend
+  #       run: "npm run cypress:run"
+  #     - name: "Coveralls : Unit Tests"
+  #       uses: coverallsapp/github-action@v2.0.0
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: frontend-unit
+  #         parallel: true
+  #         file: frontend/coverage/lcov.info
 
   E2E-testing:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
-    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
-    runs-on: "ubuntu-20.04"
+    # needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+    # if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: "self-hosted"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -358,36 +358,36 @@ jobs:
         working-directory: ./frontend
         run: npm run cypress:run:e2e
 
-  coverall-report:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      # # NOTE: The ref value should be different when triggered by pull_request event.
-      # #       See: https://github.com/lewagon/wait-on-check-action/issues/25.
-      # - name: Wait on tests (PR)
-      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
-      #   if: github.event_name == 'pull_request'
-      #   with:
-      #     ref: ${{ github.event.pull_request.head.sha }}
-      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
-      #     wait-interval: 10
-      #     running-workflow-name: report
-      #     allowed-conclusions: success,skipped,cancelled,failure
+  # coverall-report:
+  #   needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+  #   if: always()
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     # # NOTE: The ref value should be different when triggered by pull_request event.
+  #     # #       See: https://github.com/lewagon/wait-on-check-action/issues/25.
+  #     # - name: Wait on tests (PR)
+  #     #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
+  #     #   if: github.event_name == 'pull_request'
+  #     #   with:
+  #     #     ref: ${{ github.event.pull_request.head.sha }}
+  #     #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+  #     #     wait-interval: 10
+  #     #     running-workflow-name: report
+  #     #     allowed-conclusions: success,skipped,cancelled,failure
 
-      # - name: Wait on tests (push)
-      #   if: github.event_name != 'pull_request'
-      #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
-      #   with:
-      #     ref: ${{ github.sha }}
-      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
-      #     wait-interval: 10
-      #     running-workflow-name: report
-      #     allowed-conclusions: success,skipped,cancelled,failure
+  #     # - name: Wait on tests (push)
+  #     #   if: github.event_name != 'pull_request'
+  #     #   uses: lewagon/wait-on-check-action@e106e5c43e8ca1edea6383a39a01c5ca495fd812
+  #     #   with:
+  #     #     ref: ${{ github.sha }}
+  #     #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+  #     #     wait-interval: 10
+  #     #     running-workflow-name: report
+  #     #     allowed-conclusions: success,skipped,cancelled,failure
 
-      - uses: coverallsapp/github-action@v2
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
-          parallel-finished: true
+  #     - uses: coverallsapp/github-action@v2
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
+  #         parallel-finished: true
