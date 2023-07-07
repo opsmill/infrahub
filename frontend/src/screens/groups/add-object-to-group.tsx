@@ -99,6 +99,7 @@ export default function AddObjectToGroup(props: Props) {
   const formStructure = getFormStructureForAddObjectToGroup(groups, objectGroups);
 
   async function onSubmit(data: any) {
+    // TODO: use object update mutation to provide the whole list
     const { groupids } = data;
 
     const previousIds = objectGroups.map((group: any) => group.id);

@@ -5,7 +5,7 @@ import {
   LockClosedIcon,
   PencilIcon,
   PencilSquareIcon,
-  PlusCircleIcon,
+  RectangleGroupIcon,
   Square3Stack3DIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -153,8 +153,8 @@ export default function ObjectItemDetails(props: any) {
                   disabled={!auth?.permissions?.write}
                   onClick={() => setShowAddToGroupDrawer(true)}
                   className="mr-4">
-                  Add to a group
-                  <PlusCircleIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  Manage groups
+                  <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
               </>
             }

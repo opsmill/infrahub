@@ -44,7 +44,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
-  console.log("schemaKindName: ", schemaKindName);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
