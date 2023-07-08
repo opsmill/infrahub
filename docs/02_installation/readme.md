@@ -20,6 +20,8 @@ The pre-requisites for this type of deployment are to have:
 - [Invoke](https://www.pyinvoke.org) (version 2 minimum) and Toml
 - [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
 
+
+
 +++ Mac OS
 
 ### Invoke
@@ -37,14 +39,12 @@ For Docker, you can download Docker Desktop directly from Docker's website with 
 
 +++ Windows
 
-### Invoke
+The current recommendation for Windows is to install a Linux VM via WSL2 and follow the installation guide for Ubuntu.
 
-Invoke is a Python package that is usually installed with `pip install invoke toml`.  
-If Python is not already installed on your system you'll need to install it first.
-
-### Docker
-
-For Docker, you can download Docker Desktop directly from Docker's website with the instructions https://docs.docker.com/desktop/install/windows-install/
+!!!
+The native support on Windows is currently under investigation and is being tracked in the [issue 794](https://github.com/opsmill/infrahub/issues/794).  
+Please add a comment to the issue if this is something that would be useful to you.
+!!!
 
 +++ Ubuntu
 
@@ -54,7 +54,7 @@ On Ubuntu, depending on which distribution you're running there is a good chance
 
 ### Invoke
 
-Invoke is a Python package that is usually installed with `pip install invoke toml`.  s
+Invoke is a Python package that is usually installed with `pip install invoke toml`.  
 If Python is not already installed on your system you'll need to install it first with `sudo apt install python3-pip`
 
 ### Docker
