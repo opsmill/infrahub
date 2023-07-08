@@ -612,7 +612,6 @@ class RelationshipManager:
         )
         await query.execute(session=session)
 
-
     async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Relationship in the database."""
 
