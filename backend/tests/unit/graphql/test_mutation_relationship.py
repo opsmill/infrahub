@@ -7,6 +7,7 @@ from neo4j import AsyncDriver, AsyncSession
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.utils import count_relationships
 from infrahub.graphql import generate_graphql_schema
 
 
@@ -477,6 +478,7 @@ async def test_relationship_groups_add_remove(
     await g2.new(session=session, name="group2", members=[c2])
     await g2.save(session=session)
 
+    nbr_rels_before = await count_relationships(session=session)
     query = """
     mutation {
         relationship_add(data: {
@@ -503,10 +505,14 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
 
+    nbr_rels_after = await count_relationships(session=session)
+    assert nbr_rels_after - nbr_rels_before == 8
+
     group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
     members = await group1.members.get(session=session)
     assert len(members) == 2
 
+    nbr_rels_before = await count_relationships(session=session)
     query = """
     mutation {
         relationship_remove(data: {
@@ -532,6 +538,80 @@ async def test_relationship_groups_add_remove(
     )
 
     assert result.errors is None
+
+    nbr_rels_after = await count_relationships(session=session)
+    assert nbr_rels_after - nbr_rels_before == 4
+
+    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
+    members = await group1.members.get(session=session)
+    assert len(members) == 1
+
+    group2 = await NodeManager.get_one(session=session, id=g2.id, branch=default_branch)
+    members = await group2.members.get(session=session)
+    assert len(members) == 1
+
+    nbr_rels_before = await count_relationships(session=session)
+    query = """
+    mutation {
+        relationship_add(data: {
+            id: "%s",
+            name: "member_of_groups",
+            nodes: [{id: "%s"}, {id: "%s"}],
+        }) {
+            ok
+        }
+    }
+    """ % (
+        c3.id,
+        g1.id,
+        g2.id,
+    )
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    nbr_rels_after = await count_relationships(session=session)
+    assert nbr_rels_after - nbr_rels_before == 8
+
+    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
+    members = await group1.members.get(session=session)
+    assert len(members) == 2
+
+    nbr_rels_before = await count_relationships(session=session)
+    query = """
+    mutation {
+        relationship_remove(data: {
+            id: "%s",
+            name: "member_of_groups",
+            nodes: [{id: "%s"}, {id: "%s"}],
+        }) {
+            ok
+        }
+    }
+    """ % (
+        c3.id,
+        g1.id,
+        g2.id,
+    )
+
+    result = await graphql(
+        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    nbr_rels_after = await count_relationships(session=session)
+    assert nbr_rels_after - nbr_rels_before == 4
 
     group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
     members = await group1.members.get(session=session)

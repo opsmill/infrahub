@@ -1,10 +1,13 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.relationship import RelationshipGetPeerQuery
+from infrahub.core.query.relationship import (
+    RelationshipGetPeerQuery,
+    RelationshipPeerData,
+)
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import RelationshipCardinality
 from infrahub.exceptions import NodeNotFound, ValidationError
@@ -83,7 +86,7 @@ class RelationshipMixin:
             rel=Relationship(schema=rel_schema, branch=branch, node=source),
         )
         await query.execute(session=session)
-        existing_peers = {peer.peer_id: peer for peer in query.get_peers()}
+        existing_peers: Dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query.get_peers()}
 
         if cls.__name__ == "RelationshipAdd":
             for node_data in data.get("nodes"):
@@ -95,6 +98,9 @@ class RelationshipMixin:
         elif cls.__name__ == "RelationshipRemove":
             for node_data in data.get("nodes"):
                 if node_data.get("id") in existing_peers.keys():
+                    # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
+                    # we should use RelationshipDataDeleteQuery to delete the relationship
+                    # it would be more query efficient
                     rel = Relationship(schema=rel_schema, branch=branch, at=at, node=source)
                     await rel.load(session=session, data=existing_peers[node_data.get("id")])
                     await rel.delete(session=session)
