@@ -1,3 +1,5 @@
+from typing import Dict
+
 import pytest
 from neo4j import AsyncSession
 
@@ -7,8 +9,10 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
+    RelationshipDataDeleteQuery,
     RelationshipDeleteQuery,
     RelationshipGetPeerQuery,
+    RelationshipPeerData,
     RelationshipQuery,
 )
 from infrahub.core.relationship import Relationship
@@ -352,3 +356,55 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
     await query.execute(session=session)
 
     assert query.get_peer_ids() == [car_volt_main.id]
+
+
+async def test_query_RelationshipDataDeleteQuery(
+    session: AsyncSession, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    # We should have 2 paths between t1 and p1
+    # First for the relationship, Second via the branch
+    paths = await get_paths_between_nodes(
+        session=session,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_tags_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 1
+
+    # Query the existing relationship in RelationshipPeerData format
+    query1 = await RelationshipGetPeerQuery.init(
+        session=session,
+        source=person_jack_tags_main,
+        schema=rel_schema,
+        rel=Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main),
+    )
+    await query1.execute(session=session)
+    peers_database: Dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
+
+    # Delete the relationship
+    query2 = await RelationshipDataDeleteQuery.init(
+        session=session,
+        branch=branch,
+        source=person_jack_tags_main,
+        data=peers_database[tag_blue_main.id],
+        schema=rel_schema,
+        rel=Relationship,
+    )
+    await query2.execute(session=session)
+
+    # We should have 4 paths between t1 and p1
+    # Because we have 2 "real" paths between the nodes
+    # but if we calculate all the permutations it will equal to 4 paths.
+    paths = await get_paths_between_nodes(
+        session=session,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_tags_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+
+    assert len(paths) == 4

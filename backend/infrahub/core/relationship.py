@@ -612,17 +612,6 @@ class RelationshipManager:
         )
         await query.execute(session=session)
 
-        query = await RelationshipDeleteQuery.init(
-            session=session,
-            rel=self.rel_class,
-            schema=self.schema,
-            source=self.node,
-            destination_id=peer_data.peer_id,
-            branch=self.branch,
-            at=remove_at,
-        )
-        await query.execute(session=session)
-
     async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Relationship in the database."""
 
