@@ -97,7 +97,7 @@ def check_environment(context: Context) -> dict:
 
     if INVOKE_SUDO is None:
         try:
-            output = context.run("docker ps", hide=True)
+            context.run("docker ps", hide=True)
         except UnexpectedExit as exc:
             if exc.result.stderr and "denied" in exc.result.stderr:
                 output_with_sudo = context.run("sudo docker ps", hide=True)
