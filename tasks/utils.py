@@ -38,3 +38,35 @@ def get_group_id(context: Context) -> int:
     group_id = context.run("id -g", hide=True, pty=False)
     clean_user_id = group_id.stdout.strip()
     return int(clean_user_id)
+
+
+def str_to_bool(value: str) -> bool:
+    """Convert a String to a Boolean"""
+
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, int) and value in [0, 1]:
+        return bool(value)
+
+    if not isinstance(value, str):
+        raise TypeError(f"{value} must be a string")
+
+    MAP = {
+        "y": True,
+        "yes": True,
+        "t": True,
+        "true": True,
+        "on": True,
+        "1": True,
+        "n": False,
+        "no": False,
+        "f": False,
+        "false": False,
+        "off": False,
+        "0": False,
+    }
+    try:
+        return MAP[value.lower()]
+    except KeyError as exc:
+        raise ValueError(f"{value} can not be converted into a boolean") from exc

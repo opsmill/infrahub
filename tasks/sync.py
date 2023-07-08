@@ -16,7 +16,7 @@ def format_black(context: Context):
     print(f" - [{NAMESPACE}] Format code with black")
     exec_cmd = f"black {MAIN_DIRECTORY}/"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -26,7 +26,7 @@ def format_autoflake(context: Context):
     print(f" - [{NAMESPACE}] Format code with autoflake")
     exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -36,7 +36,7 @@ def format_isort(context: Context):
     print(f" - [{NAMESPACE}] Format code with isort")
     exec_cmd = f"isort {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task(name="format")
@@ -60,7 +60,7 @@ def black(context: Context):
     print(f" - [{NAMESPACE}] Check code with black")
     exec_cmd = f"black --check --diff {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -70,7 +70,7 @@ def isort(context: Context):
     print(f" - [{NAMESPACE}] Check code with isort")
     exec_cmd = f"isort --check --diff {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -80,7 +80,7 @@ def mypy(context: Context):
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"mypy --show-error-codes {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -90,7 +90,7 @@ def pylint(context: Context):
     print(f" - [{NAMESPACE}] Check code with pylint")
     exec_cmd = f"pylint {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
@@ -100,7 +100,7 @@ def ruff(context: Context):
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"ruff check {MAIN_DIRECTORY}"
     with context.cd(REPO_BASE):
-        context.run(exec_cmd, pty=True)
+        context.run(exec_cmd)
 
 
 @task
