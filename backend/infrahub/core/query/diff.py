@@ -106,7 +106,7 @@ class DiffRelationshipQuery(DiffQuery):
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
-        MATCH p = ((sn)-[r1]->(rel:Relationship)<-[r2]-(dn))
+        MATCH p = ((sn:Node)-[r1]->(rel:Relationship)<-[r2]-(dn:Node))
         WHERE (r1.branch = r2.branch AND
             (r1.to = r2.to OR
                 (r1.to is NULL AND r2.to is NULL)
@@ -142,8 +142,8 @@ class DiffRelationshipQuery(DiffQuery):
             ids_set_processed.append(ids_set)
 
             # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
-            source_node_uuid = result.get("sn").get("uuid")[8:]
-            dest_node_uuid = result.get("dn").get("uuid")[8:]
+            source_node_uuid = result.get("sn").get("uuid")[:8]
+            dest_node_uuid = result.get("dn").get("uuid")[:8]
             nodes = sorted([source_node_uuid, dest_node_uuid])
             rel_name = result.get("rel").get("name")
             branch_name = result.get("r1").get("branch")
@@ -174,7 +174,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
         WHERE (r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
             AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL))
         WITH *
-        MATCH p = ((sn)-[r1]->(rel)<-[r2]-(dn))
+        MATCH p = ((sn:Node)-[r1]->(rel)<-[r2]-(dn:Node))
         WHERE r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
             AND r1.from = r2.from AND r1.status = r2.status AND all(r IN relationships(p) WHERE ( %s ))
         """
@@ -208,8 +208,8 @@ class DiffRelationshipPropertyQuery(DiffQuery):
             ids_set_processed.append(ids_set)
 
             # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
-            source_node_uuid = result.get("sn").get("uuid")[8:]
-            dest_node_uuid = result.get("dn").get("uuid")[8:]
+            source_node_uuid = result.get("sn").get("uuid")[:8]
+            dest_node_uuid = result.get("dn").get("uuid")[:8]
             prop_type = result.get("r3").type
             nodes = sorted([source_node_uuid, dest_node_uuid])
             rel_name = result.get("rel").get("name")
