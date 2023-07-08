@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 from uuid import UUID, uuid4
 
+from infrahub import config
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
@@ -27,30 +28,45 @@ if TYPE_CHECKING:
 class RelData:
     """Represent a relationship object in the database."""
 
-    db_id: int
+    db_id: Union[str, int]
     branch: str
     type: str
     status: str
 
     @classmethod
     def from_db(cls, obj: Neo4jRelationship):
-        return cls(db_id=obj.element_id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
+        internal_id = obj.element_id
+        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+            internal_id = int(internal_id)
+        return cls(db_id=internal_id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
 
 
 @dataclass
 class FlagPropertyData:
     name: str
-    prop_db_id: int
+    prop_db_id: Union[str, int]
     rel: RelData
     value: bool
+
+    @classmethod
+    def init(cls, name: str, prop_db_id: Union[str, int], rel: RelData, value: bool):
+        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+            prop_db_id = int(prop_db_id)
+        return cls(name=name, prop_db_id=prop_db_id, rel=rel, value=value)
 
 
 @dataclass
 class NodePropertyData:
     name: str
-    prop_db_id: int
+    prop_db_id: Union[str, int]
     rel: RelData
     value: UUID
+
+    @classmethod
+    def init(cls, name: str, prop_db_id: Union[str, int], rel: RelData, value: bool):
+        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+            prop_db_id = int(prop_db_id)
+        return cls(name=name, prop_db_id=prop_db_id, rel=rel, value=value)
 
 
 @dataclass
@@ -63,21 +79,49 @@ class RelationshipPeerData:
     properties: Dict[str, Union[FlagPropertyData, NodePropertyData]]
     """UUID of the Relationship Node."""
 
-    rel_node_id: UUID = None
+    rel_node_id: Optional[UUID] = None
     """UUID of the Relationship Node."""
 
-    peer_db_id: int = None
+    peer_db_id: Optional[Union[str, int]] = None
     """Internal DB ID of the Peer Node."""
 
-    rel_node_db_id: int = None
+    rel_node_db_id: Optional[Union[str, int]] = None
     """Internal DB ID of the Relationship Node."""
 
-    rels: List[RelData] = None
+    rels: Optional[List[RelData]] = None
     """Both relationships pointing at this Relationship Node."""
 
-    updated_at: str = None
+    updated_at: Optional[str] = None
 
-    def rel_ids_per_branch(self) -> dict[str, List[str]]:
+    @classmethod
+    def init(
+        cls,
+        branch: str,
+        peer_id: UUID,
+        properties: Dict[str, Union[FlagPropertyData, NodePropertyData]],
+        rel_node_id: Optional[UUID] = None,
+        peer_db_id: Optional[Union[str, int]] = None,
+        rel_node_db_id: Optional[Union[str, int]] = None,
+        rels: Optional[List[RelData]] = None,
+        updated_at: Optional[str] = None,
+    ):
+        if peer_db_id and config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+            peer_db_id = int(peer_db_id)
+        if rel_node_db_id and config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+            rel_node_db_id = int(rel_node_db_id)
+
+        return cls(
+            branch=branch,
+            peer_id=peer_id,
+            properties=properties,
+            rel_node_id=rel_node_id,
+            peer_db_id=peer_db_id,
+            rel_node_db_id=rel_node_db_id,
+            rels=rels,
+            updated_at=updated_at,
+        )
+
+    def rel_ids_per_branch(self) -> dict[str, List[Union[str, int]]]:
         response = defaultdict(list)
         for rel in self.rels:
             response[rel.branch].append(rel.db_id)
@@ -566,7 +610,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
-            data = RelationshipPeerData(
+            data = RelationshipPeerData.init(
                 peer_id=result.get("peer").get("uuid"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
@@ -579,7 +623,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             if hasattr(self.rel, "_flag_properties"):
                 for prop in self.rel._flag_properties:
                     if prop_node := result.get(prop):
-                        data.properties[prop] = FlagPropertyData(
+                        data.properties[prop] = FlagPropertyData.init(
                             name=prop,
                             prop_db_id=prop_node.element_id,
                             rel=RelData.from_db(result.get(f"rel_{prop}")),
@@ -589,7 +633,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             if hasattr(self.rel, "_node_properties"):
                 for prop in self.rel._node_properties:
                     if prop_node := result.get(prop):
-                        data.properties[prop] = NodePropertyData(
+                        data.properties[prop] = NodePropertyData.init(
                             name=prop,
                             prop_db_id=prop_node.element_id,
                             rel=RelData.from_db(result.get(f"rel_{prop}")),
