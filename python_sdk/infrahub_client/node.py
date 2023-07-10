@@ -488,10 +488,35 @@ class InfrahubNodeBase:
         Returns:
             Dict[str, Dict]: Representation of an input data in dict format
         """
+        # pylint: disable=too-many-branches
         data = {}
         variables = {}
-        for item_name in self._attributes + self._relationships:
-            item = getattr(self, item_name)
+        for item_name in self._attributes:
+            attr: Attribute = getattr(self, item_name)
+            attr_data = attr._generate_input_data()
+
+            # NOTE, this code has been inherited when we splitted attributes and relationships
+            # into 2 loops, most likely it's possible to simply it
+            if attr_data and isinstance(attr_data, dict):
+                if variable_values := attr_data.get("data"):
+                    data[item_name] = variable_values
+                else:
+                    data[item_name] = attr_data
+                if variable_names := attr_data.get("variables"):
+                    variables.update(variable_names)
+
+            elif attr_data and isinstance(attr_data, list):
+                data[item_name] = attr_data
+
+        for item_name in self._relationships:
+            rel_schema = self._schema.get_relationship(name=item_name)
+            if not rel_schema:
+                continue
+            if rel_schema.kind in [RelationshipKind.GROUP, RelationshipKind.COMPONENT]:
+                continue
+
+            rel: Union[RelatedNodeBase, RelationshipManagerBase] = getattr(self, item_name)
+
             # BLOCKED by https://github.com/opsmill/infrahub/issues/330
             # if (
             #     item is None
@@ -501,25 +526,23 @@ class InfrahubNodeBase:
             #     data[item_name] = None
             #     continue
             # el
-            if item is None:
+            if rel is None:
                 continue
 
-            item_data = item._generate_input_data()
-            rel_schema = self._schema.get_relationship(name=item_name, raise_on_error=False)
+            rel_data = rel._generate_input_data()
 
-            if item_data and isinstance(item_data, dict):
-                if variable_values := item_data.get("data"):
+            if rel_data and isinstance(rel_data, dict):
+                if variable_values := rel_data.get("data"):
                     data[item_name] = variable_values
                 else:
-                    data[item_name] = item_data
-                if variable_names := item_data.get("variables"):
-                    for key, value in variable_names.items():
-                        variables[key] = value
-            elif item_data and isinstance(item_data, list):
-                data[item_name] = item_data
-            elif item_name in self._relationships and rel_schema:
-                if rel_schema.cardinality == "many":
-                    data[item_name] = []
+                    data[item_name] = rel_data
+                if variable_names := rel_data.get("variables"):
+                    variables.update(variable_names)
+
+            elif rel_data and isinstance(rel_data, list):
+                data[item_name] = rel_data
+            elif rel_schema.cardinality == RelationshipCardinality.MANY:
+                data[item_name] = []
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
