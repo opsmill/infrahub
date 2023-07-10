@@ -185,7 +185,7 @@ VLANS = (
 store = NodeStore()
 
 
-async def group_add_member(client: InfrahubClient, group: InfrahubNode, members: List[InfrahubNode]):
+async def group_add_member(client: InfrahubClient, group: InfrahubNode, members: List[InfrahubNode], branch: str):
     members_str = ["{ id: " + f'"{member.id}"' + " }" for member in members]
     query = """
     mutation {
@@ -204,7 +204,7 @@ async def group_add_member(client: InfrahubClient, group: InfrahubNode, members:
         ", ".join(members_str),
     )
 
-    await client.execute_graphql(query=query)
+    await client.execute_graphql(query=query, branch_name=branch)
 
 
 async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site_name: str):
@@ -281,11 +281,12 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         log.info(f"- Created Device: {device_name}")
 
         # Add device to groups
-        await group_add_member(client=client, group=group_edge_router, members=[obj])
+        await group_add_member(client=client, group=group_edge_router, members=[obj], branch=branch)
+
         if "Arista" in device[6]:
-            await group_add_member(client=client, group=group_arista_devices, members=[obj])
+            await group_add_member(client=client, group=group_arista_devices, members=[obj], branch=branch)
         elif "Cisco" in device[6]:
-            await group_add_member(client=client, group=group_cisco_devices, members=[obj])
+            await group_add_member(client=client, group=group_cisco_devices, members=[obj], branch=branch)
 
         # Loopback Interface
         intf = await client.create(

@@ -252,8 +252,8 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
             generic = registry.get_graphql_type(name=generic, branch=branch.name)
             meta_attrs["interfaces"].add(generic)
 
-    node_interface = registry.get_graphql_type(name="CoreNode", branch=branch.name)
     if not schema.inherit_from or "CoreGroup" not in schema.inherit_from:
+        node_interface = registry.get_graphql_type(name="CoreNode", branch=branch.name)
         meta_attrs["interfaces"].add(node_interface)
 
     main_attrs = {

@@ -14,6 +14,7 @@ from infrahub.core.query.relationship import (
     RelationshipGetPeerQuery,
     RelationshipPeerData,
     RelationshipQuery,
+    RelData,
 )
 from infrahub.core.relationship import Relationship
 from infrahub.core.timestamp import Timestamp
@@ -134,18 +135,58 @@ async def test_query_RelationshipDeleteQuery(
     # We should have 2 paths between t1 and p1
     # First for the relationship, Second via the branch
     paths = await get_paths_between_nodes(
-        session=session, source_id=tag_blue_main.db_id, destination_id=person_jack_tags_main.db_id, max_length=2
+        session=session,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_tags_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
     )
-    assert len(paths) == 2
+    assert len(paths) == 1
+
+    rel_node = [node for node in paths[0][0]._nodes if "Relationship" in node.labels][0]
+
+    rel_data = RelationshipPeerData(
+        branch=branch.name,
+        peer_id=tag_blue_main.id,
+        peer_db_id=tag_blue_main.db_id,
+        rel_node_id=rel_node.get("uuid"),
+        rel_node_db_id=rel_node.id,
+        rels=[RelData.from_db(rel) for rel in paths[0][0]._relationships],
+        properties={},
+    )
+
+    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
+    await rel.load(session=session, data=rel_data)
 
     query = await RelationshipDeleteQuery.init(
         session=session,
         source=person_jack_tags_main,
         destination=tag_blue_main,
         schema=rel_schema,
-        rel=Relationship,
+        rel=rel,
         branch=branch,
         at=Timestamp(),
+    )
+    await query.execute(session=session)
+
+    # We should have 4 paths between t1 and p1
+    # Because we have 2 "real" paths between the nodes
+    # but if we calculate all the permutations it will equal to 4 paths.
+    paths = await get_paths_between_nodes(
+        session=session,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_tags_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 4
+
+    # ------------------------------------------------------------
+    # Recreate the relationship to delete it again
+    # ------------------------------------------------------------
+    rel = Relationship(schema=rel_schema, branch=branch, node=tag_blue_main)
+    query = await RelationshipCreateQuery.init(
+        session=session, branch=branch, source=tag_blue_main, destination=person_jack_tags_main, rel=rel
     )
     await query.execute(session=session)
 
@@ -153,9 +194,57 @@ async def test_query_RelationshipDeleteQuery(
     # Because we have 3 "real" paths between the nodes
     # but if we calculate all the permutations it will equal to 5 paths.
     paths = await get_paths_between_nodes(
-        session=session, source_id=tag_blue_main.db_id, destination_id=person_jack_tags_main.db_id, max_length=2
+        session=session,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_tags_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
     )
     assert len(paths) == 5
+
+    def get_active_path_and_rel(all_paths, previous_rel: str):
+        for path in all_paths:
+            for node in path[0]._nodes:
+                if "Relationship" in node.labels and node.get("uuid") != previous_rel:
+                    return path, node
+
+    active_path, latest_rel_node = get_active_path_and_rel(all_paths=paths, previous_rel=rel_node.get("uuid"))
+
+    rel_data = RelationshipPeerData(
+        branch=branch.name,
+        peer_id=tag_blue_main.id,
+        peer_db_id=tag_blue_main.db_id,
+        rel_node_id=latest_rel_node.get("uuid"),
+        rel_node_db_id=latest_rel_node.id,
+        rels=[RelData.from_db(rel) for rel in active_path[0]._relationships],
+        properties={},
+    )
+
+    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
+    await rel.load(session=session, data=rel_data)
+
+    query = await RelationshipDeleteQuery.init(
+        session=session,
+        source=person_jack_tags_main,
+        destination=tag_blue_main,
+        schema=rel_schema,
+        rel=rel,
+        branch=branch,
+        at=Timestamp(),
+    )
+    await query.execute(session=session)
+
+    # We should have 8 paths between t1 and p1
+    # Because we have 4 "real" paths between the nodes divided in 2 relationships
+    # but if we calculate all the permutations it will equal to 8 paths.
+    paths = await get_paths_between_nodes(
+        session=session,
+        source_id=tag_blue_main.db_id,
+        destination_id=person_jack_tags_main.db_id,
+        max_length=2,
+        relationships=["IS_RELATED"],
+    )
+    assert len(paths) == 8
 
 
 async def test_query_RelationshipGetPeerQuery(

@@ -370,17 +370,25 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        # FIXME DO we need to check if both nodes are part of the same Branch right now ?
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
 
+        if inspect.isclass(self.rel):
+            raise TypeError("An instance of Relationship must be provided to RelationshipDeleteQuery")
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
-        self.params["name"] = self.schema.identifier
+        self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
 
         query = """
-        MATCH (s { uuid: $source_id })-[]-(rl:Relationship {name: $name})-[]-(d { uuid: $destination_id })
+        MATCH (s { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d { uuid: $destination_id })
         CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(rl)
         CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null  }]->(rl)
         """ % (
