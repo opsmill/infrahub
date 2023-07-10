@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import extract_field_filters
+from infrahub.core.utils import element_id_to_id, extract_field_filters
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 class RelData:
     """Represent a relationship object in the database."""
 
-    db_id: int
+    db_id: str
     branch: str
     type: str
     status: str
@@ -40,7 +40,7 @@ class RelData:
 @dataclass
 class FlagPropertyData:
     name: str
-    prop_db_id: int
+    prop_db_id: str
     rel: RelData
     value: bool
 
@@ -48,7 +48,7 @@ class FlagPropertyData:
 @dataclass
 class NodePropertyData:
     name: str
-    prop_db_id: int
+    prop_db_id: str
     rel: RelData
     value: UUID
 
@@ -63,21 +63,21 @@ class RelationshipPeerData:
     properties: Dict[str, Union[FlagPropertyData, NodePropertyData]]
     """UUID of the Relationship Node."""
 
-    rel_node_id: UUID = None
+    rel_node_id: Optional[UUID] = None
     """UUID of the Relationship Node."""
 
-    peer_db_id: int = None
+    peer_db_id: Optional[str] = None
     """Internal DB ID of the Peer Node."""
 
-    rel_node_db_id: int = None
+    rel_node_db_id: Optional[str] = None
     """Internal DB ID of the Relationship Node."""
 
-    rels: List[RelData] = None
+    rels: Optional[List[RelData]] = None
     """Both relationships pointing at this Relationship Node."""
 
-    updated_at: str = None
+    updated_at: Optional[str] = None
 
-    def rel_ids_per_branch(self) -> dict[str, List[str]]:
+    def rel_ids_per_branch(self) -> dict[str, List[Union[str, int]]]:
         response = defaultdict(list)
         for rel in self.rels:
             response[rel.branch].append(rel.db_id)
@@ -341,7 +341,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
         for prop_name, prop in self.data.properties.items():
             self.add_to_query("MATCH (prop_%s) WHERE ID(prop_%s) = $prop_%s_id" % (prop_name, prop_name, prop_name))
-            self.params[f"prop_{prop_name}_id"] = prop.prop_db_id
+            self.params[f"prop_{prop_name}_id"] = element_id_to_id(prop.prop_db_id)
             self.return_labels.append(f"prop_{prop_name}")
 
         # -----------------------------------------------------------------------
