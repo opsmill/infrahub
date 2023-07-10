@@ -36,7 +36,6 @@ import {
 import ErrorScreen from "../error-screen/error-screen";
 import AddObjectToGroup from "../groups/add-object-to-group";
 import LoadingScreen from "../loading-screen/loading-screen";
-import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details-paginated";
@@ -112,7 +111,10 @@ export default function ObjectItemDetails(props: any) {
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
-    return <NoDataFound />;
+    // Redirect to the main list if there is no item for this is
+    navigate(`/objects/${objectname}`);
+
+    return null;
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
