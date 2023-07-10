@@ -3,8 +3,10 @@
 import { ADMIN_CREDENTIALS } from "../utils";
 
 const GROUP_NAME = "arista_devices";
+const NEW_GROUP_1 = "Arista Devices";
+const NEW_GROUP_2 = "Transit Interface";
 
-const OBJECT_NAME = "atl1-edge1";
+const OBJECT_NAME = "atl1-edge2";
 
 describe("Groups", () => {
   beforeEach(() => {
@@ -35,7 +37,7 @@ describe("Groups", () => {
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There is no memeber
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "0");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
   });
 
   it("should add an object to 2 groups", () => {
@@ -58,8 +60,8 @@ describe("Groups", () => {
     cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
 
     // Choose 2 options
-    cy.contains("Arista Devices").click();
-    cy.contains("Cisco Devices").click();
+    cy.contains(NEW_GROUP_1).click();
+    cy.contains(NEW_GROUP_2).click();
 
     // Save
     cy.contains("Save").click();
@@ -68,10 +70,10 @@ describe("Groups", () => {
     // Open again the group side panel
     cy.contains("Manage groups").click();
 
-    // The select must contains 2 items
+    // The select must contains 4 items
     cy.get("div[data-headlessui-state=''] > .relative > .w-full")
       .find("span")
-      .should("have.length", 2);
+      .should("have.length", 4);
 
     // Close side panel
     cy.get(".bg-gray-500").click();
@@ -86,7 +88,7 @@ describe("Groups", () => {
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There is 1 member
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "1");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "6");
 
     cy.contains(OBJECT_NAME).should("exist");
   });
@@ -101,10 +103,10 @@ describe("Groups", () => {
     // Open the group side panel
     cy.contains("Manage groups").click();
 
-    // The select should contain 1 value
+    // The select should contain 4 values
     cy.get("div[data-headlessui-state=''] > .relative > .w-full")
       .find("span")
-      .should("have.length", 2);
+      .should("have.length", 4);
 
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
@@ -113,8 +115,8 @@ describe("Groups", () => {
     cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
 
     // Choose the 2 same options to remove the groups
-    cy.contains("Arista Devices").click();
-    cy.contains("Cisco Devices").click();
+    cy.contains(NEW_GROUP_1).click();
+    cy.contains(NEW_GROUP_2).click();
 
     // Save
     cy.contains("Save").click();
@@ -126,7 +128,7 @@ describe("Groups", () => {
     // The select must contains 2 items
     cy.get("div[data-headlessui-state=''] > .relative > .w-full")
       .find("span")
-      .should("have.length", 0);
+      .should("have.length", 2);
 
     // Close side panel
     cy.get(".bg-gray-500").click();
@@ -141,7 +143,7 @@ describe("Groups", () => {
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There is 1 member
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "0");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
 
     cy.contains(OBJECT_NAME).should("not.exist");
   });

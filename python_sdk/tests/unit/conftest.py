@@ -47,6 +47,7 @@ async def location_schema() -> NodeSchema:
         "relationships": [
             {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
             {"name": "primary_tag", "peer": "BuiltinTag", "optional": True, "cardinality": "one"},
+            {"name": "member_of_groups", "peer": "CoreGroup", "optional": True, "cardinality": "many", "kind": "Group"},
         ],
     }
     return NodeSchema(**data)  # type: ignore
