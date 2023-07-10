@@ -29,6 +29,7 @@ import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom c
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import {
+  getSchemaAttributeColumns,
   getSchemaRelationshipColumns,
   getSchemaRelationshipsTabs,
 } from "../../utils/getSchemaObjectColumns";
@@ -69,6 +70,8 @@ export default function ObjectItemDetails(props: any) {
     // If there is no schema nor generics, go to home page
     navigate("/");
   }
+
+  const attributes = getSchemaAttributeColumns(schemaData);
 
   const relationships = getSchemaRelationshipColumns(schemaData);
 
@@ -171,7 +174,7 @@ export default function ObjectItemDetails(props: any) {
                 {objectDetailsData.id}
               </dd>
             </div>
-            {schemaData.attributes?.map((attribute) => {
+            {attributes?.map((attribute) => {
               if (
                 !objectDetailsData[attribute.name] ||
                 !objectDetailsData[attribute.name].is_visible
@@ -190,8 +193,8 @@ export default function ObjectItemDetails(props: any) {
                   <div className="flex items-center">
                     <dd
                       className={classNames(
-                        "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0",
-                        attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
+                        "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
+                        // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                       )}>
                       {typeof objectDetailsData[attribute.name]?.value !== "boolean"
                         ? objectDetailsData[attribute.name].value
