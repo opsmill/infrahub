@@ -7,6 +7,7 @@ query {{kind}} {
       node {
         id
         display_label
+
         {{#each attributes}}
           {{this.name}} {
               value
@@ -25,6 +26,14 @@ query {{kind}} {
               }
           }
         {{/each}}
+
+        members {
+          count
+        }
+
+        subscribers {
+          count
+        }
       }
     }
   }
