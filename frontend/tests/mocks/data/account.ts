@@ -1,6 +1,6 @@
 export const accountId = "bfb5c658-d606-47b1-b614-d2e44e6d3e67";
 
-export const accountDetaulsMocksSchema = [
+export const accountDetailsMocksSchema = [
   {
     id: "04877c42-780a-4622-aa2f-7838952c5d93",
     name: "Account",

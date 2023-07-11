@@ -1,8 +1,8 @@
-import { accountDetaulsMocksSchema } from "./account";
+import { accountDetailsMocksSchema } from "./account";
 import { deviceDetailsMocksSchema } from "./devices";
 
 export const schemaMocks = [
-  accountDetaulsMocksSchema[0],
+  accountDetailsMocksSchema[0],
   {
     id: "1fb342c1-0284-4332-beca-18eaf0e4389b",
     name: "AccountToken",
