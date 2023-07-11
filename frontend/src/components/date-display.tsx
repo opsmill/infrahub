@@ -1,13 +1,13 @@
 import { format, formatDistanceToNow } from "date-fns";
+import { Tooltip } from "./tooltip";
 
 type DateDisplayProps = {
   date?: number | string | Date;
   hideDefault?: boolean;
-  fromNow?: boolean;
 };
 
 export const DateDisplay = (props: DateDisplayProps) => {
-  const { date, hideDefault, fromNow } = props;
+  const { date, hideDefault } = props;
 
   if (!date && hideDefault) {
     return null;
@@ -15,11 +15,12 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="font-normal">
-      {fromNow
-        ? formatDistanceToNow(props.date ? new Date() : new Date(), {
-            addSuffix: true,
-          })
-        : format(props.date ? new Date() : new Date(), "MM/dd/yyy HH:mm")}
+      <Tooltip
+        message={formatDistanceToNow(date ? new Date(date) : new Date(), {
+          addSuffix: true,
+        })}>
+        {format(date ? new Date(date) : new Date(), "MM/dd/yyy HH:mm")}
+      </Tooltip>
     </span>
   );
 };

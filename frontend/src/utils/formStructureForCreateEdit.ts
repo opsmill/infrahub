@@ -1,3 +1,4 @@
+import { parseISO } from "date-fns";
 import { SelectOption } from "../components/select";
 import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
@@ -14,6 +15,16 @@ const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
 
   // Field is available only if is_protected is set to true and if the owner is the user
   return owner?.id !== user?.data?.sub;
+};
+
+const getFieldValue = (row: any, attribute: any) => {
+  const value = row && row[attribute.name] ? row[attribute.name].value : attribute.default_value;
+
+  if (attribute.kind === "DateTime") {
+    return parseISO(value);
+  }
+
+  return value;
 };
 
 const getFormStructureForCreateEdit = (
@@ -47,7 +58,7 @@ const getFormStructureForCreateEdit = (
         ? "select"
         : getFormInputControlTypeFromSchemaAttributeKind(attribute.kind as SchemaAttributeType),
       label: attribute.label ? attribute.label : attribute.name,
-      value: row && row[attribute.name] ? row[attribute.name].value : attribute.default_value,
+      value: getFieldValue(row, attribute),
       options: {
         values: options,
       },
