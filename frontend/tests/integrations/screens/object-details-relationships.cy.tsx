@@ -39,6 +39,16 @@ const mocks: any[] = [
       data: deviceDetailsMocksData,
     },
   },
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsMocksData,
+    },
+  },
   // Object details when rendering relationships tab
   {
     request: {
@@ -51,6 +61,16 @@ const mocks: any[] = [
     },
   },
   // Relationships view
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsInterfacesMocksQuery}
+      `,
+    },
+    result: {
+      data: deviceDetailsInterfacesMocksData,
+    },
+  },
   {
     request: {
       query: gql`
@@ -97,7 +117,10 @@ describe("List screen", () => {
       }
     );
 
-    cy.get(".border-transparent").should("have.text", interfaceLabelName);
+    cy.get(".border-transparent").should(
+      "have.text",
+      `${interfaceLabelName}${deviceDetailsMocksData.InfraDevice.edges[0].node.interfaces.count}`
+    );
 
     cy.get(".border-transparent").click();
 

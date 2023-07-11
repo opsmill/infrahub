@@ -29,6 +29,7 @@ import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom c
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import {
+  getObjectTabs,
   getSchemaAttributeColumns,
   getSchemaRelationshipColumns,
   getSchemaRelationshipsTabs,
@@ -76,19 +77,11 @@ export default function ObjectItemDetails(props: any) {
   const relationships = getSchemaRelationshipColumns(schemaData);
 
   const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
-
-  const tabs = [
-    {
-      label: schemaData?.label,
-      name: schemaData?.label,
-    },
-    ...relationshipsTabs,
-  ];
-
   const queryString = schemaData
     ? getObjectDetailsPaginated({
         ...schemaData,
         relationships,
+        relationshipsTabs,
         objectid,
       })
     : // Empty query to make the gql parsing work
@@ -123,6 +116,14 @@ export default function ObjectItemDetails(props: any) {
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
+
+  const tabs = [
+    {
+      label: schemaData?.label,
+      name: schemaData?.label,
+    },
+    ...getObjectTabs(relationshipsTabs, objectDetailsData),
+  ];
 
   if (!objectDetailsData) {
     return null;
