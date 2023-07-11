@@ -6,6 +6,7 @@ from graphene import ID, Boolean, Field, List, ObjectType, String
 
 from infrahub import config
 from infrahub.core.manager import NodeManager
+from infrahub.exceptions import NodeNotFound
 
 from .mutations import (
     BranchCreate,
@@ -50,6 +51,10 @@ async def account_resolver(root, info: GraphQLResolveInfo):
         if results:
             account_profile = await results[0].to_graphql(session=session, fields=fields)
             return account_profile
+
+    raise NodeNotFound(
+        branch_name=config.SETTINGS.main.default_branch, node_type="CoreAccount", identifier=account_session.account_id
+    )
 
 
 class InfrahubBaseQuery(ObjectType):
