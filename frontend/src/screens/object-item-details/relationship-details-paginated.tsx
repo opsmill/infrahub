@@ -544,7 +544,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         )}
 
         {mode === "TABLE" && (
-          <div className="absolute bottom-4 right-4">
+          <div className="absolute bottom-4 right-4 z-10">
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
