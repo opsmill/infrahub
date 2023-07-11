@@ -9,7 +9,6 @@ import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetai
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { parseJwt } from "../../utils/common";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import LoadingScreen from "../loading-screen/loading-screen";
 import TabPassword from "./tab-account";
 import TabPreferences from "./tab-preferences";
@@ -49,12 +48,9 @@ const renderContent = (tab: string | null | undefined) => {
 
 export default function UserProfile() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-
   const [schemaList] = useAtom(schemaState);
 
   const schema = schemaList.find((s) => s.name === ACCOUNT_OBJECT);
-
-  const relationships = getSchemaRelationshipColumns(schema);
 
   const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
 
@@ -65,8 +61,6 @@ export default function UserProfile() {
   const queryString = schema
     ? getProfileDetails({
         ...schema,
-        relationships,
-        objectid: accountId,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -83,7 +77,7 @@ export default function UserProfile() {
     return <LoadingScreen />;
   }
 
-  const objectDetailsData = data[schema.kind]?.edges[0]?.node;
+  const profile = data?.account_profile;
 
   return (
     <div className="flex flex-col flex-1 overflow-auto">
@@ -92,17 +86,15 @@ export default function UserProfile() {
           <div className="ml-4 mt-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Avatar name={objectDetailsData?.name?.value} />
+                <Avatar name={profile?.name?.value} />
               </div>
 
               <div className="ml-4">
                 <h3 className="text-base font-semibold leading-6 text-gray-900">
-                  {objectDetailsData?.display_label}
+                  {profile?.display_label}
                 </h3>
 
-                <p className="text-sm text-gray-500">
-                  {objectDetailsData?.description?.value ?? "-"}
-                </p>
+                <p className="text-sm text-gray-500">{profile?.description?.value ?? "-"}</p>
               </div>
             </div>
           </div>

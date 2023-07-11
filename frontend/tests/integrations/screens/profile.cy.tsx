@@ -3,17 +3,18 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
+import { initials } from "../../../src/components/avatar";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withAuth } from "../../../src/decorators/withAuth";
 import Header from "../../../src/screens/layout/header";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
+import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
-  accountDetailsMocksData,
-  accountDetailsMocksQuery,
-  accountDetaulsMocksSchema,
-  accountId,
-} from "../../mocks/data/account";
+  profileDetailsMocksData,
+  profileDetailsMocksQuery,
+  profileId,
+} from "../../mocks/data/profile";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // Mock the apollo query and data
@@ -21,11 +22,11 @@ const mocks: any[] = [
   {
     request: {
       query: gql`
-        ${accountDetailsMocksQuery}
+        ${profileDetailsMocksQuery}
       `,
     },
     result: {
-      data: accountDetailsMocksData,
+      data: profileDetailsMocksData,
     },
   },
 ];
@@ -37,7 +38,7 @@ describe("List screen", () => {
     cy.viewport(1920, 1080);
 
     const data = {
-      sub: accountId,
+      sub: profileId,
     };
 
     const token = encodeJwt(data);
@@ -47,12 +48,15 @@ describe("List screen", () => {
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <TestProvider initialValues={[[schemaState, accountDetaulsMocksSchema]]}>
+        <TestProvider initialValues={[[schemaState, accountDetailsMocksSchema]]}>
           <AuthHeader setSidebarOpen={() => null} />
         </TestProvider>
       </MockedProvider>
     );
 
-    cy.get(".h-12").should("have.text", "A");
+    cy.get(".h-12").should(
+      "have.text",
+      initials(profileDetailsMocksData.account_profile.display_label)
+    );
   });
 });

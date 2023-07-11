@@ -5,8 +5,10 @@ import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual } from "date-fns";
 import { useAtom } from "jotai";
 import React, { Fragment, useContext, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Avatar } from "../../components/avatar";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/date-picker";
@@ -19,13 +21,14 @@ import useQuery from "../../hooks/useQuery";
 import { configState } from "../../state/atoms/config.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames, parseJwt } from "../../utils/common";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { userNavigation } from "./navigation-list";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
+
+const customId = "profile-alert";
 
 export default function Header(props: Props) {
   const { setSidebarOpen } = props;
@@ -35,10 +38,9 @@ export default function Header(props: Props) {
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
+  const navigate = useNavigate();
 
   const schema = schemaList.find((s) => s.name === ACCOUNT_OBJECT);
-
-  const relationships = getSchemaRelationshipColumns(schema);
 
   const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
 
@@ -47,11 +49,7 @@ export default function Header(props: Props) {
   const accountId = tokenData?.sub;
 
   const queryString = schema
-    ? getProfileDetails({
-        ...schema,
-        relationships,
-        objectid: accountId,
-      })
+    ? getProfileDetails({ ...schema })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
@@ -61,7 +59,7 @@ export default function Header(props: Props) {
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, data } = useQuery(query, { skip: !schema || !accountId });
+  const { error, loading, data } = useQuery(query, { skip: !schema || !accountId });
 
   useEffect(() => {
     if (qspDate) {
@@ -97,7 +95,20 @@ export default function Header(props: Props) {
     return <LoadingScreen />;
   }
 
-  const objectDetailsData = data && data[schema.kind]?.edges[0]?.node;
+  const profile = data?.account_profile;
+
+  if (!loading && auth?.accessToken && (error || !profile)) {
+    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
+      toastId: customId,
+    });
+
+    // Sign out because there is nothing from the API for that user id
+    if (auth?.signOut) {
+      auth?.signOut();
+    }
+
+    return navigate("/");
+  }
 
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
@@ -156,7 +167,7 @@ export default function Header(props: Props) {
                 <Menu.Button className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2">
                   <span className="sr-only">Open user menu</span>
                   <Avatar
-                    name={objectDetailsData?.name?.value}
+                    name={profile?.name?.value}
                     // image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
                   />
                 </Menu.Button>

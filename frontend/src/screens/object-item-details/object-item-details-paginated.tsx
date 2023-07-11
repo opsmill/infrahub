@@ -112,7 +112,14 @@ export default function ObjectItemDetails(props: any) {
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
-    return <NoDataFound />;
+    // Redirect to the main list if there is no item for this is
+    // navigate(`/objects/${objectname}`);
+
+    return (
+      <div className="flex column justify-center">
+        <NoDataFound message="Sorry, no item found for that id" />
+      </div>
+    );
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
