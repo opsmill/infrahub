@@ -19,7 +19,7 @@ class TestInfrahubSchema:
         ifc = await InfrahubClient.init(test_client=client)
         schema_nodes = await ifc.schema.all()
 
-        assert len(schema_nodes) == 15
+        assert len(schema_nodes) == 20
         assert "BuiltinLocation" in schema_nodes
         assert isinstance(schema_nodes["BuiltinLocation"], NodeSchema)
 
@@ -29,4 +29,4 @@ class TestInfrahubSchema:
 
         assert isinstance(schema_node, NodeSchema)
         assert ifc.default_branch in ifc.schema.cache
-        assert len(ifc.schema.cache[ifc.default_branch]) == 15
+        assert len(ifc.schema.cache[ifc.default_branch]) == 20
