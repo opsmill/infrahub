@@ -1,10 +1,12 @@
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { classNames } from "../utils/common";
+import { Pill } from "./pill";
 
 type Tab = {
   name?: string;
   label?: string;
+  count?: number;
 };
 
 type TabsProps = {
@@ -14,14 +16,16 @@ type TabsProps = {
 };
 
 export const Tabs = (props: TabsProps) => {
-  const [qspTab, setQspTab] = useQueryParam(props.qsp ?? QSP.TAB, StringParam);
+  const { qsp, tabs, rightItems } = props;
+
+  const [qspTab, setQspTab] = useQueryParam(qsp ?? QSP.TAB, StringParam);
 
   return (
     <div className="bg-custom-white flex items-center border-b border-gray-200">
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
-            {props.tabs.map((tab: Tab, index: number) => (
+            {tabs.map((tab: Tab, index: number) => (
               <div
                 key={tab.name}
                 onClick={() => setQspTab(index === 0 ? undefined : tab.name)}
@@ -32,12 +36,14 @@ export const Tabs = (props: TabsProps) => {
                   "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
                 )}>
                 {tab.label}
+
+                {tab.count !== undefined && <Pill className="ml-2">{tab.count}</Pill>}
               </div>
             ))}
           </nav>
         </div>
       </div>
-      <div>{props.rightItems}</div>
+      <div>{rightItems}</div>
     </div>
   );
 };

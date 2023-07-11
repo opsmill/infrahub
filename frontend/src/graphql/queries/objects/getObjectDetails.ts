@@ -7,6 +7,7 @@ query {{kind}} {
       node {
         id
         display_label
+
         {{#each attributes}}
           {{this.name}} {
               value
@@ -25,6 +26,7 @@ query {{kind}} {
               }
           }
           {{/each}}
+
           {{#each relationships}}
             {{this.name}}{{#if this.paginated}}(limit: 100){{/if}} {
               {{#if this.paginated}}
@@ -55,6 +57,12 @@ query {{kind}} {
               }
               {{/if}}
             }
+        {{/each}}
+
+        {{#each relationshipsTabs}}
+          {{this.name}}(limit: 100) {
+            count
+          }
         {{/each}}
       }
     }
