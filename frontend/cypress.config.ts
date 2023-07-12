@@ -4,7 +4,7 @@ export default defineConfig({
   // downloadsFolder: "tests/downloads",
   // fileServerFolder: "tests/server",
   fixturesFolder: "tests/fixtures",
-  screenshotsFolder: "../docs/media/tutorial",
+  screenshotsFolder: "../docs/media",
   trashAssetsBeforeRuns: false,
   // videosFolder: "tests/videos",
   retries: {
