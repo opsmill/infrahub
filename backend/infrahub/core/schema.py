@@ -1646,6 +1646,7 @@ core_models = {
             "branch": True,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
+                {"name": "artifact_name", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "parameters", "kind": "TextArea"},
                 {
