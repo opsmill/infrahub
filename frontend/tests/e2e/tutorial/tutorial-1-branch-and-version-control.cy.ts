@@ -45,6 +45,9 @@ describe("Tutorial - Part 1", () => {
     // Select the Admin object in the menu
     cy.get(`[href='/objects/Account?branch=${NEW_BRANCH_NAME}'] > .group`).click();
 
+    // Loader should not exist
+    cy.contains("Just a moment").should("not.exist");
+
     // Select the admin account
     cy.contains(ADMIN_ACCOUNT_NAME).should("exist");
 
@@ -53,6 +56,10 @@ describe("Tutorial - Part 1", () => {
     }
 
     cy.contains(ADMIN_ACCOUNT_NAME).click();
+
+    // Loader should not exist
+    cy.contains("Just a moment").should("not.exist");
+
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",
       ADMIN_ACCOUNT_NAME
@@ -72,6 +79,9 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(3) > .relative > .block").should("have.value", ADMIN_ACCOUNT_LABEL);
     cy.get(":nth-child(3) > .relative > .block").clear();
     cy.get(":nth-child(3) > .relative > .block").type(NEW_ADMIN_ACCOUNT_LABEL);
+
+    // Loader should not exist
+    cy.contains("Just a moment").should("not.exist");
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_account_edit", screenshotConfig);
