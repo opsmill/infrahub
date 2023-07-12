@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, formatISO } from "date-fns";
 import { Pill } from "./pill";
 
 type DateDisplayProps = {
@@ -15,9 +15,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="">
-      <Pill className="text-sm">
-        {format(date ? new Date(date) : new Date(), "MM/dd/yyy HH:mm")}
-      </Pill>
+      <Pill className="text-sm">{formatISO(date ? new Date(date) : new Date())}</Pill>
 
       <i className="text-xs">
         ({formatDistanceToNow(date ? new Date(date) : new Date(), { addSuffix: true })})
