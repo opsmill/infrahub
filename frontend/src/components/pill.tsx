@@ -1,6 +1,11 @@
+import { ReactElement } from "react";
 import { classNames } from "../utils/common";
 
-// type BadgeProps = {}
+type tPill = {
+  type?: PILL_TYPES;
+  className?: string;
+  children?: ReactElement | string;
+};
 
 export enum PILL_TYPES {
   VALIDATE,
@@ -8,12 +13,13 @@ export enum PILL_TYPES {
   WARNING,
 }
 
-const DEFAULT_CLASS = `
-  flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium
+const DEFAULT_CLASS = (className?: string) => `
+  ${className?.includes("text") ? "" : "text-xs"}
+  flex-shrink-0 rounded-full px-2 py-0.5
   text-gray-80
 `;
 
-const getClasseName = (type: PILL_TYPES) => {
+const getClasseName = (type?: PILL_TYPES) => {
   switch (type) {
     case PILL_TYPES.VALIDATE: {
       return "bg-green-100 ";
@@ -30,12 +36,14 @@ const getClasseName = (type: PILL_TYPES) => {
   }
 };
 
-export const Pill = (props: any) => {
-  const customClassName = getClasseName(props.type);
+export const Pill = (props: tPill) => {
+  const { type, className = "", children } = props;
+
+  const customClassName = getClasseName(type);
 
   return (
-    <span className={classNames(DEFAULT_CLASS, customClassName, props.className)}>
-      {props.children}
+    <span className={classNames(DEFAULT_CLASS(className), customClassName, className)}>
+      {children}
     </span>
   );
 };
