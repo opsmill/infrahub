@@ -38,6 +38,7 @@
     "tests/mocks",
     "src/__tests__",
     "tests/unit/components",
-    "tests/unit/utils"
+    "tests/unit/utils",
+    "tests/unit/data"
   ],
 }
