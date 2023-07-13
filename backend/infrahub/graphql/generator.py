@@ -225,7 +225,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
             continue
 
         base_class = InfrahubMutation
-        if node_schema.name == "repository":
+        if node_schema.kind == "CoreRepository":
             base_class = InfrahubRepositoryMutation
 
         create, update, delete = generate_graphql_mutations(branch=branch, schema=node_schema, base_class=base_class)
