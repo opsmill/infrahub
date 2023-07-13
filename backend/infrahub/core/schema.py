@@ -1036,6 +1036,7 @@ core_models = {
                 {
                     "name": "change",
                     "peer": "CoreProposedChange",
+                    "identifier": "proposedchange__thread",
                     "kind": "Parent",
                     "optional": False,
                     "cardinality": "one",
@@ -1043,6 +1044,7 @@ core_models = {
                 {
                     "name": "comments",
                     "peer": "CoreThreadComment",
+                    "identifier": "thread__threadcomment",
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
@@ -1256,6 +1258,7 @@ core_models = {
                 {
                     "name": "threads",
                     "peer": "CoreThread",
+                    "identifier": "proposedchange__thread",
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
@@ -1339,6 +1342,7 @@ core_models = {
                     "name": "thread",
                     "peer": "CoreThread",
                     "kind": "Parent",
+                    "identifier": "thread__threadcomment",
                     "cardinality": "one",
                     "optional": False,
                 },
