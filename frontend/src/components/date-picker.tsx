@@ -9,7 +9,9 @@ import { Input } from "./input";
 export const DatePicker = (props: any) => {
   const { date, onChange, onClickNow } = props;
 
-  const [text, setText] = useState(date ? format(date, "MM/dd/yyy HH:mm") : "");
+  const currentDate = date && isValid(date) ? date : null;
+
+  const [text, setText] = useState(currentDate ? format(currentDate, "MM/dd/yyy HH:mm") : "");
   const [stateHasFocus, setStateHasFocus] = useState(false);
   const [hasError, setHasError] = useState({});
 
@@ -48,10 +50,10 @@ export const DatePicker = (props: any) => {
   };
 
   useEffect(() => {
-    if (date) {
-      setText(format(date, "MM/dd/yyy HH:mm"));
+    if (currentDate) {
+      setText(format(currentDate, "MM/dd/yyy HH:mm"));
     }
-  }, [date]);
+  }, [currentDate]);
 
   const CustomInput = forwardRef(({ onClick }: any, ref: any) => (
     <Input
@@ -68,7 +70,7 @@ export const DatePicker = (props: any) => {
   return (
     <div className="flex">
       <DateTimePicker
-        selected={date}
+        selected={currentDate}
         onChange={handleChangeDate}
         showTimeInput
         customInput={<CustomInput ref={refCustomInput} />}
@@ -78,7 +80,7 @@ export const DatePicker = (props: any) => {
       <Button
         onClick={handleClickNow}
         className="rounded-none rounded-r-md border-t border-r border-b border-gray-300"
-        disabled={!date && !text}>
+        disabled={!currentDate && !text}>
         Reset
       </Button>
     </div>

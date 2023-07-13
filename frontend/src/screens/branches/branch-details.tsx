@@ -1,15 +1,14 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { formatDistanceToNow } from "date-fns";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Badge } from "../../components/badge";
 import { BUTTON_TYPES, Button } from "../../components/button";
+import { DateDisplay } from "../../components/date-display";
 import ModalDelete from "../../components/modal-delete";
-import { Pill } from "../../components/pill";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
@@ -119,32 +118,24 @@ export const BranchDetails = () => {
             <dl className="divide-y divide-gray-200">
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
-                <dd className="flex mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {branch.name}
-                </dd>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{branch.name}</dd>
               </div>
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Origin branch</dt>
-                <dd className="flex mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Badge>{branch.origin_branch}</Badge>
                 </dd>
               </div>
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Branched</dt>
-                <dd className="flex mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {" "}
-                  <Pill>
-                    {formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}
-                  </Pill>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <DateDisplay date={branch.branched_at} />
                 </dd>
               </div>
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Created</dt>
-                <dd className="flex mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {" "}
-                  <Pill>
-                    {formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}
-                  </Pill>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <DateDisplay date={branch.created_at} />
                 </dd>
               </div>
             </dl>
