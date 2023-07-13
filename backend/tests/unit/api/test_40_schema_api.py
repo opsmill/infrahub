@@ -23,7 +23,7 @@ async def test_schema_read_endpoint_default_branch(
 
     assert "nodes" in schema
     assert "generics" in schema
-    assert len(schema["nodes"]) == 18
+    assert len(schema["nodes"]) == 24
     assert len(schema["generics"]) == len(core_models.get("generics")) + 1
 
     generics = {item["kind"]: item for item in schema["generics"]}
@@ -48,7 +48,7 @@ async def test_schema_read_endpoint_branch1(
     schema = response.json()
 
     assert "nodes" in schema
-    assert len(schema["nodes"]) == 18
+    assert len(schema["nodes"]) == 24
 
 
 async def test_schema_read_endpoint_wrong_branch(
