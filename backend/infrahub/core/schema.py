@@ -1007,10 +1007,18 @@ core_models = {
             "description": "A comment on a Proposed Change",
             "label": "Comment",
             "display_labels": ["text__value"],
-            "order_by": ["created__value"],
+            "order_by": ["created_at__value"],
             "attributes": [
                 {"name": "text", "kind": "TextArea", "unique": False, "optional": False},
-                {"name": "created", "kind": "DateTime", "optional": True},
+                {"name": "created_at", "kind": "DateTime", "optional": True},
+            ],
+            "relationships": [
+                {
+                    "name": "created_by",
+                    "peer": "CoreAccount",
+                    "optional": True,
+                    "cardinality": "one",
+                },
             ],
         },
         {
@@ -1018,11 +1026,11 @@ core_models = {
             "namespace": "Core",
             "description": "A thread on a Proposed Change",
             "label": "Thread",
-            "display_labels": ["text__value"],
-            "order_by": ["created__value"],
+            "display_labels": ["created_at__value"],
+            "order_by": ["created_at__value"],
             "attributes": [
                 {"name": "resolved", "kind": "Boolean", "default_value": False},
-                {"name": "created", "kind": "DateTime", "optional": True},
+                {"name": "created_at", "kind": "DateTime", "optional": True},
             ],
             "relationships": [
                 {
@@ -1035,8 +1043,15 @@ core_models = {
                 {
                     "name": "comments",
                     "peer": "CoreThreadComment",
+                    "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
+                },
+                {
+                    "name": "created_by",
+                    "peer": "CoreAccount",
+                    "optional": True,
+                    "cardinality": "one",
                 },
             ],
         },
@@ -1225,14 +1240,23 @@ core_models = {
                     "identifier": "coreaccount__proposedchange_reviewed_by",
                 },
                 {
+                    "name": "created_by",
+                    "peer": "CoreAccount",
+                    "optional": True,
+                    "cardinality": "one",
+                    "identifier": "coreaccount__proposedchange_created_by",
+                },
+                {
                     "name": "comments",
                     "peer": "CoreChangeComment",
+                    "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
                 },
                 {
                     "name": "threads",
                     "peer": "CoreThread",
+                    "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
                 },
@@ -1243,8 +1267,6 @@ core_models = {
             "namespace": "Core",
             "description": "A thread on proposed change",
             "label": "Change Thread",
-            "default_filter": "created__value",
-            "display_labels": ["created__value"],
             "branch": True,
             "inherit_from": ["CoreThread"],
             "attributes": [],
@@ -1255,8 +1277,6 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to a file on a proposed change",
             "label": "Thread - File",
-            "default_filter": "created__value",
-            "display_labels": ["created__value"],
             "branch": True,
             "inherit_from": ["CoreThread"],
             "attributes": [
@@ -1278,8 +1298,6 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to an object on a proposed change",
             "label": "Thread - Object",
-            "default_filter": "created__value",
-            "display_labels": ["created__value"],
             "branch": True,
             "inherit_from": ["CoreThread"],
             "attributes": [
