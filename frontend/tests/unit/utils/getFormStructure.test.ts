@@ -10,7 +10,7 @@ import {
   accountTokenDetailsUpdatesMocksData,
   accountTokenFormStructure,
   accountTokenId,
-  accountTokenMutationMocksData,
+  accountTokenMocksMutation,
 } from "../../mocks/data/accountToken";
 import { genericsMocks } from "../../mocks/data/generics";
 
@@ -21,7 +21,7 @@ describe("Form structure and object update", () => {
       accountTokenDetailsMocksSchema,
       genericsMocks,
       [],
-      accountTokenDetailsMocksDataWithDate.CoreAccount.edges[0].node,
+      accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node,
       {}
     );
 
@@ -35,7 +35,7 @@ describe("Form structure and object update", () => {
       accountTokenDetailsMocksSchema[0],
       accountTokenDetailsUpdateDataMocksData,
       "update",
-      accountTokenDetailsMocksDataWithDate.CoreAccount.edges[0].node
+      accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node
     );
 
     expect(JSON.stringify(updatedObject)).toStrictEqual(
@@ -50,6 +50,6 @@ describe("Form structure and object update", () => {
       }),
     });
 
-    expect(mutationString).toStrictEqual(accountTokenMutationMocksData);
+    expect(mutationString).toStrictEqual(accountTokenMocksMutation);
   });
 });

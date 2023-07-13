@@ -403,7 +403,7 @@ export const accountTokenFormStructure = [
     kind: "Text",
     type: "text",
     label: "Name",
-    value: undefined,
+    value: null,
     options: { values: [] },
     config: { required: "" },
     isProtected: false,
