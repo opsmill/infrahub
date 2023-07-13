@@ -26,6 +26,7 @@ from infrahub_client.schema import (
 )
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
+from infrahub_client.uuidt import UUIDT
 
 __all__ = [
     "AttributeSchema",
@@ -54,5 +55,6 @@ __all__ = [
     "ServerNotReacheableError",
     "ServerNotResponsiveError",
     "Timestamp",
+    "UUIDT",
     "ValidationError",
 ]

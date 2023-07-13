@@ -3,6 +3,8 @@ import uuid
 import pytest
 
 from infrahub_client.utils import (
+    base36decode,
+    base36encode,
     compare_lists,
     deep_merge_dict,
     duplicates,
@@ -82,3 +84,10 @@ def test_str_to_bool():
 
     with pytest.raises(TypeError):
         str_to_bool(tuple("a", "b", "c"))
+
+
+def test_base36():
+    assert base36encode(1412823931503067241) == "AQF8AA0006EH"
+    assert base36decode("AQF8AA0006EH") == 1412823931503067241
+    assert base36decode(base36encode(-9223372036721928027)) == -9223372036721928027
+    assert base36decode(base36encode(1412823931503067241)) == 1412823931503067241
