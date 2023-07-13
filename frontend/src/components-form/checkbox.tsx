@@ -1,34 +1,39 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { Checkbox } from "../components/checkbox";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 
 interface Props {
   label: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  error?: string;
+  error?: FormFieldError;
   isProtected?: boolean;
 }
 
-export default function OpsSwitch(props: Props) {
+export default function OpsCheckbox(props: Props) {
   const { label, onChange, value, error, isProtected } = props;
   const [enabled, setEnabled] = useState(value);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col relative">
       <div className="flex items-center">
         <label className="block text-sm font-medium leading-6 text-gray-900"> {label} </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
       </div>
-      <Checkbox
-        enabled={enabled}
-        onChange={() => {
-          onChange(!enabled);
-          setEnabled(!enabled);
-        }}
-        disabled={isProtected}
-      />
-      {error && <div>{error}</div>}
+      <div className="relative flex items-center">
+        <Checkbox
+          enabled={enabled}
+          onChange={() => {
+            onChange(!enabled);
+            setEnabled(!enabled);
+          }}
+          disabled={isProtected}
+        />
+        {error?.message && (
+          <div className="absolute text-sm text-red-500 ml-4 pl-2">{error?.message}</div>
+        )}
+      </div>
     </div>
   );
 }

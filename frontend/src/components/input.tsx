@@ -38,7 +38,7 @@ export const Input = forwardRef((props: any, ref: any) => {
         )}
         {...propsToPass}
       />
-      {error && error?.message && (
+      {error?.message && (
         <div className="absolute text-sm text-red-500 bg-custom-white -bottom-2 ml-2 px-2">
           {error?.message}
         </div>
