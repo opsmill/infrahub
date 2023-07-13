@@ -11,7 +11,6 @@ import ujson
 from git import Repo
 from pytest_httpx import HTTPXMock
 
-import infrahub.config as config
 from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 from infrahub_client import InfrahubClient
@@ -20,26 +19,6 @@ from infrahub_client import InfrahubClient
 @pytest.fixture
 async def client() -> InfrahubClient:
     return await InfrahubClient.init(address="http://mock", insert_tracker=True)
-
-
-@pytest.fixture
-def git_sources_dir(tmp_path) -> str:
-    source_dir = os.path.join(str(tmp_path), "sources")
-
-    os.mkdir(source_dir)
-
-    return source_dir
-
-
-@pytest.fixture
-def git_repos_dir(tmp_path) -> str:
-    repos_dir = os.path.join(str(tmp_path), "repositories")
-
-    os.mkdir(repos_dir)
-
-    config.SETTINGS.git.repositories_directory = repos_dir
-
-    return repos_dir
 
 
 @pytest.fixture
