@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import Branch, Diff, RelationshipDiffElement
+from infrahub.core.branch import Branch, Diff, ObjectConflict, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
@@ -132,11 +132,12 @@ class BranchDiffNode(BaseModel):
     id: str
     summary: DiffSummary = DiffSummary()
     display_label: str
-    changed_at: Optional[str]
+    changed_at: Optional[str] = None
     action: DiffAction
     elements: Dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
         default_factory=dict
     )
+    conflicts: List[ObjectConflict] = Field(default_factory=list)
 
 
 class BranchDiffFile(BaseModel):
@@ -323,7 +324,7 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
     node_ids = await diff.get_node_id_per_kind(session=session)
 
     display_labels = await get_display_labels(nodes=node_ids, session=session)
-
+    conflicts = await diff.get_conflicts(session=session)
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
     for branch_name, items in nodes.items():  # pylint: disable=too-many-nested-blocks
         for item in items.values():
@@ -340,6 +341,7 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
             node_diff = BranchDiffNode(
                 **item_dict, elements=item_elements, display_label=display_labels.get(item.id, "")
             )
+            node_diff.conflicts = [conflict for conflict in conflicts if conflict.id == node_diff.id]
 
             schema = registry.get_schema(name=node_diff.kind, branch=node_diff.branch)
 

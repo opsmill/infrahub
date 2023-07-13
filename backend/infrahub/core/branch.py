@@ -47,6 +47,16 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
 
 
+class ObjectConflict(BaseModel):
+    type: str
+    id: str
+    attribute: str
+    property_type: str
+
+    def __str__(self) -> str:
+        return f"{self.type}/{self.id}/{self.attribute}/{self.property_type}"
+
+
 class AddNodeToBranch(Query):
     name: str = "node_add_to_branch"
     insert_return: bool = False
@@ -461,7 +471,7 @@ class Branch(StandardNode):
         if conflicts := await diff.get_conflicts(session=session):
             passed = False
             for conflict in conflicts:
-                messages.append(f"Conflict detected at {'/'.join(conflict)}")
+                messages.append(f"Conflict detected at {conflict}")
 
         return passed, messages
 
@@ -887,7 +897,7 @@ class Diff:
     ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        return await self.has_changes_graph(session=session)
+        return await self.has_conflict_graph(session=session)
 
     async def has_conflict_graph(self, session: AsyncSession) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
@@ -925,14 +935,14 @@ class Diff:
 
         return False
 
-    async def get_conflicts(self, session: AsyncSession) -> Set[Tuple]:
+    async def get_conflicts(self, session: AsyncSession) -> List[ObjectConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 
         For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
         """
         return await self.get_conflicts_graph(session=session)
 
-    async def get_conflicts_graph(self, session: AsyncSession) -> Set[Tuple]:
+    async def get_conflicts_graph(self, session: AsyncSession) -> List[ObjectConflict]:
         if self.branch_only:
             return []
 
@@ -946,7 +956,11 @@ class Diff:
             return []
 
         # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
-        return paths[branches[0]] & paths[branches[1]]
+        conflicts = paths[branches[0]] & paths[branches[1]]
+        return [
+            ObjectConflict(type=conflict[0], id=conflict[1], attribute=conflict[2], property_type=conflict[3])
+            for conflict in conflicts
+        ]
 
     async def get_modified_paths_graph(self, session: AsyncSession) -> Dict[str, Set[Tuple]]:
         """Return a list of all the modified paths in the graph per branch.
