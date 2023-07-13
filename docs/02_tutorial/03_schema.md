@@ -16,7 +16,7 @@ You can explore the current schema by visiting the schema page at the bottom of 
 
 [!ref Explore the current schema](http://localhost:3000/schema)
 
-![](../media/tutorial/tutorial_3_schema.png)
+![](../media/tutorial/tutorial-3-schema.cy.ts/tutorial_3_schema.png)
 
 [!ref Check the schema documentation for more information](../15_schema/readme.md)
 

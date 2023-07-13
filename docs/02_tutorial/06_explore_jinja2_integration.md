@@ -33,7 +33,7 @@ Next, we'll create a new branch, and make modifications both in the data and in 
 
 From the frontend, create a new branch named `update-ethernet1` and be sure to uncheck the toggle `is Data Only` in the UI.
 
-![Create a new branch (not with Data Only)](../media/tutorial/tutorial_6_branch_creation.png)
+![Create a new branch (not with Data Only)](../media/tutorial/tutorial-6-git-integration.cy.ts/tutorial_6_branch_creation.png)
 
 #### 2. Update the interface Ethernet 1 for atl1-edge1
 
@@ -46,7 +46,7 @@ Now we'll make a change in the branch `update-ethernet1` that will be reflected 
 5. Update its description to `New description in the branch`
 6. Save your change
 
-![Update the description for the interface Ethernet1](../media/tutorial/tutorial_6_interface_update.png)
+![Update the description for the interface Ethernet1](../media/tutorial/tutorial-6-git-integration.cy.ts/tutorial_6_interface_update.png)
 
 #### 3. Update the Jinja2 template in Github
 
