@@ -4,7 +4,7 @@ import getFormStructureForCreateEdit from "../../../src/utils/formStructureForCr
 import getMutationDetailsFromFormData from "../../../src/utils/getMutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../../src/utils/string";
 import {
-  accountTokenDetailsMocksData,
+  accountTokenDetailsMocksDataWithDate,
   accountTokenDetailsMocksSchema,
   accountTokenDetailsUpdateDataMocksData,
   accountTokenDetailsUpdatesMocksData,
@@ -21,7 +21,7 @@ describe("Form structure and object update", () => {
       accountTokenDetailsMocksSchema,
       genericsMocks,
       [],
-      accountTokenDetailsMocksData.CoreAccount.edges[0].node,
+      accountTokenDetailsMocksDataWithDate.CoreAccount.edges[0].node,
       {}
     );
 
@@ -35,7 +35,7 @@ describe("Form structure and object update", () => {
       accountTokenDetailsMocksSchema[0],
       accountTokenDetailsUpdateDataMocksData,
       "update",
-      accountTokenDetailsMocksData.CoreAccount.edges[0].node
+      accountTokenDetailsMocksDataWithDate.CoreAccount.edges[0].node
     );
 
     expect(JSON.stringify(updatedObject)).toStrictEqual(

@@ -1,0 +1,8 @@
+{
+  "data": {
+    "CoreAccountTokenUpdate": {
+      "ok": true,
+      "__typename": "CoreAccountTokenUpdate"
+    }
+  }
+}

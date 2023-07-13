@@ -6,6 +6,9 @@ type DateDisplayProps = {
   hideDefault?: boolean;
 };
 
+export const getDateDisplay = (date?: number | string | Date) =>
+  format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm (O)");
+
 export const DateDisplay = (props: DateDisplayProps) => {
   const { date, hideDefault } = props;
 
@@ -15,9 +18,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="">
-      <Pill className="text-sm">
-        {format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm (O)")}
-      </Pill>
+      <Pill className="text-sm">{getDateDisplay(date)}</Pill>
 
       <i className="text-xs">
         ({formatDistanceToNow(date ? new Date(date) : new Date(), { addSuffix: true })})
