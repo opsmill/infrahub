@@ -405,7 +405,7 @@ export const accountTokenFormStructure = [
     label: "Name",
     value: null,
     options: { values: [] },
-    config: { required: "" },
+    config: {},
     isProtected: false,
   },
   {
@@ -415,7 +415,7 @@ export const accountTokenFormStructure = [
     label: "Token",
     value: "06438eb2-8019-4776-878c-0941b1f1d1ec",
     options: { values: [] },
-    config: { required: "Required" },
+    config: {},
     isProtected: false,
   },
   {
@@ -425,7 +425,7 @@ export const accountTokenFormStructure = [
     label: "Expiration",
     value: "2023-07-14T22:00:00.000Z",
     options: { values: [] },
-    config: { required: "" },
+    config: {},
     isProtected: false,
   },
   {
@@ -435,7 +435,7 @@ export const accountTokenFormStructure = [
     label: "Account",
     value: "",
     options: { values: [] },
-    config: { required: "Required" },
+    config: {},
     isProtected: false,
   },
 ];
