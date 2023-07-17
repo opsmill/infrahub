@@ -31,7 +31,7 @@ from infrahub_client.utils import is_valid_uuid
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
-# pylint: disable=redefined-builtin,too-many-lines
+# pylint: disable=redefined-builtin
 
 
 class BaseClient:
@@ -62,7 +62,8 @@ class BaseClient:
         self.insert_tracker = insert_tracker
         self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
-
+        self.access_token: str = ""
+        self.refresh_token: str = ""
         if isinstance(config, Config):
             self.config = config
         elif isinstance(config, dict):
@@ -355,6 +356,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             ServerNotReacheableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
+        await self.login()
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
@@ -378,6 +380,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             ServerNotReacheableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
+        await self.login()
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
@@ -396,6 +399,32 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         else:
             with self.test_client as client:
                 return client.get(url=url, headers=headers)
+
+    async def login(self, refresh: bool = False) -> None:
+        if not self.config.password_authentication:
+            return
+
+        if self.access_token and not refresh:
+            return
+
+        url = f"{self.address}/auth/login"
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    url=url,
+                    json={"username": self.config.username, "password": self.config.password},
+                    headers={"content-type": "application/json"},
+                    timeout=self.default_timeout,
+                )
+            except httpx.ConnectError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
+            except httpx.ReadTimeout as exc:
+                raise ServerNotResponsiveError(url=url) from exc
+
+        response.raise_for_status()
+        self.access_token = response.json()["access_token"]
+        self.refresh_token = response.json()["refresh_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
 
     async def query_gql_query(
         self,
@@ -783,6 +812,10 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         if not self.test_client:
+            self.login()
+            headers = headers or {}
+            base_headers = copy.copy(self.headers or {})
+            headers.update(base_headers)
             with httpx.Client() as client:
                 try:
                     return client.get(
@@ -807,6 +840,10 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             ServerNotReacheableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
+        self.login()
+        headers = headers or {}
+        base_headers = copy.copy(self.headers or {})
+        headers.update(base_headers)
         with httpx.Client() as client:
             try:
                 return client.post(
@@ -819,3 +856,29 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url) from exc
+
+    def login(self, refresh: bool = False) -> None:
+        if not self.config.password_authentication:
+            return
+
+        if self.access_token and not refresh:
+            return
+
+        url = f"{self.address}/auth/login"
+        with httpx.Client() as client:
+            try:
+                response = client.post(
+                    url=url,
+                    json={"username": self.config.username, "password": self.config.password},
+                    headers={"content-type": "application/json"},
+                    timeout=self.default_timeout,
+                )
+            except httpx.ConnectError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
+            except httpx.ReadTimeout as exc:
+                raise ServerNotResponsiveError(url=url) from exc
+
+        response.raise_for_status()
+        self.access_token = response.json()["access_token"]
+        self.refresh_token = response.json()["refresh_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
