@@ -50,11 +50,11 @@ if TYPE_CHECKING:
 class ObjectConflict(BaseModel):
     type: str
     id: str
-    attribute: str
+    name: str
     property_type: str
 
     def __str__(self) -> str:
-        return f"{self.type}/{self.id}/{self.attribute}/{self.property_type}"
+        return f"{self.type}/{self.id}/{self.name}/{self.property_type}"
 
 
 class AddNodeToBranch(Query):
@@ -958,7 +958,7 @@ class Diff:
         # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
         conflicts = paths[branches[0]] & paths[branches[1]]
         return [
-            ObjectConflict(type=conflict[0], id=conflict[1], attribute=conflict[2], property_type=conflict[3])
+            ObjectConflict(type=conflict[0], id=conflict[1], name=conflict[2], property_type=conflict[3])
             for conflict in conflicts
         ]
 
@@ -992,7 +992,7 @@ class Diff:
             for rel_name, rels in data.items():
                 for rel_id, rel in rels.items():
                     for prop_type in rel.properties.keys():
-                        paths[branch_name].add(("relationships", rel_name, rel_id, prop_type))
+                        paths[branch_name].add(("relationships", rel_id, rel_name, prop_type))
 
         return paths
 

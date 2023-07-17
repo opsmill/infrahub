@@ -263,7 +263,7 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
         ("node", "c2", "color", "HAS_VALUE"),
         ("node", "c2", "color", "IS_PROTECTED"),
         ("node", "c2", "color", "IS_VISIBLE"),
-        ("relationships", "testcar__testperson", "r1", "IS_PROTECTED"),
+        ("relationships", "r1", "testcar__testperson", "IS_PROTECTED"),
     }
     expected_paths_branch1 = {
         ("node", "c1", "nbr_seats", "HAS_VALUE"),
@@ -280,9 +280,9 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
         ("node", "c3", "nbr_seats", "HAS_VALUE"),
         ("node", "c3", "nbr_seats", "IS_PROTECTED"),
         ("node", "c3", "nbr_seats", "IS_VISIBLE"),
-        ("relationships", "testcar__testperson", "r1", "IS_VISIBLE"),
-        ("relationships", "testcar__testperson", "r2", "IS_VISIBLE"),
-        ("relationships", "testcar__testperson", "r2", "IS_PROTECTED"),
+        ("relationships", "r1", "testcar__testperson", "IS_VISIBLE"),
+        ("relationships", "r2", "testcar__testperson", "IS_VISIBLE"),
+        ("relationships", "r2", "testcar__testperson", "IS_PROTECTED"),
     }
 
     diff = await Diff.init(branch=branch1, session=session)

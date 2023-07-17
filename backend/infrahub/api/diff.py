@@ -137,7 +137,11 @@ class BranchDiffNode(BaseModel):
     elements: Dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
         default_factory=dict
     )
-    conflicts: List[ObjectConflict] = Field(default_factory=list)
+
+
+class BranchDiff(BaseModel):
+    diffs: List[BranchDiffNode] = Field(default_factory=list)
+    conflicts: Dict[str, ObjectConflict] = Field(default_factory=dict)
 
 
 class BranchDiffFile(BaseModel):
@@ -311,8 +315,8 @@ def extract_diff_relationship_many(
 
 async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-statements
     session: AsyncSession, diff: Diff, kinds_to_include: Optional[List[str]] = None
-) -> Dict[str, List[BranchDiffNode]]:
-    response = defaultdict(list)
+) -> BranchDiff:
+    diffs: List[BranchDiffNode] = []
     nodes_in_diff = []
 
     # Query the Diff per Nodes and per Relationships from the database
@@ -325,6 +329,7 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
 
     display_labels = await get_display_labels(nodes=node_ids, session=session)
     conflicts = await diff.get_conflicts(session=session)
+    conflict_data = {conflict.id: conflict for conflict in conflicts}
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
     for branch_name, items in nodes.items():  # pylint: disable=too-many-nested-blocks
         for item in items.values():
@@ -341,7 +346,6 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
             node_diff = BranchDiffNode(
                 **item_dict, elements=item_elements, display_label=display_labels.get(item.id, "")
             )
-            node_diff.conflicts = [conflict for conflict in conflicts if conflict.id == node_diff.id]
 
             schema = registry.get_schema(name=node_diff.kind, branch=node_diff.branch)
 
@@ -383,7 +387,7 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                             node_diff.elements[diff_rel.name] = diff_rel
                             node_diff.summary.inc(diff_rel.action.value)
 
-            response[branch_name].append(node_diff)
+            diffs.append(node_diff)
             nodes_in_diff.append(node_diff.id)
 
     # Check if all nodes associated with a relationship have been accounted for
@@ -439,9 +443,8 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         node_diff.summary.inc(diff_rel.action.value)
 
             if node_diff:
-                response[branch_name].append(node_diff)
-
-    return response
+                diffs.append(node_diff)
+    return BranchDiff(diffs=diffs, conflicts=conflict_data)
 
 
 @router.get("/data")
@@ -452,7 +455,7 @@ async def get_diff_data(  # pylint: disable=too-many-branches,too-many-statement
     time_to: Optional[str] = None,
     branch_only: bool = True,
     _: str = Depends(get_current_user),
-) -> Dict[str, List[BranchDiffNode]]:
+) -> BranchDiff:
     diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     schema = registry.schema.get_full(branch=branch)
     return await generate_diff_payload(diff=diff, session=session, kinds_to_include=list(schema.keys()))
@@ -466,7 +469,7 @@ async def get_diff_schema(  # pylint: disable=too-many-branches,too-many-stateme
     time_to: Optional[str] = None,
     branch_only: bool = True,
     _: str = Depends(get_current_user),
-) -> Dict[str, List[BranchDiffNode]]:
+) -> BranchDiff:
     diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     return await generate_diff_payload(diff=diff, session=session, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
 
