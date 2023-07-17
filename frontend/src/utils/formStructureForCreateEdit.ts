@@ -27,6 +27,26 @@ const getFieldValue = (row: any, attribute: any) => {
   return value;
 };
 
+const validate = (value: any, defaultValue?: any, optional?: boolean) => {
+  // If optionnal, no validator is needed (we try to validate if the value is defined or not)
+  if (optional) {
+    return true;
+  }
+
+  // The value is defined, then we can validate
+  if (value) {
+    return true;
+  }
+
+  // If the value is false but itso is the default_value, then validate (checkbox example)
+  if (defaultValue !== undefined && value === defaultValue) {
+    return true;
+  }
+
+  // No value and the value is not the default_value, then mark as required
+  return "Required";
+};
+
 const getFormStructureForCreateEdit = (
   schema: iNodeSchema,
   schemas: iNodeSchema[],
@@ -63,7 +83,7 @@ const getFormStructureForCreateEdit = (
         values: options,
       },
       config: {
-        required: attribute.optional === false ? "Required" : "",
+        validate: (value: any) => validate(value, attribute.default_value, attribute.optional),
       },
       isProtected: getIsDisabled(
         row && row[attribute.name]?.owner,

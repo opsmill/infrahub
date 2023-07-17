@@ -35,6 +35,7 @@ export const Form = ({
   submitLabel = "Save",
 }: FormProps) => {
   const formMethods = useForm();
+
   const { handleSubmit, formState } = formMethods;
 
   const { errors } = formState;
