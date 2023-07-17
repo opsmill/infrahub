@@ -915,7 +915,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
 
 
 @pytest.fixture
-async def car_person_schema_generics(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def car_person_schema_generics(session: AsyncSession, default_branch: Branch, data_schema) -> SchemaRoot:
     SCHEMA = {
         "generics": [
             {
@@ -1021,6 +1021,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema
 
 
 @pytest.fixture
@@ -1621,7 +1622,7 @@ async def init_db(empty_database, session) -> None:
 
 
 @pytest.fixture
-async def default_branch(reset_registry, empty_database, session) -> Branch:
+async def default_branch(reset_registry, local_storage_dir, empty_database, session) -> Branch:
     await create_root_node(session=session)
     branch = await create_default_branch(session=session)
     registry.schema = SchemaManager()
