@@ -5,6 +5,28 @@ from typing import Any, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 
+def base36encode(number: int) -> str:
+    if not isinstance(number, (int)):
+        raise TypeError("number must be an integer")
+    is_negative = number < 0
+    number = abs(number)
+
+    alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    base36 = ""
+
+    while number:
+        number, i = divmod(number, 36)
+        base36 = alphabet[i] + base36
+    if is_negative:
+        base36 = "-" + base36
+
+    return base36 or alphabet[0]
+
+
+def base36decode(data: str) -> int:
+    return int(data, 36)
+
+
 def get_fixtures_dir() -> Path:
     """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
     here = os.path.abspath(os.path.dirname(__file__))

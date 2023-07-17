@@ -56,10 +56,10 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
         <span className="font-semibold">{renderDiffDisplay()}</span>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end font-normal">
         <DiffPill {...summary} />
 
-        <div className="w-[160px] flex justify-end">
+        <div className="w-[320px] flex justify-end">
           {changed_at && <DateDisplay date={changed_at} hideDefault />}
         </div>
       </div>
