@@ -1,22 +1,28 @@
-import { gql } from "@apollo/client";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { gql, useReactiveVar } from "@apollo/client";
+import { ChevronRightIcon, PencilIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useContext, useState } from "react";
 import Loading from "react-loading";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { AVATAR_SIZE, Avatar } from "../../components/avatar";
 import { Badge } from "../../components/badge";
+import { Button } from "../../components/button";
 import { DateDisplay } from "../../components/date-display";
+import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { Tooltip } from "../../components/tooltip";
-import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { DEFAULT_BRANCH_NAME, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
+import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
+import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -39,7 +45,10 @@ const renderContent = (tab: string | null | undefined) => {
 
 export const ProposedChangesDetails = () => {
   const { proposedchange } = useParams();
-  console.log("proposedchange: ", proposedchange);
+
+  const auth = useContext(AuthContext);
+
+  const branch = useReactiveVar(branchVar);
 
   const [schemaList] = useAtom(schemaState);
 
@@ -47,10 +56,13 @@ export const ProposedChangesDetails = () => {
 
   const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
 
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+
   const navigate = useNavigate();
 
   const queryString = schemaData
     ? getProposedChanges({
+        id: proposedchange,
         kind: schemaData.kind,
         attributes: schemaData.attributes,
         relationships: getSchemaRelationshipColumns(schemaData),
@@ -63,7 +75,7 @@ export const ProposedChangesDetails = () => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
 
@@ -85,17 +97,29 @@ export const ProposedChangesDetails = () => {
     <div className="bg-custom-white">
       <div className="py-4 px-4 w-full">
         <div className="flex items-center">
-          <div
-            onClick={() => navigate(path)}
-            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-            Proposed changes
-          </div>
-          <ChevronRightIcon
-            className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
-            aria-hidden="true"
-          />
+          <div className="flex flex-1">
+            <div
+              onClick={() => navigate(path)}
+              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+              Proposed changes
+            </div>
+            <ChevronRightIcon
+              className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+              aria-hidden="true"
+            />
 
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">{proposedchange}</p>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">{proposedchange}</p>
+          </div>
+
+          <div className="">
+            <Button
+              disabled={!auth?.permissions?.write}
+              onClick={() => setShowEditDrawer(true)}
+              className="mr-4">
+              Edit
+              <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -154,6 +178,47 @@ export const ProposedChangesDetails = () => {
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       {renderContent(qspTab)}
+
+      <SlideOver
+        title={
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">{result.display_label}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <Square3Stack3DIcon className="w-5 h-5" />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {schemaData.kind}
+            </span>
+            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              ID: {result.id}
+            </div>
+          </div>
+        }
+        open={showEditDrawer}
+        setOpen={setShowEditDrawer}>
+        <ObjectItemEditComponent
+          closeDrawer={() => setShowEditDrawer(false)}
+          onUpdateComplete={() => refetch()}
+          objectid={proposedchange!}
+          objectname={PROPOSED_CHANGES_OBJECT!}
+        />
+      </SlideOver>
     </div>
   );
 };
