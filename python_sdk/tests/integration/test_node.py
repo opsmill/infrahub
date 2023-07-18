@@ -188,3 +188,16 @@ class TestInfrahubNode:
 
         tags = await nodedb.tags.get(session=session)
         assert sorted([tag.peer_id for tag in tags]) == sorted([tag_green.id, tag_blue.id])
+
+    async def test_convert_node(
+        self,
+        session,
+        client: InfrahubClient,
+        location_schema,
+        init_db_base,
+        location_cdg: Node,
+    ):
+        data = await location_cdg.to_graphql(session=session)
+        node = InfrahubNode(client=client, schema=location_schema, data=data)
+
+        assert node.name.value == "cdg01"  # type: ignore[attr-defined]

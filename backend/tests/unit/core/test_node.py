@@ -161,6 +161,105 @@ async def test_node_init_with_single_relationship(session, default_branch: Branc
     assert c2_peer.id == p1.id
 
 
+async def test_to_graphql(session, default_branch: Branch, car_person_schema):
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+
+    expected_data = {
+        "id": c1.id,
+        "nbr_seats": {
+            "id": c1.nbr_seats.id,
+            "value": 4,
+        },
+        "type": "TestCar",
+    }
+    assert await c1.to_graphql(session=session, fields={"nbr_seats": {"value": None}}) == expected_data
+
+    expected_data = {
+        "id": c1.id,
+        "display_label": "volt #444444",
+        "name": {
+            "id": c1.name.id,
+            "is_protected": False,
+        },
+        "type": "TestCar",
+    }
+
+    assert (
+        await c1.to_graphql(session=session, fields={"display_label": None, "name": {"is_protected": None}})
+        == expected_data
+    )
+
+
+async def test_to_graphql_no_fields(session, default_branch: Branch, car_person_schema):
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
+
+    p1 = await Node.init(session=session, schema=person)
+    await p1.new(session=session, name="John", height=180)
+    await p1.save(session=session)
+
+    c1 = await Node.init(session=session, schema=car)
+    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(session=session)
+
+    expected_data = {
+        "__typename": "TestCar",
+        "color": {
+            "__typename": "Text",
+            "id": c1.color.id,
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "updated_at": None,
+            "value": "#444444",
+        },
+        "display_label": "volt #444444",
+        "id": c1.id,
+        "is_electric": {
+            "__typename": "Boolean",
+            "id": c1.is_electric.id,
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "updated_at": None,
+            "value": True,
+        },
+        "name": {
+            "__typename": "Text",
+            "id": c1.name.id,
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "updated_at": None,
+            "value": "volt",
+        },
+        "nbr_seats": {
+            "__typename": "Number",
+            "id": c1.nbr_seats.id,
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "updated_at": None,
+            "value": 4,
+        },
+        "type": "TestCar",
+    }
+    assert await c1.to_graphql(session=session) == expected_data
+
+
 # --------------------------------------------------------------------------
 # Create
 # --------------------------------------------------------------------------

@@ -374,14 +374,20 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return query_filter, query_params, query_where
 
-    async def to_graphql(self, session: AsyncSession, fields: dict = None) -> dict:
+    async def to_graphql(self, session: AsyncSession, fields: Optional[dict] = None) -> dict:
         """Generate GraphQL Payload for this attribute."""
+        # pylint: disable=too-many-branches
 
         response = {
             "id": self.id,
         }
 
-        for field_name in fields.keys():
+        if fields and isinstance(fields, dict):
+            field_names = fields.keys()
+        else:
+            field_names = ["__typename", "updated_at", "value"] + self._node_properties + self._flag_properties
+
+        for field_name in field_names:
             if field_name == "updated_at":
                 if self.updated_at:
                     response[field_name] = await self.updated_at.to_graphql()
@@ -398,8 +404,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 node_attr = await node_attr_getter(session=session)
                 if not node_attr:
                     response[field_name] = None
-                else:
+                elif fields and isinstance(fields, dict):
                     response[field_name] = await node_attr.to_graphql(session=session, fields=fields[field_name])
+                else:
+                    response[field_name] = await node_attr.to_graphql(
+                        session=session, fields={"id": None, "display_label": None, "__typename": None}
+                    )
                 continue
 
             if field_name.startswith("_"):
