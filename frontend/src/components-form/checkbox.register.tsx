@@ -1,4 +1,5 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
+import { FormFieldError } from "../screens/edit-form-hook/form";
 import OpsCheckox from "./checkbox";
 
 interface Props {
@@ -9,10 +10,11 @@ interface Props {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   isProtected?: boolean;
+  error?: FormFieldError;
 }
 
 export const OpsCheckboxRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, isProtected } = props;
+  const { name, value, register, setValue, config, label, isProtected, error } = props;
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -27,6 +29,7 @@ export const OpsCheckboxRegister = (props: Props) => {
         setValue(inputRegister.name, value);
       }}
       isProtected={isProtected}
+      error={error}
     />
   );
 };
