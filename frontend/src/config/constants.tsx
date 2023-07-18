@@ -5,6 +5,7 @@ import GroupItems from "../screens/groups/group-items";
 import ObjectItemDetailsPaginated from "../screens/object-item-details/object-item-details-paginated";
 import ObjectItemsPaginated from "../screens/object-items/object-items-paginated";
 import OpsObjects from "../screens/ops-objects/ops-objects";
+import { ProposedChanges } from "../screens/proposed-changes/proposed-changes-items";
 import UserProfile from "../screens/user-profile/user-profile";
 
 export const MAIN_ROUTES = [
@@ -27,6 +28,10 @@ export const MAIN_ROUTES = [
   {
     path: "/branches",
     element: <BranchesItems />,
+  },
+  {
+    path: "/proposed-changes",
+    element: <ProposedChanges />,
   },
   {
     path: "/branches/:branchname",
@@ -58,6 +63,10 @@ export const BRANCHES_MENU_ITEMS = [
     path: "/branches",
     label: "List",
   },
+  {
+    path: "/proposed-changes",
+    label: "Proposed changes",
+  },
 ];
 
 export const DEFAULT_BRANCH_NAME = "main";
@@ -69,6 +78,8 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 export const ACCOUNT_OBJECT = "Account";
 
 export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
+
+export const PROPOSED_CHANGES_OBJECT = "ProposedChange";
 
 export const GROUP_OBJECT = "Group";
 
