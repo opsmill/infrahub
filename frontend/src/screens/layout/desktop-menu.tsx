@@ -1,7 +1,7 @@
 import { LinkIcon, Square3Stack3DIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useNavigate } from "react-router-dom";
-import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS } from "../../config/constants";
+import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS, MENU_BLACKLIST } from "../../config/constants";
 import useFilters from "../../hooks/useFilters";
 import logo from "../../images/Infrahub-SVG-hori.svg";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -15,14 +15,16 @@ export default function DesktopMenu() {
   const onClickMenuItem = () => setFilters();
   const navigate = useNavigate();
 
-  const schemaItems = schema.map((item, index) => (
-    <DropDownMenuItem
-      key={index}
-      path={constructPath(`/objects/${item.name}`)}
-      label={item.label}
-      onClick={onClickMenuItem}
-    />
-  ));
+  const schemaItems = schema
+    .filter((item) => !MENU_BLACKLIST.includes(item.kind))
+    .map((item, index) => (
+      <DropDownMenuItem
+        key={index}
+        path={constructPath(`/objects/${item.name}`)}
+        label={item.label}
+        onClick={onClickMenuItem}
+      />
+    ));
 
   const adminItems = ADMIN_MENU_ITEMS.map((item, index) => (
     <DropDownMenuItem

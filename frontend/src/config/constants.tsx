@@ -75,3 +75,15 @@ export const GROUP_OBJECT = "Group";
 export const WRITE_ROLES = ["admin", "read-write"];
 
 export const ADMIN_ROLES = ["admin"];
+
+export const MENU_BLACKLIST = [
+  "InternalAccountToken",
+  "CoreChangeComment",
+  "CoreChangeThread",
+  "CoreFileThread",
+  "CoreObjectThread",
+  "CoreProposedChange",
+  "InternalRefreshToken",
+  "CoreStandardGroup",
+  "CoreThreadComment",
+];

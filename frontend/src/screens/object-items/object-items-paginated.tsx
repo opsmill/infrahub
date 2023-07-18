@@ -10,7 +10,7 @@ import ModalDelete from "../../components/modal-delete";
 import { Pagination } from "../../components/pagination";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { DEFAULT_BRANCH_NAME, MENU_BLACKLIST } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
@@ -67,6 +67,10 @@ export default function ObjectItems(props: any) {
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
+    navigate("/");
+  }
+
+  if (schemaData && MENU_BLACKLIST.includes(schemaData.kind)) {
     navigate("/");
   }
 

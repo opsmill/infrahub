@@ -68,10 +68,12 @@ function App() {
     try {
       const { schema, generics }: { schema: iNodeSchema[]; generics: iGenericSchema[] } =
         await fetchSchema();
+
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
+
       setSchema(schema);
       setGenerics(generics);
 
@@ -79,14 +81,17 @@ function App() {
       const schemaKinds = R.map(R.prop("kind"), schema);
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+
       setSchemaKindNameState(schemaKindNameMap);
 
       const genericSchemaMapping: iGenericSchemaMapping = {};
+
       schema.forEach((schemaNode: any) => {
         if (schemaNode.used_by?.length) {
           genericSchemaMapping[schemaNode.name] = schemaNode.used_by;
         }
       });
+
       setGenericSchema(genericSchemaMapping);
     } catch (error) {
       toast(
@@ -95,7 +100,7 @@ function App() {
 
       console.error("Error while fetching the schema: ", error);
     }
-  }, [fetchSchema, setGenericSchema, setSchema, setSchemaKindNameState, setGenerics]);
+  }, []);
 
   useEffect(() => {
     setSchemaInState();
