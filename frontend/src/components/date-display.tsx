@@ -20,7 +20,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
     <span className="">
       <Pill className="text-sm font-normal">{getDateDisplay(date)}</Pill>
 
-      <i className="text-xs font-normal">
+      <i className="text-xs font-normal ml-2">
         ({formatDistanceToNow(date ? new Date(date) : new Date(), { addSuffix: true })})
       </i>
     </span>

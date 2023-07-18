@@ -3,9 +3,10 @@ import { classNames } from "../utils/common";
 export enum AVATAR_SIZE {
   SMALL,
 }
-interface Props {
-  image?: string;
+interface tAvatar {
   name: string;
+  image?: string;
+  className?: string;
   size?: AVATAR_SIZE;
 }
 
@@ -29,8 +30,8 @@ const getAvatarSize = (size?: AVATAR_SIZE) => {
   }
 };
 
-export const Avatar = (props: Props) => {
-  const { name, image, size } = props;
+export const Avatar = (props: tAvatar) => {
+  const { name, image, size, className } = props;
 
   if (image) {
     return (
@@ -45,7 +46,8 @@ export const Avatar = (props: Props) => {
       <div
         className={classNames(
           getAvatarSize(size),
-          "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center"
+          "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center",
+          className ?? ""
         )}>
         {initials(name)}
       </div>

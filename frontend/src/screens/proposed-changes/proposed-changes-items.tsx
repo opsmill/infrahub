@@ -1,4 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ import { DateDisplay } from "../../components/date-display";
 import { Tooltip } from "../../components/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
+import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
@@ -20,12 +21,13 @@ const ProposedChange = (props: any) => {
   const navigate = useNavigate();
 
   const reviewers = row.reviewers.edges.map((edge: any) => edge.node);
+
   const approvers = row.approved_by.edges.map((edge: any) => edge.node);
 
   return (
     <li
       className="col-span-1 rounded-lg bg-custom-white shadow cursor-pointer hover:bg-gray-50"
-      onClick={() => navigate(constructPath(`/proposed-changes/${row.name}`))}>
+      onClick={() => navigate(constructPath(`/proposed-changes/${row.id}`))}>
       <div className="flex w-full items-center justify-between space-x-6 p-6">
         <div className="flex flex-1">
           <div className="flex flex-1 flex-col">

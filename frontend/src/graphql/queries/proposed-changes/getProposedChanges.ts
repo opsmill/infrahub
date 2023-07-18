@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 
 export const getProposedChanges = Handlebars.compile(`
 query {
-  {{kind}} {
+  {{kind}}{{#if id}}(ids: ["{{id}}"]){{/if}} {
     count
     edges {
       node {

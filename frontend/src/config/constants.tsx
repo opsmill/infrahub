@@ -5,6 +5,7 @@ import GroupItems from "../screens/groups/group-items";
 import ObjectItemDetailsPaginated from "../screens/object-item-details/object-item-details-paginated";
 import ObjectItemsPaginated from "../screens/object-items/object-items-paginated";
 import OpsObjects from "../screens/ops-objects/ops-objects";
+import { ProposedChangesDetails } from "../screens/proposed-changes/proposed-changes-details";
 import { ProposedChanges } from "../screens/proposed-changes/proposed-changes-items";
 import UserProfile from "../screens/user-profile/user-profile";
 
@@ -32,6 +33,10 @@ export const MAIN_ROUTES = [
   {
     path: "/proposed-changes",
     element: <ProposedChanges />,
+  },
+  {
+    path: "/proposed-changes/:proposedchange",
+    element: <ProposedChangesDetails />,
   },
   {
     path: "/branches/:branchname",
