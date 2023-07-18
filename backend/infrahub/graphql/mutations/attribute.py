@@ -44,5 +44,9 @@ class ListAttributeInput(BaseAttributeInput):
     value = GenericScalar(required=False)
 
 
+class JSONAttributeInput(BaseAttributeInput):
+    value = GenericScalar(required=False)
+
+
 class AnyAttributeInput(BaseAttributeInput):
     value = GenericScalar(required=False)

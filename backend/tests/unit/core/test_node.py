@@ -183,6 +183,8 @@ async def test_node_create_local_attrs(session, default_branch: Branch, critical
     assert obj.color.id
     assert obj.is_true.value is True
     assert obj.is_false.value is False
+    assert obj.json_default.value == {"value": "bob"}
+    assert obj.json_no_default.value is None
 
     obj = await Node.init(session=session, schema=criticality_schema)
     await obj.new(

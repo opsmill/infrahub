@@ -71,6 +71,8 @@ async def test_generate_graphql_object(session, default_branch: Branch, group_gr
         "id",
         "is_false",
         "is_true",
+        "json_default",
+        "json_no_default",
         "label",
         "level",
         "mylist",
