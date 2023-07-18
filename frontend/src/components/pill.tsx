@@ -4,7 +4,7 @@ import { classNames } from "../utils/common";
 type tPill = {
   type?: PILL_TYPES;
   className?: string;
-  children?: ReactElement | string;
+  children?: ReactElement[] | string[];
 };
 
 export enum PILL_TYPES {
