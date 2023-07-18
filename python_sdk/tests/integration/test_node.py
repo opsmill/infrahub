@@ -200,4 +200,5 @@ class TestInfrahubNode:
         data = await location_cdg.to_graphql(session=session)
         node = InfrahubNode(client=client, schema=location_schema, data=data)
 
+        # pylint: disable=no-member
         assert node.name.value == "cdg01"  # type: ignore[attr-defined]
