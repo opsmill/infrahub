@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from infrahub.core.attribute import Integer, String
@@ -115,7 +117,7 @@ async def test_validate_length(session, default_branch: Branch, criticality_sche
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisstringistoolong")
 
 
-async def test_node_property_getter(session, default_branch, criticality_schema):
+async def test_node_property_getter(session, default_branch: Branch, criticality_schema):
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
@@ -140,7 +142,7 @@ async def test_node_property_getter(session, default_branch, criticality_schema)
     assert attr.owner_id == "yetotheruuid"
 
 
-async def test_string_attr_query_filter(session, default_branch):
+async def test_string_attr_query_filter(session, default_branch: Branch):
     filters, params, matchs = String.get_query_filter(name="description", filter_name="value", filter_value="test")
     expected_response = [
         "(n)",
@@ -167,7 +169,7 @@ async def test_string_attr_query_filter(session, default_branch):
     assert matchs == []
 
 
-async def test_base_serialization(session, default_branch, all_attribute_types_schema):
+async def test_base_serialization(session, default_branch: Branch, all_attribute_types_schema):
     obj1 = await Node.init(session=session, schema="TestAllAttributeTypes")
     await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
     await obj1.save(session=session)
@@ -207,3 +209,104 @@ async def test_base_serialization(session, default_branch, all_attribute_types_s
     assert obj13.mybool.value == obj11.mybool.value
     assert obj13.myint.value == obj11.myint.value
     assert obj13.mylist.value == obj11.mylist.value
+
+
+async def test_to_graphql(session, default_branch: Branch, criticality_schema, first_account: Node):
+    schema = criticality_schema.get_attribute("name")
+
+    attr1 = String(
+        id=str(uuid.uuid4()),
+        name="test",
+        schema=schema,
+        branch=default_branch,
+        at=Timestamp(),
+        node=None,
+        data="mystring",
+    )
+    expected_data = {
+        "id": attr1.id,
+        "value": "mystring",
+    }
+    assert await attr1.to_graphql(session=session, fields={"value": None}) == expected_data
+
+    expected_data = {
+        "id": attr1.id,
+        "is_visible": True,
+    }
+    assert await attr1.to_graphql(session=session, fields={"id": None, "is_visible": None}) == expected_data
+
+    attr2 = String(
+        id=str(uuid.uuid4()),
+        name="test",
+        schema=schema,
+        branch=default_branch,
+        at=Timestamp(),
+        source=first_account,
+        node=None,
+        data="mystring",
+    )
+    expected_data = {
+        "id": attr2.id,
+        "source": {
+            "id": first_account.id,
+            "display_label": "First Account",
+            "type": "CoreAccount",
+        },
+        "value": "mystring",
+    }
+    assert (
+        await attr2.to_graphql(session=session, fields={"value": None, "source": {"display_label": None}})
+        == expected_data
+    )
+
+
+async def test_to_graphql_no_fields(session, default_branch: Branch, criticality_schema, first_account: Node):
+    schema = criticality_schema.get_attribute("name")
+
+    attr1 = String(
+        id=str(uuid.uuid4()),
+        name="test",
+        schema=schema,
+        branch=default_branch,
+        at=Timestamp(),
+        node=None,
+        data="mystring",
+    )
+    expected_data = {
+        "__typename": "Text",
+        "id": attr1.id,
+        "is_protected": False,
+        "is_visible": True,
+        "owner": None,
+        "source": None,
+        "updated_at": None,
+        "value": "mystring",
+    }
+    assert await attr1.to_graphql(session=session) == expected_data
+
+    attr2 = String(
+        id=str(uuid.uuid4()),
+        name="test",
+        schema=schema,
+        branch=default_branch,
+        at=Timestamp(),
+        source=first_account,
+        node=None,
+        data="mystring",
+    )
+    expected_data = {
+        "__typename": "Text",
+        "id": attr2.id,
+        "is_protected": False,
+        "is_visible": True,
+        "owner": None,
+        "source": {
+            "__typename": "CoreAccount",
+            "display_label": "First Account",
+            "id": first_account.id,
+            "type": "CoreAccount",
+        },
+        "updated_at": None,
+        "value": "mystring",
+    }
+    assert await attr2.to_graphql(session=session) == expected_data

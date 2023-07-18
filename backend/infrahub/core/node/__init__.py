@@ -355,7 +355,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
         await query.execute(session=session)
 
-    async def to_graphql(self, session: AsyncSession, fields: dict) -> dict:
+    async def to_graphql(self, session: AsyncSession, fields: Optional[dict] = None) -> dict:
         """Generate GraphQL Payload for all attributes
 
         Returns:
@@ -364,10 +364,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         response = {"id": self.id, "type": self.get_kind()}
 
-        for field_name in fields.keys():
-            if field_name in ["id"] or field_name in self._schema.relationship_names:
-                continue
+        FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
+        if fields and isinstance(fields, dict):
+            field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+        else:
+            field_names = self._schema.attribute_names + ["__typename", "display_label"]
+
+        for field_name in field_names:
             if field_name == "__typename":
                 response[field_name] = self.get_kind()
                 continue
@@ -389,7 +393,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 response[field_name] = None
                 continue
 
-            response[field_name] = await field.to_graphql(session=session, fields=fields[field_name])
+            if fields and isinstance(fields, dict):
+                response[field_name] = await field.to_graphql(session=session, fields=fields.get(field_name))
+            else:
+                response[field_name] = await field.to_graphql(session=session)
 
         return response
 

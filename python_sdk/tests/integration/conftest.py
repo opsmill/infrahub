@@ -89,6 +89,14 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
+async def location_cdg(session: AsyncSession, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(schema="BuiltinLocation", session=session)
+    await obj.new(session=session, name="cdg01", type="SITE", tags=[tag_blue, tag_red])
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
 async def tag_blue(session: AsyncSession) -> Node:
     obj = await Node.init(schema="BuiltinTag", session=session)
     await obj.new(session=session, name="Blue")
