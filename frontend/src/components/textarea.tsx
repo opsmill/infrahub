@@ -8,7 +8,7 @@ export const Textarea = forwardRef((props: any, ref: any) => {
   return (
     <div className="relative">
       <textarea
-        rows={5}
+        rows={2}
         onChange={(e) => onChange(e.target.value)}
         className={classNames(
           `

@@ -86,6 +86,10 @@ export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 
 export const PROPOSED_CHANGES_OBJECT = "ProposedChange";
 
+export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
+
+export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
+
 export const GROUP_OBJECT = "Group";
 
 export const WRITE_ROLES = ["admin", "read-write"];
