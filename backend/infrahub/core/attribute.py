@@ -514,3 +514,20 @@ class ListAttribute(BaseAttribute):
         if isinstance(value, (str, bytes)):
             return ujson.loads(value)
         return value
+
+
+class JSONAttribute(BaseAttribute):
+    type = (dict, list)
+
+    @classmethod
+    def serialize(cls, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ujson.dumps(value)
+
+    @classmethod
+    def deserialize(cls, value: Any) -> Any:
+        """Deserialize the value (potentially) coming from the database."""
+        if value and isinstance(value, (str, bytes)):
+            return ujson.loads(value)
+        return value

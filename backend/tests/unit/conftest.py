@@ -1283,6 +1283,7 @@ async def all_attribute_types_schema(session: AsyncSession, default_branch: Bran
             {"name": "mybool", "kind": "Boolean", "optional": True},
             {"name": "myint", "kind": "Number", "optional": True},
             {"name": "mylist", "kind": "List", "optional": True},
+            {"name": "myjson", "kind": "JSON", "optional": True},
         ],
     }
 
@@ -1308,6 +1309,8 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, data
             {"name": "mylist", "kind": "List", "default_value": ["one", "two"]},
             {"name": "is_true", "kind": "Boolean", "default_value": True},
             {"name": "is_false", "kind": "Boolean", "default_value": False},
+            {"name": "json_no_default", "kind": "JSON", "optional": True},
+            {"name": "json_default", "kind": "JSON", "default_value": {"value": "bob"}},
             {"name": "description", "kind": "Text", "optional": True},
         ],
     }

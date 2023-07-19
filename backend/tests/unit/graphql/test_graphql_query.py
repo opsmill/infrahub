@@ -32,7 +32,7 @@ async def test_simple_query(db, session, default_branch: Branch, criticality_sch
                 node {
                     name {
                         value
-                     }
+                    }
                 }
             }
         }
@@ -69,7 +69,7 @@ async def test_simple_query_with_offset_and_limit(db, session, default_branch: B
                 node {
                     name {
                         value
-                     }
+                    }
                 }
             }
         }
@@ -235,7 +235,15 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
 
 async def test_all_attributes(db, session, default_branch: Branch, data_schema, all_attribute_types_schema):
     obj1 = await Node.init(session=session, schema="TestAllAttributeTypes")
-    await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
+    await obj1.new(
+        session=session,
+        name="obj1",
+        mystring="abc",
+        mybool=False,
+        myint=123,
+        mylist=["1", 2, False],
+        myjson={"key1": "bill"},
+    )
     await obj1.save(session=session)
 
     obj2 = await Node.init(session=session, schema="TestAllAttributeTypes")
@@ -252,6 +260,7 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
                     mybool { value }
                     myint { value }
                     mylist { value }
+                    myjson { value }
                 }
             }
         }
@@ -276,11 +285,13 @@ async def test_all_attributes(db, session, default_branch: Branch, data_schema, 
     assert results["obj1"]["mybool"]["value"] == obj1.mybool.value
     assert results["obj1"]["myint"]["value"] == obj1.myint.value
     assert results["obj1"]["mylist"]["value"] == obj1.mylist.value
+    assert results["obj1"]["myjson"]["value"] == obj1.myjson.value
 
     assert results["obj2"]["mystring"]["value"] == obj2.mystring.value
     assert results["obj2"]["mybool"]["value"] == obj2.mybool.value
     assert results["obj2"]["myint"]["value"] == obj2.myint.value
     assert results["obj2"]["mylist"]["value"] == obj2.mylist.value
+    assert results["obj2"]["myjson"]["value"] == obj2.myjson.value
 
 
 async def test_nested_query(db, session, default_branch: Branch, car_person_schema):

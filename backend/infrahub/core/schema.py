@@ -97,6 +97,8 @@ class BaseSchemaModel(BaseModel):
             value = getattr(self, field_name)
             if isinstance(value, list):
                 values.append(tuple(sorted(tuple(value))))
+            elif isinstance(value, dict):
+                values.append(frozenset(value.items()))
             else:
                 values.append(value)
 
