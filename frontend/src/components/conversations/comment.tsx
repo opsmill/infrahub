@@ -6,7 +6,7 @@ import { DateDisplay } from "../date-display";
 export const Comment = (props: any) => {
   const { comment, className } = props;
 
-  const createdBy = comment?.created_by?.display_label ?? "Anonymous";
+  const createdBy = comment?.created_by?.node?.display_label ?? "Anonymous";
   const createdAt = comment?.created_at?.value;
   const commentContent = comment?.display_label;
 

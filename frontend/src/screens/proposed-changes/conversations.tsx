@@ -1,4 +1,5 @@
 import { gql, useReactiveVar } from "@apollo/client";
+import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -6,7 +7,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Comment } from "../../components/conversations/comment";
-import { Thread } from "../../components/conversations/thread";
+import { Thread, sortByDate } from "../../components/conversations/thread";
 import { PROPOSED_CHANGES_COMMENT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -57,11 +58,13 @@ export const Conversations = () => {
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
   const threads = result?.threads?.edges?.map((edge: any) => edge?.node);
   const comments = result?.comments?.edges?.map((edge: any) => edge.node);
-  const list = [...threads, ...comments];
+  const list = sortByDate([...threads, ...comments]);
 
-  const handleSubmit = async (data?: any) => {
+  const handleSubmit = async (data: any, event: any) => {
     try {
-      if (!data) {
+      event.target.reset();
+
+      if (!data || !auth?.data?.sub) {
         return;
       }
 
@@ -71,6 +74,12 @@ export const Conversations = () => {
         },
         change: {
           id: proposedchange,
+        },
+        created_by: {
+          id: auth?.data?.sub,
+        },
+        created_at: {
+          value: formatISO(new Date()),
         },
       };
 

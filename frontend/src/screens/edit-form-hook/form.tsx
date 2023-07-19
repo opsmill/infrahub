@@ -39,7 +39,7 @@ export const Form = ({
 }: FormProps) => {
   const formMethods = useForm();
 
-  const { handleSubmit, formState } = formMethods;
+  const { handleSubmit, formState, reset } = formMethods;
 
   const { errors } = formState;
 
@@ -55,8 +55,13 @@ export const Form = ({
     );
   };
 
+  const submit = async (...props: any) => {
+    await onSubmit(...props);
+    reset();
+  };
+
   return (
-    <form className="flex-1 flex flex-col w-full" onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex-1 flex flex-col w-full" onSubmit={handleSubmit(submit)}>
       <FormProvider {...formMethods}>
         <div className="space-y-12 px-4 flex-1">
           <div className="">

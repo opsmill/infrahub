@@ -1,4 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
+import { formatISO, isBefore, parseISO } from "date-fns";
+import * as R from "ramda";
 import { useContext, useState } from "react";
 import { toast } from "react-toastify";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "../../config/constants";
@@ -18,11 +20,15 @@ type tThread = {
   refetch: Function;
 };
 
+// Sort by date desc
+export const sortByDate = R.sort((a: any, b: any) =>
+  isBefore(parseISO(a.created_at.value), parseISO(b.created_at.value)) ? -1 : 1
+);
+
 export const Thread = (props: tThread) => {
   const { thread, refetch } = props;
 
   const auth = useContext(AuthContext);
-  console.log("auth: ", auth);
 
   const { comments } = thread;
 
@@ -31,7 +37,7 @@ export const Thread = (props: tThread) => {
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
 
-  const handleSubmit = async (data?: any) => {
+  const handleSubmit = async (data: any) => {
     try {
       if (!data) {
         return;
@@ -45,7 +51,10 @@ export const Thread = (props: tThread) => {
           id: thread.id,
         },
         created_by: {
-          id: auth,
+          id: auth?.data?.sub,
+        },
+        created_at: {
+          value: formatISO(new Date()),
         },
       };
 
@@ -86,10 +95,12 @@ export const Thread = (props: tThread) => {
     }
   };
 
+  const sortedComments = sortByDate(comments.edges);
+
   return (
     <section className="bg-custom-white p-4 mb-4 rounded-lg">
       <div className="">
-        {comments.edges.map((comment: any, index: number) => (
+        {sortedComments.map((comment: any, index: number) => (
           <Comment key={index} comment={comment.node} className={"border border-gray-200"} />
         ))}
       </div>
