@@ -1,6 +1,6 @@
 from infrahub_sync.adapters.netbox import NetboxAdapter
 
-from .models import Location, Rack, Role, Tag
+from .models import BuiltinLocation, BuiltinRole, BuiltinTag, InfraRack
 
 
 # -------------------------------------------------------
@@ -9,7 +9,7 @@ from .models import Location, Rack, Role, Tag
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 class NetboxSync(NetboxAdapter):
-    location = Location
-    rack = Rack
-    role = Role
-    tag = Tag
+    InfraRack = InfraRack
+    BuiltinRole = BuiltinRole
+    BuiltinLocation = BuiltinLocation
+    BuiltinTag = BuiltinTag

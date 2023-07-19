@@ -9,21 +9,8 @@ from infrahub_sync.adapters.netbox import NetboxModel
 # -------------------------------------------------------
 
 
-class Location(NetboxModel):
-    _modelname = "location"
-    _identifiers = ("name",)
-    _attributes = ("description", "type")
-
-    name: str
-    description: Optional[str]
-    type: str
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
-class Rack(NetboxModel):
-    _modelname = "rack"
+class InfraRack(NetboxModel):
+    _modelname = "InfraRack"
     _identifiers = ("location", "name")
     _attributes = ("role", "tags", "description", "height", "facility_id", "serial_number")
 
@@ -40,8 +27,8 @@ class Rack(NetboxModel):
     local_data: Optional[Any]
 
 
-class Role(NetboxModel):
-    _modelname = "role"
+class BuiltinRole(NetboxModel):
+    _modelname = "BuiltinRole"
     _identifiers = ("name",)
     _attributes = ("description",)
 
@@ -52,8 +39,21 @@ class Role(NetboxModel):
     local_data: Optional[Any]
 
 
-class Tag(NetboxModel):
-    _modelname = "tag"
+class BuiltinLocation(NetboxModel):
+    _modelname = "BuiltinLocation"
+    _identifiers = ("name",)
+    _attributes = ("description", "type")
+
+    name: str
+    description: Optional[str]
+    type: str
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class BuiltinTag(NetboxModel):
+    _modelname = "BuiltinTag"
     _identifiers = ("name",)
     _attributes = ("description",)
 
