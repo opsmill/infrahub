@@ -6,6 +6,7 @@ type tAddComment = {
   onSubmit: SubmitHandler<FieldValues>;
   isLoading?: boolean;
   onClose?: Function;
+  disabled?: boolean;
 };
 
 const fields: DynamicFieldData[] = [
@@ -21,7 +22,7 @@ const fields: DynamicFieldData[] = [
 ];
 
 export const AddComment = (props: tAddComment) => {
-  const { onSubmit, isLoading, onClose } = props;
+  const { onSubmit, isLoading, onClose, disabled } = props;
 
   return (
     <div className="mb-6">
@@ -32,6 +33,7 @@ export const AddComment = (props: tAddComment) => {
           submitLabel={"Comment"}
           isLoading={isLoading}
           onCancel={onClose}
+          disabled={disabled}
         />
       </div>
     </div>

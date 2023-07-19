@@ -1,7 +1,8 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { toast } from "react-toastify";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "../../config/constants";
+import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { branchVar } from "../../graphql/variables/branchVar";
@@ -19,6 +20,9 @@ type tThread = {
 
 export const Thread = (props: tThread) => {
   const { thread, refetch } = props;
+
+  const auth = useContext(AuthContext);
+  console.log("auth: ", auth);
 
   const { comments } = thread;
 
@@ -39,6 +43,9 @@ export const Thread = (props: tThread) => {
         },
         thread: {
           id: thread.id,
+        },
+        created_by: {
+          id: auth,
         },
       };
 
@@ -94,11 +101,16 @@ export const Thread = (props: tThread) => {
               onSubmit={handleSubmit}
               isLoading={isLoading}
               onClose={() => setDisplayAddComment(false)}
+              disabled={auth?.permissions?.write}
             />
           </div>
         )}
 
-        {!displayAddComment && <Button onClick={() => setDisplayAddComment(true)}>Reply</Button>}
+        {!displayAddComment && (
+          <Button onClick={() => setDisplayAddComment(true)} disabled={auth?.permissions?.write}>
+            Reply
+          </Button>
+        )}
       </div>
     </section>
   );

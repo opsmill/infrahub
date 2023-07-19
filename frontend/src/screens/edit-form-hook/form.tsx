@@ -14,17 +14,19 @@ export type FormFieldError = {
   type?: string;
 };
 
+type FormFieldProps = {
+  field: DynamicFieldData;
+  error?: FormFieldError;
+  disabled?: boolean;
+};
+
 export type FormProps = {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
   onCancel?: Function;
   isLoading?: boolean;
   submitLabel?: string;
-};
-
-type FormFieldProps = {
-  field: DynamicFieldData;
-  error?: FormFieldError;
+  disabled?: boolean;
 };
 
 export const Form = ({
@@ -33,6 +35,7 @@ export const Form = ({
   onCancel,
   isLoading,
   submitLabel = "Save",
+  disabled,
 }: FormProps) => {
   const formMethods = useForm();
 
@@ -41,12 +44,12 @@ export const Form = ({
   const { errors } = formState;
 
   const FormField = (props: FormFieldProps) => {
-    const { field, error } = props;
+    const { field, error, disabled } = props;
 
     return (
       <>
         <div className="sm:col-span-7">
-          <DynamicControl {...field} error={error} />
+          <DynamicControl {...field} error={error} disabled={disabled} />
         </div>
       </>
     );
@@ -59,7 +62,12 @@ export const Form = ({
           <div className="">
             <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-7 gap-y-4 py-4 md:grid-cols-4">
               {fields.map((field, index) => (
-                <FormField key={index} field={field} error={resolve(field.name, errors)} />
+                <FormField
+                  key={index}
+                  field={field}
+                  error={resolve(field.name, errors)}
+                  disabled={disabled}
+                />
               ))}
             </div>
           </div>
@@ -67,7 +75,11 @@ export const Form = ({
         <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t">
           {onCancel && <Button onClick={onCancel}>Cancel</Button>}
 
-          <Button type="submit" buttonType={BUTTON_TYPES.MAIN} isLoading={isLoading}>
+          <Button
+            type="submit"
+            buttonType={BUTTON_TYPES.MAIN}
+            isLoading={isLoading}
+            disabled={disabled}>
             {submitLabel}
           </Button>
         </div>

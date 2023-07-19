@@ -11,10 +11,11 @@ type OpsInputProps = {
   error?: FormFieldError;
   type: string;
   isProtected?: boolean;
+  disabled?: boolean;
 };
 
 export const OpsInput = (props: OpsInputProps) => {
-  const { className, onChange, value, label, error, isProtected } = props;
+  const { className, onChange, value, label, error, isProtected, disabled } = props;
 
   return (
     <>
@@ -28,7 +29,7 @@ export const OpsInput = (props: OpsInputProps) => {
         defaultValue={value ?? ""}
         className={classNames(className ?? "")}
         error={error}
-        disabled={isProtected}
+        disabled={isProtected || disabled}
       />
     </>
   );

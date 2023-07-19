@@ -8,15 +8,22 @@ type OpsMultiSelectProps = {
   options: SelectOption[];
   onChange: (value: SelectOption[]) => void;
   error?: FormFieldError;
+  isProtected?: boolean;
 };
 
 export default function OpsMultiSelect(props: OpsMultiSelectProps) {
-  const { value, options, onChange, label, error } = props;
+  const { value, options, onChange, label, error, isProtected } = props;
 
   return (
     <>
       <label className="block text-sm font-medium leading-6 text-gray-900">{label}</label>
-      <MultiSelect value={value} options={options} onChange={onChange} error={error} />
+      <MultiSelect
+        value={value}
+        options={options}
+        onChange={onChange}
+        error={error}
+        disabled={isProtected}
+      />
     </>
   );
 }

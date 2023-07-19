@@ -13,10 +13,13 @@ interface Props {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
+  isProtected?: boolean;
+  disabled?: boolean;
 }
 
 export const OpsMultiSelectRegister = (props: Props) => {
-  const { name, value, register, setValue, config, options, label, error } = props;
+  const { name, value, register, setValue, config, options, label, error, isProtected, disabled } =
+    props;
   const multiSelectRegister = register(name, {
     value: value ?? "",
     ...config,
@@ -34,6 +37,7 @@ export const OpsMultiSelectRegister = (props: Props) => {
         setSelectedOptions(newValue as SelectOption[]);
         setValue(multiSelectRegister.name, newValue);
       }}
+      isProtected={isProtected || disabled}
     />
   );
 };

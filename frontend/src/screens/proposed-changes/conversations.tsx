@@ -1,6 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -8,6 +8,7 @@ import { AddComment } from "../../components/conversations/add-comment";
 import { Comment } from "../../components/conversations/comment";
 import { Thread } from "../../components/conversations/thread";
 import { PROPOSED_CHANGES_COMMENT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getProposedChangesConversations } from "../../graphql/queries/proposed-changes/getProposedChangesConversations";
@@ -26,6 +27,7 @@ export const Conversations = () => {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
+  const auth = useContext(AuthContext);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
 
@@ -122,7 +124,11 @@ export const Conversations = () => {
       </div>
 
       <div>
-        <AddComment onSubmit={handleSubmit} isLoading={isLoading} />
+        <AddComment
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+          disabled={!auth?.permissions?.write}
+        />
       </div>
     </div>
   );
