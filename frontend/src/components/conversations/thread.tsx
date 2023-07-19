@@ -8,6 +8,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { ALERT_TYPES, Alert } from "../alert";
+import { Button } from "../button";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -24,6 +25,7 @@ export const Thread = (props: tThread) => {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
+  const [displayAddComment, setDisplayAddComment] = useState(false);
 
   const handleSubmit = async (data?: any) => {
     try {
@@ -85,7 +87,19 @@ export const Thread = (props: tThread) => {
         ))}
       </div>
 
-      <AddComment onSubmit={handleSubmit} isLoading={isLoading} />
+      <div className="flex justify-end">
+        {displayAddComment && (
+          <div className="flex-1">
+            <AddComment
+              onSubmit={handleSubmit}
+              isLoading={isLoading}
+              onClose={() => setDisplayAddComment(false)}
+            />
+          </div>
+        )}
+
+        {!displayAddComment && <Button onClick={() => setDisplayAddComment(true)}>Reply</Button>}
+      </div>
     </section>
   );
 };
