@@ -1,4 +1,5 @@
 import { classNames } from "../../utils/common";
+import { displayTextWithNewLines } from "../../utils/string";
 import { AVATAR_SIZE, Avatar } from "../avatar";
 import { DateDisplay } from "../date-display";
 
@@ -24,7 +25,7 @@ export const Comment = (props: any) => {
         </div>
       </div>
 
-      <div className="py-4">{commentContent}</div>
+      <div className="py-4">{displayTextWithNewLines(commentContent)}</div>
     </div>
   );
 };

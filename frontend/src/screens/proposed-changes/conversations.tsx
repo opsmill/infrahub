@@ -59,7 +59,6 @@ export const Conversations = () => {
 
   const handleSubmit = async (data?: any) => {
     try {
-      console.log("data: ", data);
       if (!data) {
         return;
       }
@@ -77,8 +76,6 @@ export const Conversations = () => {
         kind: PROPOSED_CHANGES_COMMENT_OBJECT,
         data: stringifyWithoutQuotes(newObject),
       });
-
-      console.log("mutationString: ", mutationString);
 
       const mutation = gql`
         ${mutationString}

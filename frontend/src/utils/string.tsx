@@ -17,3 +17,6 @@ export const stringifyWithoutQuotes = (obj: object): string => {
 export const cleanTabsAndNewLines = (string: string) => {
   return string.replaceAll(/\t*\n*/g, "").replaceAll(/\s+/g, " ");
 };
+
+export const displayTextWithNewLines = (string: string) =>
+  string.split("\n").map((s: string, index: number) => <div key={index}>{s || <br />}</div>);
