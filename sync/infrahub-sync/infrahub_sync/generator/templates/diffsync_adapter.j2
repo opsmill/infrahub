@@ -16,6 +16,6 @@ from .models import (
 class {{ adapter.name.title() }}Sync({{ adapter.name.title() }}Adapter):
 {% for nodekind, node in schema.items() %}
 {%   if node | get_identifiers(config) %}
-    {{ node.name }} = {{ nodekind }}
+    {{ node.kind }} = {{ nodekind }}
 {%   endif %}
 {% endfor %}

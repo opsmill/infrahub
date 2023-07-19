@@ -59,9 +59,9 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         # We need to identify with an account until we have some auth in place
         remote_account = "Netbox"
         try:
-            self.account = self.client.get(kind="Account", name__value=remote_account)
+            self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
         except NodeNotFound:
-            self.account = self.client.create(kind="Account", name=remote_account, password="nopassword")
+            self.account = self.client.create(kind="CoreAccount", name=remote_account, password="nopassword")
             self.account.save()
 
     def model_loader(self, model_name: str, model):
@@ -77,12 +77,12 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         data: Dict[str, Any] = {"local_id": str(node.id)}
 
         for attr_name in node._schema.attribute_names:
-            if has_field(config=self.config, name=node._schema.name, field=attr_name):
+            if has_field(config=self.config, name=node._schema.kind, field=attr_name):
                 attr = getattr(node, attr_name)
                 data[attr_name] = attr.value
 
         for rel_schema in node._schema.relationships:
-            if not has_field(config=self.config, name=node._schema.name, field=rel_schema.name):
+            if not has_field(config=self.config, name=node._schema.kind, field=rel_schema.name):
                 continue
             if rel_schema.cardinality == "one":
                 rel = getattr(node, rel_schema.name)
@@ -91,7 +91,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                 peer = self.client.store.get(key=rel.id, kind=rel_schema.peer)
 
                 peer_data = self.infrahub_node_to_diffsync(peer)
-                peer_model = getattr(self, rel_schema.peer.lower())
+                peer_model = getattr(self, rel_schema.peer)
                 peer_item = peer_model(**peer_data)
 
                 data[rel_schema.name] = peer_item.get_unique_id()
@@ -102,7 +102,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                 for peer in rel_manager:
                     peer_node = self.client.store.get(key=peer.id, kind=rel_schema.peer)
                     peer_data = self.infrahub_node_to_diffsync(peer_node)
-                    peer_model = getattr(self, rel_schema.peer.lower())
+                    peer_model = getattr(self, rel_schema.peer)
                     peer_item = peer_model(**peer_data)
 
                     values.append(peer_item.get_unique_id())
