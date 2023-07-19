@@ -45,14 +45,14 @@ def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]
     """Return the identifiers that should be used by DiffSync."""
 
     config_identifiers = [
-        item.identifiers for item in config.schema_mapping if item.name == node.name and item.identifiers
+        item.identifiers for item in config.schema_mapping if item.name == node.kind and item.identifiers
     ]
 
     if config_identifiers:
         return config_identifiers[0]
 
     identifiers = [
-        attr.name for attr in node.attributes if attr.unique and has_field(config, name=node.name, field=attr.name)
+        attr.name for attr in node.attributes if attr.unique and has_field(config, name=node.kind, field=attr.name)
     ]
 
     if not identifiers:
@@ -64,12 +64,12 @@ def get_identifiers(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]
 def get_attributes(node: NodeSchema, config: SyncConfig) -> Optional[List[str]]:
     """Return the attributes that should be used by DiffSync."""
     attrs_attributes = [
-        attr.name for attr in node.attributes if not attr.unique and has_field(config, name=node.name, field=attr.name)
+        attr.name for attr in node.attributes if not attr.unique and has_field(config, name=node.kind, field=attr.name)
     ]
     rels_identifiers = [
         rel.name
         for rel in node.relationships
-        if rel.kind != RelationshipKind.COMPONENT and has_field(config, name=node.name, field=rel.name)
+        if rel.kind != RelationshipKind.COMPONENT and has_field(config, name=node.kind, field=rel.name)
     ]
 
     identifiers = get_identifiers(node=node, config=config)
@@ -91,7 +91,7 @@ def get_children(node: NodeSchema, config: SyncConfig) -> Optional[str]:
         for rel in node.relationships
         if rel.cardinality == "many"
         and rel.kind == RelationshipKind.COMPONENT
-        and has_field(config, name=node.name, field=rel.name)
+        and has_field(config, name=node.kind, field=rel.name)
     }
 
     if not children:

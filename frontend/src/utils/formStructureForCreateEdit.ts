@@ -1,3 +1,4 @@
+import { parseISO } from "date-fns";
 import { SelectOption } from "../components/select";
 import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
@@ -14,6 +15,36 @@ const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
 
   // Field is available only if is_protected is set to true and if the owner is the user
   return owner?.id !== user?.data?.sub;
+};
+
+const getFieldValue = (row: any, attribute: any) => {
+  const value = row && row[attribute.name] ? row[attribute.name].value : attribute.default_value;
+
+  if (attribute.kind === "DateTime") {
+    return parseISO(value);
+  }
+
+  return value;
+};
+
+const validate = (value: any, defaultValue?: any, optional?: boolean) => {
+  // If optionnal, no validator is needed (we try to validate if the value is defined or not)
+  if (optional) {
+    return true;
+  }
+
+  // The value is defined, then we can validate
+  if (value) {
+    return true;
+  }
+
+  // If the value is false but itso is the default_value, then validate (checkbox example)
+  if (defaultValue !== undefined && value === defaultValue) {
+    return true;
+  }
+
+  // No value and the value is not the default_value, then mark as required
+  return "Required";
 };
 
 const getFormStructureForCreateEdit = (
@@ -47,12 +78,12 @@ const getFormStructureForCreateEdit = (
         ? "select"
         : getFormInputControlTypeFromSchemaAttributeKind(attribute.kind as SchemaAttributeType),
       label: attribute.label ? attribute.label : attribute.name,
-      value: row && row[attribute.name] ? row[attribute.name].value : attribute.default_value,
+      value: getFieldValue(row, attribute),
       options: {
         values: options,
       },
       config: {
-        required: attribute.optional === false ? "Required" : "",
+        validate: (value: any) => validate(value, attribute.default_value, attribute.optional),
       },
       isProtected: getIsDisabled(
         row && row[attribute.name]?.owner,
@@ -128,7 +159,7 @@ const getFormStructureForCreateEdit = (
           values: options,
         },
         config: {
-          required: relationship.optional === false ? "Required" : "",
+          validate: (value: any) => validate(value, null, relationship.optional),
         },
         isProtected: getIsDisabled(
           row && row[relationship.name]?.properties?.owner,

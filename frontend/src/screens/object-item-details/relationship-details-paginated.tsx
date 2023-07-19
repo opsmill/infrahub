@@ -25,6 +25,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { AuthContext } from "../../decorators/withAuth";
+import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -65,6 +66,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
   const [rowForMetaEdit, setRowForMetaEdit] = useState<any>();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
@@ -77,13 +79,13 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const generic = generics.find((g) => g.kind === relationshipSchema.peer);
 
   if (generic) {
-    (generic.used_by || []).forEach((name) => {
-      const relatedSchema = schemaList.find((s) => s.kind === name);
+    (generic.used_by || []).forEach((kind) => {
+      const relatedSchema = schemaList.find((s) => s.kind === kind);
 
       if (relatedSchema) {
         options.push({
-          id: relatedSchema.name,
-          name: name,
+          id: relatedSchema.kind,
+          name: relatedSchema.name,
         });
       }
     });
@@ -92,7 +94,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
     if (relatedSchema) {
       options.push({
-        id: relatedSchema.name,
+        id: relatedSchema.kind,
         name: relatedSchema.label ?? relatedSchema.name,
       });
     }
@@ -182,23 +184,18 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const handleSubmit = async (data: any) => {
     if (data?.id) {
-      const newList = [
-        ...relationshipsData.map((row: any) => ({
-          id: row.id,
-        })),
-        { id: data.id },
-      ];
+      setIsLoading(true);
 
-      const mustationString = updateObjectWithId({
-        name: schema.name,
+      const mutationString = addRelationship({
         data: stringifyWithoutQuotes({
           id: objectid,
-          [relationshipSchema.name]: newList,
+          name: relationshipSchema.name,
+          nodes: [data],
         }),
       });
 
       const mutation = gql`
-        ${mustationString}
+        ${mutationString}
       `;
 
       await graphqlClient.mutate({
@@ -219,6 +216,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           message={`Association with ${relationshipSchema.peer} added`}
         />
       );
+
+      setIsLoading(false);
 
       setShowAddDrawer(false);
 
@@ -544,7 +543,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         )}
 
         {mode === "TABLE" && (
-          <div className="absolute bottom-4 right-4">
+          <div className="absolute bottom-4 right-4 z-10">
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
@@ -586,6 +585,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             }}
             onSubmit={handleSubmit}
             fields={formFields}
+            isLoading={isLoading}
           />
         </SlideOver>
         <SlideOver

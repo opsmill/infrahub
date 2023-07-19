@@ -9,21 +9,8 @@ from infrahub_sync.adapters.infrahub import InfrahubModel
 # -------------------------------------------------------
 
 
-class Location(InfrahubModel):
-    _modelname = "location"
-    _identifiers = ("name",)
-    _attributes = ("description", "type")
-
-    name: str
-    description: Optional[str]
-    type: str
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
-class Rack(InfrahubModel):
-    _modelname = "rack"
+class InfraRack(InfrahubModel):
+    _modelname = "InfraRack"
     _identifiers = ("location", "name")
     _attributes = ("role", "tags", "description", "height", "facility_id", "serial_number")
 
@@ -40,8 +27,8 @@ class Rack(InfrahubModel):
     local_data: Optional[Any]
 
 
-class Role(InfrahubModel):
-    _modelname = "role"
+class BuiltinRole(InfrahubModel):
+    _modelname = "BuiltinRole"
     _identifiers = ("name",)
     _attributes = ("description",)
 
@@ -52,8 +39,21 @@ class Role(InfrahubModel):
     local_data: Optional[Any]
 
 
-class Tag(InfrahubModel):
-    _modelname = "tag"
+class BuiltinLocation(InfrahubModel):
+    _modelname = "BuiltinLocation"
+    _identifiers = ("name",)
+    _attributes = ("description", "type")
+
+    name: str
+    description: Optional[str]
+    type: str
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class BuiltinTag(InfrahubModel):
+    _modelname = "BuiltinTag"
     _identifiers = ("name",)
     _attributes = ("description",)
 

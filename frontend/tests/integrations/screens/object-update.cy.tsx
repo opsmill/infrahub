@@ -4,10 +4,21 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
+import { getDateDisplay } from "../../../src/components/date-display";
 import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import {
+  accountTokenDetailsMocksData,
+  accountTokenDetailsMocksDataWithDate,
+  accountTokenDetailsMocksQuery,
+  accountTokenDetailsMocksSchema,
+  accountTokenEditMocksData,
+  accountTokenEditMocksQuery,
+  accountTokenId,
+  accountTokenNewDate,
+} from "../../mocks/data/accountToken";
 import { configMocks } from "../../mocks/data/config";
 import {
   deviceDetailsMocksData,
@@ -24,6 +35,7 @@ import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const mockedUrl = `/objects/Device/${deviceDetailsMocksId}`;
+const mockedUrlToken = `/objects/AccountToken/${accountTokenId}`;
 
 // Path that will match the route to display the component
 const mockedPath = "/objects/:objectname/:objectid";
@@ -97,6 +109,42 @@ const mocks: any[] = [
   },
 ];
 
+const mocksToken = [
+  // Account token details
+  {
+    request: {
+      query: gql`
+        ${accountTokenDetailsMocksQuery}
+      `,
+    },
+    result: {
+      data: accountTokenDetailsMocksData,
+    },
+  },
+  // Account token details for edit panel
+  {
+    request: {
+      query: gql`
+        ${accountTokenEditMocksQuery}
+      `,
+    },
+    result: {
+      data: accountTokenEditMocksData,
+    },
+  },
+  // Account token details after update
+  {
+    request: {
+      query: gql`
+        ${accountTokenDetailsMocksQuery}
+      `,
+    },
+    result: {
+      data: accountTokenDetailsMocksDataWithDate,
+    },
+  },
+];
+
 const AuthenticatedObjectItems = withAuth(ObjectDetails);
 
 // Provide the initial value for jotai
@@ -104,7 +152,7 @@ const ObjectDetailsProvider = () => {
   return (
     <TestProvider
       initialValues={[
-        [schemaState, deviceDetailsMocksSchema],
+        [schemaState, [...deviceDetailsMocksSchema, ...accountTokenDetailsMocksSchema]],
         [configState, configMocks],
       ]}>
       <AuthenticatedObjectItems />
@@ -115,6 +163,7 @@ const ObjectDetailsProvider = () => {
 describe("Object details", () => {
   beforeEach(function () {
     cy.fixture("device-detail-update-name").as("mutation");
+    cy.fixture("account-token-update-date").as("mutationToken");
   });
 
   it("should fetch the object details, open the edit form and update the object name", function () {
@@ -161,5 +210,59 @@ describe("Object details", () => {
 
     // Verify that the data is refetched
     cy.get(":nth-child(2) > div.flex > .mt-1").should("have.text", deviceDetailsNewName);
+  });
+
+  it("should fetch the object details, open the edit form and update the account token date", function () {
+    cy.viewport(1920, 1080);
+
+    cy.intercept("POST", "/graphql/main ", this.mutationToken).as("mutate");
+
+    console.log("mockedUrlToken: ", mockedUrlToken);
+
+    // Mount the view with the default route and the mocked data
+    console.log("mocksToken: ", mocksToken);
+    cy.mount(
+      <MockedProvider mocks={mocksToken} addTypename={false}>
+        <Routes>
+          <Route element={<ObjectDetailsProvider />} path={mockedPath} />
+        </Routes>
+      </MockedProvider>,
+      {
+        // Add iniital route for the app router, to display the current items view
+        routerProps: {
+          initialEntries: [mockedUrlToken],
+        },
+      }
+    );
+
+    // Open edit panel
+    cy.get(".flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+
+    // Date input should be empty
+    cy.get(".react-datepicker__input-container > .relative > .block").should("have.text", "");
+
+    // Select a date
+    cy.get(".react-datepicker__input-container > .relative > .block").click();
+    cy.get(".react-datepicker__day--013").click(); // Date number 13
+    cy.get(".react-datepicker__input-container > .relative > .block").should("include.value", "13");
+
+    // Select an account
+    cy.get("[id^=headlessui-combobox-button-]").click();
+    cy.get("[id^=headlessui-combobox-option-]").first().click();
+
+    // Verify that the button is not in a loading state
+    cy.get(".bg-custom-blue-700").should("have.text", "Save");
+
+    // Submit the form
+    cy.get(".bg-custom-blue-700").click();
+
+    // Wait for the mutation to be done
+    cy.wait("@mutate");
+
+    // The date should be defined
+    cy.get(".mt-1 > :nth-child(1) > .flex-shrink-0").should(
+      "have.text",
+      getDateDisplay(accountTokenNewDate)
+    );
   });
 });

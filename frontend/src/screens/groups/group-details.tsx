@@ -27,7 +27,7 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
-import { getSchemaRelationshipsTabs } from "../../utils/getSchemaObjectColumns";
+import { getObjectTabs, getSchemaRelationshipsTabs } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -61,14 +61,6 @@ export default function GroupItemDetails() {
 
   const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
 
-  const tabs = [
-    {
-      label: schemaData?.label,
-      name: schemaData?.label,
-    },
-    ...relationshipsTabs,
-  ];
-
   const queryString = schemaData
     ? getGroupDetails({
         ...schemaData,
@@ -99,6 +91,14 @@ export default function GroupItemDetails() {
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
+
+  const tabs = [
+    {
+      label: schemaData?.label,
+      name: schemaData?.label,
+    },
+    ...getObjectTabs(relationshipsTabs, objectDetailsData),
+  ];
 
   if (!objectDetailsData) {
     return null;

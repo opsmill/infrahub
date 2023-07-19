@@ -1,13 +1,11 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
-  CheckIcon,
   LockClosedIcon,
   PencilIcon,
   PencilSquareIcon,
   RectangleGroupIcon,
   Square3Stack3DIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
@@ -25,10 +23,13 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
+import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
+  getObjectTabs,
   getSchemaAttributeColumns,
   getSchemaRelationshipColumns,
   getSchemaRelationshipsTabs,
@@ -59,6 +60,7 @@ export default function ObjectItemDetails(props: any) {
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useReactiveVar(branchVar);
   const [schemaList] = useAtom(schemaState);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericList] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.name === objectname)[0];
   const generic = genericList.filter((s) => s.name === objectname)[0];
@@ -76,19 +78,11 @@ export default function ObjectItemDetails(props: any) {
   const relationships = getSchemaRelationshipColumns(schemaData);
 
   const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
-
-  const tabs = [
-    {
-      label: schemaData?.label,
-      name: schemaData?.label,
-    },
-    ...relationshipsTabs,
-  ];
-
   const queryString = schemaData
     ? getObjectDetailsPaginated({
         ...schemaData,
         relationships,
+        relationshipsTabs,
         objectid,
       })
     : // Empty query to make the gql parsing work
@@ -112,10 +106,25 @@ export default function ObjectItemDetails(props: any) {
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
-    return <NoDataFound />;
+    // Redirect to the main list if there is no item for this is
+    // navigate(`/objects/${objectname}`);
+
+    return (
+      <div className="flex column justify-center">
+        <NoDataFound message="Sorry, no item found for that id" />
+      </div>
+    );
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
+
+  const tabs = [
+    {
+      label: schemaData?.label,
+      name: schemaData?.label,
+    },
+    ...getObjectTabs(relationshipsTabs, objectDetailsData),
+  ];
 
   if (!objectDetailsData) {
     return null;
@@ -196,21 +205,7 @@ export default function ObjectItemDetails(props: any) {
                         "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
                         // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                       )}>
-                      {typeof objectDetailsData[attribute.name]?.value !== "boolean"
-                        ? objectDetailsData[attribute.name].value
-                          ? objectDetailsData[attribute.name].value
-                          : "-"
-                        : ""}
-                      {typeof objectDetailsData[attribute.name]?.value === "boolean" && (
-                        <>
-                          {objectDetailsData[attribute.name]?.value === true && (
-                            <CheckIcon className="h-4 w-4" />
-                          )}
-                          {objectDetailsData[attribute.name]?.value === false && (
-                            <XMarkIcon className="h-4 w-4" />
-                          )}
-                        </>
-                      )}
+                      {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
                     </dd>
 
                     {objectDetailsData[attribute.name] && (

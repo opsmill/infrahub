@@ -1,5 +1,6 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Badge } from "../components/badge";
+import { DateDisplay } from "../components/date-display";
 
 export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindName?: any) => {
   if (!row) {
@@ -26,6 +27,10 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
         ))}
       </div>
     );
+  }
+
+  if (attribute?.kind === "DateTime" && row[attribute?.name]?.value) {
+    return <DateDisplay date={row[attribute?.name]?.value} />;
   }
 
   if (schemaKindName && attribute?.name === "__typename" && row[attribute?.name]) {

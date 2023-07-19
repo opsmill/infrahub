@@ -2,7 +2,7 @@ import { useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -107,6 +107,7 @@ function App() {
         {MAIN_ROUTES.map((route) => (
           <Route index key={route.path} path={route.path} element={route.element} />
         ))}
+        <Route path="*" element={<Navigate to="/" />} />
       </Route>
     </Routes>
   );

@@ -111,3 +111,10 @@ export const getAttributeColumnsFromNodeOrGenericSchema = (
   }
   return [];
 };
+
+export const getObjectTabs = (tabs: any[], data: any) => {
+  return tabs.map((tab: any) => ({
+    ...tab,
+    count: data[tab.name].count,
+  }));
+};

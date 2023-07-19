@@ -26,7 +26,7 @@ const getMutationDetailsFromFormData = (
       }
     }
 
-    if (mode === "create" && !updatedValue) {
+    if (mode === "create" && (updatedValue === null || updatedValue === "")) {
       delete updatedObject[attribute.name];
     }
   });

@@ -10,10 +10,10 @@ destination:
   settings:
     url: "http://localhost:8000"
 
-order: ["tag", "location", "role", "rack"]
+order: ["BuiltinTag", "BuiltinLocation", "BuiltinRole", "InfraRack"]
 
 schema_mapping:
-  - name: tag
+  - name: BuiltinTag
     mapping: extras.tags
     fields:
       - name: name
@@ -22,7 +22,7 @@ schema_mapping:
       - name: description
         mapping: description
 
-  - name: location
+  - name: BuiltinLocation
     mapping: dcim.sites
     fields:
       - name: name
@@ -32,7 +32,7 @@ schema_mapping:
       - name: type
         static: "SITE"
 
-  - name: rack
+  - name: InfraRack
     mapping: dcim.racks
     identifiers: ["location", "name"]
     fields:
@@ -54,7 +54,7 @@ schema_mapping:
       - name: facility_id
         mapping: facility_id
 
-  - name: role
+  - name: BuiltinRole
     mapping: dcim.device_roles
     fields:
       - name: name
@@ -62,7 +62,7 @@ schema_mapping:
       - name: description
         mapping: description
 
-  - name: role
+  - name: BuiltinRole
     mapping: dcim.rack_roles
     fields:
       - name: name
@@ -70,7 +70,7 @@ schema_mapping:
       - name: description
         mapping: description
 
-  - name: role
+  - name: BuiltinRole
     mapping: ipam.roles
     fields:
       - name: name

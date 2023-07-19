@@ -1,4 +1,4 @@
-import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
+import { iSchemaKindNameMap } from "../../../src/state/atoms/schemaKindName.atom";
 
 export const C_SchemaKindNameMap: iSchemaKindNameMap = {
   Account: "account",
