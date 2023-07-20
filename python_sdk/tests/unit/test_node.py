@@ -744,3 +744,19 @@ async def test_node_IPNetwork_deserialization(client, ipnetwork_schema, client_t
         ip_network = InfrahubNodeSync(client=client, schema=ipnetwork_schema, data=data)
 
     assert ip_network.network.value == ipaddress.ip_network("1.1.1.0/24")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_node_extract(client, location_schema, location_data01, client_type):
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
+
+    params = {"identifier": "id", "name": "name__value", "description": "description__value"}
+
+    assert node.extract(params=params) == {
+        "description": None,
+        "identifier": "llllllll-llll-llll-llll-llllllllllll",
+        "name": "DFW",
+    }
