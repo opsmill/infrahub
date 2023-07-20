@@ -90,6 +90,8 @@ export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
+export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
+
 export const GROUP_OBJECT = "Group";
 
 export const WRITE_ROLES = ["admin", "read-write"];

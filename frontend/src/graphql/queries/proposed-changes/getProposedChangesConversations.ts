@@ -30,6 +30,14 @@ export const getProposedChangesConversations = Handlebars.compile(`query {
                   node {
                     id
                     display_label
+                    created_by {
+                      node {
+                        display_label
+                      }
+                    }
+                    created_at {
+                      value
+                    }
                     text {
                       value
                     }

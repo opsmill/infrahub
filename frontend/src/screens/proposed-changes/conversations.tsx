@@ -8,10 +8,15 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Comment } from "../../components/conversations/comment";
 import { Thread, sortByDate } from "../../components/conversations/thread";
-import { PROPOSED_CHANGES_COMMENT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import {
+  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+  PROPOSED_CHANGES_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
+import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesConversations } from "../../graphql/queries/proposed-changes/getProposedChangesConversations";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
@@ -56,11 +61,13 @@ export const Conversations = () => {
   }
 
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
-  const threads = result?.threads?.edges?.map((edge: any) => edge?.node);
+  const threads = result?.threads?.edges?.map((edge: any) => edge.node);
   const comments = result?.comments?.edges?.map((edge: any) => edge.node);
   const list = sortByDate([...threads, ...comments]);
 
   const handleSubmit = async (data: any, event: any) => {
+    let threadId;
+
     try {
       event.target.reset();
 
@@ -68,24 +75,57 @@ export const Conversations = () => {
         return;
       }
 
-      const newObject = {
-        text: {
-          value: data.comment,
-        },
+      const newDate = formatISO(new Date());
+
+      const newThread = {
         change: {
           id: proposedchange,
+        },
+        created_at: {
+          value: newDate,
+        },
+        resolved: {
+          value: false,
+        },
+      };
+
+      const threadMutationString = createObject({
+        kind: PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+        data: stringifyWithoutQuotes(newThread),
+      });
+
+      const threadMutation = gql`
+        ${threadMutationString}
+      `;
+
+      const result = await graphqlClient.mutate({
+        mutation: threadMutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
+      });
+
+      threadId = result?.data[`${PROPOSED_CHANGES_CHANGE_THREAD_OBJECT}Create`]?.object?.id;
+
+      const newComment = {
+        text: {
+          value: data.comment,
         },
         created_by: {
           id: auth?.data?.sub,
         },
         created_at: {
-          value: formatISO(new Date()),
+          value: newDate,
+        },
+        thread: {
+          id: threadId,
         },
       };
 
       const mutationString = createObject({
-        kind: PROPOSED_CHANGES_COMMENT_OBJECT,
-        data: stringifyWithoutQuotes(newObject),
+        kind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+        data: stringifyWithoutQuotes(newComment),
       });
 
       const mutation = gql`
@@ -106,6 +146,25 @@ export const Conversations = () => {
 
       setIsLoading(false);
     } catch (error: any) {
+      if (threadId) {
+        const mutationString = deleteObject({
+          name: PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+          data: stringifyWithoutQuotes({
+            id: threadId,
+          }),
+        });
+
+        const mutation = gql`
+          ${mutationString}
+        `;
+
+        await graphqlClient.mutate({
+          mutation,
+          context: { branch: branch?.name, date },
+        });
+        return;
+      }
+
       console.error("An error occured while creating the comment: ", error);
 
       toast(

@@ -1,17 +1,23 @@
 import { gql, useReactiveVar } from "@apollo/client";
+import { TrashIcon } from "@heroicons/react/24/outline";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import * as R from "ramda";
 import { useContext, useState } from "react";
 import { toast } from "react-toastify";
-import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "../../config/constants";
+import {
+  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
+import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { ALERT_TYPES, Alert } from "../alert";
-import { Button } from "../button";
+import { BUTTON_TYPES, Button } from "../button";
+import ModalDelete from "../modal-delete";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -22,7 +28,9 @@ type tThread = {
 
 // Sort by date desc
 export const sortByDate = R.sort((a: any, b: any) =>
-  isBefore(parseISO(a.created_at.value), parseISO(b.created_at.value)) ? -1 : 1
+  isBefore(parseISO(a.created_at?.value || new Date()), parseISO(b.created_at?.value || new Date()))
+    ? -1
+    : 1
 );
 
 export const Thread = (props: tThread) => {
@@ -36,6 +44,7 @@ export const Thread = (props: tThread) => {
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
+  const [displayConfirmModal, setDisplayConfirmModal] = useState(false);
 
   const handleSubmit = async (data: any) => {
     try {
@@ -95,10 +104,49 @@ export const Thread = (props: tThread) => {
     }
   };
 
+  const handleDeleteObject = async () => {
+    if (!thread.id) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    const mutationString = deleteObject({
+      kind: PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+      data: stringifyWithoutQuotes({
+        id: thread.id,
+      }),
+    });
+
+    const mutation = gql`
+      ${mutationString}
+    `;
+
+    await graphqlClient.mutate({
+      mutation,
+      context: { branch: branch?.name, date },
+    });
+
+    refetch();
+
+    setDisplayConfirmModal(false);
+
+    setIsLoading(false);
+
+    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread deleted"} />);
+  };
+
   const sortedComments = sortByDate(comments.edges);
 
   return (
-    <section className="bg-custom-white p-4 mb-4 rounded-lg">
+    <section className="bg-custom-white p-4 mb-4 rounded-lg relative group">
+      <Button
+        buttonType={BUTTON_TYPES.INVISIBLE}
+        className="absolute -right-4 -top-4 hidden group-hover:block"
+        onClick={() => setDisplayConfirmModal(true)}>
+        <TrashIcon className="h-4 w-4 text-red-500" />
+      </Button>
+
       <div className="">
         {sortedComments.map((comment: any, index: number) => (
           <Comment key={index} comment={comment.node} className={"border border-gray-200"} />
@@ -112,17 +160,27 @@ export const Thread = (props: tThread) => {
               onSubmit={handleSubmit}
               isLoading={isLoading}
               onClose={() => setDisplayAddComment(false)}
-              disabled={auth?.permissions?.write}
+              disabled={!auth?.permissions?.write}
             />
           </div>
         )}
 
         {!displayAddComment && (
-          <Button onClick={() => setDisplayAddComment(true)} disabled={auth?.permissions?.write}>
+          <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
             Reply
           </Button>
         )}
       </div>
+
+      <ModalDelete
+        title="Delete"
+        description={"Are you sure you want to remove this thread?"}
+        onCancel={() => setDisplayConfirmModal(false)}
+        onDelete={handleDeleteObject}
+        open={!!displayConfirmModal}
+        setOpen={() => setDisplayConfirmModal(false)}
+        isLoading={isLoading}
+      />
     </section>
   );
 };
