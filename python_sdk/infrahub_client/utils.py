@@ -129,3 +129,20 @@ def str_to_bool(value: str) -> bool:
         return MAP[value.lower()]
     except KeyError as exc:
         raise ValueError(f"{value} can not be converted into a boolean") from exc
+
+
+def get_flat_value(obj: Any, key: str, separator: str = "__") -> Any:
+    """Query recursively an value defined in a flat notation (string), on a hierarchy of objects
+
+    Examples:
+        name__value
+        module.object.value
+    """
+    if separator not in key:
+        return getattr(obj, key)
+
+    first_part, remaining_part = key.split(separator, maxsplit=1)
+    sub_obj = getattr(obj, first_part)
+    if not sub_obj:
+        return None
+    return get_flat_value(obj=sub_obj, key=remaining_part, separator=separator)
