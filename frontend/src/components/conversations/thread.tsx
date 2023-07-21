@@ -195,13 +195,15 @@ export const Thread = (props: tThread) => {
 
   const MarkAsResolved = (
     <div className="flex items-center">
-      <div className="mr-2">Resolved: </div>
+      <Button onClick={() => setConfirmModal(true)} disabled={isResolved}>
+        <div className="mr-2">Resolved: </div>
 
-      <Checkbox
-        disabled={isResolved}
-        enabled={isResolved || markAsResolved}
-        onChange={() => setConfirmModal(true)}
-      />
+        <Checkbox
+          disabled={isResolved}
+          enabled={isResolved || markAsResolved}
+          onChange={() => setConfirmModal(true)}
+        />
+      </Button>
     </div>
   );
 
