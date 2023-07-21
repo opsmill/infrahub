@@ -274,105 +274,109 @@ export const Conversations = () => {
         </div>
       </div>
 
-      <div className="bg-custom-white flex-3">
-        <div className="py-4 px-4 w-full">
-          <div className="flex items-center">
-            <div className="flex flex-1">
-              <div
-                onClick={() => navigate(path)}
-                className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-                Proposed changes
+      <div className="flex-3">
+        <div className="bg-custom-white flex flex-col justify-start rounded-bl-lg">
+          <div className="py-4 px-4">
+            <div className="flex items-center">
+              <div className="flex flex-1">
+                <div
+                  onClick={() => navigate(path)}
+                  className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+                  Proposed changes
+                </div>
+              </div>
+
+              <div className="">
+                <Button
+                  disabled={!auth?.permissions?.write}
+                  onClick={() => setShowEditDrawer(true)}
+                  className="mr-4">
+                  Edit
+                  <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                </Button>
               </div>
             </div>
-
-            <div className="">
-              <Button
-                disabled={!auth?.permissions?.write}
-                onClick={() => setShowEditDrawer(true)}
-                className="mr-4">
-                Edit
-                <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
           </div>
-        </div>
 
-        <div className="border-t border-b border-gray-200 px-2 py-2 sm:p-0">
-          <dl className="divide-y divide-gray-200">
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">ID</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{proposedchange}</dd>
-            </div>
+          <div className="border-t border-gray-200 px-2 py-2 sm:p-0">
+            <dl className="divide-y divide-gray-200">
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">ID</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{proposedchange}</dd>
+              </div>
 
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">Name</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{result.name.value}</dd>
-            </div>
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Name</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  {result.name.value}
+                </dd>
+              </div>
 
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">Source branch</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                <Badge>{result.source_branch.value}</Badge>
-              </dd>
-            </div>
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Source branch</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <Badge>{result.source_branch.value}</Badge>
+                </dd>
+              </div>
 
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                <Badge>{result.destination_branch.value}</Badge>
-              </dd>
-            </div>
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <Badge>{result.destination_branch.value}</Badge>
+                </dd>
+              </div>
 
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">Reviewers</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                {reviewers.map((reviewer: any, index: number) => (
-                  <Tooltip key={index} message={reviewer.display_label}>
-                    <Avatar
-                      size={AVATAR_SIZE.SMALL}
-                      name={reviewer.display_label}
-                      className="mr-2"
-                    />
-                  </Tooltip>
-                ))}
-              </dd>
-            </div>
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Reviewers</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  {reviewers.map((reviewer: any, index: number) => (
+                    <Tooltip key={index} message={reviewer.display_label}>
+                      <Avatar
+                        size={AVATAR_SIZE.SMALL}
+                        name={reviewer.display_label}
+                        className="mr-2"
+                      />
+                    </Tooltip>
+                  ))}
+                </dd>
+              </div>
 
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">Approved by</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                {approvers.map((approver: any, index: number) => (
-                  <Tooltip key={index} message={approver.display_label}>
-                    <Avatar
-                      size={AVATAR_SIZE.SMALL}
-                      name={approver.display_label}
-                      className="mr-2"
-                    />
-                  </Tooltip>
-                ))}
-              </dd>
-            </div>
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Approved by</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  {approvers.map((approver: any, index: number) => (
+                    <Tooltip key={index} message={approver.display_label}>
+                      <Avatar
+                        size={AVATAR_SIZE.SMALL}
+                        name={approver.display_label}
+                        className="mr-2"
+                      />
+                    </Tooltip>
+                  ))}
+                </dd>
+              </div>
 
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">Updated</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                <DateDisplay date={result._updated_at} />
-              </dd>
-            </div>
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Updated</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <DateDisplay date={result._updated_at} />
+                </dd>
+              </div>
 
-            <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
-              <dt className="text-sm font-medium text-gray-500">Actions</dt>
-              <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                <Button
-                  onClick={handleApprove}
-                  buttonType={BUTTON_TYPES.VALIDATE}
-                  isLoading={isLoadingApprove}
-                  disabled={!auth?.permissions?.write || !approverId || !canApprove}>
-                  Approve
-                </Button>
-              </dd>
-            </div>
-          </dl>
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Actions</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <Button
+                    onClick={handleApprove}
+                    buttonType={BUTTON_TYPES.VALIDATE}
+                    isLoading={isLoadingApprove}
+                    disabled={!auth?.permissions?.write || !approverId || !canApprove}>
+                    Approve
+                  </Button>
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
       </div>
 
