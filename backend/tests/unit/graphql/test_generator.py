@@ -5,6 +5,7 @@ import graphene
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.graphql.generator import (
+    generate_filters,
     generate_graphql_mutation_create,
     generate_graphql_mutation_update,
     generate_graphql_object,
@@ -171,3 +172,30 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
         "source",
         "updated_at",
     ]
+
+
+async def test_generate_filters(
+    session, default_branch: Branch, data_schema, group_graphql, car_person_schema_generics
+):
+    person = registry.get_schema(name="TestPerson")
+    filters = await generate_filters(session=session, schema=person, top_level=True)
+    expected_filters = [
+        "offset",
+        "limit",
+        "ids",
+        "name__value",
+        "height__value",
+        "cars__id",
+        "cars__name__value",
+        "cars__nbr_seats__value",
+        "cars__color__value",
+        "member_of_groups__id",
+        "member_of_groups__description__value",
+        "member_of_groups__label__value",
+        "member_of_groups__name__value",
+        "subscriber_of_groups__id",
+        "subscriber_of_groups__description__value",
+        "subscriber_of_groups__label__value",
+        "subscriber_of_groups__name__value",
+    ]
+    assert sorted(list(filters.keys())) == sorted(expected_filters)

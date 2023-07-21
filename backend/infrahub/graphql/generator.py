@@ -599,6 +599,8 @@ async def generate_filters(
     """
 
     filters: Dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
+    default_filters: List[str] = list(filters.keys())
+
     if top_level:
         filters["ids"] = graphene.List(graphene.ID)
     else:
@@ -617,12 +619,14 @@ async def generate_filters(
     for rel in schema.relationships:
         peer_schema = await rel.get_peer_schema()
 
-        if not isinstance(peer_schema, NodeSchema):
+        if not isinstance(peer_schema, (NodeSchema, GenericSchema)):
             continue
 
         peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
 
         for key, value in peer_filters.items():
+            if key in default_filters:
+                continue
             filters[f"{rel.name}__{key}"] = value
 
     return filters
