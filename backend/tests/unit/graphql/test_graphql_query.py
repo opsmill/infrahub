@@ -968,6 +968,55 @@ async def test_query_filter_relationships_with_generic(db, session, default_bran
     assert result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
 
 
+async def test_query_filter_relationships_with_generic_filter(
+    db, session, default_branch: Branch, car_person_generics_data
+):
+    query = """
+    query {
+        TestPerson(cars__name__value: "volt") {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(
+            session=session, branch=default_branch, include_mutation=False, include_subscription=False
+        ),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    expected_results = [
+        {
+            "node": {
+                "name": {"value": "John"},
+                "cars": {"edges": [{"node": {"name": {"value": "bolt"}}}, {"node": {"name": {"value": "volt"}}}]},
+            }
+        }
+    ]
+    assert DeepDiff(result.data["TestPerson"]["edges"], expected_results, ignore_order=True).to_dict() == {}
+
+
 async def test_query_filter_relationship_id(db, session, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="TestCar")
     person = registry.get_schema(name="TestPerson")
