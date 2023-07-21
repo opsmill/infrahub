@@ -22,6 +22,7 @@ import { BUTTON_TYPES, Button } from "../button";
 import { Checkbox } from "../checkbox";
 import ModalConfirm from "../modal-confirm";
 import ModalDelete from "../modal-delete";
+import { Tooltip } from "../tooltip";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -207,15 +208,21 @@ export const Thread = (props: tThread) => {
     </div>
   );
 
+  const MarkAsResolvedWithTooltip = (
+    <Tooltip message={"The resolution will be done after submitting the comment"}>
+      {MarkAsResolved}
+    </Tooltip>
+  );
+
   return (
     <section
       className={classNames(
         isResolved ? "bg-gray-200" : "bg-custom-white",
-        "p-4 mb-4 rounded-lg relative group"
+        "p-4 mb-4 rounded-lg relative group/thread"
       )}>
       <Button
         buttonType={BUTTON_TYPES.INVISIBLE}
-        className="absolute -right-4 -top-4 hidden group-hover:block"
+        className="absolute -right-4 -top-4 hidden group-hover/thread:block"
         onClick={() => setDeleteModal(true)}>
         <TrashIcon className="h-4 w-4 text-red-500" />
       </Button>
@@ -234,7 +241,7 @@ export const Thread = (props: tThread) => {
               isLoading={isLoading}
               onClose={() => setDisplayAddComment(false)}
               disabled={!auth?.permissions?.write}
-              additionalButtons={MarkAsResolved}
+              additionalButtons={MarkAsResolvedWithTooltip}
             />
           </div>
         )}
