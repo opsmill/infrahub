@@ -238,9 +238,7 @@ export const Thread = (props: tThread) => {
           <div className="flex flex-1 justify-between">
             {MarkAsResolved}
 
-            <Button
-              onClick={() => setDisplayAddComment(true)}
-              disabled={!auth?.permissions?.write || isResolved}>
+            <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
               Reply
             </Button>
           </div>
