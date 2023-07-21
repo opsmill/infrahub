@@ -1,3 +1,4 @@
+import { ReactElement } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { resolve } from "../../utils/objects";
@@ -27,6 +28,7 @@ export type FormProps = {
   isLoading?: boolean;
   submitLabel?: string;
   disabled?: boolean;
+  additionalButtons?: ReactElement;
 };
 
 export const Form = ({
@@ -36,6 +38,7 @@ export const Form = ({
   isLoading,
   submitLabel = "Save",
   disabled,
+  additionalButtons,
 }: FormProps) => {
   const formMethods = useForm();
 
@@ -78,6 +81,8 @@ export const Form = ({
           </div>
         </div>
         <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t">
+          {additionalButtons ?? null}
+
           {onCancel && <Button onClick={onCancel}>Cancel</Button>}
 
           <Button

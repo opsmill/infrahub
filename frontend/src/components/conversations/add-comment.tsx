@@ -1,3 +1,4 @@
+import { ReactElement } from "react";
 import { FieldValues, SubmitHandler } from "react-hook-form";
 import { DynamicFieldData } from "../../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../../screens/edit-form-hook/form";
@@ -7,6 +8,7 @@ type tAddComment = {
   isLoading?: boolean;
   onClose?: Function;
   disabled?: boolean;
+  additionalButtons?: ReactElement;
 };
 
 const fields: DynamicFieldData[] = [
@@ -22,7 +24,7 @@ const fields: DynamicFieldData[] = [
 ];
 
 export const AddComment = (props: tAddComment) => {
-  const { onSubmit, isLoading, onClose, disabled } = props;
+  const { onSubmit, isLoading, onClose, disabled, additionalButtons } = props;
 
   return (
     <div className="mb-6">
@@ -34,6 +36,7 @@ export const AddComment = (props: tAddComment) => {
           isLoading={isLoading}
           onCancel={onClose}
           disabled={disabled}
+          additionalButtons={additionalButtons}
         />
       </div>
     </div>
