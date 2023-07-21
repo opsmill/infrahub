@@ -10,12 +10,12 @@ import ObjectDetails from "../../../src/screens/object-item-details/object-item-
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import {
-  accountTokenDetailsMocksData,
-  accountTokenDetailsMocksDataWithDate,
-  accountTokenDetailsMocksQuery,
-  accountTokenDetailsMocksSchema,
-  accountTokenEditMocksData,
-  accountTokenEditMocksQuery,
+  accountTokenDetailsMocksDataBis,
+  accountTokenDetailsMocksDataWithDateBis,
+  accountTokenDetailsMocksQueryBis,
+  accountTokenDetailsMocksSchemaBIS,
+  accountTokenEditMocksDataBis,
+  accountTokenEditMocksQueryBis,
   accountTokenId,
   accountTokenNewDate,
 } from "../../mocks/data/accountToken";
@@ -35,7 +35,7 @@ import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const mockedUrl = `/objects/Device/${deviceDetailsMocksId}`;
-const mockedUrlToken = `/objects/AccountToken/${accountTokenId}`;
+const mockedUrlToken = `/objects/AccountTokenBis/${accountTokenId}`;
 
 // Path that will match the route to display the component
 const mockedPath = "/objects/:objectname/:objectid";
@@ -114,33 +114,33 @@ const mocksToken = [
   {
     request: {
       query: gql`
-        ${accountTokenDetailsMocksQuery}
+        ${accountTokenDetailsMocksQueryBis}
       `,
     },
     result: {
-      data: accountTokenDetailsMocksData,
+      data: accountTokenDetailsMocksDataBis,
     },
   },
   // Account token details for edit panel
   {
     request: {
       query: gql`
-        ${accountTokenEditMocksQuery}
+        ${accountTokenEditMocksQueryBis}
       `,
     },
     result: {
-      data: accountTokenEditMocksData,
+      data: accountTokenEditMocksDataBis,
     },
   },
   // Account token details after update
   {
     request: {
       query: gql`
-        ${accountTokenDetailsMocksQuery}
+        ${accountTokenDetailsMocksQueryBis}
       `,
     },
     result: {
-      data: accountTokenDetailsMocksDataWithDate,
+      data: accountTokenDetailsMocksDataWithDateBis,
     },
   },
 ];
@@ -152,7 +152,7 @@ const ObjectDetailsProvider = () => {
   return (
     <TestProvider
       initialValues={[
-        [schemaState, [...deviceDetailsMocksSchema, ...accountTokenDetailsMocksSchema]],
+        [schemaState, [...deviceDetailsMocksSchema, ...accountTokenDetailsMocksSchemaBIS]],
         [configState, configMocks],
       ]}>
       <AuthenticatedObjectItems />
@@ -217,10 +217,7 @@ describe("Object details", () => {
 
     cy.intercept("POST", "/graphql/main ", this.mutationToken).as("mutate");
 
-    console.log("mockedUrlToken: ", mockedUrlToken);
-
     // Mount the view with the default route and the mocked data
-    console.log("mocksToken: ", mocksToken);
     cy.mount(
       <MockedProvider mocks={mocksToken} addTypename={false}>
         <Routes>

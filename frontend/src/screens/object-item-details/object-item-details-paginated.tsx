@@ -76,6 +76,7 @@ export default function ObjectItemDetails(props: any) {
   if (schemaData && MENU_BLACKLIST.includes(schemaData.kind)) {
     navigate("/");
   }
+
   const attributes = getSchemaAttributeColumns(schemaData);
 
   const relationships = getSchemaRelationshipColumns(schemaData);

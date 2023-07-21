@@ -39,10 +39,8 @@ export default function ObjectItemEditComponent(props: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
-  console.log("schema: ", schema);
 
   const relationships = getSchemaRelationshipColumns(schema);
-  console.log("relationships: ", relationships);
 
   const peers = (schema.relationships || []).map((r) => r.peer).filter(Boolean);
 
