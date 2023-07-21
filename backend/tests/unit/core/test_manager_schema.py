@@ -73,6 +73,7 @@ def schema_all_in_one():
                 "namespace": "Infra",
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
+                    {"name": "mybool", "kind": "Boolean", "default_value": False},
                 ],
                 "relationships": [
                     {
@@ -207,6 +208,22 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
 
     assert criticality.get_attribute(name="my_generic_name")
     assert criticality.get_attribute(name="my_generic_name").inherited
+
+    assert criticality.get_attribute(name="mybool")
+
+
+async def test_schema_branch_process_default_values(schema_all_in_one):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.process_default_values()
+
+    generic = schema.get(name="InfraGenericInterface")
+    assert generic.get_attribute(name="mybool").optional is True
+    assert generic.get_attribute(name="my_generic_name").optional is False
+
+    criticality = schema.get(name="BuiltinCriticality")
+    assert criticality.get_attribute(name="color").optional is True
 
 
 async def test_schema_branch_add_groups(schema_all_in_one):
