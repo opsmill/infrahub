@@ -203,6 +203,15 @@ class List(InfrahubDataType):
     infrahub = "ListAttribute"
 
 
+class JSON(InfrahubDataType):
+    label: str = "JSON"
+    graphql = GenericScalar
+    graphql_query = "JSONAttributeType"
+    graphql_input = "JSONAttributeInput"
+    graphql_filter = GenericScalar
+    infrahub = "JSONAttribute"
+
+
 class Any(InfrahubDataType):
     label: str = "Any"
     graphql = GenericScalar
@@ -260,6 +269,7 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "IPNetwork": IPNetwork,
     "Checkbox": Checkbox,
     "List": List,
+    "JSON": JSON,
     "Any": Any,
     "String": String,
     "Integer": Integer,

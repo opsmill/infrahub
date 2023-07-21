@@ -351,6 +351,15 @@ class ListAttributeType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class JSONAttributeType(BaseAttribute):
+    value = Field(GenericScalar)
+
+    class Meta:
+        description = "Attribute of type JSON"
+        name = "JSONAttribute"
+        interfaces = {AttributeInterface}
+
+
 class AnyAttributeType(BaseAttribute):
     value = Field(GenericScalar)
 

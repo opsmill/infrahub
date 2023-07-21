@@ -68,6 +68,7 @@ nodes:
 - `IPNetwork` : Ip Network in either IPV4 or IPv6 format
 - `Checkbox` : Duplicate of `Boolean`
 - `List` : List of any value
+- `JSON` : Any data structure compatible with JSON
 - `Any` : Can be anything
 
 ### Relationship Kinds

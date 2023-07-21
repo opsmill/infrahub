@@ -53,6 +53,27 @@ def test_base_schema_model_hashing():
     assert hash(node1) == hash(node2)
 
 
+def test_base_schema_model_hashing_dict():
+    class MySubElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        value1: Optional[dict] = None
+
+    class MyTopElement(BaseSchemaModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        subs: List[MySubElement]
+
+    node1 = MyTopElement(
+        name="node1", subs=[MySubElement(name="orange", value1={"bob": "Alice"}), MySubElement(name="coconut")]
+    )
+    node2 = MyTopElement(
+        name="node1", subs=[MySubElement(name="orange", value1={"bob": "Alice"}), MySubElement(name="coconut")]
+    )
+
+    assert hash(node1) == hash(node2)
+
+
 def test_base_schema_update():
     class MySubElement(BaseSchemaModel):
         _sort_by: List[str] = ["name"]
