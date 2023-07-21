@@ -20,10 +20,10 @@ from infrahub_client.schema import (
     AttributeSchema,
     InfrahubSchema,
     NodeSchema,
-    SchemaRoot,
     RelationshipCardinality,
     RelationshipKind,
     RelationshipSchema,
+    SchemaRoot,
 )
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp

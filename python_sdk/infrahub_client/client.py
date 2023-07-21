@@ -22,6 +22,7 @@ from infrahub_client.exceptions import (
 )
 from infrahub_client.graphql import Query
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
+from infrahub_client.object_store import ObjectStore, ObjectStoreSync
 from infrahub_client.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
 from infrahub_client.store import NodeStore, NodeStoreSync
@@ -91,6 +92,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchema(self)
         self.branch = InfrahubBranchManager(self)
+        self.object_store = ObjectStore(self)
         self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
 
@@ -523,6 +525,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchemaSync(self)
         self.branch = InfrahubBranchManagerSync(self)
+        self.object_store = ObjectStoreSync(self)
         self.store = NodeStoreSync()
 
     @classmethod
