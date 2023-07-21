@@ -30,7 +30,7 @@ describe("Config fetch", () => {
 
     cy.get(":nth-child(2) > .relative > .block").type("test");
 
-    cy.get(".mt-6 > .rounded-md").click();
+    cy.get(".justify-end > .rounded-md").click();
 
     cy.wait("@login").then(({ response }) => {
       expect(response?.body?.access_token).to.exist;
