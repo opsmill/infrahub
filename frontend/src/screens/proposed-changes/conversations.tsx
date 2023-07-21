@@ -327,6 +327,19 @@ export const Conversations = () => {
               </div>
 
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">Created by</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <Tooltip message={result?.created_by?.node?.display_label}>
+                    <Avatar
+                      size={AVATAR_SIZE.SMALL}
+                      name={result?.created_by?.node?.display_label}
+                      className="mr-2 bg-custom-blue-green"
+                    />
+                  </Tooltip>
+                </dd>
+              </div>
+
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Reviewers</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {reviewers.map((reviewer: any, index: number) => (

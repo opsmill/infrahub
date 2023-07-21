@@ -79,16 +79,6 @@ export const ProposedChange = (props: any) => {
         <div className="flex flex-1">
           <div className="flex flex-1 flex-col">
             <div className="flex flex-1 items-center space-x-3 mb-4">
-              <div className="flex items-center space-x-3">
-                <Tooltip message={`Created by: ${row?.created_by?.node?.display_label}`}>
-                  <Avatar
-                    size={AVATAR_SIZE.SMALL}
-                    name={row?.created_by?.node?.display_label}
-                    className="bg-custom-blue-green"
-                  />
-                </Tooltip>
-              </div>
-
               <div className="text-base font-semibold leading-6 text-gray-900">
                 {row.name.value}
               </div>
@@ -105,6 +95,18 @@ export const ProposedChange = (props: any) => {
 
                 <Tooltip message={"Source branch"}>
                   <Badge>{row.source_branch.value}</Badge>
+                </Tooltip>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div>Created by:</div>
+
+                <Tooltip message={row?.created_by?.node?.display_label}>
+                  <Avatar
+                    size={AVATAR_SIZE.SMALL}
+                    name={row?.created_by?.node?.display_label}
+                    className="bg-custom-blue-green"
+                  />
                 </Tooltip>
               </div>
             </div>
