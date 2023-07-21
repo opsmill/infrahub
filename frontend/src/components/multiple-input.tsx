@@ -24,7 +24,7 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
   return (
     <div
       className={classNames(
-        `flex w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 h-[40px]
+        `flex flex-wrap w-full rounded-md border-0 p-2 pt-0 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 min-h-[40px]
           border-gray-300 bg-custom-white
           sm:text-sm sm:leading-6 px-2
           focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none
@@ -33,7 +33,7 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
         className ?? ""
       )}>
       {value?.map((item: SelectOption, index: number) => (
-        <Badge key={index} value={item} onDelete={handleDelete}>
+        <Badge key={index} value={item} onDelete={handleDelete} className="mt-2">
           {item.name}
         </Badge>
       ))}
