@@ -15,6 +15,7 @@ import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
+import { classNames } from "../../utils/common";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { ALERT_TYPES, Alert } from "../alert";
 import { BUTTON_TYPES, Button } from "../button";
@@ -207,7 +208,11 @@ export const Thread = (props: tThread) => {
   );
 
   return (
-    <section className="bg-custom-white p-4 mb-4 rounded-lg relative group">
+    <section
+      className={classNames(
+        isResolved ? "bg-gray-200" : "bg-custom-white",
+        "p-4 mb-4 rounded-lg relative group"
+      )}>
       <Button
         buttonType={BUTTON_TYPES.INVISIBLE}
         className="absolute -right-4 -top-4 hidden group-hover:block"
