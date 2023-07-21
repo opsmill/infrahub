@@ -32,6 +32,13 @@ query details {
           }
         {{/each}}
 
+        created_by {
+          node {
+            id
+            display_label
+          }
+        }
+
         threads {
           count
           edges {
