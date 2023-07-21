@@ -36,7 +36,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
   switch (type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
-        bg-green-600 text-gray-50
+        bg-green-500 text-gray-50
         hover:bg-green-400
         disabled:cursor-not-allowed disabled:bg-green-400 disabled:text-gray-100 disabled:border-slate-200 disabled:shadow-none
       `;

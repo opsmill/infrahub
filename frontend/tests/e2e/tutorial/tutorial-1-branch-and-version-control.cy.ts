@@ -136,6 +136,6 @@ describe("Tutorial - Part 1", () => {
     cy.get(".isolate > .bg-gray-100").click();
 
     // Merge the branch
-    cy.get(".bg-green-600").click();
+    cy.get(".bg-green-500").click();
   });
 });

@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getProposedChanges = Handlebars.compile(`
-query {
+query details {
   {{kind}}{{#if id}}(ids: ["{{id}}"]){{/if}} {
     count
     edges {
@@ -23,6 +23,7 @@ query {
               edges {
             {{/if}}
               node {
+                id
                 display_label
               }
             {{#if this.paginated}}
@@ -30,6 +31,64 @@ query {
             {{/if}}
           }
         {{/each}}
+
+        threads {
+          count
+          edges {
+            node {
+              __typename
+              id
+              display_label
+              resolved {
+                value
+              }
+              created_by {
+                node {
+                  display_label
+                }
+              }
+              comments {
+                count
+                edges {
+                  node {
+                    id
+                    display_label
+                    created_by {
+                      node {
+                        display_label
+                      }
+                    }
+                    created_at {
+                      value
+                    }
+                    text {
+                      value
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        comments {
+          count
+          edges {
+            node {
+              __typename
+              id
+              display_label
+              _updated_at
+              created_by {
+                node {
+                  display_label
+                }
+              }
+              created_at {
+                value
+              }
+            }
+          }
+        }
       }
     }
   }

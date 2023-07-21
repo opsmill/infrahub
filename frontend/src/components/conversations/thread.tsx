@@ -42,8 +42,6 @@ export const Thread = (props: tThread) => {
 
   const auth = useContext(AuthContext);
 
-  const { comments } = thread;
-
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
@@ -191,8 +189,8 @@ export const Thread = (props: tThread) => {
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
   };
 
-  const sortedComments = sortByDate(comments.edges);
-
+  const comments = thread?.comments?.edges?.map((comment: any) => comment.node);
+  const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
 
   const MarkAsResolved = (
@@ -222,7 +220,7 @@ export const Thread = (props: tThread) => {
 
       <div className="">
         {sortedComments.map((comment: any, index: number) => (
-          <Comment key={index} comment={comment.node} className={"border border-gray-200"} />
+          <Comment key={index} comment={comment} className={"border border-gray-200"} />
         ))}
       </div>
 
