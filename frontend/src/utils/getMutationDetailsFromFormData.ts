@@ -76,7 +76,7 @@ const getMutationDetailsFromFormData = (
       }
 
       if (isOneToMany) {
-        if (!updatedObject[relationship.name]?.length) {
+        if (!updatedObject[relationship.name]?.list?.length) {
           delete updatedObject[relationship.name];
         }
       }
