@@ -191,6 +191,7 @@ class ArtifactGenerateResult(BaseModel):
     changed: bool
     checksum: str
     object_id: str
+    artifact_id: str
 
 
 def extract_repo_file_information(
@@ -1639,7 +1640,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 kind="CoreArtifact", definition__id=definition.id, object__id=target.id, branch=branch_name
             )
             if artifact and artifact.checksum.value == checksum:
-                return ArtifactGenerateResult(changed=False, checksum=checksum, object_id=artifact.object_id.value)
+                return ArtifactGenerateResult(
+                    changed=False, checksum=checksum, object_id=artifact.object_id.value, artifact_id=artifact.id
+                )
         except NodeNotFound:
             pass
 
@@ -1663,7 +1666,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             artifact = await self.client.create(kind="CoreArtifact", branch=branch_name, data=artifact_data)
             await artifact.save()
 
-        return ArtifactGenerateResult(changed=True, checksum=checksum, object_id=object_id)
+        return ArtifactGenerateResult(changed=True, checksum=checksum, object_id=object_id, artifact_id=artifact.id)
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
         if not os.path.exists(os.path.join(worktree_directory, file_path)):

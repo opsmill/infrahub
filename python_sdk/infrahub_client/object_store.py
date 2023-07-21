@@ -42,7 +42,7 @@ class ObjectStore(ObjectStoreBase):
         return resp.text
 
     async def upload(self, content: str, tracker: Optional[str] = None) -> Dict[str, str]:
-        url = f"{self.client.address}/storage/object/upload/content"
+        url = f"{self.client.address}/storage/upload/content"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
@@ -90,7 +90,7 @@ class ObjectStoreSync(ObjectStoreBase):
         return resp.text
 
     def upload(self, content: str, tracker: Optional[str] = None) -> Dict[str, str]:
-        url = f"{self.client.address}/storage/object/upload/content"
+        url = f"{self.client.address}/storage/upload/content"
         headers = copy.copy(self.client.headers or {})
         if self.client.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker

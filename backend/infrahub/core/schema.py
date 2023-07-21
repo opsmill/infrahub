@@ -1614,8 +1614,8 @@ core_models = {
                 },
                 {"name": "checksum", "kind": "Text"},
                 {"name": "object_id", "kind": "Text", "description": "ID of the file in the object store"},
-                {"name": "created_at", "kind": "DateTime"},
-                {"name": "parameters", "kind": "JSON"},
+                {"name": "created_at", "kind": "DateTime", "optional": True},
+                {"name": "parameters", "kind": "JSON", "optional": True},
             ],
             "relationships": [
                 {

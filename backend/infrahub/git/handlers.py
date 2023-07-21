@@ -14,8 +14,10 @@ from infrahub.git.repository import InfrahubRepository
 from infrahub.lock import registry as lock_registry
 from infrahub.log import set_log_data
 from infrahub.message_bus.events import (
+    ArtifactMessageAction,
     CheckMessageAction,
     GitMessageAction,
+    InfrahubArtifactRPC,
     InfrahubCheckRPC,
     InfrahubGitRPC,
     InfrahubRPC,
@@ -194,7 +196,6 @@ async def handle_artifact_message_action_generate(
             transformation=transformation,
             query=query,
             definition=definition,
-            client=client,
         )
         return InfrahubRPCResponse(status=RPCStatusCode.OK, response=result.dict())
 
@@ -234,6 +235,18 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
     return await handler(message=message, client=client)
 
 
+async def handle_artifact_message(message: InfrahubArtifactRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+    LOGGER.debug(
+        f"Will process Artifact RPC message : {message.action}, {message.repository_name} : {message.definition['display_label']} {message.target['display_label']}"
+    )
+
+    handler_map = {
+        ArtifactMessageAction.GENERATE: handle_artifact_message_action_generate,
+    }
+    handler = handler_map.get(message.action) or handle_bad_request
+    return await handler(message=message, client=client)
+
+
 async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     LOGGER.debug(
         f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
@@ -250,6 +263,7 @@ async def handle_message(message: InfrahubRPC, client: InfrahubClient) -> Infrah
         MessageType.CHECK: handle_git_check_message,
         MessageType.GIT: handle_git_rpc_message,
         MessageType.TRANSFORMATION: handle_git_transform_message,
+        MessageType.ARTIFACT: handle_artifact_message,
     }
     handler = message_type_map.get(message.type) or handle_not_found
     return await handler(message=message, client=client)

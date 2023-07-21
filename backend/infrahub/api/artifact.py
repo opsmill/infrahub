@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Optional
 
 from fastapi import APIRouter, Depends, Request, Response
 from neo4j import AsyncSession
-from starlette.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel, Field
+from starlette.responses import JSONResponse
 
 from infrahub import config
 from infrahub.api.dependencies import (
@@ -27,28 +28,36 @@ log = get_logger()
 router = APIRouter(prefix="/artifact")
 
 
-@router.get("")
+class ArtifactGenerateResult(BaseModel):
+    changed: Optional[bool] = None
+    checksum: Optional[str] = None
+    object_id: Optional[str] = None
+    artifact_id: Optional[str] = None
+    status_code: int
+
+
+class ArtifactGenerateResponse(BaseModel):
+    nodes: Dict[str, ArtifactGenerateResult] = Field(default_factory=dict)
+
+
 @router.get("/{artifact_id:str}")
 async def get_artifact(
     artifact_id: str,
     session: AsyncSession = Depends(get_session),
+    branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> Response:
-    artifact = await registry.manager.get_one(session=session, id=artifact_id)
+    artifact = await registry.manager.get_one(
+        session=session, id=artifact_id, branch=branch_params.branch, at=branch_params.at
+    )
     if not artifact:
         raise NodeNotFound(
             branch_name=config.SETTINGS.main.default_branch, node_type="CoreArtifact", identifier=artifact_id
         )
 
-    content = registry.storage.retrieve(identifier=artifact_id)
+    content = await registry.storage.retrieve(identifier=artifact.object_id.value)
 
-    if artifact.content_type.value == "application/json":
-        return JSONResponse(content=content)
-
-    if artifact.content_type.value == "text/plain":
-        return PlainTextResponse(content=content)
-
-    return Response(content=content)
+    return Response(content=content, headers={"Content-Type": artifact.content_type.value})
 
 
 @router.get("/generate/{artifact_definition_id:str}")
@@ -58,7 +67,7 @@ async def generate_artifact(
     session: AsyncSession = Depends(get_session),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
-) -> Response:
+) -> ArtifactGenerateResponse:
     artifact_definition = await registry.manager.get_one(
         session=session, id=artifact_definition_id, branch=branch_params.branch, at=branch_params.at
     )
@@ -78,26 +87,9 @@ async def generate_artifact(
 
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
-    # def extract_parameters(obj, parameters):
-
-    #     result = {}
-    #     for key, value in parameters.items():
-    #         att_name, prop_name = value.split("__")
-    #         attr = getattr(obj, att_name)
-    #         result[key] = getattr(attr, prop_name)
-
-    #     return result
-
-    # Find the Group
-    #  For each member of the group
-    #   Extract the parameters
-    #   Generate the Artifacts
-
-    response_data = {}
+    response_data = ArtifactGenerateResponse()
 
     for member_id, member in members.items():
-        # parameters = extract_parameters(  obj=member, parameters=artifact_definition.parameters.value)
-
         # TODO execute in parallel
         message = InfrahubArtifactRPC(
             action=ArtifactMessageAction.GENERATE,
@@ -110,12 +102,9 @@ async def generate_artifact(
         )
 
         response: InfrahubRPCResponse = await rpc_client.call(message=message)
-        response_data[member_id] = {"status_code": response.status}
+        if not isinstance(response.response, dict):
+            return JSONResponse(status_code=500, content={"errors": ["No content received from InfrahubArtifactRPC."]})
 
-        # if not isinstance(response.response, dict):
-        #     return JSONResponse(status_code=500, content={"errors": ["No content received from InfrahubTransformRPC."]})
+        response_data.nodes[member_id] = ArtifactGenerateResult(status_code=response.status, **response.response)
 
-        # if response.status == RPCStatusCode.OK.value:
-        #     return JSONResponse(content=response.response.get("transformed_data"))
-
-    return JSONResponse(status_code=200, content={"nodes": response_data})
+    return response_data

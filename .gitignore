@@ -14,3 +14,4 @@ development/docker-compose.override.yml
 .direnv/
 .envrc
 
+storage/*

@@ -447,15 +447,6 @@ class InfrahubArtifactRPC(InfrahubRPC):
         if not repository and not commit:
             raise ValueError("Either Repository or commit must be provided for InfrahubArtifactRPC.")
 
-        # if not transformation and not transformation_id:
-        #     raise ValueError("Either transformation or transformation_id must be provided for InfrahubArtifactRPC.")
-
-        # if not transformation and not transformation_location:
-        #     raise ValueError("Either transformation or transformation_location must be provided for InfrahubArtifactRPC.")
-
-        # if not transformation and not transformation_kind:
-        #     raise ValueError("Either transformation or transformation_kind must be provided for InfrahubArtifactRPC.")
-
         super().__init__(*args, **kwargs)
 
         self.repository = repository
@@ -467,9 +458,6 @@ class InfrahubArtifactRPC(InfrahubRPC):
         self.transformation = transformation
         self.definition = definition
         self.target = target
-        # self.transformation_id = transformation_id
-        # self.transformation_location = transformation_location
-        # self.transformation_kind = transformation_kind
 
         if repository and not repository_id:
             self.repository_id = repository.id
@@ -478,14 +466,6 @@ class InfrahubArtifactRPC(InfrahubRPC):
         if repository and not commit:
             self.commit = repository.commit.value
 
-        # if transformation and not transformation_id:
-        #     self.transformation_id = transformation.id
-        # if transformation and not transformation_location:
-        #     self.transformation_location = transformation.
-        # if transformation and not transformation_id:
-        #     self.transformation_id = transformation.id
-
-        # self.params = params or {}
         self.branch_name = branch_name
 
     def generate_message_body(self) -> dict:
@@ -499,8 +479,7 @@ class InfrahubArtifactRPC(InfrahubRPC):
         body["transformation"] = self.transformation
         body["query"] = self.query
         body["definition"] = self.definition
-        # body["data"] = self.data
-        # body["params"] = self.params
+        body["target"] = self.target
 
         return body
 
