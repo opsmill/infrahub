@@ -37,6 +37,7 @@ class MessageType(str, BaseEnum):
     GIT = "git"  # ACTIONS: pull, push, rebase, merge
     RPC_RESPONSE = "rpc-response"
     TRANSFORMATION = "transformation"  # jinja, python
+    ARTIFACT = "artifact"
     CHECK = "check"  # python
 
     # INTERNAL = "internal"   # cache
@@ -48,6 +49,7 @@ MESSAGE_MAPPING = {
     MessageType.BRANCH: "InfrahubBranchMessage",
     MessageType.GIT: "InfrahubGitRPC",
     MessageType.TRANSFORMATION: "InfrahubTransformRPC",
+    MessageType.ARTIFACT: "InfrahubArtifactRPC",
     MessageType.CHECK: "InfrahubCheckRPC",
     MessageType.RPC_RESPONSE: "InfrahubRPCResponse",
 }
@@ -87,6 +89,10 @@ class GitMessageAction(str, BaseEnum):
 class TransformMessageAction(str, BaseEnum):
     JINJA2 = "jinja2"
     PYTHON = "python"
+
+
+class ArtifactMessageAction(str, BaseEnum):
+    GENERATE = "generate"
 
 
 class CheckMessageAction(str, BaseEnum):
@@ -414,6 +420,91 @@ class InfrahubTransformRPC(InfrahubRPC):
         return body
 
 
+class InfrahubArtifactRPC(InfrahubRPC):
+    type = MessageType.ARTIFACT
+    actions = ArtifactMessageAction
+
+    def __init__(
+        self,
+        branch_name: str,
+        transformation: dict,
+        definition: dict,
+        target: dict,
+        query=dict,
+        repository: Optional[Node] = None,
+        repository_name: Optional[str] = None,
+        repository_id: Optional[str] = None,
+        commit: Optional[str] = None,
+        *args,
+        **kwargs,
+    ):
+        if not repository and not repository_id:
+            raise ValueError("Either Repository or repository_id must be provided for InfrahubArtifactRPC.")
+
+        if not repository and not repository_name:
+            raise ValueError("Either Repository or repository_name must be provided for InfrahubArtifactRPC.")
+
+        if not repository and not commit:
+            raise ValueError("Either Repository or commit must be provided for InfrahubArtifactRPC.")
+
+        # if not transformation and not transformation_id:
+        #     raise ValueError("Either transformation or transformation_id must be provided for InfrahubArtifactRPC.")
+
+        # if not transformation and not transformation_location:
+        #     raise ValueError("Either transformation or transformation_location must be provided for InfrahubArtifactRPC.")
+
+        # if not transformation and not transformation_kind:
+        #     raise ValueError("Either transformation or transformation_kind must be provided for InfrahubArtifactRPC.")
+
+        super().__init__(*args, **kwargs)
+
+        self.repository = repository
+        self.repository_id = repository_id
+        self.repository_name = repository_name
+        self.commit = commit
+
+        self.query = query
+        self.transformation = transformation
+        self.definition = definition
+        self.target = target
+        # self.transformation_id = transformation_id
+        # self.transformation_location = transformation_location
+        # self.transformation_kind = transformation_kind
+
+        if repository and not repository_id:
+            self.repository_id = repository.id
+        if repository and not repository_name:
+            self.repository_name = repository.name.value
+        if repository and not commit:
+            self.commit = repository.commit.value
+
+        # if transformation and not transformation_id:
+        #     self.transformation_id = transformation.id
+        # if transformation and not transformation_location:
+        #     self.transformation_location = transformation.
+        # if transformation and not transformation_id:
+        #     self.transformation_id = transformation.id
+
+        # self.params = params or {}
+        self.branch_name = branch_name
+
+    def generate_message_body(self) -> dict:
+        """Generate the body of the message as a dict."""
+
+        body = super().generate_message_body()
+        body["repository_id"] = self.repository_id
+        body["repository_name"] = self.repository_name
+        body["branch_name"] = self.branch_name
+        body["commit"] = self.commit
+        body["transformation"] = self.transformation
+        body["query"] = self.query
+        body["definition"] = self.definition
+        # body["data"] = self.data
+        # body["params"] = self.params
+
+        return body
+
+
 class InfrahubCheckRPC(InfrahubRPC):
     type = MessageType.CHECK
     actions = CheckMessageAction
@@ -432,13 +523,13 @@ class InfrahubCheckRPC(InfrahubRPC):
         **kwargs,
     ):
         if not repository and not repository_id:
-            raise ValueError("Either Repository or repository_id must be provided for InfrahubTransformRPC.")
+            raise ValueError("Either Repository or repository_id must be provided for InfrahubCheckRPC.")
 
         if not repository and not repository_name:
-            raise ValueError("Either Repository or repository_name must be provided for InfrahubTransformRPC.")
+            raise ValueError("Either Repository or repository_name must be provided for InfrahubCheckRPC.")
 
         if not repository and not commit:
-            raise ValueError("Either Repository or commit must be provided for InfrahubTransformRPC.")
+            raise ValueError("Either Repository or commit must be provided for InfrahubCheckRPC.")
 
         super().__init__(*args, **kwargs)
 

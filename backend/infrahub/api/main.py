@@ -17,7 +17,16 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub import __version__
-from infrahub.api import auth, diff, file, internal, schema, storage, transformation
+from infrahub.api import (
+    artifact,
+    auth,
+    diff,
+    file,
+    internal,
+    schema,
+    storage,
+    transformation,
+)
 from infrahub.api.background import BackgroundRunner
 from infrahub.api.dependencies import (
     BranchParams,
@@ -59,6 +68,7 @@ app.include_router(transformation.router)
 app.include_router(internal.router)
 app.include_router(diff.router)
 app.include_router(storage.router)
+app.include_router(artifact.router)
 
 
 @app.on_event("startup")

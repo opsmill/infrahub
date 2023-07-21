@@ -25,6 +25,7 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
     TransformMessageAction,
 )
+from infrahub_client import InfrahubNode
 
 if TYPE_CHECKING:
     from infrahub_client import InfrahubClient
@@ -161,6 +162,43 @@ async def handle_transform_message_action_python(
         return InfrahubRPCResponse(status=RPCStatusCode.OK, response={"transformed_data": transformed_data})
 
     except (TransformError, FileNotFound) as exc:
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
+
+
+async def handle_artifact_message_action_generate(
+    message: InfrahubTransformRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+
+    try:
+        transformation_schema = await client.schema.get(kind=message.transformation.get("__typename"))
+        transformation = InfrahubNode(
+            client=client, schema=transformation_schema, data=message.transformation, branch=message.branch_name
+        )
+
+        definition_schema = await client.schema.get(kind=message.definition.get("__typename"))
+        definition = InfrahubNode(
+            client=client, schema=definition_schema, data=message.definition, branch=message.branch_name
+        )
+
+        query_schema = await client.schema.get(kind=message.query.get("__typename"))
+        query = InfrahubNode(client=client, schema=query_schema, data=message.query, branch=message.branch_name)
+
+        target_schema = await client.schema.get(kind=message.target.get("__typename"))
+        target = InfrahubNode(client=client, schema=target_schema, data=message.target, branch=message.branch_name)
+
+        result = await repo.artifact_generate(
+            branch_name=message.branch_name,
+            commit=message.commit,
+            target=target,
+            transformation=transformation,
+            query=query,
+            definition=definition,
+            client=client,
+        )
+        return InfrahubRPCResponse(status=RPCStatusCode.OK, response=result.dict())
+
+    except FileNotFound as exc:
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 

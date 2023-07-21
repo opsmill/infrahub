@@ -1606,15 +1606,16 @@ core_models = {
             "display_labels": ["name__value"],
             "branch": True,
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "name", "kind": "Text"},
                 {
                     "name": "content_type",
                     "kind": "Text",
                     "enum": ["application/json", "text/plain"],
                 },
                 {"name": "checksum", "kind": "Text"},
+                {"name": "object_id", "kind": "Text", "description": "ID of the file in the object store"},
                 {"name": "created_at", "kind": "DateTime"},
-                {"name": "parameters", "kind": "TextArea"},
+                {"name": "parameters", "kind": "JSON"},
             ],
             "relationships": [
                 {
@@ -1648,7 +1649,7 @@ core_models = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "artifact_name", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": True},
-                {"name": "parameters", "kind": "TextArea"},
+                {"name": "parameters", "kind": "JSON"},
                 {
                     "name": "content_type",
                     "kind": "Text",
