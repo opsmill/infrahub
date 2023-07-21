@@ -184,6 +184,7 @@ class SchemaBranch:
 
     def process(self) -> None:
         self.generate_identifiers()
+        self.process_default_values()
         self.process_inheritance()
         self.add_groups()
         self.process_filters()
@@ -236,6 +237,22 @@ class SchemaBranch:
                 generic.used_by = []
 
             self.set(name=generic_name, schema=generic)
+
+
+    def process_default_values(self) -> None:
+        """Ensure that all attributes with a default value are flagged as optional: True."""
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            for attr in node.attributes:
+                if attr.default_value is None:
+                    continue
+
+                if attr.default_value is not None and not attr.optional:
+                    attr.optional = True
+
+            self.set(name=name, schema=node)
+
 
     def process_filters(self) -> Node:
         # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
