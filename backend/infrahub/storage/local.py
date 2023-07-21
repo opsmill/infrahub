@@ -19,6 +19,7 @@ class LocalStorageSettings(BaseSettings):
 class InfrahubLocalStorage(InfrahubObjectStorage):
     settings: LocalStorageSettings
 
+    # pylint: disable=super-init-not-called
     def __init__(self, settings: Optional[Union[dict, LocalStorageSettings]] = None) -> Self:
         if isinstance(settings, LocalStorageSettings):
             self.settings = settings
