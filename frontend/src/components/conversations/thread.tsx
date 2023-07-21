@@ -94,8 +94,6 @@ export const Thread = (props: tThread) => {
         await handleResolve();
       }
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
-
       refetch();
 
       setIsLoading(false);
