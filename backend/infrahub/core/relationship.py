@@ -444,6 +444,12 @@ class RelationshipManager:
 
         return await rels[0].get_peer(session=session)
 
+    async def get_peers(self, session: AsyncSession) -> Dict[str, Node]:
+        rels = await self.get_relationships(session=session)
+        peer_ids = [rel.peer_id for rel in rels]
+        nodes = await registry.manager.get_many(session=session, ids=peer_ids, branch=self.branch)
+        return nodes
+
     async def _fetch_relationship_ids(
         self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None
     ) -> Tuple[List[str], List[str], List[str], Dict[str, RelationshipPeerData]]:
