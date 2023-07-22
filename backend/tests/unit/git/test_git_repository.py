@@ -525,6 +525,106 @@ async def test_artifact_generate_python_new(
     assert result == expected_data
 
 
+async def test_artifact_generate_python_existing_same(
+    client,
+    mock_schema_query_02,
+    git_repo_transforms_w_client: InfrahubRepository,
+    transformation_node_01: InfrahubNode,
+    artifact_definition_node_01: InfrahubNode,
+    gql_query_node_03: InfrahubNode,
+    car_node_01: InfrahubNode,
+    mock_gql_query_03,
+    mock_existing_artifact_same,
+):
+    repo = git_repo_transforms_w_client
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    result = await repo.artifact_generate(
+        branch_name="main",
+        commit=commit_main,
+        target=car_node_01,
+        definition=artifact_definition_node_01,
+        transformation=transformation_node_01,
+        query=gql_query_node_03,
+    )
+
+    expected_data = ArtifactGenerateResult(
+        changed=False,
+        checksum="e8a740b1dd39530d1a502e017e0feff5",
+        object_id="13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+        artifact_id="0d9a10bd-77f3-4388-a2fb-3cff9586cbb8",
+    )
+    assert result == expected_data
+
+
+async def test_artifact_generate_python_existing_different(
+    client,
+    mock_schema_query_02,
+    git_repo_transforms_w_client: InfrahubRepository,
+    transformation_node_01: InfrahubNode,
+    artifact_definition_node_01: InfrahubNode,
+    gql_query_node_03: InfrahubNode,
+    car_node_01: InfrahubNode,
+    mock_gql_query_03,
+    mock_existing_artifact_different,
+    mock_upload_content,
+    mock_update_artifact,
+):
+    repo = git_repo_transforms_w_client
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    result = await repo.artifact_generate(
+        branch_name="main",
+        commit=commit_main,
+        target=car_node_01,
+        definition=artifact_definition_node_01,
+        transformation=transformation_node_01,
+        query=gql_query_node_03,
+    )
+
+    expected_data = ArtifactGenerateResult(
+        changed=True,
+        checksum="e8a740b1dd39530d1a502e017e0feff5",
+        object_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
+        artifact_id="0d9a10bd-77f3-4388-a2fb-3cff9586cbb8",
+    )
+    assert result == expected_data
+
+
+async def test_artifact_generate_jinja2_new(
+    client,
+    mock_schema_query_02,
+    git_repo_jinja_w_client: InfrahubRepository,
+    transformation_node_02: InfrahubNode,
+    artifact_definition_node_02: InfrahubNode,
+    gql_query_node_03: InfrahubNode,
+    car_node_01: InfrahubNode,
+    mock_gql_query_04,
+    mock_missing_artifact,
+    mock_upload_content,
+    mock_create_artifact,
+):
+    repo = git_repo_jinja_w_client
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    result = await repo.artifact_generate(
+        branch_name="main",
+        commit=commit_main,
+        target=car_node_01,
+        definition=artifact_definition_node_02,
+        transformation=transformation_node_02,
+        query=gql_query_node_03,
+    )
+
+    expected_data = ArtifactGenerateResult(
+        changed=True,
+        checksum="5032217684d0e0b61d93c8611bffcd8a",
+        object_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
+        artifact_id=result.artifact_id,
+    )
+    assert result == expected_data
+
+
 async def test_execute_python_transform_file_missing(client, git_repo_transforms: InfrahubRepository):
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)

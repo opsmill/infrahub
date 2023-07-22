@@ -7159,6 +7159,23 @@
                     "order_weight": 3000
                 },
                 {
+                    "name": "object_id",
+                    "kind": "Text",
+                    "namespace": "Attribute",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": true,
+                    "optional": false,
+                    "order_weight": 3000
+                },
+                {
                     "name": "created_at",
                     "kind": "DateTime",
                     "namespace": "Attribute",
@@ -7172,7 +7189,7 @@
                     "inherited": false,
                     "unique": false,
                     "branch": true,
-                    "optional": false,
+                    "optional": true,
                     "order_weight": 4000
                 },
                 {
@@ -7189,7 +7206,7 @@
                     "inherited": false,
                     "unique": false,
                     "branch": true,
-                    "optional": false,
+                    "optional": true,
                     "order_weight": 5000
                 }
             ],
