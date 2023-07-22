@@ -1,4 +1,5 @@
 import pytest
+from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
 from infrahub.core.node import Node
@@ -59,7 +60,10 @@ async def test_artifact_definition_endpoint(
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"artifact": "XXXXX"})
+        mock_response = InfrahubRPCResponse(
+            status=RPCStatusCode.OK,
+            response={"artifact_id": "XXXXX", "changed": True, "checksum": "YYYYYY", "object_id": "DDDDDDDDDD"},
+        )
         await client.app.state.rpc_client.add_response(
             response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
         )
@@ -76,9 +80,22 @@ async def test_artifact_definition_endpoint(
     assert response.json() is not None
     result = response.json()
 
-    assert result == {
+    expected_result = {
         "nodes": {
-            car_person_data_generic["c1"].id: {"status_code": 200},
-            car_person_data_generic["c2"].id: {"status_code": 200},
+            car_person_data_generic["c1"].id: {
+                "artifact_id": "XXXXX",
+                "changed": True,
+                "checksum": "YYYYYY",
+                "object_id": "DDDDDDDDDD",
+                "status_code": 200,
+            },
+            car_person_data_generic["c2"].id: {
+                "artifact_id": "XXXXX",
+                "changed": True,
+                "checksum": "YYYYYY",
+                "object_id": "DDDDDDDDDD",
+                "status_code": 200,
+            },
         },
     }
+    assert DeepDiff(result, expected_result, ignore_order=True).to_dict() == {}

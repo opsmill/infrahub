@@ -517,7 +517,10 @@ async def test_artifact_generate_python_new(
     )
 
     expected_data = ArtifactGenerateResult(
-        changed=True, checksum="e8a740b1dd39530d1a502e017e0feff5", object_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a"
+        changed=True,
+        checksum="e8a740b1dd39530d1a502e017e0feff5",
+        object_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
+        artifact_id=result.artifact_id,
     )
     assert result == expected_data
 
