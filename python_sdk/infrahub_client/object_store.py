@@ -25,19 +25,23 @@ class ObjectStore(ObjectStoreBase):
         if self.client.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        try:
-            resp = await self.client._get(url=url, headers=headers)
-            resp.raise_for_status()
+        if not self.client.test_client:
+            try:
+                resp = await self.client._get(url=url, headers=headers)
+                resp.raise_for_status()
 
-        except ServerNotReacheableError:
-            self.client.log.error(f"Unable to connect to {self.client.address} .. ")
-            raise
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code in [401, 403]:
-                response = exc.response.json()
-                errors = response.get("errors")
-                messages = [error.get("message") for error in errors]
-                raise AuthenticationError(" | ".join(messages)) from exc
+            except ServerNotReacheableError:
+                self.client.log.error(f"Unable to connect to {self.client.address} .. ")
+                raise
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in [401, 403]:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+        else:
+            with self.client.test_client as client:
+                resp = client.get(url=url, headers=headers)
 
         return resp.text
 
@@ -47,18 +51,22 @@ class ObjectStore(ObjectStoreBase):
         if self.client.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        try:
-            resp = await self.client._post(url=url, payload={"content": content}, headers=headers)
-            resp.raise_for_status()
-        except ServerNotReacheableError:
-            self.client.log.error(f"Unable to connect to {self.client.address} .. ")
-            raise
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code in [401, 403]:
-                response = exc.response.json()
-                errors = response.get("errors")
-                messages = [error.get("message") for error in errors]
-                raise AuthenticationError(" | ".join(messages)) from exc
+        if not self.client.test_client:
+            try:
+                resp = await self.client._post(url=url, payload={"content": content}, headers=headers)
+                resp.raise_for_status()
+            except ServerNotReacheableError:
+                self.client.log.error(f"Unable to connect to {self.client.address} .. ")
+                raise
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in [401, 403]:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+        else:
+            with self.client.test_client as client:
+                resp = client.post(url=url, json={"content": content}, headers=headers)
 
         return resp.json()
 
@@ -73,19 +81,23 @@ class ObjectStoreSync(ObjectStoreBase):
         if self.client.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        try:
-            resp = self.client._get(url=url, headers=headers)
-            resp.raise_for_status()
+        if not self.client.test_client:
+            try:
+                resp = self.client._get(url=url, headers=headers)
+                resp.raise_for_status()
 
-        except ServerNotReacheableError:
-            self.client.log.error(f"Unable to connect to {self.client.address} .. ")
-            raise
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code in [401, 403]:
-                response = exc.response.json()
-                errors = response.get("errors")
-                messages = [error.get("message") for error in errors]
-                raise AuthenticationError(" | ".join(messages)) from exc
+            except ServerNotReacheableError:
+                self.client.log.error(f"Unable to connect to {self.client.address} .. ")
+                raise
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in [401, 403]:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+        else:
+            with self.client.test_client as client:
+                resp = client.get(url=url, headers=headers)
 
         return resp.text
 
@@ -95,17 +107,21 @@ class ObjectStoreSync(ObjectStoreBase):
         if self.client.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        try:
-            resp = self.client._post(url=url, payload={"content": content}, headers=headers)
-            resp.raise_for_status()
-        except ServerNotReacheableError:
-            self.client.log.error(f"Unable to connect to {self.client.address} .. ")
-            raise
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code in [401, 403]:
-                response = exc.response.json()
-                errors = response.get("errors")
-                messages = [error.get("message") for error in errors]
-                raise AuthenticationError(" | ".join(messages)) from exc
+        if not self.client.test_client:
+            try:
+                resp = self.client._post(url=url, payload={"content": content}, headers=headers)
+                resp.raise_for_status()
+            except ServerNotReacheableError:
+                self.client.log.error(f"Unable to connect to {self.client.address} .. ")
+                raise
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in [401, 403]:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+        else:
+            with self.client.test_client as client:
+                resp = client.post(url=url, json={"content": content}, headers=headers)
 
         return resp.json()

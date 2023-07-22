@@ -11,8 +11,6 @@ from infrahub_client.node import InfrahubNode
 
 
 class TestInfrahubNode:
-    pagination: bool = True
-
     @pytest.fixture(scope="class")
     async def test_client(self):
         # pylint: disable=import-outside-toplevel
