@@ -818,7 +818,7 @@ async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
                             "content_type": {"value": "application/json", "__typename": "TextAttribute"},
                             "checksum": {"value": "e8a740b1dd39530d1a502e017e0feff5", "__typename": "TextAttribute"},
-                            "object_id": {
+                            "storage_id": {
                                 "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
                                 "__typename": "TextAttribute",
                             },
@@ -866,7 +866,7 @@ async def mock_existing_artifact_different(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
                             "content_type": {"value": "application/json", "__typename": "TextAttribute"},
                             "checksum": {"value": "aaaa40b1dd39530d1a502e017e0feff5", "__typename": "TextAttribute"},
-                            "object_id": {
+                            "storage_id": {
                                 "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
                                 "__typename": "TextAttribute",
                             },
@@ -1102,7 +1102,7 @@ async def transformation_data_02() -> dict:
             },
             "__typename": "NestedEdgedCoreGraphQLQuery",
         },
-        "template_repository": {
+        "repository": {
             "node": {
                 "id": "7d1ee159-97c7-4787-8728-e10f998d0122",
                 "display_label": "test-repo",

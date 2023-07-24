@@ -18,6 +18,7 @@ from infrahub.core.schema import (
     GroupSchema,
     NodeSchema,
     RelationshipKind,
+    RelationshipCardinality,
     RelationshipSchema,
     SchemaRoot,
     internal_schema,
@@ -300,6 +301,7 @@ class SchemaBranch:
                         identifier="group_member",
                         peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
+                        cardinality=RelationshipCardinality.MANY,
                     )
                 )
 
@@ -310,6 +312,7 @@ class SchemaBranch:
                         identifier="group_subscriber",
                         peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
+                        cardinality=RelationshipCardinality.MANY,
                     )
                 )
 

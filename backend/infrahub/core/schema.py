@@ -1115,7 +1115,30 @@ core_models = {
                     "cardinality": "one",
                     "optional": False,
                 },
+                {
+                    "name": "repository",
+                    "peer": "CoreRepository",
+                    "kind": "Attribute",
+                    "cardinality": "one",
+                    "identifier": "repository__transformation",
+                    "optional": False,
+                },
                 {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+            ],
+        },
+        {
+            "name": "ArtifactTarget",
+            "namespace": "Core",
+            "description": "Extend a node to be associated with artifacts",
+            "label": "Artifact Target",
+            "relationships": [
+                {
+                    "name": "artifacts",
+                    "peer": "CoreArtifact",
+                    "optional": True,
+                    "cardinality": "many",
+                    "kind": "Generic",
+                },
             ],
         },
     ],
@@ -1448,9 +1471,9 @@ core_models = {
                 {"name": "account", "peer": "CoreAccount", "kind": "Attribute", "optional": True, "cardinality": "one"},
                 {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
                 {
-                    "name": "rfiles",
-                    "peer": "CoreRFile",
-                    "identifier": "repository__rfile",
+                    "name": "transformations",
+                    "peer": "CoreTransformation",
+                    "identifier": "repository__transformation",
                     "optional": True,
                     "cardinality": "many",
                 },
@@ -1467,14 +1490,7 @@ core_models = {
                     "identifier": "check__repository",
                     "optional": True,
                     "cardinality": "many",
-                },
-                {
-                    "name": "transform_python",
-                    "peer": "CoreTransformPython",
-                    "identifier": "repository__transform_python",
-                    "optional": True,
-                    "cardinality": "many",
-                },
+                }
             ],
         },
         {
@@ -1489,16 +1505,6 @@ core_models = {
             "branch": True,
             "attributes": [
                 {"name": "template_path", "kind": "Text"},
-            ],
-            "relationships": [
-                {
-                    "name": "template_repository",
-                    "peer": "CoreRepository",
-                    "kind": "Attribute",
-                    "identifier": "repository__rfile",
-                    "cardinality": "one",
-                    "optional": False,
-                },
             ],
         },
         {
@@ -1552,24 +1558,6 @@ core_models = {
                 {"name": "class_name", "kind": "Text"},
                 {"name": "url", "kind": "Text"},
             ],
-            "relationships": [
-                {
-                    "name": "repository",
-                    "peer": "CoreRepository",
-                    "kind": "Attribute",
-                    "cardinality": "one",
-                    "identifier": "repository__transform_python",
-                    "optional": False,
-                },
-                {
-                    "name": "query",
-                    "peer": "CoreGraphQLQuery",
-                    "kind": "Attribute",
-                    "identifier": "graphql_query__transform_python",
-                    "cardinality": "one",
-                    "optional": True,
-                },
-            ],
         },
         {
             "name": "GraphQLQuery",
@@ -1613,7 +1601,7 @@ core_models = {
                     "enum": ["application/json", "text/plain"],
                 },
                 {"name": "checksum", "kind": "Text"},
-                {"name": "object_id", "kind": "Text", "description": "ID of the file in the object store"},
+                {"name": "storage_id", "kind": "Text", "description": "ID of the file in the object store"},
                 {"name": "created_at", "kind": "DateTime", "optional": True},
                 {"name": "parameters", "kind": "JSON", "optional": True},
             ],

@@ -5583,13 +5583,13 @@
             ],
             "relationships": [
                 {
-                    "name": "template_repository",
+                    "name": "repository",
                     "peer": "CoreRepository",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
-                    "identifier": "repository__rfile",
-                    "inherited": false,
+                    "identifier": "repository__transformation",
+                    "inherited": true,
                     "cardinality": "one",
                     "branch": true,
                     "optional": false,
@@ -5869,7 +5869,7 @@
                     "description": null
                 },
                 {
-                    "name": "template_repository__id",
+                    "name": "repository__id",
                     "kind": "Object",
                     "enum": null,
                     "object_kind": "CoreRepository",
@@ -7159,7 +7159,7 @@
                     "order_weight": 3000
                 },
                 {
-                    "name": "object_id",
+                    "name": "storage_id",
                     "kind": "Text",
                     "namespace": "Attribute",
                     "label": null,

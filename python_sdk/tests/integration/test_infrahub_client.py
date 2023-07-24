@@ -52,7 +52,7 @@ class TestInfrahubClient:
             name="rfile1",
             description="test rfile",
             template_path="mytemplate.j2",
-            template_repository=obj2,
+            repository=obj2,
             query=obj1,
         )
         await obj3.save(session=session)

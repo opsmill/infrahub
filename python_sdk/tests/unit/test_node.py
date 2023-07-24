@@ -406,7 +406,7 @@ async def test_create_input_data_with_relationships_02(clients, rfile_schema, cl
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff", "owner": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
         "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff"},
-        "template_repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
+        "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
     if client_type == "standard":
@@ -429,7 +429,7 @@ async def test_create_input_data_with_relationships_02(clients, rfile_schema, cl
             },
             "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
             "template_path": {"value": "mytemplate.j2"},
-            "template_repository": {
+            "repository": {
                 "_relation__owner": "ffffffff",
                 "_relation__source": "ffffffff",
                 "id": "rrrrrrrr",
@@ -445,7 +445,7 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
         "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff", "is_protected": True},
-        "template_repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
+        "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
     if client_type == "standard":
@@ -468,7 +468,7 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
             },
             "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
             "template_path": {"value": "mytemplate.j2"},
-            "template_repository": {
+            "repository": {
                 "_relation__owner": "ffffffff",
                 "_relation__source": "ffffffff",
                 "id": "rrrrrrrr",

@@ -31,7 +31,7 @@ router = APIRouter(prefix="/artifact")
 class ArtifactGenerateResult(BaseModel):
     changed: Optional[bool] = None
     checksum: Optional[str] = None
-    object_id: Optional[str] = None
+    storage_id: Optional[str] = None
     artifact_id: Optional[str] = None
     status_code: int
 
@@ -55,7 +55,7 @@ async def get_artifact(
             branch_name=config.SETTINGS.main.default_branch, node_type="CoreArtifact", identifier=artifact_id
         )
 
-    content = await registry.storage.retrieve(identifier=artifact.object_id.value)
+    content = await registry.storage.retrieve(identifier=artifact.storage_id.value)
 
     return Response(content=content, headers={"Content-Type": artifact.content_type.value})
 

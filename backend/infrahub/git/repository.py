@@ -99,7 +99,7 @@ class RFileInformation(BaseModel):
     query: str
     """ID or name of the GraphQL Query associated with this RFile"""
 
-    template_repository: str = "self"
+    repository: str = "self"
     """ID of the associated repository or self"""
 
     template_path: str
@@ -190,7 +190,7 @@ class RepoFileInformation(BaseModel):
 class ArtifactGenerateResult(BaseModel):
     changed: bool
     checksum: str
-    object_id: str
+    storage_id: str
     artifact_id: str
 
 
@@ -1005,8 +1005,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             # Insert the ID of the current repository if required
-            if item.template_repository == "self":
-                item.template_repository = self.id
+            if item.repository == "self":
+                item.repository = self.id
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
@@ -1641,24 +1641,24 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
             if artifact and artifact.checksum.value == checksum:
                 return ArtifactGenerateResult(
-                    changed=False, checksum=checksum, object_id=artifact.object_id.value, artifact_id=artifact.id
+                    changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
                 )
         except NodeNotFound:
             pass
 
         resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
-        object_id = resp["identifier"]
+        storage_id = resp["identifier"]
 
         if artifact:
             artifact.checksum.value = checksum
-            artifact.object_id.value = object_id
+            artifact.storage_id.value = storage_id
             await artifact.save()
         else:
             artifact_data = {
                 "name": definition.artifact_name.value,
                 "content_type": definition.content_type.value,
                 "checksum": checksum,
-                "object_id": object_id,
+                "storage_id": storage_id,
                 "parameters": variables,
                 "object": target.id,
                 "definition": definition.id,
@@ -1666,7 +1666,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             artifact = await self.client.create(kind="CoreArtifact", branch=branch_name, data=artifact_data)
             await artifact.save()
 
-        return ArtifactGenerateResult(changed=True, checksum=checksum, object_id=object_id, artifact_id=artifact.id)
+        return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
         if not os.path.exists(os.path.join(worktree_directory, file_path)):

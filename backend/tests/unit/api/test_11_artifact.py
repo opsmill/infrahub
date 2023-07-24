@@ -26,9 +26,6 @@ async def test_artifact_definition_endpoint(
 
     client = TestClient(app)
 
-    # repositories = await NodeManager.query(session=session, schema="CoreRepository")
-    # queries = await NodeManager.query(session=session, schema="CoreGraphQLQuery")
-
     g1 = await Node.init(session=session, schema="CoreStandardGroup")
     await g1.new(session=session, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(session=session)
@@ -62,7 +59,7 @@ async def test_artifact_definition_endpoint(
     with client:
         mock_response = InfrahubRPCResponse(
             status=RPCStatusCode.OK,
-            response={"artifact_id": "XXXXX", "changed": True, "checksum": "YYYYYY", "object_id": "DDDDDDDDDD"},
+            response={"artifact_id": "XXXXX", "changed": True, "checksum": "YYYYYY", "storage_id": "DDDDDDDDDD"},
         )
         await client.app.state.rpc_client.add_response(
             response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
@@ -86,14 +83,14 @@ async def test_artifact_definition_endpoint(
                 "artifact_id": "XXXXX",
                 "changed": True,
                 "checksum": "YYYYYY",
-                "object_id": "DDDDDDDDDD",
+                "storage_id": "DDDDDDDDDD",
                 "status_code": 200,
             },
             car_person_data_generic["c2"].id: {
                 "artifact_id": "XXXXX",
                 "changed": True,
                 "checksum": "YYYYYY",
-                "object_id": "DDDDDDDDDD",
+                "storage_id": "DDDDDDDDDD",
                 "status_code": 200,
             },
         },
