@@ -77,6 +77,30 @@ invoke demo.load-infra-data
 `invoke demo.debug` can be used as an alternative to `invoke demo.start`, the main difference is that it will stay *attached* to the containers and all the logs will be displayed in real time in the CLI.
 !!!
 
+## Advanced Settings
+
+### Support for `sudo`
+
+On a linux system, the system will try to automatically detect if `sudo` is required to run the docker command or not.
+
+It's possible to control this setting with the environment variable: `INVOKE_SUDO`
+
+```
+export INVOKE_SUDO=1 to force sudo
+export INVOKE_SUDO=0 to disable it completely
+```
+
+### Support for `pty`
+
+On Linux and Mac OS, all commands will be executed with PTY enabled by default.
+
+It's possible to control this setting with the environment variable: `INVOKE_PTY`
+
+```
+export INVOKE_PTY=1 to force pty
+export INVOKE_PTY=0 to disable it completely
+```
+
 ## Troubleshooting
 
 At First, it's recommended to check if all containers are still running using `invoke demo.status`. The 5 containers should be running and be present.

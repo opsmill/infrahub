@@ -1,4 +1,5 @@
 import os
+import platform
 from enum import Enum
 from typing import Any, Union
 
@@ -81,6 +82,8 @@ ENV_VARS_DICT = {
     "NBR_WORKERS": NBR_WORKERS,
 }
 
+PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
+PLATFORMS_SUDO_DETECT = ["Linux"]
 
 if os.getenv("VITE_INFRAHUB_API_SERVER_URL", ""):
     ENV_VARS_DICT["VITE_INFRAHUB_API_SERVER_URL"] = os.getenv("VITE_INFRAHUB_API_SERVER_URL")
@@ -92,10 +95,13 @@ VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
 def check_environment(context: Context) -> dict:
     params = {
         "sudo": False,
-        "pty": True,
+        "pty": False,
     }
 
-    if INVOKE_SUDO is None:
+    if INVOKE_SUDO is not None:
+        params["sudo"] = str_to_bool(INVOKE_SUDO)
+
+    elif platform.system() in PLATFORMS_SUDO_DETECT:
         try:
             context.run("docker ps", hide=True)
         except UnexpectedExit as exc:
@@ -104,11 +110,10 @@ def check_environment(context: Context) -> dict:
                 if "CONTAINER" in output_with_sudo.stdout:
                     params["sudo"] = True
 
-    else:
-        params["sudo"] = str_to_bool(INVOKE_SUDO)
-
     if INVOKE_PTY is not None:
         params["pty"] = str_to_bool(INVOKE_PTY)
+    elif platform.system() in PLATFORMS_PTY_ENABLE:
+        params["pty"] = True
 
     return params
 
@@ -122,7 +127,7 @@ def execute_command(context: Context, command: str, print_cmd: bool = False) -> 
     if print_cmd:
         print(command)
 
-    return context.run(command)
+    return context.run(command, pty=params["pty"])
 
 
 def get_env_vars(context: Context) -> str:
