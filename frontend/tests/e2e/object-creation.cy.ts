@@ -32,10 +32,10 @@ describe("Object creation and deletion", () => {
     cy.get(":nth-child(2) > .relative > .block").type(NEW_ACCOUNT.password);
 
     // Click save
-    cy.get(".mt-6 > .bg-custom-blue-700").click();
+    cy.get(".justify-end > .bg-custom-blue-700").click();
 
     // Wait for the object to be created (the save button should not exist)
-    cy.get(".mt-6 > .bg-custom-blue-700").should("not.exist");
+    cy.get(".justify-end > .bg-custom-blue-700").should("not.exist");
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {

@@ -96,7 +96,7 @@ describe("Tutorial - Part 1", () => {
 
   it("should access the Admin Account diff", function () {
     // List the branches
-    cy.get("#headlessui-disclosure-panel-\\:r5\\: > a > .group").click();
+    cy.get("[href='/branches'] > .group").click();
 
     cy.contains("Just a moment").should("not.exist");
 
@@ -125,12 +125,9 @@ describe("Tutorial - Part 1", () => {
     }
 
     // The old + new label should be displayed
-    cy.get(
-      ":nth-child(1) > :nth-child(1) > .flex-1 > .pr-0 > :nth-child(2) > .font-semibold > .items-center > :nth-child(1) > .group > .flex"
-    ).should("have.text", ADMIN_ACCOUNT_LABEL);
-    cy.get(
-      ":nth-child(1) > :nth-child(1) > .flex-1 > .pr-0 > :nth-child(2) > .font-semibold > .items-center > :nth-child(3) > .group > .flex"
-    ).should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+    cy.get(".p-2 > .flex-1 > :nth-child(3)").should("have.text", ADMIN_ACCOUNT_LABEL);
+
+    cy.get(".p-2 > .flex-1 > :nth-child(3)").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
 
     // Go back to details
     cy.get(".isolate > .bg-gray-100").click();
