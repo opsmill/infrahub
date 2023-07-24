@@ -10,11 +10,12 @@ interface Props {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   isProtected?: boolean;
+  disabled?: boolean;
   error?: FormFieldError;
 }
 
 export const OpsCheckboxRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, isProtected, error } = props;
+  const { name, value, register, setValue, config, label, isProtected, disabled, error } = props;
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -28,7 +29,7 @@ export const OpsCheckboxRegister = (props: Props) => {
       onChange={(value) => {
         setValue(inputRegister.name, value);
       }}
-      isProtected={isProtected}
+      isProtected={isProtected || disabled}
       error={error}
     />
   );

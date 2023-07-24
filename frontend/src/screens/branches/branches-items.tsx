@@ -1,11 +1,9 @@
 import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "../../components/badge";
 import { DateDisplay } from "../../components/date-display";
-import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
@@ -69,20 +67,14 @@ export const BranchesItems = () => {
               </div>
 
               <div className="flex flex-col items-end">
-                <Tooltip message={<DateDisplay date={branch.branched_from} />}>
-                  <Pill>
-                    Branched{" "}
-                    {formatDistanceToNow(new Date(branch.branched_from), { addSuffix: true })}
-                  </Pill>
-                </Tooltip>
+                <div>
+                  Branched: <DateDisplay date={branch.branched_from} />
+                </div>
 
                 {!branch.is_default && (
-                  <Tooltip message={<DateDisplay date={branch.created_at} />}>
-                    <Pill className="mt-2">
-                      Created{" "}
-                      {formatDistanceToNow(new Date(branch.created_at), { addSuffix: true })}
-                    </Pill>
-                  </Tooltip>
+                  <div>
+                    Created: <DateDisplay date={branch.created_at} />
+                  </div>
                 )}
               </div>
             </div>

@@ -86,7 +86,7 @@ export default function GroupItems() {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      name: schemaKindName[rowToDelete.__typename],
+      kind: schemaKindName[rowToDelete.__typename],
       data: stringifyWithoutQuotes({
         id: rowToDelete?.id,
       }),

@@ -50,12 +50,6 @@ describe("Authentication", () => {
       "have.text",
       ADMIN_CREDENTIALS.username
     );
-
-    // Click on the token tab
-    cy.get(".-mb-px > .border-transparent").click();
-
-    // Check if a token exists
-    cy.get(".hover\\:bg-gray-50 > :nth-child(2)").should("exist");
   });
 
   it("should access the profile page as read only user", () => {

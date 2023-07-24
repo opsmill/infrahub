@@ -20,6 +20,7 @@ type tAuthContext = {
   displaySignin?: Function;
   signOut?: Function;
   permissions?: tPermissions;
+  data: any;
 };
 
 // Export auth context

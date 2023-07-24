@@ -13,6 +13,7 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
+import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -23,10 +24,12 @@ interface iProps {
   onCancel?: Function;
   onCreate: Function;
   refetch: Function;
+  formStructure: DynamicFieldData[];
+  customObject?: any;
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  const { objectname, onCreate, onCancel, refetch } = props;
+  const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
 
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
@@ -76,13 +79,15 @@ export default function ObjectItemCreate(props: iProps) {
       return acc;
     }, {});
 
-  const formStructure = getFormStructureForCreateEdit(
-    schema,
-    schemaList,
-    genericsList,
-    peerDropdownOptions,
-    objectDetailsData
-  );
+  const fields =
+    formStructure ??
+    getFormStructureForCreateEdit(
+      schema,
+      schemaList,
+      genericsList,
+      peerDropdownOptions,
+      objectDetailsData
+    );
 
   async function onSubmit(data: any) {
     setIsLoading(true);
@@ -96,7 +101,7 @@ export default function ObjectItemCreate(props: iProps) {
     try {
       const mutationString = createObject({
         kind: schema.kind,
-        data: stringifyWithoutQuotes(newObject),
+        data: stringifyWithoutQuotes({ ...newObject, ...customObject }),
       });
 
       const mutation = gql`
@@ -136,12 +141,12 @@ export default function ObjectItemCreate(props: iProps) {
 
   return (
     <div className="bg-custom-white flex-1 overflow-auto flex">
-      {schema && formStructure && (
+      {schema && fields && (
         <div className="flex-1">
           <EditFormHookComponent
             onSubmit={onSubmit}
             onCancel={onCancel}
-            fields={formStructure}
+            fields={fields}
             isLoading={isLoading}
           />
         </div>

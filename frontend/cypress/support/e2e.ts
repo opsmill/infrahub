@@ -31,7 +31,7 @@ Cypress.Commands.add("login", (username: string, password: string) => {
 
       cy.get(":nth-child(2) > .relative > .block").type(password);
 
-      cy.get(".mt-6 > .rounded-md").click();
+      cy.get(".justify-end > .rounded-md").click();
     },
     {
       validate() {

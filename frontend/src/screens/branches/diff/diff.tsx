@@ -8,7 +8,7 @@ import { DataDiff } from "./data-diff";
 import { FilesDiff } from "./files-diff";
 import { SchemaDiff } from "./schema-diff";
 
-const DIFF_TABS = {
+export const DIFF_TABS = {
   CONVERSATIONS: "conversation",
   STATUS: "status",
   DATA: "data",

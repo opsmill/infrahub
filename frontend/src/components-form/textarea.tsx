@@ -10,10 +10,11 @@ type OpsInputProps = {
   className?: string;
   error?: FormFieldError;
   isProtected?: boolean;
+  disabled?: boolean;
 };
 
 export const OpsTextarea = (props: OpsInputProps) => {
-  const { className, onChange, value, label, error, isProtected } = props;
+  const { className, onChange, value, label, error, isProtected, disabled } = props;
 
   return (
     <>
@@ -26,7 +27,7 @@ export const OpsTextarea = (props: OpsInputProps) => {
         defaultValue={value ?? ""}
         className={classNames(className ?? "")}
         error={error}
-        disabled={isProtected}
+        disabled={isProtected || disabled}
       />
     </>
   );

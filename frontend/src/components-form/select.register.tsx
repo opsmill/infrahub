@@ -13,10 +13,12 @@ type SelectRegisterProps = {
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
   isProtected?: boolean;
+  disabled?: boolean;
 };
 
 export const OpsSelectRegister = (props: SelectRegisterProps) => {
-  const { name, value, register, setValue, config, options, label, error, isProtected } = props;
+  const { name, value, register, setValue, config, options, label, error, isProtected, disabled } =
+    props;
   const inputRegister = register(name, {
     value: value ?? "",
     ...config,
@@ -30,7 +32,7 @@ export const OpsSelectRegister = (props: SelectRegisterProps) => {
       options={options}
       onChange={(item: SelectOption) => setValue(inputRegister.name, item.id)}
       error={error}
-      isProtected={isProtected}
+      isProtected={isProtected || disabled}
     />
   );
 };
