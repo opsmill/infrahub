@@ -985,7 +985,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         rfiles_in_graph = {
             rfile.name.value: rfile
             for rfile in await self.client.filters(
-                kind="CoreRFile", branch=branch_name, template_repository__id=str(self.id)
+                kind="CoreRFile", branch=branch_name, repository__id=str(self.id)
             )
         }
 
