@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 
-export const getProposedChangesConversations = Handlebars.compile(`query {
+export const getProposedChangesThreads = Handlebars.compile(`query {
   {{kind}}(ids: ["{{id}}"]) {
     count
     edges {

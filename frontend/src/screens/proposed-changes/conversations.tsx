@@ -26,19 +26,23 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
+import { getProposedChangesThreads } from "../../graphql/queries/proposed-changes/getProposedChangesThreads";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 
-export const Conversations = () => {
+type tProposedChangesDetails = {
+  proposedChangesDetails?: any;
+};
+
+export const Conversations = (props: tProposedChangesDetails) => {
+  const { proposedChangesDetails } = props;
   const { proposedchange } = useParams();
 
   const [schemaList] = useAtom(schemaState);
@@ -53,11 +57,9 @@ export const Conversations = () => {
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
 
   const queryString = schemaData
-    ? getProposedChanges({
+    ? getProposedChangesThreads({
         id: proposedchange,
         kind: schemaData.kind,
-        attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
@@ -81,10 +83,10 @@ export const Conversations = () => {
   const threads = result?.threads?.edges?.map((edge: any) => edge.node);
   const comments = result?.comments?.edges?.map((edge: any) => edge.node);
   const list = sortByDate([...threads, ...comments]);
-  const reviewers = result.reviewers.edges.map((edge: any) => edge.node);
-  const approvers = result.approved_by.edges.map((edge: any) => edge.node);
+  const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node);
+  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node);
   const approverId = auth?.data?.sub;
-  const canApprove = !approvers.map((a: any) => a.id).includes(approverId);
+  const canApprove = !approvers?.map((a: any) => a.id).includes(approverId);
   const path = constructPath("/proposed-changes");
 
   const handleSubmit = async (data: any, event: any) => {
@@ -308,31 +310,31 @@ export const Conversations = () => {
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  {result.name.value}
+                  {proposedChangesDetails?.name.value}
                 </dd>
               </div>
 
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Source branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Badge>{result.source_branch.value}</Badge>
+                  <Badge>{proposedChangesDetails?.source_branch.value}</Badge>
                 </dd>
               </div>
 
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Badge>{result.destination_branch.value}</Badge>
+                  <Badge>{proposedChangesDetails?.destination_branch.value}</Badge>
                 </dd>
               </div>
 
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Created by</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Tooltip message={result?.created_by?.node?.display_label}>
+                  <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
                     <Avatar
                       size={AVATAR_SIZE.SMALL}
-                      name={result?.created_by?.node?.display_label}
+                      name={proposedChangesDetails?.created_by?.node?.display_label}
                       className="mr-2 bg-custom-blue-green"
                     />
                   </Tooltip>
