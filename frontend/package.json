@@ -38,7 +38,6 @@
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.14",
     "date-fns": "^2.29.3",
-    "graphql-request": "^5.1.0",
     "handlebars": "^4.7.7",
     "jotai": "^2.0.2",
     "query-string": "^7.1.3",
