@@ -1490,7 +1490,7 @@ core_models = {
                     "identifier": "check__repository",
                     "optional": True,
                     "cardinality": "many",
-                }
+                },
             ],
         },
         {
