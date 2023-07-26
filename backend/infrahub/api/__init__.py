@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from infrahub.api import auth, diff, file, internal, query, schema, transformation
+from infrahub.api import auth, diff, file, internal, query, schema, transformation, storage
 
 router = APIRouter(prefix="/api")
 
@@ -11,3 +11,4 @@ router.include_router(transformation.router)
 router.include_router(internal.router)
 router.include_router(diff.router)
 router.include_router(query.router)
+router.include_router(storage.router)
