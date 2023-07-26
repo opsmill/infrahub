@@ -22,7 +22,7 @@ def patch_rpc_client():
 async def test_transform_endpoint(
     session, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data
 ):
-    from infrahub.api.main import app
+    from infrahub.server import app
 
     client = TestClient(app)
 
@@ -64,7 +64,7 @@ async def test_transform_endpoint(
 
 
 async def test_transform_endpoint_path(session, client_headers, patch_rpc_client, default_branch, car_person_data):
-    from infrahub.api.main import app
+    from infrahub.server import app
 
     client = TestClient(app)
 

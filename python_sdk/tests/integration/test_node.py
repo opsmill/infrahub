@@ -17,7 +17,7 @@ class TestInfrahubNode:
     async def test_client(self):
         # pylint: disable=import-outside-toplevel
 
-        from infrahub.api.main import app
+        from infrahub.server import app
 
         return TestClient(app)
 

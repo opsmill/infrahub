@@ -407,7 +407,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if self.access_token and not refresh:
             return
 
-        url = f"{self.address}/auth/login"
+        url = f"{self.address}/api/auth/login"
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
@@ -436,7 +436,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
     ) -> Dict:
-        url = f"{self.address}/query/{name}"
+        url = f"{self.address}/api/query/{name}"
         url_params = copy.deepcopy(params or {})
         headers = copy.copy(self.headers or {})
 
@@ -864,7 +864,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if self.access_token and not refresh:
             return
 
-        url = f"{self.address}/auth/login"
+        url = f"{self.address}/api/auth/login"
         with httpx.Client() as client:
             try:
                 response = client.post(

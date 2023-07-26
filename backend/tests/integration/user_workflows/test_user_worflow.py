@@ -3,7 +3,7 @@ import pytest
 from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
-from infrahub.api.main import app
+from infrahub.server import app
 from infrahub.test_data import dataset01 as ds01
 
 headers = {"Authorization": "Token nelly"}

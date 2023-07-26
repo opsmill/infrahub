@@ -52,7 +52,7 @@ def start(
 
     if debug:
         uvicorn.run(
-            "infrahub.api.main:app",
+            "infrahub.server:app",
             host=listen,
             port=port,
             log_level="info",
@@ -62,7 +62,7 @@ def start(
         )
     else:
         uvicorn.run(
-            "infrahub.api.main:app",
+            "infrahub.server:app",
             host=listen,
             port=port,
             log_level="info",
