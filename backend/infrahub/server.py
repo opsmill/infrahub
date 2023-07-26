@@ -139,7 +139,6 @@ app.add_route(
     path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
 )
 
-app.mount("/static", StaticFiles(directory=f"{FRONTEND_DIRECTORY}/dist/assets"), "static")
 app.mount("/assets", StaticFiles(directory=f"{FRONTEND_DIRECTORY}/dist/assets"), "assets")
 
 
