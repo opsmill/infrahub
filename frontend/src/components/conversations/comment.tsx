@@ -8,7 +8,7 @@ export const Comment = (props: any) => {
 
   const createdBy = comment?.created_by?.node?.display_label ?? "Anonymous";
   const createdAt = comment?.created_at?.value;
-  const commentContent = comment?.display_label;
+  const commentContent = comment?.text?.value ?? "";
 
   return (
     <div className={classNames("p-4 mb-4 text-base bg-white rounded-lg", className)}>

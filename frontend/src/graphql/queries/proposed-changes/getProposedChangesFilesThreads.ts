@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 
 export const getProposedChangesFilesThreads = Handlebars.compile(`
-query details {
-  {{kind}}{{#if id}}(ids: ["{{id}}"]){{/if}} {
+query {
+  {{kind}}{{#if id}}(change__id: "{{id}}"){{/if}} {
     count
     edges {
       node {
@@ -16,6 +16,24 @@ query details {
               value
           }
         {{/each}}
+
+                file {
+          value
+        }
+
+        commit {
+          value
+        }
+
+        repository {
+          node {
+            id
+          }
+        }
+
+        line_number {
+          value
+        }
 
         comments {
           edges {

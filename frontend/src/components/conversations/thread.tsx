@@ -152,7 +152,7 @@ export const Thread = (props: tThread) => {
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
   };
 
-  const comments = thread?.comments?.edges?.map((comment: any) => comment.node);
+  const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
   const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
 

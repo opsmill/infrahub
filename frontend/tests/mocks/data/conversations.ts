@@ -318,7 +318,7 @@ export const conversationMocksSchema = [
   },
 ];
 
-export const conversationMocksQuery = `query details {
+export const conversationMocksQuery = `query {
   CoreProposedChange(ids: ["${proposedChangesId}"]) {
     count
     edges {

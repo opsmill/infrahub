@@ -1,7 +1,10 @@
+import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
+import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
+import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
@@ -10,9 +13,15 @@ import Accordion from "../../../components/accordion";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { Button } from "../../../components/button";
 import { AddComment } from "../../../components/conversations/add-comment";
+import { Thread } from "../../../components/conversations/thread";
 import { CONFIG } from "../../../config/config";
+import { PROPOSED_CHANGES_FILE_THERAD } from "../../../config/constants";
 import { QSP } from "../../../config/qsp";
+import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
+import useQuery from "../../../hooks/useQuery";
+import { schemaState } from "../../../state/atoms/schema.atom";
 import { fetchStream } from "../../../utils/fetch";
+import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 
 const fakeIndex = () => {
@@ -25,6 +34,7 @@ const appendGitDiffHeaderIfNeeded = (diffText: string) => {
   }
 
   const segments = ["diff --git a/a b/b", `index ${fakeIndex()}..${fakeIndex()} 100644`, diffText];
+
   return segments.join("\n");
 };
 
@@ -44,17 +54,67 @@ const shouldDisplayAddComment = (state: any, change: any) => {
   );
 };
 
+const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: string) => {
+  const thread = threads.find((thread) => {
+    const theradLineNumber = thread?.line_number?.value;
+
+    if (
+      change?.isDelete &&
+      thread?.commit?.value === commitFrom &&
+      theradLineNumber === change.lineNumber
+    ) {
+      return true;
+    }
+
+    if (
+      change?.isInsert &&
+      thread?.commit?.value === commitTo &&
+      theradLineNumber === change.lineNumber
+    ) {
+      return true;
+    }
+
+    if (change.isNormal && theradLineNumber === change.newLineNumber) {
+      return true;
+    }
+
+    return false;
+  });
+
+  return thread;
+};
+
 export const FileContentDiff = (props: any) => {
   const { repositoryId, file, commitFrom, commitTo } = props;
 
+  const { proposedchange } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);
   const [previousFile, setPreviousFile] = useState(false);
   const [newFile, setNewFile] = useState(false);
-  // const [comments, setComments] = useState([]);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
+
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THERAD)[0];
+
+  const queryString = schemaData
+    ? getProposedChangesFilesThreads({
+        id: proposedchange,
+        kind: schemaData.kind,
+      })
+    : // Empty query to make the gql parsing work
+      // TODO: Find another solution for queries while loading schemaData
+      "query { ok }";
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+
+  const threads = data ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
 
   const fetchFileDetails = useCallback(async (commit: string, setState: Function) => {
     setIsLoading(true);
@@ -114,6 +174,15 @@ export const FileContentDiff = (props: any) => {
         };
       }
 
+      const thread = getThread(threads, change, commitFrom, commitTo);
+
+      if (thread) {
+        return {
+          ...widgets,
+          [changeKey]: <Thread thread={thread} refetch={refetch} />,
+        };
+      }
+
       if (!change.comments) {
         return widgets;
       }
@@ -153,17 +222,27 @@ export const FileContentDiff = (props: any) => {
     );
   };
 
-  if (isLoading) {
+  if (loading || isLoading) {
     return <LoadingScreen />;
+  }
+
+  if (error) {
+    return <ErrorScreen />;
   }
 
   if (!previousFile && !newFile) {
     return null;
   }
 
-  const diff = formatLines(diffLines(previousFile, newFile), { context: 3 });
+  const diff = formatLines(diffLines(previousFile, newFile), {
+    context: 3,
+    aname: commitFrom,
+    bname: commitTo,
+  });
 
-  const [fileContent] = parseDiff(appendGitDiffHeaderIfNeeded(diff), { nearbySequences: "zip" });
+  const [fileContent] = parseDiff(appendGitDiffHeaderIfNeeded(diff), {
+    nearbySequences: "zip",
+  });
 
   return (
     <div className={"rounded-lg shadow p-4 m-4 bg-custom-white"}>
