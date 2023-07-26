@@ -1721,7 +1721,7 @@ async def repos_in_main(session, register_core_models_schema):
 @pytest.fixture
 async def mock_core_schema_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = helper.schema_file(file_name="core_schema_01.json")
-    httpx_mock.add_response(method="GET", url="http://mock/schema/?branch=main", json=response_text)
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response_text)
     return httpx_mock
 
 

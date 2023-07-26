@@ -53,7 +53,7 @@ async def test_schema_read_endpoint_branch1(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
-            "/schema?branch=branch1",
+            "/api/schema?branch=branch1",
             headers=client_headers,
         )
 
@@ -73,7 +73,7 @@ async def test_schema_read_endpoint_wrong_branch(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
-            "/schema?branch=notvalid",
+            "/api/schema?branch=notvalid",
             headers=client_headers,
         )
 
@@ -205,7 +205,7 @@ async def test_schema_load_endpoint_idempotent_with_generics(
         )
         assert response3.status_code == 202
 
-        response4 = client.get("/schema", headers=admin_headers)
+        response4 = client.get("/api/schema", headers=admin_headers)
         assert response4.status_code == 200
 
         assert nbr_rels == await count_relationships(session=session)

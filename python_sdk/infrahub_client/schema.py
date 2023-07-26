@@ -331,7 +331,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         Returns:
             Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
         """
-        url = f"{self.client.address}/schema/?branch={branch}"
+        url = f"{self.client.address}/api/schema/?branch={branch}"
         response = await self.client._get(url=url)
         response.raise_for_status()
 
@@ -395,7 +395,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         Returns:
             Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
         """
-        url = f"{self.client.address}/schema/?branch={branch}"
+        url = f"{self.client.address}/api/schema/?branch={branch}"
         response = self.client._get(url=url)
         response.raise_for_status()
 

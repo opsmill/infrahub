@@ -29,6 +29,8 @@ from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
 
+# pylint: disable=too-many-locals
+
 app = FastAPI(
     title="Infrahub",
     version=__version__,
@@ -42,8 +44,7 @@ app = FastAPI(
 )
 
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
-
-# pylint: disable=too-many-locals
+FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
 
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
@@ -142,7 +143,8 @@ app.add_route(
 # app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
 # app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
 
-app.mount("/assets", StaticFiles(directory=f"{FRONTEND_DIRECTORY}/dist/assets"), "assets")
+if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
+    app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
 
 
 @app.get("/{rest_of_path:path}")
