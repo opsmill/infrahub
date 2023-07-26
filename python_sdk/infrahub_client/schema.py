@@ -310,7 +310,7 @@ class InfrahubSchema(InfrahubSchemaBase):
 
     async def load(self, schema: dict, branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
-        url = f"{self.client.address}/schema/load?branch={branch}"
+        url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = await self.client._post(url=url, timeout=60, payload=schema)
 
         if response.status_code == 202:
@@ -408,7 +408,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
     def load(self, schema: dict, branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
-        url = f"{self.client.address}/schema/load?branch={branch}"
+        url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = self.client._post(url=url, timeout=30, payload=schema)
 
         if response.status_code == 202:

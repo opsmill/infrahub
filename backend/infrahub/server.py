@@ -40,7 +40,7 @@ app = FastAPI(
     docs_url="/api/docs", redoc_url="/api/redoc",
 )
 
-FRONTEND_DIRECTORY = os.path.abspath("frontend")
+FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
 
 # pylint: disable=too-many-locals
 
