@@ -92,7 +92,9 @@ async def test_schema_load_endpoint_valid_simple(
     # Must execute in a with block to execute the startup/shutdown events
 
     with client:
-        creation = client.post("/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json"))
+        creation = client.post(
+            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json")
+        )
         read = client.get("/api/schema", headers=admin_headers)
 
     assert creation.status_code == 202
@@ -121,7 +123,9 @@ async def test_schema_load_endpoint_idempotent_simple(
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        creation = client.post("/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json"))
+        creation = client.post(
+            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json")
+        )
         read = client.get("/api/schema", headers=admin_headers)
 
         nbr_rels = await count_relationships(session=session)
@@ -140,7 +144,9 @@ async def test_schema_load_endpoint_idempotent_simple(
         assert relationships["interfaces"] == 450
         assert relationships["tags"] == 5000
 
-        creation = client.post("/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json"))
+        creation = client.post(
+            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json")
+        )
         read = client.get("/api/schema", headers=admin_headers)
 
         assert creation.status_code == 202

@@ -37,7 +37,8 @@ app = FastAPI(
         "email": "info@opsmill.com",
     },
     openapi_url="/api/openapi.json",
-    docs_url="/api/docs", redoc_url="/api/redoc",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
 )
 
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
@@ -138,17 +139,16 @@ app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), method
 app.add_route(
     path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
 )
+# app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
+# app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
 
 app.mount("/assets", StaticFiles(directory=f"{FRONTEND_DIRECTORY}/dist/assets"), "assets")
 
 
 @app.get("/{rest_of_path:path}")
-async def react_app(req: Request, rest_of_path: str):
+async def react_app(req: Request, rest_of_path: str):  # pylint: disable=unused-argument
     return templates.TemplateResponse("index.html", {"request": req})
 
-
-# app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
-# app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
 
 if __name__ != "main":
     logger.setLevel(gunicorn_logger.level)
