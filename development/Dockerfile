@@ -1,5 +1,8 @@
+# ****************************************************************
+# STAGE : Base Python Image
+# ****************************************************************
 ARG PYTHON_VER=3.11
-FROM python:${PYTHON_VER}
+FROM docker.io/python:${PYTHON_VER} AS base
 
 ENV PYTHONUNBUFFERED 1
 
@@ -19,6 +22,30 @@ ENV PATH="${PATH}:/root/.local/bin"
 
 RUN poetry config virtualenvs.create false
 
+# ****************************************************************
+# STAGE : Frontend
+# ****************************************************************
+FROM docker.io/node:16-slim AS frontend
+
+ARG INFRAHUB_API_SERVER_URL=http://localhost:8000
+ENV VITE_INFRAHUB_API_SERVER_URL=${INFRAHUB_API_SERVER_URL}
+
+RUN mkdir /source
+
+RUN npm install -g npm@latest
+COPY frontend/package.json  frontend/package-lock.json /source/
+
+WORKDIR /source
+
+RUN npm install --omit=dev
+COPY frontend/ /source/
+RUN npm run build
+
+# ****************************************************************
+# STAGE : Backend
+# ****************************************************************
+FROM base AS backend
+
 # --------------------------------------------
 # Configure Git
 # --------------------------------------------
@@ -30,6 +57,12 @@ RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
 RUN mkdir -p /opt/infrahub/git
 WORKDIR /source
+
+# --------------------------------------------
+# Import Frontend Build
+# --------------------------------------------
+RUN mkdir -p /opt/infrahub/frontend/dist
+COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
 
 # --------------------------------------------
 # Install Dependencies
@@ -44,6 +77,12 @@ RUN poetry install --no-interaction --no-ansi --no-root
 COPY . /source
 RUN poetry install --no-interaction --no-ansi
 
+# ****************************************************************
+# STAGE : Gitpod
+# ****************************************************************
+
+FROM backend as gitpod
+
 # --------------------------------------------
 # Create new user and assign the right permissions
 # --------------------------------------------
@@ -56,5 +95,3 @@ RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} us
 RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
 RUN chown -R ${USER_ID}:${GROUP_ID} /opt
 RUN chown -R ${USER_ID}:${GROUP_ID} /remote
-
-USER user

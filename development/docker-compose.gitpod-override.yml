@@ -5,18 +5,15 @@ services:
     user: "33333:33333"
     build:
       context: ../
-      dockerfile: development/Dockerfile-backend-gitpod
+      dockerfile: development/Dockerfile
+      target: gitpod
     ports:
       - "8000:8000"
   infrahub-git:
     user: "33333:33333"
     build:
       context: ../
-      dockerfile: development/Dockerfile-backend-gitpod
+      dockerfile: development/Dockerfile
+      target: gitpod
     volumes:
       - "/workspace/infrahub-demo-edge:/remote/infrahub-demo-edge"
-  frontend:
-    ports:
-      - "3000:3000"
-    environment:
-      - VITE_INFRAHUB_API_SERVER_URL=${VITE_INFRAHUB_API_SERVER_URL}
