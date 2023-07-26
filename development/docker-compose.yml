@@ -30,7 +30,7 @@ services:
       - ../:/source
     tty: true
     healthcheck:
-      test: wget -O /dev/null http://localhost:8000/schema || exit 1
+      test: wget -O /dev/null http://localhost:8000/api/schema || exit 1
       interval: 5s
       timeout: 5s
       retries: 20

@@ -14,7 +14,7 @@ The default schema is composed of 18+ models that are either mandatory for Infra
 
 You can explore the current schema by visiting the schema page at the bottom of the left menu.
 
-[!ref Explore the current schema](http://localhost:8000/schema)
+[!ref Explore the current schema](http://localhost:8000/api/schema)
 
 ![](../media/tutorial/tutorial-3-schema.cy.ts/tutorial_3_schema.png)
 

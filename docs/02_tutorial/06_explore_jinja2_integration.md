@@ -22,8 +22,8 @@ The rendered configuration is available via the REST API under `/rfile/<rfile_na
 
 The `rfile` **device_startup** present in the repository, expect the name of the device as a parameter `/rfile/<rfile_name>?device=<device_name>`, as an example, below is the URL for couple of devices:
 
-- [Config for `ord1-edge1` (/rfile/device_startup?device=ord1-edge1)](http://localhost:8000/rfile/device_startup?device=ord1-edge1)
-- [Config for `atl1-edge2` (/rfile/device_startup?device=atl1-edge2)](http://localhost:8000/rfile/device_startup?device=atl1-edge2)
+- [Config for `ord1-edge1` (/rfile/device_startup?device=ord1-edge1)](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1)
+- [Config for `atl1-edge2` (/rfile/device_startup?device=atl1-edge2)](http://localhost:8000/api/rfile/device_startup?device=atl1-edge2)
 
 In these examples `device_startup` is the name of an rfile defined in the `infrahub-demo-edge` repository. The query string `?device=atl1-edge2` includes all the arguments that are required by the GraphQL query associated with this rfile.
 ## Create a new branch and change the data AND the template
@@ -65,7 +65,7 @@ In Github:
 
 !!!success Validate that everything is correct
 After making these changes, you should be able to render the RFIle for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address 
-[`/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1`](http://localhost:8000/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1)
+[`/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1`](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1)
 !!!
 
 #### 4. Merge the Branch `update-ethernet1`
