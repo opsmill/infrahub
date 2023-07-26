@@ -11,35 +11,16 @@ import ujson
 from git import Repo
 from pytest_httpx import HTTPXMock
 
-import infrahub.config as config
+from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
-from infrahub_client import InfrahubClient
+from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client import SchemaRoot as ClientSchemaRoot
 
 
 @pytest.fixture
 async def client() -> InfrahubClient:
     return await InfrahubClient.init(address="http://mock", insert_tracker=True)
-
-
-@pytest.fixture
-def git_sources_dir(tmp_path) -> str:
-    source_dir = os.path.join(str(tmp_path), "sources")
-
-    os.mkdir(source_dir)
-
-    return source_dir
-
-
-@pytest.fixture
-def git_repos_dir(tmp_path) -> str:
-    repos_dir = os.path.join(str(tmp_path), "repositories")
-
-    os.mkdir(repos_dir)
-
-    config.SETTINGS.git.repositories_directory = repos_dir
-
-    return repos_dir
 
 
 @pytest.fixture
@@ -94,7 +75,7 @@ def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
 
     name = "infrahub-demo-edge"
     fixtures_dir = helper.get_fixtures_dir()
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-f249905.tar.gz")
+    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-ef0bb75.tar.gz")
 
     # Extract the fixture package in the source directory
     file = tarfile.open(fixture_repo)
@@ -334,6 +315,12 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> Infrahu
 
 
 @pytest.fixture
+async def git_repo_jinja_w_client(git_repo_jinja, client) -> InfrahubRepository:
+    git_repo_jinja.client = client
+    return git_repo_jinja
+
+
+@pytest.fixture
 async def git_repo_checks(client, git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_02 as remote
     The repo has 1 local branch : main
@@ -389,6 +376,12 @@ async def git_repo_transforms(client, git_upstream_repo_02, git_repos_dir) -> In
         location=git_upstream_repo_02["path"],
     )
     return repo
+
+
+@pytest.fixture
+async def git_repo_transforms_w_client(git_repo_transforms, client) -> InfrahubRepository:
+    git_repo_transforms.client = client
+    return git_repo_transforms
 
 
 @pytest.fixture
@@ -572,6 +565,16 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
+async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+    response_text = Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_02.json")).read_text(
+        encoding="UTF-8"
+    )
+
+    httpx_mock.add_response(method="GET", url="http://mock/schema/?branch=main", json=ujson.loads(response_text))
+    return httpx_mock
+
+
+@pytest.fixture
 async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
@@ -696,3 +699,498 @@ async def check_data_01() -> dict:
     }
 
     return data
+
+
+@pytest.fixture
+async def gql_query_data_03():
+    # QUERY
+    query_string = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    data = {
+        "id": "42665742-002b-4f98-b2e0-1ae716c1efbe",
+        "type": "CoreGraphQLQuery",
+        "name": {
+            "id": "55d01ee8-d839-4cc4-b312-3fbdd935f40b",
+            "__typename": "Text",
+            "value": "query01",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "description": {
+            "id": "1088765d-92ad-46c3-bfec-bafc74a77682",
+            "__typename": "Text",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "query": {
+            "id": "226cec9e-2b01-450b-a5cb-ebfa6c87d736",
+            "__typename": "TextArea",
+            "value": query_string,
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "__typename": "CoreGraphQLQuery",
+        "display_label": "query01",
+    }
+    return data
+
+
+@pytest.fixture
+async def schema_02(client, helper, car_data_01) -> ClientSchemaRoot:
+    full_schema = ujson.loads(
+        Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_02.json")).read_text(encoding="UTF-8")
+    )
+
+    return ClientSchemaRoot(**full_schema)
+
+
+@pytest.fixture
+async def gql_query_node_03(client, gql_query_data_03) -> InfrahubNode:
+    schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == "CoreGraphQLQuery"][0]
+    node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
+    return node
+
+
+@pytest.fixture
+async def mock_gql_query_03(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {"data": {"key1": "value1", "key2": "value2"}}
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "artifact-query-graphql-data"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_gql_query_04(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {"data": {"items": ["consilium", "potum", "album", "magnum"]}}
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "artifact-query-graphql-data"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_missing_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {"data": {"CoreArtifact": {"edges": []}}}
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-coreartifact-page1"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {
+        "data": {
+            "CoreArtifact": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "0d9a10bd-77f3-4388-a2fb-3cff9586cbb8",
+                            "display_label": "openconfig-interfaces",
+                            "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
+                            "content_type": {"value": "application/json", "__typename": "TextAttribute"},
+                            "checksum": {"value": "e8a740b1dd39530d1a502e017e0feff5", "__typename": "TextAttribute"},
+                            "storage_id": {
+                                "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+                                "__typename": "TextAttribute",
+                            },
+                            "created_at": {"value": None, "__typename": "TextAttribute"},
+                            "parameters": {"value": None, "__typename": "JSONAttribute"},
+                            "object": {
+                                "node": {
+                                    "id": "56b6e5a8-2ca2-4b0d-aa07-806fcf8181b0",
+                                    "display_label": "ord1-edge1",
+                                    "__typename": "InfraDevice",
+                                },
+                                "__typename": "NestedEdgedCoreNode",
+                            },
+                            "definition": {
+                                "node": {
+                                    "id": "683afb8d-b5cf-4585-b864-d1426e13c2dc",
+                                    "display_label": "Open Config Interfaces for Edge devices",
+                                    "__typename": "CoreArtifactDefinition",
+                                },
+                                "__typename": "NestedEdgedCoreArtifactDefinition",
+                            },
+                            "__typename": "CoreArtifact",
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-coreartifact-page1"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_existing_artifact_different(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {
+        "data": {
+            "CoreArtifact": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "0d9a10bd-77f3-4388-a2fb-3cff9586cbb8",
+                            "display_label": "openconfig-interfaces",
+                            "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
+                            "content_type": {"value": "application/json", "__typename": "TextAttribute"},
+                            "checksum": {"value": "aaaa40b1dd39530d1a502e017e0feff5", "__typename": "TextAttribute"},
+                            "storage_id": {
+                                "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+                                "__typename": "TextAttribute",
+                            },
+                            "created_at": {"value": None, "__typename": "TextAttribute"},
+                            "parameters": {"value": None, "__typename": "JSONAttribute"},
+                            "object": {
+                                "node": {
+                                    "id": "56b6e5a8-2ca2-4b0d-aa07-806fcf8181b0",
+                                    "display_label": "ord1-edge1",
+                                    "__typename": "InfraDevice",
+                                },
+                                "__typename": "NestedEdgedCoreNode",
+                            },
+                            "definition": {
+                                "node": {
+                                    "id": "683afb8d-b5cf-4585-b864-d1426e13c2dc",
+                                    "display_label": "Open Config Interfaces for Edge devices",
+                                    "__typename": "CoreArtifactDefinition",
+                                },
+                                "__typename": "NestedEdgedCoreArtifactDefinition",
+                            },
+                            "__typename": "CoreArtifact",
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-coreartifact-page1"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {"identifier": "ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a", "checksum": "9f60b79b76a902ab130c1313de6a8ac0"}
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "artifact-upload-content"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def artifact_definition_data_01():
+    data = {
+        "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
+        "type": "CoreArtifactDefinition",
+        "name": {
+            "id": "8b0423a7-cd5c-4642-b518-db56cc8185c7",
+            "__typename": "Text",
+            "value": "artifactdef01",
+        },
+        "artifact_name": {
+            "id": "bfca3cdb-d294-4b3a-863a-b74d0a103460",
+            "__typename": "Text",
+            "value": "myartifact",
+        },
+        "description": {
+            "id": "cb2e8084-8769-4dca-acca-077d15ebb85f",
+            "__typename": "Text",
+        },
+        "parameters": {
+            "id": "66e58d66-be81-4ea3-a139-af39a7450055",
+            "__typename": "JSON",
+            "value": {"name": "name__value"},
+        },
+        "content_type": {
+            "id": "a5acbbb5-c6f7-418e-9f53-c4039d9e5c19",
+            "__typename": "Text",
+            "value": "application/json",
+        },
+        "__typename": "CoreArtifactDefinition",
+        "display_label": "artifactdef01",
+    }
+    return data
+
+
+@pytest.fixture
+async def artifact_definition_node_01(client, schema_02: ClientSchemaRoot, artifact_definition_data_01) -> InfrahubNode:
+    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifactDefinition"][0]
+    node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
+    return node
+
+
+@pytest.fixture
+async def artifact_definition_data_02():
+    data = {
+        "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
+        "type": "CoreArtifactDefinition",
+        "name": {
+            "id": "8b0423a7-cd5c-4642-b518-db56cc8185c7",
+            "__typename": "Text",
+            "value": "artifactdef02",
+        },
+        "artifact_name": {
+            "id": "bfca3cdb-d294-4b3a-863a-b74d0a103460",
+            "__typename": "Text",
+            "value": "myartifact",
+        },
+        "description": {
+            "id": "cb2e8084-8769-4dca-acca-077d15ebb85f",
+            "__typename": "Text",
+        },
+        "parameters": {
+            "id": "66e58d66-be81-4ea3-a139-af39a7450055",
+            "__typename": "JSON",
+            "value": {"name": "name__value"},
+        },
+        "content_type": {
+            "id": "a5acbbb5-c6f7-418e-9f53-c4039d9e5c19",
+            "__typename": "Text",
+            "value": "text/plain",
+        },
+        "__typename": "CoreArtifactDefinition",
+        "display_label": "artifactdef02",
+    }
+    return data
+
+
+@pytest.fixture
+async def artifact_definition_node_02(client, schema_02: ClientSchemaRoot, artifact_definition_data_02) -> InfrahubNode:
+    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifactDefinition"][0]
+    node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
+    return node
+
+
+@pytest.fixture
+async def transformation_data_01() -> dict:
+    data = {
+        "id": "a0d4c22a-5f60-4bf9-a53f-f9a335420492",
+        "type": "CoreTransformPython",
+        "file_path": {
+            "id": "bad6d5d0-8801-41bc-9c8c-d584b2a47a58",
+            "__typename": "Text",
+            "value": "transform01.py",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "class_name": {
+            "id": "8dc7b35b-c303-4799-9b31-3252a3609252",
+            "__typename": "Text",
+            "value": "Transform01",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "url": {
+            "id": "c02141df-52d7-4295-823f-1fda0896344b",
+            "__typename": "Text",
+            "value": "mytransform",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "name": {
+            "id": "41c4a6e0-b951-476d-a449-ca252a9db851",
+            "__typename": "Text",
+            "value": "transform01",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "label": {
+            "id": "e28f56f6-ac4d-4fdf-b5d2-9cf2dd9ad6bd",
+            "__typename": "Text",
+            "value": "Transform01",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "description": {
+            "id": "e287d237-18a2-4e50-9e06-e562cb822b02",
+            "__typename": "Text",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "timeout": {
+            "id": "f9acd2fe-d535-48c6-9f3e-cdc4b430b3b5",
+            "__typename": "Number",
+            "value": 10,
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "rebase": {
+            "id": "f557cafd-7da0-4c79-b582-378d9f02767e",
+            "__typename": "Boolean",
+            "value": False,
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "__typename": "CoreTransformPython",
+        "display_label": "transform01",
+    }
+    return data
+
+
+@pytest.fixture
+async def transformation_node_01(client, schema_02, transformation_data_01) -> InfrahubNode:
+    schema = [model for model in schema_02.nodes if model.kind == "CoreTransformPython"][0]
+    node = InfrahubNode(client=client, schema=schema, data=transformation_data_01)
+    return node
+
+
+@pytest.fixture
+async def transformation_data_02() -> dict:
+    data = {
+        "id": "70a58c98-6185-4004-b4bf-713baccfdc87",
+        "display_label": "device_startup",
+        "template_path": {"value": "template01.tpl.j2", "__typename": "TextAttribute"},
+        "name": {"value": "mytemplate", "__typename": "TextAttribute"},
+        "label": {"value": "My Rendered File", "__typename": "TextAttribute"},
+        "description": {"value": "", "__typename": "TextAttribute"},
+        "timeout": {"value": 10, "__typename": "NumberAttribute"},
+        "rebase": {"value": False, "__typename": "CheckboxAttribute"},
+        "query": {
+            "node": {
+                "id": "47800bff-adf1-450d-8388-b04ef2ffb129",
+                "display_label": "query02",
+                "__typename": "CoreGraphQLQuery",
+            },
+            "__typename": "NestedEdgedCoreGraphQLQuery",
+        },
+        "repository": {
+            "node": {
+                "id": "7d1ee159-97c7-4787-8728-e10f998d0122",
+                "display_label": "test-repo",
+                "__typename": "CoreRepository",
+            },
+            "__typename": "NestedEdgedCoreRepository",
+        },
+        "__typename": "CoreRFile",
+    }
+    return data
+
+
+@pytest.fixture
+async def transformation_node_02(client, schema_02, transformation_data_02) -> InfrahubNode:
+    schema = [model for model in schema_02.nodes if model.kind == "CoreRFile"][0]
+    node = InfrahubNode(client=client, schema=schema, data=transformation_data_02)
+    return node
+
+
+@pytest.fixture
+async def car_data_01() -> dict:
+    data = {
+        "id": "b663d7a4-5f95-48dd-b04d-e03169e7fcf3",
+        "type": "TestElectricCar",
+        "nbr_engine": {
+            "id": "f6ec8006-cd76-436a-8d68-dec052cc3ff1",
+            "__typename": "Number",
+            "value": 2,
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "name": {
+            "id": "8614f59a-c6ac-469d-96c8-feaa2a773013",
+            "__typename": "Text",
+            "value": "bolt",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "nbr_seats": {
+            "id": "943e9eca-34c1-4823-a591-27f02d159087",
+            "__typename": "Number",
+            "value": 2,
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "color": {
+            "id": "064005b8-5182-4452-ba0c-7215bfc73cc6",
+            "__typename": "Text",
+            "value": "#444444",
+            "source": None,
+            "owner": None,
+            "is_visible": True,
+            "is_protected": False,
+        },
+        "__typename": "TestElectricCar",
+        "display_label": "TestElectricCar(ID: b663d7a4-5f95-48dd-b04d-e03169e7fcf3)",
+    }
+    return data
+
+
+@pytest.fixture
+async def car_node_01(client, schema_02, car_data_01) -> InfrahubNode:
+    schema = [model for model in schema_02.nodes if model.name == "ElectricCar"][0]
+    node = InfrahubNode(client=client, schema=schema, data=car_data_01)
+    return node
+
+
+@pytest.fixture
+async def mock_create_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {"data": {"CoreArtifactCreate": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66"}}}}
+
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-create"}
+    )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_update_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {"data": {"CoreArtifactUpdate": {"ok": True, "object": {"id": "0d9a10bd-77f3-4388-a2fb-3cff9586cbb8"}}}}
+
+    httpx_mock.add_response(
+        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
+    )
+    return httpx_mock

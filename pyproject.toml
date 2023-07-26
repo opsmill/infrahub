@@ -42,6 +42,7 @@ asgi-correlation-id = "4.2.0"
 bcrypt = "4.0.1"
 pyjwt = "2.7.0"
 email-validator = "2.0.0"
+python-multipart = "^0.0.6"
 
 [tool.poetry.group.perf.dependencies]
 locust = "^2.13.1"

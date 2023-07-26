@@ -23,6 +23,10 @@ class DatabaseType(str, Enum):
     MEMGRAPH = "memgraph"
 
 
+class StorageDriver(str, Enum):
+    LOCAL = "local"
+
+
 class MainSettings(BaseSettings):
     default_branch: str = "main"
     # default_account: str = "default"
@@ -36,6 +40,17 @@ class MainSettings(BaseSettings):
     class Config:
         env_prefix = "INFRAHUB_"
         case_sensitive = False
+
+
+class StorageSettings(BaseSettings):
+    driver: StorageDriver = StorageDriver.LOCAL
+    settings: Optional[Dict[str, str]]
+
+    class Config:
+        case_sensitive = False
+        fields = {
+            "driver": {"env": "INFRAHUB_STORAGE_DRIVER"},
+        }
 
 
 class DatabaseSettings(BaseSettings):
@@ -165,6 +180,7 @@ class Settings(BaseSettings):
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
     security: SecuritySettings = SecuritySettings()
+    storage: StorageSettings = StorageSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 

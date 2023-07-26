@@ -408,10 +408,10 @@ async def rfile_schema() -> NodeSchema:
         ],
         "relationships": [
             {
-                "name": "template_repository",
+                "name": "repository",
                 "peer": "CoreRepository",
                 "kind": "Attribute",
-                "identifier": "rfile_template_repository",
+                "identifier": "rfile__repository",
                 "cardinality": "one",
                 "optional": False,
             },

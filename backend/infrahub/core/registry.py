@@ -25,7 +25,10 @@ if TYPE_CHECKING:
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
+    from infrahub.storage.main import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
+
+# pylint: disable=too-many-public-methods
 
 
 @dataclass
@@ -45,6 +48,7 @@ class Registry:
     attr_group: dict = field(default_factory=dict)
     branch_object: Optional[Brancher] = None
     _manager: Optional[Type[NodeManager]] = None
+    _storage: Optional[Type[InfrahubObjectStorage]] = None
 
     @property
     def schema(self) -> SchemaManager:
@@ -67,6 +71,17 @@ class Registry:
     @manager.setter
     def manager(self, value: Type[NodeManager]):
         self._manager = value
+
+    @property
+    def storage(self) -> Type[InfrahubObjectStorage]:
+        if not self._storage:
+            raise InitializationError
+
+        return self._storage
+
+    @storage.setter
+    def storage(self, value: Type[InfrahubObjectStorage]):
+        self._storage = value
 
     def schema_has_been_initialized(self) -> bool:
         if self._schema:

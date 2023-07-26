@@ -23,6 +23,7 @@ from infrahub_client.schema import (
     RelationshipCardinality,
     RelationshipKind,
     RelationshipSchema,
+    SchemaRoot,
 )
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
@@ -52,6 +53,7 @@ __all__ = [
     "RelationshipSchema",
     "RelationshipCardinality",
     "RelationshipKind",
+    "SchemaRoot",
     "ServerNotReacheableError",
     "ServerNotResponsiveError",
     "Timestamp",

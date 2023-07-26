@@ -2,12 +2,14 @@ import uuid
 
 import pytest
 
+from infrahub_client.node import InfrahubNode
 from infrahub_client.utils import (
     base36decode,
     base36encode,
     compare_lists,
     deep_merge_dict,
     duplicates,
+    get_flat_value,
     is_valid_uuid,
     str_to_bool,
 )
@@ -91,3 +93,10 @@ def test_base36():
     assert base36decode("AQF8AA0006EH") == 1412823931503067241
     assert base36decode(base36encode(-9223372036721928027)) == -9223372036721928027
     assert base36decode(base36encode(1412823931503067241)) == 1412823931503067241
+
+
+def test_get_flat_value(client, tag_schema, tag_green_data):
+    tag = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
+    assert get_flat_value(obj=tag, key="name__value") == "green"
+    assert get_flat_value(obj=tag, key="name__source__display_label") == "CRM"
+    assert get_flat_value(obj=tag, key="name.source.display_label", separator=".") == "CRM"
