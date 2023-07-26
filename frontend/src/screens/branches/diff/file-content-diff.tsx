@@ -1,3 +1,4 @@
+import { PencilIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
@@ -7,6 +8,8 @@ import { diffLines, formatLines } from "unidiff";
 import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
+import { Button } from "../../../components/button";
+import { AddComment } from "../../../components/conversations/add-comment";
 import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
 import { fetchStream } from "../../../utils/fetch";
@@ -25,6 +28,22 @@ const appendGitDiffHeaderIfNeeded = (diffText: string) => {
   return segments.join("\n");
 };
 
+const shouldDisplayAddComment = (state: any, change: any) => {
+  const { side, newLineNumber, oldLineNumber, lineNumber, isInsert, isDelete } = state;
+
+  if (side === "new") {
+    return (
+      (newLineNumber && newLineNumber === change.newLineNumber) ||
+      (lineNumber && lineNumber === change.lineNumber && isInsert === change.isInsert)
+    );
+  }
+
+  return (
+    (oldLineNumber && oldLineNumber === change.oldLineNumber) ||
+    (lineNumber && lineNumber === change.lineNumber && isDelete === change.isDelete)
+  );
+};
+
 export const FileContentDiff = (props: any) => {
   const { repositoryId, file, commitFrom, commitTo } = props;
 
@@ -34,6 +53,8 @@ export const FileContentDiff = (props: any) => {
   const [isLoading, setIsLoading] = useState(false);
   const [previousFile, setPreviousFile] = useState(false);
   const [newFile, setNewFile] = useState(false);
+  // const [comments, setComments] = useState([]);
+  const [displayAddComment, setDisplayAddComment] = useState<any>({});
 
   const fetchFileDetails = useCallback(async (commit: string, setState: Function) => {
     setIsLoading(true);
@@ -72,36 +93,26 @@ export const FileContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
+  const handleSubmitComment = () => {
+    //
+  };
+
+  const handleCloseComment = () => {
+    setDisplayAddComment({});
+  };
+
   const getWidgets = (hunks: any) => {
     const changes = hunks.reduce((result: any, { changes }: any) => [...result, ...changes], []);
 
-    // const changesWithComments = changes
-    //   .map((change: any) => {
-    //     const relatedComments = comments.filter(
-    //       (comment: any) =>
-    //         (comment.newLineNumber &&
-    //           change.newLineNumber &&
-    //           comment.newLineNumber === change.newLineNumber) ||
-    //         (comment.oldLineNumber &&
-    //           change.oldLineNumber &&
-    //           comment.oldLineNumber === change.oldLineNumber) ||
-    //         (comment.lineNumber && change.lineNumber && comment.lineNumber === change.lineNumber)
-    //     );
-
-    //     if (relatedComments?.length) {
-    //       return {
-    //         ...change,
-    //         comments: relatedComments,
-    //       };
-    //     }
-
-    //     return null;
-    //   })
-    //   .filter(Boolean);
-
-    // return changesWithComments.reduce((widgets: any, change: any) => {
     return changes.reduce((widgets: any, change: any) => {
       const changeKey = getChangeKey(change);
+
+      if (shouldDisplayAddComment(displayAddComment, change)) {
+        return {
+          ...widgets,
+          [changeKey]: <AddComment onSubmit={handleSubmitComment} onClose={handleCloseComment} />,
+        };
+      }
 
       if (!change.comments) {
         return widgets;
@@ -120,21 +131,27 @@ export const FileContentDiff = (props: any) => {
     }, {});
   };
 
-  // const renderGutter = (options: any) => {
-  //   const { renderDefault, wrapInAnchor, inHoverState } = options;
+  const renderGutter = (options: any) => {
+    const { renderDefault, wrapInAnchor, inHoverState, side, change } = options;
 
-  //   return (
-  //     <>
-  //       {wrapInAnchor(renderDefault())}
+    const handleClick = () => {
+      setDisplayAddComment({ side, ...change });
+    };
 
-  //       {inHoverState && (
-  //         <Button className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-  //           <PencilIcon className="w-3 h-3" />
-  //         </Button>
-  //       )}
-  //     </>
-  //   );
-  // };
+    return (
+      <>
+        {wrapInAnchor(renderDefault())}
+
+        {inHoverState && (
+          <Button
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+            onClick={handleClick}>
+            <PencilIcon className="w-3 h-3" />
+          </Button>
+        )}
+      </>
+    );
+  };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -167,7 +184,7 @@ export const FileContentDiff = (props: any) => {
             hunks={fileContent.hunks}
             viewType="split"
             diffType={fileContent.type}
-            // renderGutter={renderGutter}
+            renderGutter={renderGutter}
             widgets={getWidgets(fileContent.hunks)}
             optimizeSelection>
             {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
