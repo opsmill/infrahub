@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from infrahub.core.schema import core_models
 from infrahub_client import InfrahubClient
 from infrahub_client.schema import NodeSchema
 
@@ -19,7 +20,7 @@ class TestInfrahubSchema:
         ifc = await InfrahubClient.init(test_client=client)
         schema_nodes = await ifc.schema.all()
 
-        assert len(schema_nodes) == 21
+        assert len(schema_nodes) == len(core_models["nodes"])
         assert "BuiltinLocation" in schema_nodes
         assert isinstance(schema_nodes["BuiltinLocation"], NodeSchema)
 
@@ -29,4 +30,4 @@ class TestInfrahubSchema:
 
         assert isinstance(schema_node, NodeSchema)
         assert ifc.default_branch in ifc.schema.cache
-        assert len(ifc.schema.cache[ifc.default_branch]) == 21
+        assert len(ifc.schema.cache[ifc.default_branch]) == len(core_models["nodes"])

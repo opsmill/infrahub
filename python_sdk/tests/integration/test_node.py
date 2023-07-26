@@ -11,8 +11,6 @@ from infrahub_client.node import InfrahubNode
 
 
 class TestInfrahubNode:
-    pagination: bool = True
-
     @pytest.fixture(scope="class")
     async def test_client(self):
         # pylint: disable=import-outside-toplevel
@@ -73,7 +71,7 @@ class TestInfrahubNode:
             "name": {"value": "rfile01"},
             "template_path": {"value": "mytemplate.j2"},
             "query": gqlquery01.id,
-            "template_repository": {"id": repo01.id},
+            "repository": {"id": repo01.id},
             "tags": [{"id": tag_blue.id}, tag_red.id],
         }
 
@@ -101,7 +99,7 @@ class TestInfrahubNode:
             "name": "rfile10",
             "template_path": "mytemplate.j2",
             "query": gqlquery01.id,
-            "template_repository": repo01.id,
+            "repository": repo01.id,
         }
         schema = await client.schema.get(kind="CoreRFile", branch="main")
         create_payload = client.schema.generate_payload_create(
@@ -133,7 +131,7 @@ class TestInfrahubNode:
             "name": {"value": "rfile02", "is_protected": True, "source": first_account.id, "owner": first_account.id},
             "template_path": {"value": "mytemplate.j2"},
             "query": {"id": gqlquery01.id},  # "source": first_account.id, "owner": first_account.id},
-            "template_repository": {"id": repo01.id},  # "source": first_account.id, "owner": first_account.id},
+            "repository": {"id": repo01.id},  # "source": first_account.id, "owner": first_account.id},
             "tags": [{"id": tag_blue.id}, tag_red.id],
         }
 

@@ -47,7 +47,7 @@ RUN npm run build
 FROM base AS backend
 
 # --------------------------------------------
-# Configure Git
+# Configure Git & Environment
 # --------------------------------------------
 RUN git config --global user.name "Infrahub"
 RUN git config --global user.email "infrahub@opsmill.com"
@@ -56,6 +56,8 @@ RUN git config --global credential.usehttppath true
 RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
 RUN mkdir -p /opt/infrahub/git
+RUN mkdir -p /opt/infrahub/storage
+
 WORKDIR /source
 
 # --------------------------------------------

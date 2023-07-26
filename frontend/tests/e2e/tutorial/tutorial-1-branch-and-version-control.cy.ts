@@ -18,7 +18,7 @@ describe("Tutorial - Part 1", () => {
     this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 
-  it("should create a new branch", function () {
+  it("should create a new branch", { defaultCommandTimeout: 20000 }, function () {
     // The branch selector should contain the main branch name
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
 

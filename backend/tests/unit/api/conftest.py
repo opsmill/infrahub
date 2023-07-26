@@ -1,3 +1,5 @@
+from typing import Dict
+
 import pendulum
 import pytest
 from fastapi.testclient import TestClient
@@ -26,7 +28,7 @@ def admin_headers():
 
 
 @pytest.fixture
-async def car_person_data(session, register_core_models_schema, car_person_schema, first_account):
+async def car_person_data(session, register_core_models_schema, car_person_schema, first_account) -> Dict[str, Node]:
     p1 = await Node.init(session=session, schema="TestPerson")
     await p1.new(session=session, name="John", height=180)
     await p1.save(session=session)
@@ -73,6 +75,16 @@ async def car_person_data(session, register_core_models_schema, car_person_schem
     r1 = await Node.init(session=session, schema="CoreRepository")
     await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git")
     await r1.save(session=session)
+
+    return {
+        "p1": p1,
+        "p2": p2,
+        "c1": c1,
+        "c2": c2,
+        "c3": c3,
+        "q1": q1,
+        "r1": r1,
+    }
 
 
 @pytest.fixture
@@ -176,6 +188,16 @@ async def car_person_data_generic(session, register_core_models_schema, car_pers
     r1 = await Node.init(session=session, schema="CoreRepository")
     await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
     await r1.save(session=session)
+
+    return {
+        "p1": p1,
+        "p2": p2,
+        "c1": c1,
+        "c2": c2,
+        "c3": c3,
+        "q1": q1,
+        "r1": r1,
+    }
 
 
 @pytest.fixture

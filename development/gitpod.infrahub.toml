@@ -19,3 +19,6 @@ password = "infrahub"
 
 [api]
 cors_allow_origins = ["*"]
+
+[storage.settings]
+directory = "/opt/infrahub/storage"

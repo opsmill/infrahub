@@ -98,6 +98,8 @@ nodes:
     description: "Generic Device object."
     label: "Device"
     default_filter: name__value
+    inherit_from:
+      - "CoreArtifactTarget"
     order_by:
       - name__value
     display_labels:
@@ -162,7 +164,10 @@ nodes:
       - name__value
     order_by:
       - name__value
-    inherit_from: ["InfraInterface", "InfraEndpoint"]
+    inherit_from:
+      - "InfraInterface"
+      - "InfraEndpoint"
+      - "CoreArtifactTarget"
     relationships:
       - name: ip_addresses
         peer: InfraIPAddress
@@ -177,7 +182,10 @@ nodes:
       - name__value
     order_by:
       - name__value
-    inherit_from: ["InfraInterface", "InfraEndpoint"]
+    inherit_from:
+      - "InfraInterface"
+      - "InfraEndpoint"
+      - "CoreArtifactTarget"
     attributes:
       - name: l2_mode
         label: Layer2 Mode
@@ -306,7 +314,8 @@ nodes:
       - name: description
         kind: Text
         optional: true
-    inherit_from: [InfraEndpoint]
+    inherit_from:
+      - "InfraEndpoint"
     relationships:
       - name: site
         peer: BuiltinLocation
@@ -381,6 +390,8 @@ nodes:
     namespace: Infra
     description: "A BGP Session represent a point to point connection between two routers"
     label: "BGP Session"
+    inherit_from:
+      - "CoreArtifactTarget"
     order_by:
       - device__name__value
       - remote_as__asn__value

@@ -3,12 +3,17 @@ from fastapi.testclient import TestClient
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
-from infrahub.core.schema import core_models
+from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
 
 
 async def test_schema_read_endpoint_default_branch(
-    session, client, client_headers, default_branch: Branch, car_person_data_generic
+    session,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
 ):
     with client:
         response = client.get(
@@ -21,17 +26,27 @@ async def test_schema_read_endpoint_default_branch(
 
     schema = response.json()
 
+    expected_nodes = set([dict(item).get("name") for item in core_models["nodes"] + car_person_schema_generics.nodes])
+    expected_generics = set(
+        [dict(item).get("name") for item in core_models["generics"] + car_person_schema_generics.generics]
+    )
+
     assert "nodes" in schema
     assert "generics" in schema
-    assert len(schema["nodes"]) == 24
-    assert len(schema["generics"]) == len(core_models.get("generics")) + 1
+    assert len(schema["nodes"]) == len(expected_nodes)
+    assert len(schema["generics"]) == len(expected_generics)
 
     generics = {item["kind"]: item for item in schema["generics"]}
     assert generics["TestCar"]["used_by"]
 
 
 async def test_schema_read_endpoint_branch1(
-    session, client: TestClient, client_headers, default_branch: Branch, car_person_data_generic
+    session,
+    client: TestClient,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
 ):
     await create_branch(branch_name="branch1", session=session)
 
@@ -47,8 +62,9 @@ async def test_schema_read_endpoint_branch1(
 
     schema = response.json()
 
+    expected_nodes = set([dict(node).get("name") for node in core_models["nodes"] + car_person_schema_generics.nodes])
     assert "nodes" in schema
-    assert len(schema["nodes"]) == 24
+    assert len(schema["nodes"]) == len(expected_nodes)
 
 
 async def test_schema_read_endpoint_wrong_branch(

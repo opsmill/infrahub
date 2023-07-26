@@ -28,6 +28,7 @@ services:
       - "INFRAHUB_FRONTEND_DIRECTORY=/opt/infrahub/frontend"
     volumes:
       - ../:/source
+      - "storage_data:/opt/infrahub/storage"
     tty: true
     healthcheck:
       test: wget -O /dev/null http://localhost:8000/api/schema || exit 1
@@ -57,3 +58,4 @@ services:
     tty: true
 volumes:
   git_data:
+  storage_data:
