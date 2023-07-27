@@ -35,7 +35,7 @@ async def test_file_upload(
     file = {"file": open(os.path.join(files_dir, filenames[0]), "rb")}
 
     with client:
-        resp = client.post(url="/storage/upload/file", files=file, headers=admin_headers)
+        resp = client.post(url="/api/storage/upload/file", files=file, headers=admin_headers)
         data = resp.json()
         assert data["checksum"] == file_checksum
         assert data["identifier"]
@@ -64,7 +64,7 @@ async def test_content_upload(
 
     with client:
         resp = client.post(
-            url="/storage/upload/content", json={"content": file_content.decode("utf-8")}, headers=admin_headers
+            url="/api/storage/upload/content", json={"content": file_content.decode("utf-8")}, headers=admin_headers
         )
         data = resp.json()
         assert data["checksum"] == file_checksum
