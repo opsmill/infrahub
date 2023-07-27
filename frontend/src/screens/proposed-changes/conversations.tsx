@@ -10,13 +10,13 @@ import { AVATAR_SIZE, Avatar } from "../../components/avatar";
 import { Badge } from "../../components/badge";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
-import { Comment } from "../../components/conversations/comment";
-import { Thread, sortByDate } from "../../components/conversations/thread";
+import { Thread } from "../../components/conversations/thread";
 import { DateDisplay } from "../../components/date-display";
 import SlideOver from "../../components/slide-over";
 import { Tooltip } from "../../components/tooltip";
 import {
   DEFAULT_BRANCH_NAME,
+  PROPOSED_CHANGES_CHANGE_THERAD,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -54,7 +54,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_CHANGE_THERAD)[0];
 
   const queryString = schemaData
     ? getProposedChangesThreads({
@@ -79,10 +79,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
     return <ErrorScreen />;
   }
 
-  const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
-  const threads = result?.threads?.edges?.map((edge: any) => edge.node);
-  const comments = result?.comments?.edges?.map((edge: any) => edge.node);
-  const list = sortByDate([...threads, ...comments]);
+  const threads = data ? data[schemaData.kind]?.edges?.map((edge: any) => edge.node) : [];
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node);
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node);
   const approverId = auth?.data?.sub;
@@ -258,13 +255,9 @@ export const Conversations = (props: tProposedChangesDetails) => {
     <div className="flex">
       <div className="flex-1 p-4 overflow-auto">
         <div>
-          {list.map((item: any, index: number) => {
-            if (item.__typename === "CoreChangeThread") {
-              return <Thread key={index} thread={item} refetch={refetch} />;
-            }
-
-            return <Comment key={index} comment={item} />;
-          })}
+          {threads.map((item: any, index: number) => (
+            <Thread key={index} thread={item} refetch={refetch} />
+          ))}
         </div>
 
         <div>
@@ -374,7 +367,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Updated</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <DateDisplay date={result._updated_at} />
+                  <DateDisplay date={proposedChangesDetails._updated_at} />
                 </dd>
               </div>
 
@@ -399,7 +392,9 @@ export const Conversations = (props: tProposedChangesDetails) => {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{result.display_label}</span>
+              <span className="text-lg font-semibold mr-3">
+                {proposedChangesDetails.display_label}
+              </span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
@@ -422,7 +417,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              ID: {result.id}
+              ID: {proposedChangesDetails.id}
             </div>
           </div>
         }
