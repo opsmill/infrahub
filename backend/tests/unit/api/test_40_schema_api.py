@@ -17,7 +17,7 @@ async def test_schema_read_endpoint_default_branch(
 ):
     with client:
         response = client.get(
-            "/schema",
+            "/api/schema",
             headers=client_headers,
         )
 

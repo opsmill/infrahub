@@ -19,7 +19,7 @@ def patch_rpc_client():
 async def test_file_upload(
     session, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
 ):
-    from infrahub.api.main import app
+    from infrahub.server import app
 
     client = TestClient(app)
 
@@ -49,7 +49,7 @@ async def test_file_upload(
 async def test_content_upload(
     session, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
 ):
-    from infrahub.api.main import app
+    from infrahub.server import app
 
     client = TestClient(app)
 

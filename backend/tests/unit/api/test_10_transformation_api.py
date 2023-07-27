@@ -52,7 +52,7 @@ async def test_transform_endpoint(
         )
 
         response = client.get(
-            "/transform/mytransform",
+            "/api/transform/mytransform",
             headers=client_headers,
         )
 
@@ -94,7 +94,7 @@ async def test_transform_endpoint_path(session, client_headers, patch_rpc_client
         )
 
         response = client.get(
-            "/transform/my/transform/function",
+            "/api/transform/my/transform/function",
             headers=client_headers,
         )
 

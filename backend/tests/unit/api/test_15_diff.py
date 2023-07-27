@@ -103,7 +103,7 @@ async def test_diff_data_endpoint_branch_only_default(session, client, client_he
 
     with client:
         response = client.get(
-            "/diff/data?branch=branch2&branch_only=true",
+            "/api/diff/data?branch=branch2&branch_only=true",
             headers=client_headers,
         )
 
@@ -167,7 +167,7 @@ async def test_diff_data_endpoint_branch_time_from(session, client, client_heade
 
     with client:
         response = client.get(
-            f"/diff/data?branch=branch2&branch_only=true&time_from={time20.to_iso8601_string()}",
+            f"/api/diff/data?branch=branch2&branch_only=true&time_from={time20.to_iso8601_string()}",
             headers=client_headers,
         )
 
@@ -213,7 +213,7 @@ async def test_diff_data_endpoint_branch_time_from_to(session, client, client_he
 
     with client:
         response = client.get(
-            f"/diff/data?branch=branch2&branch_only=true&time_from={time0.to_iso8601_string()}&time_to={time20.to_iso8601_string()}",
+            f"/api/diff/data?branch=branch2&branch_only=true&time_from={time0.to_iso8601_string()}&time_to={time20.to_iso8601_string()}",
             headers=client_headers,
         )
 
@@ -260,7 +260,7 @@ async def test_diff_data_endpoint_with_main_default(session, client, client_head
 
     with client:
         response = client.get(
-            "/diff/data?branch=branch2&branch_only=false",
+            "/api/diff/data?branch=branch2&branch_only=false",
             headers=client_headers,
         )
 
@@ -297,7 +297,7 @@ async def test_diff_data_endpoint_with_main_time_from(session, client, client_he
 
     with client:
         response = client.get(
-            f"/diff/data?branch=branch2&branch_only=false&time_from={time20.to_iso8601_string()}",
+            f"/api/diff/data?branch=branch2&branch_only=false&time_from={time20.to_iso8601_string()}",
             headers=client_headers,
         )
 
@@ -349,7 +349,7 @@ async def test_diff_data_endpoint_with_main_time_from_to(session, client, client
 
     with client:
         response = client.get(
-            f"/diff/data?branch=branch2&branch_only=false&time_from={time0.to_iso8601_string()}&time_to={time20.to_iso8601_string()}",
+            f"/api/diff/data?branch=branch2&branch_only=false&time_from={time0.to_iso8601_string()}&time_to={time20.to_iso8601_string()}",
             headers=client_headers,
         )
 
