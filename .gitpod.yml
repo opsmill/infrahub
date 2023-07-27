@@ -22,15 +22,7 @@ tasks:
       cd /workspace/infrahub
       source $HOME/.bashrc
       poetry run invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
-# Ports to expose on workspace startup
+
 # Ports to expose on workspace startup
 ports:
   - port: 8000
