@@ -112,7 +112,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   );
 
   return (
-    <div className={"rounded-lg shadow p-4 m-4 bg-custom-white"}>
+    <div className={"rounded-lg shadow p-2 m-4 bg-custom-white"}>
       <Accordion title={title}>
         <div className="">
           {Object.values(elements).map((element: tDataDiffNodeElement, index: number) => (

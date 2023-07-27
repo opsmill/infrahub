@@ -1,7 +1,7 @@
+import { gql } from "@apollo/client";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { gql } from "graphql-request";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { graphQLClient } from "../../graphql/graphqlClient";

@@ -10,13 +10,13 @@ import { AVATAR_SIZE, Avatar } from "../../components/avatar";
 import { Badge } from "../../components/badge";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
-import { Comment } from "../../components/conversations/comment";
-import { Thread, sortByDate } from "../../components/conversations/thread";
+import { Thread } from "../../components/conversations/thread";
 import { DateDisplay } from "../../components/date-display";
 import SlideOver from "../../components/slide-over";
 import { Tooltip } from "../../components/tooltip";
 import {
   DEFAULT_BRANCH_NAME,
+  PROPOSED_CHANGES_CHANGE_THERAD,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -26,19 +26,23 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
+import { getProposedChangesThreads } from "../../graphql/queries/proposed-changes/getProposedChangesThreads";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 
-export const Conversations = () => {
+type tProposedChangesDetails = {
+  proposedChangesDetails?: any;
+};
+
+export const Conversations = (props: tProposedChangesDetails) => {
+  const { proposedChangesDetails } = props;
   const { proposedchange } = useParams();
 
   const [schemaList] = useAtom(schemaState);
@@ -50,14 +54,12 @@ export const Conversations = () => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_CHANGE_THERAD)[0];
 
   const queryString = schemaData
-    ? getProposedChanges({
+    ? getProposedChangesThreads({
         id: proposedchange,
         kind: schemaData.kind,
-        attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
@@ -77,14 +79,11 @@ export const Conversations = () => {
     return <ErrorScreen />;
   }
 
-  const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
-  const threads = result?.threads?.edges?.map((edge: any) => edge.node);
-  const comments = result?.comments?.edges?.map((edge: any) => edge.node);
-  const list = sortByDate([...threads, ...comments]);
-  const reviewers = result.reviewers.edges.map((edge: any) => edge.node);
-  const approvers = result.approved_by.edges.map((edge: any) => edge.node);
+  const threads = data ? data[schemaData.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
+  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const approverId = auth?.data?.sub;
-  const canApprove = !approvers.map((a: any) => a.id).includes(approverId);
+  const canApprove = !approvers?.map((a: any) => a.id).includes(approverId);
   const path = constructPath("/proposed-changes");
 
   const handleSubmit = async (data: any, event: any) => {
@@ -256,13 +255,9 @@ export const Conversations = () => {
     <div className="flex">
       <div className="flex-1 p-4 overflow-auto">
         <div>
-          {list.map((item: any, index: number) => {
-            if (item.__typename === "CoreChangeThread") {
-              return <Thread key={index} thread={item} refetch={refetch} />;
-            }
-
-            return <Comment key={index} comment={item} />;
-          })}
+          {threads.map((item: any, index: number) => (
+            <Thread key={index} thread={item} refetch={refetch} />
+          ))}
         </div>
 
         <div>
@@ -308,31 +303,31 @@ export const Conversations = () => {
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  {result.name.value}
+                  {proposedChangesDetails?.name.value}
                 </dd>
               </div>
 
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Source branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Badge>{result.source_branch.value}</Badge>
+                  <Badge>{proposedChangesDetails?.source_branch.value}</Badge>
                 </dd>
               </div>
 
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Badge>{result.destination_branch.value}</Badge>
+                  <Badge>{proposedChangesDetails?.destination_branch.value}</Badge>
                 </dd>
               </div>
 
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Created by</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Tooltip message={result?.created_by?.node?.display_label}>
+                  <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
                     <Avatar
                       size={AVATAR_SIZE.SMALL}
-                      name={result?.created_by?.node?.display_label}
+                      name={proposedChangesDetails?.created_by?.node?.display_label}
                       className="mr-2 bg-custom-blue-green"
                     />
                   </Tooltip>
@@ -372,7 +367,7 @@ export const Conversations = () => {
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Updated</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <DateDisplay date={result._updated_at} />
+                  <DateDisplay date={proposedChangesDetails?._updated_at} />
                 </dd>
               </div>
 
@@ -397,7 +392,9 @@ export const Conversations = () => {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{result.display_label}</span>
+              <span className="text-lg font-semibold mr-3">
+                {proposedChangesDetails?.display_label}
+              </span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
@@ -420,7 +417,7 @@ export const Conversations = () => {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              ID: {result.id}
+              ID: {proposedChangesDetails?.id}
             </div>
           </div>
         }

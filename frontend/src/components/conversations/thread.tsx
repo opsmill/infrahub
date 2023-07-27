@@ -1,5 +1,4 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { TrashIcon } from "@heroicons/react/24/outline";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import * as R from "ramda";
 import { useContext, useState } from "react";
@@ -11,17 +10,15 @@ import {
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { classNames } from "../../utils/common";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { ALERT_TYPES, Alert } from "../alert";
-import { BUTTON_TYPES, Button } from "../button";
+import { Button } from "../button";
 import { Checkbox } from "../checkbox";
 import ModalConfirm from "../modal-confirm";
-import ModalDelete from "../modal-delete";
 import { Tooltip } from "../tooltip";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
@@ -47,7 +44,6 @@ export const Thread = (props: tThread) => {
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
-  const [deleteModal, setDeleteModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
 
@@ -112,38 +108,6 @@ export const Thread = (props: tThread) => {
     }
   };
 
-  const handleDeleteObject = async () => {
-    if (!thread.id) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    const mutationString = deleteObject({
-      kind: PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
-      data: stringifyWithoutQuotes({
-        id: thread.id,
-      }),
-    });
-
-    const mutation = gql`
-      ${mutationString}
-    `;
-
-    await graphqlClient.mutate({
-      mutation,
-      context: { branch: branch?.name, date },
-    });
-
-    refetch();
-
-    setDeleteModal(false);
-
-    setIsLoading(false);
-
-    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread deleted"} />);
-  };
-
   const handleResolve = async () => {
     if (!thread.id) {
       return;
@@ -188,7 +152,7 @@ export const Thread = (props: tThread) => {
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
   };
 
-  const comments = thread?.comments?.edges?.map((comment: any) => comment.node);
+  const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
   const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
 
@@ -216,15 +180,8 @@ export const Thread = (props: tThread) => {
     <section
       className={classNames(
         isResolved ? "bg-gray-200" : "bg-custom-white",
-        "p-4 mb-4 rounded-lg relative group/thread"
+        "p-4 mb-4 rounded-lg relative"
       )}>
-      <Button
-        buttonType={BUTTON_TYPES.INVISIBLE}
-        className="absolute -right-4 -top-4 hidden group-hover/thread:block"
-        onClick={() => setDeleteModal(true)}>
-        <TrashIcon className="h-4 w-4 text-red-500" />
-      </Button>
-
       <div className="">
         {sortedComments.map((comment: any, index: number) => (
           <Comment key={index} comment={comment} className={"border border-gray-200"} />
@@ -254,16 +211,6 @@ export const Thread = (props: tThread) => {
           </div>
         )}
       </div>
-
-      <ModalDelete
-        title="Delete"
-        description={"Are you sure you want to remove this thread?"}
-        onCancel={() => setDeleteModal(false)}
-        onDelete={handleDeleteObject}
-        open={!!deleteModal}
-        setOpen={() => setDeleteModal(false)}
-        isLoading={isLoading}
-      />
 
       <ModalConfirm
         title="Confirm"

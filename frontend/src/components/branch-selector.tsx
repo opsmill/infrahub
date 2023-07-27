@@ -40,6 +40,7 @@ export default function BranchSelector() {
   const [originBranch, setOriginBranch] = useState();
   const [branchedFrom] = useState(); // TODO: Add calendar component
   const [isDataOnly, setIsDataOnly] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const getCurrentBranch = useCallback((): Branch => {
     if (branch) {
@@ -142,6 +143,8 @@ export default function BranchSelector() {
 
   const handleSubmit = async (close: any) => {
     try {
+      setIsLoading(true);
+
       const newBranch = {
         name: newBranchName,
         description: newBranchDescription,
@@ -176,6 +179,8 @@ export default function BranchSelector() {
       toast(
         <Alert type={ALERT_TYPES.ERROR} message={"An error occured while creating the branch"} />
       );
+
+      setIsLoading(false);
     }
   };
 
@@ -226,6 +231,7 @@ export default function BranchSelector() {
 
             <div className="flex justify-center">
               <Button
+                isLoading={isLoading}
                 buttonType={BUTTON_TYPES.VALIDATE}
                 onClick={() => handleSubmit(close)}
                 className="mt-2">
