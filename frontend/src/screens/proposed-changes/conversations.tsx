@@ -80,8 +80,8 @@ export const Conversations = (props: tProposedChangesDetails) => {
   }
 
   const threads = data ? data[schemaData.kind]?.edges?.map((edge: any) => edge.node) : [];
-  const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node);
-  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node);
+  const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
+  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const approverId = auth?.data?.sub;
   const canApprove = !approvers?.map((a: any) => a.id).includes(approverId);
   const path = constructPath("/proposed-changes");
@@ -367,7 +367,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">Updated</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <DateDisplay date={proposedChangesDetails._updated_at} />
+                  <DateDisplay date={proposedChangesDetails?._updated_at} />
                 </dd>
               </div>
 
@@ -393,7 +393,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
           <div className="space-y-2">
             <div className="flex items-center w-full">
               <span className="text-lg font-semibold mr-3">
-                {proposedChangesDetails.display_label}
+                {proposedChangesDetails?.display_label}
               </span>
               <div className="flex-1"></div>
               <div className="flex items-center">
@@ -417,7 +417,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              ID: {proposedChangesDetails.id}
+              ID: {proposedChangesDetails?.id}
             </div>
           </div>
         }

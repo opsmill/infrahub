@@ -2,120 +2,109 @@ export const proposedChangesId = "1cec1fe9-fcc4-4f5b-af30-9d661de65bd8";
 
 export const conversationMocksSchema = [
   {
-    id: "c277c2ff-39cf-4891-a018-2b58a0f35f8a",
-    name: "ProposedChange",
+    id: "988f13b9-88d1-46ac-9aee-771ab6660add",
+    name: "ChangeThread",
     namespace: "Core",
-    description: "Metadata related to a proposed change",
-    default_filter: "name__value",
+    description: "A thread on proposed change",
+    default_filter: null,
     order_by: null,
-    display_labels: ["name__value"],
+    display_labels: null,
     attributes: [
       {
-        id: "2d67ce8f-5192-4acc-981d-5a7e7de1ded0",
-        name: "name",
-        kind: "Text",
+        id: "9cee690c-dea0-403f-88f0-f3b6b7a86887",
+        name: "resolved",
+        kind: "Boolean",
         namespace: "Attribute",
-        label: "Name",
+        label: "Resolved",
         description: null,
-        default_value: null,
+        default_value: false,
         enum: null,
         regex: null,
         max_length: null,
         min_length: null,
-        inherited: false,
+        inherited: true,
         unique: false,
         branch: true,
-        optional: false,
+        optional: true,
         order_weight: 1000,
       },
       {
-        id: "48cce2c0-8c91-41ae-a63a-12669d3b7210",
-        name: "source_branch",
-        kind: "Text",
+        id: "801024c5-e987-4b39-8425-d9231ed862a3",
+        name: "created_at",
+        kind: "DateTime",
         namespace: "Attribute",
-        label: "Source Branch",
+        label: "Created At",
         description: null,
         default_value: null,
         enum: null,
         regex: null,
         max_length: null,
         min_length: null,
-        inherited: false,
+        inherited: true,
         unique: false,
         branch: true,
-        optional: false,
+        optional: true,
         order_weight: 2000,
-      },
-      {
-        id: "6ee398e3-2221-494b-94ee-9da3dd88c651",
-        name: "destination_branch",
-        kind: "Text",
-        namespace: "Attribute",
-        label: "Destination Branch",
-        description: null,
-        default_value: null,
-        enum: null,
-        regex: null,
-        max_length: null,
-        min_length: null,
-        inherited: false,
-        unique: false,
-        branch: true,
-        optional: false,
-        order_weight: 3000,
       },
     ],
     relationships: [
       {
-        id: "9e872e86-d9b0-4a96-aace-ace686860c15",
-        name: "approved_by",
-        peer: "CoreAccount",
-        kind: "Attribute",
-        label: "Approved By",
+        id: "2932e32a-c666-42b0-a4b6-1c949cd4b000",
+        name: "change",
+        peer: "CoreProposedChange",
+        kind: "Parent",
+        label: "Change",
         description: null,
-        identifier: "coreaccount__proposedchange_approved_by",
-        inherited: false,
-        cardinality: "many",
+        identifier: "proposedchange__thread",
+        inherited: true,
+        cardinality: "one",
         branch: true,
-        optional: true,
+        optional: false,
         filters: [
           { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
           { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
-          { name: "label__value", kind: "Text", enum: null, object_kind: null, description: null },
           {
-            name: "description__value",
+            name: "source_branch__value",
             kind: "Text",
             enum: null,
             object_kind: null,
             description: null,
           },
           {
-            name: "type__value",
+            name: "destination_branch__value",
             kind: "Text",
-            enum: ["User", "Script", "Bot", "Git"],
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "role__value",
-            kind: "Text",
-            enum: ["admin", "read-only", "read-write"],
+            enum: null,
             object_kind: null,
             description: null,
           },
         ],
+        order_weight: 3000,
+      },
+      {
+        id: "8a7f01e2-1f8f-4aee-8a1b-650e1f4d1647",
+        name: "comments",
+        peer: "CoreThreadComment",
+        kind: "Component",
+        label: "Comments",
+        description: null,
+        identifier: "thread__threadcomment",
+        inherited: true,
+        cardinality: "many",
+        branch: true,
+        optional: true,
+        filters: [{ name: "id", kind: "Text", enum: null, object_kind: null, description: null }],
         order_weight: 4000,
       },
       {
-        id: "d5d2876c-2c83-4d63-be1b-38bdef01b793",
-        name: "reviewers",
+        id: "78f5a19d-9f08-4845-a8ab-61c8a6e22865",
+        name: "created_by",
         peer: "CoreAccount",
-        kind: "Attribute",
-        label: "Reviewers",
+        kind: "Generic",
+        label: "Created By",
         description: null,
-        identifier: "coreaccount__proposedchange_reviewed_by",
-        inherited: false,
-        cardinality: "many",
+        identifier: "coreaccount__corethread",
+        inherited: true,
+        cardinality: "one",
         branch: true,
         optional: true,
         filters: [
@@ -147,86 +136,7 @@ export const conversationMocksSchema = [
         order_weight: 5000,
       },
       {
-        id: "887b88ee-4bae-4938-ae08-e79ca1f9f93c",
-        name: "created_by",
-        peer: "CoreAccount",
-        kind: "Generic",
-        label: "Created By",
-        description: null,
-        identifier: "coreaccount__proposedchange_created_by",
-        inherited: false,
-        cardinality: "one",
-        branch: true,
-        optional: true,
-        filters: [
-          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
-          { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
-          { name: "label__value", kind: "Text", enum: null, object_kind: null, description: null },
-          {
-            name: "description__value",
-            kind: "Text",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "type__value",
-            kind: "Text",
-            enum: ["User", "Script", "Bot", "Git"],
-            object_kind: null,
-            description: null,
-          },
-          {
-            name: "role__value",
-            kind: "Text",
-            enum: ["admin", "read-only", "read-write"],
-            object_kind: null,
-            description: null,
-          },
-        ],
-        order_weight: 6000,
-      },
-      {
-        id: "c3e9dd13-a476-4b43-84d6-980a6d27655d",
-        name: "comments",
-        peer: "CoreChangeComment",
-        kind: "Component",
-        label: "Comments",
-        description: null,
-        identifier: "corechangecomment__coreproposedchange",
-        inherited: false,
-        cardinality: "many",
-        branch: true,
-        optional: true,
-        filters: [{ name: "id", kind: "Text", enum: null, object_kind: null, description: null }],
-        order_weight: 7000,
-      },
-      {
-        id: "7cdde1b4-81fc-407a-9c2a-df4f42bb784f",
-        name: "threads",
-        peer: "CoreThread",
-        kind: "Component",
-        label: "Threads",
-        description: null,
-        identifier: "proposedchange__thread",
-        inherited: false,
-        cardinality: "many",
-        branch: true,
-        optional: true,
-        filters: [
-          { name: "id", kind: "Text", enum: null, object_kind: null, description: null },
-          {
-            name: "resolved__value",
-            kind: "Boolean",
-            enum: null,
-            object_kind: null,
-            description: null,
-          },
-        ],
-        order_weight: 8000,
-      },
-      {
-        id: "0459736e-6195-404e-8e0d-6d0d24368ca2",
+        id: "136a218a-39ec-46f5-8b7a-619e24a39cb3",
         name: "member_of_groups",
         peer: "CoreGroup",
         kind: "Group",
@@ -249,10 +159,10 @@ export const conversationMocksSchema = [
             description: null,
           },
         ],
-        order_weight: 9000,
+        order_weight: 6000,
       },
       {
-        id: "a54b3c01-ac8b-40e3-b580-c2ae690a7f15",
+        id: "e8e7d6ec-31fc-4a30-abc1-dd64430cf678",
         name: "subscriber_of_groups",
         peer: "CoreGroup",
         kind: "Group",
@@ -275,145 +185,65 @@ export const conversationMocksSchema = [
             description: null,
           },
         ],
-        order_weight: 10000,
+        order_weight: 7000,
       },
     ],
-    label: "Proposed Change",
-    inherit_from: [],
+    label: "Change Thread",
+    inherit_from: ["CoreThread"],
     groups: [],
     branch: true,
     filters: [
       { name: "ids", kind: "Text", enum: null, object_kind: null, description: null },
-      { name: "name__value", kind: "Text", enum: null, object_kind: null, description: null },
       {
-        name: "source_branch__value",
-        kind: "Text",
+        name: "resolved__value",
+        kind: "Boolean",
         enum: null,
         object_kind: null,
         description: null,
       },
       {
-        name: "destination_branch__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "approved_by__id",
+        name: "change__id",
         kind: "Object",
         enum: null,
-        object_kind: "CoreAccount",
-        description: null,
-      },
-      {
-        name: "reviewers__id",
-        kind: "Object",
-        enum: null,
-        object_kind: "CoreAccount",
+        object_kind: "CoreProposedChange",
         description: null,
       },
     ],
-    kind: "CoreProposedChange",
+    kind: "CoreChangeThread",
   },
 ];
 
 export const conversationMocksQuery = `query {
-  CoreProposedChange(ids: ["${proposedChangesId}"]) {
+  CoreChangeThread(change__id: "${proposedChangesId}") {
     count
     edges {
       node {
+        __typename
         id
         display_label
-        __typename
-        _updated_at
-
-          name {
-              value
-          }
-          source_branch {
-              value
-          }
-          destination_branch {
-              value
-          }
-
-          approved_by {
-              edges {
-              node {
-                id
-                display_label
-              }
-              }
-          }
-          reviewers {
-              edges {
-              node {
-                id
-                display_label
-              }
-              }
-          }
-
+        resolved {
+          value
+        }
         created_by {
           node {
-            id
             display_label
-          }
-        }
-
-        threads {
-          count
-          edges {
-            node {
-              __typename
-              id
-              display_label
-              resolved {
-                value
-              }
-              created_by {
-                node {
-                  display_label
-                }
-              }
-              comments {
-                count
-                edges {
-                  node {
-                    id
-                    display_label
-                    created_by {
-                      node {
-                        display_label
-                      }
-                    }
-                    created_at {
-                      value
-                    }
-                    text {
-                      value
-                    }
-                  }
-                }
-              }
-            }
           }
         }
         comments {
           count
           edges {
             node {
-              __typename
               id
               display_label
-              _updated_at
               created_by {
                 node {
                   display_label
                 }
               }
               created_at {
+                value
+              }
+              text {
                 value
               }
             }
@@ -426,109 +256,68 @@ export const conversationMocksQuery = `query {
 `;
 
 export const conversationMocksData = {
-  CoreProposedChange: {
+  CoreChangeThread: {
     count: 1,
     edges: [
       {
         node: {
-          id: proposedChangesId,
-          display_label: "PR",
-          __typename: "CoreProposedChange",
-          _updated_at: "2023-07-24T12:27:10.730710+00:00",
-          name: { value: "PR", __typename: "TextAttribute" },
-          source_branch: { value: "test", __typename: "TextAttribute" },
-          destination_branch: { value: "main", __typename: "TextAttribute" },
-          approved_by: { edges: [], __typename: "NestedPaginatedCoreAccount" },
-          reviewers: { edges: [], __typename: "NestedPaginatedCoreAccount" },
-          created_by: {
-            node: {
-              id: "9806def4-8c09-4489-bffb-181c427165f5",
-              display_label: "Administrator",
-              __typename: "CoreAccount",
-            },
-            __typename: "NestedEdgedCoreAccount",
-          },
-          threads: {
-            count: 1,
+          __typename: "CoreChangeThread",
+          id: "25c4ffd2-b027-4d51-890f-6695953f99b5",
+          display_label: "CoreChangeThread(ID: 25c4ffd2-b027-4d51-890f-6695953f99b5)",
+          resolved: { value: false, __typename: "CheckboxAttribute" },
+          created_by: { node: null, __typename: "NestedEdgedCoreAccount" },
+          comments: {
+            count: 3,
             edges: [
               {
                 node: {
-                  __typename: "CoreChangeThread",
-                  id: "3bcc2686-8d86-4916-8e4e-2aaf06be7cdb",
-                  display_label: "CoreChangeThread(ID: 3bcc2686-8d86-4916-8e4e-2aaf06be7cdb)",
-                  resolved: { value: false, __typename: "CheckboxAttribute" },
-                  created_by: { node: null, __typename: "NestedEdgedCoreAccount" },
-                  comments: {
-                    count: 3,
-                    edges: [
-                      {
-                        node: {
-                          id: "48eecc83-61da-4bdd-b07b-dad28f446ec2",
-                          display_label: "First thread with comment",
-                          created_by: {
-                            node: { display_label: "Administrator", __typename: "CoreAccount" },
-                            __typename: "NestedEdgedCoreAccount",
-                          },
-                          created_at: {
-                            value: "2023-07-24T14:27:19+02:00",
-                            __typename: "TextAttribute",
-                          },
-                          text: {
-                            value: "First thread with comment",
-                            __typename: "TextAttribute",
-                          },
-                          __typename: "CoreThreadComment",
-                        },
-                        __typename: "NestedEdgedCoreThreadComment",
-                      },
-                      {
-                        node: {
-                          id: "d13a25a8-67fe-42c9-82b9-172a5eb69619",
-                          display_label: "third comment",
-                          created_by: {
-                            node: { display_label: "Administrator", __typename: "CoreAccount" },
-                            __typename: "NestedEdgedCoreAccount",
-                          },
-                          created_at: {
-                            value: "2023-07-24T14:27:30+02:00",
-                            __typename: "TextAttribute",
-                          },
-                          text: { value: "third comment", __typename: "TextAttribute" },
-                          __typename: "CoreThreadComment",
-                        },
-                        __typename: "NestedEdgedCoreThreadComment",
-                      },
-                      {
-                        node: {
-                          id: "fd37cce5-19a8-478f-b816-5e592ecc1169",
-                          display_label: "Second comment",
-                          created_by: {
-                            node: { display_label: "Administrator", __typename: "CoreAccount" },
-                            __typename: "NestedEdgedCoreAccount",
-                          },
-                          created_at: {
-                            value: "2023-07-24T14:27:25+02:00",
-                            __typename: "TextAttribute",
-                          },
-                          text: { value: "Second comment", __typename: "TextAttribute" },
-                          __typename: "CoreThreadComment",
-                        },
-                        __typename: "NestedEdgedCoreThreadComment",
-                      },
-                    ],
-                    __typename: "NestedPaginatedCoreThreadComment",
+                  id: "38a32ad7-2873-4370-b403-04070465fc60",
+                  display_label: "#1",
+                  created_by: {
+                    node: { display_label: "Admin", __typename: "CoreAccount" },
+                    __typename: "NestedEdgedCoreAccount",
                   },
+                  created_at: { value: "2023-07-27T18:51:50+02:00", __typename: "TextAttribute" },
+                  text: { value: "#1", __typename: "TextAttribute" },
+                  __typename: "CoreThreadComment",
                 },
-                __typename: "NestedEdgedCoreThread",
+                __typename: "NestedEdgedCoreThreadComment",
+              },
+              {
+                node: {
+                  id: "904a407a-bb09-4443-980e-d0f0255cff86",
+                  display_label: "#2",
+                  created_by: {
+                    node: { display_label: "Admin", __typename: "CoreAccount" },
+                    __typename: "NestedEdgedCoreAccount",
+                  },
+                  created_at: { value: "2023-07-27T18:51:53+02:00", __typename: "TextAttribute" },
+                  text: { value: "#2", __typename: "TextAttribute" },
+                  __typename: "CoreThreadComment",
+                },
+                __typename: "NestedEdgedCoreThreadComment",
+              },
+              {
+                node: {
+                  id: "c8384ef4-3bbb-4530-99c0-bfa785c4343d",
+                  display_label: "#3",
+                  created_by: {
+                    node: { display_label: "Admin", __typename: "CoreAccount" },
+                    __typename: "NestedEdgedCoreAccount",
+                  },
+                  created_at: { value: "2023-07-27T18:51:55+02:00", __typename: "TextAttribute" },
+                  text: { value: "#3", __typename: "TextAttribute" },
+                  __typename: "CoreThreadComment",
+                },
+                __typename: "NestedEdgedCoreThreadComment",
               },
             ],
-            __typename: "NestedPaginatedCoreThread",
+            __typename: "NestedPaginatedCoreThreadComment",
           },
-          comments: { count: 0, edges: [], __typename: "NestedPaginatedCoreChangeComment" },
         },
-        __typename: "EdgedCoreProposedChange",
+        __typename: "EdgedCoreChangeThread",
       },
     ],
-    __typename: "PaginatedCoreProposedChange",
+    __typename: "PaginatedCoreChangeThread",
   },
 };

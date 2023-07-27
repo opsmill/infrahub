@@ -59,6 +59,8 @@ describe("List screen", () => {
       }
     );
 
-    cy.contains("First thread with comment").should("exist");
+    cy.contains("#1").should("exist");
+    cy.contains("#2").should("exist");
+    cy.contains("#3").should("exist");
   });
 });
