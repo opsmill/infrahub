@@ -112,7 +112,9 @@ async def test_diff_data_endpoint_branch_only_default(session, client, client_he
     data = response.json()
     assert data is not None
 
-    branch2 = {node["id"]: node for node in data["diffs"] if node["branch"] == "branch2"}
+    assert list(data.keys()) == ["branch2"]
+    branch2 = {node["id"]: node for node in data["branch2"]}
+
     assert branch2[p1]["display_label"] == "John"
     assert branch2[p1]["kind"] == "TestPerson"
     assert branch2[p1]["action"] == "updated"
@@ -173,9 +175,10 @@ async def test_diff_data_endpoint_branch_time_from(session, client, client_heade
     assert response.status_code == 200
     data = response.json()
     assert data is not None
-    assert len(data["diffs"]) == 3
+    assert list(data.keys()) == ["branch2"]
+    assert len(data["branch2"]) == 3
 
-    branch2 = {node["id"]: node for node in data["diffs"] if node["branch"] == "branch2"}
+    branch2 = {node["id"]: node for node in data["branch2"]}
 
     assert branch2[c4]["kind"] == "TestGazCar"
     assert branch2[c4]["action"] == "removed"
@@ -218,8 +221,9 @@ async def test_diff_data_endpoint_branch_time_from_to(session, client, client_he
     assert response.status_code == 200
     data = response.json()
     assert data is not None
+    assert list(data.keys()) == ["branch2"]
 
-    branch2 = {node["id"]: node for node in data["diffs"] if node["branch"] == "branch2"}
+    branch2 = {node["id"]: node for node in data["branch2"]}
 
     assert branch2[p1]["display_label"] == "John"
     assert branch2[p1]["kind"] == "TestPerson"
@@ -264,13 +268,12 @@ async def test_diff_data_endpoint_with_main_default(session, client, client_head
     assert response.status_code == 200
     data = response.json()
     assert data is not None
-    assert len(data["diffs"]) == 7
-    branch2_diffs = [node for node in data["diffs"] if node["branch"] == "branch2"]
-    main_diffs = [node for node in data["diffs"] if node["branch"] == "main"]
-    assert len(branch2_diffs) == 5
-    assert len(main_diffs) == 2
+    assert sorted(data.keys()) == ["branch2", "main"]
+    assert len(data["branch2"]) == 5
+    assert len(data["main"]) == 2
 
-    main = {node["id"]: node for node in data["diffs"] if node["branch"] == "main"}
+    # branch2 = { node["id"]: node for node in data["branch2"] }
+    main = {node["id"]: node for node in data["main"]}
 
     assert main[p1]["kind"] == "TestPerson"
     assert main[p1]["action"] == "updated"
@@ -302,9 +305,10 @@ async def test_diff_data_endpoint_with_main_time_from(session, client, client_he
     assert response.status_code == 200
     data = response.json()
     assert data is not None
+    assert sorted(data.keys()) == ["branch2", "main"]
 
-    branch2 = {node["id"]: node for node in data["diffs"] if node["branch"] == "branch2"}
-    main = {node["id"]: node for node in data["diffs"] if node["branch"] == "main"}
+    branch2 = {node["id"]: node for node in data["branch2"]}
+    main = {node["id"]: node for node in data["main"]}
 
     assert main[c2]["kind"] == "TestElectricCar"
     assert main[c2]["action"] == "updated"
@@ -353,9 +357,10 @@ async def test_diff_data_endpoint_with_main_time_from_to(session, client, client
     assert response.status_code == 200
     data = response.json()
     assert data is not None
+    assert sorted(data.keys()) == ["branch2", "main"]
 
-    branch2 = {node["id"]: node for node in data["diffs"] if node["branch"] == "branch2"}
-    main = {node["id"]: node for node in data["diffs"] if node["branch"] == "main"}
+    branch2 = {node["id"]: node for node in data["branch2"]}
+    main = {node["id"]: node for node in data["main"]}
 
     # assert branch2[p1]["display_label"] == "John"
     # assert branch2[p1]["kind"] == "Person"
