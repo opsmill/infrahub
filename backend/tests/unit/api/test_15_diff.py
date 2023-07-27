@@ -50,7 +50,7 @@ async def test_get_display_labels(session, default_branch, car_person_data):
     display_labels = await get_display_labels(
         nodes={"main": {"TestPerson": person_ids, "TestCar": car_ids}}, session=session
     )
-    assert len(display_labels) == len(car_ids) + len(person_ids)
+    assert len(display_labels["main"]) == len(car_ids) + len(person_ids)
 
 
 async def test_get_display_labels_with_branch(session, default_branch, car_person_data):
@@ -91,7 +91,7 @@ async def test_get_display_labels_with_branch(session, default_branch, car_perso
     display_labels = await get_display_labels(
         nodes={branch2.name: {"TestPerson": person_ids, "TestCar": car_ids}}, session=session
     )
-    assert len(display_labels) == len(car_ids) + len(person_ids)
+    assert len(display_labels["branch2"]) == len(car_ids) + len(person_ids)
 
 
 async def test_diff_data_endpoint_branch_only_default(session, client, client_headers, car_person_data_generic_diff):

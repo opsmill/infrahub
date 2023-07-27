@@ -249,47 +249,60 @@ async def test_diff_has_conflict_graph(session, base_dataset_02):
 async def test_diff_get_modified_paths_graph(session, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", session=session)
 
-    expected_paths_main = {
-        ("node", "c1", "name", "HAS_VALUE"),
-        ("node", "c2", "is_electric", "HAS_VALUE"),
-        ("node", "c2", "is_electric", "IS_PROTECTED"),
-        ("node", "c2", "is_electric", "IS_VISIBLE"),
-        ("node", "c2", "name", "HAS_VALUE"),
-        ("node", "c2", "name", "IS_PROTECTED"),
-        ("node", "c2", "name", "IS_VISIBLE"),
-        ("node", "c2", "nbr_seats", "HAS_VALUE"),
-        ("node", "c2", "nbr_seats", "IS_PROTECTED"),
-        ("node", "c2", "nbr_seats", "IS_VISIBLE"),
-        ("node", "c2", "color", "HAS_VALUE"),
-        ("node", "c2", "color", "IS_PROTECTED"),
-        ("node", "c2", "color", "IS_VISIBLE"),
-        ("relationships", "r1", "testcar__testperson", "IS_PROTECTED"),
-    }
-    expected_paths_branch1 = {
-        ("node", "c1", "nbr_seats", "HAS_VALUE"),
-        ("node", "c1", "nbr_seats", "IS_PROTECTED"),
-        ("node", "c3", "color", "HAS_VALUE"),
-        ("node", "c3", "color", "IS_PROTECTED"),
-        ("node", "c3", "color", "IS_VISIBLE"),
-        ("node", "c3", "is_electric", "HAS_VALUE"),
-        ("node", "c3", "is_electric", "IS_PROTECTED"),
-        ("node", "c3", "is_electric", "IS_VISIBLE"),
-        ("node", "c3", "name", "HAS_VALUE"),
-        ("node", "c3", "name", "IS_PROTECTED"),
-        ("node", "c3", "name", "IS_VISIBLE"),
-        ("node", "c3", "nbr_seats", "HAS_VALUE"),
-        ("node", "c3", "nbr_seats", "IS_PROTECTED"),
-        ("node", "c3", "nbr_seats", "IS_VISIBLE"),
-        ("relationships", "r1", "testcar__testperson", "IS_VISIBLE"),
-        ("relationships", "r2", "testcar__testperson", "IS_VISIBLE"),
-        ("relationships", "r2", "testcar__testperson", "IS_PROTECTED"),
-    }
+    expected_paths_main = [
+        "data/c1",
+        "data/c1/name/property/HAS_VALUE",
+        "data/c1/owner/p1/property/IS_PROTECTED",
+        "data/c2",
+        "data/c2/color/property/HAS_VALUE",
+        "data/c2/color/property/IS_PROTECTED",
+        "data/c2/color/property/IS_VISIBLE",
+        "data/c2/is_electric/property/HAS_VALUE",
+        "data/c2/is_electric/property/IS_PROTECTED",
+        "data/c2/is_electric/property/IS_VISIBLE",
+        "data/c2/name/property/HAS_VALUE",
+        "data/c2/name/property/IS_PROTECTED",
+        "data/c2/name/property/IS_VISIBLE",
+        "data/c2/nbr_seats/property/HAS_VALUE",
+        "data/c2/nbr_seats/property/IS_PROTECTED",
+        "data/c2/nbr_seats/property/IS_VISIBLE",
+        "data/p1/cars/c1/property/IS_PROTECTED",
+    ]
+
+    expected_paths_branch1 = [
+        "data/c1",
+        "data/c1/nbr_seats/property/HAS_VALUE",
+        "data/c1/nbr_seats/property/IS_PROTECTED",
+        "data/c1/owner/p1/property/IS_VISIBLE",
+        "data/c2/owner/p1/property/IS_PROTECTED",
+        "data/c2/owner/p1/property/IS_VISIBLE",
+        "data/c3",
+        "data/c3/color/property/HAS_VALUE",
+        "data/c3/color/property/IS_PROTECTED",
+        "data/c3/color/property/IS_VISIBLE",
+        "data/c3/is_electric/property/HAS_VALUE",
+        "data/c3/is_electric/property/IS_PROTECTED",
+        "data/c3/is_electric/property/IS_VISIBLE",
+        "data/c3/name/property/HAS_VALUE",
+        "data/c3/name/property/IS_PROTECTED",
+        "data/c3/name/property/IS_VISIBLE",
+        "data/c3/nbr_seats/property/HAS_VALUE",
+        "data/c3/nbr_seats/property/IS_PROTECTED",
+        "data/c3/nbr_seats/property/IS_VISIBLE",
+        "data/p1/cars/c1/property/IS_VISIBLE",
+        "data/p1/cars/c2/property/IS_PROTECTED",
+        "data/p1/cars/c2/property/IS_VISIBLE",
+    ]
 
     diff = await Diff.init(branch=branch1, session=session)
     paths = await diff.get_modified_paths_graph(session=session)
 
-    assert paths["main"] == expected_paths_main
-    assert paths["branch1"] == expected_paths_branch1
+    # Due to how the conflict check works on ModifiedPath with def __eq__ we can't compare
+    # the paths directly against each other, instead the string version of the paths are compared
+    modified_main = sorted([str(path) for path in paths["main"]])
+    modified_branch1 = sorted([str(path) for path in paths["branch1"]])
+    assert modified_main == expected_paths_main
+    assert modified_branch1 == expected_paths_branch1
 
     # Change the name of C1 in Branch1 to create a conflict
     c1 = await NodeManager.get_one(id="c1", branch=branch1, session=session)
@@ -298,9 +311,10 @@ async def test_diff_get_modified_paths_graph(session, base_dataset_02):
 
     diff = await Diff.init(branch=branch1, session=session)
     paths = await diff.get_modified_paths_graph(session=session)
-    expected_paths_branch1.add(("node", "c1", "name", "HAS_VALUE"))
+    expected_paths_branch1.append("data/c1/name/property/HAS_VALUE")
+    modified_branch1 = sorted([str(path) for path in paths["branch1"]])
 
-    assert paths["branch1"] == expected_paths_branch1
+    assert modified_branch1 == sorted(expected_paths_branch1)
 
 
 async def test_diff_get_files_repository(session, rpc_client, repos_in_main, base_dataset_02):
@@ -817,7 +831,7 @@ async def test_validate_graph(session, base_dataset_02, register_core_models_sch
 
     passed, messages = await branch1.validate_graph(session=session)
     assert passed is False
-    assert messages == ["Conflict detected at node/c1/name/HAS_VALUE"]
+    assert messages == ["Conflict detected at data/c1/name/property/HAS_VALUE"]
 
 
 async def test_validate_empty_branch(session, base_dataset_02, register_core_models_schema):
