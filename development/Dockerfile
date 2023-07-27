@@ -97,3 +97,5 @@ RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} us
 RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
 RUN chown -R ${USER_ID}:${GROUP_ID} /opt
 RUN chown -R ${USER_ID}:${GROUP_ID} /remote
+
+USER user
