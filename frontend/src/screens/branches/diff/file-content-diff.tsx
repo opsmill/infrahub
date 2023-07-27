@@ -72,9 +72,10 @@ const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: 
 
     if (
       change?.isDelete &&
-      thread?.commit?.value === commitFrom &&
-      theradLineNumber === change.lineNumber
+      theradLineNumber === change.lineNumber &&
+      (thread?.commit?.value === commitFrom || (!thread?.commit?.value && !commitFrom))
     ) {
+      // Thread on the left side
       return true;
     }
 
@@ -83,10 +84,12 @@ const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: 
       thread?.commit?.value === commitTo &&
       theradLineNumber === change.lineNumber
     ) {
+      // Thread on the right side
       return true;
     }
 
     if (change.isNormal && theradLineNumber === change.newLineNumber) {
+      // Both left + right side
       return true;
     }
 
