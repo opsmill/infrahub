@@ -26,7 +26,7 @@ export default function Accordion(props: AccordionProps) {
             </Disclosure.Button>
           </div>
 
-          <Disclosure.Panel className="pl-8 pr-0">{children}</Disclosure.Panel>
+          <Disclosure.Panel className="pr-0">{children}</Disclosure.Panel>
         </>
       )}
     </Disclosure>

@@ -401,7 +401,7 @@ export const FileContentDiff = (props: any) => {
   });
 
   return (
-    <div className={"rounded-lg shadow p-4 m-4 bg-custom-white"}>
+    <div className={"rounded-lg shadow p-2 m-4 bg-custom-white"}>
       <Accordion title={file.location}>
         <div className="flex">
           <div className="flex-1">
@@ -413,7 +413,7 @@ export const FileContentDiff = (props: any) => {
           </div>
         </div>
 
-        <div className="bg-gray-50">
+        <div className="ml-2 bg-gray-50">
           <Diff
             key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}`}
             hunks={fileContent.hunks}
