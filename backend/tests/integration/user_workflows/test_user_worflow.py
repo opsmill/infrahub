@@ -398,16 +398,21 @@ class TestUserWorkflow01:
             "root['elements']['description']['value']['changed_at']",
         ]
 
-        branch1_result = [diff for diff in result["diffs"] if diff["branch"] == "branch1"][0]
-        main_result = [diff for diff in result["diffs"] if diff["branch"] == "main"][0]
+        paths_to_exclude = [
+            "root['id']",
+            "root['elements']['description']['id']",
+            "root['elements']['description']['value']['changed_at']",
+        ]
         assert (
             DeepDiff(
-                expected_result_branch1, branch1_result, exclude_paths=paths_to_exclude, ignore_order=True
+                expected_result_branch1, result["branch1"][0], exclude_paths=paths_to_exclude, ignore_order=True
             ).to_dict()
             == {}
         )
         assert (
-            DeepDiff(expected_result_main, main_result, exclude_paths=paths_to_exclude, ignore_order=True).to_dict()
+            DeepDiff(
+                expected_result_main, result["main"][0], exclude_paths=paths_to_exclude, ignore_order=True
+            ).to_dict()
             == {}
         )
 

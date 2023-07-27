@@ -1043,7 +1043,7 @@ class Diff:
                         paths[branch_name].add(p)
 
         relationships = await self.get_relationships(session=session)
-        for branch_name, data in relationships.items():
+        for branch_name, data in relationships.items():  # pylint: disable=too-many-nested-blocks
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
