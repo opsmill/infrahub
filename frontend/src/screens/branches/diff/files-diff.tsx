@@ -112,7 +112,7 @@ export const FilesDiff = (props: tFilesDiff) => {
   return (
     <div className="text-sm">
       {Object.values(filesDiff).map((diff, index) => (
-        <FileRepoDiff key={index} diff={diff} />
+        <FileRepoDiff key={index} diff={diff} proposedChangesDetails={proposedChangesDetails} />
       ))}
     </div>
   );

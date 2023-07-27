@@ -1,7 +1,8 @@
-import { gql } from "@apollo/client";
+import { gql, useReactiveVar } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
+import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
@@ -15,12 +16,23 @@ import { Button } from "../../../components/button";
 import { AddComment } from "../../../components/conversations/add-comment";
 import { Thread } from "../../../components/conversations/thread";
 import { CONFIG } from "../../../config/config";
-import { PROPOSED_CHANGES_FILE_THERAD } from "../../../config/constants";
+import {
+  PROPOSED_CHANGES_FILE_THERAD,
+  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "../../../config/constants";
 import { QSP } from "../../../config/qsp";
+import { AuthContext } from "../../../decorators/withAuth";
+import graphqlClient from "../../../graphql/graphqlClientApollo";
+import { createObject } from "../../../graphql/mutations/objects/createObject";
+import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
+import { branchVar } from "../../../graphql/variables/branchVar";
+import { dateVar } from "../../../graphql/variables/dateVar";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
 import { fetchStream } from "../../../utils/fetch";
+import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 
@@ -91,6 +103,9 @@ export const FileContentDiff = (props: any) => {
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const branch = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
+  const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);
   const [previousFile, setPreviousFile] = useState(false);
@@ -115,6 +130,7 @@ export const FileContentDiff = (props: any) => {
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   const threads = data ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const approverId = auth?.data?.sub;
 
   const fetchFileDetails = useCallback(async (commit: string, setState: Function) => {
     setIsLoading(true);
@@ -153,8 +169,138 @@ export const FileContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
-  const handleSubmitComment = () => {
-    //
+  const handleSubmitComment = async (data: any, event: any) => {
+    let threadId;
+
+    try {
+      event.target.reset();
+
+      if (!data || !approverId) {
+        return;
+      }
+
+      const newDate = formatISO(new Date());
+
+      const newThread = {
+        change: {
+          id: proposedchange,
+        },
+        created_at: {
+          value: newDate,
+        },
+        created_by: {
+          id: approverId,
+        },
+        resolved: {
+          value: false,
+        },
+        commit: {
+          value: displayAddComment.side === "new" ? commitTo : commitFrom,
+        },
+        line_number: {
+          value:
+            displayAddComment.lineNumber ||
+            displayAddComment.newLineNumber ||
+            displayAddComment.oldLineNumber,
+        },
+        file: {
+          value: file.location,
+        },
+        repository: {
+          id: repositoryId,
+        },
+      };
+
+      const threadMutationString = createObject({
+        kind: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+        data: stringifyWithoutQuotes(newThread),
+      });
+
+      const threadMutation = gql`
+        ${threadMutationString}
+      `;
+
+      const result = await graphqlClient.mutate({
+        mutation: threadMutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
+      });
+
+      threadId = result?.data[`${PROPOSED_CHANGES_FILE_THREAD_OBJECT}Create`]?.object?.id;
+
+      const newComment = {
+        text: {
+          value: data.comment,
+        },
+        created_by: {
+          id: approverId,
+        },
+        created_at: {
+          value: newDate,
+        },
+        thread: {
+          id: threadId,
+        },
+      };
+
+      const commentMutationString = createObject({
+        kind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+        data: stringifyWithoutQuotes(newComment),
+      });
+
+      const commentMutation = gql`
+        ${commentMutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation: commentMutation,
+        context: {
+          branch: branch?.name,
+          date,
+        },
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
+
+      refetch();
+
+      setIsLoading(false);
+
+      setDisplayAddComment({});
+    } catch (error: any) {
+      if (threadId) {
+        const mutationString = deleteObject({
+          name: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+          data: stringifyWithoutQuotes({
+            id: threadId,
+          }),
+        });
+
+        const mutation = gql`
+          ${mutationString}
+        `;
+
+        await graphqlClient.mutate({
+          mutation,
+          context: { branch: branch?.name, date },
+        });
+        return;
+      }
+
+      console.error("An error occured while creating the comment: ", error);
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={"An error occured while creating the comment"}
+          details={error.message}
+        />
+      );
+
+      setIsLoading(false);
+    }
   };
 
   const handleCloseComment = () => {
@@ -214,7 +360,8 @@ export const FileContentDiff = (props: any) => {
         {inHoverState && (
           <Button
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-            onClick={handleClick}>
+            onClick={handleClick}
+            disabled={!auth?.permissions?.write}>
             <PencilIcon className="w-3 h-3" />
           </Button>
         )}

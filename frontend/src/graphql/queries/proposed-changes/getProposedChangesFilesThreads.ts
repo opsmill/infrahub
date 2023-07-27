@@ -39,7 +39,18 @@ query {
           edges {
             node {
               id
+
               text {
+                value
+              }
+              
+              created_by {
+                node {
+                  display_label
+                }
+              }
+
+              created_at {
                 value
               }
             }
