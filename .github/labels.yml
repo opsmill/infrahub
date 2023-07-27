@@ -63,6 +63,14 @@
   description: "Body of work related to an epic"
   color: "0b8e92"
 
+- name: "type/ecosystem"
+  description: "Effort related to the community, usually not part of the core project"
+  color: "0b5aa9"
+
+- name: "type/brainstorming"
+  description: "Topic for brainstorming, discussions"
+  color: "e19e0f"
+
 # ----------------------------------
 # EFFORT
 # ----------------------------------
