@@ -200,7 +200,7 @@ class TestInfrahubClient:
             session=session,
             name="soontobedeletedrfile",
             query=str(query_99.id),
-            template_repository=str(repo.id),
+            repository=str(repo.id),
             template_path="mytmp.j2",
         )
         await obj.save(session=session)

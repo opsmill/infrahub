@@ -385,7 +385,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if fields and isinstance(fields, dict):
             field_names = fields.keys()
         else:
-            field_names = ["__typename", "updated_at", "value"] + self._node_properties + self._flag_properties
+            # REMOVED updated_at for now, need to investigate further how it's being used today
+            field_names = ["__typename", "value"] + self._node_properties + self._flag_properties
 
         for field_name in field_names:
             if field_name == "updated_at":

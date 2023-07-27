@@ -14,8 +14,10 @@ from infrahub.git.repository import InfrahubRepository
 from infrahub.lock import registry as lock_registry
 from infrahub.log import set_log_data
 from infrahub.message_bus.events import (
+    ArtifactMessageAction,
     CheckMessageAction,
     GitMessageAction,
+    InfrahubArtifactRPC,
     InfrahubCheckRPC,
     InfrahubGitRPC,
     InfrahubRPC,
@@ -25,6 +27,7 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
     TransformMessageAction,
 )
+from infrahub_client import InfrahubNode
 
 if TYPE_CHECKING:
     from infrahub_client import InfrahubClient
@@ -164,6 +167,42 @@ async def handle_transform_message_action_python(
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 
+async def handle_artifact_message_action_generate(
+    message: InfrahubTransformRPC, client: InfrahubClient
+) -> InfrahubRPCResponse:
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
+
+    try:
+        transformation_schema = await client.schema.get(kind=message.transformation.get("__typename"))
+        transformation = InfrahubNode(
+            client=client, schema=transformation_schema, data=message.transformation, branch=message.branch_name
+        )
+
+        definition_schema = await client.schema.get(kind=message.definition.get("__typename"))
+        definition = InfrahubNode(
+            client=client, schema=definition_schema, data=message.definition, branch=message.branch_name
+        )
+
+        query_schema = await client.schema.get(kind=message.query.get("__typename"))
+        query = InfrahubNode(client=client, schema=query_schema, data=message.query, branch=message.branch_name)
+
+        target_schema = await client.schema.get(kind=message.target.get("__typename"))
+        target = InfrahubNode(client=client, schema=target_schema, data=message.target, branch=message.branch_name)
+
+        result = await repo.artifact_generate(
+            branch_name=message.branch_name,
+            commit=message.commit,
+            target=target,
+            transformation=transformation,
+            query=query,
+            definition=definition,
+        )
+        return InfrahubRPCResponse(status=RPCStatusCode.OK, response=result.dict())
+
+    except FileNotFound as exc:
+        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
+
+
 async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
     message: InfrahubGitRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
@@ -196,6 +235,18 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
     return await handler(message=message, client=client)
 
 
+async def handle_artifact_message(message: InfrahubArtifactRPC, client: InfrahubClient) -> InfrahubRPCResponse:
+    LOGGER.debug(
+        f"Will process Artifact RPC message : {message.action}, {message.repository_name} : {message.definition['display_label']} {message.target['display_label']}"
+    )
+
+    handler_map = {
+        ArtifactMessageAction.GENERATE: handle_artifact_message_action_generate,
+    }
+    handler = handler_map.get(message.action) or handle_bad_request
+    return await handler(message=message, client=client)
+
+
 async def handle_git_check_message(message: InfrahubCheckRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     LOGGER.debug(
         f"Will process Check RPC message : {message.action}, {message.repository_name} : {message.check_location} {message.check_name}"
@@ -212,6 +263,7 @@ async def handle_message(message: InfrahubRPC, client: InfrahubClient) -> Infrah
         MessageType.CHECK: handle_git_check_message,
         MessageType.GIT: handle_git_rpc_message,
         MessageType.TRANSFORMATION: handle_git_transform_message,
+        MessageType.ARTIFACT: handle_artifact_message,
     }
     handler = message_type_map.get(message.type) or handle_not_found
     return await handler(message=message, client=client)

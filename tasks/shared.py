@@ -70,9 +70,6 @@ DEV_COMPOSE_FILES_NEO4J = [
 ]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 
-AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
-SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
-
 ENV_VARS_DICT = {
     "IMAGE_NAME_FRONTEND": IMAGE_NAME_FRONTEND,
     "IMAGE_NAME_BACKEND": IMAGE_NAME_BACKEND,
@@ -89,7 +86,7 @@ if os.getenv("VITE_INFRAHUB_API_SERVER_URL", ""):
     ENV_VARS_DICT["VITE_INFRAHUB_API_SERVER_URL"] = os.getenv("VITE_INFRAHUB_API_SERVER_URL")
 
 
-VOLUME_NAMES = ["database_data", "database_logs", "git_data"]
+VOLUME_NAMES = ["database_data", "database_logs", "git_data", "storage_data"]
 
 
 def check_environment(context: Context) -> dict:

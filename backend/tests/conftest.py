@@ -46,6 +46,7 @@ def execute_before_any_test(worker_id):
             db_id = 1
 
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
+        config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"

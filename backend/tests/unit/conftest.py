@@ -1,4 +1,7 @@
 import asyncio
+import os
+import shutil
+import uuid
 from typing import Dict
 
 import pendulum
@@ -88,6 +91,50 @@ def neo4j_factory():
     """
     hydration_scope = HydrationHandler().new_hydration_scope()
     return hydration_scope._graph_hydrator
+
+
+@pytest.fixture
+def git_sources_dir(tmp_path) -> str:
+    source_dir = os.path.join(str(tmp_path), "sources")
+
+    os.mkdir(source_dir)
+
+    return source_dir
+
+
+@pytest.fixture
+def git_repos_dir(tmp_path) -> str:
+    repos_dir = os.path.join(str(tmp_path), "repositories")
+
+    os.mkdir(repos_dir)
+
+    config.SETTINGS.git.repositories_directory = repos_dir
+
+    return repos_dir
+
+
+@pytest.fixture
+def local_storage_dir(tmp_path) -> str:
+    storage_dir = os.path.join(str(tmp_path), "storage")
+
+    os.mkdir(storage_dir)
+
+    config.SETTINGS.storage.settings = {"directory": storage_dir}
+
+    return storage_dir
+
+
+@pytest.fixture
+def file1_in_storage(local_storage_dir, helper) -> str:
+    fixture_dir = helper.get_fixtures_dir()
+    file1_identifier = str(uuid.uuid4())
+
+    files_dir = os.path.join(fixture_dir, "schemas")
+
+    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
+    shutil.copyfile(os.path.join(files_dir, filenames[0]), os.path.join(local_storage_dir, file1_identifier))
+
+    return file1_identifier
 
 
 @pytest.fixture
@@ -868,7 +915,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
 
 
 @pytest.fixture
-async def car_person_schema_generics(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def car_person_schema_generics(session: AsyncSession, default_branch: Branch, data_schema) -> SchemaRoot:
     SCHEMA = {
         "generics": [
             {
@@ -974,6 +1021,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema
 
 
 @pytest.fixture
@@ -1574,7 +1622,7 @@ async def init_db(empty_database, session) -> None:
 
 
 @pytest.fixture
-async def default_branch(reset_registry, empty_database, session) -> Branch:
+async def default_branch(reset_registry, local_storage_dir, empty_database, session) -> Branch:
     await create_root_node(session=session)
     branch = await create_default_branch(session=session)
     registry.schema = SchemaManager()

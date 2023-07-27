@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import hashlib
 import importlib
 import os
 import shutil
@@ -12,6 +13,7 @@ from uuid import UUID
 
 import git
 import jinja2
+import ujson
 import yaml
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
@@ -31,7 +33,13 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
+from infrahub_client import (
+    GraphQLError,
+    InfrahubClient,
+    InfrahubNode,
+    NodeNotFound,
+    ValidationError,
+)
 from infrahub_client.utils import compare_lists
 
 # pylint: disable=too-few-public-methods,too-many-lines
@@ -91,7 +99,7 @@ class RFileInformation(BaseModel):
     query: str
     """ID or name of the GraphQL Query associated with this RFile"""
 
-    template_repository: str = "self"
+    repository: str = "self"
     """ID of the associated repository or self"""
 
     template_path: str
@@ -177,6 +185,13 @@ class RepoFileInformation(BaseModel):
 
     extension: str
     """Extension of the file Example: py """
+
+
+class ArtifactGenerateResult(BaseModel):
+    changed: bool
+    checksum: str
+    storage_id: str
+    artifact_id: str
 
 
 def extract_repo_file_information(
@@ -969,9 +984,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         rfiles_in_graph = {
             rfile.name.value: rfile
-            for rfile in await self.client.filters(
-                kind="CoreRFile", branch=branch_name, template_repository__id=str(self.id)
-            )
+            for rfile in await self.client.filters(kind="CoreRFile", branch=branch_name, repository__id=str(self.id))
         }
 
         local_rfiles = {}
@@ -990,8 +1003,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             # Insert the ID of the current repository if required
-            if item.template_repository == "self":
-                item.template_repository = self.id
+            if item.repository == "self":
+                item.repository = self.id
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
@@ -1532,7 +1545,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     async def execute_python_transform(
         self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: Optional[dict] = None
-    ) -> InfrahubCheck:
+    ) -> Any:
         """Execute A Python Transform stored in the repository."""
 
         if "::" not in location:
@@ -1582,6 +1595,76 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         except Exception as exc:
             LOGGER.critical(exc, exc_info=True)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
+
+    async def artifact_generate(
+        self,
+        branch_name: str,
+        commit: str,
+        target: InfrahubNode,
+        definition: InfrahubNode,
+        transformation: InfrahubNode,
+        query: InfrahubNode,
+    ) -> ArtifactGenerateResult:
+        variables = target.extract(params=definition.parameters.value)
+        data = await self.client.execute_graphql(
+            query=query.query.value,
+            variables=variables,
+            tracker="artifact-query-graphql-data",
+            branch_name=branch_name,
+            rebase=transformation.rebase.value,
+            timeout=transformation.timeout.value,
+        )
+
+        if transformation.typename == "CoreRFile":
+            artifact_content = await self.render_jinja2_template(
+                commit=commit, location=transformation.template_path.value, data=data
+            )
+        elif transformation.typename == "CoreTransformPython":
+            transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
+            artifact_content = await self.execute_python_transform(
+                branch_name=branch_name, commit=commit, location=transformation_location, data=data, client=self.client
+            )
+
+        if definition.content_type.value == "application/json":
+            artifact_content_str = ujson.dumps(artifact_content)
+        elif definition.content_type.value == "text/plain":
+            artifact_content_str = artifact_content
+
+        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
+
+        artifact = None
+        try:
+            artifact = await self.client.get(
+                kind="CoreArtifact", definition__id=definition.id, object__id=target.id, branch=branch_name
+            )
+            if artifact and artifact.checksum.value == checksum:
+                return ArtifactGenerateResult(
+                    changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
+                )
+        except NodeNotFound:
+            pass
+
+        resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
+        storage_id = resp["identifier"]
+
+        if artifact:
+            artifact.checksum.value = checksum
+            artifact.storage_id.value = storage_id
+            await artifact.save()
+        else:
+            artifact_data = {
+                "name": definition.artifact_name.value,
+                "content_type": definition.content_type.value,
+                "checksum": checksum,
+                "storage_id": storage_id,
+                "parameters": variables,
+                "object": target.id,
+                "definition": definition.id,
+            }
+            artifact = await self.client.create(kind="CoreArtifact", branch=branch_name, data=artifact_data)
+            await artifact.save()
+
+        return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
         if not os.path.exists(os.path.join(worktree_directory, file_path)):

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class InfrahubRepositoryRFileConfig(BaseModel):
     name: str
     query: str
-    template_repository: str
+    repository: str
     template_path: Path
 
 

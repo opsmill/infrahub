@@ -220,7 +220,6 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, car_person_
             "is_visible": True,
             "owner": None,
             "source": None,
-            "updated_at": None,
             "value": "#444444",
         },
         "display_label": "volt #444444",
@@ -232,7 +231,6 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, car_person_
             "is_visible": True,
             "owner": None,
             "source": None,
-            "updated_at": None,
             "value": True,
         },
         "name": {
@@ -242,7 +240,6 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, car_person_
             "is_visible": True,
             "owner": None,
             "source": None,
-            "updated_at": None,
             "value": "volt",
         },
         "nbr_seats": {
@@ -252,7 +249,6 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, car_person_
             "is_visible": True,
             "owner": None,
             "source": None,
-            "updated_at": None,
             "value": 4,
         },
         "type": "TestCar",

@@ -279,7 +279,6 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
         "is_visible": True,
         "owner": None,
         "source": None,
-        "updated_at": None,
         "value": "mystring",
     }
     assert await attr1.to_graphql(session=session) == expected_data
@@ -306,7 +305,6 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
             "id": first_account.id,
             "type": "CoreAccount",
         },
-        "updated_at": None,
         "value": "mystring",
     }
     assert await attr2.to_graphql(session=session) == expected_data

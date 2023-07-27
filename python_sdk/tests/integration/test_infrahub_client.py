@@ -52,7 +52,7 @@ class TestInfrahubClient:
             name="rfile1",
             description="test rfile",
             template_path="mytemplate.j2",
-            template_repository=obj2,
+            repository=obj2,
             query=obj1,
         )
         await obj3.save(session=session)
@@ -122,6 +122,6 @@ class TestInfrahubClient:
         assert len(nodes) == 1
         repo = nodes[0]
 
-        assert repo.transform_python.peers == []  # type: ignore[attr-defined]
-        await repo.transform_python.fetch()  # type: ignore[attr-defined]
-        assert len(repo.transform_python.peers) == 1  # type: ignore[attr-defined]
+        assert repo.transformations.peers == []  # type: ignore[attr-defined]
+        await repo.transformations.fetch()  # type: ignore[attr-defined]
+        assert len(repo.transformations.peers) == 2  # type: ignore[attr-defined]

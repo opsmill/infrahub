@@ -132,7 +132,7 @@ async def generate_rfile(
         raise HTTPException(status_code=404, detail="Item not found")
 
     query = await rfile.query.get_peer(session=session)  # type: ignore[attr-defined]
-    repository = await rfile.template_repository.get_peer(session=session)  # type: ignore[attr-defined]
+    repository = await rfile.repository.get_peer(session=session)  # type: ignore[attr-defined]
 
     schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
     gql_schema = await schema.get_graphql_schema(session=session)

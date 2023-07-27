@@ -48,7 +48,7 @@ describe("Tutorial - Part 6", () => {
     cy.contains(DEVICE).click();
 
     // Access the interfaces
-    cy.get(".-mb-px > .border-transparent").click();
+    cy.contains("Interfaces").click();
 
     // Access the interface
     const regex = new RegExp(`^${INTERFACE}$`); // Regex for exact match

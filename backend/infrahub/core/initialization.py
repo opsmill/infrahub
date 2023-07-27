@@ -12,6 +12,7 @@ from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.exceptions import DatabaseError
+from infrahub.storage.local import InfrahubLocalStorage
 
 LOGGER = logging.getLogger("infrahub")
 
@@ -29,6 +30,12 @@ async def initialization(session: AsyncSession):
     if len(roots) > 1:
         raise DatabaseError("Database is corrupted, more than 1 root node found.")
     registry.id = roots[0].uuid
+
+    # ---------------------------------------------------
+    # Initialize the Storage Driver
+    # ---------------------------------------------------
+    if config.SETTINGS.storage.driver == config.StorageDriver.LOCAL:
+        registry.storage = await InfrahubLocalStorage.init(settings=config.SETTINGS.storage.settings)
 
     # ---------------------------------------------------
     # Load all existing branches into the registry

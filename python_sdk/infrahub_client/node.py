@@ -9,7 +9,7 @@ from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
 from infrahub_client.schema import RelationshipCardinality, RelationshipKind
 from infrahub_client.timestamp import Timestamp
-from infrahub_client.utils import compare_lists
+from infrahub_client.utils import compare_lists, get_flat_value
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
@@ -616,6 +616,14 @@ class InfrahubNodeBase:
                 raise FilterNotFound(identifier=filter_name, kind=self._schema.kind, filters=valid_filters)
 
         return True
+
+    def extract(self, params: Dict[str, str]) -> Dict[str, Any]:
+        """Extract some datapoints defined in a flat notation."""
+        result: Dict[str, Any] = {}
+        for key, value in params.items():
+            result[key] = get_flat_value(self, key=value)
+
+        return result
 
 
 class InfrahubNode(InfrahubNodeBase):
