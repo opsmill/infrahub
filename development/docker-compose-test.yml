@@ -6,7 +6,8 @@ services:
   infrahub-test:
     build:
       context: ../
-      dockerfile: development/Dockerfile-backend
+      dockerfile: development/Dockerfile
+      target: backend
     image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
     environment:
       - "INFRAHUB_BUILD_NAME=${INFRAHUB_BUILD_NAME}"

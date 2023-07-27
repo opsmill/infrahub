@@ -25,15 +25,10 @@ tasks:
 
 # Ports to expose on workspace startup
 ports:
-  - port: 3000
-    onOpen: ignore
-    name: Frontend
-    description: Frontend Interface
-    visibility: public
   - port: 8000
     onOpen: ignore
-    name: GraphQL
-    description: GraphQL playground
+    name: web-interface
+    description: Web Interface
     visibility: public
   - port: 7474
     onOpen: ignore

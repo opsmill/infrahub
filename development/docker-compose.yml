@@ -6,10 +6,11 @@ services:
   infrahub-server:
     build:
       context: ../
-      dockerfile: development/Dockerfile-backend
+      dockerfile: development/Dockerfile
+      target: backend
     image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
     command: >
-      gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.api.main:app
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
     depends_on:
       database:
         condition: service_healthy
@@ -24,12 +25,13 @@ services:
       - "INFRAHUB_EXPERIMENTAL_IGNORE_AUTHENTICATION_REQUIREMENTS=false"
       - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
       - "PROMETHEUS_MULTIPROC_DIR=/prom_shared"
+      - "INFRAHUB_FRONTEND_DIRECTORY=/opt/infrahub/frontend"
     volumes:
       - ../:/source
       - "storage_data:/opt/infrahub/storage"
     tty: true
     healthcheck:
-      test: wget -O /dev/null http://localhost:8000/schema || exit 1
+      test: wget -O /dev/null http://localhost:8000/api/schema || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
@@ -37,7 +39,8 @@ services:
   infrahub-git:
     build:
       context: ../
-      dockerfile: development/Dockerfile-backend
+      dockerfile: development/Dockerfile
+      target: backend
     image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
@@ -52,20 +55,6 @@ services:
     volumes:
       - ../:/source
       - "git_data:/opt/infrahub/git"
-    tty: true
-  frontend:
-    build:
-      context: ../
-      dockerfile: development/Dockerfile-frontend
-    image: "${IMAGE_NAME_FRONTEND}:${IMAGE_VER}"
-    command: >
-      bash -c "npm i --omit=dev && npm run build-serve"
-    depends_on:
-      infrahub-server:
-        condition: service_healthy
-    volumes:
-      - ../frontend/:/source
-      - /source/node_modules/
     tty: true
 volumes:
   git_data:

@@ -16,9 +16,9 @@ class TestInfrahubClient:
         registry.delete_all()
 
         # pylint: disable=import-outside-toplevel
-        from infrahub.api import main
+        from infrahub.server import app
 
-        return TestClient(main.app)
+        return TestClient(app)
 
     @pytest.fixture
     async def client(self, test_client):

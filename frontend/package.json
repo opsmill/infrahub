@@ -17,7 +17,7 @@
     "cypress:run:e2e": "cypress run --e2e",
     "cypress:run:e2e:screenshots": "cypress run --e2e --env SCREENSHOTS=true",
     "codegen": "graphql-codegen --config codegen.yml",
-    "codegen:openapi": "npx openapi-typescript http://localhost:8000/openapi.json --output src/infraops.d.ts",
+    "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/infraops.d.ts",
     "prettier": "prettier './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
     "prettier:fix": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
     "eslint": "eslint .",

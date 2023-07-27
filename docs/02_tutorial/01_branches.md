@@ -75,7 +75,7 @@ Go back to the detailed page for the Account `Admin` and try to switch branches 
 Now that we have modified some data in a controlled environment, and after validating that everything is right, we can integrate these changes in the `main` branch by merging the branch `cr1234` into main.
 
 To view changes and merge a branch you need to :
-1. Navigate to the branch menu at the very bottom of the menu on the left (or [follow this link](http://localhost:3000/branches/))
+1. Navigate to the branch menu at the very bottom of the menu on the left (or [follow this link](http://localhost:8000/branches/))
 
 ![Branches list](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_list.png)
 

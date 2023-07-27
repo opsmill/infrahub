@@ -12,7 +12,7 @@ class TestInfrahubSchema:
     @pytest.fixture(scope="class")
     async def client(self):
         # pylint: disable=import-outside-toplevel
-        from infrahub.api.main import app
+        from infrahub.server import app
 
         return TestClient(app)
 

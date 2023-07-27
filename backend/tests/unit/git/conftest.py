@@ -510,7 +510,7 @@ async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"mock": []}}
 
-    httpx_mock.add_response(method="GET", json=response, url="http://mock/query/my_query?branch=main&rebase=true")
+    httpx_mock.add_response(method="GET", json=response, url="http://mock/api/query/my_query?branch=main&rebase=true")
     return httpx_mock
 
 
@@ -560,7 +560,7 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
         encoding="UTF-8"
     )
 
-    httpx_mock.add_response(method="GET", url="http://mock/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
     return httpx_mock
 
 
@@ -570,7 +570,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
         encoding="UTF-8"
     )
 
-    httpx_mock.add_response(method="GET", url="http://mock/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
     return httpx_mock
 
 

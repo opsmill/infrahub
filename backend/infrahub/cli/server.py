@@ -52,7 +52,7 @@ def start(
 
     if debug:
         uvicorn.run(
-            "infrahub.api.main:app",
+            "infrahub.server:app",
             host=listen,
             port=port,
             log_level="info",
@@ -62,7 +62,7 @@ def start(
         )
     else:
         uvicorn.run(
-            "infrahub.api.main:app",
+            "infrahub.server:app",
             host=listen,
             port=port,
             log_level="info",
@@ -70,4 +70,4 @@ def start(
         )
 
 
-# gunicorn infrahub.api.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+# gunicorn infrahub.server:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000

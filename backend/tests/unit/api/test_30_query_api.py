@@ -5,7 +5,7 @@ async def test_query_endpoint_default_branch(session, client, client_headers, de
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
-            "/query/query01",
+            "/api/query/query01",
             headers=client_headers,
         )
 
@@ -26,7 +26,7 @@ async def test_query_endpoint_branch1(session, client, client_headers, default_b
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
-            "/query/query01?branch=branch1",
+            "/api/query/query01?branch=branch1",
             headers=client_headers,
         )
 
@@ -47,7 +47,7 @@ async def test_query_endpoint_wrong_query(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
-            "/query/query99",
+            "/api/query/query99",
             headers=client_headers,
         )
 
@@ -60,7 +60,7 @@ async def test_query_endpoint_wrong_branch(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
-            "/query/query01?branch=notvalid",
+            "/api/query/query01?branch=notvalid",
             headers=client_headers,
         )
 

@@ -19,7 +19,7 @@ def patch_rpc_client():
 async def test_file_upload(
     session, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
 ):
-    from infrahub.api.main import app
+    from infrahub.server import app
 
     client = TestClient(app)
 
@@ -35,7 +35,7 @@ async def test_file_upload(
     file = {"file": open(os.path.join(files_dir, filenames[0]), "rb")}
 
     with client:
-        resp = client.post(url="/storage/upload/file", files=file, headers=admin_headers)
+        resp = client.post(url="/api/storage/upload/file", files=file, headers=admin_headers)
         data = resp.json()
         assert data["checksum"] == file_checksum
         assert data["identifier"]
@@ -49,7 +49,7 @@ async def test_file_upload(
 async def test_content_upload(
     session, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
 ):
-    from infrahub.api.main import app
+    from infrahub.server import app
 
     client = TestClient(app)
 
@@ -64,7 +64,7 @@ async def test_content_upload(
 
     with client:
         resp = client.post(
-            url="/storage/upload/content", json={"content": file_content.decode("utf-8")}, headers=admin_headers
+            url="/api/storage/upload/content", json={"content": file_content.decode("utf-8")}, headers=admin_headers
         )
         data = resp.json()
         assert data["checksum"] == file_checksum

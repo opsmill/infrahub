@@ -14,11 +14,11 @@ describe("Config fetch", () => {
   it("should login and load the config", function () {
     cy.viewport(1920, 1080);
 
-    cy.intercept("POST", "/auth/login", this.login).as("login");
+    cy.intercept("POST", "/api/auth/login", this.login).as("login");
 
-    cy.intercept("GET", "/config", this.config).as("getConfig");
+    cy.intercept("GET", "/api/config", this.config).as("getConfig");
 
-    cy.intercept("GET", "/schema", this.schema).as("getSchema");
+    cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
 
     cy.mount(
       <MockedProvider addTypename={false}>

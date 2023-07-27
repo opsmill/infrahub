@@ -22,7 +22,7 @@ def patch_rpc_client():
 async def test_artifact_definition_endpoint(
     session, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data_generic
 ):
-    from infrahub.api.main import app
+    from infrahub.server import app
 
     client = TestClient(app)
 
@@ -69,7 +69,7 @@ async def test_artifact_definition_endpoint(
         )
 
         response = client.get(
-            f"/artifact/generate/{ad1.id}",
+            f"/api/artifact/generate/{ad1.id}",
             headers=client_headers,
         )
 

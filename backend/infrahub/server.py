@@ -2,42 +2,25 @@ import asyncio
 import logging
 import os
 import time
-from typing import Any, Awaitable, Callable, Dict
+from typing import Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
-from fastapi import Depends, FastAPI, HTTPException, Path, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
 from fastapi.responses import JSONResponse
-from graphql import graphql
-from neo4j import AsyncSession
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub import __version__
-from infrahub.api import (
-    artifact,
-    auth,
-    diff,
-    file,
-    internal,
-    schema,
-    storage,
-    transformation,
-)
+from infrahub.api import router as api
 from infrahub.api.background import BackgroundRunner
-from infrahub.api.dependencies import (
-    BranchParams,
-    get_branch_params,
-    get_current_user,
-    get_session,
-)
 from infrahub.auth import BaseTokenAuth
-from infrahub.core import registry
 from infrahub.core.initialization import initialization
-from infrahub.core.manager import NodeManager
 from infrahub.database import get_db
 from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
@@ -46,6 +29,8 @@ from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
 
+# pylint: disable=too-many-locals
+
 app = FastAPI(
     title="Infrahub",
     version=__version__,
@@ -53,22 +38,21 @@ app = FastAPI(
         "name": "OpsMill",
         "email": "info@opsmill.com",
     },
+    openapi_url="/api/openapi.json",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
 )
 
-# pylint: disable=too-many-locals
+FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
+FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
 
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
-app.include_router(auth.router)
-app.include_router(file.router)
-app.include_router(schema.router)
-app.include_router(transformation.router)
-app.include_router(internal.router)
-app.include_router(diff.router)
-app.include_router(storage.router)
-app.include_router(artifact.router)
+app.include_router(api)
+
+templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 
 
 @app.on_event("startup")
@@ -135,70 +119,6 @@ async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> J
     return JSONResponse(status_code=exc.HTTP_CODE, content=error)
 
 
-@app.get("/query/{query_id}")
-async def graphql_query(
-    request: Request,
-    response: Response,
-    query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
-    session: AsyncSession = Depends(get_session),
-    branch_params: BranchParams = Depends(get_branch_params),
-    _: str = Depends(get_current_user),
-):
-    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
-
-    gql_query = await NodeManager.get_one(
-        session=session, id=query_id, branch=branch_params.branch, at=branch_params.at
-    )
-
-    if not gql_query:
-        gqlquery_schema = registry.get_node_schema(name="CoreGraphQLQuery", branch=branch_params.branch)
-        items = await NodeManager.query(
-            session=session,
-            schema=gqlquery_schema,
-            filters={gqlquery_schema.default_filter: query_id},
-            branch=branch_params.branch,
-            at=branch_params.at,
-        )
-        if items:
-            gql_query = items[0]
-
-    if not gql_query:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    schema_branch = registry.schema.get_schema_branch(name=branch_params.branch.name)
-    gql_schema = await schema_branch.get_graphql_schema(session=session)
-
-    result = await graphql(
-        gql_schema,
-        source=gql_query.query.value,  # type: ignore[attr-defined]
-        context_value={
-            "infrahub_branch": branch_params.branch,
-            "infrahub_at": branch_params.at,
-            "infrahub_database": request.app.state.db,
-            "infrahub_session": session,
-        },
-        root_value=None,
-        variable_values=params,
-    )
-
-    response_payload: Dict[str, Any] = {"data": result.data}
-
-    if result.errors:
-        response_payload["errors"] = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            response_payload["errors"].append(
-                {
-                    "message": error.message,
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-        response.status_code = 500
-
-    return response_payload
-
-
 app.add_middleware(
     AuthenticationMiddleware,
     backend=BaseTokenAuth(),
@@ -222,6 +142,15 @@ app.add_route(
 )
 # app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
 # app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
+
+if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
+    app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
+
+
+@app.get("/{rest_of_path:path}")
+async def react_app(req: Request, rest_of_path: str):  # pylint: disable=unused-argument
+    return templates.TemplateResponse("index.html", {"request": req})
+
 
 if __name__ != "main":
     logger.setLevel(gunicorn_logger.level)

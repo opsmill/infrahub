@@ -3,7 +3,7 @@ import pytest
 from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
-from infrahub.api.main import app
+from infrahub.server import app
 from infrahub.test_data import dataset01 as ds01
 
 headers = {"Authorization": "Token nelly"}
@@ -329,7 +329,7 @@ class TestUserWorkflow01:
         headers = await integration_helper.admin_headers()
 
         with client:
-            response = client.get(f"/diff/data?branch={branch1}&branch_only=false", headers=headers)
+            response = client.get(f"/api/diff/data?branch={branch1}&branch_only=false", headers=headers)
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -456,7 +456,8 @@ class TestUserWorkflow01:
             time_from = pytest.state["time_after_intf_update_branch1"]
             time_to = pendulum.now("UTC").to_iso8601_string()
             response = client.get(
-                f"/diff/data?branch={branch1}&branch_only=true&time_from={time_from}&time_to={time_to}", headers=headers
+                f"/api/diff/data?branch={branch1}&branch_only=true&time_from={time_from}&time_to={time_to}",
+                headers=headers,
             )
 
         assert response.status_code == 200
@@ -701,7 +702,7 @@ class TestUserWorkflow01:
     @pytest.mark.xfail(reason="FIXME: Need to refactor once we have the new diff API")
     def test_validate_diff_after_new_interface(self, client, dataset01):
         with client:
-            response = client.get(f"/diff/data?branch={branch1}&branch_only=true", headers=headers)
+            response = client.get(f"/api/diff/data?branch={branch1}&branch_only=true", headers=headers)
 
         assert response.status_code == 200
         assert "errors" not in response.json()

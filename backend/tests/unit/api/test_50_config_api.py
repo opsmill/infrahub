@@ -1,7 +1,7 @@
 async def test_config_endpoint(session, client, client_headers, default_branch):
     with client:
         response = client.get(
-            "/config",
+            "/api/config",
             headers=client_headers,
         )
 
