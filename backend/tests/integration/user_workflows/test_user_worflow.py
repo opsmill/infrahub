@@ -456,7 +456,8 @@ class TestUserWorkflow01:
             time_from = pytest.state["time_after_intf_update_branch1"]
             time_to = pendulum.now("UTC").to_iso8601_string()
             response = client.get(
-                f"/api/diff/data?branch={branch1}&branch_only=true&time_from={time_from}&time_to={time_to}", headers=headers
+                f"/api/diff/data?branch={branch1}&branch_only=true&time_from={time_from}&time_to={time_to}",
+                headers=headers,
             )
 
         assert response.status_code == 200
