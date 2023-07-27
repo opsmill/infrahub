@@ -353,15 +353,21 @@ export const FileContentDiff = (props: any) => {
       setDisplayAddComment({ side, ...change });
     };
 
+    const thread = getThread(threads, change, commitFrom, commitTo);
+
+    if (thread || !auth?.permissions?.write) {
+      // Do not display the add button if there is already a thread
+      return wrapInAnchor(renderDefault());
+    }
+
     return (
       <>
         {wrapInAnchor(renderDefault())}
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-            onClick={handleClick}
-            disabled={!auth?.permissions?.write}>
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+            onClick={handleClick}>
             <PencilIcon className="w-3 h-3" />
           </Button>
         )}
