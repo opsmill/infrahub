@@ -41,5 +41,15 @@ query {
       }
     }
   }
+  {{#if accountKind}}
+  {{accountKind}} {
+    edges {
+      node {
+        id
+        display_label
+      }
+    }
+  }
+  {{/if}}
 }
 `);

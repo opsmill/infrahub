@@ -252,6 +252,14 @@ export const conversationMocksQuery = `query {
       }
     }
   }
+  CoreAccount {
+    edges {
+      node {
+        id
+        display_label
+      }
+    }
+  }
 }
 `;
 

@@ -4,76 +4,27 @@ import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
-import { DEFAULT_BRANCH_NAME, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import {
+  ACCOUNT_OBJECT,
+  DEFAULT_BRANCH_NAME,
+  PROPOSED_CHANGES_OBJECT,
+} from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
+import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
-import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
-
-const formStructure: DynamicFieldData[] = [
-  {
-    name: "name.value",
-    kind: "Text",
-    type: "text",
-    label: "Name",
-    value: null,
-    options: { values: [] },
-    config: {},
-    isProtected: false,
-  },
-  {
-    name: "source_branch.value",
-    kind: "Text",
-    type: "text",
-    label: "Source Branch",
-    value: null,
-    options: { values: [] },
-    config: {},
-    isProtected: false,
-  },
-  {
-    name: "destination_branch.value",
-    kind: "Text",
-    type: "text",
-    label: "Destination Branch",
-    value: "main",
-    options: { values: [] },
-    config: {},
-    isProtected: true,
-  },
-  {
-    name: "reviewers.list",
-    kind: "String",
-    type: "multiselect",
-    label: "Reviewers",
-    value: "",
-    options: {
-      values: [
-        { name: "Architecture Team", id: "6733eec4-ef1c-44c6-8890-1fbca82ad1a3" },
-        { name: "Crm Synchronization", id: "0ad207e3-da8d-47f4-a6f7-a78a973cd1af" },
-        { name: "Chloe O'Brian", id: "a0323b9c-51e1-4f82-8204-dd91f6180eea" },
-        { name: "David Palmer", id: "733daf28-d8e9-4c18-bc2f-3a2305d66447" },
-        { name: "Engineering Team", id: "64cb6739-1271-4279-af2d-59c0f80bdee4" },
-        { name: "Jack Bauer", id: "50dfa630-8978-46ae-8475-3063d82e3cca" },
-        { name: "Operation Team", id: "5686a49a-316e-473b-8204-5dbd2ebf29d2" },
-        { name: "Admin", id: "da0b16fe-6c00-43a2-9b3b-379a36d6f3cc" },
-        { name: "Pop-Builder", id: "adbe076b-8491-45a5-a74f-6db30078ffb2" },
-      ],
-    },
-    config: {},
-    isProtected: false,
-  },
-];
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
+  const [branches] = useAtom(branchesState);
 
   const auth = useContext(AuthContext);
 
@@ -82,10 +33,12 @@ export const ProposedChanges = () => {
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
+  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
 
   const queryString = schemaData
     ? getProposedChanges({
         kind: schemaData.kind,
+        accountKind: accountSchemaData.kind,
         attributes: schemaData.attributes,
         relationships: getSchemaRelationshipColumns(schemaData),
       })
@@ -118,6 +71,19 @@ export const ProposedChanges = () => {
   if (error) {
     return <ErrorScreen />;
   }
+
+  const branchesOptions: any[] = branches
+    .filter((branch) => branch.name !== "main")
+    .map((branch) => ({ id: branch.name, name: branch.name }));
+
+  const reviewersOptions: any[] = data
+    ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
+        id: edge?.node.id,
+        name: edge?.node?.display_label,
+      }))
+    : [];
+
+  const formStructure = getFormStructure(branchesOptions, reviewersOptions);
 
   return (
     <div>
