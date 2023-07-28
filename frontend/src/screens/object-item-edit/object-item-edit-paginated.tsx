@@ -15,6 +15,7 @@ import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdi
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
+import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -25,10 +26,17 @@ interface Props {
   objectid: string;
   closeDrawer: Function;
   onUpdateComplete: Function;
+  formStructure?: DynamicFieldData[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
+  const {
+    objectname,
+    objectid,
+    closeDrawer,
+    onUpdateComplete,
+    formStructure: formStructureFromProps,
+  } = props;
 
   const user = useContext(AuthContext);
 
@@ -94,14 +102,16 @@ export default function ObjectItemEditComponent(props: Props) {
     return acc;
   }, {});
 
-  const formStructure = getFormStructureForCreateEdit(
-    schema,
-    schemaList,
-    genericsList,
-    peerDropdownOptions,
-    objectDetailsData,
-    user
-  );
+  const formStructure =
+    formStructureFromProps ??
+    getFormStructureForCreateEdit(
+      schema,
+      schemaList,
+      genericsList,
+      peerDropdownOptions,
+      objectDetailsData,
+      user
+    );
 
   async function onSubmit(data: any) {
     setIsLoading(true);

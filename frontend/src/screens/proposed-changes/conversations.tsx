@@ -15,6 +15,7 @@ import { DateDisplay } from "../../components/date-display";
 import SlideOver from "../../components/slide-over";
 import { Tooltip } from "../../components/tooltip";
 import {
+  ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
   PROPOSED_CHANGES_CHANGE_THERAD,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
@@ -30,9 +31,11 @@ import { getProposedChangesThreads } from "../../graphql/queries/proposed-change
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
+import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../utils/string";
+import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
@@ -41,10 +44,60 @@ type tProposedChangesDetails = {
   proposedChangesDetails?: any;
 };
 
+export const getFormStructure = (
+  branches: any[] = [],
+  reviewers: any[] = [],
+  data?: any
+): DynamicFieldData[] => [
+  {
+    name: "name.value",
+    kind: "Text",
+    type: "text",
+    label: "Name",
+    value: data?.name?.value ?? "",
+    options: { values: [] },
+    config: {},
+    isProtected: false,
+  },
+  {
+    name: "source_branch.value",
+    kind: "String",
+    type: "select",
+    label: "Source Branch",
+    value: data?.source_branch?.value ?? "",
+    options: { values: branches },
+    config: {},
+    isProtected: !!data?.source_branch?.value,
+  },
+  {
+    name: "destination_branch.value",
+    kind: "Text",
+    type: "text",
+    label: "Destination Branch",
+    value: "main",
+    options: { values: [] },
+    config: {},
+    isProtected: true,
+  },
+  {
+    name: "reviewers.list",
+    kind: "String",
+    type: "multiselect",
+    label: "Reviewers",
+    value: data?.reviewers?.edges.map((edge: any) => edge?.node?.id).filter(Boolean) ?? "",
+    options: {
+      values: reviewers,
+    },
+    config: {},
+    isProtected: false,
+  },
+];
+
 export const Conversations = (props: tProposedChangesDetails) => {
   const { proposedChangesDetails } = props;
-  const { proposedchange } = useParams();
 
+  const { proposedchange } = useParams();
+  const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
@@ -55,11 +108,13 @@ export const Conversations = (props: tProposedChangesDetails) => {
   const navigate = useNavigate();
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_CHANGE_THERAD)[0];
+  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
 
   const queryString = schemaData
     ? getProposedChangesThreads({
         id: proposedchange,
         kind: schemaData.kind,
+        accountKind: accountSchemaData.kind,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
@@ -251,6 +306,19 @@ export const Conversations = (props: tProposedChangesDetails) => {
     }
   }
 
+  const branchesOptions: any[] = branches
+    .filter((branch) => branch.name !== "main")
+    .map((branch) => ({ id: branch.name, name: branch.name }));
+
+  const reviewersOptions: any[] = data
+    ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
+        id: edge?.node.id,
+        name: edge?.node?.display_label,
+      }))
+    : [];
+
+  const formStructure = getFormStructure(branchesOptions, reviewersOptions, proposedChangesDetails);
+
   return (
     <div className="flex">
       <div className="flex-1 p-4 overflow-auto">
@@ -428,6 +496,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
           onUpdateComplete={() => refetch()}
           objectid={proposedchange!}
           objectname={PROPOSED_CHANGES_OBJECT!}
+          formStructure={formStructure}
         />
       </SlideOver>
     </div>

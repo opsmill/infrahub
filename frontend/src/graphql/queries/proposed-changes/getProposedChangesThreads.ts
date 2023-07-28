@@ -1,6 +1,7 @@
 import Handlebars from "handlebars";
 
-export const getProposedChangesThreads = Handlebars.compile(`query {
+export const getProposedChangesThreads = Handlebars.compile(`
+query {
   {{kind}}(change__id: "{{id}}") {
     count
     edges {
@@ -39,6 +40,13 @@ export const getProposedChangesThreads = Handlebars.compile(`query {
       }
     }
   }
+  {{#if accountKind}}{{accountKind}}{{/if}} {
+    edges {
+      node {
+        id
+        display_label
+      }
+    }
+  }
 }
-
 `);

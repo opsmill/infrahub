@@ -148,6 +148,7 @@ export default function ObjectItemCreate(props: iProps) {
             onCancel={onCancel}
             fields={fields}
             isLoading={isLoading}
+            submitLabel={"Create"}
           />
         </div>
       )}

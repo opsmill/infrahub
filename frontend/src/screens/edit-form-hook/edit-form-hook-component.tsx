@@ -7,6 +7,7 @@ interface Props {
   onSubmit: SubmitHandler<FieldValues>;
   onCancel?: Function;
   isLoading?: boolean;
+  submitLabel?: string;
 }
 
 export default function EditFormHookComponent(props: Props) {
