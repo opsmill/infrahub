@@ -1,4 +1,5 @@
 import * as R from "ramda";
+import { COLUMNS_BLACKLIST } from "../config/constants";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
 interface iColumn {
@@ -54,13 +55,16 @@ export const getSchemaRelationshipsTabs = (schema: iNodeSchema | iGenericSchema)
   return relationships;
 };
 
-export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
+export const getSchemaAttributeColumns = (
+  schema: iNodeSchema | iGenericSchema,
+  disableBlackList?: boolean
+): iColumn[] => {
   if (!schema) {
     return [];
   }
 
   const attributes: iColumn[] = (schema.attributes || [])
-    .filter((row) => row.kind !== "HashedPassword")
+    .filter((row) => (disableBlackList ? true : !COLUMNS_BLACKLIST.includes(row.kind)))
     .map((row) => ({
       label: row.label ?? "",
       name: row.name,
@@ -70,12 +74,15 @@ export const getSchemaAttributeColumns = (schema: iNodeSchema | iGenericSchema):
   return attributes;
 };
 
-export const getSchemaObjectColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
+export const getSchemaObjectColumns = (
+  schema: iNodeSchema | iGenericSchema,
+  disableBlackList?: boolean
+): iColumn[] => {
   if (!schema) {
     return [];
   }
 
-  const attributes = getSchemaAttributeColumns(schema);
+  const attributes = getSchemaAttributeColumns(schema, disableBlackList);
   const relationships = getSchemaRelationshipColumns(schema);
 
   const columns = R.concat(attributes, relationships);
