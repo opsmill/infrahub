@@ -128,8 +128,8 @@ class BranchDiffRelationshipMany(BaseModel):
 
 class BranchDiffElementAttribute(BaseModel):
     type: DiffElementType = DiffElementType.ATTRIBUTE
+    branch: str
     id: str = ""
-    changed_at: Optional[str] = None
     summary: DiffSummary = DiffSummary()
     action: DiffAction = DiffAction.UNCHANGED
     value: Optional[BranchDiffProperty] = None
@@ -143,6 +143,7 @@ class BranchDiffElementRelationshipOne(BaseModel):
     type: DiffElementType = DiffElementType.RELATIONSHIP_ONE
     id: str = ""
     identifier: str = ""
+    branch: str
     summary: DiffSummary = DiffSummary()
     peer: BranchDiffRelationshipOnePeerValue = BranchDiffRelationshipOnePeerValue()
     properties: List[BranchDiffProperty] = Field(default_factory=list)
@@ -156,6 +157,7 @@ class BranchDiffElementRelationshipOne(BaseModel):
 class BranchDiffElementRelationshipMany(BaseModel):
     type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
     identifier: str = ""
+    branch: str
     summary: DiffSummary = DiffSummary()
     peers: List[BranchDiffRelationshipManyElement] = Field(default_factory=list)
 
@@ -175,8 +177,9 @@ class BranchDiffElement(BaseModel, smart_union=True):
     type: DiffElementType
     name: str
     path: str
-    source: Union[BranchDiffElementAttribute, BranchDiffElementRelationshipOne, BranchDiffElementRelationshipMany]
-    destination: Union[BranchDiffElementAttribute, BranchDiffElementRelationshipOne, BranchDiffElementRelationshipMany]
+    changes: List[
+        Union[BranchDiffElementAttribute, BranchDiffElementRelationshipOne, BranchDiffElementRelationshipMany]
+    ] = Field(default_factory=list)
 
 
 class BranchDiffNode(BaseModel):
@@ -457,24 +460,18 @@ class DiffPayload:
                 type=element.type,
                 name=element.name,
                 path=f"data/{node_id}/{element.name}",
-                source=BranchDiffElementAttribute(),
-                destination=BranchDiffElementAttribute(),
             )
 
-        if branch == self.source_branch:
-            self.entries[node_id].elements[element.name].source.id = element.id
-            self.entries[node_id].elements[element.name].source.action = element.action
-            self.entries[node_id].elements[element.name].source.changed_at = element.changed_at
-            self.entries[node_id].elements[element.name].source.value = element.value
-            self.entries[node_id].elements[element.name].source.properties = element.properties
-            self.entries[node_id].elements[element.name].source.summary = element.summary
-        elif branch == self.target_branch:
-            self.entries[node_id].elements[element.name].destination.id = element.id
-            self.entries[node_id].elements[element.name].destination.action = element.action
-            self.entries[node_id].elements[element.name].destination.changed_at = element.changed_at
-            self.entries[node_id].elements[element.name].destination.value = element.value
-            self.entries[node_id].elements[element.name].destination.properties = element.properties
-            self.entries[node_id].elements[element.name].destination.summary = element.summary
+        self.entries[node_id].elements[element.name].changes.append(
+            BranchDiffElementAttribute(
+                branch=branch,
+                id=element.id,
+                action=element.action,
+                value=element.value,
+                properties=element.properties,
+                summary=element.summary,
+            )
+        )
 
     def _add_node_element_relationship(
         self,
@@ -504,26 +501,21 @@ class DiffPayload:
             self.entries[node_id].elements[element_name] = BranchDiffElement(
                 type=DiffElementType.RELATIONSHIP_ONE,
                 name=element_name,
-                source=BranchDiffElementRelationshipOne(),
-                destination=BranchDiffElementRelationshipOne(),
                 path=f"data/{node_id}/{element_name}",
             )
-        if branch == self.source_branch:
-            self.entries[node_id].elements[element_name].source.id = relationship.id
-            self.entries[node_id].elements[element_name].source.identifier = relationship.identifier
-            self.entries[node_id].elements[element_name].source.peer = relationship.peer
-            self.entries[node_id].elements[element_name].source.properties = relationship.properties
-            self.entries[node_id].elements[element_name].source.summary = relationship.summary
-            self.entries[node_id].elements[element_name].source.changed_at = relationship.changed_at
-            self.entries[node_id].elements[element_name].source.action = relationship.action
-        elif branch == self.target_branch:
-            self.entries[node_id].elements[element_name].destination.id = relationship.id
-            self.entries[node_id].elements[element_name].destination.identifier = relationship.identifier
-            self.entries[node_id].elements[element_name].destination.peer = relationship.peer
-            self.entries[node_id].elements[element_name].destination.properties = relationship.properties
-            self.entries[node_id].elements[element_name].destination.summary = relationship.summary
-            self.entries[node_id].elements[element_name].destination.changed_at = relationship.changed_at
-            self.entries[node_id].elements[element_name].destination.action = relationship.action
+
+        self.entries[node_id].elements[element_name].changes.append(
+            BranchDiffElementRelationshipOne(
+                branch=branch,
+                id=relationship.id,
+                identifier=relationship.identifier,
+                peer=relationship.peer,
+                properties=relationship.properties,
+                summary=relationship.summary,
+                changed_at=relationship.changed_at,
+                action=relationship.action,
+            )
+        )
 
     def _add_node_element_relationship_many(
         self,
@@ -533,24 +525,20 @@ class DiffPayload:
         relationship: BranchDiffRelationshipMany,
     ) -> None:
         if element_name not in self.entries[node_id].elements:
-            source = BranchDiffElementRelationshipMany()
-            target = BranchDiffElementRelationshipMany()
             self.entries[node_id].elements[element_name] = BranchDiffElement(
                 type=DiffElementType.RELATIONSHIP_MANY,
                 name=element_name,
-                source=source,
-                destination=target,
                 path=f"data/{node_id}/{element_name}",
             )
 
-        if branch == self.source_branch:
-            self.entries[node_id].elements[element_name].source.identifier = relationship.identifier
-            self.entries[node_id].elements[element_name].source.peers = relationship.peers
-            self.entries[node_id].elements[element_name].source.summary = relationship.summary
-        elif branch == self.target_branch:
-            self.entries[node_id].elements[element_name].destination.identifier = relationship.identifier
-            self.entries[node_id].elements[element_name].destination.peers = relationship.peers
-            self.entries[node_id].elements[element_name].destination.summary = relationship.summary
+        self.entries[node_id].elements[element_name].changes.append(
+            BranchDiffElementRelationshipMany(
+                branch=branch,
+                identifier=relationship.identifier,
+                peers=relationship.peers,
+                summary=relationship.summary,
+            )
+        )
 
     async def _process_nodes(self) -> None:  # pylint: disable=too-many-branches
         # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
