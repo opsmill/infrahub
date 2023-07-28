@@ -121,7 +121,7 @@ describe("Object list", () => {
     cy.get(".p-2").click();
 
     // Save
-    cy.contains("Save").click();
+    cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
     cy.get(".sm\\:col-span-7 > .relative > .absolute").should("have.text", "Required");
@@ -163,7 +163,7 @@ describe("Object list", () => {
     cy.get(".p-2").click();
 
     // Save
-    cy.contains("Save").click();
+    cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
     cy.get(".sm\\:col-span-7 > .relative > .absolute").should("not.exist");
@@ -203,7 +203,7 @@ describe("Object list", () => {
     cy.get(".p-2").click();
 
     // Save
-    cy.contains("Save").click();
+    cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
     cy.get(".flex-col > .relative > .absolute").should("have.text", "Required");
@@ -245,7 +245,7 @@ describe("Object list", () => {
     cy.get(".p-2").click();
 
     // Save
-    cy.contains("Save").click();
+    cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
     cy.get(".flex-col > .relative > .absolute").should("not.exist");
@@ -287,7 +287,7 @@ describe("Object list", () => {
     cy.get(".p-2").click();
 
     // Save
-    cy.contains("Save").click();
+    cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
     cy.get(".flex-col > .relative > .absolute").should("not.exist");
