@@ -94,7 +94,6 @@ def restart(context: Context, database: str = "memgraph"):
 
         execute_command(context=context, command=f"{base_cmd} restart infrahub-server")
         execute_command(context=context, command=f"{base_cmd} restart infrahub-git")
-        execute_command(context=context, command=f"{base_cmd} restart frontend")
 
 
 @task(optional=["database"])
