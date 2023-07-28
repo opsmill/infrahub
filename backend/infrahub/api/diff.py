@@ -174,7 +174,7 @@ class BranchDiffElementRelationshipMany(BaseModel):
 class BranchDiffElement(BaseModel, smart_union=True):
     type: DiffElementType
     name: str
-    conflicts: List[str] = Field(default_factory=list)
+    path: str
     source: Union[BranchDiffElementAttribute, BranchDiffElementRelationshipOne, BranchDiffElementRelationshipMany]
     destination: Union[BranchDiffElementAttribute, BranchDiffElementRelationshipOne, BranchDiffElementRelationshipMany]
 
@@ -201,6 +201,7 @@ class BranchDiffSummary(BaseModel):
 class BranchDiffEntry(BaseModel):
     kind: str
     id: str
+    path: str
     elements: Dict[str, BranchDiffElement] = Field(default_factory=dict)
     source: BranchDiffSummary = BranchDiffSummary()
     target: BranchDiffSummary = BranchDiffSummary()
@@ -443,7 +444,7 @@ class DiffPayload:
 
     def _add_node_to_diff(self, node_id: str, kind: str):
         if node_id not in self.entries:
-            self.entries[node_id] = BranchDiffEntry(id=node_id, kind=kind)
+            self.entries[node_id] = BranchDiffEntry(id=node_id, kind=kind, path=f"data/{node_id}")
 
     def _add_node_element_attribute(
         self,
@@ -455,6 +456,7 @@ class DiffPayload:
             self.entries[node_id].elements[element.name] = BranchDiffElement(
                 type=element.type,
                 name=element.name,
+                path=f"data/{node_id}/{element.name}",
                 source=BranchDiffElementAttribute(),
                 destination=BranchDiffElementAttribute(),
             )
@@ -504,6 +506,7 @@ class DiffPayload:
                 name=element_name,
                 source=BranchDiffElementRelationshipOne(),
                 destination=BranchDiffElementRelationshipOne(),
+                path=f"data/{node_id}/{element_name}",
             )
         if branch == self.source_branch:
             self.entries[node_id].elements[element_name].source.id = relationship.id
@@ -537,6 +540,7 @@ class DiffPayload:
                 name=element_name,
                 source=source,
                 destination=target,
+                path=f"data/{node_id}/{element_name}",
             )
 
         if branch == self.source_branch:
