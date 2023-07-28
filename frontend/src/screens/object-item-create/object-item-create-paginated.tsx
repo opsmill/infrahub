@@ -24,7 +24,7 @@ interface iProps {
   onCancel?: Function;
   onCreate: Function;
   refetch: Function;
-  formStructure: DynamicFieldData[];
+  formStructure?: DynamicFieldData[];
   customObject?: any;
 }
 
