@@ -6,6 +6,7 @@ import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { Conversations } from "../../../src/screens/proposed-changes/conversations";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
   conversationMocksData,
   conversationMocksQuery,
@@ -34,7 +35,8 @@ const mocks: any[] = [
 // Provide the initial value for jotai
 const ConversationsProvider = () => {
   return (
-    <TestProvider initialValues={[[schemaState, conversationMocksSchema]]}>
+    <TestProvider
+      initialValues={[[schemaState, [...conversationMocksSchema, ...accountDetailsMocksSchema]]]}>
       <Conversations />
     </TestProvider>
   );
