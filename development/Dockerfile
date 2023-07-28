@@ -27,9 +27,6 @@ RUN poetry config virtualenvs.create false
 # ****************************************************************
 FROM docker.io/node:16-slim AS frontend
 
-ARG INFRAHUB_API_SERVER_URL=http://localhost:8000
-ENV VITE_INFRAHUB_API_SERVER_URL=${INFRAHUB_API_SERVER_URL}
-
 RUN mkdir /source
 
 RUN npm install -g npm@latest

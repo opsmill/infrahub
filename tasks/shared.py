@@ -82,10 +82,6 @@ ENV_VARS_DICT = {
 PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
 PLATFORMS_SUDO_DETECT = ["Linux"]
 
-if os.getenv("VITE_INFRAHUB_API_SERVER_URL", ""):
-    ENV_VARS_DICT["VITE_INFRAHUB_API_SERVER_URL"] = os.getenv("VITE_INFRAHUB_API_SERVER_URL")
-
-
 VOLUME_NAMES = ["database_data", "database_logs", "git_data", "storage_data"]
 
 
