@@ -420,7 +420,7 @@ class DiffPayload:
     def impacted_nodes(self) -> List[str]:
         return list(self.entries.keys())
 
-    def _add_node_summary(self, node_id: str, branch: str, action: DiffAction) -> None:
+    def _add_node_summary(self, node_id: str, action: DiffAction) -> None:
         self.entries[node_id].summary.inc(action.value)
 
     def _set_display_label(self, node_id: str, branch: str, display_label: str) -> None:
@@ -573,7 +573,7 @@ class DiffPayload:
                 # Extract the value from the list of properties
                 for _, element in node_diff.elements.items():
                     node_diff.summary.inc(element.action.value)
-                    self._add_node_summary(node_id=item_dict["id"], branch=branch_name, action=element.action)
+                    self._add_node_summary(node_id=item_dict["id"], action=element.action)
 
                     for prop in element.properties:
                         if prop.type == "HAS_VALUE":
@@ -609,9 +609,7 @@ class DiffPayload:
                             if diff_rel:
                                 node_diff.elements[diff_rel.name] = diff_rel
                                 node_diff.summary.inc(diff_rel.action.value)
-                                self._add_node_summary(
-                                    node_id=item_dict["id"], branch=branch_name, action=diff_rel.action
-                                )
+                                self._add_node_summary(node_id=item_dict["id"], action=diff_rel.action)
                                 self._add_node_element_relationship(
                                     node_id=node_diff.id,
                                     element_name=diff_rel.name,
@@ -681,7 +679,7 @@ class DiffPayload:
                         if diff_rel:
                             node_diff.elements[diff_rel.name] = diff_rel
                             node_diff.summary.inc(diff_rel.action.value)
-                            self._add_node_summary(node_id=node_in_rel, branch=branch_name, action=diff_rel.action)
+                            self._add_node_summary(node_id=node_in_rel, action=diff_rel.action)
                             self._add_node_element_relationship(
                                 node_id=node_diff.id,
                                 element_name=diff_rel.name,
