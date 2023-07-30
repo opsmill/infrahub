@@ -108,6 +108,23 @@ async def test_query_NodeGetListQuery_filter_relationship(
     assert len(query.get_node_ids()) == 2
 
 
+async def test_query_NodeGetListQuery_filter_relationship_ids(
+    session: AsyncSession,
+    person_john_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    query = await NodeGetListQuery.init(
+        session=session, branch=branch, schema=schema, filters={"owner__ids": [person_john_main.id]}
+    )
+    await query.execute(session=session)
+    assert len(query.get_node_ids()) == 2
+
+
 async def test_query_NodeGetListQuery_filter_and_sort(
     session: AsyncSession, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):

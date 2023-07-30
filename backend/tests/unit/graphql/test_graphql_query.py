@@ -832,7 +832,7 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
 
     query04 = """
     query {
-        TestCar(owner__ids: ["%s"], manufacturer__ids: ["%s"], ) {
+        TestCar(owner__ids: ["%s"], manufacturer__ids: ["%s"]) {
             edges {
                 node {
                     id
