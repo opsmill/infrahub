@@ -33,13 +33,7 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import (
-    GraphQLError,
-    InfrahubClient,
-    InfrahubNode,
-    NodeNotFound,
-    ValidationError,
-)
+from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
 from infrahub_client.utils import compare_lists
 
 # pylint: disable=too-few-public-methods,too-many-lines
@@ -1600,6 +1594,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         self,
         branch_name: str,
         commit: str,
+        artifact: InfrahubNode,
         target: InfrahubNode,
         definition: InfrahubNode,
         transformation: InfrahubNode,
@@ -1632,37 +1627,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
 
-        artifact = None
-        try:
-            artifact = await self.client.get(
-                kind="CoreArtifact", definition__ids=[definition.id], object__ids=[target.id], branch=branch_name
-            )
-            if artifact and artifact.checksum.value == checksum:
-                return ArtifactGenerateResult(
-                    changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
-                )
-        except NodeNotFound:
-            pass
-
         resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
         storage_id = resp["identifier"]
 
-        if artifact:
-            artifact.checksum.value = checksum
-            artifact.storage_id.value = storage_id
-            await artifact.save()
-        else:
-            artifact_data = {
-                "name": definition.artifact_name.value,
-                "content_type": definition.content_type.value,
-                "checksum": checksum,
-                "storage_id": storage_id,
-                "parameters": variables,
-                "object": target.id,
-                "definition": definition.id,
-            }
-            artifact = await self.client.create(kind="CoreArtifact", branch=branch_name, data=artifact_data)
-            await artifact.save()
+        artifact.checksum.value = checksum
+        artifact.storage_id.value = storage_id
+        artifact.status.value = "Ready"
+        await artifact.save()
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 

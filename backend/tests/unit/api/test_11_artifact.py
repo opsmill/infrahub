@@ -68,7 +68,7 @@ async def test_artifact_definition_endpoint(
             response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
         )
 
-        response = client.get(
+        response = client.post(
             f"/api/artifact/generate/{ad1.id}",
             headers=client_headers,
         )

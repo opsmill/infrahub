@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import infrahub.config as config
 from infrahub.exceptions import (
     CheckError,
+    Error,
     FileNotFound,
     RepositoryError,
     TransformError,
@@ -172,6 +173,8 @@ async def handle_artifact_message_action_generate(
 ) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
+    artifact_schema = await client.schema.get(kind=message.artifact.get("__typename"))
+    artifact = InfrahubNode(client=client, schema=artifact_schema, data=message.artifact, branch=message.branch_name)
     try:
         transformation_schema = await client.schema.get(kind=message.transformation.get("__typename"))
         transformation = InfrahubNode(
@@ -192,6 +195,7 @@ async def handle_artifact_message_action_generate(
         result = await repo.artifact_generate(
             branch_name=message.branch_name,
             commit=message.commit,
+            artifact=artifact,
             target=target,
             transformation=transformation,
             query=query,
@@ -199,7 +203,9 @@ async def handle_artifact_message_action_generate(
         )
         return InfrahubRPCResponse(status=RPCStatusCode.OK, response=result.dict())
 
-    except FileNotFound as exc:
+    except Error as exc:
+        artifact.status.value = "Error"
+        await artifact.save()
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 
