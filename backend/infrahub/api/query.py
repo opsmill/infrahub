@@ -27,24 +27,9 @@ async def graphql_query(
 ):
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    gql_query = await NodeManager.get_one(
-        session=session, id=query_id, branch=branch_params.branch, at=branch_params.at
+    gql_query = await NodeManager.get_one_by_id_or_default_filter(
+        session=session, id=query_id, schema_name="CoreGraphQLQuery", branch=branch_params.branch, at=branch_params.at
     )
-
-    if not gql_query:
-        gqlquery_schema = registry.get_node_schema(name="CoreGraphQLQuery", branch=branch_params.branch)
-        items = await NodeManager.query(
-            session=session,
-            schema=gqlquery_schema,
-            filters={gqlquery_schema.default_filter: query_id},
-            branch=branch_params.branch,
-            at=branch_params.at,
-        )
-        if items:
-            gql_query = items[0]
-
-    if not gql_query:
-        raise HTTPException(status_code=404, detail="Item not found")
 
     schema_branch = registry.schema.get_schema_branch(name=branch_params.branch.name)
     gql_schema = await schema_branch.get_graphql_schema(session=session)
