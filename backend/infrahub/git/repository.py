@@ -1617,7 +1617,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         if transformation.typename == "CoreRFile":
             artifact_content = await self.render_jinja2_template(
-                commit=commit, location=transformation.template_path.value, data=data
+                commit=commit, location=transformation.template_path.value, data={"data": data}
             )
         elif transformation.typename == "CoreTransformPython":
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"

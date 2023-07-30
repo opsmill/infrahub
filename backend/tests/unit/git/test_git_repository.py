@@ -618,7 +618,7 @@ async def test_artifact_generate_jinja2_new(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="5032217684d0e0b61d93c8611bffcd8a",
+        checksum="68b329da9893e34099c7d8ad5cb9c940",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=result.artifact_id,
     )
