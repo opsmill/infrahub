@@ -804,7 +804,7 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
 
     query03 = """
     query {
-        TestCar(owner__name__value: "John", manufacturer__name__value: "ford", ) {
+        TestCar(owner__name__value: "John", manufacturer__name__value: "ford") {
             edges {
                 node {
                     id
@@ -832,7 +832,7 @@ async def test_query_multiple_filters(db, session, default_branch: Branch, car_p
 
     query04 = """
     query {
-        TestCar(owner__id: "%s", manufacturer__id: "%s", ) {
+        TestCar(owner__ids: ["%s"], manufacturer__ids: ["%s"], ) {
             edges {
                 node {
                     id
@@ -1037,6 +1037,9 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     c3 = await Node.init(session=session, schema=car)
     await c3.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
     await c3.save(session=session)
+    c4 = await Node.init(session=session, schema=car)
+    await c4.new(session=session, name="yaris", nbr_seats=5, is_electric=False, owner=p1)
+    await c4.save(session=session)
 
     query = (
         """
@@ -1047,7 +1050,7 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
                     name {
                         value
                     }
-                    cars(id: "%s") {
+                    cars(ids: ["%s"]) {
                         edges {
                             node {
                                 name {
@@ -1079,6 +1082,47 @@ async def test_query_filter_relationship_id(db, session, default_branch: Branch,
     assert result.data["TestPerson"]["edges"][0]["node"]["name"]["value"] == "John"
     assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 1
     assert result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+
+    query = """
+    query {
+        TestPerson(name__value: "John") {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars(ids: ["%s", "%s"]) {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        c1.id,
+        c4.id,
+    )
+
+    result = await graphql(
+        await generate_graphql_schema(
+            branch=default_branch, session=session, include_mutation=False, include_subscription=False
+        ),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0]["node"]["name"]["value"] == "John"
+    assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 2
 
 
 async def test_query_oneway_relationship(db, session, default_branch: Branch, person_tag_schema):
