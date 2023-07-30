@@ -1370,6 +1370,31 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, data
 
 
 @pytest.fixture
+async def criticality_low(session: AsyncSession, default_branch: Branch, criticality_schema: NodeSchema):
+    obj = await Node.init(session=session, schema=criticality_schema)
+    await obj.new(session=session, name="low", level=4)
+    await obj.save(session=session)
+
+    return obj
+
+
+@pytest.fixture
+async def criticality_medium(session: AsyncSession, default_branch: Branch, criticality_schema: NodeSchema):
+    obj = await Node.init(session=session, schema=criticality_schema)
+    await obj.new(session=session, name="medium", level=3, description="My desc", color="#333333")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def criticality_high(session: AsyncSession, default_branch: Branch, criticality_schema: NodeSchema):
+    obj = await Node.init(session=session, schema=criticality_schema)
+    await obj.new(session=session, name="high", level=2, description="My other desc", color="#333333")
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
 async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GenericSchema:
     SCHEMA = {
         "name": "Vehicule",

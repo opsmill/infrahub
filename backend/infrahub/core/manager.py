@@ -15,7 +15,7 @@ from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import SchemaNotFound
+from infrahub.exceptions import NodeNotFound, SchemaNotFound
 from infrahub_client.utils import deep_merge_dict
 
 if TYPE_CHECKING:
@@ -205,6 +205,69 @@ class NodeManager:
             )
             for peer in peers_info
         ]
+
+    @classmethod
+    async def get_one_by_id_or_default_filter(
+        cls,
+        id: str,
+        schema_name: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        session: Optional[AsyncSession] = None,
+        prefetch_relationships: bool = False,
+        account=None,
+    ) -> Node:
+        branch = await get_branch(branch=branch, session=session)
+        at = Timestamp(at)
+
+        node = await cls.get_one(
+            id=id,
+            fields=fields,
+            at=at,
+            branch=branch,
+            include_owner=include_owner,
+            include_source=include_source,
+            session=session,
+            prefetch_relationships=prefetch_relationships,
+            account=account,
+        )
+
+        if node:
+            return node
+
+        # Check if there is a default_filter defined for this schema
+        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
+        if not node_schema.default_filter:
+            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
+
+        items = await NodeManager.query(
+            session=session,
+            schema=node_schema,
+            fields=fields,
+            limit=10,
+            filters={node_schema.default_filter: id},
+            branch=branch,
+            at=at,
+            include_owner=include_owner,
+            include_source=include_source,
+            prefetch_relationships=prefetch_relationships,
+            account=account,
+        )
+        if not items:
+            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
+
+        if len(items) > 1:
+            raise NodeNotFound(
+                branch_name=branch.name,
+                node_type=schema_name,
+                identifier=id,
+                message=f"Unable to find node {id!r}, {len(items)} nodes returned, expected 1",
+            )
+
+        return items[0]
 
     @classmethod
     async def get_one(
