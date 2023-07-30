@@ -114,22 +114,9 @@ async def generate_rfile(
 ) -> PlainTextResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    rfile = await NodeManager.get_one(session=session, id=rfile_id, branch=branch_params.branch, at=branch_params.at)
-
-    if not rfile:
-        rfile_schema = registry.get_node_schema(name="CoreRFile", branch=branch_params.branch)
-        items = await NodeManager.query(
-            session=session,
-            schema=rfile_schema,
-            filters={rfile_schema.default_filter: rfile_id},
-            branch=branch_params.branch,
-            at=branch_params.at,
-        )
-        if items:
-            rfile = items[0]
-
-    if not rfile:
-        raise HTTPException(status_code=404, detail="Item not found")
+    rfile = await NodeManager.get_one_by_id_or_default_filter(
+        session=session, id=rfile_id, schema_name="CoreRFile", branch=branch_params.branch, at=branch_params.at
+    )
 
     query = await rfile.query.get_peer(session=session)  # type: ignore[attr-defined]
     repository = await rfile.repository.get_peer(session=session)  # type: ignore[attr-defined]

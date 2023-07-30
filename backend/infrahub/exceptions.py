@@ -30,6 +30,8 @@ class RepositoryError(Error):
 
 
 class CommitNotFoundError(Error):
+    HTTP_CODE: int = 400
+
     def __init__(self, identifier: str, commit: str, message=None):
         self.identifier = identifier
         self.commit = commit
@@ -97,7 +99,7 @@ class BranchNotFound(Error):
 class NodeNotFound(Error):
     HTTP_CODE: int = 404
 
-    def __init__(self, branch_name, node_type, identifier, message=None):
+    def __init__(self, branch_name: str, node_type: str, identifier: str, message=None):
         self.branch_name = branch_name
         self.node_type = node_type
         self.identifier = identifier
