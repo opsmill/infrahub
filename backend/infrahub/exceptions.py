@@ -30,6 +30,8 @@ class RepositoryError(Error):
 
 
 class CommitNotFoundError(Error):
+    HTTP_CODE: int = 400
+
     def __init__(self, identifier: str, commit: str, message=None):
         self.identifier = identifier
         self.commit = commit

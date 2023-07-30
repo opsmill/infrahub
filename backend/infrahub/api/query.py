@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
+from fastapi import APIRouter, Depends, Path, Request, Response
 from graphql import graphql
 from neo4j import AsyncSession
 
