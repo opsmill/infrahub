@@ -984,7 +984,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         rfiles_in_graph = {
             rfile.name.value: rfile
-            for rfile in await self.client.filters(kind="CoreRFile", branch=branch_name, repository__id=str(self.id))
+            for rfile in await self.client.filters(kind="CoreRFile", branch=branch_name, repository__ids=[str(self.id)])
         }
 
         local_rfiles = {}
@@ -1083,7 +1083,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         queries_in_graph = {
             query.name.value: query
             for query in await self.client.filters(
-                kind="CoreGraphQLQuery", branch=branch_name, repository__id=str(self.id)
+                kind="CoreGraphQLQuery", branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -1135,7 +1135,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         checks_in_graph = {
             check.name.value: check
-            for check in await self.client.filters(kind="CoreCheck", branch=branch_name, repository__id=str(self.id))
+            for check in await self.client.filters(kind="CoreCheck", branch=branch_name, repository__ids=[str(self.id)])
         }
 
         local_checks = {}
@@ -1255,7 +1255,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         transforms_in_graph = {
             transform.name.value: transform
             for transform in await self.client.filters(
-                kind="CoreTransformPython", branch=branch_name, repository__id=str(self.id)
+                kind="CoreTransformPython", branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -1635,7 +1635,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         artifact = None
         try:
             artifact = await self.client.get(
-                kind="CoreArtifact", definition__id=definition.id, object__id=target.id, branch=branch_name
+                kind="CoreArtifact", definition__ids=[definition.id], object__ids=[target.id], branch=branch_name
             )
             if artifact and artifact.checksum.value == checksum:
                 return ArtifactGenerateResult(

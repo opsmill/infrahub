@@ -258,14 +258,14 @@ class SchemaBranch:
         for node_name in self.nodes:
             node_schema = self.get(name=node_name)
             new_node = node_schema.duplicate()
-            new_node.filters = self.generate_filters(schema=new_node, top_level=True, include_relationships=True)
+            new_node.filters = self.generate_filters(schema=new_node, include_relationships=True)
 
             for rel in new_node.relationships:
                 peer_schema = self.get(name=rel.peer)
                 if not peer_schema:
                     continue
 
-                rel.filters = self.generate_filters(schema=peer_schema, top_level=False, include_relationships=False)
+                rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
 
             self.set(name=node_name, schema=new_node)
 
@@ -319,18 +319,12 @@ class SchemaBranch:
             self.set(name=node_name, schema=schema)
 
     @staticmethod
-    def generate_filters(
-        schema: NodeSchema, top_level: bool = False, include_relationships: bool = False
-    ) -> List[FilterSchema]:
+    def generate_filters(schema: NodeSchema, include_relationships: bool = False) -> List[FilterSchema]:
         """Generate the FilterSchema for a given NodeSchema object."""
 
         filters = []
 
-        if top_level:
-            filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
-
-        else:
-            filters.append(FilterSchema(name="id", kind=FilterSchemaKind.TEXT))
+        filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
 
         for attr in schema.attributes:
             if attr.kind in ["Text", "String"]:
@@ -352,7 +346,7 @@ class SchemaBranch:
 
         for rel in schema.relationships:
             if rel.kind in ["Attribute", "Parent"]:
-                filters.append(FilterSchema(name=f"{rel.name}__id", kind=FilterSchemaKind.OBJECT, object_kind=rel.peer))
+                filters.append(FilterSchema(name=f"{rel.name}__ids", kind=FilterSchemaKind.LIST, object_kind=rel.peer))
 
         return filters
 

@@ -7446,22 +7446,22 @@
                     "description": null
                 },
                 {
-                    "name": "object__id",
-                    "kind": "Object",
+                    "name": "object__ids",
+                    "kind": "Text",
                     "enum": null,
                     "object_kind": "CoreNode",
                     "description": null
                 },
                 {
-                    "name": "definition__id",
-                    "kind": "Object",
+                    "name": "definition__ids",
+                    "kind": "Text",
                     "enum": null,
                     "object_kind": "CoreArtifactDefinition",
                     "description": null
                 },
                 {
-                    "name": "tags__id",
-                    "kind": "Object",
+                    "name": "tags__ids",
+                    "kind": "Text",
                     "enum": null,
                     "object_kind": "BuiltinTag",
                     "description": null
