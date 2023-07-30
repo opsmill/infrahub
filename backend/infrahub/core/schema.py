@@ -347,6 +347,22 @@ class RelationshipSchema(BaseSchemaModel):
 
             return query_filter, query_params, query_where
 
+        if filter_name == "ids":
+            query_filter.extend(
+                [
+                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryNode(name="peer", labels=["Node"]),
+                ]
+            )
+
+            if filter_value is not None:
+                query_params[f"{prefix}_peer_ids"] = filter_value
+                query_where.append(f"peer.uuid IN ${prefix}_peer_ids")
+
+            return query_filter, query_params, query_where
+
         if "__" not in filter_name:
             return query_filter, query_params, query_where
 
