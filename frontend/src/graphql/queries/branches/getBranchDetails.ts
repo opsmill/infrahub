@@ -26,5 +26,15 @@ export const getBranchDetails = Handlebars.compile(`query {
       is_data_only
       is_default
   }
+  {{#if accountKind}}
+  {{accountKind}} {
+    edges {
+      node {
+        id
+        display_label
+      }
+    }
+  }
+  {{/if}}
 }
 `);

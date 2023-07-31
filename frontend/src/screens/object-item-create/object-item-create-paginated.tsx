@@ -23,8 +23,8 @@ interface iProps {
   objectname: string;
   onCancel?: Function;
   onCreate: Function;
-  refetch: Function;
-  formStructure?: DynamicFieldData[];
+  refetch?: Function;
+  formStructure: DynamicFieldData[];
   customObject?: any;
 }
 
@@ -122,7 +122,7 @@ export default function ObjectItemCreate(props: iProps) {
         onCreate();
       }
 
-      refetch();
+      if (refetch) refetch();
 
       setIsLoading(false);
     } catch (error: any) {
