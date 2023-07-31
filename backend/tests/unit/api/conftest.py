@@ -321,3 +321,9 @@ async def car_person_data_artifact_diff(session, default_branch, car_person_data
         content_type="application/json",
     )
     await art2.save(session=session)
+
+    car_person_data_generic_diff["branch3"] = branch3
+    car_person_data_generic_diff["art1"] = art1.id
+    car_person_data_generic_diff["art2"] = art2.id
+
+    return car_person_data_generic_diff
