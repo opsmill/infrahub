@@ -504,7 +504,6 @@ async def get_diff_files(
 
 @router.get("/artifacts")
 async def get_diff_artifacts(
-    request: Request,
     session: AsyncSession = Depends(get_session),
     branch: Branch = Depends(get_branch_dep),
     time_from: Optional[str] = None,
