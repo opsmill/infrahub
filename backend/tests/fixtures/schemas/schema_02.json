@@ -7176,13 +7176,13 @@
                     "order_weight": 3000
                 },
                 {
-                    "name": "created_at",
-                    "kind": "DateTime",
+                    "name": "status",
+                    "kind": "Text",
                     "namespace": "Attribute",
                     "label": null,
                     "description": null,
                     "default_value": null,
-                    "enum": null,
+                    "enum": ["Error", "Ready", "Pending", "Processing"],
                     "regex": null,
                     "max_length": null,
                     "min_length": null,
@@ -7194,7 +7194,7 @@
                 },
                 {
                     "name": "parameters",
-                    "kind": "TextArea",
+                    "kind": "JSON",
                     "namespace": "Attribute",
                     "label": null,
                     "description": null,
@@ -7446,22 +7446,22 @@
                     "description": null
                 },
                 {
-                    "name": "object__id",
-                    "kind": "Object",
+                    "name": "object__ids",
+                    "kind": "Text",
                     "enum": null,
                     "object_kind": "CoreNode",
                     "description": null
                 },
                 {
-                    "name": "definition__id",
-                    "kind": "Object",
+                    "name": "definition__ids",
+                    "kind": "Text",
                     "enum": null,
                     "object_kind": "CoreArtifactDefinition",
                     "description": null
                 },
                 {
-                    "name": "tags__id",
-                    "kind": "Object",
+                    "name": "tags__ids",
+                    "kind": "Text",
                     "enum": null,
                     "object_kind": "BuiltinTag",
                     "description": null

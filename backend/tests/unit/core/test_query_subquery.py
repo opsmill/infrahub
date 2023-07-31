@@ -95,6 +95,35 @@ async def test_build_subquery_filter_relationship(session, default_branch: Branc
     assert result_name == "filter1"
 
 
+async def test_build_subquery_filter_relationship_ids(session, default_branch: Branch, car_person_schema):
+    car_schema = registry.schema.get(name="TestCar")
+    rel_schema = car_schema.get_relationship(name="owner")
+
+    query, params, result_name = await build_subquery_filter(
+        session=session,
+        field=rel_schema,
+        name="owner",
+        filter_name="ids",
+        filter_value=["XXXXXX"],
+        branch_filter="PLACEHOLDER",
+        branch=default_branch,
+        subquery_idx=1,
+    )
+
+    # ruff: noqa: E501
+    expected_query = """
+    WITH n
+    MATCH p = (n)-[f1r1:IS_RELATED]-(rl:Relationship { name: $filter1_rel_name })-[f1r2:IS_RELATED]-(peer:Node)
+    WHERE peer.uuid IN $filter1_peer_ids AND all(r IN relationships(p) WHERE (PLACEHOLDER))
+    RETURN n as filter1
+    ORDER BY f1r1.branch_level DESC, f1r1.from DESC, f1r2.branch_level DESC, f1r2.from DESC
+    LIMIT 1
+    """
+    assert query == expected_query
+    assert params == {"filter1_peer_ids": ["XXXXXX"], "filter1_rel_name": "testcar__testperson"}
+    assert result_name == "filter1"
+
+
 async def test_build_subquery_order_relationship(session, default_branch: Branch, car_person_schema):
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")

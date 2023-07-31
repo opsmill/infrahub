@@ -601,10 +601,7 @@ async def generate_filters(
     filters: Dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
     default_filters: List[str] = list(filters.keys())
 
-    if top_level:
-        filters["ids"] = graphene.List(graphene.ID)
-    else:
-        filters["id"] = graphene.ID()
+    filters["ids"] = graphene.List(graphene.ID)
 
     if isinstance(schema, GroupSchema):
         return filters

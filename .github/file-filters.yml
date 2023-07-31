@@ -13,7 +13,7 @@ backend_files: &backend_files
   - "poetry.lock"
 
 sdk_files: &sdk_files
-  - "python_client/**"
+  - "python_sdk/**"
   - "pyproject.toml"
   - "poetry.lock"
 

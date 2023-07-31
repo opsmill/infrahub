@@ -322,7 +322,7 @@ async def test_query_RelationshipGetPeerQuery_with_id(
         session=session,
         source_id=person_john_main.id,
         schema=rel_schema,
-        filters={"cars__id": car_accord_main.id},
+        filters={"cars__ids": [car_accord_main.id]},
         rel=Relationship,
         branch=branch,
         at=Timestamp(),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import enum
 import logging
 from logging import Logger
 from time import sleep
@@ -33,6 +34,11 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 # pylint: disable=redefined-builtin
+
+
+class HTTPMethod(str, enum.Enum):
+    GET = "get"
+    POST = "post"
 
 
 class BaseClient:
@@ -356,24 +362,15 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         Raises:
             ServerNotReacheableError if we are not able to connect to the server
-            ServerNotResponsiveError if the server didnd't respond before the timeout expired
+            ServerNotResponsiveError if the server didn't respond before the timeout expired
         """
         await self.login()
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        async with httpx.AsyncClient() as client:
-            try:
-                return await client.post(
-                    url=url,
-                    json=payload,
-                    headers=headers,
-                    timeout=timeout or self.default_timeout,
-                )
-            except httpx.ConnectError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
-            except httpx.ReadTimeout as exc:
-                raise ServerNotResponsiveError(url=url) from exc
+        return await self._request(
+            url=url, method=HTTPMethod.POST, headers=headers, timeout=timeout or self.default_timeout, payload=payload
+        )
 
     async def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
@@ -387,20 +384,29 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
         if not self.test_client:
-            async with httpx.AsyncClient() as client:
-                try:
-                    return await client.get(
-                        url=url,
-                        headers=headers,
-                        timeout=timeout or self.default_timeout,
-                    )
-                except httpx.ConnectError as exc:
-                    raise ServerNotReacheableError(address=self.address) from exc
-                except httpx.ReadTimeout as exc:
-                    raise ServerNotResponsiveError(url=url) from exc
-        else:
-            with self.test_client as client:
-                return client.get(url=url, headers=headers)
+            return await self._request(
+                url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
+            )
+
+        with self.test_client as client:
+            return client.get(url=url, headers=headers)
+
+    async def _request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        params: Dict[str, Any] = {}
+        if payload:
+            params["json"] = payload
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.request(
+                    method=method.value, url=url, headers=headers, timeout=timeout, **params
+                )
+            except httpx.ConnectError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
+            except httpx.ReadTimeout as exc:
+                raise ServerNotResponsiveError(url=url) from exc
+        return response
 
     async def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
@@ -410,18 +416,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             return
 
         url = f"{self.address}/api/auth/login"
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    url=url,
-                    json={"username": self.config.username, "password": self.config.password},
-                    headers={"content-type": "application/json"},
-                    timeout=self.default_timeout,
-                )
-            except httpx.ConnectError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
-            except httpx.ReadTimeout as exc:
-                raise ServerNotResponsiveError(url=url) from exc
+        response = await self._request(
+            url=url,
+            method=HTTPMethod.POST,
+            payload={"username": self.config.username, "password": self.config.password},
+            headers={"content-type": "application/json"},
+            timeout=self.default_timeout,
+        )
 
         response.raise_for_status()
         self.access_token = response.json()["access_token"]
@@ -453,16 +454,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         if not self.test_client:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    url=url,
-                    headers=headers,
-                    timeout=timeout or self.default_timeout,
-                )
+            resp = await self._request(
+                url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
+            )
 
         else:
             with self.test_client as client:
-                resp = client.post(url=url)
+                resp = client.get(url=url)
 
         if raise_for_error:
             resp.raise_for_status()
@@ -819,20 +817,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             headers = headers or {}
             base_headers = copy.copy(self.headers or {})
             headers.update(base_headers)
-            with httpx.Client() as client:
-                try:
-                    return client.get(
-                        url=url,
-                        headers=headers,
-                        timeout=timeout or self.default_timeout,
-                    )
-                except httpx.ConnectError as exc:
-                    raise ServerNotReacheableError(address=self.address) from exc
-                except httpx.ReadTimeout as exc:
-                    raise ServerNotResponsiveError(url=url) from exc
-        else:
-            with self.test_client as client:
-                return client.get(url=url, headers=headers)
+            return self._request(
+                url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
+            )
+
+        with self.test_client as client:
+            return client.get(url=url, headers=headers)
 
     def _post(
         self, url: str, payload: dict, headers: Optional[dict] = None, timeout: Optional[int] = None
@@ -847,18 +837,29 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
+
+        return self._request(
+            url=url,
+            method=HTTPMethod.POST,
+            payload=payload,
+            headers=headers,
+            timeout=timeout or self.default_timeout,
+        )
+
+    def _request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        params: Dict[str, Any] = {}
+        if payload:
+            params["json"] = payload
         with httpx.Client() as client:
             try:
-                return client.post(
-                    url=url,
-                    json=payload,
-                    headers=headers,
-                    timeout=timeout or self.default_timeout,
-                )
+                response = client.request(method=method.value, url=url, headers=headers, timeout=timeout, **params)
             except httpx.ConnectError as exc:
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url) from exc
+        return response
 
     def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
@@ -868,18 +869,13 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             return
 
         url = f"{self.address}/api/auth/login"
-        with httpx.Client() as client:
-            try:
-                response = client.post(
-                    url=url,
-                    json={"username": self.config.username, "password": self.config.password},
-                    headers={"content-type": "application/json"},
-                    timeout=self.default_timeout,
-                )
-            except httpx.ConnectError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
-            except httpx.ReadTimeout as exc:
-                raise ServerNotResponsiveError(url=url) from exc
+        response = self._request(
+            url=url,
+            method=HTTPMethod.POST,
+            payload={"username": self.config.username, "password": self.config.password},
+            headers={"content-type": "application/json"},
+            timeout=self.default_timeout,
+        )
 
         response.raise_for_status()
         self.access_token = response.json()["access_token"]

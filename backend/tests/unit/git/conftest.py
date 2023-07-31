@@ -995,6 +995,74 @@ async def artifact_definition_node_02(client, schema_02: ClientSchemaRoot, artif
 
 
 @pytest.fixture
+async def artifact_data_01():
+    data = {
+        "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
+        "type": "CoreArtifact",
+        "name": {
+            "id": "8b0423a7-cd5c-4642-b518-db56cc8185c7",
+            "__typename": "Text",
+            "value": "artifact01",
+        },
+        "content_type": {
+            "id": "a5acbbb5-c6f7-418e-9f53-c4039d9e5c19",
+            "__typename": "Text",
+            "value": "text/plain",
+        },
+        "status": {
+            "id": "qwertyui-c6f7-418e-9f53-c4039d9e5c19",
+            "__typename": "Text",
+            "value": "Pending",
+        },
+        "__typename": "CoreArtifact",
+        "display_label": "artifact01",
+    }
+    return data
+
+
+@pytest.fixture
+async def artifact_node_01(client, schema_02: ClientSchemaRoot, artifact_data_01) -> InfrahubNode:
+    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifact"][0]
+    node = InfrahubNode(client=client, schema=schema, data=artifact_data_01)
+    return node
+
+
+@pytest.fixture
+async def artifact_data_02():
+    data = {
+        "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
+        "type": "CoreArtifact",
+        "name": {
+            "id": "8b0423a7-cd5c-4642-b518-db56cc8185c7",
+            "__typename": "Text",
+            "value": "artifact01",
+        },
+        "content_type": {
+            "id": "a5acbbb5-c6f7-418e-9f53-c4039d9e5c19",
+            "__typename": "Text",
+            "value": "text/plain",
+        },
+        "status": {
+            "id": "qwertyui-c6f7-418e-9f53-c4039d9e5c19",
+            "__typename": "Text",
+            "value": "Pending",
+        },
+        "checksum": {"value": "e8a740b1dd39530d1a502e017e0feff5", "__typename": "Text"},
+        "storage_id": {"value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483", "__typename": "Text"},
+        "__typename": "CoreArtifact",
+        "display_label": "artifact01",
+    }
+    return data
+
+
+@pytest.fixture
+async def artifact_node_02(client, schema_02: ClientSchemaRoot, artifact_data_02) -> InfrahubNode:
+    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifact"][0]
+    node = InfrahubNode(client=client, schema=schema, data=artifact_data_02)
+    return node
+
+
+@pytest.fixture
 async def transformation_data_01() -> dict:
     data = {
         "id": "a0d4c22a-5f60-4bf9-a53f-f9a335420492",

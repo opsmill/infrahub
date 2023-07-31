@@ -146,61 +146,6 @@ async def car_person_data_diff(session, default_branch, car_person_data, first_a
 
 
 @pytest.fixture
-async def car_person_data_generic(session, register_core_models_schema, car_person_schema_generics):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
-    p2 = await Node.init(session=session, schema="TestPerson")
-    await p2.new(session=session, name="Jane", height=170)
-    await p2.save(session=session)
-    c1 = await Node.init(session=session, schema="TestElectricCar")
-    await c1.new(session=session, name="volt", nbr_seats=3, nbr_engine=4, owner=p1)
-    await c1.save(session=session)
-    c2 = await Node.init(session=session, schema="TestElectricCar")
-    await c2.new(session=session, name="bolt", nbr_seats=2, nbr_engine=2, owner=p1)
-    await c2.save(session=session)
-    c3 = await Node.init(session=session, schema="TestGazCar")
-    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
-    await c3.save(session=session)
-    c4 = await Node.init(session=session, schema="TestGazCar")
-    await c4.new(session=session, name="focus", nbr_seats=5, mpg=30, owner=p2)
-    await c4.save(session=session)
-
-    query = """
-    query {
-        TestPerson {
-            name {
-                value
-            }
-            cars {
-                name {
-                    value
-                }
-            }
-        }
-    }
-    """
-
-    q1 = await Node.init(session=session, schema="CoreGraphQLQuery")
-    await q1.new(session=session, name="query01", query=query)
-    await q1.save(session=session)
-
-    r1 = await Node.init(session=session, schema="CoreRepository")
-    await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
-    await r1.save(session=session)
-
-    return {
-        "p1": p1,
-        "p2": p2,
-        "c1": c1,
-        "c2": c2,
-        "c3": c3,
-        "q1": q1,
-        "r1": r1,
-    }
-
-
-@pytest.fixture
 async def car_person_data_generic_diff(session, default_branch, car_person_data_generic, first_account):
     branch2 = await create_branch(branch_name="branch2", session=session)
 

@@ -63,7 +63,9 @@ async def default_resolver(*args, **kwargs):
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     filters = {
-        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+        f"{info.field_name}__{key}": value
+        for key, value in kwargs.items()
+        if "__" in key and value or key in ["id", "ids"]
     }
 
     async with db.session(database=config.SETTINGS.database.database) as new_session:
@@ -104,7 +106,9 @@ async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     filters = {
-        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+        f"{info.field_name}__{key}": value
+        for key, value in kwargs.items()
+        if "__" in key and value or key in ["id", "ids"]
     }
 
     async with db.session(database=config.SETTINGS.database.database) as new_session:
@@ -155,7 +159,9 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     node_rel = node_schema.get_relationship(info.field_name)
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     filters = {
-        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+        f"{info.field_name}__{key}": value
+        for key, value in kwargs.items()
+        if "__" in key and value or key in ["id", "ids"]
     }
     response: Dict[str, Any] = {"node": None, "properties": {}}
     async with db.session(database=config.SETTINGS.database.database) as new_session:
@@ -211,7 +217,9 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
     offset = kwargs.pop("offset", None)
     limit = kwargs.pop("limit", None)
     filters = {
-        f"{info.field_name}__{key}": value for key, value in kwargs.items() if "__" in key and value or key == "id"
+        f"{info.field_name}__{key}": value
+        for key, value in kwargs.items()
+        if "__" in key and value or key in ["id", "ids"]
     }
 
     response: Dict[str, Any] = {"edges": [], "count": None}

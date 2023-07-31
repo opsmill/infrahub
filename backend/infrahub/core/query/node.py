@@ -478,7 +478,7 @@ class NodeGetListQuery(Query):
 
         # Check 'id' or 'ids' is part of the filter
         # if 'id' is present, we can skip ordering, filtering etc ..
-        # if 'ids' is present, we keep the the filtering and the ordering
+        # if 'ids' is present, we keep the filtering and the ordering
         if self.filters and "id" in self.filters:
             filter_has_single_id = True
             where_clause.append("n.uuid = $uuid")

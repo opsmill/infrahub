@@ -8,6 +8,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
+from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 
 
@@ -187,16 +188,28 @@ async def test_get_one_relationship_with_flag_property(
     assert rels[1].is_visible is False
 
 
-async def test_get_many(session: AsyncSession, default_branch: Branch, criticality_schema):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=4)
-    await obj1.save(session=session)
+async def test_get_one_by_id_or_default_filter(
+    session: AsyncSession,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
+):
+    node1 = await NodeManager.get_one_by_id_or_default_filter(
+        session=session, id=criticality_low.id, schema_name=criticality_schema.kind
+    )
+    assert isinstance(node1, Node)
+    assert node1.id == criticality_low.id
 
-    obj2 = await Node.init(session=session, schema=criticality_schema)
-    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj2.save(session=session)
+    node2 = await NodeManager.get_one_by_id_or_default_filter(
+        session=session, id=criticality_low.name.value, schema_name=criticality_schema.kind
+    )
+    assert isinstance(node2, Node)
+    assert node2.id == criticality_low.id
 
-    nodes = await NodeManager.get_many(session=session, ids=[obj1.id, obj2.id])
+
+async def test_get_many(session: AsyncSession, default_branch: Branch, criticality_low, criticality_medium):
+    nodes = await NodeManager.get_many(session=session, ids=[criticality_low.id, criticality_medium.id])
     assert len(nodes) == 2
 
 
@@ -211,36 +224,26 @@ async def test_get_many_prefetch(session: AsyncSession, default_branch: Branch, 
     assert tags[1]._peer
 
 
-async def test_query_no_filter(session: AsyncSession, default_branch: Branch, criticality_schema):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=4)
-    await obj1.save(session=session)
-
-    obj2 = await Node.init(session=session, schema=criticality_schema)
-    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj2.save(session=session)
-
-    obj3 = await Node.init(session=session, schema=criticality_schema)
-    await obj3.new(session=session, name="high", level=3, description="My desc", color="#333333")
-    await obj3.save(session=session)
-
+async def test_query_no_filter(
+    session: AsyncSession,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
+    criticality_high: Node,
+):
     nodes = await NodeManager.query(session=session, schema=criticality_schema)
     assert len(nodes) == 3
 
 
-async def test_query_with_filter_string_int(session: AsyncSession, default_branch: Branch, criticality_schema):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=3)
-    await obj1.save(session=session)
-
-    obj2 = await Node.init(session=session, schema=criticality_schema)
-    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj2.save(session=session)
-
-    obj3 = await Node.init(session=session, schema=criticality_schema)
-    await obj3.new(session=session, name="high", level=4, description="My other desc", color="#333333")
-    await obj3.save(session=session)
-
+async def test_query_with_filter_string_int(
+    session: AsyncSession,
+    default_branch: Branch,
+    criticality_schema,
+    criticality_low: Node,
+    criticality_medium: Node,
+    criticality_high: Node,
+):
     nodes = await NodeManager.query(session=session, schema=criticality_schema, filters={"color__value": "#333333"})
     assert len(nodes) == 2
 
@@ -276,20 +279,18 @@ async def test_query_with_filter_bool_rel(
     assert len(nodes) == 2
 
 
-async def test_query_non_default_class(session: AsyncSession, default_branch: Branch, criticality_schema):
+async def test_query_non_default_class(
+    session: AsyncSession,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
+):
     class TestCriticality(Node):
         def always_true(self):
             return True
 
     registry.node["TestCriticality"] = TestCriticality
-
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=4)
-    await obj1.save(session=session)
-
-    obj2 = await Node.init(session=session, schema=criticality_schema)
-    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj2.save(session=session)
 
     nodes = await NodeManager.query(session=session, schema=criticality_schema)
     assert len(nodes) == 2
@@ -297,15 +298,13 @@ async def test_query_non_default_class(session: AsyncSession, default_branch: Br
     assert nodes[0].always_true()
 
 
-async def test_query_class_name(session: AsyncSession, default_branch: Branch, criticality_schema):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=3)
-    await obj1.save(session=session)
-
-    obj2 = await Node.init(session=session, schema=criticality_schema)
-    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj2.save(session=session)
-
+async def test_query_class_name(
+    session: AsyncSession,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
+):
     nodes = await NodeManager.query(session=session, schema="TestCriticality")
     assert len(nodes) == 2
 
