@@ -1375,6 +1375,20 @@ core_models = {
             ],
         },
         {
+            "name": "ArtifactThread",
+            "namespace": "Core",
+            "description": "A thread related to an artifact on a proposed change",
+            "label": "Thread - Artifact",
+            "branch": True,
+            "inherit_from": ["CoreThread"],
+            "attributes": [
+                {"name": "artifact_id", "kind": "Text", "optional": True},
+                {"name": "storage_id", "kind": "Text", "optional": True},
+                {"name": "line_number", "kind": "Number", "optional": True},
+            ],
+            "relationships": [],
+        },
+        {
             "name": "ObjectThread",
             "namespace": "Core",
             "description": "A thread related to an object on a proposed change",

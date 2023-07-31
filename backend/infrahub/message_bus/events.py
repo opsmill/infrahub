@@ -430,6 +430,7 @@ class InfrahubArtifactRPC(InfrahubRPC):
         transformation: dict,
         definition: dict,
         target: dict,
+        artifact: dict,
         query=dict,
         repository: Optional[Node] = None,
         repository_name: Optional[str] = None,
@@ -454,6 +455,7 @@ class InfrahubArtifactRPC(InfrahubRPC):
         self.repository_name = repository_name
         self.commit = commit
 
+        self.artifact = artifact
         self.query = query
         self.transformation = transformation
         self.definition = definition
@@ -480,6 +482,7 @@ class InfrahubArtifactRPC(InfrahubRPC):
         body["query"] = self.query
         body["definition"] = self.definition
         body["target"] = self.target
+        body["artifact"] = self.artifact
 
         return body
 

@@ -23,7 +23,7 @@ class CoreArtifactDefinition(Node):
         definition: Node,
         repository: Node,
         query: Node,
-        object: Node,
+        target: Node,
         transformation: Node,
         artifact: Optional[Node] = None,
     ) -> None:
@@ -34,7 +34,7 @@ class CoreArtifactDefinition(Node):
                 name=definition.artifact_name.value,
                 status="Pending",
                 content_type=definition.content_type.value,
-                object=object.id,
+                object=target.id,
                 definition=definition.id,
             )
             await artifact.save(session=session)
@@ -43,7 +43,7 @@ class CoreArtifactDefinition(Node):
             action=ArtifactMessageAction.GENERATE,
             repository=repository,
             artifact=await artifact.to_graphql(session=session),
-            target=await object.to_graphql(session=session),
+            target=await target.to_graphql(session=session),
             definition=await definition.to_graphql(session=session),
             branch_name=definition._branch.name,
             query=await query.to_graphql(session=session),
@@ -57,32 +57,53 @@ class CoreArtifactDefinition(Node):
         session: AsyncSession,
         rpc_client: InfrahubRpcClient,
         nodes: Optional[List[str]] = None,
-        max_concurrent_execution: int = 5,
+        # max_concurrent_execution: int = 5,
     ) -> List[Node]:
+        # pylint: disable=no-member
         transformation: Node = await self.transformation.get_peer(session=session)  # type: ignore[attr-defined]
         query: Node = await transformation.query.get_peer(session=session)  # type: ignore[attr-defined]
         repository: Node = await transformation.repository.get_peer(session=session)  # type: ignore[attr-defined]
 
         # TODO Check payload and do an intersection with the list of nodes provided if any
         group: Node = await self.targets.get_peer(session=session)  # type: ignore[attr-defined]
-        members: Dict[str, Node] = await group.members.get_peers(session=session)  # type: ignore[attr-defined]
+        members_dict: Dict[str, Node] = await group.members.get_peers(session=session)  # type: ignore[attr-defined]
+        members = list(members_dict.values())
+
+        # group_filter = {"member_of_groups__ids": [group.id]}
+        # if nodes:
+        #     group_filter["ids"] = nodes
+
+        # node_schema = registry.schema.get(name="CoreNode", branch=self._branch)
+        # members = await registry.manager.query(
+        #     session=session,
+        #     schema=node_schema,
+        #     filters=group_filter,
+        #     branch=self._branch,
+        #     prefetch_relationships=True,
+        # )
 
         artifact_schema = registry.schema.get(name="CoreArtifact", branch=self._branch)
         artifacts = await registry.manager.query(
             session=session,
             schema=artifact_schema,
-            filters={"definition__id": self.id},
+            filters={"definition__ids": [self.id]},
             branch=self._branch,
-            at=self._at,
             prefetch_relationships=True,
         )
 
-        artifacts_by_member = {artifact.object.id: artifact for artifact in artifacts}
+        artifacts_by_member = {}
+        for artifact in artifacts:
+            target = await artifact.object.get_peer(session=session)
+            artifacts_by_member[target.id] = artifact
 
         # tasks = []
         # limit_concurrent_execution = asyncio.Semaphore(max_concurrent_execution)
 
-        for member_id, member in members.items():
+        for member in members:
+            if nodes and member.id not in nodes:
+                # TODO need to revisit this part to avoid pulling all members in the first place
+                continue
+
             # TODO Execute these tasks in a Pool
             await self.generate_one_artifact(
                 session=session,
@@ -90,10 +111,10 @@ class CoreArtifactDefinition(Node):
                 schema=artifact_schema,
                 definition=self,
                 repository=repository,
-                object=member,
+                target=member,
                 query=query,
                 transformation=transformation,
-                artifact=artifacts_by_member.get(member_id, None),
+                artifact=artifacts_by_member.get(member.id, None),
             )
 
-        return list(members.keys())
+        return [member.id for member in members]

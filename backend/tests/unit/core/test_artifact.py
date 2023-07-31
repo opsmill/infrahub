@@ -67,9 +67,45 @@ async def definition01(
     return obj
 
 
-async def test_artifact_generate(
+async def test_artifact_generate_first_time(
     session: AsyncSession, default_branch: Branch, rpc_client, definition01: CoreArtifactDefinition
 ):
+    mock_response = InfrahubRPCResponse(
+        status=RPCStatusCode.OK,
+        response={"artifact_id": "XXXXX", "changed": True, "checksum": "YYYYYY", "storage_id": "DDDDDDDDDD"},
+    )
+    await rpc_client.add_response(
+        response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
+    )
+    await rpc_client.add_response(
+        response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
+    )
+
+    nodes = await definition01.generate(session=session, rpc_client=rpc_client)
+    assert len(nodes) == 2
+
+    artifacts = await registry.manager.query(session=session, schema="CoreArtifact")
+    assert len(artifacts) == 2
+
+
+async def test_artifact_generate_existing_artifact(
+    session: AsyncSession,
+    default_branch: Branch,
+    rpc_client,
+    car_person_data_generic,
+    definition01: CoreArtifactDefinition,
+):
+    a1 = await Node.init(session=session, schema="CoreArtifact")
+    await a1.new(
+        session=session,
+        name=definition01.artifact_name.value,
+        definition=str(definition01.id),
+        content_type=definition01.content_type.value,
+        object=str(car_person_data_generic["c1"].id),
+        status="Ready",
+    )
+    await a1.save(session=session)
+
     mock_response = InfrahubRPCResponse(
         status=RPCStatusCode.OK,
         response={"artifact_id": "XXXXX", "changed": True, "checksum": "YYYYYY", "storage_id": "DDDDDDDDDD"},

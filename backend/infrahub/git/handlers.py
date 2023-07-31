@@ -204,6 +204,7 @@ async def handle_artifact_message_action_generate(
         return InfrahubRPCResponse(status=RPCStatusCode.OK, response=result.dict())
 
     except Error as exc:
+        # pylint: disable=no-member
         artifact.status.value = "Error"
         await artifact.save()
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
