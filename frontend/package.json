@@ -66,6 +66,7 @@
     "@graphql-codegen/cli": "^3.0.0",
     "@graphql-codegen/typescript": "^3.0.0",
     "@testing-library/react": "^14.0.0",
+    "@types/prismjs": "^1.26.0",
     "@types/ramda": "^0.28.23",
     "@types/react-datepicker": "^4.10.0",
     "@types/react-test-renderer": "^18.0.0",
