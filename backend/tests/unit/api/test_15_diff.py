@@ -402,7 +402,7 @@ async def test_diff_artifact(
 ):
     with client:
         response = client.get(
-            f"/api/diff/artifacts?branch=branch3",
+            "/api/diff/artifacts?branch=branch3",
             headers=client_headers,
         )
 
