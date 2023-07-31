@@ -1,6 +1,7 @@
 import { ApolloClient, DefaultOptions, InMemoryCache, createHttpLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
+import fetch from "cross-fetch";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY } from "../config/constants";
 import { getNewToken } from "../decorators/withAuth";
@@ -22,6 +23,7 @@ const httpLink = createHttpLink({
 
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
+  fetch,
 });
 
 const authLink = setContext((_, { headers }) => {
