@@ -14,7 +14,7 @@ export const CodeEditor = (props: any) => {
       {...propsToPass}
       // value={code}
       onValueChange={(code) => onChange(code)}
-      highlight={(code) => Prism.highlight(code, Prism.languages.json)}
+      highlight={(code) => Prism.highlight(code, Prism.languages.json, "json")}
       padding={10}
       style={{
         fontFamily: "'Fira code', 'Fira Mono', monospace",
