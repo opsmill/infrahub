@@ -395,3 +395,17 @@ async def test_diff_data_endpoint_with_main_time_from_to(session, client, client
     assert main[p1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
     assert main[p1]["elements"]["height"]["value"]["value"]["new"] == 120
     assert main[p1]["elements"]["height"]["value"]["value"]["previous"] == 180
+
+
+async def test_diff_artifact(
+    session, client, client_headers, register_core_models_schema, car_person_data_artifact_diff
+):
+    with client:
+        response = client.get(
+            f"/api/diff/artifacts?branch=branch3",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {}
