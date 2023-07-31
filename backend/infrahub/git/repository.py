@@ -1724,6 +1724,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
 
+        if artifact.checksum.value == checksum:
+            return ArtifactGenerateResult(
+                changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
+            )
+
         resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
         storage_id = resp["identifier"]
 
