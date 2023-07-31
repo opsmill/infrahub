@@ -113,3 +113,5 @@ export const MENU_BLACKLIST = [
   "CoreStandardGroup",
   "CoreThreadComment",
 ];
+
+export const COLUMNS_BLACKLIST = ["HashedPassword", "TextArea", "JSON"];

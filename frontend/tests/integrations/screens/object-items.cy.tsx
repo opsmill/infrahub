@@ -81,7 +81,7 @@ describe("List screen", () => {
     cy.get(":nth-child(10) > :nth-child(1)").should("exist");
 
     // Should display a tag in the tags list for the 4th item in the list
-    cy.get(":nth-child(4) > :nth-child(5) > div.flex > :nth-child(3)").should(
+    cy.get(":nth-child(4) > :nth-child(4) > div.flex > :nth-child(3)").should(
       "have.text",
       "maroon"
     );

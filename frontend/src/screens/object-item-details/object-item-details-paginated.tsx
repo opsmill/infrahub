@@ -77,7 +77,7 @@ export default function ObjectItemDetails(props: any) {
     navigate("/");
   }
 
-  const attributes = getSchemaAttributeColumns(schemaData);
+  const attributes = getSchemaAttributeColumns(schemaData, true);
 
   const relationships = getSchemaRelationshipColumns(schemaData);
 
