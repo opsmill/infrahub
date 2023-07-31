@@ -4,6 +4,7 @@ from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.core import registry
+from infrahub.core.artifact import CoreArtifactDefinition
 from infrahub.core.branch import Branch
 from infrahub.core.models import NodeSchema as NodeSchemaModel
 from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
@@ -61,6 +62,7 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
 
     registry.node["Node"] = Node
+    registry.node["CoreArtifactDefinition"] = CoreArtifactDefinition
     registry.node["NodeSchema"] = NodeSchemaModel
     registry.node["RelationshipSchema"] = RelationshipSchemaModel
 

@@ -33,13 +33,7 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import (
-    GraphQLError,
-    InfrahubClient,
-    InfrahubNode,
-    NodeNotFound,
-    ValidationError,
-)
+from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
 from infrahub_client.utils import compare_lists
 
 # pylint: disable=too-few-public-methods,too-many-lines
@@ -104,6 +98,17 @@ class RFileInformation(BaseModel):
 
     template_path: str
     """Path to the template file within the repo"""
+
+
+class ArtifactDefinitionInformation(BaseModel):
+    name: str
+    """Name of the Artifact Definition"""
+
+    artifact_name: Optional[str]
+    parameters: dict
+    content_type: str
+    targets: str
+    transformation: str
 
 
 class CheckInformation(BaseModel):
@@ -974,10 +979,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             commit = self.get_commit_value(branch_name=branch_name)
 
         await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
-        await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
         await self.import_all_python_files(branch_name=branch_name, commit=commit)
+        await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
 
-    async def import_objects_rfiles(self, branch_name: str, commit: str, data: dict):
+    async def import_objects_rfiles(self, branch_name: str, commit: str, data: List[dict]):
         LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ({commit}) ")
 
         schema = await self.client.schema.get(kind="CoreRFile", branch=branch_name)
@@ -1070,6 +1075,92 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             existing_rfile.template_path.value = local_rfile.template_path
 
         await existing_rfile.save()
+
+    async def import_objects_artifact_definitions(self, branch_name: str, commit: str, data: List[dict]):
+        LOGGER.debug(f"{self.name} | Importing all Artifact Definitions in branch {branch_name} ({commit}) ")
+
+        schema = await self.client.schema.get(kind="CoreArtifactDefinition", branch=branch_name)
+
+        artifact_defs_in_graph = {
+            artdef.name.value: artdef
+            for artdef in await self.client.filters(kind="CoreArtifactDefinition", branch=branch_name)
+        }
+
+        local_artifact_defs = {}
+
+        # Process the list of local RFile to organize them by name
+        for artdef in data:
+            try:
+                item = ArtifactDefinitionInformation(**artdef)
+                self.client.schema.validate_data_against_schema(schema=schema, data=artdef)
+            except PydanticValidationError as exc:
+                for error in exc.errors():
+                    LOGGER.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+                continue
+            except ValidationError as exc:
+                LOGGER.error(exc.message)
+                continue
+
+            local_artifact_defs[item.name] = item
+
+        present_in_both, _, only_local = compare_lists(
+            list1=list(artifact_defs_in_graph.keys()), list2=list(local_artifact_defs.keys())
+        )
+
+        for artdef_name in only_local:
+            LOGGER.info(
+                f"{self.name} | New Artifact Definition {artdef_name!r} found on branch {branch_name!r}, creating"
+            )
+            await self.create_artifact_definition(branch_name=branch_name, data=local_artifact_defs[artdef_name])
+
+        for artdef_name in present_in_both:
+            if not await self.compare_artifact_definition(
+                existing_artifact_definition=artifact_defs_in_graph[artdef_name],
+                local_artifact_definition=local_artifact_defs[artdef_name],
+            ):
+                LOGGER.info(
+                    f"{self.name} | New version of the Artifact Definition '{artdef_name}' found on branch {branch_name}, updating"
+                )
+                await self.update_artifact_definition(
+                    existing_artifact_definition=artifact_defs_in_graph[artdef_name],
+                    local_artifact_definition=local_artifact_defs[artdef_name],
+                )
+
+    async def create_artifact_definition(self, branch_name: str, data: ArtifactDefinitionInformation) -> InfrahubNode:
+        schema = await self.client.schema.get(kind="CoreArtifactDefinition", branch=branch_name)
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema, data=data.dict(), source=self.id, is_protected=True
+        )
+        obj = await self.client.create(kind="CoreArtifactDefinition", branch=branch_name, **create_payload)
+        await obj.save()
+        return obj
+
+    @classmethod
+    async def compare_artifact_definition(
+        cls, existing_artifact_definition: InfrahubNode, local_artifact_definition: RFileInformation
+    ) -> bool:
+        # pylint: disable=no-member
+        if (
+            existing_artifact_definition.artifact_name.value != local_artifact_definition.artifact_name
+            or existing_artifact_definition.parameters.value != local_artifact_definition.parameters
+            or existing_artifact_definition.content_type.value != local_artifact_definition.content_type
+        ):
+            return False
+
+    async def update_artifact_definition(
+        self, existing_artifact_definition: InfrahubNode, local_artifact_definition: RFileInformation
+    ) -> None:
+        # pylint: disable=no-member
+        if existing_artifact_definition.artifact_name.value != local_artifact_definition.artifact_name:
+            existing_artifact_definition.artifact_name.value = local_artifact_definition.artifact_name
+
+        if existing_artifact_definition.parameters.value != local_artifact_definition.parameters:
+            existing_artifact_definition.parameters.value = local_artifact_definition.parameters
+
+        if existing_artifact_definition.content_type.value != local_artifact_definition.content_type:
+            existing_artifact_definition.content_type.value = local_artifact_definition.content_type
+
+        await existing_artifact_definition.save()
 
     async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
@@ -1600,6 +1691,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         self,
         branch_name: str,
         commit: str,
+        artifact: InfrahubNode,
         target: InfrahubNode,
         definition: InfrahubNode,
         transformation: InfrahubNode,
@@ -1617,7 +1709,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         if transformation.typename == "CoreRFile":
             artifact_content = await self.render_jinja2_template(
-                commit=commit, location=transformation.template_path.value, data=data
+                commit=commit, location=transformation.template_path.value, data={"data": data}
             )
         elif transformation.typename == "CoreTransformPython":
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
@@ -1632,37 +1724,18 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
 
-        artifact = None
-        try:
-            artifact = await self.client.get(
-                kind="CoreArtifact", definition__ids=[definition.id], object__ids=[target.id], branch=branch_name
+        if artifact.checksum.value == checksum:
+            return ArtifactGenerateResult(
+                changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )
-            if artifact and artifact.checksum.value == checksum:
-                return ArtifactGenerateResult(
-                    changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
-                )
-        except NodeNotFound:
-            pass
 
         resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
         storage_id = resp["identifier"]
 
-        if artifact:
-            artifact.checksum.value = checksum
-            artifact.storage_id.value = storage_id
-            await artifact.save()
-        else:
-            artifact_data = {
-                "name": definition.artifact_name.value,
-                "content_type": definition.content_type.value,
-                "checksum": checksum,
-                "storage_id": storage_id,
-                "parameters": variables,
-                "object": target.id,
-                "definition": definition.id,
-            }
-            artifact = await self.client.create(kind="CoreArtifact", branch=branch_name, data=artifact_data)
-            await artifact.save()
+        artifact.checksum.value = checksum
+        artifact.storage_id.value = storage_id
+        artifact.status.value = "Ready"
+        await artifact.save()
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 

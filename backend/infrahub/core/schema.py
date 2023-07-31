@@ -65,11 +65,19 @@ class RelationshipKind(str, BaseEnum):
     GROUP = "Group"
 
 
+class ArtifactStatus(str, BaseEnum):
+    ERROR = "Error"
+    PENDING = "Pending"
+    PROCESSING = "Processing"
+    READY = "Ready"
+
+
 # Generate a list of String based on Enums
 RELATIONSHIP_KINDS = [RelationshipKind.__members__[member].value for member in list(RelationshipKind.__members__)]
 RELATIONSHIP_CARDINALITY = [
     RelationshipCardinality.__members__[member].value for member in list(RelationshipCardinality.__members__)
 ]
+ARTIFACT_STATUSES = [ArtifactStatus.__members__[member].value for member in list(ArtifactStatus.__members__)]
 
 
 class BaseSchemaModel(BaseModel):
@@ -1154,6 +1162,7 @@ core_models = {
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Generic",
+                    "identifier": "artifact__node",
                 },
             ],
         },
@@ -1364,6 +1373,20 @@ core_models = {
                     "cardinality": "one",
                 },
             ],
+        },
+        {
+            "name": "ArtifactThread",
+            "namespace": "Core",
+            "description": "A thread related to an artifact on a proposed change",
+            "label": "Thread - Artifact",
+            "branch": True,
+            "inherit_from": ["CoreThread"],
+            "attributes": [
+                {"name": "artifact_id", "kind": "Text", "optional": True},
+                {"name": "storage_id", "kind": "Text", "optional": True},
+                {"name": "line_number", "kind": "Number", "optional": True},
+            ],
+            "relationships": [],
         },
         {
             "name": "ObjectThread",
@@ -1612,13 +1635,22 @@ core_models = {
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
+                    "name": "status",
+                    "kind": "Text",
+                    "enum": ARTIFACT_STATUSES,
+                },
+                {
                     "name": "content_type",
                     "kind": "Text",
                     "enum": ["application/json", "text/plain"],
                 },
-                {"name": "checksum", "kind": "Text"},
-                {"name": "storage_id", "kind": "Text", "description": "ID of the file in the object store"},
-                {"name": "created_at", "kind": "DateTime", "optional": True},
+                {"name": "checksum", "kind": "Text", "optional": True},
+                {
+                    "name": "storage_id",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "ID of the file in the object store",
+                },
                 {"name": "parameters", "kind": "JSON", "optional": True},
             ],
             "relationships": [
