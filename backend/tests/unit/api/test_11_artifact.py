@@ -20,7 +20,13 @@ def patch_rpc_client():
 
 
 async def test_artifact_definition_endpoint(
-    session, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data_generic
+    session,
+    admin_headers,
+    default_branch,
+    patch_rpc_client,
+    register_core_models_schema,
+    car_person_data_generic,
+    authentication_base,
 ):
     from infrahub.server import app
 
@@ -70,7 +76,7 @@ async def test_artifact_definition_endpoint(
 
         response = client.post(
             f"/api/artifact/generate/{ad1.id}",
-            headers=client_headers,
+            headers=admin_headers,
         )
 
     assert response.status_code == 200
@@ -78,21 +84,9 @@ async def test_artifact_definition_endpoint(
     result = response.json()
 
     expected_result = {
-        "nodes": {
-            car_person_data_generic["c1"].id: {
-                "artifact_id": "XXXXX",
-                "changed": True,
-                "checksum": "YYYYYY",
-                "storage_id": "DDDDDDDDDD",
-                "status_code": 200,
-            },
-            car_person_data_generic["c2"].id: {
-                "artifact_id": "XXXXX",
-                "changed": True,
-                "checksum": "YYYYYY",
-                "storage_id": "DDDDDDDDDD",
-                "status_code": 200,
-            },
-        },
+        "nodes": [
+            car_person_data_generic["c1"].id,
+            car_person_data_generic["c2"].id,
+        ]
     }
     assert DeepDiff(result, expected_result, ignore_order=True).to_dict() == {}
