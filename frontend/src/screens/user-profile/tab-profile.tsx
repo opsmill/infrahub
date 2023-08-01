@@ -3,7 +3,7 @@ import { parseJwt } from "../../utils/common";
 import ObjectItemDetails from "../object-item-details/object-item-details-paginated";
 
 export default function TabProfile() {
-  const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
   const tokenData = parseJwt(localToken);
 

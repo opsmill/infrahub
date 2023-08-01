@@ -28,7 +28,7 @@ const httpLink = createHttpLink({
 
 const authLink = setContext((_, { headers }) => {
   // Get the token from the session storage
-  const accessToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
   if (!accessToken) {
     return {

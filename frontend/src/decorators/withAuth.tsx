@@ -28,17 +28,17 @@ export const AuthContext = createContext({} as tAuthContext);
 
 export const setTokens = (result: any) => {
   if (result?.access_token) {
-    sessionStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);
+    localStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);
   }
 
   if (result?.refresh_token) {
-    sessionStorage.setItem(REFRESH_TOKEN_KEY, result?.refresh_token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, result?.refresh_token);
   }
 };
 
 export const removeTokens = () => {
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
 export const signOut = () => {
@@ -47,7 +47,7 @@ export const signOut = () => {
 };
 
 export const getNewToken = async () => {
-  const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
   if (!refreshToken) {
     return;
@@ -75,7 +75,7 @@ export const getNewToken = async () => {
 export const withAuth = (AppComponent: any) => (props: any) => {
   const [config] = useAtom(configState);
 
-  const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
   const isSigning = window.location.pathname === "/signin";
 

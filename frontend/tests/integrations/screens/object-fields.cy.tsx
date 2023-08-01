@@ -84,7 +84,7 @@ describe("Object list", () => {
 
     const token = encodeJwt(data);
 
-    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
   });
 
   it("should open the add panel, submit without filling the text field and display a required message", function () {
