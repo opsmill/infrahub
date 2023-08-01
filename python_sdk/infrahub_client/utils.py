@@ -1,8 +1,11 @@
+import hashlib
 import os
 from itertools import groupby
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 from uuid import UUID, uuid4
+
+import httpx
 
 
 def base36encode(number: int) -> str:
@@ -146,3 +149,21 @@ def get_flat_value(obj: Any, key: str, separator: str = "__") -> Any:
     if not sub_obj:
         return None
     return get_flat_value(obj=sub_obj, key=remaining_part, separator=separator)
+
+
+def generate_request_filename(request: httpx.Request) -> str:
+    """Return a filename for a request sent to the Infrahub API
+
+    This function is used when recording and playing back requests, as Infrahub is using a GraphQL
+    API it's not possible to rely on the URL endpoint alone to separate one request from another,
+    for this reason a hash of the payload is included in a filename.
+    """
+    formatted = (
+        str(request.url).replace(":", "_").replace("//", "").replace("/", "__").replace("?", "_q_").replace("&", "_a_")
+    )
+    filename = f"{request.method}_{formatted}"
+    if request.content:
+        content_hash = hashlib.sha224(request.content)
+        filename += f"_{content_hash.hexdigest()}"
+
+    return filename.lower()
