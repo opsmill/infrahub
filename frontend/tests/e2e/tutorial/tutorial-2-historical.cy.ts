@@ -20,8 +20,11 @@ describe("Tutorial - Part 2", () => {
     cy.contains(NEW_ADMIN_ACCOUNT_LABEL).should("exist");
     cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();
 
-    // The label should be the new one
-    cy.get(":nth-child(3) > div.items-center > .mt-1").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+    // Toggle the data-only field
+    cy.get(".sm\\:p-0").within(() => {
+      // The label should be the new one
+      cy.contains("Label").siblings(".flex").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+    });
 
     cy.get(".react-datepicker__input-container > .relative > .block").click();
 
