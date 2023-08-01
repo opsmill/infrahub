@@ -348,6 +348,12 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: e2e-artifacts
+          path: /home/runner/work/infrahub/infrahub/docs/media/*.cy*.png
+
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
