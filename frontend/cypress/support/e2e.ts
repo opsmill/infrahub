@@ -35,7 +35,7 @@ Cypress.Commands.add("login", (username: string, password: string) => {
     },
     {
       validate() {
-        cy.window().its("sessionStorage").invoke("getItem", "access_token").should("exist");
+        cy.window().its("localStorage").invoke("getItem", "access_token").should("exist");
       },
     }
   );

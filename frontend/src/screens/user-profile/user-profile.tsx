@@ -52,7 +52,7 @@ export default function UserProfile() {
 
   const schema = schemaList.find((s) => s.name === ACCOUNT_OBJECT);
 
-  const localToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
   const tokenData = parseJwt(localToken);
 

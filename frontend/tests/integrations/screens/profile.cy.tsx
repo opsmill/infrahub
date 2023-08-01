@@ -43,7 +43,7 @@ describe("List screen", () => {
 
     const token = encodeJwt(data);
 
-    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
 
     // Mount the view with the default route and the mocked data
     cy.mount(

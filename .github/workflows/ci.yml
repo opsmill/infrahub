@@ -68,7 +68,6 @@ jobs:
         run: "pip install yamllint==1.29.0"
       - name: "Linting: yamllint"
         run: "yamllint ."
-
   javascript-lint:
     if: needs.files-changed.outputs.javascript == 'true'
     needs: ["files-changed"]
@@ -88,7 +87,6 @@ jobs:
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run eslint
-
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
     needs: ["files-changed"]
@@ -350,12 +348,6 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
-      - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: e2e-artifacts
-          path: /home/runner/work/infrahub/infrahub/docs/media/**/*.png
-
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
