@@ -42,17 +42,19 @@ export const FilesDiff = (props: tFilesDiff) => {
           kind: schemaData.kind,
           attributes: schemaData.attributes,
         })
-      : // Empty query to make the gql parsing work
-        // TODO: Find another solution for queries while loading schemaData
-        "query { ok }";
+      : "";
 
-  const query = gql`
-    ${queryString}
-  `;
+  const query = queryString
+    ? gql`
+        ${queryString}
+      `
+    : "";
 
-  const { loading, error } = useQuery(query, {
-    skip: !schemaData && !proposedchange,
-  });
+  const { loading, error } = queryString
+    ? useQuery(query, {
+        skip: !schemaData && !proposedchange,
+      })
+    : { loading: false, error: null };
 
   const fetchFiles = useCallback(async () => {
     const branch = branchname || proposedChangesDetails?.source_branch?.value;
@@ -112,7 +114,7 @@ export const FilesDiff = (props: tFilesDiff) => {
   return (
     <div className="text-sm">
       {Object.values(filesDiff).map((diff, index) => (
-        <FileRepoDiff key={index} diff={diff} proposedChangesDetails={proposedChangesDetails} />
+        <FileRepoDiff key={index} diff={diff} />
       ))}
     </div>
   );
