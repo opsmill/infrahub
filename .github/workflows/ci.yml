@@ -319,7 +319,12 @@ jobs:
           file: frontend/coverage/lcov.info
 
   E2E-testing:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: [
+      "frontend-tests",
+      "ctl-tests",
+      # "backend-tests-default",
+      # "python-sdk-tests"
+    ]
     if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: "runner-ubuntu-8-32"
     steps:
