@@ -23,7 +23,8 @@ export type SchemaAttributeType =
   | "Any"
   | "String"
   | "Integer"
-  | "Boolean";
+  | "Boolean"
+  | "JSON";
 
 // Different kind of form inputs
 export type ControlType =
@@ -36,7 +37,8 @@ export type ControlType =
   | "number"
   | "checkbox"
   | "switch"
-  | "datepicker";
+  | "datepicker"
+  | "json";
 
 export type RelationshipCardinality = "one" | "many";
 
@@ -69,6 +71,8 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (
       return "checkbox";
     case "DateTime":
       return "datepicker";
+    case "JSON":
+      return "json";
     default:
       return "text";
   }

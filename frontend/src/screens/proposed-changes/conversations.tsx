@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AVATAR_SIZE, Avatar } from "../../components/avatar";
 import { Badge } from "../../components/badge";
-import { BUTTON_TYPES, Button } from "../../components/button";
+import { Button } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
 import { DateDisplay } from "../../components/date-display";
@@ -104,6 +104,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
   const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
+  // const [isLoadingMerge, setIsLoadingMerge] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
@@ -255,7 +256,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
     }
   };
 
-  async function handleApprove() {
+  const handleApprove = async () => {
     if (!approverId) {
       return;
     }
@@ -304,7 +305,42 @@ export const Conversations = (props: tProposedChangesDetails) => {
       console.error("Something went wrong while updating the object:", e);
       return;
     }
-  }
+  };
+
+  // const handleMerge = async () => {
+  //   if (!proposedChangesDetails?.source_branch?.value) return;
+
+  //   try {
+  //     setIsLoadingMerge(true);
+
+  //     const data = {
+  //       name: proposedChangesDetails?.source_branch?.value,
+  //     };
+
+  //     const mutationString = mergeBranch({ data: objectToString(data) });
+
+  //     const mutation = gql`
+  //       ${mutationString}
+  //     `;
+
+  //     await graphqlClient.mutate({
+  //       mutation,
+  //       context: {
+  //         date,
+  //       },
+  //     });
+
+  //     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfuly!"} />);
+  //   } catch (error: any) {
+  //     console.log("error: ", error);
+
+  //     toast(
+  //       <Alert type={ALERT_TYPES.SUCCESS} message={"An error occured while merging the branch"} />
+  //     );
+  //   }
+
+  //   setIsLoadingMerge(false);
+  // };
 
   const branchesOptions: any[] = branches
     .filter((branch) => branch.name !== "main")
@@ -444,11 +480,20 @@ export const Conversations = (props: tProposedChangesDetails) => {
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Button
                     onClick={handleApprove}
-                    buttonType={BUTTON_TYPES.VALIDATE}
+                    // buttonType={BUTTON_TYPES.VALIDATE}
                     isLoading={isLoadingApprove}
-                    disabled={!auth?.permissions?.write || !approverId || !canApprove}>
+                    disabled={!auth?.permissions?.write || !approverId || !canApprove}
+                    className="mr-2">
                     Approve
                   </Button>
+
+                  {/* <Button
+                    onClick={handleMerge}
+                    buttonType={BUTTON_TYPES.VALIDATE}
+                    isLoading={isLoadingMerge}
+                    disabled={!auth?.permissions?.write}>
+                    Merge
+                  </Button> */}
                 </dd>
               </div>
             </dl>

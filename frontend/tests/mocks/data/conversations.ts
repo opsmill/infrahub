@@ -214,7 +214,7 @@ export const conversationMocksSchema = [
 ];
 
 export const conversationMocksQuery = `query {
-  CoreChangeThread(change__id: "${proposedChangesId}") {
+  CoreChangeThread(change__ids: "${proposedChangesId}") {
     count
     edges {
       node {
