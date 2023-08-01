@@ -92,6 +92,8 @@ export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
 export const PROPOSED_CHANGES_FILE_THERAD = "FileThread";
 export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
+export const PROPOSED_CHANGES_ARTIFACT_THERAD = "ArtifactThread";
+
 export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";

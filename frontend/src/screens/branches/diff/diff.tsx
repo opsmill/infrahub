@@ -4,6 +4,7 @@ import { Filters } from "../../../components/filters";
 import { Tabs } from "../../../components/tabs";
 import { QSP } from "../../../config/qsp";
 import { DynamicFieldData } from "../../edit-form-hook/dynamic-control-types";
+import { ArtifactsDiff } from "./artifact-diff";
 import { DataDiff } from "./data-diff";
 import { FilesDiff } from "./files-diff";
 import { SchemaDiff } from "./schema-diff";
@@ -39,10 +40,10 @@ const tabs = [
   //   label: "Checks",
   //   name: DIFF_TABS.CHECKS
   // },
-  // {
-  //   label: "Artifacts",
-  //   name: DIFF_TABS.ARTIFACTS
-  // },
+  {
+    label: "Artifacts",
+    name: DIFF_TABS.ARTIFACTS,
+  },
   {
     label: "Schema",
     name: DIFF_TABS.SCHEMA,
@@ -55,6 +56,8 @@ const renderContent = (tab: string | null | undefined) => {
       return <FilesDiff />;
     case DIFF_TABS.SCHEMA:
       return <SchemaDiff />;
+    case DIFF_TABS.ARTIFACTS:
+      return <ArtifactsDiff />;
     default:
       return <DataDiff />;
   }

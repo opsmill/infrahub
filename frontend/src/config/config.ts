@@ -19,6 +19,8 @@ export const CONFIG = {
   AUTH_REFRESH_TOKEN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/refresh`,
   DATA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/data?branch=${branch}`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
+  ARTIFACTS_DIFF_URL: (branch?: string) =>
+    `${INFRAHUB_API_SERVER_URL}/api/diff/artifacts?branch=${branch}`,
   SCHEMA_DIFF_URL: (branch?: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/diff/schema?branch=${branch}`,
   FILES_CONTENT_URL: (repositoryId: string, location: string) =>
