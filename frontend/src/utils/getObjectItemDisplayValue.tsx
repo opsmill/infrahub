@@ -15,9 +15,9 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
     return <CheckIcon className="h-4 w-4" />;
   }
 
-  if (row[attribute?.name]?.__typename === "TextAttribute") {
-    return <pre>{row[attribute?.name]?.value}</pre>;
-  }
+  // if (row[attribute?.name]?.__typename === "TextAttribute") {
+  //   return <pre>{row[attribute?.name]?.value}</pre>;
+  // }
 
   if (row[attribute?.name]?.__typename === "JSONAttribute") {
     return <pre>{JSON.stringify(row[attribute?.name]?.value)}</pre>;
