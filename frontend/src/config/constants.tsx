@@ -116,4 +116,6 @@ export const MENU_BLACKLIST = [
   "CoreThreadComment",
 ];
 
-export const COLUMNS_BLACKLIST = ["HashedPassword", "TextArea", "JSON"];
+export const ATTRIBUTES_BLACKLIST = ["HashedPassword"];
+
+export const COLUMNS_BLACKLIST = ["TextArea", "JSON"];

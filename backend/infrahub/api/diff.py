@@ -154,6 +154,20 @@ class BranchDiffRepository(BaseModel):
     files: List[BranchDiffFile] = Field(default_factory=list)
 
 
+class BranchDiffArtifactStorage(BaseModel):
+    storage_id: str
+    checksum: str
+
+
+class BranchDiffArtifact(BaseModel):
+    branch: str
+    id: str
+    display_label: Optional[str] = None
+    action: DiffAction
+    item_new: Optional[BranchDiffArtifactStorage] = None
+    item_previous: Optional[BranchDiffArtifactStorage] = None
+
+
 async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: str, session: AsyncSession):
     """Return the display_labels of a list of nodes of a specific kind."""
     branch = await get_branch(branch=branch_name, session=session)
@@ -484,5 +498,46 @@ async def get_diff_files(
                 )
 
             response[branch_name][item.repository].files.append(BranchDiffFile(**item.to_graphql()))
+
+    return response
+
+
+@router.get("/artifacts")
+async def get_diff_artifacts(
+    session: AsyncSession = Depends(get_session),
+    branch: Branch = Depends(get_branch_dep),
+    time_from: Optional[str] = None,
+    time_to: Optional[str] = None,
+    branch_only: bool = True,
+    _: str = Depends(get_current_user),
+) -> Dict[str, BranchDiffArtifact]:
+    response = {}
+
+    # Query the Diff for all artifacts
+    diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+    payload = await generate_diff_payload(diff=diff, session=session, kinds_to_include=["CoreArtifact"])
+
+    for branch_name, data in payload.items():
+        for node in data:
+            if "storage_id" not in node.elements or "checksum" not in node.elements:
+                continue
+
+            diff_artifact = BranchDiffArtifact(
+                id=node.id, action=node.action, branch=branch_name, display_label=node.display_label
+            )
+
+            if node.action in [DiffAction.UPDATED, DiffAction.ADDED]:
+                diff_artifact.item_new = BranchDiffArtifactStorage(
+                    storage_id=node.elements["storage_id"].value.value.new,
+                    checksum=node.elements["checksum"].value.value.new,
+                )
+
+            if node.action in [DiffAction.UPDATED, DiffAction.REMOVED]:
+                diff_artifact.item_previous = BranchDiffArtifactStorage(
+                    storage_id=node.elements["storage_id"].value.value.previous,
+                    checksum=node.elements["checksum"].value.value.previous,
+                )
+
+            response[node.id] = diff_artifact
 
     return response

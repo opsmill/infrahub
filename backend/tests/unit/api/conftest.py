@@ -230,3 +230,100 @@ async def car_person_data_generic_diff(session, default_branch, car_person_data_
     }
 
     return params
+
+
+@pytest.fixture
+async def car_person_data_artifact_diff(session, default_branch, car_person_data_generic_diff):
+    query = """
+    query {
+        TestPerson {
+            name {
+                value
+            }
+            cars {
+                name {
+                    value
+                }
+            }
+        }
+    }
+    """
+
+    q1 = await Node.init(session=session, schema="CoreGraphQLQuery")
+    await q1.new(session=session, name="query01", query=query)
+    await q1.save(session=session)
+
+    r1 = await Node.init(session=session, schema="CoreRepository")
+    await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
+    await r1.save(session=session)
+
+    g1 = await Node.init(session=session, schema="CoreStandardGroup")
+    await g1.new(
+        session=session, name="group1", members=[car_person_data_generic_diff["c1"], car_person_data_generic_diff["c2"]]
+    )
+    await g1.save(session=session)
+
+    t1 = await Node.init(session=session, schema="CoreTransformPython")
+    await t1.new(
+        session=session,
+        name="transform01",
+        query=str(q1.id),
+        url="mytransform",
+        repository=str(r1.id),
+        file_path="transform01.py",
+        class_name="Transform01",
+        rebase=False,
+    )
+    await t1.save(session=session)
+
+    ad1 = await Node.init(session=session, schema="CoreArtifactDefinition")
+    await ad1.new(
+        session=session,
+        name="artifactdef01",
+        targets=g1,
+        transformation=t1,
+        content_type="application/json",
+        artifact_name="myartifact",
+        parameters='{"name": "name__value"}',
+    )
+    await ad1.save(session=session)
+
+    art1 = await Node.init(session=session, schema="CoreArtifact")
+    await art1.new(
+        session=session,
+        name="myyartifact",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic_diff["c1"],
+        storage_id="8caf6f89-073f-4173-aa4b-f50e1309f03c",
+        checksum="60d39063c26263353de24e1b913e1e1c",
+        content_type="application/json",
+    )
+    await art1.save(session=session)
+
+    branch3 = await create_branch(branch_name="branch3", session=session)
+
+    artifacts = await NodeManager.get_many(session=session, ids=[art1.id], branch=branch3)
+
+    artifacts[art1.id].storage_id.value = "azertyui-073f-4173-aa4b-f50e1309f03c"
+    artifacts[art1.id].checksum.value = "zxcv9063c26263353de24e1b911z1x2c3v"
+    await artifacts[art1.id].save(session=session)
+
+    art2 = await Node.init(session=session, schema="CoreArtifact", branch=branch3)
+    await art2.new(
+        session=session,
+        name="myyartifact",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic_diff["c2"],
+        storage_id="qwertyui-073f-4173-aa4b-f50e1309f03c",
+        checksum="zxcv9063c26263353de24e1b913e1e1c",
+        content_type="application/json",
+    )
+    await art2.save(session=session)
+
+    car_person_data_generic_diff["branch3"] = branch3
+    car_person_data_generic_diff["art1"] = art1.id
+    car_person_data_generic_diff["art2"] = art2.id
+
+    return car_person_data_generic_diff

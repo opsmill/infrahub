@@ -1,4 +1,5 @@
 import pytest
+from deepdiff import DeepDiff
 
 from infrahub.api.diff import get_display_labels, get_display_labels_per_kind
 from infrahub.core.initialization import create_branch
@@ -395,3 +396,46 @@ async def test_diff_data_endpoint_with_main_time_from_to(session, client, client
     assert main[p1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
     assert main[p1]["elements"]["height"]["value"]["value"]["new"] == 120
     assert main[p1]["elements"]["height"]["value"]["value"]["previous"] == 180
+
+
+async def test_diff_artifact(
+    session, client, client_headers, register_core_models_schema, car_person_data_artifact_diff
+):
+    with client:
+        response = client.get(
+            "/api/diff/artifacts?branch=branch3",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    expected_response = {
+        car_person_data_artifact_diff["art2"]: {
+            "action": "added",
+            "branch": "branch3",
+            "display_label": "myyartifact",
+            "id": car_person_data_artifact_diff["art2"],
+            "item_new": {
+                "checksum": "zxcv9063c26263353de24e1b913e1e1c",
+                "storage_id": "qwertyui-073f-4173-aa4b-f50e1309f03c",
+            },
+            "item_previous": None,
+        },
+        car_person_data_artifact_diff["art1"]: {
+            "action": "updated",
+            "branch": "branch3",
+            "display_label": "myyartifact",
+            "id": car_person_data_artifact_diff["art1"],
+            "item_new": {
+                "checksum": "zxcv9063c26263353de24e1b911z1x2c3v",
+                "storage_id": "azertyui-073f-4173-aa4b-f50e1309f03c",
+            },
+            "item_previous": {
+                "checksum": "60d39063c26263353de24e1b913e1e1c",
+                "storage_id": "8caf6f89-073f-4173-aa4b-f50e1309f03c",
+            },
+        },
+    }
+
+    assert DeepDiff(expected_response, data, ignore_order=True).to_dict() == {}
