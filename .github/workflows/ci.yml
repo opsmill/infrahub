@@ -321,6 +321,7 @@ jobs:
   E2E-testing:
     # needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
     # if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    if: always()
     runs-on: "runner-ubuntu-8-32"
     steps:
       - name: "Check out repository code"
