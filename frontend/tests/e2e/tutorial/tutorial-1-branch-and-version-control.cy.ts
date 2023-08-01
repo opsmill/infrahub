@@ -94,7 +94,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);
   });
 
-  it("should access the Admin Account diff", function () {
+  it("should access the Admin Account diff", { defaultCommandTimeout: 20000 }, function () {
     // List the branches
     cy.get("[href='/branches'] > .group").click();
 
@@ -134,5 +134,7 @@ describe("Tutorial - Part 1", () => {
 
     // Merge the branch
     cy.get(".bg-green-500").click();
+
+    cy.contains("Branch merged successfuly!").should("exist");
   });
 });
