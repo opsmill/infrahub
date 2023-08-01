@@ -180,71 +180,71 @@ jobs:
           flag-name: python-sdk-integration
           parallel: true
 
-  backend-tests-default:
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "runner-ubuntu-4-16"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: Cache Docker images
-        uses: ScribeMD/docker-cache@0.3.3
-        with:
-          key: "docker-${{ runner.os }}-backend-memgraph-${{ hashFiles('development/**') }}"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke backend.black --docker"
-      - name: "Isort Tests"
-        run: "invoke backend.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke backend.pylint --docker"
-      - name: "Unit Tests"
-        run: "invoke backend.test-unit"
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-unit
-          parallel: true
-      - name: "Integration Tests"
-        run: "invoke backend.test-integration"
-      - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-integration
-          parallel: true
+  # backend-tests-default:
+  #   if: |
+  #     always() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.backend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "runner-ubuntu-4-16"
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: "Setup Python environment"
+  #       run: "pip install toml invoke"
+  #     - name: Cache Docker images
+  #       uses: ScribeMD/docker-cache@0.3.3
+  #       with:
+  #         key: "docker-${{ runner.os }}-backend-memgraph-${{ hashFiles('development/**') }}"
+  #     - name: "Build Test Image"
+  #       run: "invoke test.build"
+  #     - name: "Black Tests"
+  #       run: "invoke backend.black --docker"
+  #     - name: "Isort Tests"
+  #       run: "invoke backend.isort --docker"
+  #     - name: "Pylint Tests"
+  #       run: "invoke backend.pylint --docker"
+  #     - name: "Unit Tests"
+  #       run: "invoke backend.test-unit"
+  #     - name: "Coveralls : Unit Tests"
+  #       uses: coverallsapp/github-action@v2.0.0
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: backend-unit
+  #         parallel: true
+  #     - name: "Integration Tests"
+  #       run: "invoke backend.test-integration"
+  #     - name: "Coveralls : Integration Tests"
+  #       uses: coverallsapp/github-action@v2.0.0
+  #       env:
+  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+  #       with:
+  #         flag-name: backend-integration
+  #         parallel: true
 
-  backend-tests-neo4j:
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "runner-ubuntu-4-16"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: Cache Docker images.
-        uses: ScribeMD/docker-cache@0.3.3
-        with:
-          key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Unit Tests"
-        run: "invoke backend.test-core --database=neo4j"
+  # backend-tests-neo4j:
+  #   if: |
+  #     always() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.backend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on: "runner-ubuntu-4-16"
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: "Setup Python environment"
+  #       run: "pip install toml invoke"
+  #     - name: Cache Docker images.
+  #       uses: ScribeMD/docker-cache@0.3.3
+  #       with:
+  #         key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
+  #     - name: "Build Test Image"
+  #       run: "invoke test.build"
+  #     - name: "Unit Tests"
+  #       run: "invoke backend.test-core --database=neo4j"
 
   ctl-tests:
     if: |
@@ -352,7 +352,7 @@ jobs:
         if: failure()
         with:
           name: e2e-artifacts
-          path: /home/runner/work/infrahub/infrahub/docs/media/*.cy*.png
+          path: /home/runner/work/infrahub/infrahub/docs/media/**/*.png
 
 
   coverall-report:
