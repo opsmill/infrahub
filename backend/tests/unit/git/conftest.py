@@ -817,7 +817,7 @@ async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "display_label": "openconfig-interfaces",
                             "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
                             "content_type": {"value": "application/json", "__typename": "TextAttribute"},
-                            "checksum": {"value": "e8a740b1dd39530d1a502e017e0feff5", "__typename": "TextAttribute"},
+                            "checksum": {"value": "e889b9fab24aab3b23ea01d5342b514a", "__typename": "TextAttribute"},
                             "storage_id": {
                                 "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
                                 "__typename": "TextAttribute",
@@ -1047,7 +1047,7 @@ async def artifact_data_02():
             "__typename": "Text",
             "value": "Pending",
         },
-        "checksum": {"value": "e8a740b1dd39530d1a502e017e0feff5", "__typename": "Text"},
+        "checksum": {"value": "e889b9fab24aab3b23ea01d5342b514a", "__typename": "Text"},
         "storage_id": {"value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483", "__typename": "Text"},
         "__typename": "CoreArtifact",
         "display_label": "artifact01",
