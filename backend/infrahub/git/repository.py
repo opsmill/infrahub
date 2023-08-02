@@ -1718,7 +1718,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
 
         if definition.content_type.value == "application/json":
-            artifact_content_str = ujson.dumps(artifact_content)
+            artifact_content_str = ujson.dumps(artifact_content, indent=2)
         elif definition.content_type.value == "text/plain":
             artifact_content_str = artifact_content
 
