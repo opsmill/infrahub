@@ -18,7 +18,7 @@ describe("Tutorial - Part 1", () => {
     this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 
-  it("should create a new branch", { defaultCommandTimeout: 20000 }, function () {
+  it("should create a new branch", function () {
     // The branch selector should contain the main branch name
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
 
@@ -94,7 +94,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);
   });
 
-  it("should access the Admin Account diff", { defaultCommandTimeout: 20000 }, function () {
+  it("should access the Admin Account diff", function () {
     // List the branches
     cy.get("[href='/branches'] > .group").click();
 

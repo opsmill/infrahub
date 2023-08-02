@@ -9,32 +9,30 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
-import { StringParam, useQueryParam } from "use-query-params";
-import Accordion from "../../../components/accordion";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { Button } from "../../../components/button";
-import { AddComment } from "../../../components/conversations/add-comment";
-import { Thread } from "../../../components/conversations/thread";
-import { CONFIG } from "../../../config/config";
+import { ALERT_TYPES, Alert } from "../../../../components/alert";
+import { Button } from "../../../../components/button";
+import { AddComment } from "../../../../components/conversations/add-comment";
+import { Thread } from "../../../../components/conversations/thread";
+import { CONFIG } from "../../../../config/config";
 import {
-  PROPOSED_CHANGES_FILE_THERAD,
+  PROPOSED_CHANGES_ARTIFACT_THREAD,
+  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import { AuthContext } from "../../../decorators/withAuth";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
-import { createObject } from "../../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
-import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
-import { branchVar } from "../../../graphql/variables/branchVar";
-import { dateVar } from "../../../graphql/variables/dateVar";
-import useQuery from "../../../hooks/useQuery";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { fetchStream } from "../../../utils/fetch";
-import { stringifyWithoutQuotes } from "../../../utils/string";
-import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
+} from "../../../../config/constants";
+import { AuthContext } from "../../../../decorators/withAuth";
+import graphqlClient from "../../../../graphql/graphqlClientApollo";
+import { createObject } from "../../../../graphql/mutations/objects/createObject";
+import { deleteObject } from "../../../../graphql/mutations/objects/deleteObject";
+import { getProposedChangesArtifactsThreads } from "../../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
+import { branchVar } from "../../../../graphql/variables/branchVar";
+import { dateVar } from "../../../../graphql/variables/dateVar";
+import useQuery from "../../../../hooks/useQuery";
+import { schemaState } from "../../../../state/atoms/schema.atom";
+import { fetchStream } from "../../../../utils/fetch";
+import { stringifyWithoutQuotes } from "../../../../utils/string";
+import ErrorScreen from "../../../error-screen/error-screen";
+import LoadingScreen from "../../../loading-screen/loading-screen";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);
@@ -66,14 +64,14 @@ const shouldDisplayAddComment = (state: any, change: any) => {
   );
 };
 
-const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: string) => {
+const getThread = (threads: any[], change: any, idFrom?: string, idTo?: string) => {
   const thread = threads.find((thread) => {
-    const theradLineNumber = thread?.line_number?.value;
+    const THREADLineNumber = thread?.line_number?.value;
 
     if (
       change?.isDelete &&
-      theradLineNumber === change.lineNumber &&
-      (thread?.commit?.value === commitFrom || (!thread?.commit?.value && !commitFrom))
+      THREADLineNumber === change.lineNumber &&
+      (thread?.storage_id?.value === idFrom || (!thread?.storage_id?.value && !idFrom))
     ) {
       // Thread on the left side
       return true;
@@ -81,14 +79,14 @@ const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: 
 
     if (
       change?.isInsert &&
-      thread?.commit?.value === commitTo &&
-      theradLineNumber === change.lineNumber
+      thread?.storage_id?.value === idTo &&
+      THREADLineNumber === change.lineNumber
     ) {
       // Thread on the right side
       return true;
     }
 
-    if (change.isNormal && theradLineNumber === change.newLineNumber) {
+    if (change.isNormal && THREADLineNumber === change.newLineNumber) {
       // Both left + right side
       return true;
     }
@@ -99,62 +97,53 @@ const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: 
   return thread;
 };
 
-export const FileContentDiff = (props: any) => {
-  const { repositoryId, file, commitFrom, commitTo } = props;
+export const ArtifactContentDiff = (props: any) => {
+  const { itemPrevious, itemNew } = props;
 
   const { proposedchange } = useParams();
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);
-  const [previousFile, setPreviousFile] = useState(false);
-  const [newFile, setNewFile] = useState(false);
+  const [previousFile, setPreviousFile] = useState("");
+  const [newFile, setNewFile] = useState("");
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THERAD)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_ARTIFACT_THREAD)[0];
 
-  const queryString = schemaData
-    ? getProposedChangesFilesThreads({
-        id: proposedchange,
-        kind: schemaData.kind,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const queryString =
+    schemaData && proposedchange
+      ? getProposedChangesArtifactsThreads({
+          id: proposedchange,
+          kind: schemaData.kind,
+        })
+      : ""; // Empty query to make the gql parsing work
 
-  const query = gql`
-    ${queryString}
-  `;
+  const query = queryString
+    ? gql`
+        ${queryString}
+      `
+    : "";
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = query
+    ? useQuery(query, { skip: !schemaData })
+    : { loading: false, error: null, data: null, refetch: null };
 
   const threads = data ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
   const approverId = auth?.data?.sub;
 
-  const fetchFileDetails = useCallback(async (commit: string, setState: Function) => {
+  const fetchFileDetails = useCallback(async (storageId: string, setState: Function) => {
+    if (!storageId) return;
+
     setIsLoading(true);
 
     try {
-      const url = CONFIG.FILES_CONTENT_URL(repositoryId, file.location);
+      const url = CONFIG.ARTIFACTS_CONTENT_URL(storageId);
 
-      const options: string[][] = [
-        ["branch_only", branchOnly ?? ""],
-        ["time_from", timeFrom ?? ""],
-        ["time_to", timeTo ?? ""],
-        ["commit", commit ?? ""],
-      ].filter(([, v]) => v !== undefined && v !== "");
+      const fileResult = await fetchStream(url);
 
-      const qsp = new URLSearchParams(options);
-
-      const urlWithQsp = `${url}?${options.length ? `&${qsp.toString()}` : ""}`;
-
-      const fileResult = await fetchStream(urlWithQsp);
-
-      setState(fileResult);
+      setState(fileResult || "");
     } catch (err) {
       console.error("err: ", err);
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
@@ -164,8 +153,8 @@ export const FileContentDiff = (props: any) => {
   }, []);
 
   const setFileDetailsInState = useCallback(async () => {
-    await fetchFileDetails(commitFrom, setPreviousFile);
-    await fetchFileDetails(commitTo, setNewFile);
+    await fetchFileDetails(itemPrevious?.storage_id, setPreviousFile);
+    await fetchFileDetails(itemNew?.storage_id, setNewFile);
   }, []);
 
   useEffect(() => {
@@ -197,25 +186,19 @@ export const FileContentDiff = (props: any) => {
         resolved: {
           value: false,
         },
-        commit: {
-          value: displayAddComment.side === "new" ? commitTo : commitFrom,
-        },
         line_number: {
           value:
             displayAddComment.lineNumber ||
             displayAddComment.newLineNumber ||
             displayAddComment.oldLineNumber,
         },
-        file: {
-          value: file.location,
-        },
-        repository: {
-          id: repositoryId,
+        storage_id: {
+          value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
         },
       };
 
       const threadMutationString = createObject({
-        kind: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+        kind: PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
         data: stringifyWithoutQuotes(newThread),
       });
 
@@ -231,7 +214,7 @@ export const FileContentDiff = (props: any) => {
         },
       });
 
-      threadId = result?.data[`${PROPOSED_CHANGES_FILE_THREAD_OBJECT}Create`]?.object?.id;
+      threadId = result?.data[`${PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT}Create`]?.object?.id;
 
       const newComment = {
         text: {
@@ -323,7 +306,7 @@ export const FileContentDiff = (props: any) => {
         };
       }
 
-      const thread = getThread(threads, change, commitFrom, commitTo);
+      const thread = getThread(threads, change, itemPrevious?.storage_id, itemNew?.storage_id);
 
       if (thread) {
         return {
@@ -356,9 +339,9 @@ export const FileContentDiff = (props: any) => {
       setDisplayAddComment({ side, ...change });
     };
 
-    const thread = getThread(threads, change, commitFrom, commitTo);
+    const thread = getThread(threads, change, itemPrevious?.storage_id, itemNew?.storage_id);
 
-    if (thread || !auth?.permissions?.write) {
+    if (thread || !auth?.permissions?.write || !proposedchange) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }
@@ -392,8 +375,8 @@ export const FileContentDiff = (props: any) => {
 
   const diff = formatLines(diffLines(previousFile, newFile), {
     context: 3,
-    aname: commitFrom,
-    bname: commitTo,
+    aname: itemPrevious?.storage_id,
+    bname: itemNew?.storage_id,
   });
 
   const [fileContent] = parseDiff(appendGitDiffHeaderIfNeeded(diff), {
@@ -401,31 +384,33 @@ export const FileContentDiff = (props: any) => {
   });
 
   return (
-    <div className={"rounded-lg shadow p-2 m-4 bg-custom-white"}>
-      <Accordion title={file.location}>
-        <div className="flex">
-          <div className="flex-1">
-            {commitFrom && <span className="font-normal italic">Commit: {commitFrom}</span>}
-          </div>
-
-          <div className="flex-1">
-            {commitTo && <span className="font-normal italic">Commit: {commitTo}</span>}
-          </div>
+    <div className={"pr-2 pb-2"}>
+      <div className="flex">
+        <div className="flex-1">
+          {itemPrevious?.storage_id && (
+            <span className="font-normal italic">Storage id: {itemPrevious?.storage_id}</span>
+          )}
         </div>
 
-        <div className="ml-2 bg-gray-50">
-          <Diff
-            key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}`}
-            hunks={fileContent.hunks}
-            viewType="split"
-            diffType={fileContent.type}
-            renderGutter={renderGutter}
-            widgets={getWidgets(fileContent.hunks)}
-            optimizeSelection>
-            {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
-          </Diff>
+        <div className="flex-1">
+          {itemNew?.storage_id && (
+            <span className="font-normal italic">Storage id: {itemNew?.storage_id}</span>
+          )}
         </div>
-      </Accordion>
+      </div>
+
+      <div className="ml-2 bg-gray-50">
+        <Diff
+          key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}`}
+          hunks={fileContent.hunks}
+          viewType="split"
+          diffType={fileContent.type}
+          renderGutter={renderGutter}
+          widgets={getWidgets(fileContent.hunks)}
+          optimizeSelection>
+          {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
+        </Diff>
+      </div>
     </div>
   );
 };

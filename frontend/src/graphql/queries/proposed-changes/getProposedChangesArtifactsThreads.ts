@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 
-export const getProposedChangesFilesThreads = Handlebars.compile(`
+export const getProposedChangesArtifactsThreads = Handlebars.compile(`
 query {
   {{kind}}{{#if id}}(change__ids: "{{id}}"){{/if}} {
     count
@@ -17,21 +17,15 @@ query {
           }
         {{/each}}
 
-                file {
-          value
-        }
-
-        commit {
-          value
-        }
-
-        repository {
-          node {
-            id
-          }
-        }
-
         line_number {
+          value
+        }
+
+        storage_id {
+          value
+        }
+
+        resolved {
           value
         }
 

@@ -1,21 +1,14 @@
-import { gql } from "@apollo/client";
-import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { CONFIG } from "../../../config/config";
-import { PROPOSED_CHANGES_FILE_THERAD } from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
-import useQuery from "../../../hooks/useQuery";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { fetchUrl } from "../../../utils/fetch";
-import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
-import NoDataFound from "../../no-data-found/no-data-found";
+import { ALERT_TYPES, Alert } from "../../../../components/alert";
+import { CONFIG } from "../../../../config/config";
+import { QSP } from "../../../../config/qsp";
+import { fetchUrl } from "../../../../utils/fetch";
+import LoadingScreen from "../../../loading-screen/loading-screen";
+import NoDataFound from "../../../no-data-found/no-data-found";
 import { FileRepoDiff } from "./file-repo-diff";
 
 export type tFilesDiff = {
@@ -26,33 +19,11 @@ export const FilesDiff = (props: tFilesDiff) => {
   const { proposedChangesDetails } = props;
 
   const [filesDiff, setFilesDiff] = useState({});
-  const { branchname, proposedchange } = useParams();
-  const [schemaList] = useAtom(schemaState);
+  const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const [isLoading, setIsLoading] = useState(false);
-
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THERAD)[0];
-
-  const queryString =
-    schemaData && proposedchange
-      ? getProposedChangesFilesThreads({
-          id: proposedchange,
-          kind: schemaData.kind,
-          attributes: schemaData.attributes,
-        })
-      : // Empty query to make the gql parsing work
-        // TODO: Find another solution for queries while loading schemaData
-        "query { ok }";
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error } = useQuery(query, {
-    skip: !schemaData && !proposedchange,
-  });
 
   const fetchFiles = useCallback(async () => {
     const branch = branchname || proposedChangesDetails?.source_branch?.value;
@@ -95,12 +66,8 @@ export const FilesDiff = (props: tFilesDiff) => {
     setFilesInState();
   }, []);
 
-  if (loading || isLoading) {
+  if (isLoading) {
     return <LoadingScreen />;
-  }
-
-  if (error) {
-    return <ErrorScreen />;
   }
 
   if (!Object.values(filesDiff).length) {
@@ -112,7 +79,7 @@ export const FilesDiff = (props: tFilesDiff) => {
   return (
     <div className="text-sm">
       {Object.values(filesDiff).map((diff, index) => (
-        <FileRepoDiff key={index} diff={diff} proposedChangesDetails={proposedChangesDetails} />
+        <FileRepoDiff key={index} diff={diff} />
       ))}
     </div>
   );

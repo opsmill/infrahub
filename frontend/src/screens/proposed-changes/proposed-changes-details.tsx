@@ -9,9 +9,10 @@ import { getProposedChanges } from "../../graphql/queries/proposed-changes/getPr
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import { ArtifactsDiff } from "../branches/diff/artifact-diff/artifacts-diff";
 import { DataDiff } from "../branches/diff/data-diff";
 import { DIFF_TABS } from "../branches/diff/diff";
-import { FilesDiff } from "../branches/diff/files-diff";
+import { FilesDiff } from "../branches/diff/file-diff/files-diff";
 import { SchemaDiff } from "../branches/diff/schema-diff";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -35,6 +36,10 @@ const tabs = [
     name: DIFF_TABS.FILES,
   },
   {
+    label: "Artifacts",
+    name: DIFF_TABS.ARTIFACTS,
+  },
+  {
     label: "Schema",
     name: DIFF_TABS.SCHEMA,
   },
@@ -44,6 +49,8 @@ const renderContent = (tab: string | null | undefined, proposedChangesDetails: a
   switch (tab) {
     case DIFF_TABS.FILES:
       return <FilesDiff proposedChangesDetails={proposedChangesDetails} />;
+    case DIFF_TABS.ARTIFACTS:
+      return <ArtifactsDiff proposedChangesDetails={proposedChangesDetails} />;
     case DIFF_TABS.SCHEMA:
       return <SchemaDiff />;
     case DIFF_TABS.DATA:

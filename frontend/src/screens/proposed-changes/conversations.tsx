@@ -17,7 +17,7 @@ import { Tooltip } from "../../components/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES_CHANGE_THERAD,
+  PROPOSED_CHANGES_CHANGE_THREAD,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -108,7 +108,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_CHANGE_THERAD)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_CHANGE_THREAD)[0];
   const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
 
   const queryString = schemaData
