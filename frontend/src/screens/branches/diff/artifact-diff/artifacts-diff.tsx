@@ -5,18 +5,18 @@ import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { CONFIG } from "../../../config/config";
-import { PROPOSED_CHANGES_ARTIFACT_THERAD } from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import { getProposedChangesArtifactsThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
-import useQuery from "../../../hooks/useQuery";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { fetchUrl } from "../../../utils/fetch";
-import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
-import NoDataFound from "../../no-data-found/no-data-found";
-import { FileRepoDiff } from "./file-repo-diff";
+import { ALERT_TYPES, Alert } from "../../../../components/alert";
+import { CONFIG } from "../../../../config/config";
+import { PROPOSED_CHANGES_ARTIFACT_THERAD } from "../../../../config/constants";
+import { QSP } from "../../../../config/qsp";
+import { getProposedChangesArtifactsThreads } from "../../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
+import useQuery from "../../../../hooks/useQuery";
+import { schemaState } from "../../../../state/atoms/schema.atom";
+import { fetchUrl } from "../../../../utils/fetch";
+import ErrorScreen from "../../../error-screen/error-screen";
+import LoadingScreen from "../../../loading-screen/loading-screen";
+import NoDataFound from "../../../no-data-found/no-data-found";
+import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
 export type tArtifactsDiff = {
   proposedChangesDetails?: any;
@@ -25,7 +25,7 @@ export type tArtifactsDiff = {
 export const ArtifactsDiff = (props: tArtifactsDiff) => {
   const { proposedChangesDetails } = props;
 
-  const [filesDiff, setArtifactsDiff] = useState({});
+  const [artifactsDiff, setArtifactsDiff] = useState({});
   const { branchname, proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -66,6 +66,7 @@ export const ArtifactsDiff = (props: tArtifactsDiff) => {
     const url = CONFIG.ARTIFACTS_DIFF_URL(branch);
 
     const options: string[][] = [
+      ["branch", branch ?? ""],
       ["branch_only", branchOnly ?? ""],
       ["time_from", timeFrom ?? ""],
       ["time_to", timeTo ?? ""],
@@ -78,12 +79,10 @@ export const ArtifactsDiff = (props: tArtifactsDiff) => {
     try {
       const filesResult = await fetchUrl(urlWithQsp);
 
-      if (filesResult[branch]) {
-        setArtifactsDiff(filesResult[branch]);
-      }
+      setArtifactsDiff(filesResult);
     } catch (err) {
       console.error("err: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading filesDiff diff" />);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading artifactsDiff diff" />);
     }
 
     setIsLoading(false);
@@ -106,7 +105,7 @@ export const ArtifactsDiff = (props: tArtifactsDiff) => {
     return <ErrorScreen />;
   }
 
-  if (!Object.values(filesDiff).length) {
+  if (!Object.values(artifactsDiff).length) {
     return <NoDataFound />;
   }
 
@@ -114,8 +113,8 @@ export const ArtifactsDiff = (props: tArtifactsDiff) => {
 
   return (
     <div className="text-sm">
-      {Object.values(filesDiff).map((diff, index) => (
-        <FileRepoDiff key={index} diff={diff} />
+      {Object.values(artifactsDiff).map((diff, index) => (
+        <ArtifactRepoDiff key={index} diff={diff} />
       ))}
     </div>
   );

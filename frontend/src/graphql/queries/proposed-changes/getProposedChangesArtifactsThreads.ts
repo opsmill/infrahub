@@ -17,20 +17,6 @@ query {
           }
         {{/each}}
 
-                file {
-          value
-        }
-
-        commit {
-          value
-        }
-
-        repository {
-          node {
-            id
-          }
-        }
-
         line_number {
           value
         }
@@ -43,7 +29,7 @@ query {
               text {
                 value
               }
-              
+
               created_by {
                 node {
                   display_label

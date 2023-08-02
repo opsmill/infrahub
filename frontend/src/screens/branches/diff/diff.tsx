@@ -4,9 +4,9 @@ import { Filters } from "../../../components/filters";
 import { Tabs } from "../../../components/tabs";
 import { QSP } from "../../../config/qsp";
 import { DynamicFieldData } from "../../edit-form-hook/dynamic-control-types";
-import { ArtifactsDiff } from "./artifact-diff";
+import { ArtifactsDiff } from "./artifact-diff/artifacts-diff";
 import { DataDiff } from "./data-diff";
-import { FilesDiff } from "./files-diff";
+import { FilesDiff } from "./file-diff/files-diff";
 import { SchemaDiff } from "./schema-diff";
 
 export const DIFF_TABS = {

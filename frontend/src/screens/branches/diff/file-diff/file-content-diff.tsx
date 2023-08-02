@@ -10,31 +10,31 @@ import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 import { StringParam, useQueryParam } from "use-query-params";
-import Accordion from "../../../components/accordion";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { Button } from "../../../components/button";
-import { AddComment } from "../../../components/conversations/add-comment";
-import { Thread } from "../../../components/conversations/thread";
-import { CONFIG } from "../../../config/config";
+import Accordion from "../../../../components/accordion";
+import { ALERT_TYPES, Alert } from "../../../../components/alert";
+import { Button } from "../../../../components/button";
+import { AddComment } from "../../../../components/conversations/add-comment";
+import { Thread } from "../../../../components/conversations/thread";
+import { CONFIG } from "../../../../config/config";
 import {
   PROPOSED_CHANGES_FILE_THERAD,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import { AuthContext } from "../../../decorators/withAuth";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
-import { createObject } from "../../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
-import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
-import { branchVar } from "../../../graphql/variables/branchVar";
-import { dateVar } from "../../../graphql/variables/dateVar";
-import useQuery from "../../../hooks/useQuery";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { fetchStream } from "../../../utils/fetch";
-import { stringifyWithoutQuotes } from "../../../utils/string";
-import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
+} from "../../../../config/constants";
+import { QSP } from "../../../../config/qsp";
+import { AuthContext } from "../../../../decorators/withAuth";
+import graphqlClient from "../../../../graphql/graphqlClientApollo";
+import { createObject } from "../../../../graphql/mutations/objects/createObject";
+import { deleteObject } from "../../../../graphql/mutations/objects/deleteObject";
+import { getProposedChangesFilesThreads } from "../../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
+import { branchVar } from "../../../../graphql/variables/branchVar";
+import { dateVar } from "../../../../graphql/variables/dateVar";
+import useQuery from "../../../../hooks/useQuery";
+import { schemaState } from "../../../../state/atoms/schema.atom";
+import { fetchStream } from "../../../../utils/fetch";
+import { stringifyWithoutQuotes } from "../../../../utils/string";
+import ErrorScreen from "../../../error-screen/error-screen";
+import LoadingScreen from "../../../loading-screen/loading-screen";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);
@@ -358,7 +358,7 @@ export const FileContentDiff = (props: any) => {
 
     const thread = getThread(threads, change, commitFrom, commitTo);
 
-    if (thread || !auth?.permissions?.write) {
+    if (thread || !auth?.permissions?.write || !proposedchange) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }

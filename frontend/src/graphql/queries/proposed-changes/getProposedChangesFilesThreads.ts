@@ -43,7 +43,7 @@ query {
               text {
                 value
               }
-              
+
               created_by {
                 node {
                   display_label

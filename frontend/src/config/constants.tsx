@@ -109,6 +109,7 @@ export const MENU_BLACKLIST = [
   "CoreChangeComment",
   "CoreChangeThread",
   "CoreFileThread",
+  "CoreArtifactThread",
   "CoreObjectThread",
   "CoreProposedChange",
   "InternalRefreshToken",

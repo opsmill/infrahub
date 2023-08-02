@@ -5,17 +5,17 @@ import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { CONFIG } from "../../../config/config";
-import { PROPOSED_CHANGES_FILE_THERAD } from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
-import useQuery from "../../../hooks/useQuery";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { fetchUrl } from "../../../utils/fetch";
-import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
-import NoDataFound from "../../no-data-found/no-data-found";
+import { ALERT_TYPES, Alert } from "../../../../components/alert";
+import { CONFIG } from "../../../../config/config";
+import { PROPOSED_CHANGES_FILE_THERAD } from "../../../../config/constants";
+import { QSP } from "../../../../config/qsp";
+import { getProposedChangesFilesThreads } from "../../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
+import useQuery from "../../../../hooks/useQuery";
+import { schemaState } from "../../../../state/atoms/schema.atom";
+import { fetchUrl } from "../../../../utils/fetch";
+import ErrorScreen from "../../../error-screen/error-screen";
+import LoadingScreen from "../../../loading-screen/loading-screen";
+import NoDataFound from "../../../no-data-found/no-data-found";
 import { FileRepoDiff } from "./file-repo-diff";
 
 export type tFilesDiff = {
