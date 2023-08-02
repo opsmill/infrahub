@@ -117,20 +117,23 @@ export const FileContentDiff = (props: any) => {
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THREAD)[0];
 
-  const queryString = schemaData
-    ? getProposedChangesFilesThreads({
-        id: proposedchange,
-        kind: schemaData.kind,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const queryString =
+    schemaData && proposedchange
+      ? getProposedChangesFilesThreads({
+          id: proposedchange,
+          kind: schemaData.kind,
+        })
+      : ""; // Empty query to make the gql parsing work
 
-  const query = gql`
-    ${queryString}
-  `;
+  const query = queryString
+    ? gql`
+        ${queryString}
+      `
+    : "";
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = query
+    ? useQuery(query, { skip: !schemaData })
+    : { loading: false, error: null, data: null, refetch: null };
 
   const threads = data ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
   const approverId = auth?.data?.sub;
