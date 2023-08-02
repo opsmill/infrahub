@@ -39,11 +39,12 @@ export const ArtifactRepoDiff = (props: any) => {
     return <ErrorScreen />;
   }
 
-  const artifact = data?.CoreArtifact?.edges[0]?.node;
+  const artifact = data?.CoreArtifact?.edges[0]?.node?.object?.node?.display_label;
 
   const title = (
     <div className="flex">
-      <Badge className="mr-2">{artifact?.object?.node?.display_label}</Badge>
+      {artifact && <Badge className="mr-2">{artifact?.object?.node?.display_label}</Badge>}
+
       {diff.display_label}
     </div>
   );
