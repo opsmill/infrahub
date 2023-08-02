@@ -398,11 +398,6 @@ class TestUserWorkflow01:
             "root['elements']['description']['value']['changed_at']",
         ]
 
-        paths_to_exclude = [
-            "root['id']",
-            "root['elements']['description']['id']",
-            "root['elements']['description']['value']['changed_at']",
-        ]
         assert (
             DeepDiff(
                 expected_result_branch1, result["branch1"][0], exclude_paths=paths_to_exclude, ignore_order=True
