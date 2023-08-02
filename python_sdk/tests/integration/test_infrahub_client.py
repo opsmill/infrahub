@@ -1,13 +1,29 @@
+import json
+from typing import Any, Dict, Optional
+
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClient
+from infrahub_client import Config, InfrahubClient
 from infrahub_client.node import InfrahubNode
+from infrahub_client.types import HTTPMethod
 
 # pylint: disable=unused-argument
+
+
+class InfrahubTestClient(TestClient):
+    async def async_request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        content = None
+        if payload:
+            content = str(json.dumps(payload)).encode("UTF-8")
+        with self as client:
+            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
 
 
 class TestInfrahubClient:
@@ -18,11 +34,12 @@ class TestInfrahubClient:
         # pylint: disable=import-outside-toplevel
         from infrahub.server import app
 
-        return TestClient(app)
+        return InfrahubTestClient(app)
 
     @pytest.fixture
     async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client)
+        config = Config(requester=test_client.async_request)
+        return await InfrahubClient.init(address="", config=config)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):

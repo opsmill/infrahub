@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import enum
 import logging
 from logging import Logger
 from time import sleep
@@ -28,17 +27,13 @@ from infrahub_client.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORI
 from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
+from infrahub_client.types import AsyncRequester, HTTPMethod, SyncRequester
 from infrahub_client.utils import is_valid_uuid
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 # pylint: disable=redefined-builtin
-
-
-class HTTPMethod(str, enum.Enum):
-    GET = "get"
-    POST = "post"
 
 
 class BaseClient:
@@ -91,6 +86,11 @@ class BaseClient:
     def _initialize(self) -> None:
         """Sets the properties for each version of the client"""
 
+    def _record(self, response: httpx.Response) -> None:
+        if not self.config.custom_recorder:
+            return
+        self.config.custom_recorder.record(response)
+
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
@@ -101,6 +101,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.object_store = ObjectStore(self)
         self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
+        self._request: AsyncRequester = self.config.requester or self._default_request_method
 
     @classmethod
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
@@ -391,7 +392,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         with self.test_client as client:
             return client.get(url=url, headers=headers)
 
-    async def _request(
+    async def _default_request_method(
         self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
     ) -> httpx.Response:
         params: Dict[str, Any] = {}
@@ -406,6 +407,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url) from exc
+        self._record(response)
         return response
 
     async def login(self, refresh: bool = False) -> None:
@@ -525,6 +527,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.branch = InfrahubBranchManagerSync(self)
         self.object_store = ObjectStoreSync(self)
         self.store = NodeStoreSync()
+        self._request: SyncRequester = self.config.sync_requester or self._default_request_method
 
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
@@ -846,7 +849,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             timeout=timeout or self.default_timeout,
         )
 
-    def _request(
+    def _default_request_method(
         self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
     ) -> httpx.Response:
         params: Dict[str, Any] = {}
@@ -859,6 +862,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url) from exc
+        self._record(response)
         return response
 
     def login(self, refresh: bool = False) -> None:
