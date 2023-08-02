@@ -518,7 +518,7 @@ async def test_artifact_generate_python_new(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="e8a740b1dd39530d1a502e017e0feff5",
+        checksum="e889b9fab24aab3b23ea01d5342b514a",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=result.artifact_id,
     )
@@ -550,7 +550,7 @@ async def test_artifact_generate_python_existing_same(
 
     expected_data = ArtifactGenerateResult(
         changed=False,
-        checksum="e8a740b1dd39530d1a502e017e0feff5",
+        checksum="e889b9fab24aab3b23ea01d5342b514a",
         storage_id="13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
         artifact_id=artifact_node_02.id,
     )
@@ -584,7 +584,7 @@ async def test_artifact_generate_python_existing_different(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="e8a740b1dd39530d1a502e017e0feff5",
+        checksum="e889b9fab24aab3b23ea01d5342b514a",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=artifact_node_01.id,
     )
