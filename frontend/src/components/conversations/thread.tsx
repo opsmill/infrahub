@@ -180,7 +180,7 @@ export const Thread = (props: tThread) => {
     <section
       className={classNames(
         isResolved ? "bg-gray-200" : "bg-custom-white",
-        "p-4 mb-4 rounded-lg relative"
+        "p-4 m-4 rounded-lg relative"
       )}>
       <div className="">
         {sortedComments.map((comment: any, index: number) => (

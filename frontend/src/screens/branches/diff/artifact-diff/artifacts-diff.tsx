@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../../../components/alert";
 import { CONFIG } from "../../../../config/config";
-import { PROPOSED_CHANGES_ARTIFACT_THERAD } from "../../../../config/constants";
+import { PROPOSED_CHANGES_ARTIFACT_THREAD } from "../../../../config/constants";
 import { QSP } from "../../../../config/qsp";
 import { getProposedChangesArtifactsThreads } from "../../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
 import useQuery from "../../../../hooks/useQuery";
@@ -33,7 +33,7 @@ export const ArtifactsDiff = (props: tArtifactsDiff) => {
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_ARTIFACT_THERAD)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_ARTIFACT_THREAD)[0];
 
   const queryString =
     schemaData && proposedchange

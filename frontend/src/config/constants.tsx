@@ -86,13 +86,14 @@ export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 
 export const PROPOSED_CHANGES_OBJECT = "ProposedChange";
 
-export const PROPOSED_CHANGES_CHANGE_THERAD = "ChangeThread";
+export const PROPOSED_CHANGES_CHANGE_THREAD = "ChangeThread";
 export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
 
-export const PROPOSED_CHANGES_FILE_THERAD = "FileThread";
+export const PROPOSED_CHANGES_FILE_THREAD = "FileThread";
 export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
-export const PROPOSED_CHANGES_ARTIFACT_THERAD = "ArtifactThread";
+export const PROPOSED_CHANGES_ARTIFACT_THREAD = "ArtifactThread";
+export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
 export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
 

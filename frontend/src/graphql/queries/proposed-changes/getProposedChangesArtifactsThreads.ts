@@ -21,6 +21,14 @@ query {
           value
         }
 
+        storage_id {
+          value
+        }
+
+        resolved {
+          value
+        }
+
         comments {
           edges {
             node {

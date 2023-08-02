@@ -15,8 +15,8 @@ import { AddComment } from "../../../../components/conversations/add-comment";
 import { Thread } from "../../../../components/conversations/thread";
 import { CONFIG } from "../../../../config/config";
 import {
-  PROPOSED_CHANGES_ARTIFACT_THERAD,
-  PROPOSED_CHANGES_FILE_THERAD,
+  PROPOSED_CHANGES_ARTIFACT_THREAD,
+  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../../../config/constants";
@@ -66,12 +66,12 @@ const shouldDisplayAddComment = (state: any, change: any) => {
 
 const getThread = (threads: any[], change: any, idFrom?: string, idTo?: string) => {
   const thread = threads.find((thread) => {
-    const theradLineNumber = thread?.line_number?.value;
+    const THREADLineNumber = thread?.line_number?.value;
 
     if (
       change?.isDelete &&
-      theradLineNumber === change.lineNumber &&
-      (thread?.commit?.value === idFrom || (!thread?.commit?.value && !idFrom))
+      THREADLineNumber === change.lineNumber &&
+      (thread?.storage_id?.value === idFrom || (!thread?.storage_id?.value && !idFrom))
     ) {
       // Thread on the left side
       return true;
@@ -79,14 +79,14 @@ const getThread = (threads: any[], change: any, idFrom?: string, idTo?: string) 
 
     if (
       change?.isInsert &&
-      thread?.commit?.value === idTo &&
-      theradLineNumber === change.lineNumber
+      thread?.storage_id?.value === idTo &&
+      THREADLineNumber === change.lineNumber
     ) {
       // Thread on the right side
       return true;
     }
 
-    if (change.isNormal && theradLineNumber === change.newLineNumber) {
+    if (change.isNormal && THREADLineNumber === change.newLineNumber) {
       // Both left + right side
       return true;
     }
@@ -110,7 +110,7 @@ export const ArtifactContentDiff = (props: any) => {
   const [newFile, setNewFile] = useState("");
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THERAD)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_ARTIFACT_THREAD)[0];
 
   const queryString = schemaData
     ? getProposedChangesArtifactsThreads({
@@ -189,10 +189,13 @@ export const ArtifactContentDiff = (props: any) => {
             displayAddComment.newLineNumber ||
             displayAddComment.oldLineNumber,
         },
+        storage_id: {
+          value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
+        },
       };
 
       const threadMutationString = createObject({
-        kind: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+        kind: PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
         data: stringifyWithoutQuotes(newThread),
       });
 
@@ -208,7 +211,7 @@ export const ArtifactContentDiff = (props: any) => {
         },
       });
 
-      threadId = result?.data[`${PROPOSED_CHANGES_ARTIFACT_THERAD}Create`]?.object?.id;
+      threadId = result?.data[`${PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT}Create`]?.object?.id;
 
       const newComment = {
         text: {

@@ -17,7 +17,7 @@ import { AddComment } from "../../../../components/conversations/add-comment";
 import { Thread } from "../../../../components/conversations/thread";
 import { CONFIG } from "../../../../config/config";
 import {
-  PROPOSED_CHANGES_FILE_THERAD,
+  PROPOSED_CHANGES_FILE_THREAD,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../../../config/constants";
@@ -68,11 +68,11 @@ const shouldDisplayAddComment = (state: any, change: any) => {
 
 const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: string) => {
   const thread = threads.find((thread) => {
-    const theradLineNumber = thread?.line_number?.value;
+    const THREADLineNumber = thread?.line_number?.value;
 
     if (
       change?.isDelete &&
-      theradLineNumber === change.lineNumber &&
+      THREADLineNumber === change.lineNumber &&
       (thread?.commit?.value === commitFrom || (!thread?.commit?.value && !commitFrom))
     ) {
       // Thread on the left side
@@ -82,13 +82,13 @@ const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: 
     if (
       change?.isInsert &&
       thread?.commit?.value === commitTo &&
-      theradLineNumber === change.lineNumber
+      THREADLineNumber === change.lineNumber
     ) {
       // Thread on the right side
       return true;
     }
 
-    if (change.isNormal && theradLineNumber === change.newLineNumber) {
+    if (change.isNormal && THREADLineNumber === change.newLineNumber) {
       // Both left + right side
       return true;
     }
@@ -115,7 +115,7 @@ export const FileContentDiff = (props: any) => {
   const [newFile, setNewFile] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THERAD)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THREAD)[0];
 
   const queryString = schemaData
     ? getProposedChangesFilesThreads({
