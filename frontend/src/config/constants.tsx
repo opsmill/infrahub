@@ -1,3 +1,4 @@
+import ArtifactsObjectItemDetailsPaginated from "../screens/artifacts/object-item-details-paginated";
 import { BrancheItemDetails } from "../screens/branches/branche-item-details";
 import { BranchesItems } from "../screens/branches/branches-items";
 import GroupItemDetails from "../screens/groups/group-details";
@@ -17,6 +18,10 @@ export const MAIN_ROUTES = [
   {
     path: "/objects/:objectname/:objectid",
     element: <ObjectItemDetailsPaginated />,
+  },
+  {
+    path: "/objects/Artifact/:objectid",
+    element: <ArtifactsObjectItemDetailsPaginated />,
   },
   {
     path: "/objects/:objectname",
@@ -92,6 +97,7 @@ export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
 export const PROPOSED_CHANGES_FILE_THREAD = "FileThread";
 export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
+export const ARTIFACT_OBJECT = "Artifact";
 export const PROPOSED_CHANGES_ARTIFACT_THREAD = "ArtifactThread";
 export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
