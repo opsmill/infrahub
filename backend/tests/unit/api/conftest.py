@@ -327,3 +327,147 @@ async def car_person_data_artifact_diff(session, default_branch, car_person_data
     car_person_data_generic_diff["art2"] = art2.id
 
     return car_person_data_generic_diff
+
+
+@pytest.fixture
+async def data_diff_attribute(session, default_branch, car_person_data_generic, first_account):
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    # Time After Creation of branch2
+    time0 = pendulum.now(tz="UTC")
+
+    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons = {item.name.value: item for item in persons_list}
+
+    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
+    repos = {item.name.value: item for item in repos_list}
+
+    ecars_list = await NodeManager.query(session=session, schema="TestElectricCar", branch=branch2)
+    ecars = {item.name.value: item for item in ecars_list}
+
+    gcars_list = await NodeManager.query(session=session, schema="TestGazCar", branch=branch2)
+    gcars = {item.name.value: item for item in gcars_list}
+
+    # Update Repo 01 in Branch2 a first time
+    time12 = pendulum.now(tz="UTC")
+    repo01 = repos["repo01"]
+    repo01.commit.value = "bbbbbbbbbbbbbbb"
+    await repo01.save(session=session, at=time12)
+
+    # Update P1 height in main
+    time13 = pendulum.now(tz="UTC")
+    p1 = await NodeManager.get_one(id=persons["John"].id, session=session)
+    p1.height.value = 120
+    await p1.save(session=session, at=time13)
+
+    # Time in-between the 2 batch of changes
+    time20 = pendulum.now(tz="UTC")
+
+    # Update Repo 01 in Branch2 a second time
+    time21 = pendulum.now(tz="UTC")
+    repo01 = repos["repo01"]
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(session=session, at=time21)
+
+    # Update C2 main
+    ecars_list_main = await NodeManager.query(session=session, schema="TestElectricCar", branch=default_branch)
+    ecars_main = {item.name.value: item for item in ecars_list_main}
+
+    ecars_main["bolt"].nbr_seats.value = 4
+    await ecars_main["bolt"].save(session=session)
+
+    # Time After the changes
+    time30 = pendulum.now(tz="UTC")
+
+    params = {
+        "branch": branch2,
+        "time0": time0,
+        "time12": time12,
+        "time13": time13,
+        "time20": time20,
+        "time21": time21,
+        "time30": time30,
+        "c1": ecars["volt"].id,
+        "c2": ecars["bolt"].id,
+        "c3": gcars["nolt"].id,
+        "c4": gcars["focus"].id,
+        "p1": persons["John"].id,
+        "p2": persons["Jane"].id,
+        "r1": repo01.id,
+    }
+
+    return params
+
+
+@pytest.fixture
+async def data_diff_relationship_one(session, default_branch, car_person_data_generic, first_account):
+    # Set some values in C1 in Main before creating the branch
+    time_minus1 = pendulum.now(tz="UTC")
+    ecars_list = await NodeManager.query(
+        session=session, schema="TestElectricCar", filters={"name__value": "volt"}, branch=default_branch
+    )
+    ecars = {item.name.value: item for item in ecars_list}
+
+    persons_list = await NodeManager.query(
+        session=session, schema="TestPerson", filters={"name__value": "Jane"}, branch=default_branch
+    )
+    persons = {item.name.value: item for item in persons_list}
+
+    await ecars["volt"].previous_owner.update(data=persons["Jane"], session=session)
+    await ecars["volt"].save(session=session, at=time_minus1)
+
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    # Time After Creation of branch2
+    time0 = pendulum.now(tz="UTC")
+
+    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons = {item.name.value: item for item in persons_list}
+
+    ecars_list = await NodeManager.query(session=session, schema="TestElectricCar", branch=branch2)
+    ecars = {item.name.value: item for item in ecars_list}
+
+    gcars_list = await NodeManager.query(session=session, schema="TestGazCar", branch=branch2)
+    gcars = {item.name.value: item for item in gcars_list}
+
+    # Change owner owner of C1 from P1 to P2
+    time11 = pendulum.now(tz="UTC")
+    # await ecars["volt"].owner.update(data=persons["Jane"], session=session)
+    await ecars["volt"].previous_owner.update(data=persons["John"], session=session)
+    await ecars["volt"].save(session=session, at=time11)
+
+    # Time in-between the 2 batch of changes
+    time20 = pendulum.now(tz="UTC")
+
+    # Set previous owner for C2 in branch
+    await ecars["bolt"].previous_owner.update(data=persons["Jane"], session=session)
+    await ecars["bolt"].save(session=session, at=time20)
+
+    # Set previous owner for C2 in main
+    ecars_list_main = await NodeManager.query(session=session, schema="TestElectricCar", branch=default_branch)
+    ecars_main = {item.name.value: item for item in ecars_list_main}
+
+    time21 = pendulum.now(tz="UTC")
+
+    await ecars_main["bolt"].previous_owner.update(data=persons["John"], session=session)
+    await ecars_main["bolt"].save(session=session, at=time21)
+
+    # Time After the changes
+    time30 = pendulum.now(tz="UTC")
+
+    params = {
+        "branch": branch2,
+        "time0": time0,
+        "time11": time11,
+        "time20": time20,
+        "time21": time21,
+        "time30": time30,
+        "c1": ecars["volt"].id,
+        "c2": ecars["bolt"].id,
+        "c3": gcars["nolt"].id,
+        "c4": gcars["focus"].id,
+        "p1": persons["John"].id,
+        "p2": persons["Jane"].id,
+    }
+
+    return params
