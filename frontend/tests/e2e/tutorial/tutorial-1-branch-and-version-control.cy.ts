@@ -70,7 +70,9 @@ describe("Tutorial - Part 1", () => {
     }
 
     // Open the edit panel
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
+      cy.contains("Edit").click();
+    });
 
     // Verify that the field is pre-populated
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ADMIN_ACCOUNT_NAME);

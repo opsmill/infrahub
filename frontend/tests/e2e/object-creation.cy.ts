@@ -23,7 +23,9 @@ describe("Object creation and deletion", () => {
     });
 
     // Open the create form
-    cy.get(".p-2").click();
+    cy.get(".sm\\:flex.py-4").within(() => {
+      cy.get(".p-2").click();
+    });
 
     // Type the name
     cy.get(".grid > :nth-child(1) > .relative > .block").type(NEW_ACCOUNT.name);
