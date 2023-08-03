@@ -1,3 +1,7 @@
+export const INFRAHUB_GIT_URL = "https://github.com/opsmill";
+
+export const INFRAHUB_DOC_URL = "https://docs.infrahub.app/";
+
 export const INFRAHUB_API_SERVER_URL = import.meta.env.DEV
   ? "http://localhost:8000"
   : window.location.origin.toString();
