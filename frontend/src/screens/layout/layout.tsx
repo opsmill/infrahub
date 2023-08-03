@@ -15,7 +15,10 @@ export default function Layout() {
 
         <div className="flex flex-1 flex-col md:pl-64 overflow-auto bg-gray-100">
           <Header setSidebarOpen={setSidebarOpen} />
-          <Outlet />
+
+          <div className="flex-1">
+            <Outlet />
+          </div>
         </div>
       </div>
     </>

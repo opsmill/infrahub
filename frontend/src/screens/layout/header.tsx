@@ -107,7 +107,9 @@ export default function Header(props: Props) {
       auth?.signOut();
     }
 
-    return navigate("/");
+    navigate("/");
+
+    return null;
   }
 
   return (

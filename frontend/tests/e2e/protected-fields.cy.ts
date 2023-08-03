@@ -23,7 +23,9 @@ describe("Protected fields", () => {
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
+      cy.contains("Edit").click();
+    });
 
     // The input should be available
     cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
@@ -45,7 +47,9 @@ describe("Protected fields", () => {
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
+      cy.contains("Edit").click();
+    });
 
     // The input should be available
     cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
@@ -67,7 +71,9 @@ describe("Protected fields", () => {
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
+      cy.contains("Edit").click();
+    });
 
     // The input should be available
     cy.get("#headlessui-combobox-input-\\:r1g\\:").should("be.disabled");

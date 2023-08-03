@@ -8,6 +8,7 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { DropDownMenuItem } from "./desktop-menu-item";
+import { Footer } from "./footer";
 
 export default function DesktopMenu() {
   const [schema] = useAtom(schemaState);
@@ -64,6 +65,8 @@ export default function DesktopMenu() {
           </nav>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
