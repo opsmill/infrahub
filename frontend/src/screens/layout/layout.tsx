@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import DesktopMenu from "./desktop-menu";
-import { Footer } from "./footer";
 import Header from "./header";
 import MobileMenu from "./mobile-menu";
 
@@ -20,8 +19,6 @@ export default function Layout() {
           <div className="flex-1">
             <Outlet />
           </div>
-
-          <Footer />
         </div>
       </div>
     </>
