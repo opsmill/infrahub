@@ -7,7 +7,6 @@ tasks:
       gp env INFRAHUB_SDK_API_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec
     init: |
       cd /workspace/infrahub
-      cp development/docker-compose.gitpod-override.yml development/docker-compose.override.yml
       pyenv install 3.11 --skip-existing
       pyenv local 3.11
       pip install toml invoke
@@ -19,7 +18,7 @@ tasks:
     command: |
       cd /workspace/infrahub
       source $HOME/.bashrc
-      poetry run invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
+      poetry run invoke demo.start demo.load-infra-schema demo.load-infra-data
 
 # Ports to expose on workspace startup
 ports:
