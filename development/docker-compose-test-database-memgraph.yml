@@ -5,7 +5,7 @@ services:
     deploy:
       mode: replicated
       replicas: "${NBR_WORKERS}"
-    image: "memgraph/memgraph:2.9.0"
+    image: "memgraph/memgraph:2.10.0"
     volumes:
       - ./memgraph.conf:/etc/memgraph/memgraph.conf
     environment:
