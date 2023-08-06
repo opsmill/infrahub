@@ -250,7 +250,7 @@ class BranchDiffEntry(BaseModel):
 #  NEW
 class BranchDiff(BaseModel):
     diffs: List[BranchDiffEntry] = Field(default_factory=list)
-    conflicts: Dict[str, ObjectConflict] = Field(default_factory=dict)
+    # conflicts: Dict[str, ObjectConflict] = Field(default_factory=dict)
 
 
 class BranchDiffFile(BaseModel):
@@ -349,13 +349,6 @@ def extract_diff_relationship_one(
         )
 
     if len(rels) == 2:
-        [rel.action.value for rel in rels]
-        # if sorted(actions) != ["added", "removed"]:
-        #     logger.warning(
-        #         f"extract_diff_relationship_one: 2 relationships with actions {actions} received, need to investigate: Node ID {node_id}, Name: {name}"
-        #     )
-        #     return None
-
         rel_added = [rel for rel in rels if rel.action.value == "added"][0]
         rel_removed = [rel for rel in rels if rel.action.value == "removed"][0]
 
@@ -745,10 +738,9 @@ class DiffPayload:
 
         await self._process_nodes()
         await self._process_relationships()
-        conflict_data = {conflict.path: conflict for conflict in self.conflicts}
+        # conflict_data = {conflict.path: conflict for conflict in self.conflicts}
 
         return BranchDiff(
-            conflicts=conflict_data,
             diffs=list(self.entries.values()),
         )
 
