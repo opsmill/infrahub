@@ -1,5 +1,5 @@
 import enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from neo4j import AsyncSession
@@ -7,9 +7,6 @@ from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core.branch import Branch
-
-if TYPE_CHECKING:
-    pass
 
 # pylint    : disable=too-many-branches
 

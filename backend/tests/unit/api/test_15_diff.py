@@ -534,11 +534,11 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
     #     "display_label": [{"branch": "branch2", "display_label": f"TestElectricCar(ID: {c2})"}],
     # }
 
-    paths_to_exclude = [
-        r"root\[\d\]\['summary'\]",
-        r"root\[\d\]\['elements'\]\['previous_owner'\]\['change'\]\['id'\]",
-        r"root\[\d\]\['elements'\]\['previous_owner'\]\['change'\]\['properties'\]\['\w+'\]\['changes'\]\[\d\]\['changed_at'\]",
-    ]
+    # paths_to_exclude = [
+    #     r"root\[\d\]\['summary'\]",
+    #     r"root\[\d\]\['elements'\]\['previous_owner'\]\['change'\]\['id'\]",
+    #     r"root\[\d\]\['elements'\]\['previous_owner'\]\['change'\]\['properties'\]\['\w+'\]\['changes'\]\[\d\]\['changed_at'\]",
+    # ]
 
     # expected_response = [expected_c1_update, expected_c2_update]
 

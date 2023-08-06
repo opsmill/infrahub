@@ -94,7 +94,7 @@ class ModifiedPath(BaseModel):
             identifier += f"/{self.peer_id}"
 
         if self.property_name and self.property_name == "HAS_VALUE":
-            identifier += f"/value"
+            identifier += "/value"
         elif self.property_name:
             identifier += f"/property/{self.property_name}"
 
