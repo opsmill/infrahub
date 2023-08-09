@@ -167,3 +167,11 @@ def generate_request_filename(request: httpx.Request) -> str:
         filename += f"_{content_hash.hexdigest()}"
 
     return filename.lower()
+
+
+def is_valid_url(url: str) -> bool:
+    try:
+        parsed = httpx.URL(url)
+        return all([parsed.scheme, parsed.netloc])
+    except TypeError:
+        return False

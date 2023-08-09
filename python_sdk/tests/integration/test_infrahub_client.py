@@ -39,7 +39,7 @@ class TestInfrahubClient:
     @pytest.fixture
     async def client(self, test_client):
         config = Config(requester=test_client.async_request)
-        return await InfrahubClient.init(address="", config=config)
+        return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):

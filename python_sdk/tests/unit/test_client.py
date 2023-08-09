@@ -63,6 +63,13 @@ async def test_init_client_sync():
     assert True
 
 
+async def test_init_with_invalid_address():
+    with pytest.raises(ValueError) as exc:
+        await InfrahubClient.init(address="missing-schema")
+
+    assert "The configured address is not a valid url" in str(exc.value)
+
+
 async def test_get_repositories(
     client, mock_branches_list_query, mock_repositories_query
 ):  # pylint: disable=unused-argument
