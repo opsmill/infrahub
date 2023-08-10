@@ -30,6 +30,8 @@ demo_files: &demo_files
 
 python_all: &python_all
   - "**/*.py"
+  - "pyproject.toml"
+  - "poetry.lock"
 
 javascript_all: &javascript_all
   - "**/*.[tj]{s,sx}"

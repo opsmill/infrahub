@@ -101,6 +101,22 @@ jobs:
       - name: "Linting: ruff"
         run: "ruff check ."
 
+  python-security:
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.python == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Setup environment"
+        run: "pip install poetry pip-audit"
+      - name: "Security: Check packages"
+        run: "poetry export | pip-audit"
+
   # backend-build-docker:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -319,7 +335,7 @@ jobs:
           file: frontend/coverage/lcov.info
 
   E2E-testing:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests", "python-security"]
     if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: "runner-ubuntu-8-32"
     steps:
