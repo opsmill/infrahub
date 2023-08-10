@@ -147,7 +147,7 @@ if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIR
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
 
 
-@app.get("/{rest_of_path:path}")
+@app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str):  # pylint: disable=unused-argument
     return templates.TemplateResponse("index.html", {"request": req})
 
