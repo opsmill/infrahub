@@ -395,11 +395,11 @@ async def test_diff_data_attribute_conflict(session, client, client_headers, dat
 
 
 async def test_diff_data_relationship_one_conflict(session, client, client_headers, data_conflict_relationship_one):
-    data_conflict_relationship_one["p1"]
-    data_conflict_relationship_one["p2"]
+    john_id = data_conflict_relationship_one["p1"]
+    jane_id = data_conflict_relationship_one["p2"]
 
     data_conflict_relationship_one["c1"]
-    data_conflict_relationship_one["c2"]
+    c2 = data_conflict_relationship_one["c2"]
 
     with client:
         response = client.get(
@@ -410,7 +410,7 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
     assert response.status_code == 200
     data = response.json()
 
-    assert data == {}
+    # FIX: There is still a problem with the relationship that got removed where an owner changed to null
 
     # expected_c1_update = {
     #     "kind": "TestElectricCar",
@@ -472,6 +472,100 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
     #     "action": [{"branch": "branch2", "action": "updated"}],
     #     "display_label": [{"branch": "branch2", "display_label": f"TestElectricCar(ID: {c1})"}],
     # }
+
+    expected_c2_response = {
+        "kind": "TestElectricCar",
+        "id": c2,
+        "path": f"data/{c2}",
+        "elements": {
+            "previous_owner": {
+                "type": "RelationshipOne",
+                "name": "previous_owner",
+                "path": f"data/{c2}/previous_owner",
+                "change": {
+                    "type": "RelationshipOne",
+                    "id": "c00dc4ba-f7f1-48f9-9832-eb65d92ce594",
+                    "identifier": "person_previous__car",
+                    "branches": ["branch2", "main"],
+                    "summary": {"added": 2, "removed": 0, "updated": 0},
+                    "peer": {
+                        "path": f"data/{c2}/previous_owner/peer",
+                        "changes": [
+                            {
+                                "branch": "branch2",
+                                "new": {
+                                    "id": jane_id,
+                                    "kind": "TestPerson",
+                                    "display_label": "Jane",
+                                },
+                                "previous": None,
+                            },
+                            {
+                                "branch": "main",
+                                "new": {
+                                    "id": john_id,
+                                    "kind": "TestPerson",
+                                    "display_label": "John",
+                                },
+                                "previous": None,
+                            },
+                        ],
+                    },
+                    "properties": {
+                        "IS_PROTECTED": {
+                            "path": f"data/{c2}/previous_owner/property/IS_PROTECTED",
+                            "changes": [
+                                {
+                                    "branch": "branch2",
+                                    "type": "IS_PROTECTED",
+                                    "changed_at": "2023-08-11T12:49:48.161676Z",
+                                    "action": "added",
+                                    "value": {"new": False, "previous": None},
+                                }
+                            ],
+                        },
+                        "IS_VISIBLE": {
+                            "path": f"data/{c2}/previous_owner/property/IS_VISIBLE",
+                            "changes": [
+                                {
+                                    "branch": "branch2",
+                                    "type": "IS_VISIBLE",
+                                    "changed_at": "2023-08-11T12:49:48.161676Z",
+                                    "action": "added",
+                                    "value": {"new": True, "previous": None},
+                                }
+                            ],
+                        },
+                    },
+                    "changed_at": None,
+                    "action": [{"branch": "branch2", "action": "added"}, {"branch": "main", "action": "added"}],
+                },
+            }
+        },
+        "summary": {"added": 2, "removed": 0, "updated": 0},
+        "action": [{"branch": "branch2", "action": "updated"}, {"branch": "main", "action": "updated"}],
+        "display_label": [
+            {"branch": "branch2", "display_label": f"TestElectricCar(ID: {c2})"},
+            {"branch": "main", "display_label": f"TestElectricCar(ID: {c2})"},
+        ],
+    }
+    extracted_c2_response = [diff for diff in data["diffs"] if diff["id"] == c2]
+    assert len(extracted_c2_response) == 1
+    c2_response = extracted_c2_response[0]
+    paths_to_exclude = [
+        r"root\['summary'\]",
+        r"root\['elements'\]\['previous_owner'\]\['change'\]\['id'\]",
+        r"root\['elements'\]\['previous_owner'\]\['change'\]\['properties'\]\['\w+'\]\['changes'\]\[\d\]\['changed_at'\]",
+    ]
+    assert (
+        DeepDiff(
+            expected_c2_response,
+            c2_response,
+            exclude_regex_paths=paths_to_exclude,
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
 
     # expected_c2_update = {
     #     "kind": "TestElectricCar",

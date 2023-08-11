@@ -28,7 +28,7 @@ class CheckStatus(str, enum.Enum):
 class CheckBase(BaseModel):
     check_type: CheckType
     status: CheckStatus = CheckStatus.WARNING
-    message: Optional[str]
+    message: Optional[str] = None
 
 
 class DataIntegrityCheck(CheckBase):

@@ -10,7 +10,13 @@ from pydantic import BaseModel, Extra, Field
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import Branch, Diff, ObjectConflict, RelationshipDiffElement
+from infrahub.core.branch import (
+    Branch,
+    Diff,
+    NodeDiffElement,
+    ObjectConflict,
+    RelationshipDiffElement,
+)
 from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import RelationshipCardinality
@@ -430,10 +436,8 @@ class DiffPayload:
         self.rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = {}
         self.display_labels: Dict[str, Dict[str, str]] = {}
         self.rels: Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]] = {}
-
-    @property
-    def impacted_nodes(self) -> List[str]:
-        return list(self.entries.keys())
+        self.nodes: Dict[str, Dict[str, NodeDiffElement]] = {}
+        self.nodes_in_diff: List[str] = []
 
     def _add_node_summary(self, node_id: str, action: DiffAction) -> None:
         self.entries[node_id].summary.inc(action.value)
@@ -588,9 +592,7 @@ class DiffPayload:
     async def _process_nodes(self) -> None:  # pylint: disable=too-many-branches
         # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
 
-        nodes = await self.diff.get_nodes(session=self.session)
-
-        for branch_name, items in nodes.items():  # pylint: disable=too-many-nested-blocks
+        for branch_name, items in self.nodes.items():  # pylint: disable=too-many-nested-blocks
             branch_display_labels = self.display_labels.get(branch_name, {})
             for item in items.values():
                 if self.kinds_to_include and item.kind not in self.kinds_to_include:
@@ -658,6 +660,7 @@ class DiffPayload:
                                 )
 
                 self.diffs.append(node_diff)
+                self.nodes_in_diff.append(node_diff.id)
 
     async def _process_relationships(self) -> None:
         # Check if all nodes associated with a relationship have been accounted for
@@ -665,8 +668,9 @@ class DiffPayload:
         for branch_name, _ in self.rels_per_node.items():
             branch_display_labels = self.display_labels.get(branch_name, {})
             for node_in_rel, _ in self.rels_per_node[branch_name].items():
-                if node_in_rel in self.impacted_nodes:
-                    continue
+                if node_in_rel in self.nodes_in_diff:
+                    pass
+                    #    continue <- did we need this?
 
                 node_diff = None
                 for rel_name, rels in self.rels_per_node[branch_name][node_in_rel].items():
@@ -696,6 +700,7 @@ class DiffPayload:
                     )
                     self._set_node_action(node_id=node_in_rel, branch=branch_name, action=DiffAction.UPDATED)
 
+                    diff_rel = None
                     if rel_schema.cardinality == RelationshipCardinality.ONE:
                         diff_rel = extract_diff_relationship_one(
                             node_id=node_in_rel,
@@ -731,6 +736,8 @@ class DiffPayload:
     async def generate_diff_payload(self) -> BranchDiff:
         # Query the Diff per Nodes and per Relationships from the database
 
+        self.nodes = await self.diff.get_nodes(session=self.session)
+
         self.rels = await self.diff.get_relationships(session=self.session)
 
         await self._prepare()
@@ -760,7 +767,6 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
     node_ids = await diff.get_node_id_per_kind(session=session)
 
     display_labels = await get_display_labels(nodes=node_ids, session=session)
-
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
     for branch_name, items in nodes.items():  # pylint: disable=too-many-nested-blocks
         branch_display_labels = display_labels.get(branch_name, {})
@@ -769,7 +775,6 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                 continue
 
             item_graphql = item.to_graphql()
-
             # We need to convert the list of attributes to a dict under elements
             item_dict = copy.deepcopy(item_graphql)
             del item_dict["attributes"]

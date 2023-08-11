@@ -573,8 +573,10 @@ async def data_conflict_relationship_one(session, default_branch, car_person_dat
     # Change owner of C1 from P1 to Null in main
     time12 = pendulum.now(tz="UTC")
     # await ecars["volt"].owner.update(data=persons["Jane"], session=session)
-    await ecars_branch["volt"].previous_owner.update(data=None, session=session)
-    await ecars_branch["volt"].save(session=session, at=time12)
+    # #await ecars_branch["volt"].previous_owner.update(data=None, session=session)
+    # #await ecars_branch["volt"].save(session=session, at=time12)
+    await ecars_main["volt"].previous_owner.update(data=None, session=session)
+    await ecars_main["volt"].save(session=session, at=time12)
 
     # Time in-between the 2 batch of changes
     time20 = pendulum.now(tz="UTC")
