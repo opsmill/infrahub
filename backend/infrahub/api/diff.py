@@ -70,6 +70,13 @@ class BranchDiffProperty(BaseModel):
     value: BranchDiffPropertyValue
 
 
+class BranchDiffPropertyUnbranched(BaseModel):
+    type: str
+    changed_at: Optional[str]
+    action: DiffAction
+    value: BranchDiffPropertyValue
+
+
 # class BranchDiffPropertyAttribute(BranchDiffProperty):
 #     path: str
 
@@ -194,13 +201,23 @@ class BranchDiffElementRelationshipOne(BaseModel):
         extra = Extra.forbid
 
 
+class BranchDiffElementRelationshipManyPeer(BaseModel):
+    branch: str
+    id: str
+    identifier: str
+    peer: BranchDiffRelationshipPeerNode
+    properties: List[BranchDiffPropertyUnbranched] = Field(default_factory=list)
+    changed_at: Optional[str]
+    action: DiffAction
+
+
 # NEW
 class BranchDiffElementRelationshipMany(BaseModel):
     type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
     identifier: str = ""
     branches: List[str] = Field(default_factory=list)
     summary: DiffSummary = DiffSummary()
-    peers: List[BranchDiffRelationshipManyElement] = Field(default_factory=list)  # OLD
+    peers: List[BranchDiffElementRelationshipManyPeer] = Field(default_factory=list)
 
     class Config:
         extra = Extra.forbid
@@ -587,7 +604,9 @@ class DiffPayload:
         if branch not in diff_element.change.branches:
             diff_element.change.branches.append(branch)
 
-        diff_element.change.peers.extend(relationship.peers)
+        for peer in relationship.peers:
+            diff_element.change.summary.inc(peer.action.value)
+            diff_element.change.peers.append(peer)
 
     async def _process_nodes(self) -> None:  # pylint: disable=too-many-branches
         # Generate the Diff per node and associated the appropriate relationships if they are present in the schema

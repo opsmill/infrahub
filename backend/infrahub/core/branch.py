@@ -1050,6 +1050,9 @@ class Diff:
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
+            if branch_name not in paths:
+                paths[branch_name] = set()
+
             for rel_name, rels in data.items():
                 for _, rel in rels.items():
                     for prop_type in rel.properties.keys():
