@@ -1,13 +1,15 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseSettings, Field, root_validator
+from pydantic import BaseSettings, Field, root_validator, validator
 
 from infrahub_client.playback import JSONPlayback
 from infrahub_client.recorder import JSONRecorder, Recorder, RecorderType
 from infrahub_client.types import AsyncRequester, RequesterTransport, SyncRequester
+from infrahub_client.utils import is_valid_url
 
 
 class Config(BaseSettings):
+    address: str = Field(default="http://localhost:8000", description="The URL to use when connecting to Infrahub.")
     api_token: Optional[str] = Field(default=None, description="API token for authentication against Infrahub.")
     username: Optional[str] = Field(default=None, description="Username for accessing Infrahub", min_length=1)
     password: Optional[str] = Field(default=None, description="Password for accessing Infrahub", min_length=1)
@@ -24,6 +26,7 @@ class Config(BaseSettings):
     class Config:
         env_prefix = "INFRAHUB_SDK_"
         case_sensitive = False
+        validate_assignment = True
 
     @root_validator(pre=True)
     @classmethod
@@ -59,6 +62,14 @@ class Config(BaseSettings):
         if values.get("password") and values.get("api_token"):
             raise ValueError("Unable to combine password with token based authentication")
         return values
+
+    @validator("address")
+    @classmethod
+    def validate_address(cls, value: str) -> str:
+        if is_valid_url(value):
+            return value
+
+        raise ValueError("The configured address is not a valid url")
 
     @property
     def password_authentication(self) -> bool:

@@ -41,7 +41,7 @@ class BaseClient:
 
     def __init__(
         self,
-        address: str = "http://localhost:8000",
+        address: str = "",
         default_timeout: int = 10,
         retry_on_failure: bool = False,
         retry_delay: int = 5,
@@ -53,7 +53,6 @@ class BaseClient:
         max_concurrent_execution: int = 5,
         config: Optional[Config] = None,
     ):
-        self.address = address
         self.client = None
         self.default_timeout = default_timeout
         self.test_client = test_client
@@ -73,13 +72,13 @@ class BaseClient:
         else:
             self.config = Config()
 
+        self.config.address = address or self.config.address
+        self.address = self.config.address
+
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token
 
         self.max_concurrent_execution = max_concurrent_execution
-
-        if test_client:
-            self.address = ""
 
         self._initialize()
 

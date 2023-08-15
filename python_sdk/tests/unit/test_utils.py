@@ -10,6 +10,7 @@ from infrahub_client.utils import (
     deep_merge_dict,
     duplicates,
     get_flat_value,
+    is_valid_url,
     is_valid_uuid,
     str_to_bool,
 )
@@ -25,6 +26,15 @@ def test_is_valid_uuid():
     assert is_valid_uuid(False) is False
     assert is_valid_uuid("Not a valid UUID") is False
     assert is_valid_uuid(uuid.UUID) is False
+
+
+def test_is_valid_url():
+    assert is_valid_url(55) is False
+    assert is_valid_url("https://") is False
+    assert is_valid_url("my-server") is False
+    assert is_valid_url("https://my-server") is True
+    assert is_valid_url("http://my-server:8080") is True
+    assert is_valid_url("http://192.168.1.10") is True
 
 
 def test_duplicates():
