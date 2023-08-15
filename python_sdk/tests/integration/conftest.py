@@ -30,7 +30,11 @@ def event_loop():
 @pytest.fixture(scope="session", autouse=True)
 def execute_before_any_test(worker_id):
     config.load_and_exit()
-    config.SETTINGS.database.database = TEST_DATABASE
+
+    if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+        config.SETTINGS.database.database = "memgraph"
+    else:
+        config.SETTINGS.database.database = TEST_DATABASE
 
     if TEST_IN_DOCKER:
         try:
