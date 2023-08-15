@@ -1595,7 +1595,7 @@ core_models = {
             "attributes": [
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
-                {"name": "url", "kind": "Text"},
+                {"name": "url", "kind": "Text", "unique": True},
             ],
         },
         {
