@@ -25,7 +25,7 @@ from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
-# pylint    : disable=too-many-branches
+# pylint: disable=too-many-branches,too-many-lines
 
 router = APIRouter(prefix="/diff")
 
