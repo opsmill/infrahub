@@ -605,6 +605,7 @@ class DiffPayload:
             diff_element.change.branches.append(branch)
 
         for peer in relationship.peers:
+            self.entries[node_id].summary.inc(peer.action.value)
             diff_element.change.summary.inc(peer.action.value)
             diff_element.change.peers.append(peer)
 
