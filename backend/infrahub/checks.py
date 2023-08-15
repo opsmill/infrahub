@@ -2,9 +2,9 @@ import asyncio
 import json
 import os
 from abc import abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
-from git import Repo
+from git.repo import Repo
 
 from infrahub_client import InfrahubClient
 
@@ -13,7 +13,7 @@ INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 class InfrahubCheck:
     name: Optional[str] = None
-    query: str = None
+    query: str = ""
     timeout: int = 10
     rebase: bool = True
 
@@ -56,8 +56,10 @@ class InfrahubCheck:
     def errors(self):
         return [log for log in self.logs if log["level"] == "ERROR"]
 
-    def log_error(self, message, object_id=None, object_type=None):
-        log_message = {"level": "ERROR", "message": message, "branch": self.branch_name}
+    def _write_log_entry(
+        self, message: Any, level: str, object_id: Optional[Any] = None, object_type: Optional[Any] = None
+    ) -> None:
+        log_message = {"level": level, "message": message, "branch": self.branch_name}
         if object_id:
             log_message["object_id"] = object_id
         if object_type:
@@ -67,17 +69,11 @@ class InfrahubCheck:
         if self.output == "stdout":
             print(json.dumps(log_message))
 
-    def log_info(self, message, object_id=None, object_type=None):
-        log_message = {"level": "INFO", "message": message, "branch": self.branch_name}
-        if object_id:
-            log_message["object_id"] = object_id
-        if object_type:
-            log_message["object_type"] = object_type
+    def log_error(self, message, object_id=None, object_type=None) -> None:
+        self._write_log_entry(message=message, level="ERROR", object_id=object_id, object_type=object_type)
 
-        self.logs.append(log_message)
-
-        if self.output == "stdout":
-            print(json.dumps(log_message))
+    def log_info(self, message, object_id=None, object_type=None) -> None:
+        self._write_log_entry(message=message, level="INFO", object_id=object_id, object_type=object_type)
 
     @property
     def branch_name(self) -> str:
@@ -88,13 +84,14 @@ class InfrahubCheck:
 
         if not self.git:
             self.git = Repo(self.root_directory)
-            self.branch = str(self.git.active_branch)
+
+        self.branch = str(self.git.active_branch)
 
         return self.branch
 
     @abstractmethod
     def validate(self):
-        pass
+        """Code to validate the status of this check."""
 
     async def collect_data(self):
         """Query the result of the GraphQL Query defined in sef.query and store the result in self.data"""
