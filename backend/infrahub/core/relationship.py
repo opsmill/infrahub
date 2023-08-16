@@ -262,8 +262,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # Create a new Relationship node and attach each object to it
         node = await self.get_node(session=session)
         peer = await self.get_peer(session=session)
+
+        if self.schema.branch is False:
+            branch = registry.get_global_branch()
+        else:
+            branch = self.branch
+
         query = await RelationshipCreateQuery.init(
-            session=session, source=node, destination=peer, rel=self, branch=self.branch, at=create_at
+            session=session, source=node, destination=peer, rel=self, branch=branch, at=create_at
         )
         await query.execute(session=session)
         result = query.get_result()
@@ -282,6 +288,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         update_at = Timestamp(at)
 
+        if self.schema.branch is False:
+            branch = registry.get_global_branch()
+        else:
+            branch = self.branch
+
         rel_ids_to_update = []
         for prop_name, prop in data.properties.items():
             if prop_name in properties_to_update and prop.rel.branch == self.branch.name:
@@ -298,7 +309,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             rel=self,
             properties_to_update=properties_to_update,
             data=data,
-            branch=self.branch,
+            branch=branch,
             at=update_at,
         )
         await query.execute(session=session)
@@ -308,6 +319,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         node = await self.get_node(session=session)
         peer = await self.get_peer(session=session)
+
+        if self.schema.branch is False:
+            branch = registry.get_global_branch()
+        else:
+            branch = self.branch
 
         query = await RelationshipGetQuery.init(
             session=session, source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
@@ -319,11 +335,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # - Update the existing relationship if we are on the same branch
         # - Create a new rel of type DELETED in the right branch
 
-        if rel_ids_to_update := [rel.element_id for rel in result.get_rels() if rel.get("branch") == self.branch.name]:
+        if rel_ids_to_update := [rel.element_id for rel in result.get_rels() if rel.get("branch") == branch.name]:
             await update_relationships_to(rel_ids_to_update, to=delete_at, session=session)
 
         query = await RelationshipDeleteQuery.init(
-            session=session, rel=self, source_id=node.id, destination_id=peer.id, branch=self.branch, at=delete_at
+            session=session, rel=self, source_id=node.id, destination_id=peer.id, branch=branch, at=delete_at
         )
         await query.execute(session=session)
 
