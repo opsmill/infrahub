@@ -7,7 +7,6 @@ services:
   #  - Loki to receive logs from promtail
   #  - Promtail to parse logs from different source
   # --------------------------------------------------------------------------------
-  loki:
   promtail:
     image: grafana/promtail:2.8.4
     volumes:
@@ -69,7 +68,6 @@ services:
     build:
       context: ./memgraph_exporter
     image:  memgraph-exporter
-    container_name: memgraph-exporter
     hostname: "memgraph_exp"
 
   # --------------------------------------------------------------------------------
