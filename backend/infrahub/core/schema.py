@@ -299,7 +299,7 @@ class RelationshipSchema(BaseSchemaModel):
     identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
-    branch: bool = True
+    branch: Optional[bool]
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
     order_weight: Optional[int]
