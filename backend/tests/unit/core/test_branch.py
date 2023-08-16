@@ -7,7 +7,7 @@ from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import get_branch
 from infrahub.core.branch import BaseDiffElement, Branch, Diff
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -138,6 +138,39 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
     results = branch1.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results["branch1"]) > now
     assert results["main"] == results["branch1"]
+
+
+async def test_get_branches_and_times_to_query_global_main(session, base_dataset_02):
+    now = Timestamp("1s")
+
+    main_branch = await get_branch(branch="main", session=session)
+
+    results = main_branch.get_branches_and_times_to_query_global(at=Timestamp())
+    assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "main"))]) > now
+
+    t1 = Timestamp("2s")
+    results = main_branch.get_branches_and_times_to_query_global(at=t1.to_string())
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t1.to_string()
+
+
+async def test_get_branches_and_times_to_query_global_branch1(session, base_dataset_02):
+    now = Timestamp("1s")
+
+    branch1 = await get_branch(branch="branch1", session=session)
+
+    results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
+    assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]) > now
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
+
+    t1 = Timestamp("2s")
+    results = branch1.get_branches_and_times_to_query_global(at=t1.to_string())
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))] == t1.to_string()
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
+
+    branch1.ephemeral_rebase = True
+    results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
+    assert Timestamp(frozenset((GLOBAL_BRANCH_NAME, "branch1"))) > now
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == results["branch1"]
 
 
 async def test_get_branches_and_times_for_range_main(session, base_dataset_02):

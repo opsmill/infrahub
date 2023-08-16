@@ -1,5 +1,9 @@
 import enum
 
+GLOBAL_BRANCH_NAME = "global"
+
+RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
+
 
 class PermissionLevel(enum.Flag):
     READ = 1

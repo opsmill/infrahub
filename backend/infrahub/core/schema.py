@@ -264,7 +264,7 @@ class AttributeSchema(BaseSchemaModel):
     min_length: Optional[int]
     inherited: bool = False
     unique: bool = False
-    branch: bool = True
+    branch: Optional[bool]
     optional: bool = False
     order_weight: Optional[int]
 

@@ -3,15 +3,15 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
+from infrahub.core import registry
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
+    from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
-
-    from . import BaseAttribute
 
 # flake8: noqa: F723
 
@@ -21,8 +21,8 @@ class AttributeQuery(Query):
         self,
         attr: BaseAttribute = None,
         attr_id: Optional[str] = None,
-        at: Union[Timestamp, str] = None,
-        branch: Branch = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Branch] = None,
         *args,
         **kwargs,
     ):
@@ -37,7 +37,10 @@ class AttributeQuery(Query):
         else:
             self.at = self.attr.at
 
-        self.branch = branch or self.attr.branch
+        if self.attr and self.attr.support_branch is False:
+            self.branch = registry.get_global_branch()
+        else:
+            self.branch = branch or self.attr.branch
 
         super().__init__(*args, **kwargs)
 
@@ -204,8 +207,8 @@ class AttributeUpdateValueQuery(AttributeQuery):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
-        self.params["branch"] = self.attr.branch.name
-        self.params["branch_level"] = self.attr.branch.hierarchy_level
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
         self.params["value"] = self.attr.to_db()
         self.params["attribute_type"] = self.attr.get_kind()
@@ -248,8 +251,8 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
-        self.params["branch"] = self.attr.branch.name
-        self.params["branch_level"] = self.attr.branch.hierarchy_level
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
         self.params["flag_value"] = getattr(self.attr, self.flag_name)
         self.params["flag_type"] = self.attr.get_kind()
@@ -289,8 +292,8 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
-        self.params["branch"] = self.attr.branch.name
-        self.params["branch_level"] = self.attr.branch.hierarchy_level
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
         self.params["prop_name"] = self.prop_name
         self.params["prop_id"] = self.prop_id
@@ -321,9 +324,7 @@ class AttributeGetQuery(AttributeQuery):
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
 
-        branch = self.branch or self.attr.branch
-
-        rels_filter, rel_params = branch.get_query_filter_relationships(rel_labels=["r1", "r2"], at=at.to_string())
+        rels_filter, rel_params = self.branch.get_query_filter_relationships(rel_labels=["r1", "r2"], at=at.to_string())
         self.params.update(rel_params)
 
         query = """

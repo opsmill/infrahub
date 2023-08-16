@@ -172,6 +172,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return self.serialize(self.value)
 
+    @property
+    def support_branch(self):
+        if self.schema.branch is not None:
+            return self.schema.branch
+
+        return self.node._schema.branch
+
     @classmethod
     def from_db(cls, value: Any):
         if value == "NULL":
@@ -253,7 +260,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
         create_at = Timestamp(at)
 
-        query = await AttributeCreateQuery.init(session=session, attr=self, branch=self.branch, at=create_at)
+        query = await AttributeCreateQuery.init(session=session, attr=self, at=create_at)
         await query.execute(session=session)
 
         self.id, self.db_id = query.get_new_ids()
@@ -288,6 +295,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         await query.execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
+        if self.support_branch is False:
+            branch = registry.get_global_branch()
+        else:
+            branch = self.branch
+
         # ---------- Update the Value ----------
         current_value = self.from_db(current_attr.get("av").get("value"))
 
@@ -298,7 +310,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             # TODO check that everything went well
             rel = current_attr.get("r2")
-            if rel.get("branch") == self.branch.name:
+            if rel.get("branch") == branch.name:
                 await update_relationships_to([rel.element_id], to=update_at, session=session)
 
         # ---------- Update the Flags ----------
@@ -315,7 +327,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 await query.execute(session=session)
 
                 rel = current_attr.get(rel_name)
-                if rel.get("branch") == self.branch.name:
+                if rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, session=session)
 
         # ---------- Update the Node Properties ----------
@@ -329,7 +341,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 await query.execute(session=session)
 
                 rel = current_attr.get(f"rel_{prop}")
-                if rel and rel.get("branch") == self.branch.name:
+                if rel and rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, session=session)
 
         return True

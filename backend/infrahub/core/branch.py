@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from pydantic import BaseModel, Field, validator
 
 import infrahub.config as config
-from infrahub.core.constants import DiffAction, RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, RelationshipStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
@@ -182,6 +182,7 @@ class Branch(StandardNode):
     hierarchy_level: int = 2
     created_at: Optional[str] = None
     is_default: bool = False
+    is_global: bool = False
     is_protected: bool = False
     is_data_only: bool = False
     schema_changed_at: Optional[str] = None
@@ -269,6 +270,28 @@ class Branch(StandardNode):
             self.name: at.to_string(),
         }
 
+    def get_branches_and_times_to_query_global(
+        self, at: Optional[Union[Timestamp, str]] = None
+    ) -> Dict[frozenset, str]:
+        """Return all the names of the branches that are constituing this branch with the associated times."""
+
+        at = Timestamp(at)
+
+        if self.is_default:
+            return {frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string()}
+
+        time_default_branch = Timestamp(self.branched_from)
+
+        # If we are querying before the beginning of the branch
+        # the time for the main branch must be the time of the query
+        if self.ephemeral_rebase or at < time_default_branch:
+            time_default_branch = at
+
+        return {
+            frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): time_default_branch.to_string(),
+            frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string(),
+        }
+
     def get_branches_and_times_for_range(
         self, start_time: Timestamp, end_time: Timestamp
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -319,20 +342,20 @@ class Branch(StandardNode):
             raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
 
         at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query(at=at)
+        branches_times = self.get_branches_and_times_to_query_global(at=at)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            params[f"branch{idx}"] = branch_name
+            params[f"branch{idx}"] = list(branch_name)
             params[f"time{idx}"] = time_to_query
 
         for rel in rel_labels:
             filters_per_rel = []
             for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
                 filters_per_rel.append(
-                    f"({rel}.branch = $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
+                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
                 )
                 filters_per_rel.append(
-                    f"({rel}.branch = $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to >= $time{idx})"
+                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to >= $time{idx})"
                 )
 
             if not include_outside_parentheses:
@@ -354,17 +377,17 @@ class Branch(StandardNode):
         """
 
         at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query(at=at.to_string())
+        branches_times = self.get_branches_and_times_to_query_global(at=at.to_string())
 
         params = {}
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            params[f"branch{idx}"] = branch_name
+            params[f"branch{idx}"] = list(branch_name)
             params[f"time{idx}"] = time_to_query
 
         filters = []
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to IS NULL)")
-            filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to >= $time{idx})")
+            filters.append(f"(r.branch IN $branch{idx} AND r.from <= $time{idx} AND r.to IS NULL)")
+            filters.append(f"(r.branch IN $branch{idx} AND r.from <= $time{idx} AND r.to >= $time{idx})")
 
         filter = "(" + "\n OR ".join(filters) + ")"
 

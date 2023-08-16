@@ -5,6 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
+from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -72,8 +73,8 @@ class NodeQuery(Query):
         node: Node = None,
         node_id: Optional[str] = None,
         node_db_id: Optional[int] = None,
-        id=None,
-        branch: Branch = None,
+        id: Optional[str] = None,
+        branch: Optional[Branch] = None,
         *args,
         **kwargs,
     ):
@@ -89,7 +90,12 @@ class NodeQuery(Query):
         if not self.node_db_id and self.node:
             self.node_db_id = self.node.db_id
 
-        self.branch = branch or self.node._branch
+        if branch and not self.node:
+            self.branch = branch
+        elif self.node and self.node._schema.branch is False:
+            self.branch = registry.get_global_branch()
+        else:
+            self.branch = branch or self.node._branch
 
         super().__init__(*args, **kwargs)
 
@@ -296,8 +302,6 @@ class NodeListGetAttributeQuery(Query):
     #     self.return_labels.extend(["r5"])
 
     def get_attributes_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
-        # TODO NEED TO REVISIT HOW TO INTEGRATE THE PERMISSION SYSTEM
-
         attrs_by_node = defaultdict(lambda: {"node": None, "attrs": None})
 
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):

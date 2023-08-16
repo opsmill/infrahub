@@ -751,8 +751,6 @@ async def test_node_delete_with_relationship_bidir(session, default_branch: Bran
 
 async def test_node_create_in_branch(session, default_branch: Branch, criticality_schema):
     branch1 = await create_branch(branch_name="branch1", session=session)
-    # branch1 = Branch(name="branch1", status="OPEN")
-    # await branch1.save(session=session)
 
     obj = await Node.init(session=session, schema=criticality_schema, branch=branch1)
     await obj.new(session=session, name="low", level=4)
@@ -778,6 +776,46 @@ async def test_node_update_in_branch(session, default_branch: Branch, criticalit
     obj11 = await NodeManager.get_one(id=obj1.id, session=session)
     assert obj11.name.value == "low"
     assert obj11.level.value == 4
+
+    obj21 = await NodeManager.get_one(id=obj1.id, branch=branch1, session=session)
+    assert obj21.name.value == "High"
+    assert obj21.level.value == 5
+
+
+# --------------------------------------------------------------------------
+# With Global Branch
+# --------------------------------------------------------------------------
+
+
+async def test_node_create_in_branch_global(session, default_branch: Branch, criticality_schema_global):
+    branch1 = await create_branch(branch_name="branch1", session=session)
+
+    obj = await Node.init(session=session, schema=criticality_schema_global, branch=branch1)
+    await obj.new(session=session, name="low", level=4)
+    await obj.save(session=session)
+
+    obj21 = await NodeManager.get_one(id=obj.id, branch=default_branch, session=session)
+    assert obj21.id == obj.id
+
+    obj22 = await NodeManager.get_one(id=obj.id, branch=branch1, session=session)
+    assert obj22.id == obj.id
+
+
+async def test_node_update_in_branch_global(session, default_branch: Branch, criticality_schema_global):
+    obj1 = await Node.init(session=session, schema=criticality_schema_global)
+    await obj1.new(session=session, name="low", level=4)
+    await obj1.save(session=session)
+
+    branch1 = await create_branch(branch_name="branch1", session=session)
+
+    obj2 = await NodeManager.get_one(id=obj1.id, branch=branch1, session=session)
+    obj2.name.value = "High"
+    obj2.level.value = 5
+    await obj2.save(session=session)
+
+    obj11 = await NodeManager.get_one(id=obj1.id, session=session)
+    assert obj11.name.value == "High"
+    assert obj11.level.value == 5
 
     obj21 = await NodeManager.get_one(id=obj1.id, branch=branch1, session=session)
     assert obj21.name.value == "High"

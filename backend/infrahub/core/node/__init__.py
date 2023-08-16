@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, List, Optional, Union
 from uuid import UUID
 
-from infrahub.core import get_branch, registry
+from infrahub.core import registry
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -95,7 +95,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     ) -> Self:
         attrs = {}
 
-        branch = await get_branch(branch=branch, session=session)
+        branch = await registry.get_branch(branch=branch, session=session)
 
         if isinstance(schema, NodeSchema):
             attrs["schema"] = schema
@@ -105,11 +105,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         else:
             raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema")
 
-        if not attrs["schema"].branch:
-            attrs["branch"] = None
-        else:
-            attrs["branch"] = branch
-
+        attrs["branch"] = branch
         attrs["at"] = Timestamp(at)
 
         return cls(**attrs)
