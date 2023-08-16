@@ -168,9 +168,9 @@ class QueryResult:
             to_time = rel.get("to", None)
 
             if to_time:
-                self.time_score += 2
-            else:
                 self.time_score += 1
+            else:
+                self.time_score += 2
 
     def check_rels_status(self):
         """Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""
