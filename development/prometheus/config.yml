@@ -24,3 +24,4 @@ scrape_configs:
   - job_name: 'logs'
     static_configs:
       - targets: ['loki:3100']
+      - targets: ['promtail:9080']
