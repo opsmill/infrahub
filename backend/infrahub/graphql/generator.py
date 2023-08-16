@@ -7,6 +7,7 @@ import graphene
 
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+from infrahub.graphql.mutations.proposed_change import InfrahubProposedChangeMutation
 from infrahub.types import ATTRIBUTE_TYPES
 
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
@@ -225,8 +226,11 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
             continue
 
         base_class = InfrahubMutation
-        if node_schema.kind == "CoreRepository":
-            base_class = InfrahubRepositoryMutation
+        mutation_map = {
+            "CoreRepository": InfrahubRepositoryMutation,
+            "CoreProposedChange": InfrahubProposedChangeMutation,
+        }
+        base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
         create, update, delete = generate_graphql_mutations(branch=branch, schema=node_schema, base_class=base_class)
 

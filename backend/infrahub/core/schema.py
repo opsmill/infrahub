@@ -1127,6 +1127,31 @@ core_models = {
             ],
         },
         {
+            "name": "Validator",
+            "namespace": "Internal",
+            "description": "A check or validation to show the status of data consistency or user definded tests",
+            "label": "Validator",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["label__value"],
+            "branch": True,
+            "attributes": [
+                {
+                    "name": "state",
+                    "kind": "Text",
+                    "enum": ["not-started", "running", "completed", "errored"],
+                    "default_value": "not-started",
+                },
+                {
+                    "name": "status",
+                    "kind": "Text",
+                    "enum": ["incomplete", "passed", "failed", "warning"],
+                    "default_value": "incomplete",
+                },
+            ],
+            "relationships": [],
+        },
+        {
             "name": "Transformation",
             "namespace": "Core",
             "description": "Generic Transformation Object.",
@@ -1356,6 +1381,13 @@ core_models = {
                     "optional": True,
                     "cardinality": "many",
                 },
+                {
+                    "name": "data_integrity",
+                    "peer": "InternalDataIntegrityValidator",
+                    "kind": "Component",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1560,6 +1592,26 @@ core_models = {
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "template_path", "kind": "Text"},
+            ],
+        },
+        {
+            "name": "DataIntegrityValidator",
+            "namespace": "Internal",
+            "description": "A check to validate the data integrity between two branches",
+            "label": "Data Validator",
+            "inherit_from": ["InternalValidator"],
+            "branch": True,
+            "attributes": [
+                {"name": "conflict_paths", "kind": "List", "optional": False, "default_value": []},
+            ],
+            "relationships": [
+                {
+                    "name": "proposed_change",
+                    "peer": "CoreProposedChange",
+                    "kind": "Parent",
+                    "optional": False,
+                    "cardinality": "one",
+                },
             ],
         },
         {
