@@ -26,7 +26,7 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 16110,
   "graphTooltip": 2,
-  "id": 2,
+  "id": 1,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -87,7 +87,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.3",
+      "pluginVersion": ""10.0.3",
       "targets": [
         {
           "datasource": {
@@ -155,7 +155,7 @@
         "showUnfilled": true,
         "valueMode": "color"
       },
-      "pluginVersion": "10.0.3",
+      "pluginVersion": ""10.0.3",
       "targets": [
         {
           "datasource": {
@@ -260,7 +260,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "9.5.2",
+      "pluginVersion": ""10.0.3",
       "targets": [
         {
           "datasource": {
@@ -324,7 +324,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.3",
+      "pluginVersion": ""10.0.3",
       "targets": [
         {
           "datasource": {
@@ -387,7 +387,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.3",
+      "pluginVersion": ""10.0.3",
       "targets": [
         {
           "datasource": {
@@ -450,7 +450,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.3",
+      "pluginVersion": ""10.0.3",
       "targets": [
         {
           "datasource": {
@@ -550,7 +550,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "9.5.2",
+      "pluginVersion": ""10.0.3",
       "targets": [
         {
           "datasource": {
@@ -658,7 +658,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "9.5.2",
+          "pluginVersion": ""10.0.3",
           "targets": [
             {
               "datasource": {
@@ -756,7 +756,7 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "9.5.2",
+          "pluginVersion": ""10.0.3",
           "targets": [
             {
               "datasource": {
@@ -1595,9 +1595,9 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "Prometheus",
-          "value": "Prometheus"
+          "selected": true,
+          "text": "Prometheus (Local)",
+          "value": "Prometheus (Local)"
         },
         "hide": 0,
         "includeAll": false,
@@ -1614,9 +1614,9 @@
       },
       {
         "current": {
-          "selected": false,
-          "text": "Loki",
-          "value": "Loki"
+          "selected": true,
+          "text": "Loki (Local)",
+          "value": "Loki (Local)"
         },
         "hide": 0,
         "includeAll": false,
@@ -1633,7 +1633,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -1664,7 +1664,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -1690,14 +1690,14 @@
           "type": 1
         },
         "refresh": 1,
-        "regex": "^infrahub-.+",
+        "regex": "^infrahub.+",
         "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -1730,7 +1730,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -1762,13 +1762,13 @@
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Infrahub Monitoring",
   "uid": "Kn5xm-gZ3",
-  "version": 20,
+  "version": 2,
   "weekStart": ""
 }
