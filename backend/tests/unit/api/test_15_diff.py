@@ -642,6 +642,18 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
     # )
 
 
+async def test_diff_data_relationship_many(session, client, client_headers, data_diff_relationship_many):
+    with client:
+        response = client.get(
+            "/api/diff/data-new?branch=branch2&branch_only=false",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    # Ready to look at the data:
+    # data = response.json()
+
+
 # ----------------------------------------------------------------------
 # Deprecated API
 # ----------------------------------------------------------------------

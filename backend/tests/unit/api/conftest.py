@@ -609,3 +609,56 @@ async def data_conflict_relationship_one(session, default_branch, car_person_dat
     }
 
     return params
+
+
+@pytest.fixture
+async def data_diff_relationship_many(session, default_branch, register_core_models_schema, first_account):
+    red = await Node.init(session=session, schema="BuiltinTag")
+    await red.new(session=session, name="red")
+    await red.save(session=session)
+
+    green = await Node.init(session=session, schema="BuiltinTag")
+    await green.new(session=session, name="green")
+    await green.save(session=session)
+
+    blue = await Node.init(session=session, schema="BuiltinTag")
+    await blue.new(session=session, name="blue")
+    await blue.save(session=session)
+
+    yellow = await Node.init(session=session, schema="BuiltinTag")
+    await yellow.new(session=session, name="yellow")
+    await yellow.save(session=session)
+
+    orange = await Node.init(session=session, schema="BuiltinTag")
+    await orange.new(session=session, name="orange")
+    await orange.save(session=session)
+
+    pink = await Node.init(session=session, schema="BuiltinTag")
+    await pink.new(session=session, name="pink")
+    await pink.save(session=session)
+
+    testorg = await Node.init(session=session, schema="CoreOrganization")
+    await testorg.new(session=session, name="testorg1", tags=[red.id, green.id])
+    await testorg.save(session=session)
+
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    orgs_list_main = await NodeManager.query(session=session, schema="CoreOrganization", branch=default_branch)
+    orgs_main = {item.name.value: item for item in orgs_list_main}
+    orgs_list_branch = await NodeManager.query(session=session, schema="CoreOrganization", branch=branch2)
+    orgs_branch = {item.name.value: item for item in orgs_list_branch}
+
+    await orgs_main["testorg1"].tags.update(data=[red.id, blue.id], session=session)
+    await orgs_main["testorg1"].save(session=session)
+
+    await orgs_branch["testorg1"].tags.update(data=[red.id, green.id, yellow.id, orange.id], session=session)
+    await orgs_branch["testorg1"].save(session=session)
+    return {
+        "red": red.id,
+        "green": green.id,
+        "blue": blue.id,
+        "yellow": yellow.id,
+        "orange": orange.id,
+        "pink": pink.id,
+        "testorg": testorg.id,
+    }
