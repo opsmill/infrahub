@@ -1,0 +1,7 @@
+exporter:
+  port: 9115
+memgraph:
+  endpoint_url: database
+  port: 2004
+general:
+  pull_frequency_seconds: 5

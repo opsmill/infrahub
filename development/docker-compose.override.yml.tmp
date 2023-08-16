@@ -1,21 +1,40 @@
 ---
 version: "3.4"
 services:
-  infrahub-server:
-    ports:
-      - "8000:8000"
-
   # --------------------------------------------------------------------------------
-  #  - a Prometheus Server that will collect all metrics endpoints
-  #  - A Grafana server to visualize these metrics
+  #  - Prometheus to collect all metrics endpoints
+  #  - Grafana to visualize these metrics
+  #  - Loki to receive logs from promtail
+  #  - Promtail to parse logs from different source
   # --------------------------------------------------------------------------------
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
+  loki:
+  promtail:
+    image: grafana/promtail:2.8.4
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers
+    depends_on:
+      - loki
+  loki:
+    image: grafana/loki:2.8.4
+    command:
+      - '-config.file=/etc/loki/config.yml'
+      - '-config.expand-env=true'
     volumes:
       - type: bind
-        source: ./prometheus.yml
+        source: ./loki/config.yml
+        target: /etc/loki/config.yml
+        read_only: true
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - type: bind
+        source: ./prometheus/config.yml
         target: /etc/prometheus/prometheus.yml
         read_only: true
       - prometheus_data:/prometheus
@@ -26,8 +45,10 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=1d'
       - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
   grafana:
-    image: grafana/grafana:9.5.2
+    image: grafana/grafana:10.0.3
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
     environment:
@@ -36,6 +57,27 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     ports:
       - "3500:3000"
+    depends_on:
+      - loki
+      - prometheus
+
+  # --------------------------------------------------------------------------------
+  # Uncomment if you are using memgraph as database
+  #  - Memgraph Exporter to read metrics from memgraph and expose it for prometheus
+  # --------------------------------------------------------------------------------
+  memgraph-exporter:
+    build:
+      context: ./memgraph_exporter
+    image:  memgraph-exporter
+    container_name: memgraph-exporter
+    hostname: "memgraph_exp"
+
+  # --------------------------------------------------------------------------------
+  #  Infrahub Server
+  # --------------------------------------------------------------------------------
+  infrahub-server:
+    ports:
+      - "8000:8000"
 
   # --------------------------------------------------------------------------------
   # Uncomment to expose the database and/or the message bus outside of Docker Compose
@@ -50,4 +92,6 @@ services:
   #     - "15672:15672"
 
 volumes:
+  grafana_data:
+  loki_data:
   prometheus_data:
