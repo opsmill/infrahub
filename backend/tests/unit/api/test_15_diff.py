@@ -643,6 +643,14 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
 
 
 async def test_diff_data_relationship_many(session, client, client_headers, data_diff_relationship_many):
+    org1 = data_diff_relationship_many["org1"]
+    org3 = data_diff_relationship_many["org3"]
+
+    red = data_diff_relationship_many["red"]
+    blue = data_diff_relationship_many["blue"]
+    green = data_diff_relationship_many["green"]
+    orange = data_diff_relationship_many["orange"]
+
     with client:
         response = client.get(
             "/api/diff/data-new?branch=branch2&branch_only=false",
@@ -650,8 +658,306 @@ async def test_diff_data_relationship_many(session, client, client_headers, data
         )
 
     assert response.status_code == 200
-    # Ready to look at the data:
-    # data = response.json()
+    data = response.json()
+
+    expected_org3 = {
+        "kind": "CoreOrganization",
+        "id": org3.id,
+        "path": f"data/{org3.id}",
+        "elements": {
+            "tags": {
+                "type": "RelationshipMany",
+                "name": "tags",
+                "path": f"data/{org3.id}/tags",
+                "change": {
+                    "type": "RelationshipMany",
+                    "identifier": "builtintag__coreorganization",
+                    "branches": ["branch2"],
+                    "summary": {"added": 4, "removed": 0, "updated": 0},
+                    "peers": {
+                        red.id: {
+                            "branches": ["branch2"],
+                            "peer": {"id": red.id, "kind": "BuiltinTag", "display_label": "red"},
+                            "path": f"data/{org3.id}/tags/{red.id}",
+                            "properties": {
+                                "IS_PROTECTED": {
+                                    "path": f"data/{org3.id}/tags/{red.id}/property/IS_PROTECTED",
+                                    "changes": [
+                                        {
+                                            "branch": "branch2",
+                                            "type": "IS_PROTECTED",
+                                            "changed_at": "2023-08-17T15:24:53.870291Z",
+                                            "action": "added",
+                                            "value": {"new": False, "previous": None},
+                                        }
+                                    ],
+                                },
+                                "IS_VISIBLE": {
+                                    "path": f"data/{org3.id}/tags/{red.id}/property/IS_VISIBLE",
+                                    "changes": [
+                                        {
+                                            "branch": "branch2",
+                                            "type": "IS_VISIBLE",
+                                            "changed_at": "2023-08-17T15:24:53.870291Z",
+                                            "action": "added",
+                                            "value": {"new": True, "previous": None},
+                                        }
+                                    ],
+                                },
+                            },
+                            "changed_at": None,
+                            "action": [{"branch": "branch2", "action": "added"}],
+                        },
+                        orange.id: {
+                            "branches": ["branch2"],
+                            "peer": {"id": orange.id, "kind": "BuiltinTag", "display_label": "orange"},
+                            "path": f"data/{org3.id}/tags/{orange.id}",
+                            "properties": {
+                                "IS_PROTECTED": {
+                                    "path": f"data/{org3.id}/tags/{orange.id}/property/IS_PROTECTED",
+                                    "changes": [
+                                        {
+                                            "branch": "branch2",
+                                            "type": "IS_PROTECTED",
+                                            "changed_at": "2023-08-17T15:24:53.870291Z",
+                                            "action": "added",
+                                            "value": {"new": False, "previous": None},
+                                        }
+                                    ],
+                                },
+                                "IS_VISIBLE": {
+                                    "path": f"data/{org3.id}/tags/{orange.id}/property/IS_VISIBLE",
+                                    "changes": [
+                                        {
+                                            "branch": "branch2",
+                                            "type": "IS_VISIBLE",
+                                            "changed_at": "2023-08-17T15:24:53.870291Z",
+                                            "action": "added",
+                                            "value": {"new": True, "previous": None},
+                                        }
+                                    ],
+                                },
+                            },
+                            "changed_at": None,
+                            "action": [{"branch": "branch2", "action": "added"}],
+                        },
+                    },
+                    "action": [
+                        {"branch": "branch2", "action": "added"},
+                        {"branch": "branch2", "action": "added"},
+                        {"branch": "branch2", "action": "added"},
+                        {"branch": "branch2", "action": "added"},
+                    ],
+                },
+            }
+        },
+        "summary": {"added": 3, "removed": 0, "updated": 0},
+        "action": [{"branch": "branch2", "action": "updated"}],
+        "display_label": [{"branch": "branch2", "display_label": "Org3"}],
+    }
+
+    expected_org1 = {
+        "kind": "CoreOrganization",
+        "id": org1.id,
+        "path": f"data/{org1.id}",
+        "elements": {
+            "tags": {
+                "type": "RelationshipMany",
+                "name": "tags",
+                "path": f"data/{org1.id}/tags",
+                "change": {
+                    "type": "RelationshipMany",
+                    "identifier": "builtintag__coreorganization",
+                    "branches": ["main"],
+                    "summary": {"added": 0, "removed": 2, "updated": 0},
+                    "peers": {
+                        green.id: {
+                            "branches": ["main"],
+                            "peer": {"id": green.id, "kind": "BuiltinTag", "display_label": "green"},
+                            "path": f"data/{org1.id}/tags/{green.id}",
+                            "properties": {
+                                "IS_VISIBLE": {
+                                    "path": f"data/{org1.id}/tags/{green.id}/property/IS_VISIBLE",
+                                    "changes": [
+                                        {
+                                            "branch": "main",
+                                            "type": "IS_VISIBLE",
+                                            "changed_at": "2023-08-17T15:24:53.747940Z",
+                                            "action": "removed",
+                                            "value": {"new": True, "previous": True},
+                                        }
+                                    ],
+                                },
+                                "IS_PROTECTED": {
+                                    "path": f"data/{org1.id}/tags/{green.id}/property/IS_PROTECTED",
+                                    "changes": [
+                                        {
+                                            "branch": "main",
+                                            "type": "IS_PROTECTED",
+                                            "changed_at": "2023-08-17T15:24:53.747940Z",
+                                            "action": "removed",
+                                            "value": {"new": False, "previous": False},
+                                        }
+                                    ],
+                                },
+                            },
+                            "changed_at": None,
+                            "action": [{"branch": "main", "action": "removed"}],
+                        },
+                        blue.id: {
+                            "branches": ["main"],
+                            "peer": {"id": blue.id, "kind": "BuiltinTag", "display_label": "blue"},
+                            "path": f"data/{org1.id}/tags/{blue.id}",
+                            "properties": None,  # FIX ME
+                            "changed_at": None,
+                            "action": [{"branch": "main", "action": "added"}],
+                        },
+                    },
+                    "action": [{"branch": "main", "action": "removed"}, {"branch": "main", "action": "added"}],
+                },
+            }
+        },
+        "summary": {"added": 1, "removed": 1, "updated": 1},
+        "action": [{"branch": "main", "action": "updated"}],
+        "display_label": [{"branch": "main", "display_label": "Org1"}],
+    }
+
+    paths_to_exclude = [
+        r"root\[\d\]\['elements'\]\['\w+'\]\['change'\]\['peers'\]\['[\w\-]+'\]\['properties'\]\['\w+'\]\['changes'\]\[\d\]\['changed_at'\]",
+        rf"root\[\d\]\['elements'\]\['\w+'\]\['change'\]\['peers'\]\['{blue.id}'\]\['properties'\]",
+    ]
+    expected_response = [expected_org1, expected_org3]
+
+    assert (
+        DeepDiff(expected_response, data["diffs"], exclude_regex_paths=paths_to_exclude, ignore_order=True).to_dict()
+        == {}
+    )
+
+
+async def test_diff_data_relationship_many_conflict(session, client, client_headers, data_conflict_relationship_many):
+    org1 = data_conflict_relationship_many["org1"]
+    red = data_conflict_relationship_many["red"]
+    green = data_conflict_relationship_many["green"]
+
+    with client:
+        response = client.get(
+            "/api/diff/data-new?branch=branch2&branch_only=false",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    expected_response = [
+        {
+            "kind": "CoreOrganization",
+            "id": org1.id,
+            "path": f"data/{org1.id}",
+            "elements": {
+                "tags": {
+                    "type": "RelationshipMany",
+                    "name": "tags",
+                    "path": f"data/{org1.id}/tags",
+                    "change": {
+                        "type": "RelationshipMany",
+                        "identifier": "builtintag__coreorganization",
+                        "branches": ["main", "branch2"],
+                        "summary": {"added": 0, "removed": 3, "updated": 1},
+                        "peers": {
+                            red.id: {
+                                "branches": ["main", "branch2"],
+                                "peer": {"id": red.id, "kind": "BuiltinTag", "display_label": "red"},
+                                "path": f"data/{org1.id}/tags/{red.id}",
+                                "properties": {
+                                    "IS_VISIBLE": {
+                                        "path": f"data/{org1.id}/tags/{red.id}/property/IS_VISIBLE",
+                                        "changes": [
+                                            {
+                                                "branch": "main",
+                                                "type": "IS_VISIBLE",
+                                                "changed_at": "2023-08-17T15:56:27.114705Z",
+                                                "action": "removed",
+                                                "value": {"new": True, "previous": True},
+                                            }
+                                        ],
+                                    },
+                                    "IS_PROTECTED": {
+                                        "path": f"data/{org1.id}/tags/{red.id}/property/IS_PROTECTED",
+                                        "changes": [
+                                            {
+                                                "branch": "branch2",
+                                                "type": "IS_PROTECTED",
+                                                "changed_at": "2023-08-17T15:56:27.190831Z",
+                                                "action": "updated",
+                                                "value": {"new": True, "previous": False},
+                                            }
+                                        ],
+                                    },
+                                },
+                                "changed_at": None,
+                                "action": [
+                                    {"branch": "main", "action": "removed"},
+                                    {"branch": "branch2", "action": "updated"},
+                                ],
+                            },
+                            green.id: {
+                                "branches": ["main"],
+                                "peer": {"id": green.id, "kind": "BuiltinTag", "display_label": "green"},
+                                "path": f"data/{org1.id}/tags/{green.id}",
+                                "properties": {
+                                    "IS_VISIBLE": {
+                                        "path": f"data/{org1.id}/tags/{green.id}/property/IS_VISIBLE",
+                                        "changes": [
+                                            {
+                                                "branch": "main",
+                                                "type": "IS_VISIBLE",
+                                                "changed_at": "2023-08-17T15:56:27.114705Z",
+                                                "action": "removed",
+                                                "value": {"new": True, "previous": True},
+                                            }
+                                        ],
+                                    },
+                                    "IS_PROTECTED": {
+                                        "path": f"data/{org1.id}/tags/{green.id}/property/IS_PROTECTED",
+                                        "changes": [
+                                            {
+                                                "branch": "main",
+                                                "type": "IS_PROTECTED",
+                                                "changed_at": "2023-08-17T15:56:27.114705Z",
+                                                "action": "removed",
+                                                "value": {"new": False, "previous": False},
+                                            }
+                                        ],
+                                    },
+                                },
+                                "changed_at": None,
+                                "action": [{"branch": "main", "action": "removed"}],
+                            },
+                        },
+                        "action": [
+                            {"branch": "main", "action": "removed"},
+                            {"branch": "main", "action": "removed"},
+                            {"branch": "branch2", "action": "updated"},
+                        ],
+                    },
+                }
+            },
+            "summary": {"added": 0, "removed": 3, "updated": 2},
+            "action": [{"branch": "main", "action": "updated"}, {"branch": "branch2", "action": "updated"}],
+            "display_label": [
+                {"branch": "main", "display_label": "Org1"},
+                {"branch": "branch2", "display_label": "Org1"},
+            ],
+        }
+    ]
+    paths_to_exclude = [
+        r"root\[\d\]\['elements'\]\['\w+'\]\['change'\]\['peers'\]\['[\w\-]+'\]\['properties'\]\['\w+'\]\['changes'\]\[\d\]\['changed_at'\]",
+    ]
+
+    assert (
+        DeepDiff(expected_response, data["diffs"], exclude_regex_paths=paths_to_exclude, ignore_order=True).to_dict()
+        == {}
+    )
 
 
 # ----------------------------------------------------------------------

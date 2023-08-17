@@ -69,7 +69,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._init_node_property_mixin(kwargs=kwargs)
         self._init_flag_property_mixin(kwargs=kwargs)
 
-    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]):
+    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]) -> None:
         self.data = data
 
         if isinstance(data, RelationshipPeerData):

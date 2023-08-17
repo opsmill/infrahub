@@ -612,7 +612,7 @@ async def data_conflict_relationship_one(session, default_branch, car_person_dat
 
 
 @pytest.fixture
-async def data_diff_relationship_many(session, default_branch, register_core_models_schema, first_account):
+async def data_relationship_many_base(session, default_branch, register_core_models_schema, first_account):
     red = await Node.init(session=session, schema="BuiltinTag")
     await red.new(session=session, name="red")
     await red.save(session=session)
@@ -637,9 +637,38 @@ async def data_diff_relationship_many(session, default_branch, register_core_mod
     await pink.new(session=session, name="pink")
     await pink.save(session=session)
 
-    testorg = await Node.init(session=session, schema="CoreOrganization")
-    await testorg.new(session=session, name="testorg1", tags=[red.id, green.id])
-    await testorg.save(session=session)
+    org1 = await Node.init(session=session, schema="CoreOrganization")
+    await org1.new(session=session, name="org1", tags=[red.id, green.id])
+    await org1.save(session=session)
+
+    org2 = await Node.init(session=session, schema="CoreOrganization")
+    await org2.new(session=session, name="org2", tags=[red.id, blue.id, orange.id])
+    await org2.save(session=session)
+
+    org3 = await Node.init(session=session, schema="CoreOrganization")
+    await org3.new(session=session, name="org3")
+    await org3.save(session=session)
+
+    return {
+        "red": red,
+        "green": green,
+        "blue": blue,
+        "yellow": yellow,
+        "orange": orange,
+        "pink": pink,
+        "org1": org1,
+        "org2": org2,
+        "org3": org3,
+    }
+
+
+@pytest.fixture
+async def data_diff_relationship_many(session, default_branch, data_relationship_many_base):
+    red = data_relationship_many_base["red"]
+    blue = data_relationship_many_base["blue"]
+    data_relationship_many_base["green"]
+    data_relationship_many_base["yellow"]
+    orange = data_relationship_many_base["orange"]
 
     branch2 = await create_branch(branch_name="branch2", session=session)
 
@@ -648,17 +677,36 @@ async def data_diff_relationship_many(session, default_branch, register_core_mod
     orgs_list_branch = await NodeManager.query(session=session, schema="CoreOrganization", branch=branch2)
     orgs_branch = {item.name.value: item for item in orgs_list_branch}
 
-    await orgs_main["testorg1"].tags.update(data=[red.id, blue.id], session=session)
-    await orgs_main["testorg1"].save(session=session)
+    await orgs_main["org1"].tags.update(data=[red.id, blue.id], session=session)
+    await orgs_main["org1"].save(session=session)
 
-    await orgs_branch["testorg1"].tags.update(data=[red.id, green.id, yellow.id, orange.id], session=session)
-    await orgs_branch["testorg1"].save(session=session)
-    return {
-        "red": red.id,
-        "green": green.id,
-        "blue": blue.id,
-        "yellow": yellow.id,
-        "orange": orange.id,
-        "pink": pink.id,
-        "testorg": testorg.id,
-    }
+    await orgs_branch["org3"].tags.update(data=[red.id, orange.id], session=session)
+    await orgs_branch["org3"].save(session=session)
+
+    return data_relationship_many_base
+
+
+@pytest.fixture
+async def data_conflict_relationship_many(session, default_branch, data_relationship_many_base):
+    red = data_relationship_many_base["red"]
+    data_relationship_many_base["blue"]
+    green = data_relationship_many_base["green"]
+    data_relationship_many_base["yellow"]
+    data_relationship_many_base["orange"]
+
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    orgs_list_main = await NodeManager.query(session=session, schema="CoreOrganization", branch=default_branch)
+    orgs_main = {item.name.value: item for item in orgs_list_main}
+    orgs_list_branch = await NodeManager.query(session=session, schema="CoreOrganization", branch=branch2)
+    orgs_branch = {item.name.value: item for item in orgs_list_branch}
+
+    await orgs_main["org1"].tags.update(data=[], session=session)
+    await orgs_main["org1"].save(session=session)
+
+    await orgs_branch["org1"].tags.update(
+        data=[{"id": red.id, "_relation__is_protected": True}, green.id], session=session
+    )
+    await orgs_branch["org1"].save(session=session)
+
+    return data_relationship_many_base

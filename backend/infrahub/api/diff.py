@@ -1,7 +1,7 @@
 import copy
 import enum
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
@@ -202,33 +202,28 @@ class BranchDiffElementRelationshipOne(BaseModel):
 
 
 class BranchDiffElementRelationshipManyPeer(BaseModel):
-    branch: str
-    id: str
-    identifier: str
+    branches: Set[str] = Field(default_factory=set)
     peer: BranchDiffRelationshipPeerNode
-    properties: List[BranchDiffPropertyUnbranched] = Field(default_factory=list)
-    changed_at: Optional[str]
-    action: DiffAction
+    path: str
+    properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
+    changed_at: Optional[str] = None
+    action: List[BranchDiffAction] = Field(default_factory=list)
+
+    class Config:
+        extra = Extra.forbid
 
 
 # NEW
 class BranchDiffElementRelationshipMany(BaseModel):
     type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
     identifier: str = ""
-    branches: List[str] = Field(default_factory=list)
+    branches: Set[str] = Field(default_factory=set)
     summary: DiffSummary = DiffSummary()
-    peers: List[BranchDiffElementRelationshipManyPeer] = Field(default_factory=list)
+    peers: Dict[str, BranchDiffElementRelationshipManyPeer] = Field(default_factory=dict)
+    action: List[BranchDiffAction] = Field(default_factory=list)
 
     class Config:
         extra = Extra.forbid
-
-    @property
-    def action(self) -> DiffAction:
-        if self.summary.added and not self.summary.updated and not self.summary.removed:
-            return DiffAction.ADDED
-        if not self.summary.added and not self.summary.updated and self.summary.removed:
-            return DiffAction.REMOVED
-        return DiffAction.UPDATED
 
 
 # NEW
@@ -602,12 +597,35 @@ class DiffPayload:
         diff_element = self.entries[node_id].elements[element_name]
 
         if branch not in diff_element.change.branches:
-            diff_element.change.branches.append(branch)
+            diff_element.change.branches.add(branch)
 
         for peer in relationship.peers:
+            if not diff_element.change.identifier:
+                diff_element.change.identifier = peer.identifier
+
+            # Update Action, Branches and Summary
+            diff_element.change.branches.add(peer.branch)
+            diff_element.change.action.append(BranchDiffAction(branch=peer.branch, action=peer.action))
             self.entries[node_id].summary.inc(peer.action.value)
-            diff_element.change.summary.inc(peer.action.value)
-            diff_element.change.peers.append(peer)
+
+            if peer.peer.id not in diff_element.change.peers:
+                diff_element.change.peers[peer.peer.id] = BranchDiffElementRelationshipManyPeer(
+                    peer=peer.peer,
+                    path=f"data/{node_id}/{element_name}/{peer.peer.id}",
+                )
+
+            peer_element = diff_element.change.peers[peer.peer.id]
+
+            peer_element.branches.add(peer.branch)
+            peer_element.action.append(BranchDiffAction(branch=peer.branch, action=peer.action))
+
+            for prop in peer.properties:
+                if prop.type not in peer_element.properties:
+                    peer_element.properties[prop.type] = BranchDiffPropertyCollection(
+                        path=f"data/{node_id}/{element_name}/{peer.peer.id}/property/{prop.type}"
+                    )
+                peer_element.properties[prop.type].changes.append(prop)
+                diff_element.change.summary.inc(prop.action.value)
 
     async def _process_nodes(self) -> None:  # pylint: disable=too-many-branches
         # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
