@@ -8,7 +8,7 @@ services:
       context: ../
       dockerfile: development/Dockerfile
       target: backend
-    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
     environment:
       - "INFRAHUB_BUILD_NAME=${INFRAHUB_BUILD_NAME}"
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
