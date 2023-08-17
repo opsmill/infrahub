@@ -172,13 +172,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return self.serialize(self.value)
 
-    @property
-    def support_branch(self):
-        if self.schema.branch is not None:
-            return self.schema.branch
-
-        return self.node._schema.branch
-
     @classmethod
     def from_db(cls, value: Any):
         if value == "NULL":
@@ -295,7 +288,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         await query.execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
-        if self.support_branch is False:
+        if self.schema.branch is False:
             branch = registry.get_global_branch()
         else:
             branch = self.branch

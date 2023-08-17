@@ -37,7 +37,7 @@ class AttributeQuery(Query):
         else:
             self.at = self.attr.at
 
-        if self.attr and self.attr.support_branch is False:
+        if self.attr and self.attr.schema.branch is False:
             self.branch = registry.get_global_branch()
         else:
             self.branch = branch or self.attr.branch
