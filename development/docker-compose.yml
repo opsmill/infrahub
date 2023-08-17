@@ -8,7 +8,7 @@ services:
       context: ../
       dockerfile: development/Dockerfile
       target: backend
-    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
     depends_on:
@@ -41,7 +41,7 @@ services:
       context: ../
       dockerfile: development/Dockerfile
       target: backend
-    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:
