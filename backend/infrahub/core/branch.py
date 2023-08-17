@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections import defaultdict
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
@@ -170,7 +171,7 @@ class DeleteBranchRelationshipsQuery(Query):
 
 class Branch(StandardNode):
     name: str = Field(
-        regex=r"^[a-z][a-z0-9\-]+$",
+        regex=rf"^[a-z][a-z0-9\-]+$|^{re.escape(GLOBAL_BRANCH_NAME)}$",
         max_length=32,
         min_length=3,
         description="Name of the branch (only lowercase, dash & alphanumeric characters are allowed)",
