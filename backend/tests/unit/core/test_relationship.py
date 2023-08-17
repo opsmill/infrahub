@@ -134,3 +134,38 @@ async def test_relationship_save(session: AsyncSession, tag_blue_main: Node, per
     tags = await p11.tags.get(session=session)
     assert len(tags) == 1
     assert tags[0].id == rel.id
+
+
+async def test_relationship_hash(
+    session: AsyncSession, tag_blue_main: Node, person_jack_main: Node, branch: Branch, first_account
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    await rel.set_peer(value=tag_blue_main)
+    await rel.save(session=session)
+    hash1 = hash(rel)
+
+    # Update flag property back and forth and check that hash is the same
+    await rel.load(session=session, data={"_relation__is_protected": True})
+    hash2 = hash(rel)
+
+    await rel.load(session=session, data={"_relation__is_protected": False})
+    hash3 = hash(rel)
+
+    assert hash1 == hash3
+    assert hash1 != hash2
+
+    # Update node property back and forth and check that hash is the same as well
+    await rel.load(session=session, data={"_relation__owner": first_account})
+    hash4 = hash(rel)
+
+    await rel.load(session=session, data={"_relation__owner": None})
+    hash5 = hash(rel)
+
+    await rel.load(session=session, data={"_relation__owner": first_account})
+    hash6 = hash(rel)
+
+    assert hash4 == hash6
+    assert hash4 != hash5

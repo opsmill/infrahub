@@ -69,6 +69,18 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._init_node_property_mixin(kwargs=kwargs)
         self._init_flag_property_mixin(kwargs=kwargs)
 
+    def __hash__(self):
+        """Generate a hash based on the Peer and the properties."""
+
+        values = [self.id, self.db_id, self.peer_id]
+        for prop_name in self._flag_properties:
+            values.append(getattr(self, prop_name))
+
+        for prop_name in self._node_properties:
+            values.append(getattr(self, f"{prop_name}_id"))
+
+        return hash(tuple(values))
+
     async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]):
         self.data = data
 
@@ -116,13 +128,15 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         updated_at: Union[Timestamp, str] = None,
         data: Union[dict, RelationshipPeerData, Any] = None,
     ) -> Self:
-        self.id = id
-        self.db_id = db_id
+        hash_before = hash(self)
 
-        if updated_at:
-            self.updated_at = Timestamp(updated_at)
+        self.id = id or self.id
+        self.db_id = db_id or self.db_id
 
         await self._process_data(data=data)
+
+        if updated_at and hash(self) != hash_before:
+            self.updated_at = Timestamp(updated_at)
 
         return self
 
@@ -548,9 +562,10 @@ class RelationshipManager:
 
             if isinstance(item, dict) and item.get("id", None) in previous_relationships:
                 rel = previous_relationships[item["id"]]
+                hash_before = hash(rel)
                 await rel.load(data=item, session=session)
-                # TODO Add a check to identify if the relationship was changed or not
-                # changed = True
+                if hash(rel) != hash_before:
+                    changed = True
                 self._relationships.append(rel)
                 continue
 
