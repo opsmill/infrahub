@@ -787,11 +787,11 @@ async def test_node_update_in_branch(session, default_branch: Branch, criticalit
 # --------------------------------------------------------------------------
 
 
-async def test_node_create_in_branch_global(session, default_branch: Branch, criticality_schema_global):
+async def test_node_create_in_branch_global(session, default_branch: Branch, fruit_tag_schema_global):
     branch1 = await create_branch(branch_name="branch1", session=session)
 
-    obj = await Node.init(session=session, schema=criticality_schema_global, branch=branch1)
-    await obj.new(session=session, name="low", level=4)
+    obj = await Node.init(session=session, schema="GardenFruit", branch=branch1)
+    await obj.new(session=session, name="apple")
     await obj.save(session=session)
 
     obj21 = await NodeManager.get_one(id=obj.id, branch=default_branch, session=session)
@@ -801,25 +801,71 @@ async def test_node_create_in_branch_global(session, default_branch: Branch, cri
     assert obj22.id == obj.id
 
 
-async def test_node_update_in_branch_global(session, default_branch: Branch, criticality_schema_global):
-    obj1 = await Node.init(session=session, schema=criticality_schema_global)
-    await obj1.new(session=session, name="low", level=4)
+async def test_node_update_in_branch_global(session, default_branch: Branch, fruit_tag_schema_global):
+    obj1 = await Node.init(session=session, schema="GardenFruit")
+    await obj1.new(session=session, name="RedApple")
     await obj1.save(session=session)
 
     branch1 = await create_branch(branch_name="branch1", session=session)
 
     obj2 = await NodeManager.get_one(id=obj1.id, branch=branch1, session=session)
-    obj2.name.value = "High"
-    obj2.level.value = 5
+    obj2.name.value = "Green Apple"
+    obj2.description.value = "A Green Apple"
     await obj2.save(session=session)
 
     obj11 = await NodeManager.get_one(id=obj1.id, session=session)
-    assert obj11.name.value == "High"
-    assert obj11.level.value == 5
+    assert obj11.name.value == "Green Apple"
+    assert obj11.description.value == "A Green Apple"
 
     obj21 = await NodeManager.get_one(id=obj1.id, branch=branch1, session=session)
-    assert obj21.name.value == "High"
-    assert obj21.level.value == 5
+    assert obj21.name.value == "Green Apple"
+    assert obj21.description.value == "A Green Apple"
+
+
+async def test_node_relationship_in_branch_global(session, default_branch: Branch, fruit_tag_schema_global):
+    """FIXME break down this test in smaller tests and add comments."""
+
+    red = await Node.init(session=session, schema="BuiltinTag")
+    await red.new(session=session, name="red")
+    await red.save(session=session)
+
+    f1 = await Node.init(session=session, schema="GardenFruit")
+    await f1.new(session=session, name="apple", tags=[red])
+    await f1.save(session=session)
+
+    f2 = await Node.init(session=session, schema="GardenFruit")
+    await f2.new(session=session, name="pineapple")
+    await f2.save(session=session)
+
+    branch1 = await create_branch(branch_name="branch1", session=session)
+
+    blue = await Node.init(session=session, schema="BuiltinTag", branch=branch1)
+    await blue.new(session=session, name="blue")
+    await blue.save(session=session)
+
+    f2_branch = await NodeManager.get_one(id=f2.id, branch=branch1, session=session)
+    await f2_branch.tags.update(session=session, data=[red, blue])
+    await f2_branch.related_fruits.update(session=session, data=[f1])
+    await f2_branch.save(session=session)
+
+    red_main = await NodeManager.get_one(id=red.id, session=session)
+    rels = await red_main.related_fruits.get(session=session)
+    assert len(rels) == 1
+
+    red_branch = await NodeManager.get_one(id=red.id, branch=branch1, session=session)
+    rels = await red_branch.related_fruits.get(session=session)
+    assert len(rels) == 2
+
+    f2_main = await NodeManager.get_one(id=f2.id, session=session)
+    assert len(await f2_main.tags.get(session=session)) == 0
+    assert len(await f2_main.related_fruits.get(session=session)) == 1
+
+    f2_branch = await NodeManager.get_one(id=f2.id, branch=branch1, session=session)
+    await f2_branch.related_fruits.update(session=session, data=[])
+    await f2_branch.save(session=session)
+
+    f2_main = await NodeManager.get_one(id=f2.id, session=session)
+    assert len(await f2_main.related_fruits.get(session=session)) == 0
 
 
 # --------------------------------------------------------------------------

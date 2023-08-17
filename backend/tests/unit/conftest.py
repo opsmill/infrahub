@@ -1756,25 +1756,6 @@ async def criticality_high(session: AsyncSession, default_branch: Branch, critic
     return obj
 
 
-@pytest.fixture
-async def criticality_schema_global(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "display_labels": ["label__value"],
-        "branch": False,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "label", "kind": "Text", "optional": True},
-            {"name": "level", "kind": "Number"},
-        ],
-    }
-
-    node = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-
-    return node
 
 
 @pytest.fixture
@@ -1913,7 +1894,7 @@ async def vehicule_person_schema(
 
 
 @pytest.fixture
-async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
+async def fruit_tag_schema(session: AsyncSession, group_schema, data_schema) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
             {
@@ -1939,6 +1920,85 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
                 "relationships": [{"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": False}],
             },
         ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema)
+    return schema
+
+
+@pytest.fixture
+async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_schema) -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "color", "kind": "Text", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "related_tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},
+                    {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
+                ],
+            },
+            {
+                "name": "Fruit",
+                "namespace": "Garden",
+                "default_filter": "name__value",
+                "branch": False,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},
+                    {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema)
+    return schema
+
+
+@pytest.fixture
+async def data_schema(session, default_branch: Branch) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Owner",
+                "namespace": "Lineage",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "Source",
+                "description": "Any Entities that stores or produces data.",
+                "namespace": "Lineage",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def group_schema(session, default_branch: Branch) -> None:
+    SCHEMA = {
         "generics": [
             {
                 "name": "Node",
@@ -1978,35 +2038,6 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
                 ],
             },
         ],
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema)
-    return schema
-
-
-@pytest.fixture
-async def data_schema(session, default_branch: Branch) -> None:
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "Owner",
-                "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            },
-            {
-                "name": "Source",
-                "description": "Any Entities that stores or produces data.",
-                "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            },
-        ]
     }
 
     schema = SchemaRoot(**SCHEMA)

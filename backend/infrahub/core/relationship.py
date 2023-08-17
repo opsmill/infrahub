@@ -631,11 +631,16 @@ class RelationshipManager:
     ):
         remove_at = Timestamp(at)
 
+        if self.schema.branch is False:
+            branch = registry.get_global_branch()
+        else:
+            branch = self.branch
+
         # when we remove a relationship we need to :
         # - Update the existing relationship if we are on the same branch
         # - Create a new rel of type DELETED in the right branch
         rel_ids_per_branch = peer_data.rel_ids_per_branch()
-        if self.branch.name in rel_ids_per_branch:
+        if branch.name in rel_ids_per_branch:
             await update_relationships_to(rel_ids_per_branch[self.branch.name], to=remove_at, session=session)
 
         query = await RelationshipDataDeleteQuery.init(
@@ -644,7 +649,7 @@ class RelationshipManager:
             schema=self.schema,
             source=self.node,
             data=peer_data,
-            branch=self.branch,
+            branch=branch,
             at=remove_at,
         )
         await query.execute(session=session)
