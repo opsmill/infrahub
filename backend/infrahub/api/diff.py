@@ -10,13 +10,7 @@ from pydantic import BaseModel, Extra, Field
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import (
-    Branch,
-    Diff,
-    NodeDiffElement,
-    ObjectConflict,
-    RelationshipDiffElement,
-)
+from infrahub.core.branch import Branch, Diff, NodeDiffElement, RelationshipDiffElement
 from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import RelationshipCardinality
@@ -703,10 +697,6 @@ class DiffPayload:
         for branch_name, _ in self.rels_per_node.items():
             branch_display_labels = self.display_labels.get(branch_name, {})
             for node_in_rel, _ in self.rels_per_node[branch_name].items():
-                if node_in_rel in self.nodes_in_diff:
-                    pass
-                    #    continue <- did we need this?
-
                 node_diff = None
                 for rel_name, rels in self.rels_per_node[branch_name][node_in_rel].items():
                     node_kind = rels[0].nodes[node_in_rel].kind
