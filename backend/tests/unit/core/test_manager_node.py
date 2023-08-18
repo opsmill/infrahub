@@ -382,16 +382,6 @@ async def test_get_one_local_attribute_with_branch(session: AsyncSession, defaul
 
 
 async def test_get_one_global(session: AsyncSession, default_branch: Branch, base_dataset_12):
-    # obj1 = await Node.init(session=session, schema=criticality_schema)
-    # await obj1.new(session=session, name="low", level=4)
-    # await obj1.save(session=session)
-
-    # second_branch = await create_branch(branch_name="branch2", session=session)
-
-    # obj2 = await Node.init(session=session, schema=criticality_schema, branch=second_branch)
-    # await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    # await obj2.save(session=session)
-
     obj1 = await NodeManager.get_one(session=session, id="p1", branch="branch1")
 
     assert obj1.id == "p1"
@@ -404,6 +394,6 @@ async def test_get_one_global(session: AsyncSession, default_branch: Branch, bas
     assert obj2.id == "c1"
     assert obj2.db_id
     assert obj2.name.value == "accord"
-    assert obj2.nbr_seats.value == 5
+    assert obj2.nbr_seats.value == 4
     assert obj2.color.value == "#444444"
     assert obj2.is_electric.value is True

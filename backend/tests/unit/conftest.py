@@ -489,10 +489,10 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c1at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(c1av21)
-    CREATE (c1at2)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(c1av22)
-    CREATE (c1at2)-[:IS_PROTECTED {branch: $global_branch,branch_level: 1,  status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (c1at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m20 }]->(c1av21)
+    CREATE (c1at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c1av22)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $global_branch,branch_level: 1,  status: "active", from: $time_m60, to: $time_m20 }]->(bool_false)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
     CREATE (c1at2)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atvt)
@@ -969,16 +969,40 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
     SCHEMA = {
         "generics": [
             {
+                "name": "Node",
+                "namespace": "Core",
+                "description": "Base Node in Infrahub.",
+                "label": "Node",
+            },
+            {
                 "name": "Group",
                 "namespace": "Core",
+                "description": "Generic Group Object.",
+                "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_labels": ["label__value"],
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
                     {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "members",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_member",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "subscribers",
+                        "peer": "CoreNode",
+                        "optional": True,
+                        "identifier": "group_subscriber",
+                        "cardinality": "many",
+                    },
                 ],
             },
         ],
@@ -1006,7 +1030,7 @@ async def group_graphql(session: AsyncSession, default_branch: Branch, group_sch
 
 
 @pytest.fixture
-async def car_person_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def car_person_schema(session: AsyncSession, default_branch: Branch, group_schema, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1038,45 +1062,6 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
                 "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
         ],
-        "generics": [
-            {
-                "name": "Node",
-                "namespace": "Core",
-                "description": "Base Node in Infrahub.",
-                "label": "Node",
-            },
-            {
-                "name": "Group",
-                "namespace": "Core",
-                "description": "Generic Group Object.",
-                "label": "Group",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["label__value"],
-                "branch": True,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "label", "kind": "Text", "optional": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "members",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_member",
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "subscribers",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_subscriber",
-                        "cardinality": "many",
-                    },
-                ],
-            },
-        ],
     }
 
     schema = SchemaRoot(**SCHEMA)
@@ -1084,7 +1069,7 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
 
 
 @pytest.fixture
-async def car_person_schema_global(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def car_person_schema_global(session: AsyncSession, default_branch: Branch, group_schema, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1116,45 +1101,45 @@ async def car_person_schema_global(session: AsyncSession, default_branch: Branch
                 "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
         ],
-        "generics": [
-            {
-                "name": "Node",
-                "namespace": "Core",
-                "description": "Base Node in Infrahub.",
-                "label": "Node",
-            },
-            {
-                "name": "Group",
-                "namespace": "Core",
-                "description": "Generic Group Object.",
-                "label": "Group",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["label__value"],
-                "branch": True,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "label", "kind": "Text", "optional": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "members",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_member",
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "subscribers",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_subscriber",
-                        "cardinality": "many",
-                    },
-                ],
-            },
-        ],
+        # "generics": [
+        #     {
+        #         "name": "Node",
+        #         "namespace": "Core",
+        #         "description": "Base Node in Infrahub.",
+        #         "label": "Node",
+        #     },
+        #     {
+        #         "name": "Group",
+        #         "namespace": "Core",
+        #         "description": "Generic Group Object.",
+        #         "label": "Group",
+        #         "default_filter": "name__value",
+        #         "order_by": ["name__value"],
+        #         "display_labels": ["label__value"],
+        #         "branch": True,
+        #         "attributes": [
+        #             {"name": "name", "kind": "Text", "unique": True},
+        #             {"name": "label", "kind": "Text", "optional": True},
+        #             {"name": "description", "kind": "Text", "optional": True},
+        #         ],
+        #         "relationships": [
+        #             {
+        #                 "name": "members",
+        #                 "peer": "CoreNode",
+        #                 "optional": True,
+        #                 "identifier": "group_member",
+        #                 "cardinality": "many",
+        #             },
+        #             {
+        #                 "name": "subscribers",
+        #                 "peer": "CoreNode",
+        #                 "optional": True,
+        #                 "identifier": "group_subscriber",
+        #                 "cardinality": "many",
+        #             },
+        #         ],
+        #     },
+        # ],
     }
 
     schema = SchemaRoot(**SCHEMA)
@@ -1990,54 +1975,6 @@ async def data_schema(session, default_branch: Branch) -> None:
                 ],
             },
         ]
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
-@pytest.fixture
-async def group_schema(session, default_branch: Branch) -> None:
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "Node",
-                "namespace": "Core",
-                "description": "Base Node in Infrahub.",
-                "label": "Node",
-            },
-            {
-                "name": "Group",
-                "namespace": "Core",
-                "description": "Generic Group Object.",
-                "label": "Group",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["label__value"],
-                "branch": True,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "label", "kind": "Text", "optional": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "members",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_member",
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "subscribers",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_subscriber",
-                        "cardinality": "many",
-                    },
-                ],
-            },
-        ],
     }
 
     schema = SchemaRoot(**SCHEMA)

@@ -83,10 +83,10 @@ async def test_get_query_filter_relationships_main(session, base_dataset_02):
     )
 
     expected_filters = [
-        "(r1.branch = $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch = $branch0 AND r1.from <= $time0 AND r1.to >= $time0)",
-        "((r1.branch = $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch = $branch0 AND r1.from <= $time0 AND r1.to >= $time0))",
-        "(r2.branch = $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch = $branch0 AND r2.from <= $time0 AND r2.to >= $time0)",
-        "((r2.branch = $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch = $branch0 AND r2.from <= $time0 AND r2.to >= $time0))",
+        "(r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to >= $time0)",
+        "((r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to >= $time0))",
+        "(r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to >= $time0)",
+        "((r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to >= $time0))",
     ]
     assert isinstance(filters, list)
     assert filters == expected_filters
@@ -170,7 +170,7 @@ async def test_get_branches_and_times_to_query_global_branch1(session, base_data
     branch1.ephemeral_rebase = True
     results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
     assert Timestamp(frozenset((GLOBAL_BRANCH_NAME, "branch1"))) > now
-    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == results["branch1"]
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]
 
 
 async def test_get_branches_and_times_for_range_main(session, base_dataset_02):

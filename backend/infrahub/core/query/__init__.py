@@ -161,7 +161,6 @@ class QueryResult:
             if not branch_name:
                 continue
 
-            # from_time =  rel.get("from", None)
             to_time = rel.get("to", None)
 
             if to_time:
