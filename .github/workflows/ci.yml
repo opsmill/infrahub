@@ -19,8 +19,7 @@ env:
   NEO4J_PORT: 7687
   NEO4J_PROTOCOL: bolt
   INFRAHUB_LOG_LEVEL: CRITICAL
-  INFRAHUB_IMAGE_NAME_FRONTEND: "opsmill/infrahub-frontend"
-  INFRAHUB_IMAGE_NAME_BACKEND: "opsmill/infrahub-backend"
+  INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "testing"
   PYTEST_XDIST_WORKER_COUNT: 2
   INFRAHUB_TEST_IN_DOCKER: 1
@@ -113,23 +112,7 @@ jobs:
   #       with:
   #         file: "development/Dockerfile-backend"
   #         push: false
-  #         tags: "${{env.INFRAHUB_IMAGE_NAME_BACKEND}}:${{env.INFRAHUB_IMAGE_VER}}"
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
-
-  # frontend-build-docker:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v2
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v2
-  #     - name: Build Frontend Image
-  #       uses: docker/build-push-action@v4
-  #       with:
-  #         file: "development/Dockerfile-frontend"
-  #         push: false
-  #         tags: "${{env.INFRAHUB_IMAGE_NAME_FRONTEND}}:${{env.INFRAHUB_IMAGE_VER}}"
+  #         tags: "${{env.INFRAHUB_IMAGE_NAME}}:${{env.INFRAHUB_IMAGE_VER}}"
   #         cache-from: type=gha
   #         cache-to: type=gha,mode=max
 
