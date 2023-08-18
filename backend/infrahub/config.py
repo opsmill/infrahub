@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import toml
-from pydantic import BaseSettings, Field, ValidationError
+from pydantic import BaseSettings, Field, ValidationError, root_validator
 
 from infrahub_client.utils import generate_uuid
 
@@ -60,8 +60,8 @@ class DatabaseSettings(BaseSettings):
     password: str = "admin"
     address: str = "localhost"
     port: int = 7687
-    database: str = Field(
-        default="infrahub", regex=VALID_DATABASE_NAME_REGEX, description="Name of the database in Neo4j"
+    database: Optional[str] = Field(
+        regex=VALID_DATABASE_NAME_REGEX, description="Name of the database"
     )
 
     class Config:
@@ -75,6 +75,12 @@ class DatabaseSettings(BaseSettings):
             "port": {"env": "NEO4J_PORT"},
             "database": {"env": "NEO4J_DATABASE"},
         }
+
+    @root_validator(pre=False)
+    def default_database_name(cls, values):
+        if not values.get("database", None):
+            values["database"] = values["db_type"]
+        return values
 
 
 class BrokerSettings(BaseSettings):

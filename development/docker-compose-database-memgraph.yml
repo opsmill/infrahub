@@ -1,9 +1,6 @@
 ---
 version: "3.4"
 services:
-  infrahub-server:
-    environment:
-      - NEO4J_DATABASE=memgraph
   database:
     image: "memgraph/memgraph:2.10.0"
     volumes:
