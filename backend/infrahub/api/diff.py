@@ -268,7 +268,6 @@ class BranchDiffEntry(BaseModel):
 #  NEW
 class BranchDiff(BaseModel):
     diffs: List[BranchDiffEntry] = Field(default_factory=list)
-    # conflicts: Dict[str, ObjectConflict] = Field(default_factory=dict)
 
 
 class BranchDiffFile(BaseModel):
@@ -442,7 +441,6 @@ class DiffPayload:
         self.session = session
         self.diff = diff
         self.kinds_to_include = kinds_to_include
-        self.conflicts: List[ObjectConflict] = []
         self.diffs: List[BranchDiffNode] = []
         self.entries: Dict[str, BranchDiffEntry] = {}
         self.rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = {}
@@ -473,7 +471,6 @@ class DiffPayload:
         node_ids = await self.diff.get_node_id_per_kind(session=self.session)
 
         self.display_labels = await get_display_labels(nodes=node_ids, session=self.session)
-        self.conflicts = await self.diff.get_conflicts(session=self.session)
 
     def _add_node_to_diff(self, node_id: str, kind: str):
         if node_id not in self.entries:
@@ -783,7 +780,6 @@ class DiffPayload:
 
         await self._process_nodes()
         await self._process_relationships()
-        # conflict_data = {conflict.path: conflict for conflict in self.conflicts}
 
         return BranchDiff(
             diffs=list(self.entries.values()),
