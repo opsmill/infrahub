@@ -969,6 +969,43 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
     SCHEMA = {
         "generics": [
             {
+                "name": "Group",
+                "namespace": "Core",
+                "description": "Generic Group Object.",
+                "label": "Group",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "StandardGroup",
+                "namespace": "Core",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": True,
+                "inherit_from": ["CoreGroup"],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def node_group_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+    SCHEMA = {
+        "generics": [
+            {
                 "name": "Node",
                 "namespace": "Core",
                 "description": "Base Node in Infrahub.",
@@ -1006,17 +1043,6 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
                 ],
             },
         ],
-        "nodes": [
-            {
-                "name": "StandardGroup",
-                "namespace": "Core",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["name__value"],
-                "branch": True,
-                "inherit_from": ["CoreGroup"],
-            },
-        ],
     }
 
     schema = SchemaRoot(**SCHEMA)
@@ -1030,7 +1056,7 @@ async def group_graphql(session: AsyncSession, default_branch: Branch, group_sch
 
 
 @pytest.fixture
-async def car_person_schema(session: AsyncSession, default_branch: Branch, group_schema, data_schema) -> None:
+async def car_person_schema(session: AsyncSession, default_branch: Branch, node_group_schema, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1069,7 +1095,9 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, group
 
 
 @pytest.fixture
-async def car_person_schema_global(session: AsyncSession, default_branch: Branch, group_schema, data_schema) -> None:
+async def car_person_schema_global(
+    session: AsyncSession, default_branch: Branch, node_group_schema, data_schema
+) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1101,45 +1129,6 @@ async def car_person_schema_global(session: AsyncSession, default_branch: Branch
                 "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
         ],
-        # "generics": [
-        #     {
-        #         "name": "Node",
-        #         "namespace": "Core",
-        #         "description": "Base Node in Infrahub.",
-        #         "label": "Node",
-        #     },
-        #     {
-        #         "name": "Group",
-        #         "namespace": "Core",
-        #         "description": "Generic Group Object.",
-        #         "label": "Group",
-        #         "default_filter": "name__value",
-        #         "order_by": ["name__value"],
-        #         "display_labels": ["label__value"],
-        #         "branch": True,
-        #         "attributes": [
-        #             {"name": "name", "kind": "Text", "unique": True},
-        #             {"name": "label", "kind": "Text", "optional": True},
-        #             {"name": "description", "kind": "Text", "optional": True},
-        #         ],
-        #         "relationships": [
-        #             {
-        #                 "name": "members",
-        #                 "peer": "CoreNode",
-        #                 "optional": True,
-        #                 "identifier": "group_member",
-        #                 "cardinality": "many",
-        #             },
-        #             {
-        #                 "name": "subscribers",
-        #                 "peer": "CoreNode",
-        #                 "optional": True,
-        #                 "identifier": "group_subscriber",
-        #                 "cardinality": "many",
-        #             },
-        #         ],
-        #     },
-        # ],
     }
 
     schema = SchemaRoot(**SCHEMA)
@@ -2067,7 +2056,7 @@ async def authentication_base(
 
 
 @pytest.fixture
-async def first_account(session: AsyncSession, data_schema, group_schema, register_account_schema) -> Node:
+async def first_account(session: AsyncSession, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123", role="read-write")
     await obj.save(session=session)
@@ -2075,7 +2064,7 @@ async def first_account(session: AsyncSession, data_schema, group_schema, regist
 
 
 @pytest.fixture
-async def second_account(session: AsyncSession, data_schema, group_schema, register_account_schema) -> Node:
+async def second_account(session: AsyncSession, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="Second Account", type="Git", password="SecondPassword123")
     await obj.save(session=session)
