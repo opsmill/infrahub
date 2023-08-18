@@ -47,6 +47,67 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
 
 
+class ObjectConflict(BaseModel):
+    type: str
+    id: str
+    path: str
+
+    def __str__(self) -> str:
+        return self.path
+
+
+class ModifiedPath(BaseModel):
+    type: str
+    node_id: str
+    element_name: Optional[str] = None
+    property_name: Optional[str] = None
+    peer_id: Optional[str] = None
+    action: DiffAction
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, ModifiedPath):
+            return NotImplemented
+
+        if self.modification_type != other.modification_type:
+            return False
+
+        if self.modification_type == "node":
+            if self.action == other.action and self.action in [DiffAction.REMOVED, DiffAction.UPDATED]:
+                return False
+
+        return self.type == other.type and self.node_id == other.node_id
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, ModifiedPath):
+            return NotImplemented
+        return str(self) < str(other)
+
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))
+
+    def __str__(self) -> str:
+        identifier = f"{self.type}/{self.node_id}"
+        if self.element_name:
+            identifier += f"/{self.element_name}"
+
+        if self.peer_id:
+            identifier += f"/{self.peer_id}"
+
+        if self.property_name and self.property_name == "HAS_VALUE":
+            identifier += "/value"
+        elif self.property_name:
+            identifier += f"/property/{self.property_name}"
+
+        return identifier
+
+    @property
+    def modification_type(self) -> str:
+        if self.element_name:
+            return "element"
+
+        return "node"
+
+
 class AddNodeToBranch(Query):
     name: str = "node_add_to_branch"
     insert_return: bool = False
@@ -461,7 +522,7 @@ class Branch(StandardNode):
         if conflicts := await diff.get_conflicts(session=session):
             passed = False
             for conflict in conflicts:
-                messages.append(f"Conflict detected at {'/'.join(conflict)}")
+                messages.append(f"Conflict detected at {conflict}")
 
         return passed, messages
 
@@ -887,7 +948,7 @@ class Diff:
     ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        return await self.has_changes_graph(session=session)
+        return await self.has_conflict_graph(session=session)
 
     async def has_conflict_graph(self, session: AsyncSession) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
@@ -925,14 +986,14 @@ class Diff:
 
         return False
 
-    async def get_conflicts(self, session: AsyncSession) -> Set[Tuple]:
+    async def get_conflicts(self, session: AsyncSession) -> List[ObjectConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 
         For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
         """
         return await self.get_conflicts_graph(session=session)
 
-    async def get_conflicts_graph(self, session: AsyncSession) -> Set[Tuple]:
+    async def get_conflicts_graph(self, session: AsyncSession) -> List[ObjectConflict]:
         if self.branch_only:
             return []
 
@@ -946,9 +1007,11 @@ class Diff:
             return []
 
         # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
-        return paths[branches[0]] & paths[branches[1]]
+        conflicts = paths[branches[0]] & paths[branches[1]]
 
-    async def get_modified_paths_graph(self, session: AsyncSession) -> Dict[str, Set[Tuple]]:
+        return [ObjectConflict(type=conflict.type, id=conflict.node_id, path=str(conflict)) for conflict in conflicts]
+
+    async def get_modified_paths_graph(self, session: AsyncSession) -> Dict[str, Set[ModifiedPath]]:
         """Return a list of all the modified paths in the graph per branch.
 
         Path for a node : ("node", node_id, attr_name, prop_type)
@@ -958,27 +1021,55 @@ class Diff:
             Dict[str, set]: Returns a dictionnary by branch with a set of paths
         """
 
-        paths = defaultdict(set)
+        paths = {}
 
         nodes = await self.get_nodes(session=session)
         for branch_name, data in nodes.items():
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
+            if branch_name not in paths:
+                paths[branch_name] = set()
+
             for node_id, node in data.items():
+                p = ModifiedPath(type="data", node_id=node_id, action=node.action)
+                paths[branch_name].add(p)
                 for attr_name, attr in node.attributes.items():
                     for prop_type in attr.properties.keys():
-                        paths[branch_name].add(("node", node_id, attr_name, prop_type))
+                        p = ModifiedPath(
+                            type="data",
+                            node_id=node_id,
+                            action=attr.action,
+                            element_name=attr_name,
+                            property_name=prop_type,
+                        )
+                        paths[branch_name].add(p)
 
-        rels = await self.get_relationships(session=session)
-        for branch_name, data in rels.items():
+        relationships = await self.get_relationships(session=session)
+        for branch_name, data in relationships.items():  # pylint: disable=too-many-nested-blocks
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
+            if branch_name not in paths:
+                paths[branch_name] = set()
+
             for rel_name, rels in data.items():
-                for rel_id, rel in rels.items():
+                for _, rel in rels.items():
                     for prop_type in rel.properties.keys():
-                        paths[branch_name].add(("relationships", rel_name, rel_id, prop_type))
+                        for node_id in rel.nodes:
+                            neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
+                            schema = registry.get_schema(name=rel.nodes[node_id].kind, branch=branch_name)
+                            matching_relationship = [r for r in schema.relationships if r.identifier == rel_name]
+                            if matching_relationship:
+                                p = ModifiedPath(
+                                    type="data",
+                                    node_id=node_id,
+                                    action=rel.action,
+                                    element_name=matching_relationship[0].name,
+                                    property_name=prop_type,
+                                    peer_id=neighbor_id,
+                                )
+                                paths[branch_name].add(p)
 
         return paths
 

@@ -81,7 +81,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return hash(tuple(values))
 
-    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]):
+    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]) -> None:
         self.data = data
 
         if isinstance(data, RelationshipPeerData):

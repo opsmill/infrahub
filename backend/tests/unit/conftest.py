@@ -992,6 +992,13 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                         "optional": False,
                         "cardinality": "one",
                     },
+                    {
+                        "name": "previous_owner",
+                        "peer": "TestPerson",
+                        "identifier": "person_previous__car",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
                 ],
             },
             {

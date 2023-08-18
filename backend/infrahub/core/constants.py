@@ -18,6 +18,8 @@ class DiffAction(str, enum.Enum):
 
     UPDATED = "updated"
 
+    UNCHANGED = "unchanged"
+
 
 class RelationshipStatus(str, enum.Enum):
     ACTIVE = "active"
