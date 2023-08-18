@@ -1756,8 +1756,6 @@ async def criticality_high(session: AsyncSession, default_branch: Branch, critic
     return obj
 
 
-
-
 @pytest.fixture
 async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GenericSchema:
     SCHEMA = {
