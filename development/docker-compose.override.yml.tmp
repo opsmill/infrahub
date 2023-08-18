@@ -13,19 +13,22 @@ services:
       - ./promtail/config.yml:/etc/promtail/config.yml
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/lib/docker/containers:/var/lib/docker/containers
+    command:
+      - '-config.file=/etc/promtail/config.yml'
+      - '-config.expand-env=true'
     depends_on:
       - loki
   loki:
     image: grafana/loki:2.8.4
-    command:
-      - '-config.file=/etc/loki/config.yml'
-      - '-config.expand-env=true'
     volumes:
       - type: bind
         source: ./loki/config.yml
         target: /etc/loki/config.yml
         read_only: true
       - loki_data:/loki
+    command:
+      - '-config.file=/etc/loki/config.yml'
+      - '-config.expand-env=true'
     ports:
       - "3100:3100"
 
@@ -67,7 +70,7 @@ services:
   memgraph-exporter:
     build:
       context: ./memgraph_exporter
-    image:  memgraph-exporter
+    image: memgraph-exporter
     hostname: "memgraph_exp"
 
   # --------------------------------------------------------------------------------
@@ -77,17 +80,17 @@ services:
     ports:
       - "8000:8000"
 
-  # --------------------------------------------------------------------------------
-  # Uncomment to expose the database and/or the message bus outside of Docker Compose
-  # --------------------------------------------------------------------------------
-  # database:
-  #   ports:
-  #     - "7474:7474"
-  #     - "7687:7687"
-  # message-queue:
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"
+# --------------------------------------------------------------------------------
+# Uncomment to expose the database and/or the message bus outside of Docker Compose
+# --------------------------------------------------------------------------------
+#   database:
+#     ports:
+#       - "7474:7474"
+#       - "7687:7687"
+#   message-queue:
+#     ports:
+#       - "5672:5672"
+#       - "15672:15672"
 
 volumes:
   grafana_data:
