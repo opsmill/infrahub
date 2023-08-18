@@ -19,3 +19,9 @@ scrape_configs:
   - job_name: 'database'
     static_configs:
       - targets: ['database:2004']
+      - targets: ['memgraph_exp:9115']
+
+  - job_name: 'logs'
+    static_configs:
+      - targets: ['loki:3100']
+      - targets: ['promtail:9080']

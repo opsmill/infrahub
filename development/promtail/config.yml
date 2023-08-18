@@ -1,0 +1,85 @@
+---
+server:
+    http_listen_port: 9080
+    grpc_listen_port: 0
+    log_level: "warn"
+
+clients:
+    - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+    # Reading Docker logs
+    - job_name: docker
+      # Using docker.sock to filter containers for the project `infrahub` only
+      docker_sd_configs:
+          - host: "unix:///var/run/docker.sock"
+            refresh_interval: 15s
+            filters:
+                - name: label
+                  values: ["com.docker.compose.project=infrahub"]
+      pipeline_stages:
+          - docker:
+          - decolorize:
+          # Parsing Database (memgraph) logs
+          - regex:
+                expression: '(?P<time>\S+?) (?P<level>TRACE|DEBUG|INFO|WARNING|ERROR|CRITICAL) (?P<msg>.*)$'
+          # Parsing Infrahub logs when INFRAHUB_PRODUCTION=false
+          - regex:
+                expression: '(?P<time>\S+?) \[(?P<level>[a-z]+)\s+\]
+                 (?P<event>.+)\s+\[(?P<logger>.+)\]\s*(?P<tmp_msg>.*)$'
+          - logfmt:
+                mapping:
+                    app:
+                    request_id:
+                    branch:
+                source: tmp_msg
+          # Parsing Infrahub logs when INFRAHUB_PRODUCTION=true
+          - json:
+                expressions:
+                    level: level
+                    msg: msg
+                    time: time
+                    timestamp: timestamp
+                    domain: domain
+                    event: event
+                    stream: stream
+                    request_id: request_id
+                    app: app
+                    logger: logger
+                    branch: branch
+                    schema_request: schema_request
+                    output: log
+          - template:
+                source: level
+                template: '{{ ToLower .Value }}'
+          - template:
+                source: logger
+                template: "\
+                {{ if .domain }}{{ .domain }}{{ else if .app }}{{ .app }}\
+                {{ else if .logger }}{{ .Value }}\
+                {{ else }}none{{ end }}"
+          - template:
+                source: message
+                template: "\
+                {{ if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}\
+                {{ if .request_id }}request[{{ .request_id }}] {{ end }}\
+                {{ if .branch }}branch ({{ .branch }}){{ end }}{{ end }}"
+          - template:
+                source: timestamp
+                template: "\
+                {{ if .time }}{{ .time }}\
+                {{ else if .timestamp }}{{ .Value }}{{ end }}"
+          # Creating Loki Labels
+          - labels:
+                level: ''
+                logger: ''
+                message: ''
+                timestamp: ''
+          # Creating a loki label `infrahub-promtail` in case we want to use other job/source later
+          - static_labels:
+                job: "infrahub-promtail"
+      # Using container name to create a loki label
+      relabel_configs:
+          - source_labels: ['__meta_docker_container_name']
+            regex: '/(.*)'
+            target_label: 'container'
