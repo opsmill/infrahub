@@ -75,7 +75,7 @@ class DatabaseSettings(BaseSettings):
         }
 
     @root_validator(pre=False)
-    def default_database_name(cls, values):
+    def default_database_name(cls, values):  # pylint: disable=no-self-argument
         if not values.get("database", None):
             values["database"] = values["db_type"]
         return values
