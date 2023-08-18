@@ -327,6 +327,8 @@ class Branch(StandardNode):
     async def delete(self, session: AsyncSession) -> None:
         if self.is_default:
             raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
+        if self.is_global:
+            raise ValidationError(f"Unable to delete {self.name} this is an internal branch.")
         await super().delete(session=session)
         query = await DeleteBranchRelationshipsQuery.init(session=session, branch_name=self.name)
         await query.execute(session=session)

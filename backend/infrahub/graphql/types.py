@@ -22,6 +22,7 @@ from graphene.types.union import UnionOptions
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 
@@ -399,7 +400,7 @@ class BranchType(InfrahubObjectType):
             if not objs:
                 return []
 
-            return [obj.to_graphql(fields=fields) for obj in objs]
+            return [obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
 
 
 class BranchDiffPropertyValueType(ObjectType):

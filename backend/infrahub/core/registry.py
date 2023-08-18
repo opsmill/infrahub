@@ -240,6 +240,11 @@ class Registry:
             if self.branch_object.isinstance(branch) and not isinstance(branch, str):
                 return branch
 
+        if (self.branch_object.isinstance(branch) and branch.name == GLOBAL_BRANCH_NAME) or (
+            isinstance(branch, str) and branch == GLOBAL_BRANCH_NAME
+        ):
+            raise BranchNotFound(identifier=GLOBAL_BRANCH_NAME)
+
         if not branch or not isinstance(branch, str):
             branch = config.SETTINGS.main.default_branch
 
