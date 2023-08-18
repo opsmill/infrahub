@@ -7,11 +7,14 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
+from infrahub.message_bus import messages
 
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
+
+    from infrahub.message_bus.rpc import InfrahubRpcClient
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
@@ -40,7 +43,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     ):
         proposed_change, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
         session: AsyncSession = info.context.get("infrahub_session")
-        # rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         # Create the new repository in the database.
         source_branch = await registry.get_branch(session=session, branch=proposed_change.source_branch.value)
@@ -60,5 +63,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             status=status,
         )
         await obj.save(session=session)
+
+        await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))
 
         return proposed_change, result

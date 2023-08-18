@@ -5,12 +5,14 @@ import uuid
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
-from . import get_broker
+from . import InfrahubBaseMessage, get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
+from .messages import ROUTING_KEY_MAP
 
 if TYPE_CHECKING:
     from aio_pika.abc import (
         AbstractChannel,
+        AbstractExchange,
         AbstractIncomingMessage,
         AbstractQueue,
         AbstractRobustConnection,
@@ -22,6 +24,7 @@ class InfrahubRpcClientBase:
     channel: AbstractChannel
     callback_queue: AbstractQueue
     loop: asyncio.AbstractEventLoop
+    exchange: AbstractExchange
 
     def __init__(self) -> None:
         self.futures: MutableMapping[str, asyncio.Future] = {}
@@ -36,6 +39,7 @@ class InfrahubRpcClientBase:
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
         await self.callback_queue.consume(self.on_response, no_ack=True)
+        self.exchange = await self.channel.declare_exchange("infrahub-messages", type="topic", durable=True)
 
         return self
 
@@ -61,6 +65,12 @@ class InfrahubRpcClientBase:
 
         if wait_for_response:
             return await future
+
+    async def send(self, message: InfrahubBaseMessage) -> None:
+        routing_key = ROUTING_KEY_MAP.get(type(message))
+        if not routing_key:
+            raise ValueError("Unable to determine routing key")
+        await self.exchange.publish(message, routing_key=routing_key)
 
 
 class InfrahubRpcClient(InfrahubRpcClientBase):
