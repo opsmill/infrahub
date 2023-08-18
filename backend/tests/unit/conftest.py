@@ -1682,7 +1682,9 @@ async def group_group2_subscribers_main(
 
 
 @pytest.fixture
-async def all_attribute_types_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
+async def all_attribute_types_schema(
+    session: AsyncSession, default_branch: Branch, group_schema, data_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "AllAttributeTypes",
         "namespace": "Test",
@@ -1704,7 +1706,7 @@ async def all_attribute_types_schema(session: AsyncSession, default_branch: Bran
 
 
 @pytest.fixture
-async def criticality_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
+async def criticality_schema(session: AsyncSession, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -2128,7 +2130,7 @@ async def authentication_base(
 
 
 @pytest.fixture
-async def first_account(session: AsyncSession, data_schema, register_account_schema) -> Node:
+async def first_account(session: AsyncSession, data_schema, group_schema, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123", role="read-write")
     await obj.save(session=session)
@@ -2136,7 +2138,7 @@ async def first_account(session: AsyncSession, data_schema, register_account_sch
 
 
 @pytest.fixture
-async def second_account(session: AsyncSession, register_account_schema) -> Node:
+async def second_account(session: AsyncSession, data_schema, group_schema, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="Second Account", type="Git", password="SecondPassword123")
     await obj.save(session=session)
