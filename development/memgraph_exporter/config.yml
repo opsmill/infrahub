@@ -1,3 +1,4 @@
+---
 exporter:
   port: 9115
 memgraph:
