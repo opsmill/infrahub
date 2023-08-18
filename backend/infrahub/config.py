@@ -60,9 +60,7 @@ class DatabaseSettings(BaseSettings):
     password: str = "admin"
     address: str = "localhost"
     port: int = 7687
-    database: Optional[str] = Field(
-        regex=VALID_DATABASE_NAME_REGEX, description="Name of the database"
-    )
+    database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
 
     class Config:
         """Additional parameters to automatically map environment variables to some settings."""
