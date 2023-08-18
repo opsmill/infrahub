@@ -1034,6 +1034,7 @@ core_models = {
             "label": "Comment",
             "display_labels": ["text__value"],
             "order_by": ["created_at__value"],
+            "branch": False,
             "attributes": [
                 {"name": "text", "kind": "TextArea", "unique": False, "optional": False},
                 {"name": "created_at", "kind": "DateTime", "optional": True},
@@ -1043,6 +1044,7 @@ core_models = {
                     "name": "created_by",
                     "peer": "CoreAccount",
                     "optional": True,
+                    "branch": False,
                     "cardinality": "one",
                 },
             ],
@@ -1054,6 +1056,7 @@ core_models = {
             "label": "Thread",
             "display_labels": ["created_at__value"],
             "order_by": ["created_at__value"],
+            "branch": False,
             "attributes": [
                 {"name": "resolved", "kind": "Boolean", "default_value": False},
                 {"name": "created_at", "kind": "DateTime", "optional": True},
@@ -1079,6 +1082,7 @@ core_models = {
                     "name": "created_by",
                     "peer": "CoreAccount",
                     "optional": True,
+                    "branch": False,
                     "cardinality": "one",
                 },
             ],
@@ -1296,7 +1300,7 @@ core_models = {
             "label": "Proposed Change",
             "default_filter": "name__value",
             "display_labels": ["name__value"],
-            "branch": True,
+            "branch": False,
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": False},
                 {"name": "source_branch", "kind": "Text", "optional": False},
@@ -1324,6 +1328,7 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": True,
                     "cardinality": "one",
+                    "branch": False,
                     "identifier": "coreaccount__proposedchange_created_by",
                 },
                 {
@@ -1348,7 +1353,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread on proposed change",
             "label": "Change Thread",
-            "branch": True,
+            "branch": False,
             "inherit_from": ["CoreThread"],
             "attributes": [],
             "relationships": [],
@@ -1358,7 +1363,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to a file on a proposed change",
             "label": "Thread - File",
-            "branch": True,
+            "branch": False,
             "inherit_from": ["CoreThread"],
             "attributes": [
                 {"name": "file", "kind": "Text", "optional": True},
@@ -1379,7 +1384,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to an artifact on a proposed change",
             "label": "Thread - Artifact",
-            "branch": True,
+            "branch": False,
             "inherit_from": ["CoreThread"],
             "attributes": [
                 {"name": "artifact_id", "kind": "Text", "optional": True},
@@ -1393,7 +1398,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to an object on a proposed change",
             "label": "Thread - Object",
-            "branch": True,
+            "branch": False,
             "inherit_from": ["CoreThread"],
             "attributes": [
                 {"name": "object_path", "kind": "Text", "optional": False},
@@ -1407,7 +1412,7 @@ core_models = {
             "label": "Change Comment",
             "default_filter": "text__value",
             "display_labels": ["text__value"],
-            "branch": True,
+            "branch": False,
             "inherit_from": ["CoreComment"],
             "relationships": [
                 {
@@ -1426,7 +1431,7 @@ core_models = {
             "label": "Thread Comment",
             "default_filter": "text__value",
             "display_labels": ["text__value"],
-            "branch": True,
+            "branch": False,
             "inherit_from": ["CoreComment"],
             "attributes": [],
             "relationships": [
