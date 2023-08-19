@@ -64,6 +64,19 @@ def build(
         execute_command(context=context, command=f"{base_cmd} {exec_cmd}", print_cmd=True)
 
 
+@task(optional=["database"])
+def pull(context: Context, database: str = "memgraph"):
+    """Pull external containers from registry."""
+    with context.cd(REPO_BASE):
+        compose_files_cmd = build_compose_files_cmd(database=database)
+
+        for service in AVAILABLE_SERVICES:
+            if "infrahub" in service:
+                continue
+            command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} pull {service}"
+            execute_command(context=context, command=command)
+
+
 # ----------------------------------------------------------------------------
 # Local Environment tasks
 # ----------------------------------------------------------------------------
