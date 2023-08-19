@@ -1,6 +1,12 @@
 from invoke import Context, task
 
-from .shared import BUILD_NAME, NBR_WORKERS, build_test_compose_files_cmd, get_env_vars
+from .shared import (
+    BUILD_NAME,
+    NBR_WORKERS,
+    build_test_compose_files_cmd,
+    execute_command,
+    get_env_vars,
+)
 from .utils import REPO_BASE
 
 MAIN_DIRECTORY = "backend"
@@ -197,8 +203,7 @@ def test_core(context: Context, database: str = "memgraph"):
             exec_cmd += " --neo4j"
 
         print(exec_cmd)
-
-        return context.run(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(optional=["database"])
@@ -210,7 +215,7 @@ def test_integration(context: Context, database: str = "memgraph"):
         if database == "neo4j":
             exec_cmd += " --neo4j"
 
-        return context.run(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(default=True)
