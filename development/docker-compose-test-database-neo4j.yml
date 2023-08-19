@@ -22,6 +22,8 @@ services:
       retries: 20
       start_period: 10s
   infrahub-test:
+    environment:
+      - "INFRAHUB_DB_TYPE=neo4j"
     depends_on:
       database:
         condition: service_healthy

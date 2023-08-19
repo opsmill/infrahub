@@ -66,6 +66,7 @@ class DatabaseSettings(BaseSettings):
         """Additional parameters to automatically map environment variables to some settings."""
 
         fields = {
+            "db_type": {"env": "INFRAHUB_DB_TYPE"},
             "protocol": {"env": "NEO4J_PROTOCOL"},
             "username": {"env": "NEO4J_USERNAME"},
             "password": {"env": "NEO4J_PASSWORD"},
@@ -77,7 +78,7 @@ class DatabaseSettings(BaseSettings):
     @root_validator(pre=False)
     def default_database_name(cls, values):  # pylint: disable=no-self-argument
         if not values.get("database", None):
-            values["database"] = values["db_type"]
+            values["database"] = values["db_type"].value
         return values
 
 
