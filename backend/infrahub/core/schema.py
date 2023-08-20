@@ -1313,6 +1313,7 @@ core_models = {
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Attribute",
+                    "branch": False,
                     "identifier": "coreaccount__proposedchange_approved_by",
                 },
                 {
@@ -1321,6 +1322,7 @@ core_models = {
                     "optional": True,
                     "kind": "Attribute",
                     "cardinality": "many",
+                    "branch": False,
                     "identifier": "coreaccount__proposedchange_reviewed_by",
                 },
                 {
@@ -1376,6 +1378,7 @@ core_models = {
                     "peer": "CoreRepository",
                     "optional": False,
                     "cardinality": "one",
+                    "branch": False,
                 },
             ],
         },
