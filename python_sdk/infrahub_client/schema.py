@@ -59,7 +59,7 @@ class AttributeSchema(BaseModel):
     default_value: Optional[Any]
     inherited: bool = False
     unique: bool = False
-    branch: bool = True
+    branch: Optional[bool]
     optional: bool = False
 
 
@@ -72,7 +72,7 @@ class RelationshipSchema(BaseModel):
     identifier: Optional[str]
     inherited: bool = False
     cardinality: str = "many"
-    branch: bool = True
+    branch: Optional[bool]
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
 
@@ -173,7 +173,7 @@ class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-    branch: bool = True
+    branch: Optional[bool]
     default_filter: Optional[str]
     filters: List[FilterSchema] = Field(default_factory=list)
 
