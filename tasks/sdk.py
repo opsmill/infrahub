@@ -1,6 +1,12 @@
 from invoke import Context, task
 
-from .shared import BUILD_NAME, NBR_WORKERS, build_test_compose_files_cmd, get_env_vars
+from .shared import (
+    BUILD_NAME,
+    NBR_WORKERS,
+    build_test_compose_files_cmd,
+    execute_command,
+    get_env_vars,
+)
 from .utils import REPO_BASE
 
 MAIN_DIRECTORY = "python_sdk"
@@ -162,8 +168,7 @@ def test_unit(context: Context):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/unit"
-
-        return context.run(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(optional=["database"])
@@ -172,8 +177,7 @@ def test_integration(context: Context, database: str = "memgraph"):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
         exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/integration"
-
-        return context.run(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(default=True)
