@@ -1,0 +1,9 @@
+---
+version: "3.4"
+services:
+  infrahub-test:
+    build:
+      cache_from:
+        - type=gha
+      cache_to:
+        - type=gha,mode=max

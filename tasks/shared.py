@@ -26,6 +26,7 @@ IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
 PWD = os.getcwd()
 
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
+GITHUB_ACTIONS = str_to_bool(os.getenv("GITHUB_ACTIONS", False))
 
 AVAILABLE_SERVICES = ["infrahub-git", "infrahub-server", "database", "message-queue"]
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
@@ -68,8 +69,10 @@ DEV_COMPOSE_FILES_NEO4J = [
     "development/docker-compose-database-neo4j.yml",
 ]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
+DEV_GITHUB_FILE_NAME = "development/docker-compose-test-github.yml"
 
 ENV_VARS_DICT = {
+    "DOCKER_BUILDKIT": 1,
     "IMAGE_NAME": IMAGE_NAME,
     "IMAGE_VER": IMAGE_VER,
     "PYTHON_VER": PYTHON_VER,
@@ -163,6 +166,9 @@ def build_dev_compose_files_cmd(database: str) -> str:
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J
 
+    if GITHUB_ACTIONS:
+        DEV_COMPOSE_FILES.append(DEV_GITHUB_FILE_NAME)
+
     if os.path.exists(DEV_OVERRIDE_FILE_NAME):
         print("!! Found a dev override file for docker-compose !!")
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
@@ -183,9 +189,5 @@ def build_test_compose_files_cmd(
         DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J
-
-    # if os.path.exists(DEV_OVERRIDE_FILE_NAME):
-    #     print("!! Found a dev override file for docker-compose !!")
-    #     DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
