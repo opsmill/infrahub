@@ -214,6 +214,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         properties_to_delete = []
 
+        if self.schema.branch is False:
+            branch = registry.get_global_branch()
+        else:
+            branch = self.branch
+
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
         for result in results:
@@ -223,15 +228,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 src_node_id=self.db_id,
                 dst_node_id=result.get("ap").element_id,
                 rel_type=result.get("r2").type,
-                branch_name=self.branch.name,
-                branch_level=self.branch.hierarchy_level,
+                branch_name=branch.name,
+                branch_level=branch.hierarchy_level,
                 at=delete_at,
                 status=RelationshipStatus.DELETED,
                 session=session,
             )
 
             for rel in result.get_rels():
-                if rel.get("branch") == self.branch.name:
+                if rel.get("branch") == branch.name:
                     rel_ids_to_update.add(rel.element_id)
 
         if rel_ids_to_update:
@@ -241,8 +246,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             src_node_id=self.node.db_id,
             dst_node_id=self.db_id,
             rel_type="HAS_ATTRIBUTE",
-            branch_name=self.branch.name,
-            branch_level=self.branch.hierarchy_level,
+            branch_name=branch.name,
+            branch_level=branch.hierarchy_level,
             at=delete_at,
             status=RelationshipStatus.DELETED,
             session=session,

@@ -338,6 +338,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
 
+        if self._schema.branch is False:
+            branch = registry.get_global_branch()
+        else:
+            branch = self._branch
+
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
             session=session, schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
@@ -345,7 +350,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await query.execute(session=session)
         result = query.get_result()
 
-        if result.get("rb.branch") == self._branch.name:
+        if result.get("rb.branch") == branch.name:
             await update_relationships_to([result.get("rb_id")], to=delete_at, session=session)
 
         query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)

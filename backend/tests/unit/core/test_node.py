@@ -868,6 +868,31 @@ async def test_node_relationship_in_branch_global(session, default_branch: Branc
     assert len(await f2_main.related_fruits.get(session=session)) == 0
 
 
+async def test_node_delete_in_branch_global(session, default_branch: Branch, fruit_tag_schema_global):
+    red = await Node.init(session=session, schema="BuiltinTag")
+    await red.new(session=session, name="red")
+    await red.save(session=session)
+
+    f1 = await Node.init(session=session, schema="GardenFruit")
+    await f1.new(session=session, name="apple", tags=[red])
+    await f1.save(session=session)
+
+    f2 = await Node.init(session=session, schema="GardenFruit")
+    await f2.new(session=session, name="pineapple")
+    await f2.save(session=session)
+
+    branch1 = await create_branch(branch_name="branch1", session=session)
+
+    f1_branch = await NodeManager.get_one(id=f1.id, branch=branch1, session=session)
+    await f1_branch.delete(session=session)
+
+    resp = await NodeManager.query(session=session, schema="GardenFruit")
+    assert len(resp) == 1
+
+    resp = await NodeManager.query(session=session, schema="GardenFruit", branch=branch1)
+    assert len(resp) == 1
+
+
 # --------------------------------------------------------------------------
 # With Interface
 # --------------------------------------------------------------------------
