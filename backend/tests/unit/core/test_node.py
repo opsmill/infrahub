@@ -822,9 +822,7 @@ async def test_node_update_in_branch_global(session, default_branch: Branch, fru
     assert obj21.description.value == "A Green Apple"
 
 
-async def test_node_relationship_in_branch_global(session, default_branch: Branch, fruit_tag_schema_global):
-    """FIXME break down this test in smaller tests and add comments."""
-
+async def test_node_update_attribute_hybrid_in_branch_global(session, default_branch: Branch, fruit_tag_schema_global):
     red = await Node.init(session=session, schema="BuiltinTag")
     await red.new(session=session, name="red")
     await red.save(session=session)
@@ -843,11 +841,49 @@ async def test_node_relationship_in_branch_global(session, default_branch: Branc
     await blue.new(session=session, name="blue")
     await blue.save(session=session)
 
+    # Update attribute that don't have the same branch awareness as their parent node
+    red_branch = await NodeManager.get_one(id=red.id, branch=branch1, session=session)
+    red_branch.color.value = "#555555"
+    await red_branch.save(session=session)
+
+    f2_main = await NodeManager.get_one(id=f1.id, session=session)
+    f2_main.branch_aware_attr.value = "New value in main after the creation of the branch"
+    await f2_main.save(session=session)
+
+    f2_branch = await NodeManager.get_one(id=f2.id, branch=branch1, session=session)
+    assert f2_branch.branch_aware_attr.value is None
+
+    red_main = await NodeManager.get_one(id=red.id, session=session)
+    assert red_main.color.value == "#555555"
+
+
+async def test_node_relationship_in_branch_global(session, default_branch: Branch, fruit_tag_schema_global):
+    red = await Node.init(session=session, schema="BuiltinTag")
+    await red.new(session=session, name="red")
+    await red.save(session=session)
+
+    f1 = await Node.init(session=session, schema="GardenFruit")
+    await f1.new(session=session, name="apple", tags=[red])
+    await f1.save(session=session)
+
+    f2 = await Node.init(session=session, schema="GardenFruit")
+    await f2.new(session=session, name="pineapple")
+    await f2.save(session=session)
+
+    branch1 = await create_branch(branch_name="branch1", session=session)
+
+    blue = await Node.init(session=session, schema="BuiltinTag", branch=branch1)
+    await blue.new(session=session, name="blue")
+    await blue.save(session=session)
+
+    # Add relationships to F2 in the branch
     f2_branch = await NodeManager.get_one(id=f2.id, branch=branch1, session=session)
     await f2_branch.tags.update(session=session, data=[red, blue])
     await f2_branch.related_fruits.update(session=session, data=[f1])
     await f2_branch.save(session=session)
 
+    # Validate that the new relationships are visible from the other node only in the branch
+    # Because BuiltinTag is branch aware
     red_main = await NodeManager.get_one(id=red.id, session=session)
     rels = await red_main.related_fruits.get(session=session)
     assert len(rels) == 1
@@ -856,6 +892,9 @@ async def test_node_relationship_in_branch_global(session, default_branch: Branc
     rels = await red_branch.related_fruits.get(session=session)
     assert len(rels) == 2
 
+    # Validate that the new relationships are:
+    # - visible from the only in the branch for BuiltinTag
+    # - Visible on all branches for GardenFruit
     f2_main = await NodeManager.get_one(id=f2.id, session=session)
     assert len(await f2_main.tags.get(session=session)) == 0
     assert len(await f2_main.related_fruits.get(session=session)) == 1
@@ -878,7 +917,7 @@ async def test_node_delete_in_branch_global(session, default_branch: Branch, fru
     await f1.save(session=session)
 
     f2 = await Node.init(session=session, schema="GardenFruit")
-    await f2.new(session=session, name="pineapple")
+    await f2.new(session=session, name="pineapple", tags=[red])
     await f2.save(session=session)
 
     branch1 = await create_branch(branch_name="branch1", session=session)
@@ -891,6 +930,12 @@ async def test_node_delete_in_branch_global(session, default_branch: Branch, fru
 
     resp = await NodeManager.query(session=session, schema="GardenFruit", branch=branch1)
     assert len(resp) == 1
+
+    red_main = await NodeManager.get_one(id=red.id, branch=branch1, session=session)
+    assert len(await red_main.related_fruits.get(session=session)) == 1
+
+    red_branch = await NodeManager.get_one(id=red.id, branch=branch1, session=session)
+    assert len(await red_branch.related_fruits.get(session=session)) == 1
 
 
 # --------------------------------------------------------------------------

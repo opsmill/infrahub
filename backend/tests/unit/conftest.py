@@ -1912,7 +1912,7 @@ async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_sche
                 "branch": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "color", "kind": "Text", "default_value": "#444444"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "branch": False},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
@@ -1928,6 +1928,7 @@ async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_sche
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
+                    {"name": "branch_aware_attr", "kind": "Text", "optional": True, "branch": True},
                 ],
                 "relationships": [
                     {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},
