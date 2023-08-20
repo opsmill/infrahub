@@ -104,22 +104,6 @@ jobs:
       - name: "Linting: ruff"
         run: "ruff check ."
 
-  # backend-build-docker:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v2
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v2
-  #     - name: Build Backend Image
-  #       uses: docker/build-push-action@v4
-  #       with:
-  #         file: "development/Dockerfile-backend"
-  #         push: false
-  #         tags: "${{env.INFRAHUB_IMAGE_NAME}}:${{env.INFRAHUB_IMAGE_VER}}"
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
-
   python-sdk-tests:
     if: |
       always() && !cancelled() &&
@@ -182,10 +166,10 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
-      # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v2
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Build Test Image"
@@ -231,14 +215,10 @@ jobs:
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
-      # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v2
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v2
-      # - name: Cache Docker images.
-      #   uses: ScribeMD/docker-cache@0.3.3
-      #   with:
-      #     key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -257,6 +237,10 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - name: "Install Invoke"
         run: "pip install toml invoke"
       - name: "Build Test Image"
