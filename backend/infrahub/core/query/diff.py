@@ -165,20 +165,35 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     type: QueryType = QueryType.READ
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.diff_to)
+        rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
+            rel_labels=["r"], start_time=self.diff_from, end_time=self.diff_to
+        )
         self.params.update(rels_params)
 
-        query = (
-            """
-        MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
-        WHERE (r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
-            AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL))
-        WITH *
-        MATCH p = ((sn:Node)-[r1]->(rel)<-[r2]-(dn:Node))
-        WHERE r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
+        query = """
+        CALL {
+            MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-()
+            WHERE (r3.branch IN ['main', 'branch1'] AND r3.from >= $diff_from AND r3.from <= $diff_to
+            AND ((r3.to >= $diff_from AND r3.to <= $diff_to ) OR r3.to is NULL))
+            RETURN DISTINCT rel
+        }
+        CALL {
+            WITH rel
+            MATCH p = ((sn:Node)-[r1]->(rel)<-[r2]-(dn:Node))
+            WHERE r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
             AND r1.from = r2.from AND r1.status = r2.status AND all(r IN relationships(p) WHERE ( %s ))
-        """
-            % rels_filter
+            RETURN rel as rel1, sn as sn1, dn as dn1, r1 as r11, r2 as r21
+            ORDER BY r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH rel1 as rel, sn1 as sn, dn1 as dn, r11 as r1, r21 as r2
+        MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
+        WHERE (
+            r3.branch IN ['main', 'branch1'] AND r3.from >= $diff_from AND r3.from <= $diff_to
+            AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL)
+        )
+        """ % "\n AND ".join(
+            rels_filter
         )
 
         self.add_to_query(query)
@@ -187,44 +202,6 @@ class DiffRelationshipPropertyQuery(DiffQuery):
         self.params["diff_to"] = self.diff_to.to_string()
 
         self.return_labels = ["sn", "dn", "rel", "rp", "r3", "r1", "r2"]
-
-    # FIXME, refactor this function to
-    #   1/ avoid dup code with DiffRelationshipPropertyQuery
-    #   2/ leverage the code from Group_by
-    def get_results(self) -> Generator[QueryResult, None, None]:
-        if not self.results:
-            return iter(())
-
-        attrs_info = defaultdict(list)
-        ids_set_processed = []
-
-        # Extract all attrname and relationships on all branches
-        for idx, result in enumerate(self.results):
-            # Generate unique set composed of all the IDs of the nodes and the relationship returned
-            # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
-            ids_set = {item.element_id for item in result}
-            if ids_set in ids_set_processed:
-                continue
-            ids_set_processed.append(ids_set)
-
-            # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
-            source_node_uuid = result.get("sn").get("uuid")[:8]
-            dest_node_uuid = result.get("dn").get("uuid")[:8]
-            prop_type = result.get("r3").type
-            nodes = sorted([source_node_uuid, dest_node_uuid])
-            rel_name = result.get("rel").get("name")
-            branch_name = result.get("r1").get("branch")
-
-            attr_key = f"{branch_name}_{nodes[0]}__{nodes[1]}__{rel_name}__{prop_type}"
-            info = {"idx": idx, "branch_score": result.branch_score}
-            attrs_info[attr_key].append(info)
-
-        for attr_key, values in attrs_info.items():
-            attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
-
-            yield self.results[attr_info["idx"]]
-
-        return iter(())
 
 
 class DiffNodePropertiesByIDSRangeQuery(Query):

@@ -78,3 +78,20 @@ async def test_DiffRelationshipPropertyQuery(session, base_dataset_02):
     await query.execute(session=session)
     results = list(query.get_results())
     assert len(results) == 3
+
+
+async def test_DiffRelationshipPropertyQuery_both_branches(session, base_dataset_04):
+    branch1 = await get_branch(branch="branch1", session=session)
+
+    # Execute the query with default timestamp from the creation of the branch to now
+    # 4 changes are expected
+    query = await DiffRelationshipPropertyQuery.init(
+        session=session,
+        branch=branch1,
+        diff_from=Timestamp(base_dataset_04["time_m20"]),
+        diff_to=Timestamp(base_dataset_04["time0"]),
+    )
+    await query.execute(session=session)
+
+    results = list(query.get_results())
+    assert len(results) == 4
