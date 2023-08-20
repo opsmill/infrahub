@@ -19,6 +19,7 @@ from .branch import (
     BranchValidate,
 )
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
+from .proposed_change import ProposedChangeRequestRunCheck
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
 
@@ -41,6 +42,7 @@ __all__ = [
     "JSONAttributeInput",
     "ListAttributeInput",
     "NumberAttributeInput",
+    "ProposedChangeRequestRunCheck",
     "RelationshipAdd",
     "RelationshipRemove",
     "StringAttributeInput",

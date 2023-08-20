@@ -5,6 +5,8 @@ import uuid
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
+from infrahub import config
+
 from . import InfrahubBaseMessage, get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
 from .messages import ROUTING_KEY_MAP
@@ -38,8 +40,11 @@ class InfrahubRpcClientBase:
 
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
+
         await self.callback_queue.consume(self.on_response, no_ack=True)
         self.exchange = await self.channel.declare_exchange("infrahub-messages", type="topic", durable=True)
+        queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
+        await queue.bind(self.exchange, routing_key="request.*.*")
 
         return self
 
