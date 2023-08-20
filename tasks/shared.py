@@ -29,6 +29,8 @@ NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
 GITHUB_ACTIONS = str_to_bool(os.getenv("GITHUB_ACTIONS", False))
 
 AVAILABLE_SERVICES = ["infrahub-git", "infrahub-server", "database", "message-queue"]
+BASE_IMAGES = ["docker.io/node:16-slim", f"docker.io/python:{PYTHON_VER}"]
+
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 TEST_COMPOSE_FILE = "development/docker-compose-test.yml"

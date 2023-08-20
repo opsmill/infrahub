@@ -6,6 +6,7 @@ from invoke import Context, task
 
 from .shared import (
     AVAILABLE_SERVICES,
+    BASE_IMAGES,
     BUILD_NAME,
     PYTHON_VER,
     VOLUME_NAMES,
@@ -74,6 +75,15 @@ def pull(context: Context, database: str = "memgraph"):
             if "infrahub" in service:
                 continue
             command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} pull {service}"
+            execute_command(context=context, command=command)
+
+
+@task
+def pull_build_deps(context: Context):
+    """Pull external containers required for the build from the registry."""
+    with context.cd(REPO_BASE):
+        for base_image in BASE_IMAGES:
+            command = f"docker pull {base_image}"
             execute_command(context=context, command=command)
 
 

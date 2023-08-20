@@ -122,6 +122,8 @@ jobs:
         uses: docker/setup-buildx-action@v2
       - name: "Install Invoke"
         run: "pip install toml invoke"
+      - name: "Pull Docker Build Deps Images"
+        run: "invoke test.pull-build-deps"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -172,6 +174,8 @@ jobs:
         uses: docker/setup-buildx-action@v2
       - name: "Setup Python environment"
         run: "pip install toml invoke"
+      - name: "Pull Docker Build Deps Images"
+        run: "invoke test.pull-build-deps"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -219,6 +223,8 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+      - name: "Pull Docker Build Deps Images"
+        run: "invoke test.pull-build-deps"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -243,6 +249,8 @@ jobs:
         uses: docker/setup-buildx-action@v2
       - name: "Install Invoke"
         run: "pip install toml invoke"
+      - name: "Pull Docker Build Deps Images"
+        run: "invoke test.pull-build-deps"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Black Tests"
@@ -321,6 +329,8 @@ jobs:
         run: npm install
       - name: "Install Invoke"
         run: "pip install toml invoke"
+      - name: "Pull Docker Build Deps Images"
+        run: "invoke demo.pull-build-deps"
       - name: Build Demo
         run: "invoke demo.build"
       - name: "Pull External Docker Images"
