@@ -406,9 +406,6 @@ class NodeListGetInfoQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        branches = list(self.branch.get_branches_and_times_to_query().keys())
-        self.params["branches"] = branches
-
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
