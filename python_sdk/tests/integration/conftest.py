@@ -13,7 +13,6 @@ from infrahub_client.utils import str_to_bool
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
-TEST_DATABASE = f"{BUILD_NAME.replace('-', '.')}.testing"
 
 # pylint: disable=redefined-outer-name
 
@@ -30,7 +29,6 @@ def event_loop():
 @pytest.fixture(scope="session", autouse=True)
 def execute_before_any_test(worker_id):
     config.load_and_exit()
-    config.SETTINGS.database.database = TEST_DATABASE
 
     if TEST_IN_DOCKER:
         try:

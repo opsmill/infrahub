@@ -5,13 +5,12 @@ services:
     deploy:
       mode: replicated
       replicas: "${NBR_WORKERS}"
-    image: "memgraph/memgraph-platform:2.8.0-memgraph2.8.0-lab2.6.0"
+    image: "memgraph/memgraph:2.10.0"
     volumes:
       - ./memgraph.conf:/etc/memgraph/memgraph.conf
     environment:
       - MGCONSOLE="--username neo4j --password admin"
       - APP_CYPHER_QUERY_MAX_LEN=10000
-    entrypoint: ["/usr/bin/supervisord"]
     healthcheck:
       test: ["CMD", "bash", "-c", 'mgconsole < <(echo "SHOW TRANSACTIONS;")']
       interval: 5s
@@ -19,6 +18,8 @@ services:
       retries: 20
       start_period: 3s
   infrahub-test:
+    environment:
+      - "INFRAHUB_DB_TYPE=memgraph"
     depends_on:
       database:
         condition: service_healthy

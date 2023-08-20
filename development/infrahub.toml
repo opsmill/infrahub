@@ -10,7 +10,6 @@ password = "admin"
 address = "database"
 port = 7687
 protocol = "bolt"
-database = "infrahub"
 
 [broker]
 address = "message-queue"

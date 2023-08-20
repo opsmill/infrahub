@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import toml
-from pydantic import BaseSettings, Field, ValidationError
+from pydantic import BaseSettings, Field, ValidationError, root_validator
 
 from infrahub_client.utils import generate_uuid
 
@@ -60,14 +60,13 @@ class DatabaseSettings(BaseSettings):
     password: str = "admin"
     address: str = "localhost"
     port: int = 7687
-    database: str = Field(
-        default="infrahub", regex=VALID_DATABASE_NAME_REGEX, description="Name of the database in Neo4j"
-    )
+    database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
 
     class Config:
         """Additional parameters to automatically map environment variables to some settings."""
 
         fields = {
+            "db_type": {"env": "INFRAHUB_DB_TYPE"},
             "protocol": {"env": "NEO4J_PROTOCOL"},
             "username": {"env": "NEO4J_USERNAME"},
             "password": {"env": "NEO4J_PASSWORD"},
@@ -75,6 +74,12 @@ class DatabaseSettings(BaseSettings):
             "port": {"env": "NEO4J_PORT"},
             "database": {"env": "NEO4J_DATABASE"},
         }
+
+    @root_validator(pre=False)
+    def default_database_name(cls, values):  # pylint: disable=no-self-argument
+        if not values.get("database", None):
+            values["database"] = values["db_type"].value
+        return values
 
 
 class BrokerSettings(BaseSettings):
