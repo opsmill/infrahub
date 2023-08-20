@@ -113,11 +113,11 @@ async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
     main_branch = await get_branch(branch="main", session=session)
 
     results = main_branch.get_branches_and_times_to_query(at=Timestamp())
-    assert Timestamp(results["main"]) > now
+    assert Timestamp(results[frozenset(["main"])]) > now
 
     t1 = Timestamp("2s")
     results = main_branch.get_branches_and_times_to_query(at=t1.to_string())
-    assert results["main"] == t1.to_string()
+    assert results[frozenset(["main"])] == t1.to_string()
 
 
 async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02):
@@ -126,18 +126,18 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
     branch1 = await get_branch(branch="branch1", session=session)
 
     results = branch1.get_branches_and_times_to_query(at=Timestamp())
-    assert Timestamp(results["branch1"]) > now
-    assert results["main"] == base_dataset_02["time_m45"]
+    assert Timestamp(results[frozenset(["branch1"])]) > now
+    assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
 
     t1 = Timestamp("2s")
     results = branch1.get_branches_and_times_to_query(at=t1.to_string())
-    assert results["branch1"] == t1.to_string()
-    assert results["main"] == base_dataset_02["time_m45"]
+    assert results[frozenset(["branch1"])] == t1.to_string()
+    assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
 
     branch1.ephemeral_rebase = True
     results = branch1.get_branches_and_times_to_query(at=Timestamp())
-    assert Timestamp(results["branch1"]) > now
-    assert results["main"] == results["branch1"]
+    assert Timestamp(results[frozenset(["branch1"])]) > now
+    assert results[frozenset(("main",))] == results[frozenset(["branch1"])]
 
 
 async def test_get_branches_and_times_to_query_global_main(session, base_dataset_02):

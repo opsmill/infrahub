@@ -251,13 +251,13 @@ class Branch(StandardNode):
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> Dict[str, str]:
-        """Return all the names of the branches that are constituing this branch with the associated times."""
+    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> Dict[frozenset, str]:
+        """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
 
         at = Timestamp(at)
 
         if self.is_default:
-            return {self.name: at.to_string()}
+            return {frozenset([self.name]): at.to_string()}
 
         time_default_branch = Timestamp(self.branched_from)
 
@@ -267,8 +267,8 @@ class Branch(StandardNode):
             time_default_branch = at
 
         return {
-            self.origin_branch: time_default_branch.to_string(),
-            self.name: at.to_string(),
+            frozenset([self.origin_branch]): time_default_branch.to_string(),
+            frozenset([self.name]): at.to_string(),
         }
 
     def get_branches_and_times_to_query_global(
@@ -402,6 +402,7 @@ class Branch(StandardNode):
         start_time: Union[Timestamp, str],
         end_time: Union[Timestamp, str],
         include_outside_parentheses: bool = False,
+        include_global: bool = False,
     ) -> Tuple[List, Dict]:
         """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph.
         The goal is to return all the values that are valid during this timerange.
@@ -416,16 +417,19 @@ class Branch(StandardNode):
         start_time = Timestamp(start_time)
         end_time = Timestamp(end_time)
 
-        branches_times = self.get_branches_and_times_to_query(at=start_time)
+        if include_global:
+            branches_times = self.get_branches_and_times_to_query_global(at=start_time)
+        else:
+            branches_times = self.get_branches_and_times_to_query(at=start_time)
 
-        params["branches"] = list(branches_times.keys())
+        params["branches"] = list({branch for branches in branches_times for branch in branches})
         params["start_time"] = start_time.to_string()
         params["end_time"] = end_time.to_string()
 
         for rel in rel_labels:
             filters_per_rel = [
-                f"({rel}.branch in $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
-                f"({rel}.branch in $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
+                f"({rel}.branch IN $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
+                f"({rel}.branch IN $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
             ]
 
             if not include_outside_parentheses:
@@ -497,9 +501,9 @@ class Branch(StandardNode):
         params["end_time"] = end_time.to_string()
 
         filters_per_rel = [
-            f"""({rel_label}.branch in $branches AND {rel_label}.from >= $start_time
+            f"""({rel_label}.branch IN $branches AND {rel_label}.from >= $start_time
                  AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)""",
-            f"""({rel_label}.branch in $branches AND (({rel_label}.from >= $start_time
+            f"""({rel_label}.branch IN $branches AND (({rel_label}.from >= $start_time
                  AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time
                  AND {rel_label}.to <= $end_time)))""",
         ]
