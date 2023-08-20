@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from neo4j import AsyncSession
 
@@ -124,12 +125,22 @@ async def create_global_branch(session: AsyncSession) -> Branch:
     return branch
 
 
-async def create_branch(branch_name: str, session: AsyncSession, description: str = "") -> Branch:
+async def create_branch(
+    branch_name: str, session: AsyncSession, description: str = "", at: Optional[str] = None
+) -> Branch:
     """Create a new Branch, currently all the branches are based on Main
 
     Because all branches are based on main, the hierarchy_level of hardcoded to 2."""
     description = description or f"Branch {branch_name}"
-    branch = Branch(name=branch_name, status="OPEN", hierarchy_level=2, description=description, is_default=False)
+    branch = Branch(
+        name=branch_name,
+        status="OPEN",
+        hierarchy_level=2,
+        description=description,
+        is_default=False,
+        created_at=at,
+        branched_from=at,
+    )
 
     origin_schema = registry.schema.get_schema_branch(name=branch.origin_branch)
     new_schema = origin_schema.duplicate(name=branch.name)
