@@ -330,6 +330,7 @@ class SchemaBranch:
                         peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
                     )
                 )
 
@@ -341,6 +342,7 @@ class SchemaBranch:
                         peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
                     )
                 )
 
