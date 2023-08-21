@@ -4,7 +4,7 @@
             "name": "Device",
             "namespace": "Infra",
             "default_filter": "name__value",
-            "branch": true,
+            "branch": "aware",
             "attributes": [
                 {
                     "name": "name",
