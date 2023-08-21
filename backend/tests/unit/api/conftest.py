@@ -509,15 +509,6 @@ async def data_diff_relationship_one(session, default_branch, car_person_data_ge
     await ecars["bolt"].previous_owner.update(data=persons["Jane"], session=session)
     await ecars["bolt"].save(session=session, at=time20)
 
-    # Set previous owner for C2 in main
-    ecars_list_main = await NodeManager.query(session=session, schema="TestElectricCar", branch=default_branch)
-    ecars_main = {item.name.value: item for item in ecars_list_main}
-
-    time21 = pendulum.now(tz="UTC")
-
-    await ecars_main["bolt"].previous_owner.update(data=persons["John"], session=session)
-    await ecars_main["bolt"].save(session=session, at=time21)
-
     # Time After the changes
     time30 = pendulum.now(tz="UTC")
 
@@ -526,7 +517,7 @@ async def data_diff_relationship_one(session, default_branch, car_person_data_ge
         "time0": time0,
         "time11": time11,
         "time20": time20,
-        "time21": time21,
+        # "time21": time21,
         "time30": time30,
         "c1": ecars["volt"].id,
         "c2": ecars["bolt"].id,
