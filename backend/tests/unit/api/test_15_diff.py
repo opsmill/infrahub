@@ -135,8 +135,8 @@ async def r1_update_01(data_diff_attribute):
             }
         },
         "summary": {"added": 0, "removed": 0, "updated": 1},
-        "action": [{"branch": "branch2", "action": "updated"}],
-        "display_label": [{"branch": "branch2", "display_label": "repo01"}],
+        "action": {"branch2": "updated"},
+        "display_label": {"branch2": "repo01"},
     }
     return expected_response
 
@@ -213,8 +213,8 @@ async def test_diff_data_attribute_all_branches(session, client, client_headers,
             }
         },
         "summary": {"added": 0, "removed": 0, "updated": 1},
-        "action": [{"branch": "main", "action": "updated"}],
-        "display_label": [{"branch": "main", "display_label": "John"}],
+        "action": {"main": "updated"},
+        "display_label": {"main": "John"},
     }
 
     expected_c2_update = {
@@ -249,8 +249,8 @@ async def test_diff_data_attribute_all_branches(session, client, client_headers,
             }
         },
         "summary": {"added": 0, "removed": 0, "updated": 1},
-        "action": [{"branch": "main", "action": "updated"}],
-        "display_label": [{"branch": "main", "display_label": f"TestElectricCar(ID: {c2})"}],
+        "action": {"main": "updated"},
+        "display_label": {"main": f"TestElectricCar(ID: {c2})"},
     }
 
     paths_to_exclude = [
@@ -280,14 +280,14 @@ async def test_diff_data_attribute_conflict(session, client, client_headers, dat
 
     expected_response = [
         {
-            "action": [
-                {"action": "updated", "branch": "branch2"},
-                {"action": "updated", "branch": "main"},
-            ],
-            "display_label": [
-                {"branch": "branch2", "display_label": "John"},
-                {"branch": "main", "display_label": "John"},
-            ],
+            "action": {
+                "branch2": "updated",
+                "main": "updated",
+            },
+            "display_label": {
+                "branch2": "John",
+                "main": "John",
+            },
             "elements": {
                 "height": {
                     "change": {
@@ -328,14 +328,14 @@ async def test_diff_data_attribute_conflict(session, client, client_headers, dat
             "summary": {"added": 0, "removed": 0, "updated": 2},
         },
         {
-            "action": [
-                {"action": "updated", "branch": "branch2"},
-                {"action": "updated", "branch": "main"},
-            ],
-            "display_label": [
-                {"branch": "branch2", "display_label": "repo01"},
-                {"branch": "main", "display_label": "repo01"},
-            ],
+            "action": {
+                "branch2": "updated",
+                "main": "updated",
+            },
+            "display_label": {
+                "branch2": "repo01",
+                "main": "repo01",
+            },
             "elements": {
                 "commit": {
                     "change": {
@@ -538,16 +538,19 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
                         },
                     },
                     "changed_at": None,
-                    "action": [{"branch": "branch2", "action": "added"}, {"branch": "main", "action": "added"}],
+                    "action": {"branch2": "added", "main": "added"},
                 },
             }
         },
         "summary": {"added": 2, "removed": 0, "updated": 0},
-        "action": [{"branch": "branch2", "action": "updated"}, {"branch": "main", "action": "updated"}],
-        "display_label": [
-            {"branch": "branch2", "display_label": f"TestElectricCar(ID: {c2})"},
-            {"branch": "main", "display_label": f"TestElectricCar(ID: {c2})"},
-        ],
+        "action": {
+            "branch2": "updated",
+            "main": "updated",
+        },
+        "display_label": {
+            "branch2": f"TestElectricCar(ID: {c2})",
+            "main": f"TestElectricCar(ID: {c2})",
+        },
     }
     extracted_c2_response = [diff for diff in data["diffs"] if diff["id"] == c2]
     assert len(extracted_c2_response) == 1
@@ -706,7 +709,7 @@ async def test_diff_data_relationship_many(session, client, client_headers, data
                                 },
                             },
                             "changed_at": None,
-                            "action": [{"branch": "branch2", "action": "added"}],
+                            "action": {"branch2": "added"},
                         },
                         orange.id: {
                             "branches": ["branch2"],
@@ -739,21 +742,15 @@ async def test_diff_data_relationship_many(session, client, client_headers, data
                                 },
                             },
                             "changed_at": None,
-                            "action": [{"branch": "branch2", "action": "added"}],
+                            "action": {"branch2": "added"},
                         },
                     },
-                    "action": [
-                        {"branch": "branch2", "action": "added"},
-                        {"branch": "branch2", "action": "added"},
-                        {"branch": "branch2", "action": "added"},
-                        {"branch": "branch2", "action": "added"},
-                    ],
                 },
             }
         },
         "summary": {"added": 3, "removed": 0, "updated": 0},
-        "action": [{"branch": "branch2", "action": "updated"}],
-        "display_label": [{"branch": "branch2", "display_label": "Org3"}],
+        "action": {"branch2": "updated"},
+        "display_label": {"branch2": "Org3"},
     }
 
     expected_org1 = {
@@ -802,7 +799,7 @@ async def test_diff_data_relationship_many(session, client, client_headers, data
                                 },
                             },
                             "changed_at": None,
-                            "action": [{"branch": "main", "action": "removed"}],
+                            "action": {"main": "removed"},
                         },
                         blue.id: {
                             "branches": ["main"],
@@ -810,16 +807,15 @@ async def test_diff_data_relationship_many(session, client, client_headers, data
                             "path": f"data/{org1.id}/tags/{blue.id}",
                             "properties": None,  # FIX ME
                             "changed_at": None,
-                            "action": [{"branch": "main", "action": "added"}],
+                            "action": {"main": "added"},
                         },
                     },
-                    "action": [{"branch": "main", "action": "removed"}, {"branch": "main", "action": "added"}],
                 },
             }
         },
         "summary": {"added": 1, "removed": 1, "updated": 1},
-        "action": [{"branch": "main", "action": "updated"}],
-        "display_label": [{"branch": "main", "display_label": "Org1"}],
+        "action": {"main": "updated"},
+        "display_label": {"main": "Org1"},
     }
 
     paths_to_exclude = [
@@ -895,10 +891,10 @@ async def test_diff_data_relationship_many_conflict(session, client, client_head
                                     },
                                 },
                                 "changed_at": None,
-                                "action": [
-                                    {"branch": "main", "action": "removed"},
-                                    {"branch": "branch2", "action": "updated"},
-                                ],
+                                "action": {
+                                    "main": "removed",
+                                    "branch2": "updated",
+                                },
                             },
                             green.id: {
                                 "branches": ["main"],
@@ -931,23 +927,19 @@ async def test_diff_data_relationship_many_conflict(session, client, client_head
                                     },
                                 },
                                 "changed_at": None,
-                                "action": [{"branch": "main", "action": "removed"}],
+                                "action": {"main": "removed"},
                             },
                         },
-                        "action": [
-                            {"branch": "main", "action": "removed"},
-                            {"branch": "main", "action": "removed"},
-                            {"branch": "branch2", "action": "updated"},
-                        ],
+                        # "action": {
+                        #     "main": "removed",
+                        #     "branch2": "updated",
+                        # },
                     },
                 }
             },
             "summary": {"added": 0, "removed": 3, "updated": 2},
-            "action": [{"branch": "main", "action": "updated"}, {"branch": "branch2", "action": "updated"}],
-            "display_label": [
-                {"branch": "main", "display_label": "Org1"},
-                {"branch": "branch2", "display_label": "Org1"},
-            ],
+            "action": {"main": "updated", "branch2": "updated"},
+            "display_label": {"main": "Org1", "branch2": "Org1"},
         }
     ]
     paths_to_exclude = [
