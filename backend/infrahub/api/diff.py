@@ -79,6 +79,14 @@ class BranchDiffPropertyCollection(BaseModel):
     path: str
     changes: List[BranchDiffProperty] = Field(default_factory=list)
 
+    def add_change(self, change: BranchDiffProperty) -> bool:
+        current_branches = [item.branch for item in self.changes]
+        if change.branch not in current_branches:
+            self.changes.append(change)
+            return True
+
+        return False
+
 
 class BranchDiffAttribute(BaseModel):
     type: DiffElementType = DiffElementType.ATTRIBUTE
@@ -171,6 +179,14 @@ class BranchDiffRelationshipOnePeer(BaseModel):
 class BranchDiffRelationshipOnePeerCollection(BaseModel):
     path: str
     changes: List[BranchDiffRelationshipOnePeer] = Field(default_factory=list)
+
+    def add_change(self, change: BranchDiffRelationshipOnePeer) -> bool:
+        current_branches = [item.branch for item in self.changes]
+        if change.branch not in current_branches:
+            self.changes.append(change)
+            return True
+
+        return False
 
 
 # NEW
@@ -536,7 +552,7 @@ class DiffPayload:
                     path=f"data/{node_id}/{element_name}/peer"
                 )
 
-            diff_element.change.peer.changes.append(
+            diff_element.change.peer.add_change(
                 BranchDiffRelationshipOnePeer(
                     branch=branch, new=relationship.peer.new, previous=relationship.peer.previous
                 )
@@ -547,8 +563,8 @@ class DiffPayload:
                 diff_element.change.properties[prop.type] = BranchDiffPropertyCollection(
                     path=f"data/{node_id}/{element_name}/property/{prop.type}"
                 )
-            diff_element.change.properties[prop.type].changes.append(prop)
-            diff_element.change.summary.inc(prop.action.value)
+            if diff_element.change.properties[prop.type].add_change(prop):
+                diff_element.change.summary.inc(prop.action.value)
 
         # Fix: Add summary to element
 
@@ -578,7 +594,6 @@ class DiffPayload:
 
             # Update Action, Branches and Summary
             diff_element.change.branches.add(peer.branch)
-            # diff_element.change.action[peer.branch] = peer.action
             self.entries[node_id].summary.inc(peer.action.value)
 
             if peer.peer.id not in diff_element.change.peers:
@@ -727,7 +742,6 @@ class DiffPayload:
                         )
 
                     if diff_rel:
-                        node_diff.elements[diff_rel.name] = diff_rel
                         node_diff.summary.inc(diff_rel.action.value)
                         self._add_node_summary(node_id=node_in_rel, action=diff_rel.action)
                         self._add_node_element_relationship(
@@ -752,7 +766,6 @@ class DiffPayload:
 
         await self._process_nodes()
         await self._process_relationships()
-
         return BranchDiff(
             diffs=list(self.entries.values()),
         )
