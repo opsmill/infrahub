@@ -173,19 +173,19 @@ nodes:
 
 ## Branch Support
 
-By default, all models defined in the schema will be **branch aware** which mean that any changes to an object based on a **branch aware** model will be local to the branch and it will not affect the other branches.
+By default, all models defined in the schema will be **branch aware** which means that any changes to an object based on a **branch aware** model will be local to the branch and it will not affect the other branches.
 
 A model can also be configured as **branch agnostic**. All changes to an object based on a **branch agnostic** model will automatically be available in all branches.
 
-In the frontend, the API or the GraphQL endpoint, **branch agnostic** objects can be modified on any branch, no restriction applies.
+In the frontend, the API or the GraphQL endpoint, **branch agnostic** objects can be modified on any branch, no restrictions apply.
 
-To configure a model as **branch agnostic** you need to set the flag `branch` to `False` in the schema
+To configure a model as **branch agnostic** you need to set the option `branch` to `agnostic` in the schema
 
 ```yaml
 nodes:
   - name: Fruit
     namespace: Example
-    branch: False   # <<<<<<<<<<<<<<<
+    branch: "agnostic"   # <<<<<<<<<<<<<<<
     attributes:
       - kind: Text
         name: name
@@ -193,7 +193,7 @@ nodes:
 
 ### Attribute and Relationship
 
-Attributes and Relationships can be configured as **branch aware** or **branch agnostic** too, independently of the configuration of the model itself using the flag : `branch`
+Attributes and Relationships can be configured as **branch aware** or **branch agnostic** too, independently of the configuration of the model itself using the parameter: `branch`
 
 ```yaml
 nodes:
@@ -203,12 +203,12 @@ nodes:
     attributes:
       - kind: Text
         name: name
-        branch: False  # <<<<<<<<<<<<<<<
+        branch: "agnostic"  # <<<<<<<<<<<<<<<
 ```
 
 By default, if a specific value is not defined:
 - **attributes** will inherit the configuration of their parent model.
-- **relationships** will become **branch agnostic** only if both models, on each end of the relationship, are **branch agnostic**. If either model is **branch aware** the relationship will be set a **branch aware**.
+- **relationships** will become **branch agnostic** only if both models, on each end of the relationship, are **branch agnostic**. If either model is **branch aware** the relationship will be set as **branch aware**.
 
 ## Schema File
 
