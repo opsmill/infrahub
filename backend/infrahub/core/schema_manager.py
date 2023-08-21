@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 import infrahub.config as config
 from infrahub.core import get_branch, get_branch_from_registry
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
@@ -259,7 +260,10 @@ class SchemaBranch:
                     continue
 
                 peer_node = self.get(name=rel.peer)
-                rel.branch = node.branch | peer_node.branch
+                if node.branch == peer_node.branch == BranchSupportType.AGNOSTIC:
+                    rel.branch = BranchSupportType.AGNOSTIC
+                else:
+                    rel.branch = BranchSupportType.AWARE
 
             self.set(name=name, schema=node)
 

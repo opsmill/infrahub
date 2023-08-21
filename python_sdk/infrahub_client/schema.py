@@ -43,6 +43,11 @@ class RelationshipCardinality(str, Enum):
     MANY = "many"
 
 
+class BranchSupportType(str, Enum):
+    AWARE = "aware"
+    AGNOSTIC = "agnostic"
+
+
 class RelationshipKind(str, Enum):
     GENERIC = "Generic"
     ATTRIBUTE = "Attribute"
@@ -59,7 +64,7 @@ class AttributeSchema(BaseModel):
     default_value: Optional[Any]
     inherited: bool = False
     unique: bool = False
-    branch: Optional[bool]
+    branch: Optional[BranchSupportType]
     optional: bool = False
 
 
@@ -72,7 +77,7 @@ class RelationshipSchema(BaseModel):
     identifier: Optional[str]
     inherited: bool = False
     cardinality: str = "many"
-    branch: Optional[bool]
+    branch: Optional[BranchSupportType]
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
 
@@ -173,7 +178,7 @@ class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-    branch: Optional[bool]
+    branch: Optional[BranchSupportType]
     default_filter: Optional[str]
     filters: List[FilterSchema] = Field(default_factory=list)
 
@@ -185,7 +190,7 @@ class NodeExtensionSchema(BaseModel):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-    branch: Optional[bool]
+    branch: Optional[BranchSupportType]
     default_filter: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)

@@ -3,7 +3,6 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
-from infrahub.core import registry
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -37,10 +36,7 @@ class AttributeQuery(Query):
         else:
             self.at = self.attr.at
 
-        if self.attr and self.attr.schema.branch is False:
-            self.branch = registry.get_global_branch()
-        else:
-            self.branch = branch or self.attr.branch
+        self.branch = branch or self.attr.get_branch_based_on_support_type()
 
         super().__init__(*args, **kwargs)
 

@@ -5,7 +5,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
-from infrahub.core import registry
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -90,12 +89,7 @@ class NodeQuery(Query):
         if not self.node_db_id and self.node:
             self.node_db_id = self.node.db_id
 
-        if branch and not self.node:
-            self.branch = branch
-        elif self.node and self.node._schema.branch is False:
-            self.branch = registry.get_global_branch()
-        else:
-            self.branch = branch or self.node._branch
+        self.branch = branch or self.node.get_branch_based_on_support_type()
 
         super().__init__(*args, **kwargs)
 

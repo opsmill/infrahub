@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -101,7 +102,7 @@ async def test_node_default_value(session, default_branch):
         "name": "OneOfEachKind",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "myint", "kind": "Number"},
@@ -572,7 +573,7 @@ async def test_update_related_node(db, session, default_branch, data_schema):
                 "name": "Tag",
                 "namespace": "Builtin",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -585,7 +586,7 @@ async def test_update_related_node(db, session, default_branch, data_schema):
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},
                     {"name": "lastname", "kind": "Text"},
@@ -973,7 +974,7 @@ async def test_union(
         "name": "Person",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],

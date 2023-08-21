@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 import ujson
 
 from infrahub.core import registry
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.query import QueryElement, QueryNode, QueryRel
 from infrahub.core.query.attribute import (
@@ -94,6 +94,17 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if self.is_visible is None:
             self.is_visible = True
+
+    def get_branch_based_on_support_type(self) -> Branch:
+        """If the attribute is branch aware, return the Branch object associated with this attribute
+        If the attribute is branch agnostic return the Global Branch
+
+        Returns:
+            Branch:
+        """
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            return registry.get_global_branch()
+        return self.branch
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -213,11 +224,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return False
 
         properties_to_delete = []
-
-        if self.schema.branch is False:
-            branch = registry.get_global_branch()
-        else:
-            branch = self.branch
+        branch = self.get_branch_based_on_support_type()
 
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
@@ -293,10 +300,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         await query.execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
-        if self.schema.branch is False:
-            branch = registry.get_global_branch()
-        else:
-            branch = self.branch
+        branch = self.get_branch_based_on_support_type()
 
         # ---------- Update the Value ----------
         current_value = self.from_db(current_attr.get("av").get("value"))

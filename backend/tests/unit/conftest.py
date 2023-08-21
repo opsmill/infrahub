@@ -13,7 +13,7 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -976,7 +976,7 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -991,7 +991,7 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "inherit_from": ["CoreGroup"],
             },
         ],
@@ -1019,7 +1019,7 @@ async def node_group_schema(session: AsyncSession, default_branch: Branch, data_
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -1064,7 +1064,7 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, node_
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "nbr_seats", "kind": "Number"},
@@ -1080,7 +1080,7 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, node_
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -1105,10 +1105,10 @@ async def car_person_schema_global(
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number", "branch": False},
+                    {"name": "nbr_seats", "kind": "Number", "branch": BranchSupportType.AGNOSTIC.value},
                     {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
@@ -1121,7 +1121,7 @@ async def car_person_schema_global(
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": False,
+                "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -1199,7 +1199,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "nbr_seats", "kind": "Number"},
@@ -1216,7 +1216,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -1228,7 +1228,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -1283,7 +1283,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -1343,7 +1343,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -1402,7 +1402,7 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
                 "name": "Tag",
                 "namespace": "Builtin",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -1412,7 +1412,7 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},
                     {"name": "lastname", "kind": "Text"},
@@ -1662,7 +1662,7 @@ async def all_attribute_types_schema(
     SCHEMA = {
         "name": "AllAttributeTypes",
         "namespace": "Test",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "optional": True},
             {"name": "mystring", "kind": "Text", "optional": True},
@@ -1686,7 +1686,7 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, grou
         "namespace": "Test",
         "default_filter": "name__value",
         "display_labels": ["label__value"],
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
@@ -1852,7 +1852,7 @@ async def vehicule_person_schema(
         "name": "Person",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
@@ -1875,7 +1875,7 @@ async def fruit_tag_schema(session: AsyncSession, group_schema, data_schema) -> 
                 "name": "Tag",
                 "namespace": "Builtin",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "color", "kind": "Text", "default_value": "#444444"},
@@ -1886,7 +1886,7 @@ async def fruit_tag_schema(session: AsyncSession, group_schema, data_schema) -> 
                 "name": "Fruit",
                 "namespace": "Garden",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -1909,10 +1909,15 @@ async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_sche
                 "name": "Tag",
                 "namespace": "Builtin",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "branch": False},
+                    {
+                        "name": "color",
+                        "kind": "Text",
+                        "default_value": "#444444",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
@@ -1924,11 +1929,16 @@ async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_sche
                 "name": "Fruit",
                 "namespace": "Garden",
                 "default_filter": "name__value",
-                "branch": False,
+                "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
-                    {"name": "branch_aware_attr", "kind": "Text", "optional": True, "branch": True},
+                    {
+                        "name": "branch_aware_attr",
+                        "kind": "Text",
+                        "optional": True,
+                        "branch": BranchSupportType.AWARE.value,
+                    },
                 ],
                 "relationships": [
                     {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},

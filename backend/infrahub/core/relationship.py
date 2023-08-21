@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub.core import registry
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
@@ -80,6 +81,17 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             values.append(getattr(self, f"{prop_name}_id"))
 
         return hash(tuple(values))
+
+    def get_branch_based_on_support_type(self) -> Branch:
+        """If the attribute is branch aware, return the Branch object associated with this attribute
+        If the attribute is branch agnostic return the Global Branch
+
+        Returns:
+            Branch:
+        """
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            return registry.get_global_branch()
+        return self.branch
 
     async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]) -> None:
         self.data = data
@@ -262,11 +274,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # Create a new Relationship node and attach each object to it
         node = await self.get_node(session=session)
         peer = await self.get_peer(session=session)
-
-        if self.schema.branch is False:
-            branch = registry.get_global_branch()
-        else:
-            branch = self.branch
+        branch = self.get_branch_based_on_support_type()
 
         query = await RelationshipCreateQuery.init(
             session=session, source=node, destination=peer, rel=self, branch=branch, at=create_at
@@ -287,11 +295,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         """Update the properties of an existing relationship."""
 
         update_at = Timestamp(at)
-
-        if self.schema.branch is False:
-            branch = registry.get_global_branch()
-        else:
-            branch = self.branch
+        branch = self.get_branch_based_on_support_type()
 
         rel_ids_to_update = []
         for prop_name, prop in data.properties.items():
@@ -320,10 +324,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node = await self.get_node(session=session)
         peer = await self.get_peer(session=session)
 
-        if self.schema.branch is False:
-            branch = registry.get_global_branch()
-        else:
-            branch = self.branch
+        branch = self.get_branch_based_on_support_type()
 
         query = await RelationshipGetQuery.init(
             session=session, source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
@@ -480,6 +481,17 @@ class RelationshipManager:
         nodes = await registry.manager.get_many(session=session, ids=peer_ids, branch=self.branch)
         return nodes
 
+    def get_branch_based_on_support_type(self) -> Branch:
+        """If the attribute is branch aware, return the Branch object associated with this attribute
+        If the attribute is branch agnostic return the Global Branch
+
+        Returns:
+            Branch:
+        """
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            return registry.get_global_branch()
+        return self.branch
+
     async def _fetch_relationship_ids(
         self, at: Optional[Timestamp] = None, session: Optional[AsyncSession] = None
     ) -> Tuple[List[str], List[str], List[str], Dict[str, RelationshipPeerData]]:
@@ -630,11 +642,7 @@ class RelationshipManager:
         session: Optional[AsyncSession] = None,
     ):
         remove_at = Timestamp(at)
-
-        if self.schema.branch is False:
-            branch = registry.get_global_branch()
-        else:
-            branch = self.branch
+        branch = self.get_branch_based_on_support_type()
 
         # when we remove a relationship we need to :
         # - Update the existing relationship if we are on the same branch

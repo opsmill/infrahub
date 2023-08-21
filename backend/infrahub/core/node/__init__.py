@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, Union
 from uuid import UUID
 
 from infrahub.core import registry
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -59,6 +60,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return [self.get_kind()] + self._schema.inherit_from
 
         return [self.get_kind()]
+
+    def get_branch_based_on_support_type(self) -> Branch:
+        """If the attribute is branch aware, return the Branch object associated with this attribute
+        If the attribute is branch agnostic return the Global Branch
+
+        Returns:
+            Branch:
+        """
+        if self._schema.branch == BranchSupportType.AGNOSTIC:
+            return registry.get_global_branch()
+        return self._branch
 
     def __repr__(self):
         return f"{self.get_kind()}(ID: {str(self.id)})"
@@ -337,11 +349,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
-
-        if self._schema.branch is False:
-            branch = registry.get_global_branch()
-        else:
-            branch = self._branch
+        branch = self.get_branch_based_on_support_type()
 
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
