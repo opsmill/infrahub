@@ -34,7 +34,7 @@ class BackgroundRunner:
         We pull the new schema from the database and we update the registry.
         """
 
-        async with lock.registry.get_branch_schema_update():
+        async with lock.registry.local_schema_lock():
             branches: List[Branch] = await Branch.get_list(session=session)
             active_branches = [branch.name for branch in branches]
             for new_branch in branches:

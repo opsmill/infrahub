@@ -8,6 +8,7 @@ from infrahub.core.initialization import first_time_initialization, initializati
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import AsyncSession, get_db
+from infrahub.lock import initialize_lock
 from infrahub_client.schema import NodeSchema
 from infrahub_client.utils import str_to_bool
 
@@ -29,6 +30,7 @@ def event_loop():
 @pytest.fixture(scope="session", autouse=True)
 def execute_before_any_test(worker_id):
     config.load_and_exit()
+    initialize_lock(local_only=True)
 
     if TEST_IN_DOCKER:
         try:

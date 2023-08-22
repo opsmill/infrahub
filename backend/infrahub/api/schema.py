@@ -75,8 +75,7 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
-    # TODO we need to replace this lock with a distributed lock
-    async with lock.registry.get_branch_schema_update():
+    async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.

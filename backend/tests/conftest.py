@@ -9,6 +9,7 @@ import pytest
 import ujson
 
 from infrahub import config
+from infrahub.lock import initialize_lock
 from infrahub_client.utils import str_to_bool
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
@@ -36,6 +37,7 @@ def event_loop():
 @pytest.fixture(scope="session", autouse=True)
 def execute_before_any_test(worker_id):
     config.load_and_exit()
+    initialize_lock(local_only=True)
 
     if TEST_IN_DOCKER:
         try:

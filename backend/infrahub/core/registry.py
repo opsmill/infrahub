@@ -257,7 +257,7 @@ class Registry:
         if not self.branch_object:
             raise Error("Branch object not initialized")
 
-        async with lock.registry.get_branch_schema_update():
+        async with lock.registry.local_schema_lock():
             obj = await self.branch_object.get_by_name(name=branch, session=session)
             registry.branch[branch] = obj
 

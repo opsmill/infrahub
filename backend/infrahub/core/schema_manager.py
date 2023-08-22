@@ -437,7 +437,7 @@ class SchemaManager(NodeManager):
     async def get_full_safe(
         self, branch: Optional[Union[Branch, str]] = None
     ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
-        await lock.registry.wait_branch_schema_update_available()
+        await lock.registry.local_schema_wait()
 
         return self.get_full(branch=branch)
 

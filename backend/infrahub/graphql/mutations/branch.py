@@ -69,7 +69,7 @@ class BranchCreate(Mutation):
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValueError("\n".join(error_msgs)) from exc
 
-        async with lock.registry.get_branch_schema_update():
+        async with lock.registry.local_schema_lock():
             # Copy the schema from the origin branch and set the hash and the schema_changed_at value
             origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
             new_schema = origin_schema.duplicate(name=obj.name)
@@ -196,8 +196,7 @@ class BranchMerge(Mutation):
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
 
-        # TODO need to replace with a distributed lock
-        async with lock.registry.get_branch_schema_update():
+        async with lock.registry.global_graph_lock():
             await obj.merge(rpc_client=rpc_client, session=session)
 
             # Copy the schema from the origin branch and set the hash and the schema_changed_at value
