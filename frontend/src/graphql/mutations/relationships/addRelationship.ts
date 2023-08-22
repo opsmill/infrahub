@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 
 export const addRelationship = Handlebars.compile(`
-mutation relationship_add {
-  relationship_add (data: {{{data}}}) {
+mutation RelationshipAdd {
+  RelationshipAdd (data: {{{data}}}) {
       ok
   }
 }
