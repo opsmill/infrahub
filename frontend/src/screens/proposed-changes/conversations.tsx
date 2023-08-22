@@ -330,7 +330,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
   //       },
   //     });
 
-  //     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfuly!"} />);
+  //     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfully!"} />);
   //   } catch (error: any) {
   //     console.log("error: ", error);
 

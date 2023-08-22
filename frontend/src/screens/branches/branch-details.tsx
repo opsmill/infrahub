@@ -139,7 +139,7 @@ export const BranchDetails = () => {
           onCancel={() => setDisplayModal(false)}
           onDelete={async () => {
             await branchAction({
-              successMessage: "Branch deleted successfuly!",
+              successMessage: "Branch deleted successfully!",
               errorMessage: "An error occured while deleting the branch",
               request: deleteBranch,
               options: {
@@ -197,7 +197,7 @@ export const BranchDetails = () => {
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
-                      successMessage: "Branch merged successfuly!",
+                      successMessage: "Branch merged successfully!",
                       errorMessage: "An error occured while merging the branch",
                       request: mergeBranch,
                       options: {
@@ -223,7 +223,7 @@ export const BranchDetails = () => {
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
-                      successMessage: "Branch rebased successfuly!",
+                      successMessage: "Branch rebased successfully!",
                       errorMessage: "An error occured while rebasing the branch",
                       request: rebaseBranch,
                       options: {

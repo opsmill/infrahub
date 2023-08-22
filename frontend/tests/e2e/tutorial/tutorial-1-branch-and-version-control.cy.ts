@@ -137,6 +137,6 @@ describe("Tutorial - Part 1", () => {
     // Merge the branch
     cy.get(".bg-green-500").click();
 
-    cy.contains("Branch merged successfuly!").should("exist");
+    cy.contains("Branch merged successfully!").should("exist");
   });
 });
