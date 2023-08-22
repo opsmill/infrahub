@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections import defaultdict
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
@@ -8,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from pydantic import BaseModel, Field, validator
 
 import infrahub.config as config
-from infrahub.core.constants import DiffAction, RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, RelationshipStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
@@ -170,7 +171,7 @@ class DeleteBranchRelationshipsQuery(Query):
 
 class Branch(StandardNode):
     name: str = Field(
-        regex=r"^[a-z][a-z0-9\-]+$",
+        regex=rf"^[a-z][a-z0-9\-]+$|^{re.escape(GLOBAL_BRANCH_NAME)}$",
         max_length=32,
         min_length=3,
         description="Name of the branch (only lowercase, dash & alphanumeric characters are allowed)",
@@ -182,6 +183,7 @@ class Branch(StandardNode):
     hierarchy_level: int = 2
     created_at: Optional[str] = None
     is_default: bool = False
+    is_global: bool = False
     is_protected: bool = False
     is_data_only: bool = False
     schema_changed_at: Optional[str] = None
@@ -249,13 +251,13 @@ class Branch(StandardNode):
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> Dict[str, str]:
-        """Return all the names of the branches that are constituing this branch with the associated times."""
+    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> Dict[frozenset, str]:
+        """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
 
         at = Timestamp(at)
 
         if self.is_default:
-            return {self.name: at.to_string()}
+            return {frozenset([self.name]): at.to_string()}
 
         time_default_branch = Timestamp(self.branched_from)
 
@@ -265,8 +267,30 @@ class Branch(StandardNode):
             time_default_branch = at
 
         return {
-            self.origin_branch: time_default_branch.to_string(),
-            self.name: at.to_string(),
+            frozenset([self.origin_branch]): time_default_branch.to_string(),
+            frozenset([self.name]): at.to_string(),
+        }
+
+    def get_branches_and_times_to_query_global(
+        self, at: Optional[Union[Timestamp, str]] = None
+    ) -> Dict[frozenset, str]:
+        """Return all the names of the branches that are constituing this branch with the associated times."""
+
+        at = Timestamp(at)
+
+        if self.is_default:
+            return {frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string()}
+
+        time_default_branch = Timestamp(self.branched_from)
+
+        # If we are querying before the beginning of the branch
+        # the time for the main branch must be the time of the query
+        if self.ephemeral_rebase or at < time_default_branch:
+            time_default_branch = at
+
+        return {
+            frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): time_default_branch.to_string(),
+            frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string(),
         }
 
     def get_branches_and_times_for_range(
@@ -303,6 +327,8 @@ class Branch(StandardNode):
     async def delete(self, session: AsyncSession) -> None:
         if self.is_default:
             raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
+        if self.is_global:
+            raise ValidationError(f"Unable to delete {self.name} this is an internal branch.")
         await super().delete(session=session)
         query = await DeleteBranchRelationshipsQuery.init(session=session, branch_name=self.name)
         await query.execute(session=session)
@@ -319,20 +345,20 @@ class Branch(StandardNode):
             raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
 
         at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query(at=at)
+        branches_times = self.get_branches_and_times_to_query_global(at=at)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            params[f"branch{idx}"] = branch_name
+            params[f"branch{idx}"] = list(branch_name)
             params[f"time{idx}"] = time_to_query
 
         for rel in rel_labels:
             filters_per_rel = []
             for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
                 filters_per_rel.append(
-                    f"({rel}.branch = $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
+                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
                 )
                 filters_per_rel.append(
-                    f"({rel}.branch = $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to >= $time{idx})"
+                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to >= $time{idx})"
                 )
 
             if not include_outside_parentheses:
@@ -354,17 +380,17 @@ class Branch(StandardNode):
         """
 
         at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query(at=at.to_string())
+        branches_times = self.get_branches_and_times_to_query_global(at=at.to_string())
 
         params = {}
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            params[f"branch{idx}"] = branch_name
+            params[f"branch{idx}"] = list(branch_name)
             params[f"time{idx}"] = time_to_query
 
         filters = []
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to IS NULL)")
-            filters.append(f"(r.branch = $branch{idx} AND r.from <= $time{idx} AND r.to >= $time{idx})")
+            filters.append(f"(r.branch IN $branch{idx} AND r.from <= $time{idx} AND r.to IS NULL)")
+            filters.append(f"(r.branch IN $branch{idx} AND r.from <= $time{idx} AND r.to >= $time{idx})")
 
         filter = "(" + "\n OR ".join(filters) + ")"
 
@@ -376,6 +402,7 @@ class Branch(StandardNode):
         start_time: Union[Timestamp, str],
         end_time: Union[Timestamp, str],
         include_outside_parentheses: bool = False,
+        include_global: bool = False,
     ) -> Tuple[List, Dict]:
         """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph.
         The goal is to return all the values that are valid during this timerange.
@@ -390,16 +417,19 @@ class Branch(StandardNode):
         start_time = Timestamp(start_time)
         end_time = Timestamp(end_time)
 
-        branches_times = self.get_branches_and_times_to_query(at=start_time)
+        if include_global:
+            branches_times = self.get_branches_and_times_to_query_global(at=start_time)
+        else:
+            branches_times = self.get_branches_and_times_to_query(at=start_time)
 
-        params["branches"] = list(branches_times.keys())
+        params["branches"] = list({branch for branches in branches_times for branch in branches})
         params["start_time"] = start_time.to_string()
         params["end_time"] = end_time.to_string()
 
         for rel in rel_labels:
             filters_per_rel = [
-                f"({rel}.branch in $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
-                f"({rel}.branch in $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
+                f"({rel}.branch IN $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
+                f"({rel}.branch IN $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
             ]
 
             if not include_outside_parentheses:
@@ -471,9 +501,9 @@ class Branch(StandardNode):
         params["end_time"] = end_time.to_string()
 
         filters_per_rel = [
-            f"""({rel_label}.branch in $branches AND {rel_label}.from >= $start_time
+            f"""({rel_label}.branch IN $branches AND {rel_label}.from >= $start_time
                  AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)""",
-            f"""({rel_label}.branch in $branches AND (({rel_label}.from >= $start_time
+            f"""({rel_label}.branch IN $branches AND (({rel_label}.from >= $start_time
                  AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time
                  AND {rel_label}.to <= $end_time)))""",
         ]

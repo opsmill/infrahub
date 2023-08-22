@@ -6,6 +6,7 @@ from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
     FilterSchemaKind,
     GenericSchema,
@@ -31,9 +32,10 @@ def schema_all_in_one():
                 "namespace": "Builtin",
                 "inherit_from": ["InfraGenericInterface"],
                 "default_filter": "name__value",
+                "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "level", "kind": "Number"},
+                    {"name": "level", "kind": "Number", "branch": BranchSupportType.AWARE.value},
                     {"name": "color", "kind": "Text", "default_value": "#444444"},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
@@ -48,12 +50,19 @@ def schema_all_in_one():
                 "default_filter": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
                 ],
             },
             {
                 "name": "Status",
                 "namespace": "Builtin",
+                "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
@@ -83,6 +92,7 @@ def schema_all_in_one():
                         "identifier": "primary_tag__criticality",
                         "optional": True,
                         "cardinality": "one",
+                        "branch": BranchSupportType.AGNOSTIC.value,
                     },
                     {
                         "name": "status",
@@ -106,7 +116,7 @@ def schema_all_in_one():
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -210,6 +220,24 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     assert criticality.get_attribute(name="my_generic_name").inherited
 
     assert criticality.get_attribute(name="mybool")
+
+
+async def test_schema_branch_process_branch_support(schema_all_in_one):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.process_inheritance()
+    schema.process_branch_support()
+
+    criticality = schema.get(name="BuiltinCriticality")
+    assert criticality.get_attribute(name="name").branch == BranchSupportType.AGNOSTIC
+    assert criticality.get_attribute(name="level").branch == BranchSupportType.AWARE
+    assert criticality.get_relationship(name="tags").branch == BranchSupportType.AWARE
+    assert criticality.get_relationship(name="status").branch == BranchSupportType.AGNOSTIC
+
+    criticality = schema.get(name="BuiltinTag")
+    assert criticality.get_attribute(name="name").branch == BranchSupportType.AWARE
+    assert criticality.get_attribute(name="description").branch == BranchSupportType.AGNOSTIC
 
 
 async def test_schema_branch_process_default_values(schema_all_in_one):

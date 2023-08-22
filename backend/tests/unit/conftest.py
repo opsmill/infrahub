@@ -13,9 +13,11 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
+    create_global_branch,
     create_root_node,
     first_time_initialization,
     initialization,
@@ -369,6 +371,226 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+
+    CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson"})
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
+    CREATE (c1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
+    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
+    CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m30 }]->(bool_true)
+    CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+    CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
+
+    CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson"})
+    CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
+    CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
+    CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
+
+    RETURN c1, c2, c3
+    """
+
+    await execute_write_query_async(session=session, query=query, params=params)
+
+    return params
+
+
+@pytest.fixture
+async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_person_schema_global) -> dict:
+    """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
+    This dataset is based on base_dataset_02 but it uses a different schema with person includes the global branch as well
+
+    To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
+      * time0 is now
+      * time_m10 is now - 10s
+      * time_m20 is now - 20s
+      * time_m25 is now - 25s
+      * time_m30 is now - 30s
+      * time_m35 is now - 35s
+      * time_m40 is now - 40s
+      * time_m45 is now - 45s
+      * time_m50 is now - 50s
+      * time_m60 is now - 60s
+
+    - 2 branches, main and branch1.
+        - branch1 was created at time_m45
+
+    - 2 Cars in Main and 1 in Branch1
+        - Car1 was created at time_m60 in main
+        - Car2 was created at time_m20 in main
+        - Car3 was created at time_m40 in branch1
+
+    - 2 Persons in Main
+
+    """
+
+    time0 = pendulum.now(tz="UTC")
+    params = {
+        "main_branch": "main",
+        "branch1": "branch1",
+        "global_branch": GLOBAL_BRANCH_NAME,
+        "time0": time0.to_iso8601_string(),
+        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
+        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
+        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
+        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
+        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
+        "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
+        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
+        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
+        "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
+    }
+
+    # Update Main Branch and Create new Branch1
+    default_branch.created_at = params["time_m60"]
+    default_branch.branched_from = params["time_m60"]
+    await default_branch.save(session=session)
+
+    branch1 = Branch(
+        name="branch1",
+        status="OPEN",
+        description="Second Branch",
+        is_default=False,
+        is_data_only=True,
+        branched_from=params["time_m45"],
+        created_at=params["time_m45"],
+    )
+    await branch1.save(session=session)
+    registry.branch[branch1.name] = branch1
+
+    query = """
+    MATCH (root:Root)
+
+    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar" })
+    CREATE (c1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active" }]->(root)
+
+    CREATE (bool_true:Boolean { value: true })
+    CREATE (bool_false:Boolean { value: false })
+
+    CREATE (atvf:AttributeValue { value: false })
+    CREATE (atvt:AttributeValue { value: true })
+    CREATE (atv44:AttributeValue { value: "#444444" })
+
+    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name"})
+    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats"})
+    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric"})
+    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color"})
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at1)
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at2)
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at3)
+    CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at4)
+
+    CREATE (c1av11:AttributeValue { value: "accord"})
+    CREATE (c1av12:AttributeValue { value: "volt"})
+    CREATE (c1av21:AttributeValue { value: 5})
+    CREATE (c1av22:AttributeValue { value: 4})
+
+    CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m20}]->(c1av11)
+    CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c1av12)
+    CREATE (c1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (c1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+
+    CREATE (c1at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m20 }]->(c1av21)
+    CREATE (c1at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c1av22)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $global_branch,branch_level: 1,  status: "active", from: $time_m60, to: $time_m20 }]->(bool_false)
+    CREATE (c1at2)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (c1at2)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+
+    CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atvt)
+    CREATE (c1at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (c1at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+
+    CREATE (c1at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atv44)
+    CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+
+    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar" })
+    CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
+
+    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
+    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats"})
+    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric"})
+    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color"})
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at1)
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at2)
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at3)
+    CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at4)
+
+    CREATE (c2av11:AttributeValue { value: "odyssey" })
+    CREATE (c2av21:AttributeValue { value: 8 })
+
+    CREATE (c2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av11)
+    CREATE (c2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
+
+    CREATE (c2at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av21)
+    CREATE (c2at2)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at2)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
+
+    CREATE (c2at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atvf)
+    CREATE (c2at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
+
+    CREATE (c2at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atv44)
+    CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
+
+    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar" })
+    CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
+
+    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
+    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats"})
+    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric"})
+    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color"})
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at1)
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40}]->(c3at2)
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at3)
+    CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at4)
+
+    CREATE (c3av11:AttributeValue { uuid: "c3av11", value: "volt"})
+    CREATE (c3av21:AttributeValue { uuid: "c3av21", value: 4})
+
+    CREATE (c3at1)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(c3av11)
+    CREATE (c3at1)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
+
+    CREATE (c3at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40 }]->(c3av21)
+    CREATE (c3at2)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at2)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40 }]->(bool_true)
+
+    CREATE (c3at3)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atvf)
+    CREATE (c3at3)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at3)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
+
+    CREATE (c3at4)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atv44)
+    CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
+    CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
+
+    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson" })
+    CREATE (p1)-[:IS_PART_OF { branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
+    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
+    CREATE (p1)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
+    CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
+    CREATE (p1at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
+    CREATE (p1at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (p1at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+
+    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson" })
+    CREATE (p2)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
+    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
+    CREATE (p2)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
+    CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
+    CREATE (p2at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
+    CREATE (p2at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (p2at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
+
+    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson" })
+    CREATE (p3)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
+    CREATE (p3)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
+    CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
+    CREATE (p3at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
+    CREATE (p3at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
+    CREATE (p3at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
@@ -749,10 +971,12 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
             {
                 "name": "Group",
                 "namespace": "Core",
+                "description": "Generic Group Object.",
+                "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
-                "branch": True,
+                "display_labels": ["label__value"],
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -767,7 +991,7 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "inherit_from": ["CoreGroup"],
             },
         ],
@@ -778,44 +1002,8 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
 
 
 @pytest.fixture
-async def group_graphql(session: AsyncSession, default_branch: Branch, group_schema) -> None:
-    load_node_interface(branch=default_branch)
-    load_attribute_types_in_registry(branch=default_branch)
-
-
-@pytest.fixture
-async def car_person_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def node_group_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
-        "nodes": [
-            {
-                "name": "Car",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
-                "branch": True,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
-                    {"name": "is_electric", "kind": "Boolean"},
-                ],
-                "relationships": [
-                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
-                ],
-            },
-            {
-                "name": "Person",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": True,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "height", "kind": "Number", "optional": True},
-                ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
-            },
-        ],
         "generics": [
             {
                 "name": "Node",
@@ -831,7 +1019,7 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -853,6 +1041,92 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, data_
                         "cardinality": "many",
                     },
                 ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def group_graphql(session: AsyncSession, default_branch: Branch, group_schema) -> None:
+    load_node_interface(branch=default_branch)
+    load_attribute_types_in_registry(branch=default_branch)
+
+
+@pytest.fixture
+async def car_person_schema(session: AsyncSession, default_branch: Branch, node_group_schema, data_schema) -> None:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                    {"name": "is_electric", "kind": "Boolean"},
+                ],
+                "relationships": [
+                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def car_person_schema_global(
+    session: AsyncSession, default_branch: Branch, node_group_schema, data_schema
+) -> None:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number", "branch": BranchSupportType.AGNOSTIC.value},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                    {"name": "is_electric", "kind": "Boolean"},
+                ],
+                "relationships": [
+                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
             },
         ],
     }
@@ -925,7 +1199,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "nbr_seats", "kind": "Number"},
@@ -942,7 +1216,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -954,7 +1228,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -1009,7 +1283,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -1069,7 +1343,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "namespace": "Test",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
@@ -1128,7 +1402,7 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
                 "name": "Tag",
                 "namespace": "Builtin",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -1138,7 +1412,7 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},
                     {"name": "lastname", "kind": "Text"},
@@ -1382,11 +1656,13 @@ async def group_group2_subscribers_main(
 
 
 @pytest.fixture
-async def all_attribute_types_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
+async def all_attribute_types_schema(
+    session: AsyncSession, default_branch: Branch, group_schema, data_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "AllAttributeTypes",
         "namespace": "Test",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "optional": True},
             {"name": "mystring", "kind": "Text", "optional": True},
@@ -1404,13 +1680,13 @@ async def all_attribute_types_schema(session: AsyncSession, default_branch: Bran
 
 
 @pytest.fixture
-async def criticality_schema(session: AsyncSession, default_branch: Branch, data_schema) -> NodeSchema:
+async def criticality_schema(session: AsyncSession, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
         "display_labels": ["label__value"],
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
@@ -1576,7 +1852,7 @@ async def vehicule_person_schema(
         "name": "Person",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
@@ -1592,14 +1868,14 @@ async def vehicule_person_schema(
 
 
 @pytest.fixture
-async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
+async def fruit_tag_schema(session: AsyncSession, group_schema, data_schema) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
             {
                 "name": "Tag",
                 "namespace": "Builtin",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "color", "kind": "Text", "default_value": "#444444"},
@@ -1610,7 +1886,7 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
                 "name": "Fruit",
                 "namespace": "Garden",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -1618,42 +1894,55 @@ async def fruit_tag_schema(session: AsyncSession, data_schema) -> SchemaRoot:
                 "relationships": [{"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": False}],
             },
         ],
-        "generics": [
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema)
+    return schema
+
+
+@pytest.fixture
+async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_schema) -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
             {
-                "name": "Node",
-                "namespace": "Core",
-                "description": "Base Node in Infrahub.",
-                "label": "Node",
-            },
-            {
-                "name": "Group",
-                "namespace": "Core",
-                "description": "Generic Group Object.",
-                "label": "Group",
+                "name": "Tag",
+                "namespace": "Builtin",
                 "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "label", "kind": "Text", "optional": True},
+                    {
+                        "name": "color",
+                        "kind": "Text",
+                        "default_value": "#444444",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
+                    {"name": "related_tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},
+                    {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
+                ],
+            },
+            {
+                "name": "Fruit",
+                "namespace": "Garden",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
                     {
-                        "name": "members",
-                        "peer": "CoreNode",
+                        "name": "branch_aware_attr",
+                        "kind": "Text",
                         "optional": True,
-                        "identifier": "group_member",
-                        "cardinality": "many",
+                        "branch": BranchSupportType.AWARE.value,
                     },
-                    {
-                        "name": "subscribers",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_subscriber",
-                        "cardinality": "many",
-                    },
+                ],
+                "relationships": [
+                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},
+                    {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
                 ],
             },
         ],
@@ -1712,6 +2001,7 @@ async def init_db(empty_database, session) -> None:
 async def default_branch(reset_registry, local_storage_dir, empty_database, session) -> Branch:
     await create_root_node(session=session)
     branch = await create_default_branch(session=session)
+    await create_global_branch(session=session)
     registry.schema = SchemaManager()
     return branch
 
@@ -1777,7 +2067,7 @@ async def authentication_base(
 
 
 @pytest.fixture
-async def first_account(session: AsyncSession, data_schema, register_account_schema) -> Node:
+async def first_account(session: AsyncSession, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123", role="read-write")
     await obj.save(session=session)
@@ -1785,7 +2075,7 @@ async def first_account(session: AsyncSession, data_schema, register_account_sch
 
 
 @pytest.fixture
-async def second_account(session: AsyncSession, register_account_schema) -> Node:
+async def second_account(session: AsyncSession, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(session=session, schema="CoreAccount")
     await obj.new(session=session, name="Second Account", type="Git", password="SecondPassword123")
     await obj.save(session=session)

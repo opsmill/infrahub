@@ -142,15 +142,12 @@ class QueryResult:
         self.branch_score = 0
 
         for rel in self.get_rels():
-            branch_name = rel.get("branch", None)
+            branch_level = rel.get("branch_level", None)
 
-            if not branch_name:
+            if not branch_level:
                 continue
 
-            if branch_name == config.SETTINGS.main.default_branch:
-                self.branch_score += 1
-            else:
-                self.branch_score += 2
+            self.branch_score += branch_level
 
     def calculate_time_score(self):
         """The time score look into the to and from time all relationships
@@ -164,13 +161,12 @@ class QueryResult:
             if not branch_name:
                 continue
 
-            # from_time =  rel.get("from", None)
             to_time = rel.get("to", None)
 
             if to_time:
-                self.time_score += 2
-            else:
                 self.time_score += 1
+            else:
+                self.time_score += 2
 
     def check_rels_status(self):
         """Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""

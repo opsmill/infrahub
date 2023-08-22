@@ -6,6 +6,7 @@ import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.artifact import CoreArtifactDefinition
 from infrahub.core.branch import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.models import NodeSchema as NodeSchemaModel
 from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
 from infrahub.core.node import Node
@@ -90,7 +91,7 @@ async def create_root_node(session: AsyncSession) -> Root:
 
 
 async def create_default_branch(session: AsyncSession) -> Branch:
-    default_branch = Branch(
+    branch = Branch(
         name=config.SETTINGS.main.default_branch,
         status="OPEN",
         description="Default Branch",
@@ -98,12 +99,29 @@ async def create_default_branch(session: AsyncSession) -> Branch:
         is_default=True,
         is_data_only=False,
     )
-    await default_branch.save(session=session)
-    registry.branch[default_branch.name] = default_branch
+    await branch.save(session=session)
+    registry.branch[branch.name] = branch
 
-    LOGGER.info(f"Created default branch : {default_branch.name}")
+    LOGGER.info(f"Created default branch : {branch.name}")
 
-    return default_branch
+    return branch
+
+
+async def create_global_branch(session: AsyncSession) -> Branch:
+    branch = Branch(
+        name=GLOBAL_BRANCH_NAME,
+        status="OPEN",
+        description="Global Branch",
+        hierarchy_level=1,
+        is_global=True,
+        is_data_only=False,
+    )
+    await branch.save(session=session)
+    registry.branch[branch.name] = branch
+
+    LOGGER.info(f"Created global branch : {branch.name}")
+
+    return branch
 
 
 async def create_branch(branch_name: str, session: AsyncSession, description: str = "") -> Branch:
@@ -132,6 +150,7 @@ async def first_time_initialization(session: AsyncSession):
     # --------------------------------------------------
     await create_root_node(session=session)
     default_branch = await create_default_branch(session=session)
+    await create_global_branch(session=session)
 
     # --------------------------------------------------
     # Load the internal and core schema in the database

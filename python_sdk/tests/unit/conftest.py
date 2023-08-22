@@ -7,7 +7,7 @@ import ujson
 from pytest_httpx import HTTPXMock
 
 from infrahub_client import InfrahubClient, InfrahubClientSync
-from infrahub_client.schema import NodeSchema
+from infrahub_client.schema import BranchSupportType, NodeSchema
 from infrahub_client.utils import get_fixtures_dir
 
 # pylint: disable=redefined-outer-name,unused-argument
@@ -400,7 +400,7 @@ async def rfile_schema() -> NodeSchema:
         "namespace": "Core",
         "default_filter": "name__value",
         "display_label": ["label__value"],
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "String", "unique": True},
             {"name": "description", "kind": "String", "optional": True},

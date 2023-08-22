@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
 import infrahub.config as config
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import (
     BranchNotFound,
     DataTypeNotFound,
@@ -239,6 +240,11 @@ class Registry:
             if self.branch_object.isinstance(branch) and not isinstance(branch, str):
                 return branch
 
+        if (self.branch_object.isinstance(branch) and branch.name == GLOBAL_BRANCH_NAME) or (
+            isinstance(branch, str) and branch == GLOBAL_BRANCH_NAME
+        ):
+            raise BranchNotFound(identifier=GLOBAL_BRANCH_NAME)
+
         if not branch or not isinstance(branch, str):
             branch = config.SETTINGS.main.default_branch
 
@@ -259,6 +265,9 @@ class Registry:
             await registry.schema.load_schema_from_db(session=session, branch=obj)
 
         return obj
+
+    def get_global_branch(self) -> Branch:
+        return self.get_branch_from_registry(branch=GLOBAL_BRANCH_NAME)
 
 
 registry = Registry()

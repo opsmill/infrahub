@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 import ujson
 
 from infrahub.core import registry
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.query import QueryElement, QueryNode, QueryRel
 from infrahub.core.query.attribute import (
@@ -94,6 +94,17 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if self.is_visible is None:
             self.is_visible = True
+
+    def get_branch_based_on_support_type(self) -> Branch:
+        """If the attribute is branch aware, return the Branch object associated with this attribute
+        If the attribute is branch agnostic return the Global Branch
+
+        Returns:
+            Branch:
+        """
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            return registry.get_global_branch()
+        return self.branch
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -213,6 +224,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return False
 
         properties_to_delete = []
+        branch = self.get_branch_based_on_support_type()
 
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
@@ -223,15 +235,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 src_node_id=self.db_id,
                 dst_node_id=result.get("ap").element_id,
                 rel_type=result.get("r2").type,
-                branch_name=self.branch.name,
-                branch_level=self.branch.hierarchy_level,
+                branch_name=branch.name,
+                branch_level=branch.hierarchy_level,
                 at=delete_at,
                 status=RelationshipStatus.DELETED,
                 session=session,
             )
 
             for rel in result.get_rels():
-                if rel.get("branch") == self.branch.name:
+                if rel.get("branch") == branch.name:
                     rel_ids_to_update.add(rel.element_id)
 
         if rel_ids_to_update:
@@ -241,8 +253,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             src_node_id=self.node.db_id,
             dst_node_id=self.db_id,
             rel_type="HAS_ATTRIBUTE",
-            branch_name=self.branch.name,
-            branch_level=self.branch.hierarchy_level,
+            branch_name=branch.name,
+            branch_level=branch.hierarchy_level,
             at=delete_at,
             status=RelationshipStatus.DELETED,
             session=session,
@@ -253,7 +265,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
         create_at = Timestamp(at)
 
-        query = await AttributeCreateQuery.init(session=session, attr=self, branch=self.branch, at=create_at)
+        query = await AttributeCreateQuery.init(session=session, attr=self, at=create_at)
         await query.execute(session=session)
 
         self.id, self.db_id = query.get_new_ids()
@@ -288,6 +300,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         await query.execute(session=session)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
+        branch = self.get_branch_based_on_support_type()
+
         # ---------- Update the Value ----------
         current_value = self.from_db(current_attr.get("av").get("value"))
 
@@ -298,7 +312,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             # TODO check that everything went well
             rel = current_attr.get("r2")
-            if rel.get("branch") == self.branch.name:
+            if rel.get("branch") == branch.name:
                 await update_relationships_to([rel.element_id], to=update_at, session=session)
 
         # ---------- Update the Flags ----------
@@ -315,7 +329,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 await query.execute(session=session)
 
                 rel = current_attr.get(rel_name)
-                if rel.get("branch") == self.branch.name:
+                if rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, session=session)
 
         # ---------- Update the Node Properties ----------
@@ -329,7 +343,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 await query.execute(session=session)
 
                 rel = current_attr.get(f"rel_{prop}")
-                if rel and rel.get("branch") == self.branch.name:
+                if rel and rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, session=session)
 
         return True

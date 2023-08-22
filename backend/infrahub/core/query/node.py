@@ -72,8 +72,8 @@ class NodeQuery(Query):
         node: Node = None,
         node_id: Optional[str] = None,
         node_db_id: Optional[int] = None,
-        id=None,
-        branch: Branch = None,
+        id: Optional[str] = None,
+        branch: Optional[Branch] = None,
         *args,
         **kwargs,
     ):
@@ -89,7 +89,7 @@ class NodeQuery(Query):
         if not self.node_db_id and self.node:
             self.node_db_id = self.node.db_id
 
-        self.branch = branch or self.node._branch
+        self.branch = branch or self.node.get_branch_based_on_support_type()
 
         super().__init__(*args, **kwargs)
 
@@ -296,8 +296,6 @@ class NodeListGetAttributeQuery(Query):
     #     self.return_labels.extend(["r5"])
 
     def get_attributes_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
-        # TODO NEED TO REVISIT HOW TO INTEGRATE THE PERMISSION SYSTEM
-
         attrs_by_node = defaultdict(lambda: {"node": None, "attrs": None})
 
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
@@ -402,9 +400,6 @@ class NodeListGetInfoQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        branches = list(self.branch.get_branches_and_times_to_query().keys())
-        self.params["branches"] = branches
-
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

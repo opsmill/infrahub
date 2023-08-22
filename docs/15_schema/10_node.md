@@ -52,10 +52,10 @@ Below is the list of all available options to define a node in the schema
 | -- | -- | { class="compact" }
 | ---- | --------------- |
 | **Name** | branch |
-| **Kind** | `Boolean` |
+| **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** |  |
-
+| **Accepted Values** | `aware` `agnostic`  |
 
 ## default_filter
 
