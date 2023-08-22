@@ -9,7 +9,6 @@ import redis.asyncio as redis
 from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config
-from infrahub.exceptions import LockError
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -51,13 +50,19 @@ class InfrahubLock:
     """
 
     def __init__(self, name: str, connection: Optional[redis.Redis] = None, local: Optional[bool] = None):
-        self.local = local
-        self.lock: LocalLock = None
+        self.use_local = local
+        self.local: LocalLock = None
+        self.remote: GlobalLock = None
         self.name = name
         self.connection = connection
 
-        if self.local is None and name.startswith("local."):
-            self.local = True
+        if not self.connection or (self.use_local is None and name.startswith("local.")):
+            self.use_local = True
+
+        if self.use_local:
+            self.local = LocalLock()
+        else:
+            self.remote = GlobalLock(redis=self.connection, name=self.name)
 
     async def __aenter__(self):
         await self.acquire()
@@ -66,33 +71,22 @@ class InfrahubLock:
         await self.release()
 
     async def acquire(self) -> None:
-        if not self.local and self.connection:
-            await GlobalLock(redis=self.connection, name=self.name).acquire()
-
-        elif self.local or not self.connection:
-            if not self.lock:
-                self.lock = LocalLock()
-            await self.lock.acquire()
+        if not self.use_local:
+            await self.remote.acquire()
+        else:
+            await self.local.acquire()
 
     async def release(self) -> None:
-        if not self.local and self.connection:
-            await GlobalLock(redis=self.connection, name=self.name).release()
-            return
-
-        if self.lock:
-            self.lock.release()
-            return
-
-        raise LockError("The lock hasn't been acquired yet")
+        if not self.use_local:
+            await self.remote.release()
+        else:
+            self.local.release()
 
     async def locked(self) -> bool:
-        if not self.local and self.connection:
-            return await GlobalLock(redis=self.connection, name=self.name).locked()
+        if not self.use_local:
+            return await self.remote.locked()
 
-        if self.lock:
-            return self.lock.locked()
-
-        raise LockError("The lock hasn't been acquired yet")
+        return self.local.locked()
 
 
 class InfrahubLockRegistry:
@@ -132,7 +126,7 @@ class InfrahubLockRegistry:
         This allow to block functions what shouldnt process during an event
         but it's not a blocker if multiple of them happen at the same time.
         """
-        while self.get(name=name).locked():
+        while await self.get(name=name).locked():
             await sleep(0.1)
 
 
