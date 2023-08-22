@@ -37,7 +37,7 @@ Below is the list of all available options to define an Attribute in the schema
 | **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** | <br> Length: min 3, max 3 |
-| **Accepted Values** | `ID` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `Any` `String` `Integer` `Boolean`  |
+| **Accepted Values** | `ID` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `JSON` `Any` `String` `Integer` `Boolean`  |
 
 ## enum
 
@@ -124,10 +124,10 @@ Below is the list of all available options to define an Attribute in the schema
 | -- | -- | { class="compact" }
 | ---- | --------------- |
 | **Name** | branch |
-| **Kind** | `Boolean` |
+| **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** |  |
-
+| **Accepted Values** | `aware` `agnostic`  |
 
 ## order_weight
 

@@ -103,10 +103,10 @@ Below is the list of all available options to define a Generic in the schema
 | -- | -- | { class="compact" }
 | ---- | --------------- |
 | **Name** | branch |
-| **Kind** | `Boolean` |
+| **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** |  |
-
+| **Accepted Values** | `aware` `agnostic`  |
 
 ## inherited
 
