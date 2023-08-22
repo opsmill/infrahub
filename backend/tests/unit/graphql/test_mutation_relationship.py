@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 from graphql import graphql
 from neo4j import AsyncDriver, AsyncSession
@@ -9,6 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships
 from infrahub.graphql import generate_graphql_schema
+from infrahub_client import UUIDT
 
 
 @pytest.fixture(autouse=True)
@@ -253,7 +252,7 @@ async def test_relationship_wrong_node(
     branch: Branch,
 ):
     # Non existing Node
-    bad_uuid = str(uuid.uuid4())
+    bad_uuid = str(UUIDT.new())
     query = """
     mutation {
         RelationshipAdd(data: {

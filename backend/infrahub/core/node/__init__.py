@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING, Any, List, Optional, Union
-from uuid import UUID
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
@@ -11,6 +9,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
+from infrahub_client import UUIDT
 
 from ..attribute import BaseAttribute
 from ..relationship import RelationshipManager
@@ -18,6 +17,8 @@ from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from neo4j import AsyncSession
     from typing_extensions import Self
 
@@ -464,7 +465,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     def _query_bulk_create(self, at: Optional[Timestamp] = None):
         create_at = Timestamp(at)
-        node_id = str(uuid.uuid4())
+        node_id = str(UUIDT.new())
         short_id = "a" + node_id[:8]
         kind = self.get_kind()
 
@@ -476,7 +477,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         for attr_name in self._schema.attribute_names:
             attr: BaseAttribute = getattr(self, attr_name)
-            attr_uuid = str(uuid.uuid4())
+            attr_uuid = str(UUIDT.new())
             attr_short = "a" + attr_uuid[:8]
             query.append(
                 'CREATE (%s:Attribute:AttributeLocal { uuid: "%s", type: "%s", name: "%s"})'
@@ -521,7 +522,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             rel: RelationshipManager = getattr(self, rel_name)
 
             for item in rel._relationships:
-                rel_uuid = str(uuid.uuid4())
+                rel_uuid = str(UUIDT.new())
                 rel_short = "a" + rel_uuid[:8]
                 peer_id = item.peer_id
                 short_peer = "a" + peer_id[:8]

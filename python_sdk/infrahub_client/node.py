@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ipaddress
 import re
-import uuid
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, get_args
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
@@ -10,6 +9,7 @@ from infrahub_client.graphql import Mutation
 from infrahub_client.schema import RelationshipCardinality, RelationshipKind
 from infrahub_client.timestamp import Timestamp
 from infrahub_client.utils import compare_lists, get_flat_value
+from infrahub_client.uuidt import UUIDT
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
@@ -73,7 +73,7 @@ class Attribute:
             if SAFE_VALUE.match(self.value):
                 data["value"] = self.value
             else:
-                var_name = f"value_{uuid.uuid4().hex}"
+                var_name = f"value_{UUIDT.new().hex}"
                 variables[var_name] = self.value
                 data["value"] = f"${var_name}"
         elif isinstance(self.value, get_args(IP_TYPES)):

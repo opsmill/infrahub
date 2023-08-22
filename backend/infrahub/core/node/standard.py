@@ -1,4 +1,3 @@
-import uuid
 from typing import List, Optional
 from uuid import UUID
 
@@ -9,6 +8,7 @@ from typing_extensions import Self
 from infrahub.core.query import Query, QueryType
 from infrahub.database import execute_read_query_async, execute_write_query_async
 from infrahub.exceptions import QueryError
+from infrahub_client import UUIDT
 
 # pylint: disable=redefined-builtin
 
@@ -75,7 +75,7 @@ class StandardNode(BaseModel):
         node_type = self.get_type()
 
         attrs = []
-        params = {"uuid": str(uuid.uuid4())}
+        params = {"uuid": str(UUIDT.new())}
         for attr_name in self.__fields__:
             if attr_name in self._exclude_attrs:
                 continue

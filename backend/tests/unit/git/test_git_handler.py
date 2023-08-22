@@ -1,5 +1,3 @@
-import uuid
-
 from infrahub.git import InfrahubRepository, handle_message
 from infrahub.message_bus.events import (
     CheckMessageAction,
@@ -7,6 +5,7 @@ from infrahub.message_bus.events import (
     InfrahubRPCResponse,
     RPCStatusCode,
 )
+from infrahub_client import UUIDT
 
 
 async def test_handle_unknown_message(client, git_repo_checks: InfrahubRepository):
@@ -14,7 +13,7 @@ async def test_handle_unknown_message(client, git_repo_checks: InfrahubRepositor
 
     message = InfrahubCheckRPC(
         action=CheckMessageAction.PYTHON.value,
-        repository_id=str(uuid.uuid4()),
+        repository_id=str(UUIDT.new()),
         repository_name=git_repo_checks.name,
         commit=commit,
         branch_name="main",
@@ -34,7 +33,7 @@ async def test_git_check_python_success(client, git_repo_checks: InfrahubReposit
 
     message = InfrahubCheckRPC(
         action=CheckMessageAction.PYTHON.value,
-        repository_id=str(uuid.uuid4()),
+        repository_id=str(UUIDT.new()),
         repository_name=git_repo_checks.name,
         commit=commit,
         branch_name="main",

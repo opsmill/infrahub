@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
 from infrahub import config
 from infrahub.log import get_log_data
+from infrahub_client import UUIDT
 
 from . import InfrahubBaseMessage, Meta, get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
@@ -60,7 +60,7 @@ class InfrahubRpcClientBase:
             future.set_result(InfrahubMessage.convert(message))
 
     async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
-        correlation_id = str(uuid.uuid4())
+        correlation_id = str(UUIDT.new())
 
         if wait_for_response:
             future = self.loop.create_future()

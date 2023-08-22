@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
@@ -10,6 +9,7 @@ from infrahub.core.query.subquery import build_subquery_filter, build_subquery_o
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
+from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -102,7 +102,7 @@ class NodeCreateQuery(NodeQuery):
     raise_error_if_empty: bool = True
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["uuid"] = str(uuid.uuid4())
+        self.params["uuid"] = str(UUIDT.new())
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()
