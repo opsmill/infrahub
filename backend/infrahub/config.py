@@ -103,6 +103,23 @@ class BrokerSettings(BaseSettings):
         case_sensitive = False
 
 
+class CacheSettings(BaseSettings):
+    address: str = "localhost"
+    port: Optional[int] = Field(
+        default=None, min=1, max=65535, description="Specified if running on a non default port (6379)"
+    )
+    database: int = Field(default=0, min=0, max=15, description="Id of the database to use")
+
+    @property
+    def service_port(self) -> int:
+        default_ports: int = 6379
+        return self.port or default_ports
+
+    class Config:
+        env_prefix = "INFRAHUB_CACHE_"
+        case_sensitive = False
+
+
 class ApiSettings(BaseSettings):
     cors_allow_origins: List[str] = ["*"]
     cors_allow_credentials: bool = True
@@ -116,6 +133,7 @@ class GitSettings(BaseSettings):
 
 class MiscellaneousSettings(BaseSettings):
     print_query_details: bool = False
+    start_background_runner: bool = True
 
 
 class RemoteLoggingSettings(BaseSettings):
@@ -181,6 +199,7 @@ class Settings(BaseSettings):
     git: GitSettings = GitSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
+    cache: CacheSettings = CacheSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
