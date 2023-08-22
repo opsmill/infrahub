@@ -58,7 +58,7 @@ QUERY_SPINE1_INTF = """
 
 BRANCH_CREATE = """
     mutation($branch: String!) {
-        branch_create(data: { name: $branch }) {
+        BranchCreate(data: { name: $branch }) {
             ok
             object {
                 id
@@ -70,7 +70,7 @@ BRANCH_CREATE = """
 
 BRANCH_MERGE = """
     mutation($branch: String!) {
-        branch_merge(data: { name: $branch }) {
+        BranchMerge(data: { name: $branch }) {
             ok
             object {
                 id
@@ -82,7 +82,7 @@ BRANCH_MERGE = """
 
 BRANCH_REBASE = """
     mutation($branch: String!) {
-        branch_rebase(data: { name: $branch }) {
+        BranchRebase(data: { name: $branch }) {
             ok
             object {
                 id
@@ -235,7 +235,7 @@ class TestUserWorkflow01:
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
         result = response.json()["data"]
-        assert result["branch_create"]["ok"]
+        assert result["BranchCreate"]["ok"]
 
     async def test_update_intf_description_branch1(
         self,
@@ -517,7 +517,7 @@ class TestUserWorkflow01:
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
         result = response.json()["data"]
-        assert result["branch_create"]["ok"]
+        assert result["BranchCreate"]["ok"]
 
     async def test_update_intf_description_main_after_branch2(self, client, dataset01, integration_helper):
         assert pytest.state["spine1_eth1_id"]
@@ -610,7 +610,7 @@ class TestUserWorkflow01:
             )
             assert response.status_code == 200
             result = response.json()["data"]
-            assert result["branch_rebase"]["ok"]
+            assert result["BranchRebase"]["ok"]
 
             # Query the description in MAIN to check its value
             response = client.post(
@@ -739,7 +739,7 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            assert response.json()["data"]["branch_merge"]["ok"] is True
+            assert response.json()["data"]["BranchMerge"]["ok"] is True
 
             # Query the new value in Main which should match the pervious version in branch1
             response = client.post(

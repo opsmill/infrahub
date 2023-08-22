@@ -96,11 +96,12 @@ class InfrahubBaseQuery(ObjectType):
 
 class InfrahubBaseMutation(ObjectType):
     CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
-    branch_create = BranchCreate.Field()
-    branch_delete = BranchDelete.Field()
-    branch_rebase = BranchRebase.Field()
-    branch_merge = BranchMerge.Field()
-    branch_validate = BranchValidate.Field()
 
-    relationship_add = RelationshipAdd.Field()
-    relationship_remove = RelationshipRemove.Field()
+    BranchCreate = BranchCreate.Field()
+    BranchDelete = BranchDelete.Field()
+    BranchRebase = BranchRebase.Field()
+    BranchMerge = BranchMerge.Field()
+    BranchValidate = BranchValidate.Field()
+
+    RelationshipAdd = RelationshipAdd.Field()
+    RelationshipRemove = RelationshipRemove.Field()

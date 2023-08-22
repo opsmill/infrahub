@@ -44,12 +44,12 @@ async def authentication_error_payload():
 @pytest.fixture
 async def mock_branch_create_error(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
-        "data": {"branch_create": None},
+        "data": {"BranchCreate": None},
         "errors": [
             {
                 "message": 'invalid field name: string does not match regex "^[a-z][a-z0-9\\-]+$"',
                 "locations": [{"line": 2, "column": 3}],
-                "path": ["branch_create"],
+                "path": ["BranchCreate"],
             }
         ],
     }

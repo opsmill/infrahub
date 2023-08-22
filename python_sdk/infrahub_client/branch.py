@@ -68,10 +68,10 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
             "data": {"name": branch_name, "description": description, "is_data_only": data_only},
         }
 
-        query = Mutation(mutation="branch_create", input_data=input_data, query=MUTATION_QUERY_DATA)
+        query = Mutation(mutation="BranchCreate", input_data=input_data, query=MUTATION_QUERY_DATA)
         response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-create")
 
-        return BranchData(**response["branch_create"]["object"])
+        return BranchData(**response["BranchCreate"]["object"])
 
     async def delete(self, branch_name: str) -> bool:
         input_data = {
@@ -79,9 +79,9 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
                 "name": branch_name,
             }
         }
-        query = Mutation(mutation="branch_delete", input_data=input_data, query={"ok": None})
+        query = Mutation(mutation="BranchDelete", input_data=input_data, query={"ok": None})
         response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-delete")
-        return response["branch_delete"]["ok"]
+        return response["BranchDelete"]["ok"]
 
     async def rebase(self, branch_name: str) -> BranchData:
         input_data = {
@@ -89,9 +89,9 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
                 "name": branch_name,
             }
         }
-        query = Mutation(mutation="branch_rebase", input_data=input_data, query=MUTATION_QUERY_DATA)
+        query = Mutation(mutation="BranchRebase", input_data=input_data, query=MUTATION_QUERY_DATA)
         response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-rebase")
-        return response["branch_rebase"]["ok"]
+        return response["BranchRebase"]["ok"]
 
     async def validate(self, branch_name: str) -> BranchData:
         input_data = {
@@ -109,10 +109,10 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
             },
         }
 
-        query = Mutation(mutation="branch_validate", input_data=input_data, query=query_data)
+        query = Mutation(mutation="BranchValidate", input_data=input_data, query=query_data)
         response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-validate")
 
-        return response["branch_validate"]["ok"]
+        return response["BranchValidate"]["ok"]
 
     async def merge(self, branch_name: str) -> BranchData:
         input_data = {
@@ -120,10 +120,10 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
                 "name": branch_name,
             }
         }
-        query = Mutation(mutation="branch_merge", input_data=input_data, query=MUTATION_QUERY_DATA)
+        query = Mutation(mutation="BranchMerge", input_data=input_data, query=MUTATION_QUERY_DATA)
         response = await self.client.execute_graphql(query=query.render(), tracker="mutation-branch-merge", timeout=120)
 
-        return response["branch_merge"]["ok"]
+        return response["BranchMerge"]["ok"]
 
     async def all(self) -> Dict[str, BranchData]:
         data = await self.client.execute_graphql(query=QUERY_ALL_BRANCHES, tracker="query-branch-all")
@@ -165,10 +165,10 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
             "data": {"name": branch_name, "description": description, "is_data_only": data_only},
         }
 
-        query = Mutation(mutation="branch_create", input_data=input_data, query=MUTATION_QUERY_DATA)
+        query = Mutation(mutation="BranchCreate", input_data=input_data, query=MUTATION_QUERY_DATA)
         response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-create")
 
-        return BranchData(**response["branch_create"]["object"])
+        return BranchData(**response["BranchCreate"]["object"])
 
     def delete(self, branch_name: str) -> bool:
         input_data = {
@@ -176,9 +176,9 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
                 "name": branch_name,
             }
         }
-        query = Mutation(mutation="branch_delete", input_data=input_data, query={"ok": None})
+        query = Mutation(mutation="BranchDelete", input_data=input_data, query={"ok": None})
         response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-delete")
-        return response["branch_delete"]["ok"]
+        return response["BranchDelete"]["ok"]
 
     def diff_data(
         self,
@@ -199,10 +199,10 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
                 "name": branch_name,
             }
         }
-        query = Mutation(mutation="branch_merge", input_data=input_data, query=MUTATION_QUERY_DATA)
+        query = Mutation(mutation="BranchMerge", input_data=input_data, query=MUTATION_QUERY_DATA)
         response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-merge")
 
-        return response["branch_merge"]["ok"]
+        return response["BranchMerge"]["ok"]
 
     def rebase(self, branch_name: str) -> BranchData:
         input_data = {
@@ -210,9 +210,9 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
                 "name": branch_name,
             }
         }
-        query = Mutation(mutation="branch_rebase", input_data=input_data, query=MUTATION_QUERY_DATA)
+        query = Mutation(mutation="BranchRebase", input_data=input_data, query=MUTATION_QUERY_DATA)
         response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-rebase")
-        return response["branch_rebase"]["ok"]
+        return response["BranchRebase"]["ok"]
 
     def validate(self, branch_name: str) -> BranchData:
         input_data = {
@@ -230,7 +230,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
             },
         }
 
-        query = Mutation(mutation="branch_validate", input_data=input_data, query=query_data)
+        query = Mutation(mutation="BranchValidate", input_data=input_data, query=query_data)
         response = self.client.execute_graphql(query=query.render(), tracker="mutation-branch-validate")
 
-        return response["branch_validate"]["ok"]
+        return response["BranchValidate"]["ok"]

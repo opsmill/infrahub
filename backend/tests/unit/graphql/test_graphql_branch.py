@@ -62,7 +62,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
 
     query = """
     mutation {
-        branch_create(data: { name: "branch2", is_data_only: true }) {
+        BranchCreate(data: { name: "branch2", is_data_only: true }) {
             ok
             object {
                 id
@@ -84,13 +84,13 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     )
 
     assert result.errors is None
-    assert result.data["branch_create"]["ok"] is True
-    assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
-    assert result.data["branch_create"]["object"]["name"] == "branch2"
-    assert result.data["branch_create"]["object"]["description"] == ""
-    assert result.data["branch_create"]["object"]["is_data_only"] is True
-    assert result.data["branch_create"]["object"]["is_default"] is False
-    assert result.data["branch_create"]["object"]["branched_from"] is not None
+    assert result.data["BranchCreate"]["ok"] is True
+    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["BranchCreate"]["object"]["name"] == "branch2"
+    assert result.data["BranchCreate"]["object"]["description"] == ""
+    assert result.data["BranchCreate"]["object"]["is_data_only"] is True
+    assert result.data["BranchCreate"]["object"]["is_default"] is False
+    assert result.data["BranchCreate"]["object"]["branched_from"] is not None
 
     branch2 = await Branch.get_by_name(session=session, name="branch2")
     branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
@@ -114,7 +114,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     # Create another branch with different inputs
     query = """
     mutation {
-        branch_create(data: { name: "branch3", description: "my description" }) {
+        BranchCreate(data: { name: "branch3", description: "my description" }) {
             ok
             object {
                 id
@@ -134,11 +134,11 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     )
 
     assert result.errors is None
-    assert result.data["branch_create"]["ok"] is True
-    assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
-    assert result.data["branch_create"]["object"]["name"] == "branch3"
-    assert result.data["branch_create"]["object"]["description"] == "my description"
-    assert result.data["branch_create"]["object"]["is_data_only"] is False
+    assert result.data["BranchCreate"]["ok"] is True
+    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["BranchCreate"]["object"]["name"] == "branch3"
+    assert result.data["BranchCreate"]["object"]["description"] == "my description"
+    assert result.data["BranchCreate"]["object"]["is_data_only"] is False
 
 
 async def test_branch_query(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
@@ -146,7 +146,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
 
     create_branch = """
     mutation {
-        branch_create(data: { name: "branch3", description: "my description" }) {
+        BranchCreate(data: { name: "branch3", description: "my description" }) {
             ok
             object {
                 id
@@ -162,7 +162,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
         root_value=None,
         variable_values={},
     )
-    branch3 = branch3_result.data["branch_create"]["object"]
+    branch3 = branch3_result.data["BranchCreate"]["object"]
     query = """
     query {
         branch {
@@ -230,7 +230,7 @@ async def test_branch_create_invalid_names(
 
     query = """
     mutation($branch_name: String!) {
-        branch_create(data: { name: $branch_name, is_data_only: true }) {
+        BranchCreate(data: { name: $branch_name, is_data_only: true }) {
             ok
             object {
                 id
@@ -264,7 +264,7 @@ async def test_branch_create_with_repositories(
 
     query = """
     mutation {
-        branch_create(data: { name: "branch2", is_data_only: false }) {
+        BranchCreate(data: { name: "branch2", is_data_only: false }) {
             ok
             object {
                 id
@@ -282,8 +282,8 @@ async def test_branch_create_with_repositories(
     )
 
     assert result.errors is None
-    assert result.data["branch_create"]["ok"] is True
-    assert len(result.data["branch_create"]["object"]["id"]) == 36  # lenght of an UUID
+    assert result.data["BranchCreate"]["ok"] is True
+    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
     assert await Branch.get_by_name(session=session, name="branch2")
 
@@ -293,7 +293,7 @@ async def test_branch_rebase(db, session, default_branch: Branch, group_graphql,
 
     query = """
     mutation {
-        branch_rebase(data: { name: "branch2" }) {
+        BranchRebase(data: { name: "branch2" }) {
             ok
             object {
                 id
@@ -310,8 +310,8 @@ async def test_branch_rebase(db, session, default_branch: Branch, group_graphql,
     )
 
     assert result.errors is None
-    assert result.data["branch_rebase"]["ok"] is True
-    assert result.data["branch_rebase"]["object"]["id"] == str(branch2.uuid)
+    assert result.data["BranchRebase"]["ok"] is True
+    assert result.data["BranchRebase"]["object"]["id"] == str(branch2.uuid)
 
     new_branch2 = await Branch.get_by_name(session=session, name="branch2")
     assert new_branch2.branched_from != branch2.branched_from
@@ -320,7 +320,7 @@ async def test_branch_rebase(db, session, default_branch: Branch, group_graphql,
 async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, group_graphql, car_person_schema):
     query = """
     mutation {
-        branch_rebase(data: { name: "branch2" }) {
+        BranchRebase(data: { name: "branch2" }) {
             ok
             object {
                 id
@@ -345,7 +345,7 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
 
     query = """
     mutation {
-        branch_validate(data: { name: "branch1" }) {
+        BranchValidate(data: { name: "branch1" }) {
             ok
             object {
                 id
@@ -362,8 +362,8 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     )
 
     assert result.errors is None
-    assert result.data["branch_validate"]["ok"] is True
-    assert result.data["branch_validate"]["object"]["id"] == str(branch1.uuid)
+    assert result.data["BranchValidate"]["ok"] is True
+    assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
 async def test_branch_validate_with_repositories_success(
@@ -381,7 +381,7 @@ async def test_branch_validate_with_repositories_success(
 
     query = """
     mutation {
-        branch_validate(data: { name: "branch2" }) {
+        BranchValidate(data: { name: "branch2" }) {
             ok
             object {
                 id
@@ -398,8 +398,8 @@ async def test_branch_validate_with_repositories_success(
     )
 
     assert result.errors is None
-    assert result.data["branch_validate"]["ok"] is True
-    assert result.data["branch_validate"]["object"]["id"] == str(branch2.uuid)
+    assert result.data["BranchValidate"]["ok"] is True
+    assert result.data["BranchValidate"]["object"]["id"] == str(branch2.uuid)
 
     assert await rpc_client.ensure_all_responses_have_been_delivered()
 
@@ -422,7 +422,7 @@ async def test_branch_validate_with_repositories_failed(
 
     query = """
     mutation {
-        branch_validate(data: { name: "branch2" }) {
+        BranchValidate(data: { name: "branch2" }) {
             ok
             object {
                 id
@@ -439,8 +439,8 @@ async def test_branch_validate_with_repositories_failed(
     )
 
     assert result.errors is None
-    assert result.data["branch_validate"]["ok"] is False
-    assert result.data["branch_validate"]["object"]["id"] == str(branch2.uuid)
+    assert result.data["BranchValidate"]["ok"] is False
+    assert result.data["BranchValidate"]["object"]["id"] == str(branch2.uuid)
 
     assert await rpc_client.ensure_all_responses_have_been_delivered()
 
@@ -450,7 +450,7 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
 
     query = """
     mutation {
-        branch_merge(data: { name: "branch1" }) {
+        BranchMerge(data: { name: "branch1" }) {
             ok
             object {
                 id
@@ -467,8 +467,8 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
     )
 
     assert result.errors is None
-    assert result.data["branch_merge"]["ok"] is True
-    assert result.data["branch_merge"]["object"]["id"] == str(branch1.uuid)
+    assert result.data["BranchMerge"]["ok"] is True
+    assert result.data["BranchMerge"]["object"]["id"] == str(branch1.uuid)
 
 
 async def test_branch_merge_with_repositories(db, session, rpc_client, base_dataset_02, repos_and_checks_in_main):
@@ -492,7 +492,7 @@ async def test_branch_merge_with_repositories(db, session, rpc_client, base_data
 
     query = """
     mutation {
-        branch_merge(data: { name: "branch2" }) {
+        BranchMerge(data: { name: "branch2" }) {
             ok
             object {
                 id
@@ -509,8 +509,8 @@ async def test_branch_merge_with_repositories(db, session, rpc_client, base_data
     )
 
     assert result.errors is None
-    assert result.data["branch_merge"]["ok"] is True
-    assert result.data["branch_merge"]["object"]["id"] == str(branch2.uuid)
+    assert result.data["BranchMerge"]["ok"] is True
+    assert result.data["BranchMerge"]["object"]["id"] == str(branch2.uuid)
 
     assert await rpc_client.ensure_all_responses_have_been_delivered()
 
