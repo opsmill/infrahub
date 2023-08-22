@@ -39,7 +39,7 @@ class InfrahubMultiLock:
             await self.registry.get(lock).acquire()
 
     async def release(self) -> None:
-        for lock in self.locks:
+        for lock in reversed(self.locks):
             await self.registry.get(lock).release()
 
 
