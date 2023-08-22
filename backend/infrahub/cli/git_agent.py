@@ -56,7 +56,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
     queue = await channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
-    exchange = await channel.declare_exchange("infrahub-messages", type="topic", durable=True)
+    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
     service = InfrahubServices(client=client, exchange=exchange)
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:

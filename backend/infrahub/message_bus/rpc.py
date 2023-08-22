@@ -42,7 +42,7 @@ class InfrahubRpcClientBase:
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
 
         await self.callback_queue.consume(self.on_response, no_ack=True)
-        self.exchange = await self.channel.declare_exchange("infrahub-messages", type="topic", durable=True)
+        self.exchange = await self.channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
         queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
         await queue.bind(self.exchange, routing_key="request.*.*")
 

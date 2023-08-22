@@ -12,7 +12,7 @@ from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import BaseEnum, InfrahubStringEnum
+from infrahub.utils import InfrahubStringEnum
 from infrahub_client.utils import duplicates, intersection
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 
-class FilterSchemaKind(str, BaseEnum):
+class FilterSchemaKind(InfrahubStringEnum):
     TEXT = "Text"
     LIST = "Text"
     NUMBER = "Number"
@@ -53,12 +53,12 @@ class FilterSchemaKind(str, BaseEnum):
     ENUM = "Enum"
 
 
-class RelationshipCardinality(str, BaseEnum):
+class RelationshipCardinality(InfrahubStringEnum):
     ONE = "one"
     MANY = "many"
 
 
-class RelationshipKind(str, BaseEnum):
+class RelationshipKind(InfrahubStringEnum):
     GENERIC = "Generic"
     ATTRIBUTE = "Attribute"
     COMPONENT = "Component"
@@ -66,7 +66,7 @@ class RelationshipKind(str, BaseEnum):
     GROUP = "Group"
 
 
-class ArtifactStatus(str, BaseEnum):
+class ArtifactStatus(InfrahubStringEnum):
     ERROR = "Error"
     PENDING = "Pending"
     PROCESSING = "Processing"
@@ -83,15 +83,6 @@ class ValidatorConclusion(InfrahubStringEnum):
     UNKNOWN = "unknown"
     FAILURE = "failure"
     SUCCESS = "success"
-
-
-# Generate a list of String based on Enums
-RELATIONSHIP_KINDS = [RelationshipKind.__members__[member].value for member in list(RelationshipKind.__members__)]
-RELATIONSHIP_CARDINALITY = [
-    RelationshipCardinality.__members__[member].value for member in list(RelationshipCardinality.__members__)
-]
-ARTIFACT_STATUSES = [ArtifactStatus.__members__[member].value for member in list(ArtifactStatus.__members__)]
-BRANCH_SUPPORT_TYPES = [BranchSupportType.__members__[member].value for member in list(BranchSupportType.__members__)]
 
 
 class BaseSchemaModel(BaseModel):
@@ -731,7 +722,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
@@ -827,7 +818,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {"name": "order_weight", "kind": "Number", "optional": True},
@@ -871,11 +862,16 @@ internal_schema = {
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
-                {"name": "kind", "kind": "Text", "enum": RELATIONSHIP_KINDS, "default_value": "Generic"},
+                {
+                    "name": "kind",
+                    "kind": "Text",
+                    "enum": RelationshipKind.available_types(),
+                    "default_value": "Generic",
+                },
                 {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
                 {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
                 {"name": "identifier", "kind": "Text", "max_length": DEFAULT_REL_IDENTIFIER_LENGTH, "optional": True},
-                {"name": "cardinality", "kind": "Text", "enum": RELATIONSHIP_CARDINALITY},
+                {"name": "cardinality", "kind": "Text", "enum": RelationshipCardinality.available_types()},
                 {"name": "order_weight", "kind": "Number", "optional": True},
                 {
                     "name": "optional",
@@ -886,7 +882,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {
@@ -939,7 +935,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
@@ -1744,7 +1740,7 @@ core_models = {
                 {
                     "name": "status",
                     "kind": "Text",
-                    "enum": ARTIFACT_STATUSES,
+                    "enum": ArtifactStatus.available_types(),
                 },
                 {
                     "name": "content_type",
