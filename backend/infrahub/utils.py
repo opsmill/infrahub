@@ -1,6 +1,6 @@
 import os
 from enum import Enum, EnumMeta
-from typing import Optional
+from typing import List, Optional
 
 KWARGS_TO_DROP = ["session"]
 
@@ -42,3 +42,9 @@ class MetaEnum(EnumMeta):
 
 class BaseEnum(Enum, metaclass=MetaEnum):
     pass
+
+
+class InfrahubStringEnum(str, BaseEnum):
+    @classmethod
+    def available_types(cls) -> List[str]:
+        return [cls.__members__[member].value for member in list(cls.__members__)]

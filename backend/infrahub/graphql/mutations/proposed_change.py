@@ -1,16 +1,19 @@
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from neo4j import AsyncSession
 
+from infrahub.core.branch import ObjectConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.registry import registry
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import NodeSchema, ValidatorConclusion, ValidatorState
 from infrahub.exceptions import NodeNotFound
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.message_bus import messages
+
 
 from .main import InfrahubMutationOptions
 
@@ -18,24 +21,90 @@ if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 
-async def create_data_check(session: AsyncSession, proposed_change: Node) -> None:
+async def _get_conflicts(session: AsyncSession, proposed_change: Node) -> List[ObjectConflict]:
     source_branch = await registry.get_branch(session=session, branch=proposed_change.source_branch.value)
     diff = await source_branch.diff(session=session, branch_only=False)
-    conflicts = await diff.get_conflicts_graph(session=session)
-    obj = await Node.init(session=session, schema="InternalDataIntegrityValidator")
-    conflict_paths = []
-    status = "passed"
-    for conflict in conflicts:
-        conflict_paths.append("/".join(conflict))
-        status = "failed"
-    await obj.new(
+    return await diff.get_conflicts_graph(session=session)
+
+
+async def create_data_check(session: AsyncSession, proposed_change: Node) -> None:
+    conflicts = await _get_conflicts(session=session, proposed_change=proposed_change)
+
+    validator_obj = await Node.init(session=session, schema="InternalDataIntegrityValidator")
+
+    initial_state = ValidatorState.COMPLETED
+    initial_conclusion = ValidatorConclusion.SUCCESS
+
+    params = {"completed_at": Timestamp().to_string()}
+    if conflicts:
+        initial_state = ValidatorState.IN_PROGRESS
+        initial_conclusion = ValidatorConclusion.UNKNOWN
+        params.pop("completed_at")
+
+    await validator_obj.new(
         session=session,
         proposed_change=proposed_change.id,
-        conflict_paths=conflict_paths,
-        state="completed",
-        status=status,
+        state=initial_state.value,
+        conclusion=initial_conclusion.value,
+        **params,
     )
-    await obj.save(session=session)
+    await validator_obj.save(session=session)
+
+    for conflict in conflicts:
+        conflict_obj = await Node.init(session=session, schema="InternalDataConflict")
+        await conflict_obj.new(
+            session=session,
+            validator=validator_obj.id,
+            path=str(conflict),
+            **params,
+        )
+        await conflict_obj.save(session=session)
+
+    if conflicts:
+        updated_validator_obj = await NodeManager.get_one(id=validator_obj.id, session=session)
+        updated_validator_obj.state.value = ValidatorState.COMPLETED.value
+        updated_validator_obj.conclusion.value = ValidatorConclusion.FAILURE.value
+        updated_validator_obj.completed_at.value = Timestamp().to_string()
+        await updated_validator_obj.save(session=session)
+
+
+async def update_data_check(session: AsyncSession, proposed_change: Node) -> None:
+    if not proposed_change.data_integrity:
+        await create_data_check(session=session, proposed_change=proposed_change)
+        return
+
+    conflicts = await _get_conflicts(session=session, proposed_change=proposed_change)
+
+    state = ValidatorState.COMPLETED
+    conclusion = ValidatorConclusion.SUCCESS
+
+    completed_at = Timestamp().to_string()
+    if conflicts:
+        state = ValidatorState.COMPLETED
+        conclusion = ValidatorConclusion.FAILURE
+
+    data_integrity = await proposed_change.data_integrity.get_peer(session=session)
+
+    conflict_objects = []
+    for conflict in conflicts:
+        conflict_obj = await Node.init(session=session, schema="InternalDataConflict")
+        await conflict_obj.new(
+            session=session,
+            validator=data_integrity.id,
+            path=str(conflict),
+        )
+        await conflict_obj.save(session=session)
+        conflict_objects.append(conflict_obj.id)
+
+    previous_relationships = await data_integrity.conflicts.get_relationships(session=session)
+    for rel in previous_relationships:
+        await rel.delete(session=session)
+
+    data_integrity.state_value = state.value
+    data_integrity.conclusion.value = conclusion.value
+    data_integrity.conflicts.update = conflict_objects
+    data_integrity.completed_at.value = completed_at
+    await data_integrity.save(session=session)
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
@@ -107,6 +176,6 @@ class ProposedChangeRequestRunCheck(Mutation):
                 identifier=identifier,
                 message="The requested proposed change wasn't found",
             )
-        await create_data_check(session=session, proposed_change=proposed_change)
+        await update_data_check(session=session, proposed_change=proposed_change)
 
         return {"ok": True}

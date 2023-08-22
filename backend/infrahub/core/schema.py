@@ -12,7 +12,7 @@ from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import BaseEnum
+from infrahub.utils import BaseEnum, InfrahubStringEnum
 from infrahub_client.utils import duplicates, intersection
 
 if TYPE_CHECKING:
@@ -71,6 +71,18 @@ class ArtifactStatus(str, BaseEnum):
     PENDING = "Pending"
     PROCESSING = "Processing"
     READY = "Ready"
+
+
+class ValidatorState(InfrahubStringEnum):
+    QUEUED = "queued"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class ValidatorConclusion(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    FAILURE = "failure"
+    SUCCESS = "success"
 
 
 # Generate a list of String based on Enums
@@ -1134,20 +1146,21 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": True,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {
                     "name": "state",
                     "kind": "Text",
-                    "enum": ["queued", "in_progress", "completed"],
-                    "default_value": "queued",
+                    "enum": ValidatorState.available_types(),
+                    "default_value": ValidatorState.QUEUED.value,
                 },
                 {
                     "name": "conclusion",
                     "kind": "Text",
-                    "enum": ["unknown", "failure", "success"],
-                    "default_value": "unknown",
+                    "enum": ValidatorConclusion.available_types(),
+                    "default_value": ValidatorConclusion.UNKNOWN.value,
                 },
+                {"name": "completed_at", "kind": "DateTime", "optional": True},
             ],
             "relationships": [],
         },
@@ -1386,7 +1399,7 @@ core_models = {
                     "peer": "InternalDataIntegrityValidator",
                     "kind": "Component",
                     "optional": True,
-                    "cardinality": "many",
+                    "cardinality": "one",
                 },
             ],
         },
@@ -1595,15 +1608,34 @@ core_models = {
             ],
         },
         {
+            "name": "DataConflict",
+            "namespace": "Internal",
+            "description": "A conflict related to data as seen between two branches",
+            "label": "Data Conflict",
+            "default_filter": "path__value",
+            "order_by": ["path__value"],
+            "display_labels": ["path__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {"name": "path", "kind": "Text"},
+            ],
+            "relationships": [
+                {
+                    "name": "validator",
+                    "peer": "InternalDataIntegrityValidator",
+                    "kind": "Parent",
+                    "optional": False,
+                    "cardinality": "one",
+                }
+            ],
+        },
+        {
             "name": "DataIntegrityValidator",
             "namespace": "Internal",
             "description": "A check to validate the data integrity between two branches",
             "label": "Data Validator",
             "inherit_from": ["InternalValidator"],
-            "branch": True,
-            "attributes": [
-                {"name": "conflict_paths", "kind": "List", "optional": False, "default_value": []},
-            ],
+            "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
                     "name": "proposed_change",
@@ -1611,6 +1643,13 @@ core_models = {
                     "kind": "Parent",
                     "optional": False,
                     "cardinality": "one",
+                },
+                {
+                    "name": "conflicts",
+                    "peer": "InternalDataConflict",
+                    "kind": "Parent",
+                    "optional": True,
+                    "cardinality": "many",
                 },
             ],
         },
