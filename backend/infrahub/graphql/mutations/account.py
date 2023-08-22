@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, Dict
-from uuid import uuid4
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -9,6 +8,7 @@ from infrahub.auth import AuthType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import NodeNotFound, PermissionDeniedError
+from infrahub_client import UUIDT
 
 from ..types import InfrahubObjectType
 from ..utils import extract_fields
@@ -60,7 +60,7 @@ class AccountMixin:
     @classmethod
     async def create_token(cls, session: AsyncSession, account: Node, data: Dict, info: GraphQLResolveInfo):
         obj = await Node.init(session=session, schema="InternalAccountToken")
-        token = str(uuid4())
+        token = str(UUIDT.new())
         await obj.new(
             session=session,
             account=account,

@@ -16,6 +16,10 @@ CHARACTERS = list("0123456789abcdefghijklmnopqrstuvwxyz")[:BASE]
 # Code inspired from https://github.com/isaacharrisholt/uuidt
 
 
+def generate_uuid() -> str:
+    return str(UUIDT())
+
+
 def encode_number(number: int, min_length: int) -> str:
     """Encore a number into a base16 string and ensure the result has a minimum size.
     If the initial response produced doesn't match the min requirement,
@@ -52,7 +56,7 @@ class UUIDT:
 
     def short(self) -> str:
         """Return the last 8 digit of the UUID (the most random part)"""
-        return self.__str__()[-8:]
+        return str(self)[-8:]
 
     @classmethod
     def new(cls, namespace: Optional[str] = None) -> UUID:

@@ -2,7 +2,6 @@ import asyncio
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
-from uuid import uuid4
 
 import pytest
 import yaml
@@ -17,6 +16,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import get_db
 from infrahub.utils import get_models_dir
+from infrahub_client import UUIDT
 
 
 @pytest.fixture(scope="session")
@@ -89,7 +89,7 @@ class IntegrationHelper:
         return self._admin_headers
 
     async def create_token(self, account_name: Optional[str] = None) -> str:
-        token = str(uuid4())
+        token = str(UUIDT.new())
         account_name = account_name or "admin"
         response = await NodeManager.query(
             schema="CoreAccount",
