@@ -1516,7 +1516,7 @@ core_models = {
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
-                {"name": "location", "kind": "Text"},
+                {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True},
                 {"name": "username", "kind": "Text", "optional": True},
