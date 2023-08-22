@@ -7,13 +7,12 @@ from neo4j import AsyncSession
 from infrahub.core.branch import ObjectConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema, ValidatorConclusion, ValidatorState
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.message_bus import messages
-
 
 from .main import InfrahubMutationOptions
 

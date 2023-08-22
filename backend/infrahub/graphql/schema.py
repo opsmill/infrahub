@@ -19,7 +19,6 @@ from .mutations import (
     RelationshipAdd,
     RelationshipRemove,
 )
-from .queries.proposed_change import ProposedChangeCheckField
 from .types import BranchDiffType, BranchType
 from .utils import extract_fields
 
@@ -69,8 +68,6 @@ class InfrahubBaseQuery(ObjectType):
         time_to=String(required=False),
         branch_only=Boolean(required=False, default_value=False),
     )
-
-    CoreProposedChangeChecks = ProposedChangeCheckField
 
     @staticmethod
     async def resolve_branch(root: dict, info: GraphQLResolveInfo, **kwargs):
