@@ -12,6 +12,7 @@ from rich.logging import RichHandler
 import infrahub.config as config
 from infrahub.git import handle_message, initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
+from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import get_broker
 from infrahub.message_bus.events import (
@@ -118,6 +119,9 @@ async def _start(debug: bool, interval: int, port: int):
     log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
     client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
     await client.branch.all()
+
+    # Initialize the lock
+    initialize_lock()
 
     await initialize_git_agent(client=client)
 

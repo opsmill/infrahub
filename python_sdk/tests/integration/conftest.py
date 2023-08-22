@@ -39,7 +39,9 @@ def execute_before_any_test(worker_id):
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 
     config.SETTINGS.broker.enable = False
+    config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
+    config.SETTINGS.experimental_features.ignore_authentication_requirements = False
     config.SETTINGS.main.internal_address = "http://mock"
 
 

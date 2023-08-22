@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
 import infrahub.config as config
+from infrahub import lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import (
     BranchNotFound,
@@ -12,7 +13,6 @@ from infrahub.exceptions import (
     Error,
     InitializationError,
 )
-from infrahub.lock import registry as lock_registry
 
 if TYPE_CHECKING:
     import graphene
@@ -257,7 +257,7 @@ class Registry:
         if not self.branch_object:
             raise Error("Branch object not initialized")
 
-        async with lock_registry.get_branch_schema_update():
+        async with lock.registry.get_branch_schema_update():
             obj = await self.branch_object.get_by_name(name=branch, session=session)
             registry.branch[branch] = obj
 

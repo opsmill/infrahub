@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import infrahub.config as config
+from infrahub import lock
 from infrahub.exceptions import (
     CheckError,
     Error,
@@ -12,7 +13,6 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.git.repository import InfrahubRepository
-from infrahub.lock import registry as lock_registry
 from infrahub.log import set_log_data
 from infrahub.message_bus.events import (
     ArtifactMessageAction,
@@ -77,7 +77,7 @@ async def handle_check_message_action_python(message: InfrahubCheckRPC, client: 
 
 async def handle_git_message_action_branch_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    async with lock_registry.get(message.repository_name):
+    async with lock.registry.get(message.repository_name):
         try:
             await repo.create_branch_in_git(branch_name=message.params["branch_name"])
         except RepositoryError as exc:
@@ -110,13 +110,13 @@ async def handle_git_message_action_get_file(message: InfrahubGitRPC, client: In
 
 async def handle_git_message_action_merge(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    async with lock_registry.get(message.repository_name):
+    async with lock.registry.get(message.repository_name):
         await repo.merge(source_branch=message.params["branch_name"], dest_branch=config.SETTINGS.main.default_branch)
         return InfrahubRPCResponse(status=RPCStatusCode.OK)
 
 
 async def handle_git_message_action_repo_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    async with lock_registry.get(message.repository_name):
+    async with lock.registry.get(message.repository_name):
         try:
             repo = await InfrahubRepository.new(
                 id=message.repository_id, name=message.repository_name, location=message.location, client=client

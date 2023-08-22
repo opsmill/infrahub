@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 import infrahub.config as config
+from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.manager import NodeManager
@@ -26,7 +27,6 @@ from infrahub.core.schema import (
 )
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
-from infrahub.lock import registry as lock_registry
 from infrahub_client.utils import intersection
 
 if TYPE_CHECKING:
@@ -437,7 +437,7 @@ class SchemaManager(NodeManager):
     async def get_full_safe(
         self, branch: Optional[Union[Branch, str]] = None
     ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
-        await lock_registry.wait_branch_schema_update_available()
+        await lock.registry.wait_branch_schema_update_available()
 
         return self.get_full(branch=branch)
 
