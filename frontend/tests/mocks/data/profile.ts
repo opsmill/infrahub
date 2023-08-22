@@ -2,7 +2,7 @@ export const profileId = "d07bb58e-8394-4053-a198-9cef84e7d6c0";
 
 export const profileDetailsMocksQuery = `
 query {
-  account_profile {
+  AccountProfile {
     id
     display_label
       name {
@@ -106,7 +106,7 @@ query {
 `;
 
 export const profileDetailsMocksData = {
-  account_profile: {
+  AccountProfile: {
     id: profileId,
     display_label: "Chloe O'Brian",
     name: {

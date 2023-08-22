@@ -27,7 +27,7 @@ async def test_relationship_add(
 ):
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -66,7 +66,7 @@ async def test_relationship_add(
     # --------------------------------------
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -113,7 +113,7 @@ async def test_relationship_remove(
 ):
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -151,7 +151,7 @@ async def test_relationship_remove(
     # --------------------------------------
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}],
@@ -191,7 +191,7 @@ async def test_relationship_wrong_name(
 ):
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "notvalid",
             nodes: [{id: "%s"}],
@@ -218,7 +218,7 @@ async def test_relationship_wrong_name(
     # Relationship existing relationship with the wrong cardinality
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "primary_tag",
             nodes: [{id: "%s"}],
@@ -256,7 +256,7 @@ async def test_relationship_wrong_node(
     bad_uuid = str(uuid.uuid4())
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}],
@@ -283,7 +283,7 @@ async def test_relationship_wrong_node(
     # Wrong Kind
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}],
@@ -324,7 +324,7 @@ async def test_relationship_groups_add(
 
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "members",
             nodes: [{id: "%s"}],
@@ -353,7 +353,7 @@ async def test_relationship_groups_add(
 
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -402,7 +402,7 @@ async def test_relationship_groups_remove(
 
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "members",
             nodes: [{id: "%s"}],
@@ -431,7 +431,7 @@ async def test_relationship_groups_remove(
 
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -481,7 +481,7 @@ async def test_relationship_groups_add_remove(
     nbr_rels_before = await count_relationships(session=session)
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -515,7 +515,7 @@ async def test_relationship_groups_add_remove(
     nbr_rels_before = await count_relationships(session=session)
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -553,7 +553,7 @@ async def test_relationship_groups_add_remove(
     nbr_rels_before = await count_relationships(session=session)
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -587,7 +587,7 @@ async def test_relationship_groups_add_remove(
     nbr_rels_before = await count_relationships(session=session)
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
