@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
 from typing import TYPE_CHECKING, Dict, List, Optional, Type
 
 import redis.asyncio as redis
+from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config
@@ -15,6 +17,22 @@ if TYPE_CHECKING:
 
 registry: InfrahubLockRegistry = None
 
+
+METRIC_PREFIX = "infrahub_lock"
+
+LOCK_ACQUIRE_TIME_METRICS = Histogram(
+    f"{METRIC_PREFIX}_acquire_seconds",
+    "Time to acquire the lock on a given object",
+    labelnames=["lock", "type"],
+    buckets=[0.0005, 0.25, 0.5, 1, 5],
+)
+
+LOCK_RESERVE_TIME_METRICS = Histogram(
+    f"{METRIC_PREFIX}_reserved_duration_seconds",
+    "Time while a given lock is reserved by a given client",
+    labelnames=["lock", "type"],
+    buckets=[0.001, 0.5, 1, 5, 10],
+)
 
 LOCAL_SCHEMA_LOCK = "local.schema"
 GLOBAL_SCHEMA_LOCK = "global.schema"
@@ -36,11 +54,11 @@ class InfrahubMultiLock:
 
     async def acquire(self) -> None:
         for lock in self.locks:
-            await self.registry.get(lock).acquire()
+            await self.registry.get(name=lock).acquire()
 
     async def release(self) -> None:
         for lock in reversed(self.locks):
-            await self.registry.get(lock).release()
+            await self.registry.get(name=lock).release()
 
 
 class InfrahubLock:
@@ -49,12 +67,17 @@ class InfrahubLock:
     Having the same interface for both local and distributed tests will simplify our unit tests.
     """
 
-    def __init__(self, name: str, connection: Optional[redis.Redis] = None, local: Optional[bool] = None):
-        self.use_local = local
+    def __init__(
+        self, name: str, connection: Optional[redis.Redis] = None, local: Optional[bool] = None, in_multi: bool = False
+    ):
+        self.use_local: bool = local
         self.local: LocalLock = None
         self.remote: GlobalLock = None
-        self.name = name
-        self.connection = connection
+        self.name: str = name
+        self.connection: Optional[redis.Redis] = connection
+        self.in_multi: bool = in_multi
+        self.lock_type: str = "multi" if self.in_multi else "individual"
+        self.acquire_time: Optional[int] = None
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -71,12 +94,16 @@ class InfrahubLock:
         await self.release()
 
     async def acquire(self) -> None:
-        if not self.use_local:
-            await self.remote.acquire()
-        else:
-            await self.local.acquire()
+        with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
+            if not self.use_local:
+                await self.remote.acquire()
+            else:
+                await self.local.acquire()
+        self.acquire_time = time.time_ns()
 
     async def release(self) -> None:
+        duration_ns = time.time_ns() - self.acquire_time
+        LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
         if not self.use_local:
             await self.remote.release()
         else:
@@ -120,10 +147,12 @@ class InfrahubLockRegistry:
 
         return new_name
 
-    def get(self, name: str, namespace: Optional[str] = None, local: Optional[bool] = None) -> InfrahubLock:
+    def get(
+        self, name: str, namespace: Optional[str] = None, local: Optional[bool] = None, in_multi: bool = False
+    ) -> InfrahubLock:
         lock_name = self._generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
-            self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection)
+            self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
         return self.locks[lock_name]
 
     def local_schema_lock(self) -> LocalLock:
