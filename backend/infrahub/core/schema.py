@@ -1277,14 +1277,20 @@ core_models = {
             "label": "Account Token",
             "default_filter": "token__value",
             "display_labels": ["token__value"],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": True},
                 {"name": "token", "kind": "Text", "unique": True},
                 {"name": "expiration", "kind": "DateTime", "optional": True},
             ],
             "relationships": [
-                {"name": "account", "peer": "CoreAccount", "optional": False, "cardinality": "one"},
+                {
+                    "name": "account",
+                    "peer": "CoreAccount",
+                    "optional": False,
+                    "cardinality": "one",
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                },
             ],
         },
         {
@@ -1293,12 +1299,18 @@ core_models = {
             "description": "Refresh Token",
             "label": "Refresh Token",
             "display_labels": [],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "expiration", "kind": "DateTime", "optional": False},
             ],
             "relationships": [
-                {"name": "account", "peer": "CoreAccount", "optional": False, "cardinality": "one"},
+                {
+                    "name": "account",
+                    "peer": "CoreAccount",
+                    "optional": False,
+                    "cardinality": "one",
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                },
             ],
         },
         {
