@@ -75,7 +75,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     if (branches?.length) {
       return branches.map((branch: string, index: number) => {
         return (
-          <div className="p-2 pr-0 grid grid-cols-3 gap-4 mr-2 last:mr-0" key={index}>
+          <div className="p-1 pr-0 grid grid-cols-3 gap-4 mr-2 last:mr-0" key={index}>
             <div className="flex">
               {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
 
@@ -100,7 +100,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
     if (peerBranch) {
       return (
-        <div className="p-2 pr-0 grid grid-cols-3 gap-4 mr-2 last:mr-0">
+        <div className="p-1 pr-0 grid grid-cols-3 gap-4 mr-2 last:mr-0">
           <div className="flex">
             {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
             {previousPeer?.kind && <Badge>{previousPeer?.kind}</Badge>}
@@ -144,7 +144,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   return (
     <div
       className={classNames(
-        "p-2 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
+        "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
         peerBranch === "main" ? "bg-custom-blue-10" : "bg-green-200"
       )}>
       <div className="flex">

@@ -36,7 +36,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   const renderTitleDisplay = (diffValue: tDataDiffNodeValueChange) => {
     return (
-      <div className="p-2 pr-0 grid grid-cols-3 gap-4">
+      <div className="p-1 pr-0 grid grid-cols-3 gap-4">
         <div className="flex">
           {!name && peer?.kind && <Badge>{peer?.kind}</Badge>}
 
@@ -77,7 +77,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
         <div
           key={index}
           className={classNames(
-            "p-2 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
+            "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
             change?.branch === "main" ? "bg-custom-blue-10" : "bg-green-200"
           )}>
           {propertiesChanges?.length && (
@@ -102,7 +102,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
     return (
       <div
         className={classNames(
-          "p-2 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
+          "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
           change?.branch === "main" ? "bg-custom-blue-10" : "bg-green-200"
         )}>
         <div className="rounded-md overflow-hidden">{peersChanges}</div>

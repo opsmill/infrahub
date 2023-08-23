@@ -20,7 +20,7 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
 
       <div
         className={classNames(
-          "flex-1 p-2 pr-0 grid grid-cols-3 gap-4",
+          "flex-1 p-1 pr-0 grid grid-cols-3 gap-4",
           branch === "main" ? "bg-custom-blue-10" : "bg-green-200"
         )}>
         <div className="flex items-center">
