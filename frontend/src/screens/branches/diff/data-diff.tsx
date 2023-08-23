@@ -21,9 +21,9 @@ export const DataDiff = () => {
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
-  const fetchDiffDetails = useCallback(async () => {
-    const branch = branchname || proposedChangesDetails?.source_branch?.value;
+  const branch = branchname || proposedChangesDetails?.source_branch?.value;
 
+  const fetchDiffDetails = useCallback(async () => {
     if (!branch) return;
 
     setIsLoading(true);
@@ -58,6 +58,14 @@ export const DataDiff = () => {
 
   return (
     <>
+      {(!branchOnly || branchOnly === "false") && (
+        <div className="flex items-center m-4">
+          <span className="mr-2">Branches colours:</span>
+          <div className={"rounded-lg shadow p-2 mr-2 bg-custom-blue-10"}>main</div>
+          <div className={"rounded-lg shadow p-2 bg-green-200"}>{branch}</div>
+        </div>
+      )}
+
       {isLoading && <LoadingScreen />}
 
       {!isLoading && (
