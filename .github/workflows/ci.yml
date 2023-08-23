@@ -41,7 +41,7 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
-      - name: Check for backend file changes
+      - name: Check for file changes
         uses: dorny/paths-filter@v2
         id: changes
         with:
@@ -122,7 +122,7 @@ jobs:
 
   python-sdk-tests:
     if: |
-      !cancelled() && (success() || failure()) &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.sdk == 'true'
@@ -168,7 +168,7 @@ jobs:
 
   backend-tests-default:
     if: |
-      !cancelled() && (success() || failure()) &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
@@ -211,7 +211,7 @@ jobs:
 
   backend-tests-neo4j:
     if: |
-      !cancelled() && (success() || failure()) &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
@@ -236,7 +236,7 @@ jobs:
 
   ctl-tests:
     if: |
-      !cancelled() && (success() || failure()) &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.ctl == 'true'
@@ -269,7 +269,7 @@ jobs:
 
   frontend-tests:
     if: |
-      !cancelled() && (success() || failure()) &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.frontend == 'true'
@@ -306,7 +306,7 @@ jobs:
   E2E-testing:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
     if: |
-      !cancelled() && (success() || failure()) &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: "runner-ubuntu-8-32"
@@ -343,7 +343,7 @@ jobs:
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
     if: |
-      !cancelled() && (success() || failure())
+      always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
