@@ -26,8 +26,9 @@ It's designed to be controlled by `invoke` using a list of predefined commands
 
 | Container Name  | Image                    | Description                                            | { class="compact" }
 | --------------- | ------------------------ | ------------------------------------------------------ |
-| **database**        | neo4j:5.6-enterprise     | Graph Database                                         |
+| **database**        | memgraph/memgraph:2.10.0<br>or<br>neo4j:5.6-enterprise     | Graph Database   |
 | **message-queue**   | rabbitmq:3.12-management | Message bus based on RabbitMQ                          |
+| **cache**   | redis:7.2 | Cache based on Redis, mainly used for distributed lock                        |
 | **infrahub-server** | Dockerfile               | Instance of the API Server, running GraphQL            |
 | **infrahub-git**    | Dockerfile               | Instance of the Git Agent, managing the Git Repository |
 | **frontend**        | Dockerfile               | Instance of the Frontend                               |
