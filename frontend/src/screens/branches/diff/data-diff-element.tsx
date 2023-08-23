@@ -2,7 +2,6 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
-import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { QSP } from "../../../config/qsp";
 import { classNames } from "../../../utils/common";
@@ -28,7 +27,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   const { name, change } = element;
 
-  // value AND propertie || peer || peers
+  // value AND properties || peer || peers
   const { value, changed_at, properties, summary, peer, peers } = change ?? {};
 
   const renderDiffDisplay = (diffValue: tDataDiffNodeValueChange) => {
@@ -43,8 +42,6 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
     return (
       <div className="p-1 pr-0 grid grid-cols-3 gap-4">
         <div className="flex">
-          {!name && peer?.kind && <Badge>{peer?.kind}</Badge>}
-
           <span className="mr-2 font-semibold">{name}</span>
         </div>
 
@@ -77,30 +74,34 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   );
 
   if (value?.changes?.length) {
-    return value?.changes?.map((change, index) => {
-      return (
-        <div
-          key={index}
-          className={classNames(
-            "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
-            getNodeClassName([], change.branch, branchOnly)
-          )}>
-          {propertiesChanges?.length && (
-            <Accordion title={renderTitleDisplay(change)}>
-              <div className="rounded-md overflow-hidden">{propertiesChanges}</div>
-            </Accordion>
-          )}
+    return (
+      <>
+        {value?.changes?.map((change, index) => {
+          return (
+            <div
+              key={index}
+              className={classNames(
+                "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
+                getNodeClassName([], change.branch, branchOnly)
+              )}>
+              {propertiesChanges?.length > 0 && (
+                <Accordion title={renderTitleDisplay(change)}>
+                  <div className="rounded-md overflow-hidden">{propertiesChanges}</div>
+                </Accordion>
+              )}
 
-          {!propertiesChanges?.length && !peersChanges?.length && (
-            <div className="flex">
-              {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-              <ChevronDownIcon className="h-5 w-5 mr-2 text-transparent" aria-hidden="true" />
-              <div className="flex-1">{renderTitleDisplay(change)}</div>
+              {!propertiesChanges?.length && !peersChanges?.length && (
+                <div className="flex">
+                  {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
+                  <ChevronDownIcon className="h-5 w-5 mr-2 text-transparent" aria-hidden="true" />
+                  <div className="flex-1">{renderTitleDisplay(change)}</div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      );
-    });
+          );
+        })}
+      </>
+    );
   }
 
   if (peersChanges?.length) {
@@ -111,8 +112,14 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
     );
   }
 
-  if (peer && peer?.changes) {
-    return peer?.changes.map((peer, index) => <DataDiffPeer key={index} peerChanges={peer} />);
+  if (peer && peer?.changes?.length) {
+    return (
+      <>
+        {peer?.changes.map((peer, index) => (
+          <DataDiffPeer key={index} peerChanges={peer} />
+        ))}
+      </>
+    );
   }
 
   return null;

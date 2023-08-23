@@ -2,7 +2,7 @@ import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { BADGE_TYPES, Badge } from "../components/badge";
 import { Tooltip } from "../components/tooltip";
 import {
-  tDataDiffNodePeer,
+  tDataDiffNodePeerValue,
   tDataDiffNodePropertyChange,
 } from "../screens/branches/diff/data-diff-node";
 
@@ -73,7 +73,7 @@ export const diffContent: { [key: string]: any } = {
 // Display the values
 // (only new one for "added", only old ones for "deleted", and previous + new for "updated")
 export const diffPeerContent = (
-  peer: tDataDiffNodePeer,
+  peer: tDataDiffNodePeerValue,
   action?: string,
   onClick?: Function,
   branch: string = "main"
@@ -129,7 +129,7 @@ export const diffPeerContent = (
           <Badge
             type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL}
             onClick={onClick}>
-            {displayValue(display_label)} ok
+            {displayValue(display_label)}
           </Badge>
         </Tooltip>
       </div>

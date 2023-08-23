@@ -15,12 +15,6 @@ export type tDataDiffNodePropertyValue = {
   previous: string;
 };
 
-export type tDataDiffNodePeerData = {
-  id: string;
-  kind: string;
-  display_label?: string;
-};
-
 export type tDataDiffNodePropertyChange = {
   type?: string;
   changed_at?: number;
@@ -29,33 +23,38 @@ export type tDataDiffNodePropertyChange = {
   branch: string;
 };
 
-export type tDataDiffNodePeerChange = {
-  changed_at?: number;
-  action: string;
-  branches: string[];
-  path: string;
-  peer: tDataDiffNodePeerData;
-  properties: tDataDiffNodeProperty;
-  new?: tDataDiffNodePeerData;
-  previous?: tDataDiffNodePeerData;
-  summary?: tDataDiffNodeSummary;
-  branch?: string;
-  changes: tDataDiffNodePeerData[];
-};
-
 export type tDataDiffNodeProperty = {
   path: string;
   changes: tDataDiffNodePropertyChange[];
 };
 
-export type tDataDiffNodePeer = {
+export type tDataDiffNodePeerValue = {
   // From relationship one
-  new?: tDataDiffNodePeerData;
-  previous?: tDataDiffNodePeerData;
+  new?: tDataDiffNodePeerValue;
+  previous?: tDataDiffNodePeerValue;
   // From relationship many
   id?: string;
   kind?: string;
   display_label?: string;
+};
+
+export type tDataDiffNodePeerChange = {
+  changed_at?: number;
+  action: string;
+  branches: string[];
+  path: string;
+  peer: tDataDiffNodePeerValue;
+  properties: { [key: string]: tDataDiffNodeProperty };
+  new?: tDataDiffNodePeerValue;
+  previous?: tDataDiffNodePeerValue;
+  summary?: tDataDiffNodeSummary;
+  branch?: string;
+  changes: tDataDiffNodePeerChange[];
+};
+
+export type tDataDiffNodePeer = {
+  path: string;
+  changes: tDataDiffNodePropertyChange[];
 };
 
 export type tDataDiffNodeValueChange = {
@@ -78,7 +77,7 @@ export type tDataDiffNodeChange = {
   identifier?: string;
   action: string;
   properties?: tDataDiffNodeProperty[];
-  peer?: tDataDiffNodePeer;
+  peer?: tDataDiffNodePeerChange;
   peers?: tDataDiffNodePeerChange[];
   summary?: tDataDiffNodeSummary;
 };

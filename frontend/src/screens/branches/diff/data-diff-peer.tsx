@@ -14,9 +14,8 @@ import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import {
   getNodeClassName,
-  tDataDiffNodePeer,
   tDataDiffNodePeerChange,
-  tDataDiffNodePeerData,
+  tDataDiffNodePeerValue,
 } from "./data-diff-node";
 import { DataDiffProperty } from "./data-diff-property";
 import { DiffPill } from "./diff-pill";
@@ -26,7 +25,7 @@ export type tDataDiffNodePeerProps = {
 };
 
 export const getPeerRedirection = (
-  peer: tDataDiffNodePeerData | tDataDiffNodePeer,
+  peer: tDataDiffNodePeerValue,
   branch: string,
   schemaKindName: iSchemaKindNameMap,
   navigate: Function
@@ -65,7 +64,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     previous: previousPeer,
   } = peerChanges;
 
-  const renderDiffDisplay = (peer: tDataDiffNodePeerData | tDataDiffNodePeer, branch: string) => {
+  const renderDiffDisplay = (peer: tDataDiffNodePeerValue, branch: any) => {
     if (peer?.kind && peer?.id) {
       const onClick = getPeerRedirection(peer, branch, schemaKindName, navigate);
 
