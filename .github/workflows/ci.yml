@@ -336,7 +336,8 @@ jobs:
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
-    if: !cancelled() && (success() || failure())
+    if: |
+      !cancelled() && (success() || failure())
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
