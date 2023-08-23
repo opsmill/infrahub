@@ -142,7 +142,7 @@ export const getNodeClassName = (
   branchOnly?: string | null | undefined
 ) => {
   // Do not display a color if the node is related to mulitple branches or if we are on the branch details diff
-  if (branches.length > 1 || branchOnly === "true") {
+  if (branches?.length > 1 || branchOnly === "true") {
     return "bg-custom-white";
   }
 
