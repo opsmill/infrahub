@@ -28,6 +28,7 @@ jobs:
   files-changed:
     name: Detect which file has changed
     runs-on: ubuntu-20.04
+    timeout-minutes: 5
     outputs:
       backend: ${{ steps.changes.outputs.backend_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
@@ -40,7 +41,7 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
-      - name: Check for backend file changes
+      - name: Check for file changes
         uses: dorny/paths-filter@v2
         id: changes
         with:
@@ -51,6 +52,7 @@ jobs:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
+    timeout-minutes: 5
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -71,6 +73,7 @@ jobs:
     if: needs.files-changed.outputs.javascript == 'true'
     needs: ["files-changed"]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -90,6 +93,7 @@ jobs:
     if: needs.files-changed.outputs.python == 'true'
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
+    timeout-minutes: 5
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -118,12 +122,13 @@ jobs:
 
   python-sdk-tests:
     if: |
-      always() &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.sdk == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
+    timeout-minutes: 30
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -163,12 +168,13 @@ jobs:
 
   backend-tests-default:
     if: |
-      always() &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
+    timeout-minutes: 45
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -205,12 +211,13 @@ jobs:
 
   backend-tests-neo4j:
     if: |
-      always() &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
+    timeout-minutes: 30
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -229,7 +236,7 @@ jobs:
 
   ctl-tests:
     if: |
-      always() &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.ctl == 'true'
@@ -262,12 +269,13 @@ jobs:
 
   frontend-tests:
     if: |
-      always() &&
+      always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.frontend == 'true'
     needs: ["files-changed", "yaml-lint", "javascript-lint"]
     runs-on: "ubuntu-20.04"
+    timeout-minutes: 30
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -297,8 +305,12 @@ jobs:
 
   E2E-testing:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
-    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: "runner-ubuntu-8-32"
+    timeout-minutes: 30
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -330,8 +342,10 @@ jobs:
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
-    if: always()
+    if: |
+      always() && !cancelled()
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # # NOTE: The ref value should be different when triggered by pull_request event.
       # #       See: https://github.com/lewagon/wait-on-check-action/issues/25.
