@@ -1,7 +1,10 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { BADGE_TYPES, Badge } from "../components/badge";
 import { Tooltip } from "../components/tooltip";
-import { tDataDiffNodePeer, tDataDiffNodeProperty } from "../screens/branches/diff/data-diff-node";
+import {
+  tDataDiffNodePeer,
+  tDataDiffNodePropertyChange,
+} from "../screens/branches/diff/data-diff-node";
 
 export const displayValue = (value: any) => {
   if (typeof value === "boolean") {
@@ -18,7 +21,7 @@ export const displayValue = (value: any) => {
 // Display the values
 // (only new one for "added", only old ones for "deleted", and previous + new for "updated")
 export const diffContent: { [key: string]: any } = {
-  added: (property: tDataDiffNodeProperty) => {
+  added: (property: tDataDiffNodePropertyChange) => {
     const { value } = property;
 
     const { new: newValue } = value;
@@ -29,7 +32,7 @@ export const diffContent: { [key: string]: any } = {
       </div>
     );
   },
-  removed: (property: tDataDiffNodeProperty) => {
+  removed: (property: tDataDiffNodePropertyChange) => {
     const { value } = property;
 
     const { previous: previousValue } = value;
@@ -40,7 +43,7 @@ export const diffContent: { [key: string]: any } = {
       </div>
     );
   },
-  updated: (property: tDataDiffNodeProperty) => {
+  updated: (property: tDataDiffNodePropertyChange) => {
     const { value } = property;
 
     const { new: newValue, previous: previousValue } = value;
@@ -69,7 +72,12 @@ export const diffContent: { [key: string]: any } = {
 
 // Display the values
 // (only new one for "added", only old ones for "deleted", and previous + new for "updated")
-export const diffPeerContent = (peer: tDataDiffNodePeer, action: string, onClick: any) => {
+export const diffPeerContent = (
+  peer: tDataDiffNodePeer,
+  action?: string,
+  onClick?: Function,
+  branch: string = "main"
+) => {
   const { new: newPeer, previous: previousPeer, kind, display_label } = peer;
 
   // From relationship one
@@ -117,11 +125,11 @@ export const diffPeerContent = (peer: tDataDiffNodePeer, action: string, onClick
   if (kind && display_label && onClick) {
     return (
       <div className="flex">
-        <Tooltip message={`Link to ${display_label}`}>
+        <Tooltip message={`Link to ${display_label} ${branch && `(${branch})`}`}>
           <Badge
             type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL}
             onClick={onClick}>
-            {displayValue(display_label)}
+            {displayValue(display_label)} ok
           </Badge>
         </Tooltip>
       </div>

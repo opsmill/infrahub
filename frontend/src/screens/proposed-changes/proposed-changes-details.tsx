@@ -7,6 +7,7 @@ import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
+import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import { ArtifactsDiff } from "../branches/diff/artifact-diff/artifacts-diff";
@@ -45,18 +46,18 @@ const tabs = [
   },
 ];
 
-const renderContent = (tab: string | null | undefined, proposedChangesDetails: any) => {
+const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case DIFF_TABS.FILES:
-      return <FilesDiff proposedChangesDetails={proposedChangesDetails} />;
+      return <FilesDiff />;
     case DIFF_TABS.ARTIFACTS:
-      return <ArtifactsDiff proposedChangesDetails={proposedChangesDetails} />;
+      return <ArtifactsDiff />;
     case DIFF_TABS.SCHEMA:
       return <SchemaDiff />;
     case DIFF_TABS.DATA:
       return <DataDiff />;
     default: {
-      return <Conversations proposedChangesDetails={proposedChangesDetails} />;
+      return <Conversations />;
     }
   }
 };
@@ -65,6 +66,7 @@ export const ProposedChangesDetails = () => {
   const { proposedchange } = useParams();
   const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
   const [schemaList] = useAtom(schemaState);
+  const [, setProposedChange] = useAtom(proposedChangedState);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
 
@@ -95,11 +97,13 @@ export const ProposedChangesDetails = () => {
 
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
 
+  setProposedChange(result);
+
   return (
     <div>
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      {renderContent(qspTab, result)}
+      {renderContent(qspTab)}
     </div>
   );
 };

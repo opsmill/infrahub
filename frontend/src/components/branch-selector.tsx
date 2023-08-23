@@ -48,15 +48,21 @@ export default function BranchSelector() {
     }
 
     if (branchInQueryString) {
-      return branches.filter((b) => b.name === branchInQueryString.trim())[0];
+      const currentBranch = branches.filter((b) => b.name === branchInQueryString.trim())[0];
+      return currentBranch;
     } else {
-      return branches.filter((b) => b.is_default)[0];
+      const currentBranch = branches.filter((b) => b.is_default)[0];
+      return currentBranch;
     }
   }, [branch, branchInQueryString, branches]);
 
   useEffect(() => {
     // On page load, if no branch is set in reactive var. Fetching it from QSP and setting it in state.
-    if (!branch && branchInQueryString && branches.length) {
+    if (!branches.length) {
+      return;
+    }
+
+    if (branchInQueryString && branches.length) {
       const selectedBranch = branches.find((b) => b.name === branchInQueryString);
       if (selectedBranch) {
         branchVar(selectedBranch);
