@@ -472,7 +472,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "branch_create": {
+            "BranchCreate": {
                 "ok": True,
                 "object": {
                     "id": "8927425e-fd89-482a-bcec-aad267eb2c66",
@@ -496,7 +496,7 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "branch_create": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
+            "BranchCreate": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
         }
     }
 

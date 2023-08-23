@@ -189,7 +189,7 @@ async def group_add_member(client: InfrahubClient, group: InfrahubNode, members:
     members_str = ["{ id: " + f'"{member.id}"' + " }" for member in members]
     query = """
     mutation {
-        relationship_add(
+        RelationshipAdd(
             data: {
                 id: "%s",
                 name: "members",

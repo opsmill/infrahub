@@ -7,7 +7,7 @@ from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import get_branch
 from infrahub.core.branch import BaseDiffElement, Branch, Diff
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -83,10 +83,10 @@ async def test_get_query_filter_relationships_main(session, base_dataset_02):
     )
 
     expected_filters = [
-        "(r1.branch = $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch = $branch0 AND r1.from <= $time0 AND r1.to >= $time0)",
-        "((r1.branch = $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch = $branch0 AND r1.from <= $time0 AND r1.to >= $time0))",
-        "(r2.branch = $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch = $branch0 AND r2.from <= $time0 AND r2.to >= $time0)",
-        "((r2.branch = $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch = $branch0 AND r2.from <= $time0 AND r2.to >= $time0))",
+        "(r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to >= $time0)",
+        "((r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to >= $time0))",
+        "(r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to >= $time0)",
+        "((r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to >= $time0))",
     ]
     assert isinstance(filters, list)
     assert filters == expected_filters
@@ -113,11 +113,11 @@ async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
     main_branch = await get_branch(branch="main", session=session)
 
     results = main_branch.get_branches_and_times_to_query(at=Timestamp())
-    assert Timestamp(results["main"]) > now
+    assert Timestamp(results[frozenset(["main"])]) > now
 
     t1 = Timestamp("2s")
     results = main_branch.get_branches_and_times_to_query(at=t1.to_string())
-    assert results["main"] == t1.to_string()
+    assert results[frozenset(["main"])] == t1.to_string()
 
 
 async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02):
@@ -126,18 +126,51 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
     branch1 = await get_branch(branch="branch1", session=session)
 
     results = branch1.get_branches_and_times_to_query(at=Timestamp())
-    assert Timestamp(results["branch1"]) > now
-    assert results["main"] == base_dataset_02["time_m45"]
+    assert Timestamp(results[frozenset(["branch1"])]) > now
+    assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
 
     t1 = Timestamp("2s")
     results = branch1.get_branches_and_times_to_query(at=t1.to_string())
-    assert results["branch1"] == t1.to_string()
-    assert results["main"] == base_dataset_02["time_m45"]
+    assert results[frozenset(["branch1"])] == t1.to_string()
+    assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
 
     branch1.ephemeral_rebase = True
     results = branch1.get_branches_and_times_to_query(at=Timestamp())
-    assert Timestamp(results["branch1"]) > now
-    assert results["main"] == results["branch1"]
+    assert Timestamp(results[frozenset(["branch1"])]) > now
+    assert results[frozenset(("main",))] == results[frozenset(["branch1"])]
+
+
+async def test_get_branches_and_times_to_query_global_main(session, base_dataset_02):
+    now = Timestamp("1s")
+
+    main_branch = await get_branch(branch="main", session=session)
+
+    results = main_branch.get_branches_and_times_to_query_global(at=Timestamp())
+    assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "main"))]) > now
+
+    t1 = Timestamp("2s")
+    results = main_branch.get_branches_and_times_to_query_global(at=t1.to_string())
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t1.to_string()
+
+
+async def test_get_branches_and_times_to_query_global_branch1(session, base_dataset_02):
+    now = Timestamp("1s")
+
+    branch1 = await get_branch(branch="branch1", session=session)
+
+    results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
+    assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]) > now
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
+
+    t1 = Timestamp("2s")
+    results = branch1.get_branches_and_times_to_query_global(at=t1.to_string())
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))] == t1.to_string()
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
+
+    branch1.ephemeral_rebase = True
+    results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
+    assert Timestamp(frozenset((GLOBAL_BRANCH_NAME, "branch1"))) > now
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]
 
 
 async def test_get_branches_and_times_for_range_main(session, base_dataset_02):

@@ -77,7 +77,7 @@ export default function UserProfile() {
     return <LoadingScreen />;
   }
 
-  const profile = data?.account_profile;
+  const profile = data?.AccountProfile;
 
   return (
     <div className="flex flex-col flex-1 overflow-auto">

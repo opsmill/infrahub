@@ -105,10 +105,10 @@ Below is the list of all available options to define a Relationship in the schem
 | -- | -- | { class="compact" }
 | ---- | --------------- |
 | **Name** | branch |
-| **Kind** | `Boolean` |
+| **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** |  |
-
+| **Accepted Values** | `aware` `agnostic`  |
 
 ## inherited
 

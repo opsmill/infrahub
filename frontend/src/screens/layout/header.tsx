@@ -95,7 +95,7 @@ export default function Header(props: Props) {
     return <LoadingScreen />;
   }
 
-  const profile = data?.account_profile;
+  const profile = data?.AccountProfile;
 
   if (!loading && auth?.accessToken && (error || !profile)) {
     toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {

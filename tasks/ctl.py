@@ -28,7 +28,7 @@ def generate_doc(context: Context):
     )
     print(f" - [{NAMESPACE}] Generate CLI documentation")
     for command in CLI_COMMANDS:
-        exec_cmd = f'typer  {command[0]} utils docs --name "{command[1]}" --output docs/10_infrahubctl/{command[2]}.md'
+        exec_cmd = f'typer  {command[0]} utils docs --name "{command[1]}" --output docs/25_infrahubctl/{command[2]}.md'
         with context.cd(REPO_BASE):
             context.run(exec_cmd)
 

@@ -4,6 +4,7 @@ from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -95,7 +96,7 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
         "name": "Criticality",
         "namespace": "Test",
         "display_labels": ["label__value"],
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
@@ -141,7 +142,7 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
         "name": "Criticality",
         "namespace": "Test",
         "display_labels": ["name__value", "level__value"],
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "level", "kind": "Number", "optional": True},
@@ -192,7 +193,7 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "level", "kind": "Number", "optional": True},
@@ -1945,7 +1946,7 @@ async def test_union_relationship(
         "name": "person",
         "kind": "Person",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
@@ -2196,7 +2197,7 @@ async def test_union_root(
         "name": "person",
         "kind": "Person",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],

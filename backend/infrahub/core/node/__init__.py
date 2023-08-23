@@ -4,7 +4,8 @@ import uuid
 from typing import TYPE_CHECKING, Any, List, Optional, Union
 from uuid import UUID
 
-from infrahub.core import get_branch, registry
+from infrahub.core import registry
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -60,6 +61,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return [self.get_kind()]
 
+    def get_branch_based_on_support_type(self) -> Branch:
+        """If the attribute is branch aware, return the Branch object associated with this attribute
+        If the attribute is branch agnostic return the Global Branch
+
+        Returns:
+            Branch:
+        """
+        if self._schema.branch == BranchSupportType.AGNOSTIC:
+            return registry.get_global_branch()
+        return self._branch
+
     def __repr__(self):
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
@@ -95,7 +107,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     ) -> Self:
         attrs = {}
 
-        branch = await get_branch(branch=branch, session=session)
+        branch = await registry.get_branch(branch=branch, session=session)
 
         if isinstance(schema, NodeSchema):
             attrs["schema"] = schema
@@ -105,11 +117,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         else:
             raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema")
 
-        if not attrs["schema"].branch:
-            attrs["branch"] = None
-        else:
-            attrs["branch"] = branch
-
+        attrs["branch"] = branch
         attrs["at"] = Timestamp(at)
 
         return cls(**attrs)
@@ -341,6 +349,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
+        branch = self.get_branch_based_on_support_type()
 
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
@@ -349,7 +358,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await query.execute(session=session)
         result = query.get_result()
 
-        if result.get("rb.branch") == self._branch.name:
+        if result.get("rb.branch") == branch.name:
             await update_relationships_to([result.get("rb_id")], to=delete_at, session=session)
 
         query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)

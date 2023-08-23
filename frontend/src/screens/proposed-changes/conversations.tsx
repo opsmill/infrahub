@@ -326,7 +326,7 @@ export const Conversations = () => {
   //       },
   //     });
 
-  //     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfuly!"} />);
+  //     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfully!"} />);
   //   } catch (error: any) {
   //     console.log("error: ", error);
 

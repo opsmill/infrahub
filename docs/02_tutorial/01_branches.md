@@ -38,7 +38,7 @@ whenever you want to change data, i.e. create, update or delete. For reading dat
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/main
 mutation {
-  branch_create(data: { name: "cr1234", is_data_only: false}) {
+  BranchCreate(data: { name: "cr1234", is_data_only: false}) {
     ok
     object {
       id
@@ -109,7 +109,7 @@ Use the GraphQL query below to create a new branch named `cr1234`
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/main
 mutation {
-  branch_merge(data: { name: "cr1234" }) {
+  BranchMerge(data: { name: "cr1234" }) {
     ok
     object {
       id

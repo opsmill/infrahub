@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 import infrahub.config as config
 from infrahub.core import get_branch, get_branch_from_registry
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
@@ -187,6 +188,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_inheritance()
+        self.process_branch_support()
         self.add_groups()
         self.process_filters()
         self.generate_weight()
@@ -238,6 +240,32 @@ class SchemaBranch:
                 generic.used_by = []
 
             self.set(name=generic_name, schema=generic)
+
+    def process_branch_support(self) -> None:
+        """Set branch support flag on all attributes and relationships if not already defined.
+
+        if either node on a relationship support branch, the relationship must be branch aware.
+        """
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            for attr in node.attributes:
+                if attr.branch is not None:
+                    continue
+
+                attr.branch = node.branch
+
+            for rel in node.relationships:
+                if rel.branch is not None:
+                    continue
+
+                peer_node = self.get(name=rel.peer)
+                if node.branch == peer_node.branch == BranchSupportType.AGNOSTIC:
+                    rel.branch = BranchSupportType.AGNOSTIC
+                else:
+                    rel.branch = BranchSupportType.AWARE
+
+            self.set(name=name, schema=node)
 
     def process_default_values(self) -> None:
         """Ensure that all attributes with a default value are flagged as optional: True."""
@@ -302,6 +330,7 @@ class SchemaBranch:
                         peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
                     )
                 )
 
@@ -313,6 +342,7 @@ class SchemaBranch:
                         peer="CoreGroup",
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
                     )
                 )
 

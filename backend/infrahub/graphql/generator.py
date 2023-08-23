@@ -205,7 +205,7 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
         )
         if node_name == "CoreAccount":
             node_type = registry.get_graphql_type(name="CoreAccount", branch=branch)
-            class_attrs["account_profile"] = graphene.Field(
+            class_attrs["AccountProfile"] = graphene.Field(
                 node_type,
                 resolver=account_resolver,
             )
