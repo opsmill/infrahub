@@ -1,8 +1,10 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { StringParam, useQueryParam } from "use-query-params";
 import { DateDisplay } from "../../../components/date-display";
+import { QSP } from "../../../config/qsp";
 import { classNames } from "../../../utils/common";
 import { diffContent } from "../../../utils/diff";
-import { tDataDiffNodePropertyChange } from "./data-diff-node";
+import { getNodeClassName, tDataDiffNodePropertyChange } from "./data-diff-node";
 
 export type tDataDiffNodePropertyProps = {
   property: tDataDiffNodePropertyChange;
@@ -10,6 +12,8 @@ export type tDataDiffNodePropertyProps = {
 
 export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   const { property } = props;
+
+  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
 
   const { type, action, changed_at, branch } = property;
 
@@ -21,7 +25,7 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
       <div
         className={classNames(
           "flex-1 p-1 pr-0 grid grid-cols-3 gap-4",
-          branch === "main" ? "bg-custom-blue-10" : "bg-green-200"
+          getNodeClassName([], branch, branchOnly)
         )}>
         <div className="flex items-center">
           <span className="mr-4">{type}</span>

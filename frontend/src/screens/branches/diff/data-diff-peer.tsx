@@ -2,15 +2,18 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { QSP } from "../../../config/qsp";
 import { iSchemaKindNameMap, schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../../utils/common";
 import { diffPeerContent } from "../../../utils/diff";
 import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import {
+  getNodeClassName,
   tDataDiffNodePeer,
   tDataDiffNodePeerChange,
   tDataDiffNodePeerData,
@@ -44,6 +47,7 @@ export const getPeerRedirection = (
 export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   const { peerChanges } = props;
 
+  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const navigate = useNavigate();
 
@@ -145,7 +149,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     <div
       className={classNames(
         "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
-        peerBranch === "main" ? "bg-custom-blue-10" : "bg-green-200"
+        getNodeClassName(branches, peerBranch, branchOnly)
       )}>
       <div className="flex">
         {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}

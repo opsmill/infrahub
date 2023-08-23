@@ -1,8 +1,10 @@
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../../utils/common";
 import { DataDiffElement } from "./data-diff-element";
@@ -131,8 +133,25 @@ export const getBadgeType = (action?: string) => {
   return badgeTypes[action];
 };
 
+// Branch from QSP = branchname
+// Multiple branches = branches array
+// Related branch for the node update = branch
+export const getNodeClassName = (
+  branches: string[],
+  branch: string | undefined,
+  branchOnly?: string | null | undefined
+) => {
+  // Do not display a color if the node is related to mulitple branches or if we are on the branch details diff
+  if (branches.length > 1 || branchOnly === "true") {
+    return "bg-custom-white";
+  }
+
+  return branch === "main" ? "bg-custom-blue-10" : "bg-green-200";
+};
+
 export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const { branchname } = useParams();
+  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   // Branch from props is used to filter the changes to a specific branch
@@ -177,16 +196,12 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     </div>
   );
 
-  const getNodeClassName = () => {
-    if (branches.length > 1) {
-      return "bg-custom-white";
-    }
-
-    return nodeActions[currentBranch] ? "bg-green-200" : "bg-custom-blue-10";
-  };
-
   return (
-    <div className={classNames("rounded-lg shadow p-2 m-4 bg-custom-white", getNodeClassName())}>
+    <div
+      className={classNames(
+        "rounded-lg shadow p-2 m-4 bg-custom-white",
+        getNodeClassName(branches, currentBranch, branchOnly)
+      )}>
       <Accordion title={renderTitle()}>
         <div className="">
           {Object.values(elements).map((element: tDataDiffNodeElement, index: number) => (

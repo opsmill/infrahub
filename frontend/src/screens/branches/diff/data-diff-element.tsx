@@ -1,11 +1,14 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
+import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { QSP } from "../../../config/qsp";
 import { classNames } from "../../../utils/common";
 import { diffContent } from "../../../utils/diff";
 import {
+  getNodeClassName,
   tDataDiffNodeElement,
   tDataDiffNodePeerChange,
   tDataDiffNodeValueChange,
@@ -20,6 +23,8 @@ export type tDataDiffNodeElementProps = {
 
 export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { element } = props;
+
+  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
 
   const { name, change } = element;
 
@@ -78,7 +83,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
           key={index}
           className={classNames(
             "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
-            change?.branch === "main" ? "bg-custom-blue-10" : "bg-green-200"
+            getNodeClassName([], change.branch, branchOnly)
           )}>
           {propertiesChanges?.length && (
             <Accordion title={renderTitleDisplay(change)}>
@@ -100,11 +105,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   if (peersChanges?.length) {
     return (
-      <div
-        className={classNames(
-          "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
-          change?.branch === "main" ? "bg-custom-blue-10" : "bg-green-200"
-        )}>
+      <div className={"p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0"}>
         <div className="rounded-md overflow-hidden">{peersChanges}</div>
       </div>
     );
