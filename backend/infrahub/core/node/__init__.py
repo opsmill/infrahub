@@ -145,6 +145,19 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"})
                     )
 
+                defined_value = fields[mandatory_attr]
+                if isinstance(fields[mandatory_attr], dict):
+                    defined_value = fields[mandatory_attr].get("value")
+
+                if defined_value is None:
+                    errors.append(
+                        ValidationError(
+                            {
+                                mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()} and must contain a value"
+                            }
+                        )
+                    )
+
             for mandatory_rel in self._schema.mandatory_relationship_names:
                 if mandatory_rel not in fields.keys():
                     errors.append(
