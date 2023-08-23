@@ -91,22 +91,40 @@ class InfrahubLock:
 
 class InfrahubLockRegistry:
     def __init__(self, token: Optional[str] = None, local_only: bool = False):
-        if local_only:
-            self.connection = None
-        else:
+        if config.SETTINGS.cache.enable and not local_only:
             self.connection = redis.Redis(
                 host=config.SETTINGS.cache.address,
                 port=config.SETTINGS.cache.service_port,
                 db=config.SETTINGS.cache.database,
             )
+        else:
+            self.connection = None
 
         self.token = token or str(uuid.uuid4())
         self.locks: Dict[str, InfrahubLock] = {}
 
-    def get(self, name: str) -> InfrahubLock:
-        if name not in self.locks:
-            self.locks[name] = InfrahubLock(name=name, connection=self.connection)
-        return self.locks[name]
+    @classmethod
+    def _generate_name(cls, name: str, namespace: Optional[str] = None, local: Optional[bool] = None) -> str:
+        if namespace is None and local is None:
+            return name
+
+        new_name = ""
+        if local is True:
+            new_name = "local."
+        elif local is False:
+            new_name = "global."
+
+        if namespace is not None:
+            new_name += f"{namespace}."
+        new_name += name
+
+        return new_name
+
+    def get(self, name: str, namespace: Optional[str] = None, local: Optional[bool] = None) -> InfrahubLock:
+        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        if lock_name not in self.locks:
+            self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection)
+        return self.locks[lock_name]
 
     def local_schema_lock(self) -> LocalLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)

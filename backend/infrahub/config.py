@@ -104,6 +104,7 @@ class BrokerSettings(BaseSettings):
 
 
 class CacheSettings(BaseSettings):
+    enable: bool = True
     address: str = "localhost"
     port: Optional[int] = Field(
         default=None, min=1, max=65535, description="Specified if running on a non default port (6379)"
