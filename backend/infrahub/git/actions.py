@@ -14,7 +14,7 @@ async def sync_remote_repositories(client: InfrahubClient) -> None:
     repositories = await client.get_list_repositories(branches=branches)
 
     for repo_name, repository in repositories.items():
-        async with lock.registry.get(repo_name):
+        async with lock.registry.get(name=repo_name, namespace="repository"):
             init_failed = False
             try:
                 repo = await InfrahubRepository.init(
