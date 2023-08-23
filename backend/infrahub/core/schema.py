@@ -1139,9 +1139,9 @@ core_models = {
             "namespace": "Internal",
             "description": "A check or validation to show the status of data consistency or user definded tests",
             "label": "Validator",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "display_labels": ["label__value"],
+            "default_filter": "started_at__value",
+            "order_by": ["started_at__value"],
+            "display_labels": ["started_at__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {
@@ -1157,6 +1157,7 @@ core_models = {
                     "default_value": ValidatorConclusion.UNKNOWN.value,
                 },
                 {"name": "completed_at", "kind": "DateTime", "optional": True},
+                {"name": "started_at", "kind": "DateTime", "optional": False},
             ],
             "relationships": [],
         },

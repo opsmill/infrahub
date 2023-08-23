@@ -33,7 +33,7 @@ async def create_data_check(session: AsyncSession, proposed_change: Node) -> Non
 
     initial_state = ValidatorState.COMPLETED
     initial_conclusion = ValidatorConclusion.SUCCESS
-
+    started_at = Timestamp().to_string()
     params = {"completed_at": Timestamp().to_string()}
     if conflicts:
         initial_state = ValidatorState.IN_PROGRESS
@@ -45,6 +45,7 @@ async def create_data_check(session: AsyncSession, proposed_change: Node) -> Non
         proposed_change=proposed_change.id,
         state=initial_state.value,
         conclusion=initial_conclusion.value,
+        started_at=started_at,
         **params,
     )
     await validator_obj.save(session=session)
