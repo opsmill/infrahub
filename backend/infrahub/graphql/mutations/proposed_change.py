@@ -61,7 +61,9 @@ async def create_data_check(session: AsyncSession, proposed_change: Node) -> Non
         await conflict_obj.save(session=session)
 
     if conflicts:
-        updated_validator_obj = await NodeManager.get_one(id=validator_obj.id, session=session)
+        updated_validator_obj = await NodeManager.get_one_by_id_or_default_filter(
+            id=validator_obj.id, schema_name="InternalDataIntegrityValidator", session=session
+        )
         updated_validator_obj.state.value = ValidatorState.COMPLETED.value
         updated_validator_obj.conclusion.value = ValidatorConclusion.FAILURE.value
         updated_validator_obj.completed_at.value = Timestamp().to_string()
@@ -175,7 +177,9 @@ class ProposedChangeRequestRunCheck(Mutation):
             raise ValueError("Only 'data' check_type currently supported")
 
         identifier = data.get("id", "")
-        proposed_change = await NodeManager.get_one(id=identifier, session=session)
+        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+            id=identifier, schema_name="CoreProposedChange", session=session
+        )
         if not proposed_change:
             raise NodeNotFound(
                 branch_name="-global-",
