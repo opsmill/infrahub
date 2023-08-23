@@ -51,6 +51,7 @@ class FilterSchemaKind(str, BaseEnum):
     OBJECT = "Object"
     MULTIOBJECT = "MultiObject"
     ENUM = "Enum"
+    DATETIME = "DateTime"
 
 
 class RelationshipCardinality(str, BaseEnum):
