@@ -1159,7 +1159,16 @@ core_models = {
                 {"name": "completed_at", "kind": "DateTime", "optional": True},
                 {"name": "started_at", "kind": "DateTime", "optional": False},
             ],
-            "relationships": [],
+            "relationships": [
+                {
+                    "name": "proposed_change",
+                    "peer": "CoreProposedChange",
+                    "kind": "Parent",
+                    "optional": False,
+                    "cardinality": "one",
+                    "identifier": "proposed_change__validator",
+                },
+            ],
         },
         {
             "name": "Transformation",
@@ -1392,11 +1401,12 @@ core_models = {
                     "cardinality": "many",
                 },
                 {
-                    "name": "data_integrity",
-                    "peer": "InternalDataIntegrityValidator",
+                    "name": "validations",
+                    "peer": "InternalValidator",
                     "kind": "Component",
+                    "identifier": "proposed_change__validator",
                     "optional": True,
-                    "cardinality": "one",
+                    "cardinality": "many",
                 },
             ],
         },
@@ -1609,12 +1619,12 @@ core_models = {
             "namespace": "Internal",
             "description": "A conflict related to data as seen between two branches",
             "label": "Data Conflict",
-            "default_filter": "path__value",
-            "order_by": ["path__value"],
-            "display_labels": ["path__value"],
+            "default_filter": "paths__value",
+            "order_by": ["paths__value"],
+            "display_labels": ["paths__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "path", "kind": "Text"},
+                {"name": "paths", "kind": "List"},
             ],
             "relationships": [
                 {
@@ -1634,13 +1644,6 @@ core_models = {
             "inherit_from": ["InternalValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
-                {
-                    "name": "proposed_change",
-                    "peer": "CoreProposedChange",
-                    "kind": "Parent",
-                    "optional": False,
-                    "cardinality": "one",
-                },
                 {
                     "name": "conflicts",
                     "peer": "InternalDataConflict",

@@ -55,7 +55,7 @@ async def create_data_check(session: AsyncSession, proposed_change: Node) -> Non
         await conflict_obj.new(
             session=session,
             validator=validator_obj.id,
-            path=str(conflict),
+            paths=[str(conflict)],
             **params,
         )
         await conflict_obj.save(session=session)
@@ -69,7 +69,14 @@ async def create_data_check(session: AsyncSession, proposed_change: Node) -> Non
 
 
 async def update_data_check(session: AsyncSession, proposed_change: Node) -> None:
-    if not proposed_change.data_integrity:
+    validations = await proposed_change.validations.get_peers(session=session)
+    data_check = None
+    for validation in validations.values():
+        if validation._schema.kind == "InternalDataIntegrityValidator":
+            data_check = validation
+            break
+
+    if not data_check:
         await create_data_check(session=session, proposed_change=proposed_change)
         return
 
@@ -78,33 +85,33 @@ async def update_data_check(session: AsyncSession, proposed_change: Node) -> Non
     state = ValidatorState.COMPLETED
     conclusion = ValidatorConclusion.SUCCESS
 
+    started_at = Timestamp().to_string()
     completed_at = Timestamp().to_string()
     if conflicts:
         state = ValidatorState.COMPLETED
         conclusion = ValidatorConclusion.FAILURE
-
-    data_integrity = await proposed_change.data_integrity.get_peer(session=session)
 
     conflict_objects = []
     for conflict in conflicts:
         conflict_obj = await Node.init(session=session, schema="InternalDataConflict")
         await conflict_obj.new(
             session=session,
-            validator=data_integrity.id,
-            path=str(conflict),
+            validator=data_check.id,
+            paths=[str(conflict)],
         )
         await conflict_obj.save(session=session)
         conflict_objects.append(conflict_obj.id)
 
-    previous_relationships = await data_integrity.conflicts.get_relationships(session=session)
+    previous_relationships = await data_check.conflicts.get_relationships(session=session)
     for rel in previous_relationships:
         await rel.delete(session=session)
 
-    data_integrity.state_value = state.value
-    data_integrity.conclusion.value = conclusion.value
-    data_integrity.conflicts.update = conflict_objects
-    data_integrity.completed_at.value = completed_at
-    await data_integrity.save(session=session)
+    data_check.state_value = state.value
+    data_check.conclusion.value = conclusion.value
+    data_check.conflicts.update = conflict_objects
+    data_check.started_at.value = started_at
+    data_check.completed_at.value = completed_at
+    await data_check.save(session=session)
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
