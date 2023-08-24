@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from graphene import Boolean, Enum, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from neo4j import AsyncSession
 
@@ -18,6 +18,11 @@ from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
+
+
+class CheckType(Enum):
+    DATA = "data"
+    REPOSITORY = "repository"
 
 
 async def _get_conflicts(session: AsyncSession, proposed_change: Node) -> List[ObjectConflict]:
@@ -154,7 +159,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
 class ProposedChangeRequestRunCheckInput(InputObjectType):
     id = String(required=True)
-    check_type = String(required=True)
+    check_type = CheckType(required=True)
 
 
 class ProposedChangeRequestRunCheck(Mutation):
@@ -168,12 +173,13 @@ class ProposedChangeRequestRunCheck(Mutation):
         cls,
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
-        data: Dict[str, str],
+        data: Dict[str, Any],
     ) -> Dict[str, bool]:
         session: AsyncSession = info.context.get("infrahub_session")
 
         check_type = data.get("check_type")
-        if check_type != "data":
+
+        if check_type != CheckType.DATA:
             raise ValueError("Only 'data' check_type currently supported")
 
         identifier = data.get("id", "")
