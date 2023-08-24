@@ -176,11 +176,9 @@ class ProposedChangeRequestRunCheck(Mutation):
         data: Dict[str, Any],
     ) -> Dict[str, bool]:
         session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         check_type = data.get("check_type")
-
-        if check_type != CheckType.DATA:
-            raise ValueError("Only 'data' check_type currently supported")
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
@@ -193,6 +191,9 @@ class ProposedChangeRequestRunCheck(Mutation):
                 identifier=identifier,
                 message="The requested proposed change wasn't found",
             )
-        await update_data_check(session=session, proposed_change=proposed_change)
+        if check_type == CheckType.DATA:
+            await update_data_check(session=session, proposed_change=proposed_change)
+        elif check_type == CheckType.REPOSITORY:
+            await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))
 
         return {"ok": True}
