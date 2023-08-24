@@ -6,8 +6,9 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
 from infrahub import config
+from infrahub.log import get_log_data
 
-from . import InfrahubBaseMessage, get_broker
+from . import InfrahubBaseMessage, Meta, get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
 from .messages import ROUTING_KEY_MAP
 
@@ -73,8 +74,13 @@ class InfrahubRpcClientBase:
 
     async def send(self, message: InfrahubBaseMessage) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
+
         if not routing_key:
             raise ValueError("Unable to determine routing key")
+
+        log_data = get_log_data()
+        request_id = log_data.get("request_id", "")
+        message.meta = message.meta or Meta(request_id=request_id)
         await self.exchange.publish(message, routing_key=routing_key)
 
 

@@ -1,10 +1,11 @@
-from typing import Iterator
+from typing import Iterator, Optional
 
 import aio_pika
 import aiormq
 from pydantic import BaseModel
 
 import infrahub.config as config
+from infrahub.log import set_log_data
 
 
 class Broker:
@@ -41,15 +42,26 @@ async def get_broker() -> aio_pika.abc.AbstractRobustConnection:
     return broker.client
 
 
+class Meta(BaseModel):
+    request_id: str = ""
+
+
 class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
     """Base Model for messages"""
+
+    meta: Optional[Meta] = None
+
+    def set_log_data(self) -> None:
+        if self.meta:
+            if self.meta.request_id:
+                set_log_data(key="request_id", value=self.meta.request_id)
 
     def info(self) -> aio_pika.abc.MessageInfo:
         raise NotImplementedError
 
     @property
     def body(self) -> bytes:
-        return self.json().encode("UTF-8")
+        return self.json(exclude_none=True).encode("UTF-8")
 
     @property
     def locked(self) -> bool:
