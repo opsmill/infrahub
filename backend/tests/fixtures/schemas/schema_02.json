@@ -5158,7 +5158,7 @@
                 },
                 {
                     "name": "checks",
-                    "peer": "CoreCheck",
+                    "peer": "CoreCheckDefinition",
                     "kind": "Generic",
                     "label": null,
                     "description": null,
@@ -6121,7 +6121,7 @@
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
-                    "identifier": "builtintag__corecheck",
+                    "identifier": "builtintag__corecheckdefinition",
                     "inherited": false,
                     "cardinality": "many",
                     "branch": "aware",
@@ -6238,7 +6238,7 @@
                     "order_weight": 11000
                 }
             ],
-            "label": "Check",
+            "label": "Check Definition",
             "inherit_from": [],
             "groups": [],
             "branch": "aware",
@@ -6314,7 +6314,7 @@
                     "description": null
                 }
             ],
-            "kind": "CoreCheck"
+            "kind": "CoreCheckDefinition"
         },
         {
             "name": "TransformPython",

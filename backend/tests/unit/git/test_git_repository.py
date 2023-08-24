@@ -804,7 +804,7 @@ async def test_compare_python_check(
     check_class = getattr(module, "Check01")
 
     gql_schema = await repo.client.schema.get(kind="CoreGraphQLQuery")
-    check_schema = await repo.client.schema.get(kind="CoreCheck")
+    check_schema = await repo.client.schema.get(kind="CoreCheckDefinition")
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)

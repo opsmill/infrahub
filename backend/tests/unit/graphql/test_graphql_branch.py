@@ -32,8 +32,8 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
     await query01.new(session=session, name="my_query", query="query { check { id } }")
     await query01.save(session=session)
 
-    check01 = await Node.init(session=session, schema="CoreCheck")
-    await check01.new(
+    checkdef01 = await Node.init(session=session, schema="CoreCheckDefinition")
+    await checkdef01.new(
         session=session,
         name="check01",
         query=query01,
@@ -42,10 +42,10 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
         class_name="Check01",
         rebase=True,
     )
-    await check01.save(session=session)
+    await checkdef01.save(session=session)
 
-    check02 = await Node.init(session=session, schema="CoreCheck")
-    await check02.new(
+    checkdef02 = await Node.init(session=session, schema="CoreCheckDefinition")
+    await checkdef02.new(
         session=session,
         name="check02",
         query=query01,
@@ -54,7 +54,7 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
         class_name="Check02",
         rebase=True,
     )
-    await check02.save(session=session)
+    await checkdef02.save(session=session)
 
 
 async def test_branch_create(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):

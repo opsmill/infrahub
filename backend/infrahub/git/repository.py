@@ -111,7 +111,7 @@ class ArtifactDefinitionInformation(BaseModel):
     transformation: str
 
 
-class CheckInformation(BaseModel):
+class CheckDefinitionInformation(BaseModel):
     name: str
     """Name of the check"""
 
@@ -135,6 +135,12 @@ class CheckInformation(BaseModel):
 
     timeout: int
     """Timeout for the Check."""
+
+    targets: Optional[str] = None
+    """ID or name of the Group associated with this CheckDefinition"""
+
+    parameters: Optional[dict] = None
+    """Additional Parameters to extract from each target (if targets is provided)"""
 
 
 class TransformPythonInformation(BaseModel):
@@ -1218,24 +1224,26 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         await obj.save()
         return obj
 
-    async def import_python_checks_from_module(
+    async def import_python_check_definitions_from_module(
         self, branch_name: str, commit: str, module: types.ModuleType, file_path: str
     ) -> None:
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
-        checks_in_graph = {
+        checks_definition_in_graph = {
             check.name.value: check
-            for check in await self.client.filters(kind="CoreCheck", branch=branch_name, repository__ids=[str(self.id)])
+            for check in await self.client.filters(
+                kind="CoreCheckDefinition", branch=branch_name, repository__ids=[str(self.id)]
+            )
         }
 
-        local_checks = {}
+        local_check_definitions = {}
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
             graphql_query = await self.client.get(
                 kind="CoreGraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
             )
             try:
-                item = CheckInformation(
+                item = CheckDefinitionInformation(
                     name=check_class.__name__,
                     repository=str(self.id),
                     class_name=check_class.__name__,
@@ -1245,41 +1253,45 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     timeout=check_class.timeout,
                     rebase=check_class.rebase,
                 )
-                local_checks[item.name] = item
+                local_check_definitions[item.name] = item
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 LOGGER.error(
-                    f"{self.name} | An error occured while processing the Check {check_class.__name__} from {file_path} : {exc} "
+                    f"{self.name} | An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
                 )
                 continue
 
         present_in_both, only_graph, only_local = compare_lists(
-            list1=list(checks_in_graph.keys()), list2=list(local_checks.keys())
+            list1=list(checks_definition_in_graph.keys()), list2=list(local_check_definitions.keys())
         )
 
         for check_name in only_local:
             LOGGER.info(
-                f"{self.name} | New Check '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
+                f"{self.name} | New CheckDefinition '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
             )
-            await self.create_python_check(branch_name=branch_name, check=local_checks[check_name])
+            await self.create_python_check_definition(
+                branch_name=branch_name, check=local_check_definitions[check_name]
+            )
 
         for check_name in present_in_both:
-            if not await self.compare_python_check(
-                check=local_checks[check_name],
-                existing_check=checks_in_graph[check_name],
+            if not await self.compare_python_check_definition(
+                check=local_check_definitions[check_name],
+                existing_check=checks_definition_in_graph[check_name],
             ):
                 LOGGER.info(
-                    f"{self.name} | New version of Check '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
+                    f"{self.name} | New version of CheckDefinition '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
                 )
-                await self.update_python_check(
-                    check=local_checks[check_name],
-                    existing_check=checks_in_graph[check_name],
+                await self.update_python_check_definition(
+                    check=local_check_definitions[check_name],
+                    existing_check=checks_definition_in_graph[check_name],
                 )
 
         for check_name in only_graph:
-            LOGGER.info(f"{self.name} | Check '{check_name}' not found locally in branch {branch_name}, deleting")
-            await checks_in_graph[check_name].delete()
+            LOGGER.info(
+                f"{self.name} | CheckDefinition '{check_name}' not found locally in branch {branch_name}, deleting"
+            )
+            await checks_definition_in_graph[check_name].delete()
 
-    async def create_python_check(self, branch_name: str, check: CheckInformation) -> InfrahubNode:
+    async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:
         data = {
             "name": check.name,
             "repository": check.repository,
@@ -1288,9 +1300,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             "class_name": check.class_name,
             "rebase": check.rebase,
             "timeout": check.timeout,
+            "targets": check.targets,
+            "parameters": check.parameters,
         }
 
-        schema = await self.client.schema.get(kind="CoreCheck", branch=branch_name)
+        schema = await self.client.schema.get(kind="CoreCheckDefinition", branch=branch_name)
 
         create_payload = self.client.schema.generate_payload_create(
             schema=schema,
@@ -1298,14 +1312,14 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             source=self.id,
             is_protected=True,
         )
-        obj = await self.client.create(kind="CoreCheck", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind="CoreCheckDefinition", branch=branch_name, **create_payload)
         await obj.save()
 
         return obj
 
-    async def update_python_check(
+    async def update_python_check_definition(
         self,
-        check: CheckInformation,
+        check: CheckDefinitionInformation,
         existing_check: InfrahubNode,
     ) -> None:
         if existing_check.query.id != check.query:
@@ -1320,19 +1334,28 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if existing_check.timeout.value != check.timeout:
             existing_check.timeout.value = check.timeout
 
+        if existing_check.targets.id != check.targets:
+            existing_check.targets = {"id": check.targets, "source": str(self.id), "is_protected": True}
+
+        if existing_check.parameters.value != check.parameters:
+            existing_check.parameters.value = check.parameters
+
         await existing_check.save()
 
     @classmethod
-    async def compare_python_check(cls, check: CheckInformation, existing_check: InfrahubNode) -> bool:
+    async def compare_python_check_definition(
+        cls, check: CheckDefinitionInformation, existing_check: InfrahubNode
+    ) -> bool:
         """Compare an existing Python Check Object with a Check Class
         and identify if we need to update the object in the database."""
-
+        # pylint: disable=too-many-boolean-expressions
         if (
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path
             or existing_check.timeout.value != check.timeout
             or existing_check.rebase.value != check.rebase
             or existing_check.class_name.value != check.class_name
+            or existing_check.parameters.value != check.parameters
         ):
             return False
         return True
@@ -1511,7 +1534,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.warning(f"{self.name} | Unable to load python file {python_file}")
                 continue
 
-            await self.import_python_checks_from_module(
+            await self.import_python_check_definitions_from_module(
                 branch_name=branch_name, commit=commit, module=module, file_path=file_info.relative_path_file
             )
             await self.import_python_transforms_from_module(
