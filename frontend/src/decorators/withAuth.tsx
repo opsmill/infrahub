@@ -17,10 +17,10 @@ type tPermissions = {
 
 type tAuthContext = {
   accessToken?: string;
-  displaySignin?: Function;
+  displaySignIn?: Function;
   signOut?: Function;
   permissions?: tPermissions;
-  data: any;
+  data?: any;
 };
 
 // Export auth context

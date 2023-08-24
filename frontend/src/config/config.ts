@@ -14,14 +14,15 @@ export const CONFIG = {
       return `${INFRAHUB_API_SERVER_URL}/graphql/${branch ?? "main"}?at=${date.toISOString()}`;
     }
   },
-  SCHEMA_URL: (branch?: string) =>
+  SCHEMA_URL: (branch?: string | null) =>
     branch
       ? `${INFRAHUB_API_SERVER_URL}/api/schema?branch=${branch}`
       : `${INFRAHUB_API_SERVER_URL}/api/schema`,
   CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/api/config`,
   AUTH_SIGN_IN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
   AUTH_REFRESH_TOKEN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/refresh`,
-  DATA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/data?branch=${branch}`,
+  DATA_DIFF_URL: (branch?: string) =>
+    `${INFRAHUB_API_SERVER_URL}/api/diff/data-new?branch=${branch}`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
   ARTIFACTS_DIFF_URL: (branch?: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/diff/artifacts?branch=${branch}`,

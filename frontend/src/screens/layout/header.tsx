@@ -92,7 +92,11 @@ export default function Header(props: Props) {
   };
 
   if (loading || !schema) {
-    return <LoadingScreen />;
+    return (
+      <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
+        <LoadingScreen size={32} hideText />
+      </div>
+    );
   }
 
   const profile = data?.AccountProfile;
@@ -158,7 +162,7 @@ export default function Header(props: Props) {
                 className={
                   "block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"
                 }
-                onClick={() => auth?.displaySignIn()}>
+                onClick={() => auth?.displaySignIn && auth?.displaySignIn()}>
                 Sign in
               </Link>
             )}
@@ -202,7 +206,7 @@ export default function Header(props: Props) {
                     <Link
                       to={"/"}
                       className={"block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"}
-                      onClick={() => auth?.signOut()}>
+                      onClick={() => auth?.signOut && auth?.signOut()}>
                       Sign out
                     </Link>
                   </Menu.Item>

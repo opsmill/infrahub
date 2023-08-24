@@ -32,6 +32,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
+import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -39,10 +40,6 @@ import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-
-type tProposedChangesDetails = {
-  proposedChangesDetails?: any;
-};
 
 export const getFormStructure = (
   branches: any[] = [],
@@ -93,12 +90,11 @@ export const getFormStructure = (
   },
 ];
 
-export const Conversations = (props: tProposedChangesDetails) => {
-  const { proposedChangesDetails } = props;
-
+export const Conversations = () => {
   const { proposedchange } = useParams();
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
+  const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);

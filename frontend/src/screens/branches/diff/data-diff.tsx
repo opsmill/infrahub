@@ -1,3 +1,4 @@
+import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -5,27 +6,32 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
+import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
 
 export const DataDiff = () => {
   const { branchname } = useParams();
+
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const [proposedChangesDetails] = useAtom(proposedChangedState);
+
+  const branch = branchname || proposedChangesDetails?.source_branch?.value;
 
   const fetchDiffDetails = useCallback(async () => {
-    if (!branchname) return;
+    if (!branch) return;
 
     setIsLoading(true);
 
-    const url = CONFIG.DATA_DIFF_URL(branchname);
+    const url = CONFIG.DATA_DIFF_URL(branch);
 
     const options: string[][] = [
-      ["branch_only", branchOnly ?? ""],
+      ["branch_only", branchOnly ?? "false"],
       ["time_from", timeFrom ?? ""],
       ["time_to", timeTo ?? ""],
     ].filter(([, v]) => v !== undefined && v !== "");
@@ -37,7 +43,7 @@ export const DataDiff = () => {
     try {
       const diffDetails = await fetchUrl(urlWithQsp);
 
-      setDiff(diffDetails[branchname] ?? []);
+      setDiff(diffDetails.diffs ?? []);
     } catch (err) {
       console.error("err: ", err);
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
@@ -52,6 +58,14 @@ export const DataDiff = () => {
 
   return (
     <>
+      {(!branchOnly || branchOnly === "false") && (
+        <div className="flex items-center m-4">
+          <span className="mr-2">Branches colours:</span>
+          <div className={"rounded-lg shadow p-2 mr-2 bg-custom-blue-10"}>main</div>
+          <div className={"rounded-lg shadow p-2 bg-green-200"}>{branch}</div>
+        </div>
+      )}
+
       {isLoading && <LoadingScreen />}
 
       {!isLoading && (
