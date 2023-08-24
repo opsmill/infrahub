@@ -6,12 +6,12 @@ from neo4j import AsyncSession
 from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
 
+from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.exceptions import SchemaNotFound
-from infrahub.lock import registry as lock_registry
 from infrahub.log import get_logger
 
 log = get_logger()
@@ -75,8 +75,7 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
-    # TODO we need to replace this lock with a distributed lock
-    async with lock_registry.get_branch_schema_update():
+    async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.

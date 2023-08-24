@@ -5,9 +5,9 @@ from typing import List
 from fastapi.logger import logger
 from neo4j import AsyncDriver, AsyncSession
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.lock import registry as lock_registry
 
 
 class BackgroundRunner:
@@ -34,9 +34,7 @@ class BackgroundRunner:
         We pull the new schema from the database and we update the registry.
         """
 
-        async with lock_registry.get_branch_schema_update():
-            # logger.debug(f"Runner: lock acquired")
-
+        async with lock.registry.local_schema_lock():
             branches: List[Branch] = await Branch.get_list(session=session)
             active_branches = [branch.name for branch in branches]
             for new_branch in branches:

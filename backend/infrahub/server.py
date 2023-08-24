@@ -24,6 +24,7 @@ from infrahub.core.initialization import initialization
 from infrahub.database import get_db
 from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
+from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -75,8 +76,11 @@ async def app_initialization():
     # Initialize RPC Client
     app.state.rpc_client = await InfrahubRpcClient().connect()
 
+    # Initialize the client for the cache
+    initialize_lock()
+
     # Initialize the Background Runner
-    if "testing" not in config.SETTINGS.database.database:
+    if config.SETTINGS.miscellaneous.start_background_runner:
         app.state.runner = BackgroundRunner(
             driver=app.state.db, database_name=config.SETTINGS.database.database, interval=10
         )

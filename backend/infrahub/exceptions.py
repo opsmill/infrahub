@@ -22,6 +22,10 @@ class DatabaseError(Error):
     pass
 
 
+class LockError(Error):
+    pass
+
+
 class RepositoryError(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier
