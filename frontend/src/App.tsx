@@ -13,6 +13,7 @@ import { QSP } from "./config/qsp";
 import { withAuth } from "./decorators/withAuth";
 import { branchVar } from "./graphql/variables/branchVar";
 import Layout from "./screens/layout/layout";
+import { branchesState } from "./state/atoms/branches.atom";
 import {
   genericSchemaState,
   genericsState,
@@ -27,6 +28,7 @@ import { sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
 
 function App() {
+  const [branches] = useAtom(branchesState);
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
   const [, setGenericSchema] = useAtom(genericSchemaState);
@@ -105,6 +107,18 @@ function App() {
   useEffect(() => {
     setSchemaInState();
   }, [setSchemaInState, branch]);
+
+  if (branches?.length) {
+    // For first load or navigation with branch change:
+    // We need to store the current branch in the state, from the QSP or the default branch
+    const selectedBranch = branches.find((b) =>
+      branchInQueryString ? b.name === branchInQueryString : b.is_default
+    );
+
+    if (selectedBranch) {
+      branchVar(selectedBranch);
+    }
+  }
 
   return (
     <Routes>

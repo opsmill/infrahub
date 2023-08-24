@@ -6,7 +6,10 @@ const useQuery = (QUERY: any, options?: any) => {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
 
-  return useApolloQuery(QUERY, { ...options, context: { branch: branch?.name, date } });
+  return useApolloQuery(QUERY, {
+    ...options,
+    context: { branch: branch?.name, date },
+  });
 };
 
 export default useQuery;

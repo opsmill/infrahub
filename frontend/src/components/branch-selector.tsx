@@ -8,7 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
@@ -30,7 +30,7 @@ import { Switch } from "./switch";
 
 export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
-  const [branchInQueryString, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
@@ -42,38 +42,10 @@ export default function BranchSelector() {
   const [isDataOnly, setIsDataOnly] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  const getCurrentBranch = useCallback((): Branch => {
-    if (branch) {
-      return branch;
-    }
-
-    if (branchInQueryString) {
-      const currentBranch = branches.filter((b) => b.name === branchInQueryString.trim())[0];
-      return currentBranch;
-    } else {
-      const currentBranch = branches.filter((b) => b.is_default)[0];
-      return currentBranch;
-    }
-  }, [branch, branchInQueryString, branches]);
-
-  useEffect(() => {
-    // On page load, if no branch is set in reactive var. Fetching it from QSP and setting it in state.
-    if (!branches.length) {
-      return;
-    }
-
-    if (branchInQueryString && branches.length) {
-      const selectedBranch = branches.find((b) => b.name === branchInQueryString);
-      if (selectedBranch) {
-        branchVar(selectedBranch);
-      }
-    }
-  }, [branch, branchInQueryString, branches]);
-
   const valueLabel = (
     <>
       <Square3Stack3DIcon className="h-5 w-5" aria-hidden="true" />
-      <p className="ml-2.5 text-sm font-medium">{getCurrentBranch()?.name}</p>
+      <p className="ml-2.5 text-sm font-medium">{branch?.name}</p>
     </>
   );
 
@@ -98,8 +70,6 @@ export default function BranchSelector() {
    * Update GraphQL client endpoint whenever branch changes
    */
   const onBranchChange = useCallback((branch: Branch) => {
-    branchVar(branch);
-
     if (branch?.is_default) {
       // undefined is needed to remove a parameter from the QSP
       setBranchInQueryString(undefined);
@@ -200,7 +170,7 @@ export default function BranchSelector() {
   return (
     <div className="flex">
       <SelectButton
-        value={getCurrentBranch()}
+        value={branch}
         valueLabel={valueLabel}
         onChange={onBranchChange}
         options={branches}
