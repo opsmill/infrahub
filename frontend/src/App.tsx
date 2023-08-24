@@ -1,4 +1,3 @@
-import { useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -34,7 +33,6 @@ function App() {
   const [, setGenericSchema] = useAtom(genericSchemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
-  const branch = useReactiveVar(branchVar);
 
   /**
    * Fetch schema from the backend, sort, and return them
@@ -42,7 +40,7 @@ function App() {
   const fetchSchema = useCallback(async () => {
     const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
-      const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString ?? branch?.name));
+      const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
       return {
         schema: sortByName(data.nodes || []),
@@ -61,7 +59,7 @@ function App() {
         generics: [],
       };
     }
-  }, [branch?.name, branchInQueryString]);
+  }, [branchInQueryString]);
 
   /**
    * Set schema in state atom
@@ -106,8 +104,9 @@ function App() {
 
   useEffect(() => {
     setSchemaInState();
-  }, [setSchemaInState, branch]);
+  }, [branches?.length, branchInQueryString]);
 
+  // useEffect(() => {
   if (branches?.length) {
     // For first load or navigation with branch change:
     // We need to store the current branch in the state, from the QSP or the default branch
@@ -115,10 +114,13 @@ function App() {
       branchInQueryString ? b.name === branchInQueryString : b.is_default
     );
 
-    if (selectedBranch) {
+    if (selectedBranch?.name) {
+      // TODO: Fix the bad set state,
+      // TODO: mandatory for now to correctly define the apollo context
       branchVar(selectedBranch);
     }
   }
+  // }, [branches?.length, branchInQueryString]);
 
   return (
     <Routes>
