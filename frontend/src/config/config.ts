@@ -14,7 +14,7 @@ export const CONFIG = {
       return `${INFRAHUB_API_SERVER_URL}/graphql/${branch ?? "main"}?at=${date.toISOString()}`;
     }
   },
-  SCHEMA_URL: (branch?: string) =>
+  SCHEMA_URL: (branch?: string | null) =>
     branch
       ? `${INFRAHUB_API_SERVER_URL}/api/schema?branch=${branch}`
       : `${INFRAHUB_API_SERVER_URL}/api/schema`,
