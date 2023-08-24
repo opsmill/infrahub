@@ -92,7 +92,11 @@ export default function Header(props: Props) {
   };
 
   if (loading || !schema) {
-    return <LoadingScreen />;
+    return (
+      <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
+        <LoadingScreen size={32} hideText />
+      </div>
+    );
   }
 
   const profile = data?.AccountProfile;
