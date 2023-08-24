@@ -1374,6 +1374,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "name": "ElectricCar",
                 "namespace": "Test",
                 "inherit_from": ["TestCar"],
+                "default_filter": "name__value",
                 "attributes": [
                     {"name": "nbr_engine", "kind": "Number"},
                 ],
@@ -1382,6 +1383,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "name": "GazCar",
                 "namespace": "Test",
                 "inherit_from": ["TestCar"],
+                "default_filter": "name__value",
                 "attributes": [
                     {"name": "mpg", "kind": "Number"},
                 ],

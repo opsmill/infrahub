@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
-from typing import TYPE_CHECKING, Generator, List, Union
+from typing import TYPE_CHECKING, List, Union
 
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
@@ -106,16 +105,30 @@ class DiffRelationshipQuery(DiffQuery):
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
-        MATCH p = ((sn:Node)-[r1]->(rel:Relationship)<-[r2]-(dn:Node))
-        WHERE (r1.branch = r2.branch AND
-            (r1.to = r2.to OR
-                (r1.to is NULL AND r2.to is NULL)
-            ) AND r1.from = r2.from AND r1.status = r2.status
-        AND all(r IN relationships(p) WHERE
-            (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to
-                AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
+        CALL {
+            MATCH p = ((:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(:Node))
+            WHERE (r1.branch = r2.branch AND
+                (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
+                AND all(r IN relationships(p) WHERE (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to
+                    AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
+                )
             )
-        )
+            RETURN DISTINCT [rel.uuid, r1.branch] as identifier, rel, r1.branch as branch_name
+        }
+        CALL {
+            WITH rel, branch_name
+            MATCH p = ((sn:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(dn:Node))
+            WHERE (r1.branch = r2.branch AND
+                (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
+                AND all(r IN relationships(p) WHERE (r.branch = branch_name AND r.from >= $diff_from AND r.from <= $diff_to
+                    AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
+                )
+            )
+            RETURN rel as rel1, sn as sn1, dn as dn1, r1 as r11, r2 as r21
+            ORDER BY r1.branch_level DESC, r1.from DESC
+            LIMIT 1
+        }
+        WITH rel1 as rel, sn1 as sn, dn1 as dn, r11 as r1, r21 as r2
         """
 
         self.add_to_query(query)
@@ -125,39 +138,39 @@ class DiffRelationshipQuery(DiffQuery):
 
         self.return_labels = ["sn", "dn", "rel", "r1", "r2"]
 
-    def get_results(self) -> Generator[QueryResult, None, None]:
-        if not self.results:
-            return iter(())
+    # def get_results(self) -> Generator[QueryResult, None, None]:
+    #     if not self.results:
+    #         return iter(())
 
-        attrs_info = defaultdict(list)
-        ids_set_processed = []
+    #     attrs_info = defaultdict(list)
+    #     ids_set_processed = []
 
-        # Extract all attrname and relationships on all branches
-        for idx, result in enumerate(self.results):
-            # Generate unique set composed of all the IDs of the nodes and the relationship returned
-            # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
-            ids_set = {item.element_id for item in result}
-            if ids_set in ids_set_processed:
-                continue
-            ids_set_processed.append(ids_set)
+    #     # Extract all attrname and relationships on all branches
+    #     for idx, result in enumerate(self.results):
+    #         # Generate unique set composed of all the IDs of the nodes and the relationship returned
+    #         # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
+    #         ids_set = {item.element_id for item in result}
+    #         if ids_set in ids_set_processed:
+    #             continue
+    #         ids_set_processed.append(ids_set)
 
-            # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
-            source_node_uuid = result.get("sn").get("uuid")[:8]
-            dest_node_uuid = result.get("dn").get("uuid")[:8]
-            nodes = sorted([source_node_uuid, dest_node_uuid])
-            rel_name = result.get("rel").get("name")
-            branch_name = result.get("r1").get("branch")
+    #         # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
+    #         source_node_uuid = result.get("sn").get("uuid")[:8]
+    #         dest_node_uuid = result.get("dn").get("uuid")[:8]
+    #         nodes = sorted([source_node_uuid, dest_node_uuid])
+    #         rel_name = result.get("rel").get("name")
+    #         branch_name = result.get("r1").get("branch")
 
-            attr_key = f"{branch_name}_{nodes[0]}__{nodes[1]}__{rel_name}"
-            info = {"idx": idx, "branch_score": result.branch_score}
-            attrs_info[attr_key].append(info)
+    #         attr_key = f"{branch_name}_{nodes[0]}__{nodes[1]}__{rel_name}"
+    #         info = {"idx": idx, "branch_score": result.branch_score}
+    #         attrs_info[attr_key].append(info)
 
-        for attr_key, values in attrs_info.items():
-            attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
+    #     for attr_key, values in attrs_info.items():
+    #         attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
 
-            yield self.results[attr_info["idx"]]
+    #         yield self.results[attr_info["idx"]]
 
-        return iter(())
+    #     return iter(())
 
 
 class DiffRelationshipPropertyQuery(DiffQuery):

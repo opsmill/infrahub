@@ -1,5 +1,6 @@
 from typing import Dict
 
+import pendulum
 import pytest
 from deepdiff import DeepDiff
 from neo4j import AsyncSession
@@ -629,6 +630,178 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
         DeepDiff(
             expected_result_main_r1,
             rels["main"]["testcar__testperson"]["r1"].dict(),
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
+
+
+async def test_diff_relationship_one_conflict(session: AsyncSession, default_branch: Branch, car_person_data_generic):
+    c1_main = car_person_data_generic["c1"]
+    p1_main = car_person_data_generic["p1"]
+    p2_main = car_person_data_generic["p2"]
+
+    time_minus1 = pendulum.now(tz="UTC")
+
+    await c1_main.previous_owner.update(data=p2_main, session=session)
+    await c1_main.save(session=session, at=time_minus1)
+
+    branch2 = await create_branch(branch_name="branch2", session=session)
+
+    c1_branch = await NodeManager.get_one(session=session, id=c1_main.id, branch=branch2)
+    p1_branch = await NodeManager.get_one(session=session, id=p1_main.id, branch=branch2)
+
+    # Change previous owner of C1 from P2 to P1 in branch
+    time11 = pendulum.now(tz="UTC")
+    await c1_branch.previous_owner.update(data=p1_branch, session=session)
+    await c1_branch.save(session=session, at=time11)
+
+    # Change previous owner of C1 from P2 to Null in main
+    time12 = pendulum.now(tz="UTC")
+    c1_main = await NodeManager.get_one(session=session, id=c1_main.id)
+    await c1_main.previous_owner.update(data=[], session=session)
+    await c1_main.save(session=session, at=time12)
+
+    diff = await Diff.init(branch=branch2, session=session, branch_only=False)
+    rels = await diff.get_relationships(session=session)
+
+    assert sorted(rels.keys()) == ["branch2", "main"]
+    assert len(rels["main"]["person_previous__car"].keys()) == 1
+    assert len(rels["branch2"]["person_previous__car"].keys()) == 2
+
+    rel_id_main = list(rels["main"]["person_previous__car"].keys())[0]
+    rels_branch = [value.dict() for value in rels["branch2"]["person_previous__car"].values()]
+
+    # ---------------------------------------------------
+    # Branch
+    # ---------------------------------------------------
+    expected_result_branch = [
+        {
+            "branch": "branch2",
+            "id": "XXXXX",
+            "name": "person_previous__car",
+            "action": DiffAction.ADDED,
+            "nodes": {
+                c1_main.id: {
+                    "id": c1_main.id,
+                    "labels": ["Node", "TestCar", "TestElectricCar"],
+                    "kind": "TestElectricCar",
+                },
+                p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+            },
+            "properties": {
+                "IS_VISIBLE": {
+                    "branch": "branch2",
+                    "type": "IS_VISIBLE",
+                    "action": DiffAction.ADDED,
+                    "value": {"previous": None, "new": True},
+                    "changed_at": Timestamp(time11),
+                },
+                "IS_PROTECTED": {
+                    "branch": "branch2",
+                    "type": "IS_PROTECTED",
+                    "action": DiffAction.ADDED,
+                    "value": {"previous": None, "new": False},
+                    "changed_at": Timestamp(time11),
+                },
+            },
+            "changed_at": Timestamp(time11),
+        },
+        {
+            "branch": "branch2",
+            "id": "XXXXXX",
+            "name": "person_previous__car",
+            "action": DiffAction.REMOVED,
+            "nodes": {
+                c1_main.id: {
+                    "id": c1_main.id,
+                    "labels": ["Node", "TestCar", "TestElectricCar"],
+                    "kind": "TestElectricCar",
+                },
+                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+            },
+            "properties": {
+                "IS_VISIBLE": {
+                    "branch": "branch2",
+                    "type": "IS_VISIBLE",
+                    "action": DiffAction.REMOVED,
+                    "value": {"previous": True, "new": True},
+                    "changed_at": Timestamp(time11),
+                },
+                "IS_PROTECTED": {
+                    "branch": "branch2",
+                    "type": "IS_PROTECTED",
+                    "action": DiffAction.REMOVED,
+                    "value": {"previous": False, "new": False},
+                    "changed_at": Timestamp(time11),
+                },
+            },
+            "changed_at": Timestamp(time11),
+        },
+    ]
+
+    paths_to_exclude = [
+        r"root\[\d\]\['db_id'\]",
+        r"root\[\d\]\['id'\]",
+    ]
+
+    assert (
+        DeepDiff(
+            expected_result_branch,
+            rels_branch,
+            exclude_regex_paths=paths_to_exclude,
+            ignore_order=True,
+        ).to_dict()
+        == {}
+    )
+
+    # ---------------------------------------------------
+    # Main
+    # ---------------------------------------------------
+    expected_result_main = {
+        rel_id_main: {
+            "branch": "main",
+            "id": rel_id_main,
+            "db_id": "89106",
+            "name": "person_previous__car",
+            "action": DiffAction.REMOVED,
+            "nodes": {
+                c1_main.id: {
+                    "id": c1_main.id,
+                    "labels": ["Node", "TestCar", "TestElectricCar"],
+                    "kind": "TestElectricCar",
+                },
+                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+            },
+            "properties": {
+                "IS_VISIBLE": {
+                    "branch": "main",
+                    "type": "IS_VISIBLE",
+                    "action": DiffAction.REMOVED,
+                    "value": {"previous": True, "new": True},
+                    "changed_at": Timestamp(time12),
+                },
+                "IS_PROTECTED": {
+                    "branch": "main",
+                    "type": "IS_PROTECTED",
+                    "action": DiffAction.REMOVED,
+                    "value": {"previous": False, "new": False},
+                    "changed_at": Timestamp(time12),
+                },
+            },
+            "changed_at": Timestamp(time12),
+        }
+    }
+
+    paths_to_exclude = [
+        r"root\['[\-\w]+'\]\['db_id'\]",
+    ]
+
+    assert (
+        DeepDiff(
+            expected_result_main,
+            {key: value.dict() for key, value in rels["main"]["person_previous__car"].items()},
+            exclude_regex_paths=paths_to_exclude,
             ignore_order=True,
         ).to_dict()
         == {}
