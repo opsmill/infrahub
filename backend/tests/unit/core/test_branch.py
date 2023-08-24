@@ -2,8 +2,8 @@ import pytest
 from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import get_branch
-from infrahub.core.branch import BaseDiffElement, Branch, Diff
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction
+from infrahub.core.branch import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

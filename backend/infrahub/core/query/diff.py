@@ -173,7 +173,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
         query = """
         CALL {
             MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-()
-            WHERE (r3.branch IN ['main', 'branch1'] AND r3.from >= $diff_from AND r3.from <= $diff_to
+            WHERE (r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
             AND ((r3.to >= $diff_from AND r3.to <= $diff_to ) OR r3.to is NULL))
             RETURN DISTINCT rel
         }
@@ -189,7 +189,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
         WITH rel1 as rel, sn1 as sn, dn1 as dn, r11 as r1, r21 as r2
         MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
         WHERE (
-            r3.branch IN ['main', 'branch1'] AND r3.from >= $diff_from AND r3.from <= $diff_to
+            r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
             AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL)
         )
         """ % "\n AND ".join(
