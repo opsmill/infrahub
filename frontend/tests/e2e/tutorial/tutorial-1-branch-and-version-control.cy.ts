@@ -59,6 +59,7 @@ describe("Tutorial - Part 1", () => {
 
     // Loader should not exist
     cy.contains("Just a moment").should("not.exist");
+    cy.get(".bg-gray-500").should("not.exist");
 
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",
