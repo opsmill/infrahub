@@ -127,9 +127,9 @@ describe("Tutorial - Part 1", () => {
     }
 
     // The old + new label should be displayed
-    cy.get(":nth-child(1) > .group\\/tooltip > .flex").should("have.text", ADMIN_ACCOUNT_LABEL);
+    cy.get(".group\\/Previous-value > .flex").should("have.text", ADMIN_ACCOUNT_LABEL);
 
-    cy.get(":nth-child(3) > .group\\/tooltip > .flex").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+    cy.get(".group\\/New-value > .flex").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
 
     // Go back to details
     cy.get(".isolate > .bg-gray-100").click();
