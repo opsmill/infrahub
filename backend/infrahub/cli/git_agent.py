@@ -13,12 +13,14 @@ import infrahub.config as config
 from infrahub.git import handle_message, initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.message_bus import get_broker
+from infrahub.message_bus import get_broker, messages
 from infrahub.message_bus.events import (
     InfrahubMessage,
     InfrahubRPCResponse,
     RPCStatusCode,
 )
+from infrahub.message_bus.operations import execute_message
+from infrahub.services import InfrahubServices
 from infrahub_client import InfrahubClient
 
 if TYPE_CHECKING:
@@ -54,13 +56,19 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
     queue = await channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
-
+    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
+    service = InfrahubServices(client=client, exchange=exchange)
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:
         message: IncomingMessage
         async for message in qiterator:
             try:
                 async with message.process(requeue=False):
+                    if message.routing_key in messages.MESSAGE_MAP:
+                        await execute_message(
+                            routing_key=message.routing_key, message_body=message.body, service=service
+                        )
+                        continue
                     assert message.reply_to is not None
 
                     try:
@@ -84,7 +92,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
                         )
 
             except Exception:  # pylint: disable=broad-except
-                log.exception("Processing error for message %r", message)
+                log.exception("Processing error for message %r" % message)
 
 
 async def initialize_git_agent(client: InfrahubClient):

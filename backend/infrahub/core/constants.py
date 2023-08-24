@@ -1,5 +1,7 @@
 import enum
 
+from infrahub.utils import InfrahubStringEnum
+
 GLOBAL_BRANCH_NAME = "-global-"
 
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
@@ -12,18 +14,18 @@ class PermissionLevel(enum.Flag):
     DEFAULT = 0
 
 
-class DiffAction(str, enum.Enum):
+class DiffAction(InfrahubStringEnum):
     ADDED = "added"
     REMOVED = "removed"
     UPDATED = "updated"
     UNCHANGED = "unchanged"
 
 
-class RelationshipStatus(str, enum.Enum):
+class RelationshipStatus(InfrahubStringEnum):
     ACTIVE = "active"
     DELETED = "deleted"
 
 
-class BranchSupportType(str, enum.Enum):
+class BranchSupportType(InfrahubStringEnum):
     AWARE = "aware"
     AGNOSTIC = "agnostic"

@@ -12,7 +12,7 @@ from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import BaseEnum
+from infrahub.utils import InfrahubStringEnum
 from infrahub_client.utils import duplicates, intersection
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 
-class FilterSchemaKind(str, BaseEnum):
+class FilterSchemaKind(InfrahubStringEnum):
     TEXT = "Text"
     LIST = "Text"
     NUMBER = "Number"
@@ -53,12 +53,12 @@ class FilterSchemaKind(str, BaseEnum):
     ENUM = "Enum"
 
 
-class RelationshipCardinality(str, BaseEnum):
+class RelationshipCardinality(InfrahubStringEnum):
     ONE = "one"
     MANY = "many"
 
 
-class RelationshipKind(str, BaseEnum):
+class RelationshipKind(InfrahubStringEnum):
     GENERIC = "Generic"
     ATTRIBUTE = "Attribute"
     COMPONENT = "Component"
@@ -66,20 +66,23 @@ class RelationshipKind(str, BaseEnum):
     GROUP = "Group"
 
 
-class ArtifactStatus(str, BaseEnum):
+class ArtifactStatus(InfrahubStringEnum):
     ERROR = "Error"
     PENDING = "Pending"
     PROCESSING = "Processing"
     READY = "Ready"
 
 
-# Generate a list of String based on Enums
-RELATIONSHIP_KINDS = [RelationshipKind.__members__[member].value for member in list(RelationshipKind.__members__)]
-RELATIONSHIP_CARDINALITY = [
-    RelationshipCardinality.__members__[member].value for member in list(RelationshipCardinality.__members__)
-]
-ARTIFACT_STATUSES = [ArtifactStatus.__members__[member].value for member in list(ArtifactStatus.__members__)]
-BRANCH_SUPPORT_TYPES = [BranchSupportType.__members__[member].value for member in list(BranchSupportType.__members__)]
+class ValidatorState(InfrahubStringEnum):
+    QUEUED = "queued"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class ValidatorConclusion(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    FAILURE = "failure"
+    SUCCESS = "success"
 
 
 class BaseSchemaModel(BaseModel):
@@ -719,7 +722,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
@@ -815,7 +818,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {"name": "order_weight", "kind": "Number", "optional": True},
@@ -859,11 +862,16 @@ internal_schema = {
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
-                {"name": "kind", "kind": "Text", "enum": RELATIONSHIP_KINDS, "default_value": "Generic"},
+                {
+                    "name": "kind",
+                    "kind": "Text",
+                    "enum": RelationshipKind.available_types(),
+                    "default_value": "Generic",
+                },
                 {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
                 {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
                 {"name": "identifier", "kind": "Text", "max_length": DEFAULT_REL_IDENTIFIER_LENGTH, "optional": True},
-                {"name": "cardinality", "kind": "Text", "enum": RELATIONSHIP_CARDINALITY},
+                {"name": "cardinality", "kind": "Text", "enum": RelationshipCardinality.available_types()},
                 {"name": "order_weight", "kind": "Number", "optional": True},
                 {
                     "name": "optional",
@@ -874,7 +882,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {
@@ -927,7 +935,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BRANCH_SUPPORT_TYPES,
+                    "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
@@ -1123,6 +1131,41 @@ core_models = {
                     "optional": True,
                     "identifier": "group_subscriber",
                     "cardinality": "many",
+                },
+            ],
+        },
+        {
+            "name": "Validator",
+            "namespace": "Internal",
+            "description": "A check or validation to show the status of data consistency or user definded tests",
+            "label": "Validator",
+            "order_by": ["started_at__value"],
+            "display_labels": ["state__value", "conclusion__value", "started_at__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {
+                    "name": "state",
+                    "kind": "Text",
+                    "enum": ValidatorState.available_types(),
+                    "default_value": ValidatorState.QUEUED.value,
+                },
+                {
+                    "name": "conclusion",
+                    "kind": "Text",
+                    "enum": ValidatorConclusion.available_types(),
+                    "default_value": ValidatorConclusion.UNKNOWN.value,
+                },
+                {"name": "completed_at", "kind": "DateTime", "optional": True},
+                {"name": "started_at", "kind": "DateTime", "optional": True},
+            ],
+            "relationships": [
+                {
+                    "name": "proposed_change",
+                    "peer": "CoreProposedChange",
+                    "kind": "Parent",
+                    "optional": False,
+                    "cardinality": "one",
+                    "identifier": "proposed_change__validator",
                 },
             ],
         },
@@ -1368,6 +1411,14 @@ core_models = {
                     "optional": True,
                     "cardinality": "many",
                 },
+                {
+                    "name": "validations",
+                    "peer": "InternalValidator",
+                    "kind": "Component",
+                    "identifier": "proposed_change__validator",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1575,6 +1626,45 @@ core_models = {
             ],
         },
         {
+            "name": "DataConflict",
+            "namespace": "Internal",
+            "description": "A conflict related to data as seen between two branches",
+            "label": "Data Conflict",
+            "default_filter": "paths__value",
+            "order_by": ["paths__value"],
+            "display_labels": ["paths__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {"name": "paths", "kind": "List"},
+            ],
+            "relationships": [
+                {
+                    "name": "validator",
+                    "peer": "InternalDataIntegrityValidator",
+                    "kind": "Parent",
+                    "optional": False,
+                    "cardinality": "one",
+                }
+            ],
+        },
+        {
+            "name": "DataIntegrityValidator",
+            "namespace": "Internal",
+            "description": "A check to validate the data integrity between two branches",
+            "label": "Data Validator",
+            "inherit_from": ["InternalValidator"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "relationships": [
+                {
+                    "name": "conflicts",
+                    "peer": "InternalDataConflict",
+                    "kind": "Parent",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+            ],
+        },
+        {
             "name": "Check",
             "namespace": "Core",
             "label": "Check",
@@ -1665,7 +1755,7 @@ core_models = {
                 {
                     "name": "status",
                     "kind": "Text",
-                    "enum": ARTIFACT_STATUSES,
+                    "enum": ArtifactStatus.available_types(),
                 },
                 {
                     "name": "content_type",

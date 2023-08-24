@@ -1,4 +1,8 @@
+from typing import Iterator
+
 import aio_pika
+import aiormq
+from pydantic import BaseModel
 
 import infrahub.config as config
 
@@ -35,3 +39,31 @@ async def get_broker() -> aio_pika.abc.AbstractRobustConnection:
         await connect_to_broker()
 
     return broker.client
+
+
+class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
+    """Base Model for messages"""
+
+    def info(self) -> aio_pika.abc.MessageInfo:
+        raise NotImplementedError
+
+    @property
+    def body(self) -> bytes:
+        return self.json().encode("UTF-8")
+
+    @property
+    def locked(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    def properties(self) -> aiormq.spec.Basic.Properties:
+        return aiormq.spec.Basic.Properties(content_type="application/json", content_encoding="utf-8")
+
+    def __iter__(self) -> Iterator[int]:
+        raise NotImplementedError
+
+    def lock(self) -> None:
+        raise NotImplementedError
+
+    def __copy__(self) -> aio_pika.Message:
+        return aio_pika.Message(body=self.body, content_type="application/json", content_encoding="utf-8")
