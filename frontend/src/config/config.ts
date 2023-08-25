@@ -1,4 +1,4 @@
-export const INFRAHUB_GIT_URL = "https://github.com/opsmill";
+export const INFRAHUB_GITHUB_URL = "https://github.com/opsmill/infrahub";
 
 export const INFRAHUB_DOC_URL = "https://docs.infrahub.app/";
 

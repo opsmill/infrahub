@@ -32,7 +32,7 @@ Some of the tasks that can be executed on the Git agent includes:
 - All Git operations (pull/merge/diff)
 
 !!!
-Currently only one instance of the Git Agent can run at a time.
+Multiple instance of the Git Agent can run at the same time to process more requests.
 !!!
 
 ### Frontend
@@ -43,12 +43,17 @@ Language: React
 
 ### Graph Database
 
-The Graph Database is based on Neo4j 5.x.
+The Graph Database is based on Bolt and Cyper. Currently we have validated both Neo4j 5.x and Memgraph as possible options.
 Neo4j is a production grade, battle tested graph database that is used in 1000s of deployments around the world.
+Memgraph is a lightweight, very fast, in-memory database that works great for testing and demo.
 
 ### Message Bus
 
 The message bus is based on RabbitMQ, it supports both a fanout channel to distribute messages to all members at the same time and a RPC framework to distribute work Syncronously.
+
+### Cache
+
+The cache is based on Redis, it's mainly used as a central point to support the distributed lock systems between all the different component of the system
 
 ### Git Server (Github/Gitlab)
 

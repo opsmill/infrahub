@@ -1,5 +1,5 @@
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
-import { INFRAHUB_API_SERVER_URL, INFRAHUB_DOC_URL } from "../../config/config";
+import { INFRAHUB_API_SERVER_URL, INFRAHUB_DOC_URL, INFRAHUB_GITHUB_URL } from "../../config/config";
 import { ReactComponent as GitIcon } from "../../images/icons/git-icon-2.svg";
 import { ReactComponent as GraphqlIcon } from "../../images/icons/graphql-icon.svg";
 import { ReactComponent as SwaggerIcon } from "../../images/icons/swagger-icon.svg";
@@ -7,7 +7,7 @@ import { ReactComponent as SwaggerIcon } from "../../images/icons/swagger-icon.s
 const ICONS = [
   {
     component: <GitIcon className="w-4 h-4 fill-custom-blue-50 text-custom-blue-50" />,
-    link: `${INFRAHUB_API_SERVER_URL}/graphql`,
+    link: INFRAHUB_GITHUB_URL,
   },
   {
     component: <DocumentTextIcon className="w-4 h-4 text-custom-blue-50" />,
@@ -19,7 +19,7 @@ const ICONS = [
   },
   {
     component: <SwaggerIcon className="w-4 h-4  fill-custom-blue-50" />,
-    link: `${INFRAHUB_API_SERVER_URL}/docs`,
+    link: `${INFRAHUB_API_SERVER_URL}/api/docs`,
   },
 ];
 

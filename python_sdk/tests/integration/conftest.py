@@ -8,6 +8,7 @@ from infrahub.core.initialization import first_time_initialization, initializati
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import AsyncSession, get_db
+from infrahub.lock import initialize_lock
 from infrahub_client.schema import NodeSchema
 from infrahub_client.utils import str_to_bool
 
@@ -29,6 +30,7 @@ def event_loop():
 @pytest.fixture(scope="session", autouse=True)
 def execute_before_any_test(worker_id):
     config.load_and_exit()
+    initialize_lock()
 
     if TEST_IN_DOCKER:
         try:
@@ -39,6 +41,8 @@ def execute_before_any_test(worker_id):
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 
     config.SETTINGS.broker.enable = False
+    config.SETTINGS.cache.enable = False
+    config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
 

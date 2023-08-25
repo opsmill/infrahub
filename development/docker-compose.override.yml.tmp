@@ -93,6 +93,10 @@ services:
 #     ports:
 #       - "5672:5672"
 #       - "15672:15672"
+#   cache:
+#     ports:
+#       - "6379:6379"
+
 
 volumes:
   grafana_data:
