@@ -965,6 +965,54 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
 
 @pytest.fixture
+async def base_dataset_04(session: AsyncSession, default_branch: Branch, register_core_models_schema) -> dict:
+    time0 = pendulum.now(tz="UTC")
+    params = {
+        "main_branch": "main",
+        "branch1": "branch1",
+        "time0": time0.to_iso8601_string(),
+        "time_m5": time0.subtract(seconds=5).to_iso8601_string(),
+        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
+        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
+        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
+        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
+    }
+
+    blue = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
+    await blue.new(session=session, name="Blue", description="The Blue tag")
+    await blue.save(session=session, at=params["time_m30"])
+
+    red = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
+    await red.new(session=session, name="red", description="The red tag")
+    await red.save(session=session, at=params["time_m30"])
+
+    yellow = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
+    await yellow.new(session=session, name="yellow", description="The yellow tag")
+    await yellow.save(session=session, at=params["time_m30"])
+
+    org1 = await Node.init(session=session, schema="CoreOrganization", branch=default_branch)
+    await org1.new(session=session, name="org1", tags=[blue])
+    await org1.save(session=session, at=params["time_m30"])
+
+    branch1 = await create_branch(branch_name="branch1", session=session, at=params["time_m20"])
+
+    org1_branch = await registry.manager.get_one(id=org1.id, branch=branch1, session=session)
+    await org1_branch.tags.update(data=[blue, red], session=session)
+    await org1_branch.save(session=session, at=params["time_m5"])
+
+    org1_main = await registry.manager.get_one(id=org1.id, session=session)
+    await org1_main.tags.update(data=[blue, yellow], session=session)
+    await org1_main.save(session=session, at=params["time_m10"])
+
+    params["blue"] = blue
+    params["red"] = red
+    params["yellow"] = yellow
+    params["org1"] = org1
+
+    return params
+
+
+@pytest.fixture
 async def group_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "generics": [
@@ -1326,6 +1374,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "name": "ElectricCar",
                 "namespace": "Test",
                 "inherit_from": ["TestCar"],
+                "default_filter": "name__value",
                 "attributes": [
                     {"name": "nbr_engine", "kind": "Number"},
                 ],
@@ -1334,6 +1383,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "name": "GazCar",
                 "namespace": "Test",
                 "inherit_from": ["TestCar"],
+                "default_filter": "name__value",
                 "attributes": [
                     {"name": "mpg", "kind": "Number"},
                 ],

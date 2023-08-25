@@ -469,18 +469,17 @@ async def data_conflict_attribute(session, default_branch, car_person_data_gener
 async def data_diff_relationship_one(session, default_branch, car_person_data_generic, first_account):
     # Set some values in C1 in Main before creating the branch
     time_minus1 = pendulum.now(tz="UTC")
-    ecars_list = await NodeManager.query(
-        session=session, schema="TestElectricCar", filters={"name__value": "volt"}, branch=default_branch
-    )
-    ecars = {item.name.value: item for item in ecars_list}
 
-    persons_list = await NodeManager.query(
-        session=session, schema="TestPerson", filters={"name__value": "Jane"}, branch=default_branch
+    c1_main = await NodeManager.get_one_by_id_or_default_filter(
+        session=session, id="volt", schema_name="TestElectricCar", branch=default_branch
     )
-    persons = {item.name.value: item for item in persons_list}
 
-    await ecars["volt"].previous_owner.update(data=persons["Jane"], session=session)
-    await ecars["volt"].save(session=session, at=time_minus1)
+    p2_main = await NodeManager.get_one_by_id_or_default_filter(
+        session=session, id="Jane", schema_name="TestPerson", branch=default_branch
+    )
+
+    await c1_main.previous_owner.update(data=p2_main, session=session)
+    await c1_main.save(session=session, at=time_minus1)
 
     branch2 = await create_branch(branch_name="branch2", session=session)
 
@@ -493,12 +492,8 @@ async def data_diff_relationship_one(session, default_branch, car_person_data_ge
     ecars_list = await NodeManager.query(session=session, schema="TestElectricCar", branch=branch2)
     ecars = {item.name.value: item for item in ecars_list}
 
-    gcars_list = await NodeManager.query(session=session, schema="TestGazCar", branch=branch2)
-    gcars = {item.name.value: item for item in gcars_list}
-
-    # Change owner owner of C1 from P1 to P2
+    # Change previous owner of C1 from P1 to P2 in branch
     time11 = pendulum.now(tz="UTC")
-    # await ecars["volt"].owner.update(data=persons["Jane"], session=session)
     await ecars["volt"].previous_owner.update(data=persons["John"], session=session)
     await ecars["volt"].save(session=session, at=time11)
 
@@ -517,12 +512,9 @@ async def data_diff_relationship_one(session, default_branch, car_person_data_ge
         "time0": time0,
         "time11": time11,
         "time20": time20,
-        # "time21": time21,
         "time30": time30,
         "c1": ecars["volt"].id,
         "c2": ecars["bolt"].id,
-        "c3": gcars["nolt"].id,
-        "c4": gcars["focus"].id,
         "p1": persons["John"].id,
         "p2": persons["Jane"].id,
     }
@@ -555,17 +547,13 @@ async def data_conflict_relationship_one(session, default_branch, car_person_dat
     ecars_list_branch = await NodeManager.query(session=session, schema="TestElectricCar", branch=branch2)
     ecars_branch = {item.name.value: item for item in ecars_list_branch}
 
-    # Change owner of C1 from P1 to P2 in branch
+    # Change previous owner of C1 from P1 to P2 in branch
     time11 = pendulum.now(tz="UTC")
-    # await ecars["volt"].owner.update(data=persons["Jane"], session=session)
     await ecars_branch["volt"].previous_owner.update(data=persons_branch["John"], session=session)
     await ecars_branch["volt"].save(session=session, at=time11)
 
-    # Change owner of C1 from P1 to Null in main
+    # Change previous owner of C1 from P1 to Null in main
     time12 = pendulum.now(tz="UTC")
-    # await ecars["volt"].owner.update(data=persons["Jane"], session=session)
-    # #await ecars_branch["volt"].previous_owner.update(data=None, session=session)
-    # #await ecars_branch["volt"].save(session=session, at=time12)
     await ecars_main["volt"].previous_owner.update(data=None, session=session)
     await ecars_main["volt"].save(session=session, at=time12)
 
