@@ -140,20 +140,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self.id:
             for mandatory_attr in self._schema.mandatory_attribute_names:
-                if mandatory_attr in fields.keys():
-                    defined_value = fields[mandatory_attr]
-                    if isinstance(fields[mandatory_attr], dict):
-                        defined_value = fields[mandatory_attr].get("value")
-
-                    if defined_value is None:
-                        errors.append(
-                            ValidationError(
-                                {
-                                    mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()} and must contain a value"
-                                }
-                            )
-                        )
-                else:
+                if mandatory_attr not in fields.keys():
                     errors.append(
                         ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"})
                     )
@@ -191,6 +178,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         data=fields.get(attr_schema.name, None),
                     ),
                 )
+                if not self.id:
+                    attribute = getattr(self, attr_schema.name)
+                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
                 errors.append(exc)
 
