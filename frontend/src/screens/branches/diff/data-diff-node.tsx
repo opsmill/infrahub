@@ -8,6 +8,7 @@ import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../../utils/common";
 import { DataDiffElement } from "./data-diff-element";
+import { DataDiffComments } from "./diff-comments";
 import { DiffPill } from "./diff-pill";
 
 export type tDataDiffNodePropertyValue = {
@@ -113,6 +114,7 @@ export type tDataDiffNode = {
   changed_at?: number;
   summary: tDataDiffNodeSummary;
   elements: Map<string, tDataDiffNodeElement>;
+  path: string;
 };
 
 export type tDataDiffNodeProps = {
@@ -155,6 +157,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
   // Branch from props is used to filter the changes to a specific branch
   const { node, branch } = props;
+  console.log("node: ", node);
 
   const {
     display_label: nodeDisplayLabels,
@@ -163,6 +166,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     changed_at,
     summary,
     elements,
+    path,
   } = node;
 
   // Get all the related branches for this node
@@ -176,7 +180,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className="p-1 pr-0 flex flex-1">
+    <div className={"p-1 pr-0 flex flex-1 group"}>
       <div className="flex flex-1">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
@@ -185,6 +189,9 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         <Badge className="mr-2">{kind}</Badge>
 
         <span className="mr-2">{display_label}</span>
+
+        {/* Do not display comment button if we are on the branch details view */}
+        {!branchname && <DataDiffComments path={path} />}
       </div>
 
       <DiffPill {...summary} />

@@ -9,8 +9,8 @@ export enum BUTTON_TYPES {
   WARNING,
 }
 
-const DEFAULT_CLASS = `
-  p-2
+const DEFAULT_CLASS = (className?: string) => `
+  ${className?.includes("p-") ? "" : "p-2"}
   inline-flex items-center gap-x-1.5 rounded-full
   text-sm font-semibold
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
@@ -54,14 +54,23 @@ const getClasseName = (type: BUTTON_TYPES) => {
 };
 
 export const RoundedButton = (props: any) => {
-  const { type, className, ...propsToPass } = props;
+  const { type, className, onClick, ...propsToPass } = props;
 
   const customClassName = getClasseName(type);
+
+  const handleClick = (event: any) => {
+    if (type !== "submit") {
+      event.stopPropagation();
+    }
+
+    onClick && onClick(event);
+  };
 
   return (
     <button
       type="button"
-      className={classNames(DEFAULT_CLASS, customClassName, className)}
+      className={classNames(DEFAULT_CLASS(className), customClassName, className)}
+      onClick={handleClick}
       {...propsToPass}>
       {props.children}
     </button>

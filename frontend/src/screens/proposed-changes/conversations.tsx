@@ -100,7 +100,6 @@ export const Conversations = () => {
   const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
-  // const [isLoadingMerge, setIsLoadingMerge] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
