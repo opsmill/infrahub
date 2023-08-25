@@ -621,7 +621,7 @@ class Branch(StandardNode):
         if self.name == config.SETTINGS.main.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.name}' into itself")
 
-        # TODO need to find a way to properly communicate back to the user any issue that coule come up during the merge
+        # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
         await self.merge_graph(session=session, at=at)
 
@@ -637,97 +637,92 @@ class Branch(StandardNode):
         diff = await Diff.init(branch=self, session=session)
         nodes = await diff.get_nodes(session=session)
 
-        if self.name not in nodes:
-            return
+        if self.name in nodes:
+            origin_nodes_query = await NodeListGetInfoQuery.init(
+                session=session, ids=list(nodes[self.name].keys()), branch=default_branch
+            )
+            await origin_nodes_query.execute(session=session)
+            origin_nodes = {
+                node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
+            }
 
-        origin_nodes_query = await NodeListGetInfoQuery.init(
-            session=session, ids=list(nodes[self.name].keys()), branch=default_branch
-        )
-        await origin_nodes_query.execute(session=session)
-        origin_nodes = {
-            node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
-        }
+            # ---------------------------------------------
+            # NODES
+            # ---------------------------------------------
+            for node_id, node in nodes[self.name].items():
+                if node.action == DiffAction.ADDED:
+                    query = await AddNodeToBranch.init(session=session, node_id=node.db_id, branch=default_branch)
+                    await query.execute(session=session)
+                    rel_ids_to_update.append(node.rel_id)
 
-        # ---------------------------------------------
-        # NODES
-        # ---------------------------------------------
-        for node_id, node in nodes[self.name].items():
-            if node.action == DiffAction.ADDED:
-                query = await AddNodeToBranch.init(session=session, node_id=node.db_id, branch=default_branch)
-                await query.execute(session=session)
-                rel_ids_to_update.append(node.rel_id)
+                elif node.action == DiffAction.REMOVED:
+                    query = await NodeDeleteQuery.init(session=session, branch=default_branch, node_id=node_id, at=at)
+                    await query.execute(session=session)
+                    rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
-            elif node.action == DiffAction.REMOVED:
-                query = await NodeDeleteQuery.init(session=session, branch=default_branch, node_id=node_id, at=at)
-                await query.execute(session=session)
-                rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
-
-            for _, attr in node.attributes.items():
-                if attr.action == DiffAction.ADDED:
-                    await add_relationship(
-                        src_node_id=node.db_id,
-                        dst_node_id=attr.db_id,
-                        rel_type="HAS_ATTRIBUTE",
-                        at=at,
-                        branch_name=default_branch.name,
-                        branch_level=default_branch.hierarchy_level,
-                        session=session,
-                    )
-                    rel_ids_to_update.append(attr.rel_id)
-
-                elif attr.action == DiffAction.REMOVED:
-                    await add_relationship(
-                        src_node_id=node.db_id,
-                        dst_node_id=attr.db_id,
-                        rel_type="HAS_ATTRIBUTE",
-                        branch_name=default_branch.name,
-                        branch_level=default_branch.hierarchy_level,
-                        at=at,
-                        status=RelationshipStatus.DELETED,
-                        session=session,
-                    )
-                    rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
-
-                elif attr.action == DiffAction.UPDATED:
-                    pass
-
-                for prop_type, prop in attr.properties.items():
-                    if prop.action == DiffAction.ADDED:
+                for _, attr in node.attributes.items():
+                    if attr.action == DiffAction.ADDED:
                         await add_relationship(
-                            src_node_id=attr.db_id,
-                            dst_node_id=prop.db_id,
-                            rel_type=prop_type,
+                            src_node_id=node.db_id,
+                            dst_node_id=attr.db_id,
+                            rel_type="HAS_ATTRIBUTE",
                             at=at,
                             branch_name=default_branch.name,
                             branch_level=default_branch.hierarchy_level,
                             session=session,
                         )
-                        rel_ids_to_update.append(prop.rel_id)
+                        rel_ids_to_update.append(attr.rel_id)
 
-                    elif prop.action == DiffAction.UPDATED:
+                    elif attr.action == DiffAction.REMOVED:
                         await add_relationship(
-                            src_node_id=attr.db_id,
-                            dst_node_id=prop.db_id,
-                            rel_type=prop_type,
-                            at=at,
+                            src_node_id=node.db_id,
+                            dst_node_id=attr.db_id,
+                            rel_type="HAS_ATTRIBUTE",
                             branch_name=default_branch.name,
                             branch_level=default_branch.hierarchy_level,
-                            session=session,
-                        )
-                        rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
-
-                    elif prop.action == DiffAction.REMOVED:
-                        await add_relationship(
-                            src_node_id=attr.db_id,
-                            dst_node_id=prop.db_id,
-                            rel_type=prop_type,
                             at=at,
-                            branch_name=default_branch.name,
-                            branch_level=default_branch.hierarchy_level,
                             status=RelationshipStatus.DELETED,
                             session=session,
                         )
-                        rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
+                        rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
+
+                    for prop_type, prop in attr.properties.items():
+                        if prop.action == DiffAction.ADDED:
+                            await add_relationship(
+                                src_node_id=attr.db_id,
+                                dst_node_id=prop.db_id,
+                                rel_type=prop_type,
+                                at=at,
+                                branch_name=default_branch.name,
+                                branch_level=default_branch.hierarchy_level,
+                                session=session,
+                            )
+                            rel_ids_to_update.append(prop.rel_id)
+
+                        elif prop.action == DiffAction.UPDATED:
+                            await add_relationship(
+                                src_node_id=attr.db_id,
+                                dst_node_id=prop.db_id,
+                                rel_type=prop_type,
+                                at=at,
+                                branch_name=default_branch.name,
+                                branch_level=default_branch.hierarchy_level,
+                                session=session,
+                            )
+                            rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
+
+                        elif prop.action == DiffAction.REMOVED:
+                            await add_relationship(
+                                src_node_id=attr.db_id,
+                                dst_node_id=prop.db_id,
+                                rel_type=prop_type,
+                                at=at,
+                                branch_name=default_branch.name,
+                                branch_level=default_branch.hierarchy_level,
+                                status=RelationshipStatus.DELETED,
+                                session=session,
+                            )
+                            rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
         # ---------------------------------------------
         # RELATIONSHIPS
