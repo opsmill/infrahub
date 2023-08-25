@@ -184,12 +184,12 @@ def build_test_compose_files_cmd(
     if database not in SUPPORTED_DATABASES:
         exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
-    if GITHUB_ACTIONS:
-        DEV_COMPOSE_FILES.append(DEV_GITHUB_FILE_NAME)
-
     if database == DatabaseType.MEMGRAPH.value:
         DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J
+
+    if GITHUB_ACTIONS:
+        DEV_COMPOSE_FILES.append(DEV_GITHUB_FILE_NAME)
 
     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
