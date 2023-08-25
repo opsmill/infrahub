@@ -168,9 +168,6 @@ def build_dev_compose_files_cmd(database: str) -> str:
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J
 
-    if GITHUB_ACTIONS:
-        DEV_COMPOSE_FILES.append(DEV_GITHUB_FILE_NAME)
-
     if os.path.exists(DEV_OVERRIDE_FILE_NAME):
         print("!! Found a dev override file for docker-compose !!")
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
@@ -186,6 +183,9 @@ def build_test_compose_files_cmd(
 
     if database not in SUPPORTED_DATABASES:
         exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+
+    if GITHUB_ACTIONS:
+        DEV_COMPOSE_FILES.append(DEV_GITHUB_FILE_NAME)
 
     if database == DatabaseType.MEMGRAPH.value:
         DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
