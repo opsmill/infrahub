@@ -5893,7 +5893,7 @@
             "kind": "CoreRFile"
         },
         {
-            "name": "Check",
+            "name": "CheckDefinition",
             "namespace": "Core",
             "description": null,
             "default_filter": "name__value",
@@ -6005,6 +6005,11 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 6000
+                },
+                {
+                    "name": "parameters",
+                    "kind": "JSON",
+                    "optional": true
                 }
             ],
             "relationships": [

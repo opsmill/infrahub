@@ -763,7 +763,7 @@ def test_extract_repo_file_information():
     assert file_info.module_name == "dir2.dir3.myfile"
 
 
-async def test_create_python_check(
+async def test_create_python_check_definition(
     helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, mock_check_create
 ):
     repo = git_repo_03_w_client
@@ -785,7 +785,7 @@ async def test_create_python_check(
         timeout=check_class.timeout,
         rebase=check_class.rebase,
     )
-    obj = await repo.create_python_check(branch_name="main", check=check)
+    obj = await repo.create_python_check_definition(branch_name="main", check=check)
 
     assert isinstance(obj, InfrahubNode)
 
@@ -796,7 +796,7 @@ async def test_compare_python_check(
     mock_schema_query_01,
     gql_query_data_01,
     gql_query_data_02,
-    check_data_01,
+    check_definition_data_01,
 ):
     repo = git_repo_03_w_client
 
@@ -808,7 +808,7 @@ async def test_compare_python_check(
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
-    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
+    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_definition_data_01)
 
     check01 = CheckDefinitionInformation(
         name=check_class.__name__,
@@ -821,7 +821,7 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(existing_check=existing_check, check=check01) is True
+    assert await repo.compare_python_check_definition(existing_check=existing_check, check=check01) is True
 
     check02 = CheckDefinitionInformation(
         name=check_class.__name__,
@@ -835,7 +835,7 @@ async def test_compare_python_check(
     )
 
     assert (
-        await repo.compare_python_check(
+        await repo.compare_python_check_definition(
             existing_check=existing_check,
             check=check02,
         )
@@ -853,4 +853,4 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(check=check03, existing_check=existing_check) is False
+    assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False
