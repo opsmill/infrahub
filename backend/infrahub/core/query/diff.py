@@ -138,40 +138,6 @@ class DiffRelationshipQuery(DiffQuery):
 
         self.return_labels = ["sn", "dn", "rel", "r1", "r2"]
 
-    # def get_results(self) -> Generator[QueryResult, None, None]:
-    #     if not self.results:
-    #         return iter(())
-
-    #     attrs_info = defaultdict(list)
-    #     ids_set_processed = []
-
-    #     # Extract all attrname and relationships on all branches
-    #     for idx, result in enumerate(self.results):
-    #         # Generate unique set composed of all the IDs of the nodes and the relationship returned
-    #         # To identify the duplicate of the query and remove it. (same path traversed from the other direction)
-    #         ids_set = {item.element_id for item in result}
-    #         if ids_set in ids_set_processed:
-    #             continue
-    #         ids_set_processed.append(ids_set)
-
-    #         # Generate a unique KEY that will be the same irrespectively of the order used to traverse the relationship
-    #         source_node_uuid = result.get("sn").get("uuid")[:8]
-    #         dest_node_uuid = result.get("dn").get("uuid")[:8]
-    #         nodes = sorted([source_node_uuid, dest_node_uuid])
-    #         rel_name = result.get("rel").get("name")
-    #         branch_name = result.get("r1").get("branch")
-
-    #         attr_key = f"{branch_name}_{nodes[0]}__{nodes[1]}__{rel_name}"
-    #         info = {"idx": idx, "branch_score": result.branch_score}
-    #         attrs_info[attr_key].append(info)
-
-    #     for attr_key, values in attrs_info.items():
-    #         attr_info = sorted(values, key=lambda i: i["branch_score"], reverse=True)[0]
-
-    #         yield self.results[attr_info["idx"]]
-
-    #     return iter(())
-
 
 class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"

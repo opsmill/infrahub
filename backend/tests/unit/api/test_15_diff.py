@@ -971,7 +971,6 @@ async def test_diff_data_relationship_many(session, client, client_headers, data
 
     paths_to_exclude = [
         r"root\[\d\]\['elements'\]\['\w+'\]\['change'\]\['peers'\]\['[\w\-]+'\]\['properties'\]\['\w+'\]\['changes'\]\[\d\]\['changed_at'\]",
-        # rf"root\[\d\]\['elements'\]\['\w+'\]\['change'\]\['peers'\]\['{blue.id}'\]\['properties'\]",
     ]
     expected_response = [expected_org1, expected_org3]
 

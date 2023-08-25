@@ -686,9 +686,6 @@ class Branch(StandardNode):
                         )
                         rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
 
-                    elif attr.action == DiffAction.UPDATED:
-                        pass
-
                     for prop_type, prop in attr.properties.items():
                         if prop.action == DiffAction.ADDED:
                             await add_relationship(
