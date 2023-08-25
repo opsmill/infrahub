@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 class CheckType(Enum):
     DATA = "data"
     REPOSITORY = "repository"
+    SCHEMA = "schema"
+    ALL = "all"
 
 
 async def _get_conflicts(session: AsyncSession, proposed_change: Node) -> List[ObjectConflict]:
@@ -152,7 +154,13 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
         await create_data_check(session=session, proposed_change=proposed_change)
 
-        await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))
+        events = [
+            messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
+            messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id),
+            messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
+        ]
+        for event in events:
+            await rpc_client.send(event)
 
         return proposed_change, result
 
@@ -192,8 +200,20 @@ class ProposedChangeRequestRunCheck(Mutation):
                 message="The requested proposed change wasn't found",
             )
         if check_type == CheckType.DATA:
+            await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))
+            # Once the data integrity check is handled in the worker nodes the below call will be removed
             await update_data_check(session=session, proposed_change=proposed_change)
         elif check_type == CheckType.REPOSITORY:
             await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))
+        elif check_type == CheckType.SCHEMA:
+            await rpc_client.send(messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id))
+        else:
+            events = [
+                messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
+                messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id),
+                messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
+            ]
+            for event in events:
+                await rpc_client.send(event)
 
         return {"ok": True}

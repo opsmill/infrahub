@@ -65,6 +65,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
         async for message in qiterator:
             try:
                 async with message.process(requeue=False):
+                    clear_log_context()
                     if message.routing_key in messages.MESSAGE_MAP:
                         await execute_message(
                             routing_key=message.routing_key, message_body=message.body, service=service
@@ -74,7 +75,6 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
 
                     try:
                         rpc = InfrahubMessage.convert(message)
-                        clear_log_context()
                         if rpc.request_id:
                             set_log_data(key="request_id", value=rpc.request_id)
                         log.debug("received_message", message_type=rpc.type)
