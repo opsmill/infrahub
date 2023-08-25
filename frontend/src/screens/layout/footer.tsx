@@ -1,5 +1,9 @@
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
-import { INFRAHUB_API_SERVER_URL, INFRAHUB_DOC_URL, INFRAHUB_GITHUB_URL } from "../../config/config";
+import {
+  INFRAHUB_API_SERVER_URL,
+  INFRAHUB_DOC_URL,
+  INFRAHUB_GITHUB_URL,
+} from "../../config/config";
 import { ReactComponent as GitIcon } from "../../images/icons/git-icon-2.svg";
 import { ReactComponent as GraphqlIcon } from "../../images/icons/graphql-icon.svg";
 import { ReactComponent as SwaggerIcon } from "../../images/icons/swagger-icon.svg";

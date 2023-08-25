@@ -90,11 +90,17 @@ describe("Tutorial - Part 1", () => {
       cy.screenshot("tutorial_1_account_edit", screenshotConfig);
     }
 
+    // Will intercept the mutation request
+    cy.intercept(`/graphql/${NEW_BRANCH_NAME}`).as("CoreAccountUpdate");
+
     // Submit the form
     cy.contains("Save").click();
 
     // The new label should be saved
     cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);
+
+    // Wait for the mutation to succeed
+    cy.wait("@CoreAccountUpdate");
   });
 
   it("should access the Admin Account diff", function () {
