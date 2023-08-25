@@ -51,6 +51,12 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     meta: Optional[Meta] = None
 
+    def assign_meta(self, parent: "InfrahubBaseMessage") -> None:
+        """Assign relevant meta properties from a parent message."""
+        self.meta = self.meta or Meta()
+        if parent.meta:
+            self.meta.request_id = parent.meta.request_id
+
     def set_log_data(self) -> None:
         if self.meta:
             if self.meta.request_id:

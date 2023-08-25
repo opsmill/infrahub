@@ -5,7 +5,9 @@ from infrahub.message_bus.operations import requests
 from infrahub.services import InfrahubServices
 
 COMMAND_MAP = {
+    "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
+    "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "request.proposed_change.repository_checks": requests.proposed_change.repository_checks,
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.check,
