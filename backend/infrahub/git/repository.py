@@ -136,9 +136,6 @@ class CheckDefinitionInformation(BaseModel):
     timeout: int
     """Timeout for the Check."""
 
-    targets: Optional[str] = None
-    """ID or name of the Group associated with this CheckDefinition"""
-
     parameters: Optional[dict] = None
     """Additional Parameters to extract from each target (if targets is provided)"""
 
@@ -1300,7 +1297,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             "class_name": check.class_name,
             "rebase": check.rebase,
             "timeout": check.timeout,
-            "targets": check.targets,
             "parameters": check.parameters,
         }
 
@@ -1333,9 +1329,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         if existing_check.timeout.value != check.timeout:
             existing_check.timeout.value = check.timeout
-
-        if existing_check.targets.id != check.targets:
-            existing_check.targets = {"id": check.targets, "source": str(self.id), "is_protected": True}
 
         if existing_check.parameters.value != check.parameters:
             existing_check.parameters.value = check.parameters
