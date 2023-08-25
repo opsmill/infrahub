@@ -16,7 +16,7 @@ from infrahub.git import (
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
     ArtifactGenerateResult,
-    CheckInformation,
+    CheckDefinitionInformation,
     GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
@@ -775,7 +775,7 @@ async def test_create_python_check(
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
-    check = CheckInformation(
+    check = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -810,7 +810,7 @@ async def test_compare_python_check(
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
     existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
 
-    check01 = CheckInformation(
+    check01 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -823,7 +823,7 @@ async def test_compare_python_check(
 
     assert await repo.compare_python_check(existing_check=existing_check, check=check01) is True
 
-    check02 = CheckInformation(
+    check02 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -842,7 +842,7 @@ async def test_compare_python_check(
         is False
     )
 
-    check03 = CheckInformation(
+    check03 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
