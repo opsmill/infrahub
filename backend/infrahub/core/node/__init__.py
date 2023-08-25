@@ -178,6 +178,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         data=fields.get(attr_schema.name, None),
                     ),
                 )
+                if not self.id:
+                    attribute = getattr(self, attr_schema.name)
+                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
                 errors.append(exc)
 

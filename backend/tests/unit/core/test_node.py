@@ -74,6 +74,19 @@ async def test_node_init_mandatory_missing(session, default_branch: Branch, crit
     assert "mandatory" in str(exc.value)
 
 
+async def test_node_init_mandatory_field_null(session, default_branch: Branch, criticality_schema):
+    obj = await Node.init(session=session, schema=criticality_schema)
+
+    with pytest.raises(ValidationError) as direct_exc:
+        await obj.new(session=session, name=None, level=4)
+
+    with pytest.raises(ValidationError) as dict_exc:
+        await obj.new(session=session, name={"value": None}, level=4)
+
+    assert "A value must be provided for name at name" in str(direct_exc.value)
+    assert "A value must be provided for name at name" in str(dict_exc.value)
+
+
 async def test_node_init_invalid_attribute(session, default_branch: Branch, criticality_schema):
     obj = await Node.init(session=session, schema=criticality_schema)
 
