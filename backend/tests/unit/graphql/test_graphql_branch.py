@@ -368,7 +368,6 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
-
 async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
     branch1 = await Branch.get_by_name(session=session, name="branch1")
 
