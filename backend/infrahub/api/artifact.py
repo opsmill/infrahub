@@ -1,8 +1,8 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 
 from fastapi import APIRouter, Depends, Request, Response
 from neo4j import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.api.dependencies import (
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/artifact")
 
 
 class ArtifactGeneratePayload(BaseModel):
-    nodes: Optional[List[str]]
+    nodes: List[str] = Field(default_factory=list)
 
 
 class ArtifactGenerateResponse(BaseModel):
@@ -55,11 +55,12 @@ async def get_artifact(
 async def generate_artifact(
     request: Request,
     artifact_definition_id: str,
-    payload: Optional[ArtifactGeneratePayload] = None,
+    payload: ArtifactGeneratePayload = ArtifactGeneratePayload(),
     session: AsyncSession = Depends(get_session),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> ArtifactGenerateResponse:
+    print(payload.nodes)
     artifact_definition: CoreArtifactDefinition = await registry.manager.get_one_by_id_or_default_filter(
         session=session,
         id=artifact_definition_id,
@@ -70,10 +71,7 @@ async def generate_artifact(
 
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
-    if not payload:
-        nodes = await artifact_definition.generate(session=session, rpc_client=rpc_client)
-    else:
-        nodes = await artifact_definition.generate(session=session, rpc_client=rpc_client, nodes=payload.nodes)
+    nodes = await artifact_definition.generate(session=session, rpc_client=rpc_client, nodes=payload.nodes)
 
     response_data = ArtifactGenerateResponse(nodes=nodes)
 
