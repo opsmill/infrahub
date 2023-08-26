@@ -465,7 +465,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     def _query_bulk_create(self, at: Optional[Timestamp] = None):
         create_at = Timestamp(at)
-        node_id = str(UUIDT.new())
+        node_id = str(UUIDT())
         short_id = "a" + node_id[:8]
         kind = self.get_kind()
 
@@ -477,7 +477,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         for attr_name in self._schema.attribute_names:
             attr: BaseAttribute = getattr(self, attr_name)
-            attr_uuid = str(UUIDT.new())
+            attr_uuid = str(UUIDT())
             attr_short = "a" + attr_uuid[:8]
             query.append(
                 'CREATE (%s:Attribute:AttributeLocal { uuid: "%s", type: "%s", name: "%s"})'
@@ -522,7 +522,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             rel: RelationshipManager = getattr(self, rel_name)
 
             for item in rel._relationships:
-                rel_uuid = str(UUIDT.new())
+                rel_uuid = str(UUIDT())
                 rel_short = "a" + rel_uuid[:8]
                 peer_id = item.peer_id
                 short_peer = "a" + peer_id[:8]

@@ -27,7 +27,7 @@ async def test_rpc_client_testing(rpc_client: InfrahubRpcClientTesting):
 
     message = InfrahubGitRPC(
         action=GitMessageAction.REPO_ADD.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name="my_repo",
         location="/tmp",
     )
@@ -49,7 +49,7 @@ async def test_rpc_client_testing_multiple_messages(rpc_client: InfrahubRpcClien
 
     message = InfrahubGitRPC(
         action=GitMessageAction.REPO_ADD.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name="my_repo",
         location="/tmp",
     )
@@ -74,7 +74,7 @@ async def test_rpc_client_ensure_response_delivered(rpc_client: InfrahubRpcClien
 
     message = InfrahubGitRPC(
         action=GitMessageAction.REPO_ADD.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name="my_repo",
         location="/tmp",
     )

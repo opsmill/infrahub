@@ -214,7 +214,7 @@ async def test_to_graphql(session, default_branch: Branch, criticality_schema, f
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
-        id=str(UUIDT.new()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -235,7 +235,7 @@ async def test_to_graphql(session, default_branch: Branch, criticality_schema, f
     assert await attr1.to_graphql(session=session, fields={"id": None, "is_visible": None}) == expected_data
 
     attr2 = String(
-        id=str(UUIDT.new()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -263,7 +263,7 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
-        id=str(UUIDT.new()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -283,7 +283,7 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
     assert await attr1.to_graphql(session=session) == expected_data
 
     attr2 = String(
-        id=str(UUIDT.new()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,

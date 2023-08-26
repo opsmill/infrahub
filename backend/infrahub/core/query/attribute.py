@@ -65,7 +65,7 @@ class AttributeCreateQuery(AttributeQuery):
             self.query_add_create_owner()
 
         self.params["at"] = self.at.to_string()
-        self.params["uuid"] = str(UUIDT.new())
+        self.params["uuid"] = str(UUIDT())
         self.params["name"] = self.attr.name
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level

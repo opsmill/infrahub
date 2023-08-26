@@ -13,7 +13,7 @@ from infrahub_client import UUIDT
 async def test_git_rpc_create_successful(git_upstream_repo_02):
     message = InfrahubGitRPC(
         action=GitMessageAction.REPO_ADD.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
@@ -27,7 +27,7 @@ async def test_git_rpc_create_successful(git_upstream_repo_02):
 async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
     message = InfrahubGitRPC(
         action=GitMessageAction.REPO_ADD.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name=git_upstream_repo_01["name"],
         location=str(tmp_path),
     )
@@ -47,7 +47,7 @@ async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubReposito
 
     message = InfrahubGitRPC(
         action=GitMessageAction.MERGE.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name=repo.name,
         location=git_upstream_repo_01["path"],
         params={"branch_name": "branch01"},
@@ -75,7 +75,7 @@ async def test_git_rpc_diff(git_upstream_repo_01, git_repo_01: InfrahubRepositor
     # Diff Between Branch01 and Branch02
     message = InfrahubGitRPC(
         action=GitMessageAction.DIFF.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name=repo.name,
         location=git_upstream_repo_01["path"],
         params={"first_commit": commit_branch01, "second_commit": commit_branch02},
@@ -90,7 +90,7 @@ async def test_git_rpc_diff(git_upstream_repo_01, git_repo_01: InfrahubRepositor
     # Diff Between Branch01 and Main
     message = InfrahubGitRPC(
         action=GitMessageAction.DIFF.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name=repo.name,
         location=git_upstream_repo_01["path"],
         params={"first_commit": commit_branch01, "second_commit": commit_main},

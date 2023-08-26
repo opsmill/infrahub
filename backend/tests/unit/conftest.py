@@ -129,7 +129,7 @@ def local_storage_dir(tmp_path) -> str:
 @pytest.fixture
 def file1_in_storage(local_storage_dir, helper) -> str:
     fixture_dir = helper.get_fixtures_dir()
-    file1_identifier = str(UUIDT.new())
+    file1_identifier = str(UUIDT())
 
     files_dir = os.path.join(fixture_dir, "schemas")
 

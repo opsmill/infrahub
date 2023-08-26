@@ -20,7 +20,7 @@ def incoming_data_message_01():
     body = {
         "action": DataMessageAction.CREATE.value,
         "branch": "main",
-        "node_id": str(UUIDT.new()),
+        "node_id": str(UUIDT()),
         "node_kind": "device",
     }
 
@@ -29,7 +29,7 @@ def incoming_data_message_01():
         content_type="application/python-pickle",
         # content_encoding="text",
         delivery_mode=DeliveryMode.PERSISTENT,
-        message_id=str(UUIDT.new()),
+        message_id=str(UUIDT()),
         timestamp=datetime.fromtimestamp(int(time.time()), tz=timezone.utc),
         type=MessageType.DATA.value,
     )

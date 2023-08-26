@@ -165,7 +165,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
 
-        self.params["uuid"] = str(UUIDT.new())
+        self.params["uuid"] = str(UUIDT())
 
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level

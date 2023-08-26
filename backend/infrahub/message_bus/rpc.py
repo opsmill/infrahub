@@ -60,7 +60,7 @@ class InfrahubRpcClientBase:
             future.set_result(InfrahubMessage.convert(message))
 
     async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
-        correlation_id = str(UUIDT.new())
+        correlation_id = str(UUIDT())
 
         if wait_for_response:
             future = self.loop.create_future()

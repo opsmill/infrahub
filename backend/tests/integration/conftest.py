@@ -89,7 +89,7 @@ class IntegrationHelper:
         return self._admin_headers
 
     async def create_token(self, account_name: Optional[str] = None) -> str:
-        token = str(UUIDT.new())
+        token = str(UUIDT())
         account_name = account_name or "admin"
         response = await NodeManager.query(
             schema="CoreAccount",

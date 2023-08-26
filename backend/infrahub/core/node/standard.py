@@ -75,7 +75,7 @@ class StandardNode(BaseModel):
         node_type = self.get_type()
 
         attrs = []
-        params = {"uuid": str(UUIDT.new())}
+        params = {"uuid": str(UUIDT())}
         for attr_name in self.__fields__:
             if attr_name in self._exclude_attrs:
                 continue

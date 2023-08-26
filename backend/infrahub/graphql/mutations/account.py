@@ -60,7 +60,7 @@ class AccountMixin:
     @classmethod
     async def create_token(cls, session: AsyncSession, account: Node, data: Dict, info: GraphQLResolveInfo):
         obj = await Node.init(session=session, schema="InternalAccountToken")
-        token = str(UUIDT.new())
+        token = str(UUIDT())
         await obj.new(
             session=session,
             account=account,

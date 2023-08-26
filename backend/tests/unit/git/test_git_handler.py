@@ -13,7 +13,7 @@ async def test_handle_unknown_message(client, git_repo_checks: InfrahubRepositor
 
     message = InfrahubCheckRPC(
         action=CheckMessageAction.PYTHON.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name=git_repo_checks.name,
         commit=commit,
         branch_name="main",
@@ -33,7 +33,7 @@ async def test_git_check_python_success(client, git_repo_checks: InfrahubReposit
 
     message = InfrahubCheckRPC(
         action=CheckMessageAction.PYTHON.value,
-        repository_id=str(UUIDT.new()),
+        repository_id=str(UUIDT()),
         repository_name=git_repo_checks.name,
         commit=commit,
         branch_name="main",

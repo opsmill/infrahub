@@ -252,7 +252,7 @@ async def test_relationship_wrong_node(
     branch: Branch,
 ):
     # Non existing Node
-    bad_uuid = str(UUIDT.new())
+    bad_uuid = str(UUIDT())
     query = """
     mutation {
         RelationshipAdd(data: {

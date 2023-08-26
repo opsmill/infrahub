@@ -102,7 +102,7 @@ class NodeCreateQuery(NodeQuery):
     raise_error_if_empty: bool = True
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["uuid"] = str(UUIDT.new())
+        self.params["uuid"] = str(UUIDT())
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()

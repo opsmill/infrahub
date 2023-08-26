@@ -312,7 +312,7 @@ async def test_identify_node_class(session, car_schema, default_branch):
     node = NodeToProcess(
         schema=car_schema,
         node_id=33,
-        node_uuid=str(UUIDT.new()),
+        node_uuid=str(UUIDT()),
         updated_at=Timestamp().to_string(),
         branch=default_branch,
     )
