@@ -21,9 +21,9 @@ def generate_uuid() -> str:
 
 
 def encode_number(number: int, min_length: int) -> str:
-    """Encore a number into a base16 string and ensure the result has a minimum size.
+    """Encode a number into a base16 string and ensure the result has a minimum size.
     If the initial response produced doesn't match the min requirement,
-    random number will be used to fill the ga
+    random number will be used to fill the gap
     """
     response = base16encode(number=number).lower()
     if len(response) >= min_length:
