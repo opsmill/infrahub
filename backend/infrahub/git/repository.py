@@ -1258,7 +1258,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         for check_name in only_local:
             LOGGER.info(
-                f"{self.name} | New Check '{check_name}' found on branch {branch_name} ({commit[-8:]}), creating"
+                f"{self.name} | New Check '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
             )
             await self.create_python_check(branch_name=branch_name, check=local_checks[check_name])
 
@@ -1268,7 +1268,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 existing_check=checks_in_graph[check_name],
             ):
                 LOGGER.info(
-                    f"{self.name} | New version of Check '{check_name}' found on branch {branch_name} ({commit[-8:]}), updating"
+                    f"{self.name} | New version of Check '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
                 )
                 await self.update_python_check(
                     check=local_checks[check_name],
@@ -1379,7 +1379,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         for transform_name in only_local:
             LOGGER.info(
-                f"{self.name} | New Python Transform '{transform_name}' found on branch {branch_name} ({commit[-8:]}), creating"
+                f"{self.name} | New Python Transform '{transform_name}' found on branch {branch_name} ({commit[:8]}), creating"
             )
             await self.create_python_transform(branch_name=branch_name, transform=local_transforms[transform_name])
 
@@ -1388,7 +1388,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
             ):
                 LOGGER.info(
-                    f"{self.name} | New version of the Python Transform '{transform_name}' found on branch {branch_name} ({commit[-8:]}), updating"
+                    f"{self.name} | New version of the Python Transform '{transform_name}' found on branch {branch_name} ({commit[:8]}), updating"
                 )
                 await self.update_python_transform(
                     existing_transform=transforms_in_graph[transform_name],
@@ -1397,7 +1397,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         for transform_name in only_graph:
             LOGGER.info(
-                f"{self.name} | Python Transform '{transform_name}' not found locally in branch {branch_name} ({commit[-8:]}), deleting"
+                f"{self.name} | Python Transform '{transform_name}' not found locally in branch {branch_name} ({commit[:8]}), deleting"
             )
             await transforms_in_graph[transform_name].delete()
 
