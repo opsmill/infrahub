@@ -398,7 +398,7 @@
             ]
         },
         {
-            "name": "Check",
+            "name": "CheckDefinition",
             "namespace": "Core",
             "default_filter": "name__value",
             "attributes": [
@@ -429,6 +429,11 @@
                     "name": "rebase",
                     "kind": "Boolean",
                     "default_value": true
+                },
+                {
+                    "name": "parameters",
+                    "kind": "JSON",
+                    "optional": true
                 }
             ],
             "relationships": [

@@ -32,12 +32,9 @@ from infrahub.core.utils import (
 from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.events import (
-    CheckMessageAction,
     GitMessageAction,
-    InfrahubCheckRPC,
     InfrahubGitRPC,
     InfrahubRPCResponse,
-    RPCStatusCode,
 )
 
 if TYPE_CHECKING:
@@ -557,44 +554,10 @@ class Branch(StandardNode):
         return passed, messages
 
     async def validate_repositories(
-        self, rpc_client: InfrahubRpcClient, session: AsyncSession
+        self, rpc_client: InfrahubRpcClient, session: AsyncSession  # pylint: disable=unused-argument
     ) -> Tuple[bool, List[str]]:
         passed = True
         messages = []
-        tasks = []
-
-        # For all repositories in this branch, run all checks
-        repos = await NodeManager.query(schema="CoreRepository", branch=self, session=session)
-
-        # Collecting all the checks from all the repopository
-        for repo in repos:
-            for rel_check in await repo.checks.get(session=session):
-                check = await rel_check.get_peer(session=session)
-
-                tasks.append(
-                    rpc_client.call(
-                        message=InfrahubCheckRPC(
-                            action=CheckMessageAction.PYTHON,
-                            repository=repo,
-                            branch_name=self.name,
-                            check_location=check.file_path.value,
-                            check_name=check.class_name.value,
-                            name=check.name,
-                            commit=repo.commit.value,
-                        )
-                    )
-                )
-
-        responses = await asyncio.gather(*tasks)
-
-        # Collecting all the responses and the logs from all tasks
-        for response in responses:
-            if response.status != RPCStatusCode.OK.value:
-                continue
-
-            if not response.response["passed"]:
-                passed = False
-                messages.extend([error["message"] for error in response.response["errors"]])
 
         return passed, messages
 

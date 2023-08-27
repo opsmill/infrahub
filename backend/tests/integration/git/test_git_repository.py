@@ -105,8 +105,8 @@ class TestInfrahubClient:
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_python_files(branch_name="main", commit=commit)
 
-        checks = await client.all(kind="CoreCheck")
-        assert len(checks) >= 1
+        check_definitions = await client.all(kind="CoreCheckDefinition")
+        assert len(check_definitions) >= 1
 
         transforms = await client.all(kind="CoreTransformPython")
         assert len(transforms) >= 2
@@ -118,11 +118,11 @@ class TestInfrahubClient:
 
         # 1. Modify an object to validate if its being properly updated
         # 2. Add an object that doesn't exist in Git and validate that it's been deleted
-        check_timeout_value_before_change = checks[0].timeout.value
-        check_query_value_before_change = checks[0].query.id
-        checks[0].timeout.value = 44
-        checks[0].query = query_99.id
-        await checks[0].save()
+        check_timeout_value_before_change = check_definitions[0].timeout.value
+        check_query_value_before_change = check_definitions[0].query.id
+        check_definitions[0].timeout.value = 44
+        check_definitions[0].query = query_99.id
+        await check_definitions[0].save()
 
         transform_timeout_value_before_change = transforms[0].timeout.value
         transforms[0].timeout.value = 44
@@ -133,7 +133,7 @@ class TestInfrahubClient:
         await transforms[1].save()
 
         # Create Object that will be deleted
-        obj1 = await Node.init(schema="CoreCheck", session=session)
+        obj1 = await Node.init(schema="CoreCheckDefinition", session=session)
         await obj1.new(
             session=session,
             name="soontobedeletedcheck",
@@ -158,7 +158,7 @@ class TestInfrahubClient:
 
         await repo.import_all_python_files(branch_name="main", commit=commit)
 
-        modified_check0 = await client.get(kind="CoreCheck", id=checks[0].id)
+        modified_check0 = await client.get(kind="CoreCheckDefinition", id=check_definitions[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change
         assert modified_check0.query.id == check_query_value_before_change
 
@@ -170,7 +170,7 @@ class TestInfrahubClient:
 
         # FIXME not implemented yet
         with pytest.raises(NodeNotFound):
-            await client.get(kind="CoreCheck", id=obj1.id)
+            await client.get(kind="CoreCheckDefinition", id=obj1.id)
 
         with pytest.raises(NodeNotFound):
             await client.get(kind="CoreTransformPython", id=obj2.id)

@@ -578,7 +578,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "CoreCheckCreate": {
+            "CoreCheckDefinitionCreate": {
                 "ok": True,
                 "object": {
                     "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -592,7 +592,7 @@ async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def check_data_01() -> dict:
+async def check_definition_data_01() -> dict:
     data = {
         "node": {
             "id": "d32f30f8-1d1e-4dfb-96d9-91234a9ffbe1",

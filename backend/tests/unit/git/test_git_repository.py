@@ -16,7 +16,7 @@ from infrahub.git import (
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
     ArtifactGenerateResult,
-    CheckInformation,
+    CheckDefinitionInformation,
     GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
@@ -763,7 +763,7 @@ def test_extract_repo_file_information():
     assert file_info.module_name == "dir2.dir3.myfile"
 
 
-async def test_create_python_check(
+async def test_create_python_check_definition(
     helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, mock_check_create
 ):
     repo = git_repo_03_w_client
@@ -775,7 +775,7 @@ async def test_create_python_check(
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
-    check = CheckInformation(
+    check = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -785,7 +785,7 @@ async def test_create_python_check(
         timeout=check_class.timeout,
         rebase=check_class.rebase,
     )
-    obj = await repo.create_python_check(branch_name="main", check=check)
+    obj = await repo.create_python_check_definition(branch_name="main", check=check)
 
     assert isinstance(obj, InfrahubNode)
 
@@ -796,7 +796,7 @@ async def test_compare_python_check(
     mock_schema_query_01,
     gql_query_data_01,
     gql_query_data_02,
-    check_data_01,
+    check_definition_data_01,
 ):
     repo = git_repo_03_w_client
 
@@ -804,13 +804,13 @@ async def test_compare_python_check(
     check_class = getattr(module, "Check01")
 
     gql_schema = await repo.client.schema.get(kind="CoreGraphQLQuery")
-    check_schema = await repo.client.schema.get(kind="CoreCheck")
+    check_schema = await repo.client.schema.get(kind="CoreCheckDefinition")
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
-    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
+    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_definition_data_01)
 
-    check01 = CheckInformation(
+    check01 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -821,9 +821,9 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(existing_check=existing_check, check=check01) is True
+    assert await repo.compare_python_check_definition(existing_check=existing_check, check=check01) is True
 
-    check02 = CheckInformation(
+    check02 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -835,14 +835,14 @@ async def test_compare_python_check(
     )
 
     assert (
-        await repo.compare_python_check(
+        await repo.compare_python_check_definition(
             existing_check=existing_check,
             check=check02,
         )
         is False
     )
 
-    check03 = CheckInformation(
+    check03 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -853,4 +853,4 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(check=check03, existing_check=existing_check) is False
+    assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False
