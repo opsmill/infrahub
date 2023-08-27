@@ -1,9 +1,10 @@
 import pytest
-from fastapi.testclient import TestClient
 
 from infrahub.core.schema import core_models
-from infrahub_client import InfrahubClient
+from infrahub_client import Config, InfrahubClient
 from infrahub_client.schema import NodeSchema
+
+from .conftest import InfrahubTestClient
 
 # pylint: disable=unused-argument
 
@@ -14,10 +15,11 @@ class TestInfrahubSchema:
         # pylint: disable=import-outside-toplevel
         from infrahub.server import app
 
-        return TestClient(app)
+        return InfrahubTestClient(app)
 
     async def test_schema_all(self, client, init_db_base):
-        ifc = await InfrahubClient.init(test_client=client)
+        config = Config(requester=client.async_request)
+        ifc = await InfrahubClient.init(config=config)
         schema_nodes = await ifc.schema.all()
 
         assert len(schema_nodes) == len(core_models["nodes"])
