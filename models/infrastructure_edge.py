@@ -4,7 +4,7 @@ from collections import defaultdict
 from ipaddress import IPv4Network
 from typing import Dict, List
 
-from infrahub_client import InfrahubClient, InfrahubNode, NodeStore
+from infrahub_client import UUIDT, InfrahubClient, InfrahubNode, NodeStore
 
 # flake8: noqa
 # pylint: skip-file
@@ -406,7 +406,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     branch=branch,
                     kind="InfraCircuit",
                     circuit_id=circuit_id,
-                    vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
+                    vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
                     provider=provider.id,
                     status={"id": active_status.id, "owner": group_ops.id},
                     role={
@@ -589,7 +589,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         branch=new_branch_name,
         kind="InfraCircuit",
         circuit_id=circuit_id,
-        vendor_id=f"{provider.name.value.upper()}-{str(uuid.uuid4())[:8]}",
+        vendor_id=f"{provider.name.value.upper()}-{UUIDT().short()}",
         provider=provider.id,
         status={"id": active_status.id},  # "owner": group_ops.id},
         role={
@@ -974,7 +974,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     #         branch=branch,
     #         kind="InfraCircuit",
     #         circuit_id=BACKBONE_CIRCUIT_IDS[idx],
-    #         vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
+    #         vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
     #         provider=provider,
     #         # type="DARK FIBER",
     #         status=active_status,

@@ -2,7 +2,6 @@ import os
 import re
 import shutil
 import tarfile
-import uuid
 from pathlib import Path
 from typing import Dict
 
@@ -14,7 +13,7 @@ from pytest_httpx import HTTPXMock
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
-from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_client import UUIDT, InfrahubClient, InfrahubNode
 from infrahub_client import SchemaRoot as ClientSchemaRoot
 
 
@@ -90,7 +89,7 @@ async def git_repo_01(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     """Git Repository with git_upstream_repo_01 as remote"""
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
     )
@@ -110,7 +109,7 @@ async def git_repo_01_w_client(git_repo_01, client) -> InfrahubRepository:
 async def git_repo_02(git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_02 as remote"""
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
@@ -130,7 +129,7 @@ async def git_repo_02_w_client(git_repo_02, client) -> InfrahubRepository:
 async def git_repo_03(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_03 as remote"""
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_03["name"], location=git_upstream_repo_03["path"]
+        id=UUIDT.new(), name=git_upstream_repo_03["name"], location=git_upstream_repo_03["path"]
     )
 
     return repo
@@ -153,7 +152,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRe
     """
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
         location=git_upstream_repo_03["path"],
     )
@@ -186,7 +185,7 @@ async def git_repo_05(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     """
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
     )
@@ -213,7 +212,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     """
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
     )
@@ -305,7 +304,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> Infrahu
 
     # Clone the repo and create a local branch for branch01
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
@@ -342,7 +341,7 @@ async def git_repo_checks(client, git_upstream_repo_02, git_repos_dir) -> Infrah
     upstream.index.commit("Add 2 checks files")
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
@@ -371,7 +370,7 @@ async def git_repo_transforms(client, git_upstream_repo_02, git_repos_dir) -> In
     upstream.index.commit("Add 2 Transforms files")
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
@@ -389,7 +388,7 @@ async def git_repo_10(client, git_upstream_repo_10, git_repos_dir) -> InfrahubRe
     """Git Repository with git_upstream_repo_10 as remote"""
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(),
+        id=UUIDT.new(),
         name=git_upstream_repo_10["name"],
         location=git_upstream_repo_10["path"],
     )

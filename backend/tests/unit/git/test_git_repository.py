@@ -1,5 +1,4 @@
 import os
-import uuid
 
 import pytest
 from git import Repo
@@ -24,12 +23,12 @@ from infrahub.git import (
     extract_repo_file_information,
 )
 from infrahub.utils import find_first_file_in_directory
-from infrahub_client import InfrahubNode
+from infrahub_client import UUIDT, InfrahubNode
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     assert repo.directory_root == os.path.join(git_repos_dir, git_upstream_repo_01["name"])
@@ -40,7 +39,7 @@ async def test_directories_props(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -56,7 +55,7 @@ async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
     open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w").close()
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -71,7 +70,7 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w").close()
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -83,7 +82,7 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path):
     with pytest.raises(RepositoryError) as exc:
-        await InfrahubRepository.new(id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=str(tmp_path))
+        await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
 
     assert "An error occured with GitRepository" in str(exc.value)
 
@@ -91,7 +90,7 @@ async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path)
 async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(
-            id=uuid.uuid4(),
+            id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=git_upstream_repo_01["path"],
             default_branch_name="notvalid",

@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 import toml
 from pydantic import BaseSettings, Field, ValidationError, root_validator
 
-from infrahub_client.utils import generate_uuid
+from infrahub_client import generate_uuid
 
 SETTINGS: Settings = None
 

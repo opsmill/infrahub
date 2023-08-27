@@ -4,6 +4,8 @@ import pytest
 
 from infrahub_client.node import InfrahubNode
 from infrahub_client.utils import (
+    base16decode,
+    base16encode,
     base36decode,
     base36encode,
     compare_lists,
@@ -103,6 +105,13 @@ def test_base36():
     assert base36decode("AQF8AA0006EH") == 1412823931503067241
     assert base36decode(base36encode(-9223372036721928027)) == -9223372036721928027
     assert base36decode(base36encode(1412823931503067241)) == 1412823931503067241
+
+
+def test_base16():
+    assert base16encode(1412823931503067241) == "139b5be157694069"
+    assert base16decode("139b5be157694069") == 1412823931503067241
+    assert base16decode(base16encode(-9223372036721928027)) == -9223372036721928027
+    assert base16decode(base16encode(1412823931503067241)) == 1412823931503067241
 
 
 def test_get_flat_value(client, tag_schema, tag_green_data):

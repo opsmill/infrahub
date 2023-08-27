@@ -27,7 +27,7 @@ from infrahub_client.schema import (
 )
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
-from infrahub_client.uuidt import UUIDT
+from infrahub_client.uuidt import UUIDT, generate_uuid
 
 __all__ = [
     "AttributeSchema",
@@ -43,6 +43,7 @@ __all__ = [
     "InfrahubNodeSync",
     "InfrahubSchema",
     "FilterNotFound",
+    "generate_uuid",
     "GraphQLError",
     "NodeNotFound",
     "NodeSchema",

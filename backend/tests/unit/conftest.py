@@ -1,7 +1,6 @@
 import asyncio
 import os
 import shutil
-import uuid
 from typing import Dict
 
 import pendulum
@@ -40,6 +39,7 @@ from infrahub.graphql.generator import (
 )
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
+from infrahub_client import UUIDT
 
 
 @pytest.fixture(scope="session")
@@ -129,7 +129,7 @@ def local_storage_dir(tmp_path) -> str:
 @pytest.fixture
 def file1_in_storage(local_storage_dir, helper) -> str:
     fixture_dir = helper.get_fixtures_dir()
-    file1_identifier = str(uuid.uuid4())
+    file1_identifier = str(UUIDT())
 
     files_dir = os.path.join(fixture_dir, "schemas")
 

@@ -4,14 +4,16 @@ import inspect
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
-from uuid import UUID, uuid4
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import element_id_to_id, extract_field_filters
+from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from neo4j import AsyncSession
     from neo4j.graph import Relationship as Neo4jRelationship
 
@@ -163,7 +165,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
 
-        self.params["uuid"] = str(uuid4())
+        self.params["uuid"] = str(UUIDT())
 
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
